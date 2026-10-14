@@ -193,7 +193,8 @@ export type PairOutcome =
         | "missing-canonical"
         | "canonical-not-published"
         | "merged-elsewhere"
-        | "inside-quiet-window";
+        | "inside-quiet-window"
+        | "demoted-canonical";
       detail: string;
     };
 
@@ -423,13 +424,16 @@ export function attributeSources(
   });
 }
 
+function mediaOf(row: UnmergeItemRow): MediaAsset[] {
+  return parseMediaManifest(row.media_manifest, row.image_url, row.url).assets;
+}
+
+const hasPicture = (asset: MediaAsset) =>
+  asset.type === "image" || Boolean(asset.poster_url);
+
 function assetKeys(row: UnmergeItemRow): Set<string> {
   const keys = new Set<string>();
-  for (const asset of parseMediaManifest(
-    row.media_manifest,
-    row.image_url,
-    row.url
-  ).assets) {
+  for (const asset of mediaOf(row)) {
     const key = assetKey(asset);
     if (key) keys.add(key);
   }
@@ -700,6 +704,18 @@ function restorableGroups(
         reason: "missing-item",
         detail: `no items row ${pair.mergedId}`,
       });
+    } else if (
+      item.status === "merged" &&
+      item.duplicate_of === canonical.id &&
+      item.fetched_at < canonical.fetched_at
+    ) {
+      // Older than its canonical: an official takeover demoted it, which
+      // also moved its notifications and votes. Not a merge to reverse here.
+      outcomes.set(pair.mergedId, {
+        action: "skip",
+        reason: "demoted-canonical",
+        detail: `fetched before its canonical (${item.fetched_at} < ${canonical.fetched_at})`,
+      });
     } else if (item.status === "merged" && item.duplicate_of === canonical.id) {
       groups.set(pair.group, [...(groups.get(pair.group) ?? []), item.id]);
     } else if (
@@ -947,12 +963,27 @@ function planShrunkCanonical(ctx: CanonicalContext): void {
   );
   const isForeign = (asset: MediaAsset) => foreign.has(assetKey(asset) ?? "");
   const stored = storedAssets(canonical.media_manifest);
-  const kept = stored.filter((asset) => !isForeign(asset));
+  let kept = stored.filter((asset) => !isForeign(asset));
+  const dropsAsset = kept.length < stored.length;
+  // A merge keeps only the best picture tier, so a removed item's photo can
+  // have pruned the canonical's own share card. That card is gone; the
+  // remaining members' media is what the correct merges alone would show.
+  if (dropsAsset && !kept.some(hasPicture)) {
+    const refill = buildMediaManifest(
+      [...kept, ...remaining.flatMap((m) => mediaOf(m))],
+      { articleUrls: [canonical.url] }
+    ).assets;
+    if (refill.some(hasPicture)) {
+      kept = refill;
+      plan.lossy.push(
+        "the merge pruned the canonical's own image; its remaining members' media stands in"
+      );
+    }
+  }
   const after = {
-    media_manifest:
-      kept.length === stored.length
-        ? canonical.media_manifest
-        : JSON.stringify({ version: MEDIA_MANIFEST_VERSION, assets: kept }),
+    media_manifest: dropsAsset
+      ? JSON.stringify({ version: MEDIA_MANIFEST_VERSION, assets: kept })
+      : canonical.media_manifest,
     image_url:
       canonical.image_url !== null &&
       isForeign({ type: "image", url: canonical.image_url })

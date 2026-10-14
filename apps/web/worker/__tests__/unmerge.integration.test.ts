@@ -174,10 +174,24 @@ function twins(publishedAt: number): NewRow[] {
   ];
 }
 
+// The crocodile story (production c5196093): a marketbrief canonical, its
+// correct huggingnews twin, and a wrong techcrunch story with a real photo.
+const CROC = id(0xc3);
+const CROC_TWIN = id(0xa3);
+const WRONG = id(0xa4);
+const crocSlug = "singapore-charges-man-for-ai-crocodile-image-96a9f0c1";
+const CROC_CARD = `https://marketbrief.now/og/${crocSlug}.png?v=1`;
+const TWIN_CARD = `https://huggingnews.com/og/${crocSlug}.png?v=2`;
+const WRONG_PHOTO =
+  "https://techcrunch.com/wp-content/uploads/2026/09/openai-getty.jpg";
+
 const TAGS = new Map([
   [C, ["anthropic", "llm"]],
   [HUG, ["nvidia", "funding"]],
   [MB, ["nvidia", "funding"]],
+  [CROC, ["safety"]],
+  [CROC_TWIN, ["safety", "crime"]],
+  [WRONG, ["crime", "openai"]],
 ]);
 
 async function writeCanonical(
@@ -213,8 +227,8 @@ async function writeCluster(
             {
               points: existing.row.item.points ?? 0,
               comments: existing.row.item.comments ?? 0,
-              imageUrl: null,
-              mediaManifest: null,
+              imageUrl: existing.row.item.imageUrl ?? null,
+              mediaManifest: existing.row.item.mediaManifest ?? null,
               sourceId: existing.row.source.id,
               url: existing.row.item.url,
               topics: TAGS.get(existing.id),
@@ -469,6 +483,109 @@ describe("unmerge", () => {
         .get(HUG, MB, RECENT_L)
     ).toEqual({ n: 0 });
     expect(UNMERGE_QUIET_SEC).toBeGreaterThanOrEqual(8 * 86_400);
+  });
+
+  it("keeps the canonical's correct twin when it takes the wrong story out", async () => {
+    const croc = row(CROC, "marketbrief", {
+      url: `https://marketbrief.now/ai/${crocSlug}`,
+      title:
+        "Singapore Charges Man for AI Crocodile Image that Halted Reservoir Use",
+      publishedAt: OLD,
+      points: 4,
+      imageUrl: CROC_CARD,
+      mediaManifest: {
+        version: 1,
+        assets: [{ type: "image", url: CROC_CARD }],
+      },
+      sources: [
+        {
+          kind: "source",
+          url: `https://marketbrief.now/ai/${crocSlug}`,
+          postedAt: OLD,
+        },
+      ],
+    });
+    const twin = row(CROC_TWIN, "huggingnews", {
+      url: `https://huggingnews.com/ai/${crocSlug}`,
+      title: croc.item.title,
+      publishedAt: OLD,
+      points: 1,
+      imageUrl: TWIN_CARD,
+      mediaManifest: {
+        version: 1,
+        assets: [{ type: "image", url: TWIN_CARD }],
+      },
+      sources: [
+        {
+          kind: "source",
+          author: "@straits",
+          postedAt: OLD - 300,
+          url: "https://x.com/straits/status/9",
+        },
+      ],
+    });
+    const wrong = row(WRONG, "techcrunch-ai", {
+      url: "https://techcrunch.com/2026/09/29/openai-app-store/",
+      title: "OpenAI's latest features take direct aim at the app store model",
+      publishedAt: OLD + 3600,
+      imageUrl: WRONG_PHOTO,
+      mediaManifest: {
+        version: 1,
+        assets: [{ type: "image", url: WRONG_PHOTO }],
+      },
+      sources: [
+        {
+          kind: "source",
+          url: "https://techcrunch.com/2026/09/29/openai-app-store/",
+          postedAt: OLD + 3600,
+        },
+      ],
+    });
+    const build = async (target: DatabaseSync, withWrong: boolean) => {
+      await writeCanonical(target, croc, OLD + 600);
+      await writeCluster(target, [twin], { id: CROC, row: croc }, OLD + 1200);
+      if (withWrong) {
+        await writeCluster(
+          target,
+          [wrong],
+          { id: CROC, row: croc },
+          OLD + 4200
+        );
+      }
+    };
+    await build(db, true);
+    const oracle = migratedDb();
+    await build(oracle, false);
+    expect(shape(db, CROC)).toMatchObject({ image_url: WRONG_PHOTO });
+
+    const result = await unmergeItems(env, {
+      pairs: [{ canonicalId: CROC, mergedId: WRONG }],
+      dryRun: false,
+    });
+    if ("error" in result) throw new Error(result.error);
+
+    const without = ({
+      image_url,
+      media_manifest,
+      ...rest
+    }: Record<string, unknown>) => rest;
+    expect(without(shape(db, CROC) as Record<string, unknown>)).toEqual(
+      without(shape(oracle, CROC) as Record<string, unknown>)
+    );
+    expect(sources(db, CROC)).toEqual(sources(oracle, CROC));
+    expect(shape(db, CROC_TWIN)).toEqual(shape(oracle, CROC_TWIN));
+    // The wrong merge's photo pruned the canonical's own card for good; the
+    // twin's card of the same story stands in, never the foreign photo.
+    expect(shape(db, CROC)).toMatchObject({ image_url: TWIN_CARD });
+    expect(result.plan.canonicals[0].lossy.join("\n")).toContain(
+      "pruned the canonical's own image"
+    );
+    expect(shape(db, WRONG)).toMatchObject({
+      status: "published",
+      duplicate_of: null,
+      image_url: WRONG_PHOTO,
+    });
+    oracle.close();
   });
 
   it("leaves tldr_snapshots and digest rows alone", async () => {
