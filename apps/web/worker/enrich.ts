@@ -1,3 +1,4 @@
+import { decodeHtmlEntitiesOnce } from "../src/lib/plain-text.js";
 import {
   buildMediaManifest,
   isPrivateHostname,
@@ -28,34 +29,6 @@ export interface OgData {
   publishedAt?: number;
   /** Present when the page exposes more than one image or any video. */
   mediaManifest?: MediaManifest;
-}
-
-const NAMED_ENTITIES: Record<string, string> = {
-  amp: "&",
-  lt: "<",
-  gt: ">",
-  quot: '"',
-  apos: "'",
-  nbsp: " ",
-  mdash: "—",
-  ndash: "–",
-  hellip: "…",
-  rsquo: "’",
-  lsquo: "‘",
-  rdquo: "”",
-  ldquo: "“",
-};
-
-function decodeHtmlEntitiesOnce(text: string): string {
-  return text
-    .replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(Number(dec)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) =>
-      String.fromCodePoint(Number.parseInt(hex, 16))
-    )
-    .replace(
-      /&([a-zA-Z]+);/g,
-      (whole, name: string) => NAMED_ENTITIES[name] ?? whole
-    );
 }
 
 /** Decodes numeric (decimal/hex) and the common named HTML entities found

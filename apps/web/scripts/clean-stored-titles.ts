@@ -24,7 +24,9 @@ const webRoot = path.resolve(
 );
 const apply = process.argv.includes("--apply");
 
-const ENTITY_LIKE = ["%&#%", "%&amp;%", "%&quot;%", "%&lt;%", "%&gt;%"];
+// Any `&name;` or `&#n;` shape: the decoder table grew past &amp; and friends
+// (&oacute;, &eacute;, &mdash;), so the candidate filter must not name them.
+const ENTITY_LIKE = ["%&%;%"];
 
 interface Target {
   table: "items" | "translations";
