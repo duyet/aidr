@@ -140,6 +140,11 @@ test("a pinned layout wins over the rules, and an unknown one fails the build", 
   assert.equal(look.layouts?.[1], "stat");
   assert.deepEqual(look.notes, []);
   assert.throws(() => resolveLook(withStory(script, 2, { layout: "fullbleed" }), edition), /script\.stories rank 2 layout "fullbleed": unknown; use split \| full \| stat/);
+
+  const stats = { stories: [1, 2, 3].map((rank) => ({ rank, images: ["assets/a.jpg"], layout: "stat" })) };
+  const over = resolveLook(stats, { date: "2026-10-13", stories: [1, 2, 3].map((rank) => ({ rank, text: "A plain story." })) });
+  assert.deepEqual(over.layouts, { 1: "stat", 2: "stat", 3: "stat" }, "a pin beats max and the three-in-a-row rule");
+  assert.deepEqual(over.notes, []);
 });
 
 /** Three of one id in a row only when no other id is eligible; stat at most twice. */

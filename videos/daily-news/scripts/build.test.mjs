@@ -40,6 +40,7 @@ function build(
     stdout: run.stdout,
     stderr: run.stderr,
     page: (name) => readFileSync(join(dn, "editions", date, "out", name, "index.html"), "utf8"),
+    timeline: () => read(join(dn, "editions", date, "timeline.json")),
   };
 }
 
@@ -58,7 +59,7 @@ test("the built intro tags the grid with its story count and carries that count'
 
 test("a story whose image files are missing shows no picture and loses its full layout", () => {
   // 2026-10-13 pins story 3 to full; with its files gone it follows two splits, so it takes stat.
-  const { page, stdout } = build("2026-10-13", undefined, [
+  const { script, page, stdout, timeline } = build("2026-10-13", undefined, [
     "assets/s3-1.jpg",
     "assets/s3-2.jpg",
   ]);
@@ -85,6 +86,9 @@ test("a story whose image files are missing shows no picture and loses its full 
       `${fmt}: story 4 keeps its pin`
     );
   }
+  const { theme, layouts } = timeline();
+  assert.deepEqual(theme, script.theme, "theme holds the day axes only");
+  assert.deepEqual(layouts, { 1: "split", 2: "split", 3: "stat", 4: "full" });
 });
 
 const coverHook = (html) => html.match(/<div class="hook"><span>([^<]*)<\/span>/)?.[1];
