@@ -6,7 +6,7 @@ export interface UnmergeCounts {
   restoredRejected: number;
   /** Pairs merged into a story already live instead of published. */
   repointed: number;
-  /** Pairs held until the pairs file says `sameAs` or `distinct`. */
+  /** Pairs held until the pairs file says `sameAs` or `distinctFrom`. */
   needsDecision: number;
   canonicalsChanged: number;
   columnChanges: Record<string, number>;

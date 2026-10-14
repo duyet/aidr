@@ -64,6 +64,7 @@ import { DIGEST_WINDOW_DAYS } from "../weekly-digest.js";
 import {
   type StoryRef,
   sameStoryRule,
+  type TwinMatch,
   type TwinRule,
   twinMatches,
 } from "./twins.js";
@@ -84,8 +85,11 @@ export function parseItemId(value: unknown): ItemId | null {
  * merged id, so a lone pair comes back on its own.
  *
  * `decision` settles a group the plan holds as `needs-decision`: `sameAs`
- * re-points it to that published row, `distinct` publishes it on its own.
- * The pairs file spells them `"sameAs": "<id>"` and `"distinct": true`. */
+ * re-points it to that published row. `distinct` says it is not the story of
+ * its canonical, and only that: the group still joins a live row with its
+ * identity and waits on a near-duplicate one, unless `from` names that row.
+ * The pairs file spells them `"sameAs": "<id>"`, `"distinct": true` and
+ * `"distinctFrom": ["<id>", ...]` (which implies `distinct`). */
 export interface UnmergePair {
   canonicalId: ItemId;
   mergedId: ItemId;
@@ -95,12 +99,14 @@ export interface UnmergePair {
 
 export type TwinDecision =
   | { kind: "same-as"; twinId: ItemId }
-  | { kind: "distinct" };
+  | { kind: "distinct"; from: readonly ItemId[] };
 
 function parseDecision(
   record: Record<string, unknown>
 ): TwinDecision | undefined | { error: string } {
-  if (record.sameAs !== undefined && record.distinct !== undefined) {
+  const distinct =
+    record.distinct !== undefined || record.distinctFrom !== undefined;
+  if (record.sameAs !== undefined && distinct) {
     return { error: "sameAs and distinct are exclusive" };
   }
   if (record.sameAs !== undefined) {
@@ -109,22 +115,33 @@ function parseDecision(
       ? { kind: "same-as", twinId }
       : { error: "sameAs must be a 64-char hex item id" };
   }
-  if (record.distinct !== undefined) {
-    return record.distinct === true
-      ? { kind: "distinct" }
-      : { error: "distinct must be true" };
+  if (record.distinct !== undefined && record.distinct !== true) {
+    return { error: "distinct must be true" };
   }
-  return undefined;
+  if (record.distinctFrom !== undefined) {
+    const from = Array.isArray(record.distinctFrom)
+      ? record.distinctFrom.map(parseItemId)
+      : [];
+    if (from.length === 0 || from.some((id) => id === null)) {
+      return {
+        error: "distinctFrom must be a non-empty array of 64-char hex item ids",
+      };
+    }
+    return { kind: "distinct", from: from as ItemId[] };
+  }
+  return distinct ? { kind: "distinct", from: [] } : undefined;
 }
 
 /** The request shape `parseUnmergePairs` reads, the inverse of
  * `parseDecision`. Post this, not an `UnmergePair`: the endpoint re-parses
- * and reads only `sameAs`/`distinct`, so a parsed `decision` is dropped. */
+ * and reads only `sameAs`/`distinct`/`distinctFrom`, so a parsed `decision`
+ * is dropped. */
 export function toWirePair(pair: UnmergePair): Record<string, unknown> {
   const { decision, ...rest } = pair;
   if (!decision) return rest;
-  return decision.kind === "same-as"
-    ? { ...rest, sameAs: decision.twinId }
+  if (decision.kind === "same-as") return { ...rest, sameAs: decision.twinId };
+  return decision.from.length > 0
+    ? { ...rest, distinctFrom: [...decision.from] }
     : { ...rest, distinct: true };
 }
 
@@ -280,7 +297,7 @@ export type PairOutcome =
         | "inside-quiet-window"
         | "demoted-canonical"
         /** A published row is likely the same event under another URL; set
-         * `sameAs` or `distinct` on the pair. */
+         * `sameAs` or `distinctFrom` on the pair. */
         | "needs-decision"
         /** The live twin is the wrong canonical itself: not a wrong merge. */
         | "twin-is-canonical"
@@ -784,57 +801,62 @@ function routeGroup(
   if (decision?.kind === "same-as") {
     return repointRoute(state, canonical, rows, decision.twinId, "same-as");
   }
-  if (decision?.kind !== "distinct") {
-    const matches = twinMatches(refs, state.snapshot.published);
-    const same = matches.filter((m) => m.rule !== null);
-    const sameIds = [...new Set(same.map((m) => m.ref.id))];
-    if (sameIds.length > 1) {
-      return {
-        kind: "skip",
-        reason: "needs-decision",
-        detail: `the same story as several live rows (${sameIds.map(short).join(", ")}); set sameAs`,
-        candidates: uniqueRefs(same),
-      };
-    }
-    if (same.length > 0) {
-      return repointRoute(
-        state,
-        canonical,
-        rows,
-        same[0].ref.id as ItemId,
-        same[0].rule as TwinRule
-      );
-    }
-    const restoredSame = twinMatches(refs, state.restored).find(
-      (m) => m.rule !== null
+  // `distinct` judges the group against its canonical only (#749 and #790
+  // wrote it on every pair); a live row it does not name is still checked.
+  const judged = new Set<string>(
+    decision?.kind === "distinct" ? [canonical.id, ...decision.from] : []
+  );
+  // Identity with a live row is never overruled, except by the canonical's.
+  const unjudged = (m: TwinMatch) =>
+    !judged.has(m.ref.id) || (m.rule !== null && m.ref.id !== canonical.id);
+  const matches = twinMatches(refs, state.snapshot.published).filter(unjudged);
+  const same = matches.filter((m) => m.rule !== null);
+  const sameIds = [...new Set(same.map((m) => m.ref.id))];
+  if (sameIds.length > 1) {
+    return {
+      kind: "skip",
+      reason: "needs-decision",
+      detail: `the same story as several live rows (${sameIds.map(short).join(", ")}); set sameAs`,
+      candidates: uniqueRefs(same),
+    };
+  }
+  if (same.length > 0) {
+    return repointRoute(
+      state,
+      canonical,
+      rows,
+      same[0].ref.id as ItemId,
+      same[0].rule as TwinRule
     );
-    if (restoredSame) {
-      return {
-        kind: "skip",
-        reason: "twin-restores-first",
-        detail: `the same story (${restoredSame.rule}) as ${short(restoredSame.ref.id)}, which this request restores; rerun after the apply to re-point it`,
-      };
-    }
-    // A row under the relevance bar restores as rejected and is never shown.
-    const publishes = rows.some(
-      (row) => asNumber(row.llm_relevance, 0.5) >= RELEVANCE_THRESHOLD
-    );
-    const likely = [
-      ...matches.filter((m) => m.ref.id !== canonical.id),
-      ...twinMatches(refs, state.restored),
-    ];
-    if (publishes && likely.length > 0) {
-      return {
-        kind: "skip",
-        reason: "needs-decision",
-        detail: `likely the same event as ${likely
-          .map(
-            (m) => `${short(m.ref.id)} [${m.ref.source_id}] "${m.ref.title}"`
-          )
-          .join("; ")}; set sameAs or distinct on the pair`,
-        candidates: uniqueRefs(likely),
-      };
-    }
+  }
+  const restoredSame = twinMatches(refs, state.restored).find(
+    (m) => m.rule !== null
+  );
+  if (restoredSame) {
+    return {
+      kind: "skip",
+      reason: "twin-restores-first",
+      detail: `the same story (${restoredSame.rule}) as ${short(restoredSame.ref.id)}, which this request restores; rerun after the apply to re-point it`,
+    };
+  }
+  // A row under the relevance bar restores as rejected and is never shown.
+  const publishes = rows.some(
+    (row) => asNumber(row.llm_relevance, 0.5) >= RELEVANCE_THRESHOLD
+  );
+  const likely = [
+    ...matches.filter((m) => m.ref.id !== canonical.id),
+    ...twinMatches(refs, state.restored).filter(unjudged),
+  ];
+  if (publishes && likely.length > 0) {
+    const named = likely
+      .map((m) => `${short(m.ref.id)} [${m.ref.source_id}] "${m.ref.title}"`)
+      .join("; ");
+    return {
+      kind: "skip",
+      reason: "needs-decision",
+      detail: `likely the same event as ${named}; set sameAs, or distinctFrom with the ids that are another story`,
+      candidates: uniqueRefs(likely),
+    };
   }
   state.restored.push(...refs);
   return { kind: "restore" };
