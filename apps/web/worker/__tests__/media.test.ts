@@ -407,14 +407,17 @@ describe("generated share cards", () => {
     ]);
   });
 
-  it("treats a video as better media than a card", () => {
+  it("treats a video with a poster as better media than a card", () => {
+    const video = {
+      type: "video" as const,
+      url: "https://example.com/demo.mp4",
+      poster_url: "https://example.com/demo.jpg",
+    };
     const manifest = buildMediaManifest([
       { type: "image", url: "https://example.com/api/og?title=x" },
-      { type: "video", url: "https://example.com/demo.mp4" },
+      video,
     ]);
-    expect(manifest.assets).toEqual([
-      { type: "video", url: "https://example.com/demo.mp4" },
-    ]);
+    expect(manifest.assets).toEqual([video]);
   });
 
   it("recognises generator paths, not ordinary article images", () => {
@@ -468,6 +471,85 @@ describe("image-host uploads", () => {
     );
     expect(manifest.assets).toEqual([{ type: "image", url: imgur }]);
     expect(primaryThumbnailUrl(manifest, imgur)).toBe(imgur);
+  });
+
+  const ogCard = "https://marketbrief.example.com/og/story-card.png";
+  const article = "https://example.com/story";
+  const posterless = {
+    type: "video" as const,
+    url: "https://example.com/demo.mp4",
+  };
+
+  // The owner wants a real picture over the generic share card. An imgur
+  // capture is still a photo of the story; the card is the headline as text.
+  it("leads with an imgur image over a generated card", () => {
+    const manifest = buildMediaManifest([
+      { type: "image", url: ogCard },
+      { type: "image", url: imgur },
+    ]);
+    expect(manifest.assets).toEqual([{ type: "image", url: imgur }]);
+    expect(primaryThumbnailUrl(manifest)).toBe(imgur);
+  });
+
+  // A posterless video gives Telegram, email and the story card no picture,
+  // so it must not cost the story its only image.
+  it("keeps the fallback image next to a video with no poster", () => {
+    const manifest = buildMediaManifest([
+      { type: "image", url: imgur },
+      posterless,
+    ]);
+    expect(manifest.assets).toEqual([
+      posterless,
+      { type: "image", url: imgur },
+    ]);
+    expect(primaryThumbnailUrl(manifest)).toBe(imgur);
+
+    const withCard = buildMediaManifest([
+      { type: "image", url: ogCard },
+      posterless,
+    ]);
+    expect(withCard.assets).toEqual([
+      posterless,
+      { type: "image", url: ogCard },
+    ]);
+    expect(primaryThumbnailUrl(withCard)).toBe(ogCard);
+
+    const both = buildMediaManifest([
+      { type: "image", url: ogCard },
+      { type: "image", url: imgur },
+      posterless,
+    ]);
+    expect(both.assets).toEqual([posterless, { type: "image", url: imgur }]);
+  });
+
+  // The article URL is not story media. Removing it after the fallback rule
+  // ran would drop imgur for an asset that is then removed too.
+  it("keeps imgur when the only other image is the article URL", () => {
+    const manifest = {
+      version: 1 as const,
+      assets: [
+        { type: "image" as const, url: imgur },
+        { type: "image" as const, url: article },
+      ],
+    };
+    expect(primaryThumbnailUrl(manifest, undefined, article)).toBe(imgur);
+    expect(manifestWithoutArticleUrl(manifest, article).assets).toEqual([
+      { type: "image", url: imgur },
+    ]);
+  });
+
+  it("matches the article URL after canonicalizing tracking params", () => {
+    const tracked = "https://example.com/story.png?utm_source=feed";
+    const manifest = {
+      version: 1 as const,
+      assets: [
+        { type: "image" as const, url: tracked },
+        { type: "image" as const, url: wired },
+      ],
+    };
+    expect(manifestWithoutArticleUrl(manifest, tracked).assets).toEqual([
+      { type: "image", url: wired },
+    ]);
   });
 
   it("matches the imgur host, not lookalike hosts", () => {

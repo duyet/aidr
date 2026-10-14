@@ -487,21 +487,37 @@ function isImageHostUpload(url: string): boolean {
 }
 
 /**
- * Drop generated share cards and image-host uploads when any other media
- * remains. A cluster merges several pages, and aggregators (marketbrief,
- * huggingnews) each add their own card for the same story; those are noise
- * next to the original article's image, but still better than nothing when
- * they are all we have.
+ * Rank an image as a picture of the story: 0 for real media, 1 for an
+ * image-host upload, 2 for a generated share card. An imgur capture still
+ * shows the story; a share card shows only its headline.
  */
-export function withoutFallbackImages<T extends { type: string; url: string }>(
-  assets: readonly T[]
-): T[] {
-  const isFallback = (asset: T) =>
-    asset.type === "image" &&
-    (isGeneratedOgCard(asset.url) || isImageHostUpload(asset.url));
-  return assets.some((asset) => !isFallback(asset))
-    ? assets.filter((asset) => !isFallback(asset))
-    : [...assets];
+function imageTier(url: string): number {
+  if (isImageHostUpload(url)) return 1;
+  return isGeneratedOgCard(url) ? 2 : 0;
+}
+
+/**
+ * Keep only the best tier of image that the assets offer. A cluster merges
+ * several pages, and aggregators (marketbrief, huggingnews) each add their
+ * own card for the same story; those are noise next to the original
+ * article's image, but still better than nothing when they are all we have.
+ * A video with a poster counts as a real image. A video without one gives
+ * no picture, so it stays without costing the story its fallback image,
+ * which then sorts after it.
+ */
+export function withoutFallbackImages<
+  T extends { type: string; url: string; poster_url?: string | null },
+>(assets: readonly T[]): T[] {
+  const tier = (asset: T) =>
+    asset.type === "image" ? imageTier(asset.url) : 0;
+  const pictured = assets.filter(
+    (asset) => asset.type === "image" || Boolean(asset.poster_url)
+  );
+  if (pictured.length === 0) return [...assets];
+  const best = Math.min(...pictured.map(tier));
+  return assets
+    .filter((asset) => tier(asset) <= best)
+    .sort((a, b) => tier(a) - tier(b));
 }
 
 function normalizeCandidate(
@@ -752,11 +768,16 @@ export function manifestWithoutArticleUrl(
   articleUrl: unknown
 ): MediaManifest {
   const article = canonicalizeMediaUrl(articleUrl);
-  if (!article || !manifest) return manifest ?? emptyManifest();
+  const assets = Array.isArray(manifest?.assets) ? manifest.assets : [];
+  if (!article) return buildMediaManifest(assets);
+  // Remove the article before building, so the fallback rule never counts it.
   return buildMediaManifest(
-    manifest.assets.flatMap((asset) => {
-      if (asset.url === article) return [];
-      if (asset.type === "video" && asset.poster_url === article) {
+    assets.flatMap((asset) => {
+      if (canonicalizeMediaUrl(asset.url) === article) return [];
+      if (
+        asset.type === "video" &&
+        canonicalizeMediaUrl(asset.poster_url) === article
+      ) {
         return [{ type: "video" as const, url: asset.url }];
       }
       return [asset];
@@ -769,12 +790,8 @@ export function primaryThumbnailUrl(
   legacyImageUrl?: unknown,
   articleUrl?: unknown
 ): string | null {
-  const normalized = buildMediaManifest(manifest?.assets ?? []);
-  const usable =
-    articleUrl === undefined
-      ? normalized
-      : manifestWithoutArticleUrl(normalized, articleUrl);
-  const primary = usable?.assets[0];
+  const usable = manifestWithoutArticleUrl(manifest, articleUrl);
+  const primary = usable.assets[0];
   if (primary?.type === "image") return canonicalizeMediaImageUrl(primary.url);
   if (primary?.type === "video" && primary.poster_url) {
     return canonicalizeMediaImageUrl(primary.poster_url);

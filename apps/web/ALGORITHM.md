@@ -511,16 +511,22 @@ images rather than a broken-src fallback.
   or `profile_images` directory before the filename, and `pbs.twimg.com`
   `/profile_images/` and `/profile_banners/` paths. `pbs.twimg.com/media/…`
   tweet photos stay.
-- **Generated share cards and imgur uploads are a fallback only.** An image
-  whose path is an OG generator (`/og/…`, `/api/og`, `og-image`/`og-card`
-  file names, see `isGeneratedOgCard`), or that is hosted on imgur
-  (`isImageHostUpload`), is dropped from a manifest, including merged
-  cluster manifests, whenever any other image or video remains. Techmeme
-  and HN posts link imgur screen captures that carry the capturing
-  desktop's window bars and tooltips. A `Screenshot-…` file name is not a
-  signal: publishers (TechCrunch, The Verge) use it for clean editorial
-  images. The story dialog applies the same rule to stored manifests at
-  render time.
+- **Images are ranked in three tiers, and a manifest keeps only the best
+  tier it has** (`withoutFallbackImages`). Tier 0 is real media: any other
+  image, and any video with a poster. Tier 1 is an imgur upload
+  (`isImageHostUpload`). Tier 2 is a generated share card, an image whose
+  path is an OG generator (`/og/…`, `/api/og`, `og-image`/`og-card` file
+  names, see `isGeneratedOgCard`). So a real image drops both, and an imgur
+  capture drops the card: it still shows the story, while the card only
+  shows the headline. A video without a poster gives no picture, so it does
+  not count. It stays, and the best fallback image stays after it. The rule
+  applies to merged cluster manifests too. Techmeme and HN posts link imgur
+  screen captures that carry the capturing desktop's window bars and
+  tooltips. A `Screenshot-…` file name is not a signal: publishers
+  (TechCrunch, The Verge) use it for clean editorial images. The story
+  dialog applies the same rule to stored manifests at render time.
+  `manifestWithoutArticleUrl` removes the article's own URL before the rule
+  runs, so an article-URL asset never costs the story its fallback.
 - **A video poster is only URL-checked here.** At collection time the
   poster URL passes the same URL policy as any image and nothing is
   fetched. Its bytes are checked later, at Telegram send time (see Notify).
