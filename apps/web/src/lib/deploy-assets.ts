@@ -101,11 +101,24 @@ export function assetRefs(html: string, origin: string): string[] {
   return [...refs].sort();
 }
 
+/** Per-request limit, so a hung live site can't stall a deploy. */
+export const REQUEST_TIMEOUT_MS = 15_000;
+
+export function timedFetch(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs: number = REQUEST_TIMEOUT_MS
+): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+}
+
+type Get = (url: string, init?: RequestInit) => Promise<Response>;
+
 const ATTEMPTS = 3;
 const CONCURRENCY = 8;
 
-async function html(url: string): Promise<string> {
-  const res = await fetch(url, { headers: { accept: "text/html" } });
+async function html(get: Get, url: string): Promise<string> {
+  const res = await get(url, { headers: { accept: "text/html" } });
   if (!res.ok) throw new Error(`GET ${url} -> HTTP ${res.status}`);
   return res.text();
 }
@@ -116,16 +129,17 @@ async function html(url: string): Promise<string> {
  * checks load right now, plus the Vietnamese home.
  */
 async function seedFromCachedPages(
+  get: Get,
   base: string,
   now: number
 ): Promise<LiveHistory> {
   const pages = [
-    ...deployCheckPages(await html(`${base}/?lang=en`)),
+    ...deployCheckPages(await html(get, `${base}/?lang=en`)),
     "/?lang=vi",
   ];
   const seed: Record<string, number> = {};
   for (const page of pages) {
-    for (const ref of assetRefs(await html(`${base}${page}`), base)) {
+    for (const ref of assetRefs(await html(get, `${base}${page}`), base)) {
       seed[ref.slice(1)] = now;
     }
   }
@@ -145,14 +159,15 @@ function describeError(e: unknown): string {
 }
 
 async function readLiveHistory(
+  get: Get,
   base: string,
   now: number
 ): Promise<LiveHistory> {
   try {
-    const res = await fetch(`${base}/${ASSET_HISTORY_PATH}?t=${now}`, {
+    const res = await get(`${base}/${ASSET_HISTORY_PATH}?t=${now}`, {
       headers: { "cache-control": "no-cache" },
     });
-    if (res.status === 404) return await seedFromCachedPages(base, now);
+    if (res.status === 404) return await seedFromCachedPages(get, base, now);
     if (!res.ok) {
       throw new Error(`GET ${ASSET_HISTORY_PATH} -> HTTP ${res.status}`);
     }
@@ -167,11 +182,12 @@ async function readLiveHistory(
 
 /** The history to carry from. Never throws: see `carryLiveAssets`. */
 async function liveHistory(
+  get: Get,
   base: string,
   now: number,
   warn: (message: string) => void
 ): Promise<AssetHistory> {
-  const live = await readLiveHistory(base, now);
+  const live = await readLiveHistory(get, base, now);
   switch (live.kind) {
     case "published":
       return live.history;
@@ -188,20 +204,25 @@ async function liveHistory(
   }
 }
 
-async function download(base: string, path: string): Promise<Uint8Array> {
+async function download(
+  get: Get,
+  sleep: (ms: number) => Promise<void>,
+  base: string,
+  path: string
+): Promise<Uint8Array> {
   let reason = "";
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
-      const res = await fetch(`${base}/${path}`);
+      const res = await get(`${base}/${path}`);
       const type = res.headers.get("content-type") ?? "";
       if (res.ok && !type.startsWith("text/html")) {
         return new Uint8Array(await res.arrayBuffer());
       }
       reason = `HTTP ${res.status} ${type}`;
     } catch (e) {
-      reason = e instanceof Error ? e.message : String(e);
+      reason = describeError(e);
     }
-    await new Promise((r) => setTimeout(r, attempt * 1000));
+    if (attempt < ATTEMPTS) await sleep(attempt * 1000);
   }
   throw new Error(`GET /${path} failed after ${ATTEMPTS} attempts: ${reason}`);
 }
@@ -215,6 +236,9 @@ export interface CarryOptions {
   /** Writes one carried file into the build output. */
   save: (path: string, bytes: Uint8Array) => void;
   warn: (message: string) => void;
+  timeoutMs?: number;
+  /** Waits between download attempts. */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 export interface CarryResult {
@@ -237,9 +261,13 @@ export async function carryLiveAssets(
   options: CarryOptions
 ): Promise<CarryResult> {
   const { base, now, save, warn } = options;
+  const get: Get = (url, init) => timedFetch(url, init, options.timeoutMs);
+  const sleep =
+    options.sleep ??
+    ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)));
   const plan = planAssetCarry(
     options.built,
-    await liveHistory(base, now, warn),
+    await liveHistory(get, base, now, warn),
     now
   );
 
@@ -249,7 +277,7 @@ export async function carryLiveAssets(
     Array.from({ length: CONCURRENCY }, async () => {
       for (let path = queue.shift(); path; path = queue.shift()) {
         try {
-          save(path, await download(base, path));
+          save(path, await download(get, sleep, base, path));
         } catch (e) {
           failed.push(path);
           warn(`not carried: ${(e as Error).message}`);

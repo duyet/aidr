@@ -8,7 +8,11 @@
  *
  * Usage: tsx scripts/smoke-assets.ts [--base https://aidr.today]
  */
-import { assetRefs, deployCheckPages } from "../src/lib/deploy-assets";
+import {
+  assetRefs,
+  deployCheckPages,
+  timedFetch,
+} from "../src/lib/deploy-assets";
 
 const DEFAULT_BASE = "https://aidr.today";
 const ATTEMPTS = 5;
@@ -23,7 +27,7 @@ function parseBase(argv: string[]): string {
 }
 
 async function html(url: string): Promise<string> {
-  const res = await fetch(url, { headers: { accept: "text/html" } });
+  const res = await timedFetch(url, { headers: { accept: "text/html" } });
   if (res.status !== 200) throw new Error(`GET ${url} -> HTTP ${res.status}`);
   return res.text();
 }
@@ -49,11 +53,15 @@ async function brokenAssets(base: string): Promise<string[]> {
   const failures: string[] = [];
   await Promise.all(
     [...refs].map(async ([ref, page]) => {
-      const res = await fetch(`${base}${ref}`);
-      await res.body?.cancel();
-      const type = res.headers.get("content-type") ?? "";
-      if (res.status !== 200 || type.startsWith("text/html")) {
-        failures.push(`${ref} -> HTTP ${res.status} ${type} (from ${page})`);
+      try {
+        const res = await timedFetch(`${base}${ref}`);
+        await res.body?.cancel();
+        const type = res.headers.get("content-type") ?? "";
+        if (res.status !== 200 || type.startsWith("text/html")) {
+          failures.push(`${ref} -> HTTP ${res.status} ${type} (from ${page})`);
+        }
+      } catch (e) {
+        failures.push(`${ref} -> ${(e as Error).message} (from ${page})`);
       }
     })
   );

@@ -9,16 +9,16 @@ import {
   deployCheckPages,
   parseAssetHistory,
   planAssetCarry,
+  timedFetch,
 } from "./deploy-assets";
 
 const HOUR = 60 * 60 * 1000;
 const ORIGIN = "https://aidr.today";
 
-interface Reply {
-  status: number;
-  type?: string;
-  body?: string | Uint8Array;
-}
+/** `"hang"` accepts the request and never answers. */
+type Reply =
+  | { status: number; type?: string; body?: string | Uint8Array }
+  | "hang";
 
 const servers: Array<() => Promise<void>> = [];
 afterEach(async () => {
@@ -34,11 +34,18 @@ async function liveSite(routes: Record<string, Reply>): Promise<string> {
     const url = new URL(req.url ?? "/", "http://site");
     const reply = routes[url.pathname + url.search] ??
       routes[url.pathname] ?? { status: 404, type: "text/html", body: "<h1>" };
+    if (reply === "hang") return;
     res.writeHead(reply.status, { "content-type": reply.type ?? "" });
     res.end(reply.body ?? "");
   });
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
-  servers.push(() => new Promise((done) => server.close(() => done())));
+  servers.push(
+    () =>
+      new Promise((done) => {
+        server.closeAllConnections();
+        server.close(() => done());
+      })
+  );
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
@@ -293,5 +300,69 @@ describe("carryLiveAssets", () => {
     expect(result.warnings).toEqual([
       expect.stringMatching(/deploying without carrying/),
     ]);
+  });
+
+  it("gives up on a live site that never answers", async () => {
+    const base = await liveSite({ "/asset-history.json": "hang" });
+    const started = Date.now();
+    const result = await carry(base, { timeoutMs: 100 });
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(result.history).toEqual({ "assets/index-new.js": now });
+    expect(result.warnings).toEqual([
+      expect.stringMatching(/timeout.*deploying without carrying/),
+    ]);
+  });
+
+  it("drops a download that never answers and carries the rest", async () => {
+    const base = await liveSite({
+      "/asset-history.json": {
+        status: 200,
+        type: "application/json",
+        body: JSON.stringify({
+          "assets/hung-old.js": now - HOUR,
+          "assets/index-old.js": now - HOUR,
+        }),
+      },
+      "/assets/hung-old.js": "hang",
+      "/assets/index-old.js": js("old()"),
+    });
+    const result = await carry(base, {
+      timeoutMs: 100,
+      sleep: async () => {},
+    });
+    expect([...result.saved.keys()]).toEqual(["assets/index-old.js"]);
+    expect(result.history).not.toHaveProperty("assets/hung-old.js");
+    expect(result.warnings).toEqual([
+      expect.stringMatching(/not carried: GET \/assets\/hung-old\.js.*timeout/),
+    ]);
+  });
+
+  it("waits between download attempts but not after the last one", {
+    timeout: 10_000,
+  }, async () => {
+    const base = await liveSite({
+      "/asset-history.json": {
+        status: 200,
+        type: "application/json",
+        body: JSON.stringify({ "assets/gone-old.js": now - HOUR }),
+      },
+    });
+    const sleeps: number[] = [];
+    const result = await carry(base, {
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+    });
+    expect(sleeps).toHaveLength(2);
+    expect(result.warnings).toEqual([
+      expect.stringMatching(/gone-old\.js failed after 3 attempts: HTTP 404/),
+    ]);
+  });
+});
+
+describe("timedFetch", () => {
+  it("rejects once the server has not answered within the limit", async () => {
+    const base = await liveSite({ "/": "hang" });
+    await expect(timedFetch(`${base}/`, {}, 100)).rejects.toThrow(/timeout/);
   });
 });
