@@ -909,8 +909,9 @@ Every run (30 minutes).
   model digest already stored for the date: `fallback = 0`, and not thin,
   EN-only or English in VI (those refresh every run, so keeping them would
   retry every run). The model digest stays, only `created_at` moves, so the
-  retry waits 3 hours as it would after storing headlines, and the step
-  reason reads `kept model digest: LLM thin (<error>)`. Rows
+  retry waits 3 hours as it would after storing headlines. The step
+  records action `kept`, reason `kept model digest: LLM thin (<error>)`,
+  which the system page shows as degraded. Rows
   from before 0061 have `fallback` NULL and are replaced. A homepage rebuild
   that replaces `bullets_en` with titles writes 1; one that rebuilds only VI
   keeps the row's flag, since its EN is still the model digest.

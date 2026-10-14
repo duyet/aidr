@@ -173,6 +173,8 @@ export function fallbackTldrFromItems(
 
 export interface TldrRunStats {
   generated: boolean;
+  /** A degraded refresh left the stored model digest in place. */
+  kept?: boolean;
   tokens: number;
   /** Why the snapshot was (or wasn't) generated this run. */
   reason: string;
@@ -250,6 +252,7 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
       .run();
     return {
       generated: false,
+      kept: true,
       tokens: composed.tokens,
       reason: `kept model digest: ${composed.degraded}`,
     };
