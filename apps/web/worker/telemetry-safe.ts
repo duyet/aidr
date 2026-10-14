@@ -56,6 +56,10 @@ function boundedText(value: string, maxLength: number): string {
   return withoutControls.replace(/\s+/g, " ").trim();
 }
 
+/** Usage counters (`input_token: 512`) share the `token` suffix. */
+const TOKEN_COUNT_KEY =
+  /^(?:input|output|prompt|completion|total|max|cached|reasoning)[-_]token$/i;
+
 function redactText(value: string): string {
   return (
     value
@@ -64,19 +68,23 @@ function redactText(value: string): string {
         /-{5}BEGIN [A-Z ]*PRIVATE\sKEY-{5}[\s\S]*?(?:-{5}END [A-Z ]*PRIVATE\sKEY-{5}|$)/g,
         "[redacted]"
       )
-      // Query credentials in a host/path with no scheme.
+      // Query credentials in a host/path with no scheme. The name is a
+      // credential word or ends in one after `-`/`_`, so `monkey=` stays.
       .replace(
-        /([?&][\w-]*(?:key|token|secret|sig|signature|password)=)[^&\s"'#]+/gi,
+        /([?&](?:[\w-]*[-_])?(?:api[-_]?key|apikey|key|token|secret|sig|signature|password|passwd|session[-_]?id|credentials?|passphrase)=)[^&\s"'#]+/gi,
         "$1[redacted]"
       )
       .replace(/\bBearer\s+[^\s,;"'}]+/gi, "Bearer [redacted]")
       .replace(/\b(?:sk|pk|anyrouter)[-_][A-Za-z0-9._-]{8,}\b/gi, "[redacted]")
       .replace(/\bar-v\d+-[A-Za-z0-9._-]{10,}/gi, "[redacted]")
-      // `session_token`, `idToken`, `secretKey`, `private_key`. A scheme
-      // word (`Basic`, `Bearer`) goes with its credential.
+      // `OPENAI_API_KEY`, `stripeSecretKey`, `session_id`, `idToken`. A
+      // scheme word (`Basic`, `Bearer`) goes with its credential.
       .replace(
-        /\b(authorization|x-api-key|api[-_ ]?key|apikey|(?:secret|private|access)[-_]?key|client[-_ ]?secret|(?:[a-z]+[-_]?)?(?:token|secret|password|passwd))\b(["']?)\s*(?:[:=]|%3D)\s*(?:(?:basic|bearer|digest|token)\s+)?(?:"[^"]*"|'[^']*'|[^,;}\s&]+)/gi,
-        "$1$2: [redacted]"
+        /\b((?:[a-z0-9]+[-_])*(?:[a-z0-9]*(?:api[-_ ]?key|apikey|(?:secret|private|access)[-_]?key)|authorization|client[-_ ]?secret|session[-_]?id|credentials?|passphrase|[a-z]*(?:token|secret|password|passwd)))\b(["']?)\s*(?:[:=]|%3D)\s*(?:(?:basic|bearer|digest|token)\s+)?("[^"]*"|'[^']*'|[^,;}\s&]+)/gi,
+        (match, key: string, quote: string, value: string) =>
+          TOKEN_COUNT_KEY.test(key) && /^\d{1,7}$/.test(value)
+            ? match
+            : `${key}${quote}: [redacted]`
       )
       // These values can echo the prompt, so everything after the key goes.
       // A quoted "message" is a provider error's own text, the part worth
@@ -300,136 +308,281 @@ export function sanitizeRunError(value: unknown): string | null {
   return sanitizeError(value)?.message ?? null;
 }
 
-const SNIPPET_HEAD = 160;
-const SNIPPET_TAIL = 80;
-const SNIPPET_GAP = " … ";
-/** Redaction runs on a bounded window so a huge body costs nothing. */
-const SNIPPET_WINDOW = 2000;
-
-/** Two lowercase-to-uppercase steps: base64 and random ids, not words. */
-const MIXED_CASE = /[a-z][A-Z].*[a-z][A-Z]/;
-
-/** 15.000.000, 12 500 000: Vietnamese and SI thousands grouping. */
-const THOUSANDS = /^[1-9]\d{0,2}(?:[ .]\d{3})*$/;
-const YEAR = /^(?:19|20)\d\d$/;
-
-/** arXiv ids (2410.12345) are YYMM.NNNNN, a shape no phone plan uses. */
-const ARXIV_ID = /^\d{4}\.\d{4,5}$/;
-
-function redactPhone(match: string): string {
-  const groups = match.match(/\d+/g) ?? [];
-  if (groups.join("").length < 7) return match;
-  if (/[+(]/.test(match)) return "[phone redacted]";
-  if (ARXIV_ID.test(match)) return match;
-  // Amounts, amount or year ranges, and dates split on "-".
-  const parts = match.split("-");
-  if (parts.every((part) => THOUSANDS.test(part) || YEAR.test(part))) {
-    return match;
-  }
-  // Two groups (555-0132), or two long groups; "2026-10-14 12" has one.
-  const long = groups.filter((group) => group.length >= 3).length;
-  return groups.length === 2 || long >= 2 ? "[phone redacted]" : match;
-}
-
-/** A dotted quad is an address unless it reads as a version: after
- *  `version`/`v`/`release`/`build`, or a `name/` product token
- *  (`nginx/1.25.3.1`). `host:port` always redacts. */
-const VERSION_BEFORE =
-  /(?:\b(?:version|ver|release|build|v)\s*[:=]?\s*|[A-Za-z][\w.-]*\/)$/i;
-
-function redactIpv4(match: string, offset: number, whole: string): string {
-  if (/^:\d/.test(whole.slice(offset + match.length))) return "[ip redacted]";
-  const before = whole.slice(Math.max(0, offset - 40), offset);
-  return VERSION_BEFORE.test(before) ? match : "[ip redacted]";
-}
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/** A git SHA-1. Other hex lengths (sha256, request hashes) still redact. */
-const COMMIT_SHA = /^[0-9a-f]{40}$/;
-
-/** A short, word-like part of a slug or model id: `DeepSeek`, `32B`. */
-function wordish(segment: string): boolean {
-  return segment.length <= 12 && !MIXED_CASE.test(segment);
-}
-
-function redactOpaque(match: string): string {
-  if (UUID.test(match) || COMMIT_SHA.test(match)) return match;
-  const segments = match.split(/[-_]+/);
-  if (segments.length >= 3 && segments.every(wordish)) return match;
-  return /\d/.test(match) || MIXED_CASE.test(match) ? "[redacted]" : match;
-}
-
-type SnippetReplacer = (match: string, offset: number, whole: string) => string;
-
-/**
- * Snippet-only rules, on top of `redactText`. They stay out of
- * `sanitizeText`, whose step reasons carry dates, times and slugs that the
- * phone and token rules would eat. Order matters: base64 before opaque ids,
- * so `==` padding goes with its token.
+/*
+ * `llm_calls.response_snippet` holds a JSON descriptor of a failed call,
+ * never the provider body or the model's answer. A denylist cannot make
+ * arbitrary text safe to store, so every field is allowlisted:
+ *
+ *   {"kind":"provider_error","status":401,"error":{"code":…,"message":…}}
+ *   {"kind":"provider_error","status":502,"text":"502 Bad Gateway nginx"}
+ *   {"kind":"provider_error","status":502,"body":"non-json error body (812 bytes)"}
+ *   {"kind":"model_output","len":48,"startsWith":"object","jsonParse":"error at pos 48",…}
+ *
+ * `canonicalLlmSnippet` rebuilds a descriptor from those fields alone and
+ * returns null for anything else, so a raw string never reaches D1 and a
+ * second pass leaves a stored descriptor unchanged.
  */
-const SNIPPET_RULES: ReadonlyArray<
-  readonly [RegExp, string | SnippetReplacer]
-> = [
-  [
-    /[A-Za-z0-9._%+-]+(?:@|%40)[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
-    "[email redacted]",
-  ],
-  [
-    /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]*)?/g,
-    "[redacted]",
-  ],
-  [/\bAKIA[0-9A-Z]{16}\b/g, "[redacted]"],
-  [/\b(Set-Cookie|Cookie)\b(["']?)\s*[:=]\s*.+/gi, "$1$2: [redacted]"],
-  [
-    /\b(account[-_]?id|user[-_]?id|org(?:anization)?[-_]?id|request[-_]?id)\b(["']?)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^,;}\s]+)/gi,
-    "$1$2: [redacted]",
-  ],
-  [/\breq_[A-Za-z0-9]{8,}\b/g, "[redacted]"],
-  [
-    /(?<![\w.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?!\w|\.\d)/g,
-    redactIpv4,
-  ],
-  [
-    /(?<![\w:])(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,7}:(?:[0-9a-f]{1,4}(?::[0-9a-f]{1,4}){0,6})?)(?![\w:])/gi,
-    (match) => (/\d/.test(match) ? "[ip redacted]" : match),
-  ],
-  [/\b[\w-]+(?:\.[\w-]+)*\.(?:local|internal)\b/gi, "[host redacted]"],
-  [
-    /(?<![\w+.,/-])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{1,4}\)[\s.-]?)?\d{1,8}(?:[\s.-]\d{2,8}){1,4}(?!\w)/g,
-    redactPhone,
-  ],
-  [
-    /(?<![\w+/=-])[A-Za-z0-9+/]{32,}={0,2}(?![\w+/=-])/g,
-    (match) =>
-      MIXED_CASE.test(match) || /[+=]/.test(match) ? "[redacted]" : match,
-  ],
-  [/(?<![\w-])[A-Za-z0-9_-]{32,}(?![\w-])/g, redactOpaque],
-];
 
-/**
- * Short, sanitized excerpt of a failed model output or provider error body
- * for `llm_calls.response_snippet`: first 160 and last 80 characters after
- * secrets, tokens, ids, addresses and contact details are redacted.
- * The D1 sink runs it again on the stored excerpt. That pass leaves a
- * redacted excerpt as it is, except where the head/tail cut split a word
- * (`user_input:` cut to `input:`), and then it can only redact more.
- */
-export function sanitizeLlmSnippet(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const window =
-    value.length > SNIPPET_WINDOW * 2
-      ? `${value.slice(0, SNIPPET_WINDOW)} ${value.slice(-SNIPPET_WINDOW)}`
-      : value;
-  const text = SNIPPET_RULES.reduce(
-    (out, [pattern, replacement]) =>
-      typeof replacement === "string"
-        ? out.replace(pattern, replacement)
-        : out.replace(pattern, replacement),
-    redactText(boundedText(window, window.length))
+const MESSAGE_MAX = 120;
+const TEXT_MAX = 60;
+const TOP_KEYS_MAX = 10;
+const HIDDEN = "[redacted]";
+
+/** `Bad`, `API`, `OpenRouter`, `rate-limit`, `max_tokens`, with light
+ *  punctuation. Mixed-case runs, digits inside words and long tokens are
+ *  how keys, ids and hosts look, so none of them match. */
+const WORD =
+  "(?:[A-Z]?[a-z]{1,23}|[A-Z]{1,12}|(?:[A-Z][a-z]{1,11}){2,3}[A-Z]{0,3})";
+const PROSE_WORD = new RegExp(
+  `^[([]?(?:${WORD}(?:['’-]${WORD}){0,3}|[a-z]{1,24}(?:_[a-z]{1,24}){1,4})[)\\].,:;!?…]*$`
+);
+const PROSE_NUMBER = /^\d{1,7}(?:\.\d{1,3})?[a-z]{0,2}[).,:;!?…]*$/;
+
+/** Each token that is not a word, or a number standing alone, becomes `*`.
+ *  Adjacent numbers go too: `0912 345 678` is a phone number. */
+function proseOnly(text: string): string {
+  const tokens = text.split(" ");
+  const kinds = tokens.map((token) =>
+    PROSE_WORD.test(token)
+      ? "word"
+      : PROSE_NUMBER.test(token)
+        ? "number"
+        : "other"
   );
-  if (!text) return null;
-  if (text.length <= SNIPPET_HEAD + SNIPPET_TAIL + SNIPPET_GAP.length) {
-    return text;
+  return tokens
+    .map((token, i) => {
+      if (kinds[i] === "word") return token;
+      const alone = kinds[i - 1] !== "number" && kinds[i + 1] !== "number";
+      return kinds[i] === "number" && alone ? token : "*";
+    })
+    .join(" ");
+}
+
+function safeMessage(value: unknown): string | undefined {
+  // A JSON message is an echoed payload, not the provider's own words.
+  if (typeof value !== "string" || /^\s*[[{]/.test(value)) return undefined;
+  const redacted = sanitizeText(value, MESSAGE_MAX);
+  return redacted ? proseOnly(redacted) : undefined;
+}
+
+/** A short non-JSON body is kept only when it is words and no more:
+ *  `Service Unavailable`, or nginx's 502 page without its tags. */
+function safeText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const text = value
+    .replace(/<\/?[A-Za-z][A-Za-z0-9]*\s*\/?>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, TEXT_MAX)
+    .trim();
+  if (!text || /[=:"'`@]|\d{4}/.test(text)) return undefined;
+  if (sanitizeText(text, TEXT_MAX) !== text) return undefined;
+  return proseOnly(text) === text ? text : undefined;
+}
+
+const ERROR_CODE = /^(?:[a-z][a-z_.-]{0,47}|[A-Z][A-Z_]{0,47})$/;
+/** A request field name: `messages[0].content`, `max_tokens`. */
+const PARAM_NAME = /^[A-Za-z_]+(?:\[\d{1,4}\]|\.[A-Za-z_]+)*$/;
+
+function safeCode(value: unknown): string | number | undefined {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 && value < 10_000
+      ? value
+      : undefined;
   }
-  return `${text.slice(0, SNIPPET_HEAD)}${SNIPPET_GAP}${text.slice(-SNIPPET_TAIL)}`;
+  return typeof value === "string" && ERROR_CODE.test(value)
+    ? value
+    : undefined;
+}
+
+interface ErrorFields {
+  code?: string | number;
+  type?: string;
+  status?: string | number;
+  param?: string;
+  message?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function errorFields(value: unknown): ErrorFields | undefined {
+  const raw = typeof value === "string" ? { message: value } : value;
+  if (!isRecord(raw)) return undefined;
+  const type = safeCode(raw.type);
+  const param =
+    typeof raw.param === "string" &&
+    raw.param.length <= 64 &&
+    PARAM_NAME.test(raw.param)
+      ? raw.param
+      : undefined;
+  const fields: ErrorFields = {
+    code: safeCode(raw.code),
+    type: typeof type === "string" ? type : undefined,
+    status: safeCode(raw.status),
+    param,
+    message: safeMessage(raw.message),
+  };
+  const kept = Object.entries(fields).filter(([, v]) => v !== undefined);
+  return kept.length > 0
+    ? (Object.fromEntries(kept) as ErrorFields)
+    : undefined;
+}
+
+const BODY_NOTE = /^(?:non-)?json error body \(\d{1,7} bytes\)$/;
+
+function canonicalProviderError(raw: Record<string, unknown>) {
+  const head = { kind: "provider_error", status: safeErrorStatus(raw.status) };
+  const error = errorFields(raw.error);
+  if (error) return { ...head, error };
+  const text = safeText(raw.text);
+  if (text) return { ...head, text };
+  if (typeof raw.body === "string" && BODY_NOTE.test(raw.body)) {
+    return { ...head, body: raw.body };
+  }
+  return head;
+}
+
+const STARTS_WITH = new Set([
+  "object",
+  "array",
+  "fence",
+  "quote",
+  "markup",
+  "letter",
+  "digit",
+  "other",
+  "empty",
+]);
+const JSON_PARSE = /^(?:ok|not-json|error|error at pos \d{1,9})$/;
+const KEY_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,31}$/;
+
+function canonicalModelOutput(raw: Record<string, unknown>) {
+  const len =
+    typeof raw.len === "number" && Number.isInteger(raw.len) && raw.len >= 0
+      ? raw.len
+      : undefined;
+  const topKeys = Array.isArray(raw.topKeys)
+    ? raw.topKeys
+        .slice(0, TOP_KEYS_MAX)
+        .map((key) =>
+          typeof key === "string" && KEY_NAME.test(key) ? key : HIDDEN
+        )
+    : undefined;
+  const pick = <T>(value: T, ok: boolean) => (ok ? value : undefined);
+  return {
+    kind: "model_output",
+    len,
+    startsWith: pick(
+      raw.startsWith,
+      typeof raw.startsWith === "string" && STARTS_WITH.has(raw.startsWith)
+    ),
+    jsonParse: pick(
+      raw.jsonParse,
+      typeof raw.jsonParse === "string" && JSON_PARSE.test(raw.jsonParse)
+    ),
+    topKeys,
+    fenced: pick(raw.fenced, typeof raw.fenced === "boolean"),
+    truncatedAtMax: pick(
+      raw.truncatedAtMax,
+      typeof raw.truncatedAtMax === "boolean"
+    ),
+  };
+}
+
+/** The stored form of a snippet descriptor, or null when `value` is not
+ *  one. Accepts the descriptor object or its JSON. */
+export function canonicalLlmSnippet(value: unknown): string | null {
+  let raw = value;
+  if (typeof value === "string") {
+    try {
+      raw = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  if (!isRecord(raw)) return null;
+  if (raw.kind === "provider_error") {
+    return JSON.stringify(canonicalProviderError(raw));
+  }
+  if (raw.kind === "model_output") {
+    return JSON.stringify(canonicalModelOutput(raw));
+  }
+  return null;
+}
+
+/** Snippet for a non-2xx provider answer: the HTTP status plus the
+ *  allowlisted `error` fields of a JSON body, the words of a short text
+ *  body, or the body's size. */
+export function providerErrorSnippet(
+  status: number,
+  body: string
+): string | null {
+  const bytes = new TextEncoder().encode(body).length;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return canonicalLlmSnippet({
+      kind: "provider_error",
+      status,
+      text: safeText(body),
+      body: `non-json error body (${bytes} bytes)`,
+    });
+  }
+  const error = isRecord(parsed) ? errorFields(parsed.error) : undefined;
+  return canonicalLlmSnippet({
+    kind: "provider_error",
+    status,
+    error,
+    body: `json error body (${bytes} bytes)`,
+  });
+}
+
+function startsWithClass(content: string): string {
+  const first = content.trimStart()[0];
+  if (first === undefined) return "empty";
+  const fixed: Record<string, string> = {
+    "{": "object",
+    "[": "array",
+    "`": "fence",
+    '"': "quote",
+    "<": "markup",
+  };
+  if (fixed[first]) return fixed[first];
+  if (/\p{L}/u.test(first)) return "letter";
+  return /\d/.test(first) ? "digit" : "other";
+}
+
+/** Snippet for an answer that failed `accept` or `validate`: its shape,
+ *  read with the caller's own parser. The parse error's text quotes the
+ *  input, so only its position is kept. */
+export function modelOutputSnippet(
+  content: string,
+  opts: { parse: (raw: string) => unknown; truncatedAtMax: boolean }
+): string | null {
+  let jsonParse = "not-json";
+  let topKeys: string[] | undefined;
+  if (/[[{]/.test(content)) {
+    try {
+      const parsed = opts.parse(content);
+      jsonParse = "ok";
+      if (isRecord(parsed)) topKeys = Object.keys(parsed);
+    } catch (error) {
+      const at = /at position (\d+)/.exec(
+        error instanceof Error ? error.message : ""
+      );
+      jsonParse = at ? `error at pos ${at[1]}` : "error";
+    }
+  }
+  return canonicalLlmSnippet({
+    kind: "model_output",
+    len: content.length,
+    startsWith: startsWithClass(content),
+    jsonParse,
+    topKeys,
+    fenced: content.includes("```"),
+    truncatedAtMax: opts.truncatedAtMax,
+  });
 }

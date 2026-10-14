@@ -30,7 +30,12 @@ import {
   scoreJudgmentFromJev,
   servedByJev,
 } from "./systemone.js";
-import { sanitizeError, sanitizeLlmSnippet } from "./telemetry-safe.js";
+import {
+  canonicalLlmSnippet,
+  modelOutputSnippet,
+  providerErrorSnippet,
+  sanitizeError,
+} from "./telemetry-safe.js";
 import {
   acceptsRepair,
   tldrBulletIssues,
@@ -252,8 +257,9 @@ export interface LlmCallLogEntry {
   durationMs: number;
   error: string | null;
   promptChars: number;
-  /** Raw excerpt source for failed calls. Redaction nulls it for ok,
-   * `sensitive` and review rows and bounds + sanitizes it otherwise. */
+  /** Failure descriptor from `providerErrorSnippet` or
+   * `modelOutputSnippet`, never response text. Redaction nulls it for ok,
+   * `sensitive` and review rows and for anything that is not a descriptor. */
   responseSnippet: string | null;
   sensitive?: boolean;
   /** Requested id → resolved model(s), e.g. ["@preset/aidr", "x/y"]. */
@@ -329,16 +335,14 @@ function sanitizeProviderError(error: unknown): string {
 }
 
 export function redactLlmCallEntry(entry: LlmCallLogEntry): LlmCallLogEntry {
-  // LLM output is untrusted content for every pipeline task. Successful
-  // calls keep no body. A failed call or rejected answer keeps a short
-  // sanitized excerpt so the failure can be diagnosed; reviewer and
-  // `sensitive` calls never do.
+  // A failed call keeps a descriptor of what failed, never the text;
+  // reviewer and `sensitive` calls keep nothing.
   const keepSnippet = !entry.ok && !entry.sensitive && entry.task !== "review";
   return {
     ...entry,
     error: entry.error ? sanitizeProviderError(entry.error) : null,
     responseSnippet: keepSnippet
-      ? sanitizeLlmSnippet(entry.responseSnippet)
+      ? canonicalLlmSnippet(entry.responseSnippet)
       : null,
     sensitive: undefined,
   };
@@ -487,6 +491,17 @@ function isQueued(data: { object?: string }): boolean {
   return typeof data.object === "string" && data.object.endsWith(".queued");
 }
 
+/** The message format is what `markUnavailable` and `sanitizeError` read;
+ *  the fields let the failure snippet keep allowlisted parts of the body. */
+class ProviderHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly body: string
+  ) {
+    super(`anyrouter request failed: ${status} ${body}`);
+  }
+}
+
 async function readBoundedErrorBody(response: Response): Promise<string> {
   if (!response.body) return "";
   const reader = response.body.getReader();
@@ -579,7 +594,7 @@ async function streamCompletion(
         maxTokens: affordable,
       });
     }
-    throw new Error(`anyrouter request failed: ${res.status} ${body}`);
+    throw new ProviderHttpError(res.status, body);
   }
   if (!res.body) throw new Error("anyrouter response missing content");
 
@@ -961,6 +976,12 @@ async function callAnyrouter(
   const deadline = Date.now() + budget;
   const failures: string[] = [];
   const promptChars = messages.reduce((sum, m) => sum + m.content.length, 0);
+  const maxTokens = opts.maxTokens ?? MAX_TOKENS;
+  const outputSnippet = (result: AnyrouterCompletion) =>
+    modelOutputSnippet(result.content, {
+      parse: parseJson,
+      truncatedAtMax: (result.completionTokens ?? 0) >= maxTokens,
+    });
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
@@ -1011,9 +1032,7 @@ async function callAnyrouter(
           durationMs: Date.now() - attemptStartedAt,
           error: "anyrouter response failed accept check",
           promptChars,
-          responseSnippet: opts.sensitive
-            ? null
-            : result.content.slice(0, 2000),
+          responseSnippet: outputSnippet(result),
           sensitive: opts.sensitive,
           route: buildRoute(model, trace),
           provider: trace.provider,
@@ -1046,7 +1065,7 @@ async function callAnyrouter(
         durationMs: Date.now() - attemptStartedAt,
         error: usable ? null : "anyrouter bad output",
         promptChars,
-        responseSnippet: usable ? null : result.content.slice(0, 2000),
+        responseSnippet: usable ? null : outputSnippet(result),
         sensitive: opts.sensitive,
         route: buildRoute(model, trace),
         provider: trace.provider,
@@ -1079,7 +1098,9 @@ async function callAnyrouter(
         error: msg,
         promptChars,
         responseSnippet:
-          error instanceof Error ? error.message.slice(0, 2000) : null,
+          error instanceof ProviderHttpError
+            ? providerErrorSnippet(error.status, error.body)
+            : null,
         sensitive: opts.sensitive,
         route: buildRoute(model, trace),
         provider: trace.provider,
