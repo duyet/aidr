@@ -1088,13 +1088,18 @@ deliberately non-spammy.
   digest, the card's top story goes out once as a normal story post
   (`sendStory`: its own photo or album, the full caption summary, the Read
   button). The story is loaded in the channel's language only
-  (`channelCopy`) and must pass the trending postability gate; a day with no
-  card stories has no highlight. It is keyed `digest:<date>:top` in
+  (`channelCopy`) and must pass the trending postability gate. When the
+  top story fails the gate on that channel, the next card stories are tried
+  in order, up to `HIGHLIGHT_CANDIDATES` (3); the story posted is the run's
+  `highlightStory` reason, and the row's `last_error` lists the stories
+  passed over. When none passes, or the day has no card stories, the row is
+  `skipped`: final, never re-claimed, nothing posted. It is keyed `digest:<date>:top` in
   `notifications`, claimed like every send, and runs only when that day's
   digest row is `sent`, in the same run or within `HIGHLIGHT_WINDOW_MS`
   (3h) of it: an `ambiguous` or `sending` digest never triggers it, and an
-  older digest (sent by a previous deploy) gets no late highlight. A
-  definite failure (or no postable top story) retries on later runs up to
+  older digest (sent by a previous deploy) gets no late highlight. Only the
+  gate falls through to the next story. A definite send failure retries
+  the pick on later runs up to
   `NOTIFY_MAX_ATTEMPTS`, inside that window; the digest is not resent. The `digest:`
   prefix keeps it out of trending's daily count, 3h gap and posted-events
   window, and its story is already in `notify_digest_items`. The admin

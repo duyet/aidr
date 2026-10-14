@@ -186,8 +186,11 @@ export interface NotifyChannelReason {
   localHour: number;
   localDate: string;
   digestError?: string;
-  /** The digest's top-story post, when this run tried it. */
-  highlight?: "sent" | "send_failed" | "outcome_unknown";
+  /** The digest highlight, when this run claimed it. `skipped`: no card
+   *  story passed the gate, and it is not tried again. */
+  highlight?: "sent" | "send_failed" | "outcome_unknown" | "skipped";
+  /** The card story the highlight posted or tried. */
+  highlightStory?: string;
   /** Trending candidates this run dropped before sending, by reason
    *  (`dedup:canonical`, `dedup:event`, `gate:chrome`, `gate:short`,
    *  `gate:missing`). A candidate that stays blocked is counted again on
@@ -565,70 +568,140 @@ async function loadDigest(
   return { lang, date: edition.date, bullets: resolved, citedItemIds };
 }
 
-/**
- * The story behind the digest's first line, as this channel would post it:
- * the day card's top tile, in the channel's language only (`channelCopy`),
- * through the same postability gate as trending. A string says why there is
- * none; a day with no card stories has no highlight.
- */
-async function loadDigestHighlight(
-  env: Env,
-  date: string,
+/** Card tiles the highlight tries, in card order, before it gives up. */
+export const HIGHLIGHT_CANDIDATES = 3;
+
+type CardStoryRow = Omit<StoryRow, "title" | "summary" | "lang"> &
+  ChannelCopyRow;
+
+/** The highlight's story, and why each card story before it was passed over. */
+interface HighlightPick {
+  story: StoryPayload;
+  passedOver: string[];
+}
+
+/** One card story in the channel's language when it passes the gate, else
+ *  why not. */
+function postableCardStory(
+  id: string,
+  row: CardStoryRow | undefined,
   lang: Lang
-): Promise<StoryPayload | string> {
-  const id = (await loadDayCard(env, date, lang))?.itemIds[0];
-  if (!id) return "no day card stories";
-  const copy = storyCopySql(lang);
-  const row = await env.DB.prepare(
-    `SELECT ${copy.columns} FROM items i ${copy.join} WHERE i.id = ?`
-  )
-    .bind(id)
-    .first<Omit<StoryRow, "title" | "summary" | "lang"> & ChannelCopyRow>();
-  if (!row) return `top story ${id} not found`;
+): StoryRow | string {
+  if (!row) return `story ${id} not found`;
   const story = channelCopy(row, lang);
-  if (!story) return `top story ${id} has no ${lang} copy`;
+  if (!story) return `story ${id} has no ${lang} copy`;
   const gate = postability(story);
-  if (!gate.ok) return `top story ${id} gate:${gate.reason}`;
-  return hydrateStory(story);
+  return gate.ok ? story : `story ${id} gate:${gate.reason}`;
 }
 
 /**
- * Posts the digest's top story through `sendStory`, once per channel and
+ * The story the digest highlight posts on this channel: the first of the day
+ * card's top HIGHLIGHT_CANDIDATES tiles whose copy in the channel's language
+ * (`channelCopy`) passes the trending postability gate. Every card story is
+ * already in `notify_digest_items`, so trending never reposts the one picked.
+ * A string says why each tile was passed over; a day with no card stories
+ * has no highlight.
+ */
+async function pickDigestHighlight(
+  env: Env,
+  date: string,
+  lang: Lang
+): Promise<HighlightPick | string> {
+  const card = await loadDayCard(env, date, lang);
+  const ids = card?.itemIds.slice(0, HIGHLIGHT_CANDIDATES) ?? [];
+  if (ids.length === 0) return "no day card stories";
+  const copy = storyCopySql(lang);
+  const { results } = await env.DB.prepare(
+    `SELECT ${copy.columns} FROM items i ${copy.join}
+     WHERE i.id IN (${ids.map(() => "?").join(", ")})`
+  )
+    .bind(...ids)
+    .all<CardStoryRow>();
+  const rows = new Map((results ?? []).map((row) => [row.id, row]));
+  const passedOver: string[] = [];
+  for (const id of ids) {
+    const story = postableCardStory(id, rows.get(id), lang);
+    if (typeof story !== "string") {
+      return { story: hydrateStory(story), passedOver };
+    }
+    passedOver.push(story);
+  }
+  return passedOver.join("; ");
+}
+
+/** What a claimed highlight came to. A skip is final: no card story passed
+ *  the gate and nothing was sent. `storyId` is absent when the pick itself
+ *  failed. */
+export type HighlightOutcome =
+  | { skipped: string }
+  | { result: SendResult; storyId?: string };
+
+/**
+ * Posts the digest's highlight through `sendStory`, once per channel and
  * local date (`highlightKey`), claimed like every send. Call it only once the
  * day's digest is `sent`: an ambiguous digest may not be in the channel, and
- * its highlight would be a stray post. A definite failure (or no postable
- * top story) is retried by later runs up to NOTIFY_MAX_ATTEMPTS. Null when
- * the highlight is already claimed: sent, ambiguous, in flight or given up.
+ * its highlight would be a stray post. Only the gate falls through to the
+ * next card story; a send that fails is that story's failure, retried by
+ * later runs up to NOTIFY_MAX_ATTEMPTS. When no candidate passes, the row is
+ * `skipped` and never re-claimed. Null when the highlight is already
+ * claimed: sent, ambiguous, skipped, in flight or given up.
  */
 export async function sendDigestHighlight(
   env: Env,
   notifier: Notifier,
   target: string,
   date: string
-): Promise<SendResult | null> {
+): Promise<HighlightOutcome | null> {
   const key = highlightKey(date);
   if (!(await claimDelivery(env, notifier.id, target, key))) return null;
-  let story: StoryPayload | string = "not loaded";
+  const picked: { pick?: HighlightPick | string } = {};
   const result = await attemptSend(async () => {
-    story = await loadDigestHighlight(env, date, notifier.lang);
-    if (typeof story === "string") {
-      return { ok: false, error: `skipped: ${story}` };
+    const pick = await pickDigestHighlight(env, date, notifier.lang);
+    picked.pick = pick;
+    if (typeof pick === "string") {
+      return { ok: false, error: `skipped: ${pick}` };
     }
-    return notifier.sendStory(env, story);
+    const sent = await notifier.sendStory(env, pick.story);
+    if (pick.passedOver.length === 0) return sent;
+    // Kept on the row, like the Telegram media fallback notes.
+    const note = `highlight after ${pick.passedOver.join("; ")}`;
+    return { ...sent, error: sent.error ? `${sent.error} | ${note}` : note };
   });
+  const { pick } = picked;
+  if (typeof pick === "string") {
+    await recordSkipped(env, notifier.id, key, `skipped: ${pick}`);
+    console.log(`notify(${notifier.id}) highlight skipped: ${pick}`);
+    return { skipped: pick };
+  }
   await recordDelivery(env, notifier.id, target, key, result);
   if (!result.ok && !result.budgetExhausted) {
     const message = `${notifier.id} highlight ${failureLabel(result)}: ${result.error ?? "unknown"}`;
     console.error(`notify(${message})`);
-    // No postable top story is a quiet skip, not a delivery failure.
-    if (typeof story !== "string") {
+    if (pick) {
       await reportDeliveryFailure(env, message, {
         channel: notifier.id,
         kind: "highlight",
       });
     }
   }
-  return result;
+  return pick ? { result, storyId: pick.story.id } : { result };
+}
+
+/** Ends a claimed send that had nothing to post. `skipped` is final:
+ *  `claimDelivery` re-claims only `failed` rows. */
+async function recordSkipped(
+  env: Pick<Env, "DB">,
+  channel: string,
+  key: string,
+  reason: string
+): Promise<void> {
+  await env.DB.prepare(
+    `UPDATE notifications
+     SET status = 'skipped', attempts = attempts + 1, last_error = ?, posted_at = ?
+     WHERE channel = ? AND item_id = ?`
+  )
+    .bind(reason, Date.now(), nn(channel), nn(key))
+    .run();
 }
 
 /**
@@ -718,6 +791,8 @@ export async function claimDelivery(
  * message may be posted). An `ambiguous` row is final like `sent`: the
  * trending query and the digest gate both skip it, so an unknown outcome costs
  * at most a missed post and never a second one. It is not counted as a post.
+ * A highlight with no postable story is `skipped` (`recordSkipped`): final,
+ * and nothing was posted.
  */
 export async function recordDelivery(
   env: Pick<Env, "DB">,
@@ -901,6 +976,7 @@ export async function dispatchStoryNotifications(
     // A recent `sent` digest from an earlier run counts, so a failed
     // highlight retries; an older one gets no late highlight.
     let highlight: NotifyChannelReason["highlight"];
+    let highlightStory: string | undefined;
     const recentDigest =
       existing?.status === "sent" &&
       now - (existing.posted_at ?? 0) <= HIGHLIGHT_WINDOW_MS;
@@ -909,14 +985,18 @@ export async function dispatchStoryNotifications(
       !budgetSpent &&
       (digestReason === "sent" || recentDigest)
     ) {
-      const result = await sendDigestHighlight(env, notifier, target, date);
-      if (result) {
+      const outcome = await sendDigestHighlight(env, notifier, target, date);
+      if (outcome && "skipped" in outcome) {
+        highlight = "skipped";
+      } else if (outcome) {
+        const { result } = outcome;
         if (result.budgetExhausted) budgetSpent = true;
         highlight = result.ok
           ? "sent"
           : result.ambiguous
             ? "outcome_unknown"
             : "send_failed";
+        highlightStory = outcome.storyId;
         if (result.ok) sent[notifier.id]++;
       }
     }
@@ -1069,6 +1149,7 @@ export async function dispatchStoryNotifications(
       localDate: date,
       digestError,
       ...(highlight ? { highlight } : {}),
+      ...(highlightStory ? { highlightStory } : {}),
       suppressed,
     };
   }
@@ -1101,15 +1182,17 @@ export async function previewDigest(
     if (!result.ok) continue;
     // The digest is already in the staging chat: a failure here is reported,
     // not thrown.
+    let storyId = "";
     const top = await attemptSend(async () => {
-      const story = await loadDigestHighlight(env, date, lang);
-      if (typeof story === "string") {
-        return { ok: false, error: `skipped: ${story}` };
+      const pick = await pickDigestHighlight(env, date, lang);
+      if (typeof pick === "string") {
+        return { ok: false, error: `skipped: ${pick}` };
       }
-      return notifier.sendStory(env, story);
+      storyId = pick.story.id;
+      return notifier.sendStory(env, pick.story);
     });
     out[`${lang}:top`] = top.ok
-      ? `sent ${top.messageId}`
+      ? `sent ${top.messageId} (story ${storyId})`
       : `failed: ${top.error}`;
   }
   return out;

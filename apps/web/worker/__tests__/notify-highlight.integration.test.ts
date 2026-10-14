@@ -105,6 +105,25 @@ function row(channel: string, key: string) {
     .get(channel, key) as { status: string; attempts: number } | undefined;
 }
 
+function lastError(channel: string, key: string): string | null {
+  const found = sqlite
+    .prepare(
+      "SELECT last_error FROM notifications WHERE channel = ? AND item_id = ?"
+    )
+    .get(channel, key) as { last_error: string | null } | undefined;
+  return found?.last_error ?? null;
+}
+
+/** A Vietnamese summary under the post-quality minimum: the story fails the
+ *  gate on the VI channel only. */
+function gateVietnamese(storyId: string) {
+  sqlite
+    .prepare(
+      "UPDATE translations SET summary = 'Tin từ nguồn.' WHERE item_id = ? AND lang = 'vi'"
+    )
+    .run(storyId);
+}
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
@@ -245,6 +264,63 @@ describe("digest highlight", () => {
     vi.setSystemTime(new Date(NOW.getTime() + 30 * 60_000));
     await dispatchStoryNotifications(env);
     expect(callsTo("@vi")).toEqual([]);
+  });
+
+  it("posts the next card story when the top one fails the channel's gate", async () => {
+    // 2026-10-14: the top story's VI summary was source chrome, so the VI
+    // channel got no highlight at all.
+    gateVietnamese(TOP.id);
+    const next = STORIES[1];
+
+    const report = await dispatchStoryNotifications(env);
+
+    const viCalls = callsTo("@vi");
+    expect(viCalls).toHaveLength(2);
+    expect(String(viCalls[1].body.caption)).toContain(next.titleVi);
+    expect(String(viCalls[1].body.caption)).not.toContain(TOP.titleVi);
+    expect(row("telegram", `digest:${TODAY}:top`)).toEqual({
+      status: "sent",
+      attempts: 1,
+    });
+    expect(report.reasons.telegram?.highlight).toBe("sent");
+    expect(report.reasons.telegram?.highlightStory).toBe(next.id);
+    expect(lastError("telegram", `digest:${TODAY}:top`)).toContain(
+      `${TOP.id} gate:short`
+    );
+
+    // English copy of the top story passes, so English is unchanged.
+    const en = callsTo("@en");
+    expect(en).toHaveLength(2);
+    expect(String(en[1].body.caption)).toContain(TOP.title);
+    expect(report.reasons["telegram-en"]?.highlightStory).toBe(TOP.id);
+    expect(lastError("telegram-en", `digest:${TODAY}:top`)).toBeNull();
+  });
+
+  it("skips once, with no retry, when the first three card stories fail the gate", async () => {
+    // The fourth story passes, so a post here would mean the cap is gone.
+    for (const story of STORIES.slice(0, 3)) gateVietnamese(story.id);
+
+    const report = await dispatchStoryNotifications(env);
+
+    expect(callsTo("@vi")).toHaveLength(1);
+    expect(isDigest(callsTo("@vi")[0])).toBe(true);
+    const key = `digest:${TODAY}:top`;
+    expect(row("telegram", key)).toEqual({ status: "skipped", attempts: 1 });
+    expect(report.reasons.telegram?.highlight).toBe("skipped");
+    for (const story of STORIES.slice(0, 3)) {
+      expect(lastError("telegram", key)).toContain(`${story.id} gate:short`);
+    }
+    expect(row("telegram-en", key)?.status).toBe("sent");
+
+    // Later runs inside the highlight window neither post nor re-claim it.
+    for (const minutes of [30, 60]) {
+      calls = [];
+      vi.setSystemTime(new Date(NOW.getTime() + minutes * 60_000));
+      const later = await dispatchStoryNotifications(env);
+      expect(callsTo("@vi")).toEqual([]);
+      expect(later.reasons.telegram?.highlight).toBeUndefined();
+    }
+    expect(row("telegram", key)).toEqual({ status: "skipped", attempts: 1 });
   });
 
   it("retries a rejected highlight on the next run without reposting the digest", async () => {
