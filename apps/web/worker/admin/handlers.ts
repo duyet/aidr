@@ -940,8 +940,8 @@ export const TLDR_REGENERATE_MAX_DAYS = 14;
  * Rebuilds the TL;DR row for `date` (default today, ICT) through
  * `regenerateDailyTldr`: written only when it is a model digest, otherwise
  * the stored row is left as it was. `dryRun` writes nothing. Never sends
- * email, Telegram or Facebook; notify reads only today's row on its own
- * schedule. LLM attempts are logged under a `tldr-…` operation id.
+ * email, Telegram or Facebook; those read the current local day's row on
+ * their own schedule. LLM attempts are logged under a `tldr-…` operation id.
  */
 export async function regenerateTldr(
   env: Env,

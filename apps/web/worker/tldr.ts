@@ -481,6 +481,24 @@ export async function previewDailyTldr(env: Env): Promise<TldrPreview> {
   };
 }
 
+/** Why a composed edition is not a model digest in both languages, or
+ * undefined when it is. Stricter than the ingest write: `isThinTldr` passes
+ * on either column and the VI fallback needs `title_vi` to fire. */
+function notModelDigest(
+  composed: Extract<ComposedTldr, { ok: true }>,
+  itemCount: number
+): string | undefined {
+  if (composed.degraded) return composed.degraded;
+  if (composed.viFallback) return composed.viFallback;
+  const floor = usefulTldrFloor(itemCount);
+  if (composed.bullets_en.length < floor)
+    return `EN has ${composed.bullets_en.length} bullets`;
+  if (composed.bullets_vi.length < floor)
+    return `VI has ${composed.bullets_vi.length} bullets`;
+  if (isEnglishOnlyViTldr(composed.bullets_vi)) return "VI is English-only";
+  return undefined;
+}
+
 export interface TldrRegenerateResult extends TldrPreview {
   /** The row now holds these bullets; false for a dry run or a refusal. */
   written: boolean;
@@ -524,7 +542,7 @@ export async function regenerateDailyTldr(
       reason: `${composed.stats.reason}; ${unchanged}`,
     };
   }
-  const notModel = composed.degraded ?? composed.viFallback;
+  const notModel = notModelDigest(composed, results.length);
   if (notModel) {
     return {
       ...empty,

@@ -187,7 +187,8 @@ not after today ICT; else 400), optional body `{ dryRun? }`
 composes from that date's window: the rolling 24h before the date's last
 run, so now for today and the ICT day for a closed date. It upserts the row
 (`fallback = 0`, `sent_at` kept) only for a model digest in both
-languages. A failed or thin model, or English-only VI, leaves the stored row
+languages: each column at the useful floor, VI in Vietnamese, no headline
+fallback. Anything else leaves the stored row
 exactly as it was, whatever it holds, and the response says why
 (`written: false`). A dry run returns the bullets and writes nothing. It
 never sends: notify and email read only the current local day's row on their

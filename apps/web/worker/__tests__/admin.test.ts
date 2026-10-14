@@ -1042,7 +1042,7 @@ describe("regenerateTldr", () => {
 
     vi.spyOn(llm, "generateTldr").mockResolvedValue({
       bullets_en: [{ text: "bullet", item_ids: ["t1"] }],
-      bullets_vi: [{ text: "bullet vi", item_ids: ["t1"] }],
+      bullets_vi: [{ text: "Tin nổi bật hôm nay", item_ids: ["t1"] }],
       tokens: 3,
     });
 

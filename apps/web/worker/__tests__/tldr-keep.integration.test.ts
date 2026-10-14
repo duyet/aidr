@@ -556,16 +556,42 @@ describe("admin TL;DR regenerate", () => {
     }
   );
 
-  it("does not write a digest whose Vietnamese fell back to headlines", async () => {
+  it.each([
+    {
+      label: "Vietnamese fell back to headlines",
+      translated: true,
+      next: { ...GOOD, bullets_vi: GOOD.bullets_en },
+    },
+    {
+      label: "Vietnamese is English with no title_vi to fall back to",
+      translated: false,
+      next: { ...GOOD, bullets_vi: GOOD.bullets_en },
+    },
+    {
+      label: "English is empty",
+      translated: true,
+      next: { ...GOOD, bullets_en: [] },
+    },
+  ])("does not write a digest whose $label", async ({ translated, next }) => {
+    if (!translated) sqlite.exec("DELETE FROM translations");
     seedRow(HEADLINES, null);
     const before = row();
     at(FIRST_WRITE.getTime() + 2 * DAY_MS);
-    tldrResult.next = { ...GOOD, bullets_vi: GOOD.bullets_en };
+    tldrResult.next = next;
 
     const result = await regenerateTldr(env, { date: DATE });
 
     expect(result).toMatchObject({ written: false });
     expect(row()).toEqual(before);
+  });
+
+  it("accepts a date exactly 14 days back", async () => {
+    tldrResult.next = FAILED;
+
+    const result = await regenerateTldr(env, { date: "2026-09-25" });
+
+    expect(result).toMatchObject({ date: "2026-09-25", written: false });
+    expect(generateTldr).not.toHaveBeenCalled();
   });
 
   it("dry run shows the model digest and writes nothing", async () => {
