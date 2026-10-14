@@ -40,7 +40,7 @@ async function brokenAssets(base: string): Promise<string[]> {
   // First referrer wins, so a failure names the cached page when there is one.
   const refs = new Map<string, string>();
   for (const url of urls) {
-    for (const ref of assetRefs(await html(url))) {
+    for (const ref of assetRefs(await html(url), base)) {
       if (!refs.has(ref)) refs.set(ref, url);
     }
   }

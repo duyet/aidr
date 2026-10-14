@@ -12,6 +12,7 @@ import {
 } from "./deploy-assets";
 
 const HOUR = 60 * 60 * 1000;
+const ORIGIN = "https://aidr.today";
 
 interface Reply {
   status: number;
@@ -162,11 +163,36 @@ describe("assetRefs", () => {
 <script type="module" src="/assets/index-uAJIDAo6.js"></script>
 <script>import("/assets/routes-C9lUwA6g.js")</script>
 <link rel="icon" href="/favicon.svg"><img src="/media/x.webp">`;
-    expect(assetRefs(html)).toEqual([
+    expect(assetRefs(html, ORIGIN)).toEqual([
       "/assets/index-DoMdo6yM.css",
       "/assets/index-uAJIDAo6.js",
       "/assets/routes-C9lUwA6g.js",
     ]);
+  });
+
+  it("reads absolute same-origin, CSS url() and query-suffixed references", () => {
+    const html = `<link href="https://aidr.today/assets/index-abc.js">
+<script>import("/assets/index-abc.js")</script>
+<style>@font-face{src:url(/assets/serif-x1.woff2)}</style>
+<link href=/assets/index-y2.css?v=1>`;
+    expect(assetRefs(html, ORIGIN)).toEqual([
+      "/assets/index-abc.js",
+      "/assets/index-y2.css",
+      "/assets/serif-x1.woff2",
+    ]);
+  });
+
+  // Story content embeds third-party URLs. They 404 on aidr.today and would
+  // fail the smoke step, or be carried as bogus history entries.
+  it.each([
+    [`<img src="https://cdn.example.com/assets/2026/x.jpg">`],
+    [`<img src="https://cdn.example.com/assets/x.jpg">`],
+    [`<img src="//cdn.example.com/assets/x.jpg">`],
+    [`<img src="/assets/2026/x.jpg">`],
+    [`<a href="https://aidr.today.evil.example/assets/x.js">`],
+    [`<p>the build writes /assets/index.js</p>`],
+  ])("ignores %s", (html) => {
+    expect(assetRefs(html, ORIGIN)).toEqual([]);
   });
 });
 
@@ -207,13 +233,17 @@ describe("carryLiveAssets", () => {
     const base = await liveSite({
       "/?lang=en": page(`${HOME_EN}<script src="/assets/index-old.js">`),
       "/date/2026-10-14?lang=en": page(`<script src="/assets/day-old.js">`),
-      "/74c9e10c?lang=en": page(`<script src="/assets/story-old.js">`),
+      "/74c9e10c?lang=en": page(
+        `<script src="/assets/story-old.js"></script>
+<img src="https://cdn.example.com/assets/2026/x.jpg"><img src="/assets/2026/y.jpg">`
+      ),
       "/?lang=vi": page(`<script src="/assets/index-old.js">`),
       "/assets/index-old.js": js("a"),
       "/assets/day-old.js": js("b"),
       "/assets/story-old.js": js("c"),
     });
     const result = await carry(base);
+    expect(result.warnings).toEqual([expect.stringMatching(/seeded from/)]);
     expect([...result.saved.keys()].sort()).toEqual([
       "assets/day-old.js",
       "assets/index-old.js",

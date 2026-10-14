@@ -17,7 +17,8 @@ export const ASSET_RETENTION_MS = 48 * 60 * 60 * 1000;
 /** Published path (`assets/index-abc.js`) → epoch ms of the last deploy that built it. */
 export type AssetHistory = Readonly<Record<string, number>>;
 
-const ASSET_PATH = /^assets\/[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
+const ASSET_NAME = "[A-Za-z0-9_-][A-Za-z0-9._-]*";
+const ASSET_PATH = new RegExp(`^assets/${ASSET_NAME}$`);
 
 /** Parse the live history file. Keys become write paths, so reject anything outside `assets/`. */
 export function parseAssetHistory(raw: unknown): AssetHistory {
@@ -83,14 +84,20 @@ export function deployCheckPages(homeHtml: string): string[] {
   return ["/?lang=en", day[1], story[1]];
 }
 
-/** Every distinct `/assets/*` URL path an HTML document references. */
-export function assetRefs(html: string): string[] {
+/**
+ * Every distinct `/assets/*` URL path an HTML document references on `origin`.
+ * A reference starts after a quote, `=` or `(`, either root-relative or
+ * absolute on `origin`, and names a single build-output file. Third-party
+ * URLs that happen to contain `/assets/` (story images) are not ours to check.
+ */
+export function assetRefs(html: string, origin: string): string[] {
+  const ownOrigin = origin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(
+    `(?<=["'=(])(?:${ownOrigin})?(/assets/${ASSET_NAME})(?![A-Za-z0-9._/-])`,
+    "g"
+  );
   const refs = new Set<string>();
-  for (const match of html.matchAll(
-    /\/assets\/[A-Za-z0-9_-][A-Za-z0-9._-]*/g
-  )) {
-    refs.add(match[0]);
-  }
+  for (const match of html.matchAll(pattern)) refs.add(match[1]);
   return [...refs].sort();
 }
 
@@ -118,7 +125,7 @@ async function seedFromCachedPages(
   ];
   const seed: Record<string, number> = {};
   for (const page of pages) {
-    for (const ref of assetRefs(await html(`${base}${page}`))) {
+    for (const ref of assetRefs(await html(`${base}${page}`), base)) {
       seed[ref.slice(1)] = now;
     }
   }
