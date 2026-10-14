@@ -71,6 +71,18 @@ export function planAssetCarry(
   return { history, carry: carry.sort() };
 }
 
+/**
+ * Canonical pages whose cached HTML a deploy must keep working: the English
+ * home plus the first day and story page it links.
+ */
+export function deployCheckPages(homeHtml: string): string[] {
+  const day = /href="(\/date\/\d{4}-\d{2}-\d{2}\?lang=en)"/.exec(homeHtml);
+  const story = /href="(\/[0-9a-f]{8}\?lang=en)"/.exec(homeHtml);
+  if (!day) throw new Error("home page links no day page");
+  if (!story) throw new Error("home page links no story page");
+  return ["/?lang=en", day[1], story[1]];
+}
+
 /** Every distinct `/assets/*` URL path an HTML document references. */
 export function assetRefs(html: string): string[] {
   const refs = new Set<string>();

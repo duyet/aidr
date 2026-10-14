@@ -8,7 +8,7 @@
  *
  * Usage: tsx scripts/smoke-assets.ts [--base https://aidr.today]
  */
-import { assetRefs } from "../src/lib/deploy-assets";
+import { assetRefs, deployCheckPages } from "../src/lib/deploy-assets";
 
 const DEFAULT_BASE = "https://aidr.today";
 const ATTEMPTS = 5;
@@ -28,29 +28,21 @@ async function html(url: string): Promise<string> {
   return res.text();
 }
 
-function firstLink(body: string, pattern: RegExp, what: string): string {
-  const match = pattern.exec(body);
-  if (!match) throw new Error(`home page links no ${what}`);
-  return match[1];
-}
-
 /** Every failure across the pages, empty when all assets load. */
 async function brokenAssets(base: string): Promise<string[]> {
-  const home = await html(`${base}/?lang=en`);
-  const pages = [
-    "/?lang=en",
-    firstLink(home, /href="(\/date\/\d{4}-\d{2}-\d{2}\?lang=en)"/, "day page"),
-    firstLink(home, /href="(\/[0-9a-f]{8}\?lang=en)"/, "story page"),
-  ];
+  const pages = deployCheckPages(await html(`${base}/?lang=en`));
   const bust = `smoke=${Date.now()}`;
-  const urls = pages.flatMap((page) => [
-    `${base}${page}`,
-    `${base}${page}&${bust}`,
-  ]);
+  const urls = [
+    ...pages.map((page) => `${base}${page}`),
+    ...pages.map((page) => `${base}${page}&${bust}`),
+  ];
 
+  // First referrer wins, so a failure names the cached page when there is one.
   const refs = new Map<string, string>();
   for (const url of urls) {
-    for (const ref of assetRefs(await html(url))) refs.set(ref, url);
+    for (const ref of assetRefs(await html(url))) {
+      if (!refs.has(ref)) refs.set(ref, url);
+    }
   }
   if (refs.size === 0) return ["no /assets/* references found in any page"];
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ASSET_RETENTION_MS,
   assetRefs,
+  deployCheckPages,
   parseAssetHistory,
   planAssetCarry,
 } from "./deploy-assets";
@@ -72,6 +73,28 @@ describe("parseAssetHistory", () => {
     [null],
   ])("rejects %j, whose keys become write paths", (raw) => {
     expect(() => parseAssetHistory(raw)).toThrow();
+  });
+});
+
+describe("deployCheckPages", () => {
+  it("checks the English home and the first day and story page it links", () => {
+    const home = `<a href="/calendar?lang=en"></a><a href="/date/2026-10-14?lang=en"></a>
+<a href="/date/2026-10-13?lang=en"></a><a href="/about"></a>
+<a href="/74c9e10c?lang=en"></a><a href="/fd4035d8?lang=en"></a>`;
+    expect(deployCheckPages(home)).toEqual([
+      "/?lang=en",
+      "/date/2026-10-14?lang=en",
+      "/74c9e10c?lang=en",
+    ]);
+  });
+
+  it("fails rather than silently checking fewer pages", () => {
+    expect(() => deployCheckPages(`<a href="/74c9e10c?lang=en">`)).toThrow(
+      /no day page/
+    );
+    expect(() =>
+      deployCheckPages(`<a href="/date/2026-10-14?lang=en">`)
+    ).toThrow(/no story page/);
   });
 });
 

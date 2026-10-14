@@ -14,6 +14,7 @@ import {
   ASSET_HISTORY_PATH,
   type AssetHistory,
   assetRefs,
+  deployCheckPages,
   parseAssetHistory,
   planAssetCarry,
 } from "../src/lib/deploy-assets";
@@ -21,7 +22,6 @@ import {
 const DEFAULT_BASE = "https://aidr.today";
 const ATTEMPTS = 3;
 const CONCURRENCY = 8;
-const SEED_PAGES = ["/?lang=en", "/?lang=vi"];
 
 const clientRoot = resolve(
   fileURLToPath(new URL("..", import.meta.url)),
@@ -42,21 +42,33 @@ function builtAssets(): string[] {
     .map((entry) => `assets/${entry.name}`);
 }
 
+async function html(url: string): Promise<string> {
+  const res = await fetch(url, { headers: { accept: "text/html" } });
+  if (!res.ok) throw new Error(`GET ${url} -> HTTP ${res.status}`);
+  return res.text();
+}
+
 /**
  * Without a history file (the first deploy with one, or a deploy that skipped
- * this step) fall back to what the cached home pages load right now.
+ * this step) fall back to what the cached pages the post-deploy smoke checks
+ * load right now, plus the Vietnamese home.
  */
-async function seedFromHomePages(
+async function seedFromCachedPages(
   base: string,
   now: number
 ): Promise<AssetHistory> {
+  const pages = [
+    ...deployCheckPages(await html(`${base}/?lang=en`)),
+    "/?lang=vi",
+  ];
+  console.log(
+    `::warning::${base}/${ASSET_HISTORY_PATH} not found; seeding from ${pages.join(", ")}`
+  );
   const seed: Record<string, number> = {};
-  for (const page of SEED_PAGES) {
-    const res = await fetch(`${base}${page}`, {
-      headers: { accept: "text/html" },
-    });
-    if (!res.ok) throw new Error(`GET ${page} -> HTTP ${res.status}`);
-    for (const ref of assetRefs(await res.text())) seed[ref.slice(1)] = now;
+  for (const page of pages) {
+    for (const ref of assetRefs(await html(`${base}${page}`))) {
+      seed[ref.slice(1)] = now;
+    }
   }
   return parseAssetHistory(seed);
 }
@@ -65,12 +77,7 @@ async function liveHistory(base: string, now: number): Promise<AssetHistory> {
   const res = await fetch(`${base}/${ASSET_HISTORY_PATH}?t=${now}`, {
     headers: { "cache-control": "no-cache" },
   });
-  if (res.status === 404) {
-    console.log(
-      `::warning::${base}/${ASSET_HISTORY_PATH} not found; seeding from ${SEED_PAGES.join(", ")}`
-    );
-    return seedFromHomePages(base, now);
-  }
+  if (res.status === 404) return seedFromCachedPages(base, now);
   if (!res.ok) {
     throw new Error(`GET ${ASSET_HISTORY_PATH} -> HTTP ${res.status}`);
   }
@@ -90,6 +97,7 @@ async function download(base: string, path: string): Promise<Uint8Array> {
     } catch (e) {
       reason = e instanceof Error ? e.message : String(e);
     }
+    await new Promise((r) => setTimeout(r, attempt * 1000));
   }
   throw new Error(`GET /${path} failed after ${ATTEMPTS} attempts: ${reason}`);
 }
