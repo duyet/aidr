@@ -328,8 +328,8 @@ export interface ChannelCopyRow {
  * The source language is the `source_lang` column, never a diacritic guess:
  * a Vietnamese headline typed without diacritics reads as English and would
  * post on the English channel, and an English headline naming a Vietnamese
- * person reads as Vietnamese and would be skipped there. Most English rows
- * leave `source_lang` null, so only an explicit `vi` is Vietnamese.
+ * person reads as Vietnamese and would be skipped there. Only an explicit
+ * `vi` is Vietnamese.
  */
 export function channelCopy<T extends ChannelCopyRow>(
   row: T,
@@ -392,11 +392,12 @@ export function buildTrendingQuery(
   const copy = storyCopySql(lang);
   return {
     sql: `SELECT ${copy.columns},
-                 i.source_id, i.duplicate_of
+                 i.source_id, i.duplicate_of, en_tr.title AS en_title
           FROM items i
           LEFT JOIN notifications n ON n.item_id = i.id AND n.channel = ?
             AND (n.status IN ('sent', 'ambiguous', 'sending') OR n.attempts >= ${NOTIFY_MAX_ATTEMPTS})
           ${copy.join}
+          LEFT JOIN translations en_tr ON en_tr.item_id = i.id AND en_tr.lang = 'en'
           WHERE i.status = 'published'
             AND i.published_at >= ?
             AND i.rank_score >= ?
@@ -1075,6 +1076,7 @@ export async function dispatchStoryNotifications(
             ChannelCopyRow & {
               source_id: string;
               duplicate_of: string | null;
+              en_title: string | null;
             }
         >();
       const today = buildTrendingSourcesTodayQuery(notifier.id, dayStartMs);
@@ -1096,6 +1098,7 @@ export async function dispatchStoryNotifications(
         const event = eventKey(row.source_title, {
           url: row.url,
           sourceLang: row.source_lang ?? null,
+          englishTitle: row.en_title,
         });
         return [{ copy, source_id: copy.source_id, event }];
       });

@@ -90,8 +90,8 @@ describe("stripEmbeddedChrome", () => {
   });
 });
 
-const ENGLISH = { url: null, sourceLang: null };
-const VIETNAMESE = { url: null, sourceLang: "vi" };
+const ENGLISH = { url: null, sourceLang: null, englishTitle: null };
+const VIETNAMESE = { url: null, sourceLang: "vi", englishTitle: null };
 
 describe("sameEvent", () => {
   const key = (title: string) => eventKey(title, ENGLISH);
@@ -197,6 +197,7 @@ describe("sameEvent", () => {
   const vnexpress = (slug: string) => ({
     url: `https://vnexpress.net/${slug}.html`,
     sourceLang: "vi",
+    englishTitle: null,
   });
 
   it("matches a vnexpress article and its live page on the article id", () => {
@@ -266,6 +267,95 @@ describe("sameEvent", () => {
     const started = performance.now();
     expect(sameEvent(viKey(title), viKey(title))).toBe(true);
     expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  // #786: a Vietnamese title and an English one share only Latin names, so
+  // "Meta", "Muse" and "AI" made these different stories one event and held
+  // a post back. Each Vietnamese story carries its vi→en translation, the
+  // English copy the channels post.
+  const muse = {
+    vi: "Cách Meta biến Muse thành 'hiện tượng AI'",
+    en: "How Meta Turned Muse Into an 'AI Phenomenon'",
+  };
+  const youtuber = {
+    vi: "YouTuber tố trợ lý AI của Meta dẫn người lạ đến nhà",
+    en: "YouTuber says Meta's AI assistant leaked his home address to a stranger",
+  };
+  const gemini = {
+    vi: "Google ra Gemini 4 Argon mạnh nhất của công ty",
+    en: "Google Unveils Gemini 4 Argon, the Company's Most Powerful Model",
+  };
+  const surface = {
+    vi: "Microsoft ra Surface Laptop Ultra dùng 'siêu chip' Nvidia",
+    en: "Microsoft launches Surface Laptop Ultra powered by Nvidia 'super chip'",
+  };
+  const viStory = (story: { vi: string; en: string | null }) =>
+    eventKey(story.vi, {
+      url: null,
+      sourceLang: "vi",
+      englishTitle: story.en,
+    });
+
+  it.each([
+    "Meta’s Muse AI sent a YouTuber’s address to a stranger",
+    "Meta wants to turn Muse into a moneymaker by selling AI services to businesses",
+    "Canaccord Raises Meta Price Target to $950 on Muse AI Growth",
+    "All the latest news on Meta’s cute, creepy Muse AI agent",
+  ])("keeps a Vietnamese Muse story apart from: %s", (english) => {
+    expect(sameEvent(viStory(muse), key(english))).toBe(false);
+    expect(sameEvent(key(english), viStory(muse))).toBe(false);
+  });
+
+  it.each(
+    (
+      [
+        [youtuber, "Meta’s Muse AI sent a YouTuber’s address to a stranger"],
+        [
+          gemini,
+          "Google releases Gemini 4 Argon, called its most powerful model yet",
+        ],
+        [gemini, "Google Launches Gemini 4 Argon with 1M Token Output Limit"],
+        [
+          gemini,
+          "Google DeepMind Unveils Gemini 4 Argon with 1M Output Tokens for Coding, Knowledge Work and Cyber Defense",
+        ],
+        [
+          surface,
+          "Microsoft Launches $2,599 Surface Laptop Ultra With Local AI Edge Over Apple",
+        ],
+        [
+          surface,
+          "Microsoft and Nvidia CEOs Unveil New AI Laptop in San Francisco",
+        ],
+        [
+          surface,
+          "Microsoft releases new Nvidia-chip AI PCs with revamped Windows 11",
+        ],
+      ] satisfies Array<[{ vi: string; en: string }, string]>
+    ).map(([story, english]) => [story.vi, story.en, english])
+  )(
+    "matches a Vietnamese story and its English report: %s (%s) / %s",
+    (vi, en, english) => {
+      expect(sameEvent(viStory({ vi, en }), key(english))).toBe(true);
+    }
+  );
+
+  // The vi→en translation can land after the story is published. Until it
+  // does, the source titles are compared, and "AI" alone still does not tie
+  // them.
+  it("compares source titles while a Vietnamese story has no English copy", () => {
+    expect(
+      sameEvent(
+        viStory({ vi: muse.vi, en: null }),
+        key("Canaccord Raises Meta Price Target to $950 on Muse AI Growth")
+      )
+    ).toBe(false);
+    expect(
+      sameEvent(
+        viStory({ vi: gemini.vi, en: null }),
+        key("Google Launches Gemini 4 Argon with 1M Token Output Limit")
+      )
+    ).toBe(true);
   });
 });
 

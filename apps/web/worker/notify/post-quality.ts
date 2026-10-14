@@ -113,16 +113,16 @@ export interface EventSource {
   url: string | null;
   /** The `source_lang` column; only an explicit `vi` is Vietnamese. */
   sourceLang: string | null;
+  /** A Vietnamese story's vi→en translation title (`translations`, lang
+   *  `en`), null until it is written. Unused for an English story. */
+  englishTitle: string | null;
 }
 
-export interface EventKey {
-  /** The story's source title in NFC, the same text on both sides of a
-   *  compare. */
+/** One title as `sameEvent` reads it. */
+export interface TitleKey {
+  /** The title in NFC, the same text on both sides of a compare. */
   title: string;
   vietnamese: boolean;
-  /** The publisher's article id (`articleId`), shared by an article and its
-   *  live page. */
-  article: string | null;
   /** Lowercase named entities: org names, products, acronyms, and the
    *  capitalized words of a Vietnamese title. */
   entities: readonly string[];
@@ -130,6 +130,16 @@ export interface EventKey {
    *  starts. */
   nameText: string;
   wordStarts: ReadonlyMap<string, readonly number[]>;
+}
+
+/** A story's source title, keyed. */
+export interface EventKey extends TitleKey {
+  /** The publisher's article id (`articleId`), shared by an article and its
+   *  live page. */
+  article: string | null;
+  /** The story in English: the source title of an English story, the
+   *  translation of a Vietnamese one, null while it has none. */
+  english: TitleKey | null;
 }
 
 const WORD = /[\p{L}\p{N}]+/gu;
@@ -153,9 +163,8 @@ function vietnameseNames(title: string): string[] {
  *  ASCII and cut "Société" to "soci". A Vietnamese title keeps its marks:
  *  folded, the "Nam" of Việt Nam would match every "năm". NFC first, since a
  *  decomposed "ệ" is "e" plus a mark and splits the word. */
-export function eventKey(rawTitle: string, source: EventSource): EventKey {
+function titleKey(rawTitle: string, vietnamese: boolean): TitleKey {
   const title = rawTitle.normalize("NFC");
-  const vietnamese = source.sourceLang === "vi";
   const nameText = vietnamese
     ? title.toLowerCase()
     : foldDiacritics(title.toLowerCase());
@@ -177,13 +186,21 @@ export function eventKey(rawTitle: string, source: EventSource): EventKey {
     if (KNOWN_ORGS.has(word)) entities.add(word);
   }
   for (const generic of GENERIC_ENTITIES) entities.delete(generic);
+  return { title, vietnamese, entities: [...entities], nameText, wordStarts };
+}
+
+export function eventKey(rawTitle: string, source: EventSource): EventKey {
+  const vietnamese = source.sourceLang === "vi";
+  const key = titleKey(rawTitle, vietnamese);
+  const englishTitle = source.englishTitle?.trim();
   return {
-    title,
-    vietnamese,
+    ...key,
     article: source.url ? articleId(source.url) : null,
-    entities: [...entities],
-    nameText,
-    wordStarts,
+    english: !vietnamese
+      ? key
+      : englishTitle
+        ? titleKey(englishTitle, false)
+        : null,
   };
 }
 
@@ -191,7 +208,7 @@ export function eventKey(rawTitle: string, source: EventSource): EventKey {
  *  letter is part of the word, so "vi" is not in "việt". Only the places
  *  where the name's first word starts are checked, so a pair costs time in
  *  proportion to its names, not names times title length (#766). */
-function mentions(key: EventKey, entity: string): boolean {
+function mentions(key: TitleKey, entity: string): boolean {
   const name = key.vietnamese ? entity : foldDiacritics(entity);
   const first = LEADING_WORD.exec(name)?.[0];
   if (!first) return false;
@@ -200,6 +217,33 @@ function mentions(key: EventKey, entity: string): boolean {
     WORD_CHAR_AT.lastIndex = start + name.length;
     return !WORD_CHAR_AT.test(key.nameText);
   });
+}
+
+/** A title's tokens in a cross-language compare. "AI" or "US" is in most
+ *  headlines of both languages, so it is not evidence there (#786). */
+function crossLanguageTokens(title: string): Set<string> {
+  const tokens = significantTitleTokens(title);
+  for (const generic of GENERIC_ENTITIES) tokens.delete(generic);
+  return tokens;
+}
+
+function similarTitles(
+  a: TitleKey,
+  b: TitleKey,
+  names: ReadonlySet<string>,
+  words: (title: string) => Set<string>
+): boolean {
+  let sharedNames = 0;
+  for (const name of names) {
+    if (mentions(a, name) && mentions(b, name)) sharedNames++;
+  }
+  if (sharedNames < EVENT_MIN_SHARED_NAMES) return false;
+  const ta = words(a.title);
+  const tb = words(b.title);
+  let shared = 0;
+  for (const token of ta) if (tb.has(token)) shared++;
+  if (shared < EVENT_MIN_SHARED_TOKENS) return false;
+  return shared / (ta.size + tb.size - shared) >= EVENT_TITLE_JACCARD;
 }
 
 /** Two keys name one event: similar titles that both mention at least
@@ -215,25 +259,34 @@ function mentions(key: EventKey, entity: string): boolean {
  *  stories sharing "Việt Nam" and "công nghệ" 0.21 to 0.25; in words the
  *  first score 0.21 to 0.40 and the second 0 to 0.07 (#756).
  *
+ *  A Vietnamese story and an English one compare their English copies. The
+ *  Latin words of a Vietnamese headline are its names, so its source title
+ *  shares nothing else with an English one, and "Meta", "Muse" and "AI" made
+ *  four different Muse stories one event (#786). The Vietnamese title still
+ *  lends its names, which its capitals mark better than a Title Case English
+ *  headline does. Until the translation exists the source titles are
+ *  compared.
+ *
  *  One publisher article id is one event whatever the titles say: a
  *  vnexpress live page shares its article's id but rarely its headline
  *  words (#765). */
 export function sameEvent(a: EventKey, b: EventKey): boolean {
   if (a.article !== null && a.article === b.article) return true;
-  const names = new Set([...a.entities, ...b.entities]);
-  let sharedNames = 0;
-  for (const name of names) {
-    if (mentions(a, name) && mentions(b, name)) sharedNames++;
+  if (a.vietnamese === b.vietnamese) {
+    return similarTitles(
+      a,
+      b,
+      new Set([...a.entities, ...b.entities]),
+      a.vietnamese ? evidenceTokens : significantTitleTokens
+    );
   }
-  if (sharedNames < EVENT_MIN_SHARED_NAMES) return false;
-  const words =
-    a.vietnamese && b.vietnamese ? evidenceTokens : significantTitleTokens;
-  const ta = words(a.title);
-  const tb = words(b.title);
-  let shared = 0;
-  for (const token of ta) if (tb.has(token)) shared++;
-  if (shared < EVENT_MIN_SHARED_TOKENS) return false;
-  return shared / (ta.size + tb.size - shared) >= EVENT_TITLE_JACCARD;
+  const [x, y] = a.english && b.english ? [a.english, b.english] : [a, b];
+  return similarTitles(
+    x,
+    y,
+    new Set([...a.entities, ...b.entities, ...x.entities, ...y.entities]),
+    crossLanguageTokens
+  );
 }
 
 export type PostedKind = "digest" | "trending";

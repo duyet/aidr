@@ -1538,15 +1538,26 @@ deliberately non-spammy.
     every "năm". Titles are NFC first. Two Vietnamese-source titles compare
     `evidenceTokens` words instead of syllables, with the same 3 and 0.2. In
     syllables, headlines on one Nobel prize scored 0.18 and different stories
-    sharing "Việt Nam" and "công nghệ" 0.21 to 0.25 (#756). No LLM call.
+    sharing "Việt Nam" and "công nghệ" 0.21 to 0.25 (#756). A
+    Vietnamese-source story and an English one compare English copies: the
+    Vietnamese story's vi→en translation title (`translations`, lang `en`)
+    against the English title, with the English tokens, and with the names of
+    both source titles. "AI", "US" and the other filler names do not count as
+    shared tokens in this compare. On source titles such a pair shares only
+    its Latin names, and "Meta", "Muse" and "AI" tied a VnExpress analysis of
+    Muse to four different English Muse stories (#786). Until the translation
+    exists, the source titles are compared under the same token rule. No LLM
+    call.
   - **Not in v1**: a repost for a material update (a changed number, a new
     development) is never allowed, because telling an update from a rewrite
     needs more than a title compare and a wrong "update" is a duplicate post.
     Two stories about one event with no shared title words ("OpenAI defends
     firing three safety researchers" and "Fired OpenAI staff dispute
-    misconduct charges", 0.09) still both post. Vietnamese-source titles
-    (VnExpress) only match Vietnamese titles, since the key is the source
-    title.
+    misconduct charges", 0.09) still both post. A follow-up whose headline
+    names the event ("Cybersecurity Stocks Fall After Google Unveils Gemini 4
+    Argon") matches the event in English and across languages, because it
+    shares more title words with the launch than a second launch report
+    does.
   - **What the digest showed**: `notify_digest_items` (migration 0057) holds
     the story ids of each digest, written when it sends: the day card's six
     stories (what the message lists), else every id the snapshot's bullets

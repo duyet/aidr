@@ -25,6 +25,8 @@ interface ItemRow {
   url: string;
   source_lang: string | null;
   duplicate_of: string | null;
+  /** The vi→en translation title, the English copy `sameEvent` compares. */
+  en_title: string | null;
 }
 
 /** Story ids the digest for `date` shows: the day card's stories, which is
@@ -73,8 +75,11 @@ async function loadItems(
   let frontier = [...new Set(ids)];
   for (let hop = 0; hop <= MAX_CANONICAL_HOPS && frontier.length > 0; hop++) {
     const { results } = await env.DB.prepare(
-      `SELECT id, title, url, source_lang, duplicate_of FROM items
-       WHERE id IN (SELECT value FROM json_each(?))`
+      `SELECT i.id, i.title, i.url, i.source_lang, i.duplicate_of,
+              en_tr.title AS en_title
+       FROM items i
+       LEFT JOIN translations en_tr ON en_tr.item_id = i.id AND en_tr.lang = 'en'
+       WHERE i.id IN (SELECT value FROM json_each(?))`
     )
       .bind(JSON.stringify(frontier))
       .all<ItemRow>();
@@ -107,8 +112,8 @@ export function canonicalOf(
 /**
  * Everything `channel` posted since `now - 48h`, with each story's root id
  * and event key. `digestDates` are the current and previous local dates.
- * Source titles key the events on both sides, so the channel's language does
- * not change what matches.
+ * Source titles, and a Vietnamese story's English translation, key the events
+ * on both sides, so the channel's language does not change what matches.
  */
 export async function loadPostedEvents(
   env: Pick<Env, "DB">,
@@ -169,6 +174,7 @@ export async function loadPostedEvents(
         eventKey: eventKey(item.title, {
           url: item.url,
           sourceLang: item.source_lang,
+          englishTitle: item.en_title,
         }),
         postedAt: row.posted_at,
         kind: row.kind,

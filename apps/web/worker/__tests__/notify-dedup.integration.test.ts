@@ -67,14 +67,15 @@ interface ItemSpec {
   importance?: number;
   status?: string;
   duplicateOf?: string | null;
+  sourceLang?: "en" | "vi";
 }
 
 function addItem(spec: ItemSpec) {
   sqlite
     .prepare(
       `INSERT INTO items (id, source_id, url, title, summary, published_at, fetched_at,
-                          rank_score, llm_importance, status, duplicate_of)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                          rank_score, llm_importance, status, duplicate_of, source_lang)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       spec.id,
@@ -87,7 +88,8 @@ function addItem(spec: ItemSpec) {
       spec.rank ?? 10,
       spec.importance ?? 8,
       spec.status ?? "published",
-      spec.duplicateOf ?? null
+      spec.duplicateOf ?? null,
+      spec.sourceLang ?? "en"
     );
 }
 
@@ -472,5 +474,87 @@ describe("digest bookkeeping", () => {
       sent: 0,
       reason: `every TL;DR bullet for ${TODAY} is only an outlet credit on telegram-en`,
     });
+  });
+});
+
+// #786: the Vietnamese channel posts English and Vietnamese stories side by
+// side. A Vietnamese story is compared through its vi→en translation, which
+// neither the channel's candidate query nor the posted history selected.
+describe("a Vietnamese story against an English one on the Vietnamese channel", () => {
+  const youtuberEn = {
+    id: "muse-address",
+    source: "theverge",
+    title: "Meta’s Muse AI sent a YouTuber’s address to a stranger",
+  };
+  const youtuberVi = {
+    id: "youtuber-vi",
+    source: "vnexpress-tech",
+    sourceLang: "vi" as const,
+    title: "YouTuber tố trợ lý AI của Meta dẫn người lạ đến nhà",
+  };
+  const youtuberViEnglish =
+    "YouTuber says Meta's AI assistant leaked his home address to a stranger";
+
+  function translate(itemId: string, lang: "en" | "vi", title: string) {
+    sqlite
+      .prepare(
+        "INSERT INTO translations (item_id, lang, title, summary) VALUES (?, ?, ?, ?)"
+      )
+      .run(itemId, lang, title, SUMMARY);
+  }
+
+  function postedOnTelegram(itemId: string) {
+    sqlite
+      .prepare(
+        "INSERT INTO notifications (channel, item_id, target, status, attempts, posted_at) VALUES ('telegram', ?, '@vi', 'sent', 1, ?)"
+      )
+      .run(itemId, NOW.getTime() - 5 * 3600_000);
+  }
+
+  function telegramRows(): string[] {
+    return (
+      sqlite
+        .prepare(
+          "SELECT item_id FROM notifications WHERE channel = 'telegram' AND item_id NOT LIKE 'digest:%' AND status = 'sent' ORDER BY posted_at"
+        )
+        .all() as Array<{ item_id: string }>
+    ).map((row) => row.item_id);
+  }
+
+  it("holds the Vietnamese report of a posted English story and posts a different one", async () => {
+    addItem({ ...youtuberEn, rank: 5, importance: 5 });
+    postedOnTelegram(youtuberEn.id);
+    addItem({ ...youtuberVi, rank: 10.5 });
+    translate(youtuberVi.id, "en", youtuberViEnglish);
+    addItem({
+      id: "muse-vi",
+      source: "vnexpress-tech",
+      sourceLang: "vi",
+      title: "Cách Meta biến Muse thành 'hiện tượng AI'",
+      rank: 10,
+    });
+    translate("muse-vi", "en", "How Meta Turned Muse Into an 'AI Phenomenon'");
+
+    const report = await dispatchStoryNotifications(env);
+
+    expect(telegramRows()).toEqual([youtuberEn.id, "muse-vi"]);
+    expect(report.reasons.telegram?.suppressed).toEqual({ "dedup:event": 1 });
+  });
+
+  it("holds the English report of a posted Vietnamese story", async () => {
+    addItem({ ...youtuberVi, rank: 5, importance: 5 });
+    translate(youtuberVi.id, "en", youtuberViEnglish);
+    postedOnTelegram(youtuberVi.id);
+    addItem({ ...youtuberEn, rank: 10 });
+    translate(
+      youtuberEn.id,
+      "vi",
+      "Muse AI của Meta gửi địa chỉ của một YouTuber cho người lạ"
+    );
+
+    const report = await dispatchStoryNotifications(env);
+
+    expect(telegramRows()).toEqual([youtuberVi.id]);
+    expect(report.reasons.telegram?.suppressed).toEqual({ "dedup:event": 1 });
   });
 });
