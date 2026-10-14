@@ -741,6 +741,42 @@ describe("pushItems", () => {
     expect(db.contentLog).toHaveLength(logged);
   });
 
+  it("stores published_at as epoch seconds", async () => {
+    // A raw Date.now() write is milliseconds and lands outside the day archive.
+    const nowMs = 1_786_847_892_625;
+    const seconds = 1_786_847_892;
+    vi.spyOn(Date, "now").mockReturnValue(nowMs);
+    try {
+      const env = makeEnv();
+      const db = env.DB as unknown as FakeD1;
+      const storedAt = async (url: string) =>
+        db.items.get(await sha256Hex(url))?.published_at;
+
+      const omitted = await pushItems(env, {
+        url: "https://example.com/pub-default",
+        title: "Default clock",
+      });
+      const millis = await pushItems(env, {
+        url: "https://example.com/pub-ms",
+        title: "Millisecond stamp",
+        published_at: nowMs,
+      });
+      const already = await pushItems(env, {
+        url: "https://example.com/pub-sec",
+        title: "Second stamp",
+        published_at: seconds,
+      });
+      expect(isHandlerError(omitted)).toBe(false);
+      expect(isHandlerError(millis)).toBe(false);
+      expect(isHandlerError(already)).toBe(false);
+      expect(await storedAt("https://example.com/pub-default")).toBe(seconds);
+      expect(await storedAt("https://example.com/pub-ms")).toBe(seconds);
+      expect(await storedAt("https://example.com/pub-sec")).toBe(seconds);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
   it("rejects items missing url or title", async () => {
     const env = makeEnv();
     const result = await pushItems(env, { url: "", title: "no url" });
