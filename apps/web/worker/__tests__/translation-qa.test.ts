@@ -24,6 +24,7 @@ import {
   type TranslationReview,
   TranslationReviewSchemaError,
   translationRetryDelaySeconds,
+  translationReviewEnabled,
 } from "../translation-qa.js";
 import {
   BACK_TRANSLATION_MIN_RECALL,
@@ -513,6 +514,80 @@ describe("translation QA runtime", () => {
     });
     expect(stats.error).toMatch(/not configured/);
     expect(stats.calls).toBe(0);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("treats only an explicit falsy TRANSLATION_REVIEW_ENABLED as paused", () => {
+    expect(translationReviewEnabled({})).toBe(true);
+    expect(translationReviewEnabled({ TRANSLATION_REVIEW_ENABLED: "" })).toBe(
+      true
+    );
+    expect(
+      translationReviewEnabled({ TRANSLATION_REVIEW_ENABLED: "true" })
+    ).toBe(true);
+    for (const off of ["false", "0", "off", " FALSE "])
+      expect(
+        translationReviewEnabled({ TRANSLATION_REVIEW_ENABLED: off }),
+        off
+      ).toBe(false);
+  });
+
+  // #655: the reviewer chain failed 406 of 413 calls on 2026-10-13. Pausing
+  // must stop those calls without stopping the VI→EN candidates that the
+  // English Telegram and Facebook posts read.
+  it("while paused, creates VI→EN candidates but makes no review call", async () => {
+    const viSource = row({
+      id: "vi-item",
+      source_title: "Công ty phát hành Model X.",
+      source_summary: "Công ty phát hành sản phẩm mới.",
+      source_lang: "vi",
+      lang: "en",
+      target_lang: "en",
+    });
+    const { db, writes } = makeDb({ rows: [row()], englishRows: [viSource] });
+    const models: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: unknown, init?: RequestInit) => {
+        models.push(JSON.parse(String(init?.body)).model);
+        return response(
+          '{"title":"English title","summary":"English summary"}'
+        );
+      })
+    );
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const stats = await ratePendingTranslations({
+      ...env,
+      TRANSLATION_REVIEW_ENABLED: "false",
+      DB: db,
+    });
+    expect(stats.englishCandidates).toBe(1);
+    expect(models).toEqual(["english-generator/model"]);
+    expect(stats).toMatchObject({ paused: true, rated: 0, accepted: 0 });
+    expect(stats.error).toBeUndefined();
+    expect(writes.some((w) => w.sql.includes("translation_review_state"))).toBe(
+      false
+    );
+    expect(
+      log.mock.calls.filter((c) =>
+        String(c[0]).includes("translation_review.paused")
+      )
+    ).toHaveLength(1);
+  });
+
+  it("while paused, does not require a reviewer chain", async () => {
+    const { db } = makeDb({ rows: [row()] });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const stats = await ratePendingTranslations({
+      ...env,
+      ANYROUTER_REVIEW_MODEL: undefined,
+      TRANSLATION_REVIEW_ENABLED: "false",
+      DB: db,
+    });
+    expect(stats.error).toBeUndefined();
+    expect(stats.paused).toBe(true);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

@@ -22,6 +22,10 @@ export interface Env {
   /** Explicit independent reviewer chain for translation semantic QA. Missing
    *  or overlapping generator ids fail closed; never fall back to the generator. */
   ANYROUTER_REVIEW_MODEL?: string;
+  /** Unset or truthy runs translation review in `qa-translations`. A falsy
+   *  value ("false", "0", "off") pauses it: no review or repair calls, while
+   *  VI→EN candidates are still created (#655). */
+  TRANSLATION_REVIEW_ENABLED?: string;
   /** Legacy translation-QA chain. Still honored when no review chain is set,
    *  but it never falls back to ANYROUTER_MODEL and must be model-independent. */
   ANYROUTER_QA_MODEL?: string;

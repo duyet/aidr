@@ -135,6 +135,18 @@ describe("live AnyRouter model chains", () => {
     }
   });
 
+  // Production llm_calls, 7 days to 2026-10-14: space-bunny-alpha reviewed
+  // 0 of 484 (98 404s in the last 24h alone). Every review attempt in a
+  // run failed while it held the fallback slot (#655).
+  const KNOWN_DEAD = ["stealth/space-bunny-alpha"];
+
+  it("keeps known-dead model ids off every chain", () => {
+    for (const name of chains) {
+      for (const dead of KNOWN_DEAD)
+        expect(idsOf(name), name).not.toContain(dead);
+    }
+  });
+
   it("keeps the translation reviewer explicit and disjoint from generators", () => {
     const reviewer = idsOf("ANYROUTER_REVIEW_MODEL");
     const generators = new Set([
@@ -146,6 +158,22 @@ describe("live AnyRouter model chains", () => {
     expect(reviewer).not.toContain("anyrouter/auto");
     for (const model of reviewer)
       expect(generators.has(model), model).toBe(false);
+  });
+
+  // The per-run timeout breaker and the 429 skip map are keyed by model,
+  // not task, and qa-translations runs before tldr. A reviewer that also
+  // heads TL;DR lets review hangs push the digest onto its fallback (#663).
+  it("keeps the translation reviewer off the TL;DR chain", () => {
+    const tldr = new Set(idsOf("ANYROUTER_TLDR_MODEL"));
+    for (const model of idsOf("ANYROUTER_REVIEW_MODEL"))
+      expect(tldr.has(model), model).toBe(false);
+  });
+
+  // #655: 406 of 413 review calls failed on 2026-10-13, on the quota every
+  // other task shares. Review stays off until a measured probe picks a
+  // reviewer (#656); that change removes this check.
+  it("keeps translation review paused until a reviewer is probed", () => {
+    expect(wrangler).toMatch(/^TRANSLATION_REVIEW_ENABLED = "false"$/m);
   });
 
   // Order follows 7-day prod success rate (2026-10-11): Laguna 39% beat

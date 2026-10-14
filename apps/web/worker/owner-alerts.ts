@@ -93,7 +93,7 @@ function topStatus(m: ModelStat): string {
 /** Stable per-problem id used to find an existing open issue. */
 export function fingerprint(issue: HealthIssue, ctx: AlertContext): string {
   if (isLlmIssue(issue)) {
-    const worst = worstModel(ctx.models);
+    const worst = worstModel(issue.models ?? ctx.models);
     if (worst) return `llm:model=${worst.model}:status=${topStatus(worst)}`;
     return `llm:${issue.key}`;
   }
@@ -120,7 +120,7 @@ function modelLines(models: ModelStat[]): string[] {
 /** Evidence lines for one issue, shared by the DM and the issue body. */
 export function issueEvidence(issue: HealthIssue, ctx: AlertContext): string[] {
   if (issue.evidence) return issue.evidence;
-  if (isLlmIssue(issue)) return modelLines(ctx.models);
+  if (isLlmIssue(issue)) return modelLines(issue.models ?? ctx.models);
   if (issue.key.startsWith("telegram-quiet:")) {
     const channel = issue.key.slice("telegram-quiet:".length);
     const hours = ctx.telegramQuietHours[channel];

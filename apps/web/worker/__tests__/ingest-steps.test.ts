@@ -550,6 +550,13 @@ describe("run-step summaries", () => {
     );
   });
 
+  // "0 pending translations" would read as an empty queue, not a switch.
+  it("says review is paused rather than reporting an empty queue", () => {
+    expect(
+      qaStepSummary({ rated: 0, adjusted: 0, tokens: 0, paused: true })
+    ).toBe("review paused");
+  });
+
   it("reports notify as skipped only when no channel sent anything", () => {
     expect(notifyStepSummary({})).toBe("skipped");
     expect(notifyStepSummary({ telegram: 0 })).toBe("skipped");

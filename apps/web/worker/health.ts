@@ -48,6 +48,12 @@ export const LLM_FAILURE_RATE = 0.5;
 export const LLM_RATE_LIMIT_BURST = 5;
 /** Alert key for a 429 burst. Starts with `llm`, so it routes to the router repo. */
 export const LLM_RATE_LIMITED_KEY = "llm-rate-limited";
+/** Non-429 attempts of one task, all failed, at which its chain is down. */
+export const LLM_TASK_FAILING_MIN_ATTEMPTS = 3;
+/** Per-task key, so each task keeps its own cooldown. Starts with `llm`. */
+export function llmTaskFailingKey(task: string): string {
+  return `llm-task-failing:${task}`;
+}
 /** Below this many attempts the rate is noise. */
 export const LLM_MIN_CALLS = 4;
 /** TL;DR failed this many runs in a row (this run included). */
@@ -70,12 +76,24 @@ export interface HealthIssue {
   detail: string;
   /** Lines for the owner DM and the issue body, when the check has them. */
   evidence?: string[];
+  /** The models an LLM issue is about. Its GitHub fingerprint and evidence
+   * use these instead of every model the run called. */
+  models?: ModelStat[];
 }
 
 export interface PriorRun {
   startedAtMs: number | null;
   steps: RunStepInfo[];
   alerts: string[];
+}
+
+export interface LlmTaskCount {
+  task: string;
+  total: number;
+  ok: number;
+  rateLimited: number;
+  /** This task's attempts per model this run. */
+  models: ModelStat[];
 }
 
 export interface HealthInput {
@@ -85,7 +103,12 @@ export interface HealthInput {
   steps: RunStepInfo[];
   /** Newest successful post per Telegram channel, epoch ms. */
   telegramLastPostMs: Record<string, number>;
-  llm: { total: number; failed: number; rateLimited: number };
+  llm: {
+    total: number;
+    failed: number;
+    rateLimited: number;
+    tasks: LlmTaskCount[];
+  };
   /** Previous runs, newest first, excluding this one. */
   history: PriorRun[];
 }
@@ -133,6 +156,20 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
       severity: "error",
       title: "LLM quota exhausted (HTTP 429)",
       detail: `${input.llm.rateLimited} LLM calls got HTTP 429 this run; new stories stay unscored and untranslated until the quota window resets`,
+    });
+  }
+
+  for (const t of input.llm.tasks) {
+    // 429s belong to the quota alert above; counting them here would page
+    // once per task for the same spent quota.
+    const attempts = t.total - t.rateLimited;
+    if (t.ok > 0 || attempts < LLM_TASK_FAILING_MIN_ATTEMPTS) continue;
+    issues.push({
+      key: llmTaskFailingKey(t.task),
+      severity: "error",
+      title: `LLM ${t.task} chain down`,
+      detail: `All ${attempts} ${t.task} attempts failed this run (${t.models.map((m) => m.model).join(", ")})`,
+      models: t.models,
     });
   }
 
@@ -250,43 +287,17 @@ async function readTelegramLastPost(env: Env): Promise<Record<string, number>> {
   return last;
 }
 
-async function readLlmCounts(
-  env: Env,
-  runId: string
-): Promise<{ total: number; failed: number; rateLimited: number }> {
-  await flushLlmCallWrites();
-  const row = await env.DB.prepare(
-    `SELECT COUNT(*) AS total,
-            SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS failed,
-            SUM(CASE WHEN ok = 0 AND error_status = 429 THEN 1 ELSE 0 END) AS rate_limited
-     FROM llm_calls WHERE run_id = ?`
-  )
-    .bind(runId)
-    .first<{
-      total: number | null;
-      failed: number | null;
-      rate_limited: number | null;
-    }>();
-  return {
-    total: row?.total ?? 0,
-    failed: row?.failed ?? 0,
-    rateLimited: row?.rate_limited ?? 0,
-  };
+interface ModelStatRow {
+  model: string;
+  ok: number;
+  status: number | null;
+  n: number;
 }
 
-async function readModelStats(
-  env: Env,
-  where: string,
-  bind: unknown
-): Promise<ModelStat[]> {
-  const { results } = await env.DB.prepare(
-    `SELECT model, ok, error_status AS status, COUNT(*) AS n FROM llm_calls
-     WHERE ${where} GROUP BY model, ok, error_status`
-  )
-    .bind(bind)
-    .all<{ model: string; ok: number; status: number | null; n: number }>();
+/** Folds (model, ok, status) counts into per-model stats, busiest first. */
+function foldModelStats(rows: ModelStatRow[]): ModelStat[] {
   const byModel = new Map<string, ModelStat>();
-  for (const row of results ?? []) {
+  for (const row of rows) {
     const m = byModel.get(row.model) ?? {
       model: row.model,
       total: 0,
@@ -302,6 +313,60 @@ async function readModelStats(
     byModel.set(row.model, m);
   }
   return [...byModel.values()].sort((a, b) => b.total - a.total);
+}
+
+/** Per-task counts for this run; the run totals are their sums. */
+async function readLlmCounts(
+  env: Env,
+  runId: string
+): Promise<HealthInput["llm"]> {
+  await flushLlmCallWrites();
+  const { results } = await env.DB.prepare(
+    `SELECT task, model, ok, error_status AS status, COUNT(*) AS n
+     FROM llm_calls WHERE run_id = ? GROUP BY task, model, ok, error_status`
+  )
+    .bind(runId)
+    .all<ModelStatRow & { task: string }>();
+  const rowsByTask = new Map<string, ModelStatRow[]>();
+  for (const row of results ?? []) {
+    const rows = rowsByTask.get(row.task) ?? [];
+    rows.push(row);
+    rowsByTask.set(row.task, rows);
+  }
+  const tasks: LlmTaskCount[] = [...rowsByTask].map(([task, rows]) => {
+    const models = foldModelStats(rows);
+    const total = models.reduce((n, m) => n + m.total, 0);
+    return {
+      task,
+      total,
+      ok: total - models.reduce((n, m) => n + m.failed, 0),
+      rateLimited: models.reduce((n, m) => n + (m.statuses["429"] ?? 0), 0),
+      models,
+    };
+  });
+  const sum = (pick: (t: LlmTaskCount) => number) =>
+    tasks.reduce((n, t) => n + pick(t), 0);
+  const total = sum((t) => t.total);
+  return {
+    total,
+    failed: total - sum((t) => t.ok),
+    rateLimited: sum((t) => t.rateLimited),
+    tasks,
+  };
+}
+
+async function readModelStats(
+  env: Env,
+  where: string,
+  bind: unknown
+): Promise<ModelStat[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT model, ok, error_status AS status, COUNT(*) AS n FROM llm_calls
+     WHERE ${where} GROUP BY model, ok, error_status`
+  )
+    .bind(bind)
+    .all<ModelStatRow>();
+  return foldModelStats(results ?? []);
 }
 
 async function readDailySummary(

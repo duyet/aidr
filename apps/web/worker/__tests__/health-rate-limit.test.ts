@@ -24,7 +24,7 @@ const healthy: HealthInput = {
   localHour: 14,
   steps: [{ name: "tldr", action: "generated" }],
   telegramLastPostMs: { telegram: NOW - HOUR },
-  llm: { total: 60, failed: 0, rateLimited: 0 },
+  llm: { total: 60, failed: 0, rateLimited: 0, tasks: [] },
   history: [],
 };
 
@@ -42,7 +42,7 @@ describe("429 burst alert", () => {
   it("fires even when the failure rate is under the rate alert's bar", () => {
     const issues = evaluateHealth({
       ...healthy,
-      llm: { total: 100, failed: 5, rateLimited: 5 },
+      llm: { total: 100, failed: 5, rateLimited: 5, tasks: [] },
     });
     expect(issues.map((i) => i.key)).toEqual([LLM_RATE_LIMITED_KEY]);
   });
@@ -57,7 +57,6 @@ describe("429 burst alert through the health check", () => {
 
   function setup(history: { started_at: number; stats: string }[]) {
     const dms: string[] = [];
-    const sql: string[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string, init?: RequestInit) => {
@@ -69,21 +68,25 @@ describe("429 burst alert through the health check", () => {
     );
     const query = (q: string) => ({
       all: async () => ({
-        results: q.includes("FROM workflow_runs") ? history : [],
+        results: q.includes("FROM workflow_runs")
+          ? history
+          : /GROUP BY task\b/.test(q)
+            ? [
+                { task: "score", model: "x/a", ok: 0, status: 429, n: 25 },
+                { task: "translate", model: "x/b", ok: 0, status: 429, n: 13 },
+                { task: "translate", model: "x/b", ok: 0, status: 502, n: 2 },
+              ]
+            : [],
       }),
-      first: async () => ({ total: 40, failed: 40, rate_limited: 37 }),
     });
     const env = {
       DB: {
-        prepare: (q: string) => {
-          sql.push(q);
-          return { ...query(q), bind: () => query(q) };
-        },
+        prepare: (q: string) => ({ ...query(q), bind: () => query(q) }),
       },
       TELEGRAM_BOT_TOKEN: "t",
       TELEGRAM_OWNER_CHAT_ID: "12345",
     } as unknown as Env;
-    return { env, dms, sql };
+    return { env, dms };
   }
 
   it("DMs the owner once, then stays quiet inside the cooldown", async () => {
@@ -92,7 +95,6 @@ describe("429 burst alert through the health check", () => {
     const fired = await runHealthCheck(first.env, { runId: "r1", steps: [] });
     expect(fired).toContain(LLM_RATE_LIMITED_KEY);
     expect(first.dms.filter((d) => d.includes("429"))).toHaveLength(1);
-    expect(first.sql.some((q) => q.includes("error_status = 429"))).toBe(true);
 
     const next = setup([
       {
