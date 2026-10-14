@@ -502,9 +502,10 @@ const AUTHOR_RE = new RegExp(
 const HANDLE_RE = /^@[\p{L}\p{N}_.@-]+$/u;
 
 /** "Ina Fried", "Jeff John Roberts", "Camila Grigera Naón", "Donald J.
- * Trump": two to four words, each a capital then lowercase letters, or an
- * initial. "CEO", "AI" and "2027" are not name words. */
-const NAME_WORD = String.raw`\p{Lu}(?:[\p{Ll}'’][\p{L}'’-]*|\.)`;
+ * Trump", "Robert Smith Jr.": two to four words, each a capital then
+ * lowercase letters, or an initial. "CEO", "AI" and "2027" are not name
+ * words. */
+const NAME_WORD = String.raw`(?:\p{Lu}(?:[\p{Ll}'’][\p{L}'’-]*|\.)|[JS]r\.)`;
 const REPORTER_NAME_RE = new RegExp(
   String.raw`^${NAME_WORD}(?:\s+${NAME_WORD}){1,3}$`,
   "u"
@@ -527,22 +528,18 @@ const TITLE_WORDS = words(
   "Spokesperson Spokesman Spokeswoman Commissioner Chancellor Ambassador",
   "Deputy"
 );
-/** A month is a first name at the start ("April Glaser") and a date after
- * it ("Mid March"). */
-const MONTH_WORDS = words(
-  "January February March April May June July August September October",
-  "November December"
-);
 /** Institutions and dates anywhere: "Commerce Department", "Black Friday",
- * "Lunar New Year". "Day", "Court", "House" and "Bank" are left out: they end
- * a reporter's name ("Matt Day", "Emma Court") as often as a holiday or an
- * institution. */
+ * "Lunar New Year", "Mid March". A month is a name word ("April Glaser",
+ * "Tiffany May"); the date word before it marks a date. "Day", "Court",
+ * "House" and "Bank" are left out: they end a reporter's name ("Matt Day",
+ * "Emma Court") as often as a holiday or an institution. */
 const NON_NAME_WORDS = words(
   "Ministry Department Bureau Agency Commission Council Congress Senate",
   "Parliament Government Committee University Institute Federal National",
   "Monday Tuesday Wednesday Thursday Friday Saturday Sunday Week Weekend",
   "Month Year Quarter Today Tonight Tomorrow Yesterday Morning Afternoon",
-  "Evening Night Christmas Easter Thanksgiving Tháng Ngày Quý"
+  "Evening Night Christmas Easter Thanksgiving Tháng Ngày Quý",
+  "Mid Early Late Next Last This End"
 );
 
 /** A reporter's name, not a speaker's or a date: see `REPORTER_NAME_RE`. */
@@ -554,8 +551,17 @@ function isReporterName(name: string): boolean {
   return parts.every(
     (word, i) =>
       !NON_NAME_WORDS.has(word) &&
-      !(i < parts.length - 1 && TITLE_WORDS.has(word)) &&
-      !(i > 0 && MONTH_WORDS.has(word))
+      !(i < parts.length - 1 && TITLE_WORDS.has(word))
+  );
+}
+
+/** "OpenAI / @OpenAI", "Anthropic / @AnthropicAI": one name crediting its
+ * own handle. "Trump / AP" and "OpenAI / @AnthropicAI" are not. */
+function isOwnHandle(author: string, sources: string): boolean {
+  return (
+    /^\p{Lu}[\p{L}\p{N}]*$/u.test(author) &&
+    HANDLE_RE.test(sources) &&
+    sources.toLowerCase().startsWith(`@${author.toLowerCase()}`)
   );
 }
 
@@ -577,10 +583,12 @@ const KNOWN_OUTLETS: ReadonlySet<string> = new Set([
   "Command Line",
   "Daring Fireball",
   "Engadget",
+  "Euronews",
   "Fierce Healthcare",
   "Financial Times",
   "Forbes",
   "Fortune",
+  "GeekWire",
   "Krebs on Security",
   "MacRumors",
   "MarkTechPost",
@@ -592,6 +600,7 @@ const KNOWN_OUTLETS: ReadonlySet<string> = new Set([
   "Semafor",
   "SemiAnalysis",
   "Shtetl-Optimized",
+  "SiliconANGLE",
   "TechCrunch",
   "Techmeme",
   "The Decoder",
@@ -602,6 +611,7 @@ const KNOWN_OUTLETS: ReadonlySet<string> = new Set([
   "The Washington Post",
   "Time",
   "VentureBeat",
+  "VnExpress",
   "Wall Street Journal",
   "Washington Post",
   "Wired",
@@ -626,10 +636,12 @@ const OUTLET_DOMAINS: ReadonlySet<string> = new Set([
   "cointelegraph.com",
   "daringfireball.net",
   "engadget.com",
+  "euronews.com",
   "fiercehealthcare.com",
   "forbes.com",
   "fortune.com",
   "ft.com",
+  "geekwire.com",
   "krebsonsecurity.com",
   "macrumors.com",
   "marktechpost.com",
@@ -639,6 +651,7 @@ const OUTLET_DOMAINS: ReadonlySet<string> = new Set([
   "reuters.com",
   "semafor.com",
   "semianalysis.com",
+  "siliconangle.com",
   "techcrunch.com",
   "techmeme.com",
   "the-decoder.com",
@@ -646,6 +659,7 @@ const OUTLET_DOMAINS: ReadonlySet<string> = new Set([
   "theverge.com",
   "time.com",
   "venturebeat.com",
+  "vnexpress.net",
   "washingtonpost.com",
   "wired.com",
   "wsj.com",
@@ -685,7 +699,9 @@ function isByline(
   const match = new RegExp(`^(.+?)${joiner}(.+)$`, "u").exec(name);
   return (
     match !== null &&
-    (author(match[1]) || isSource(match[1])) &&
+    (author(match[1]) ||
+      isSource(match[1]) ||
+      isOwnHandle(match[1], match[2])) &&
     isSourceList(match[2])
   );
 }

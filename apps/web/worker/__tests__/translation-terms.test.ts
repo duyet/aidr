@@ -388,50 +388,101 @@ describe("protected English terms", () => {
   // Who said it is content (#653, #722). Before "/" or từ/trên/thuộc, only a
   // reporter's name makes the sentence a byline. A title, an institution, a
   // country, a date or a number there names a speaker.
-  it("keeps a speaker attribution that names a known outlet", () => {
-    for (const fragment of [
-      "Theo CEO Jensen Huang trên CNBC.",
-      "Theo Bộ Công Thương / Reuters.",
-      "By Monday / Bloomberg.",
-      "By 2027 / Bloomberg.",
-      "By Black Friday / Bloomberg.",
-      "By President Trump / CNBC.",
-      "By Mr. Musk / Reuters.",
-      "By Dr Lisa Su / CNBC.",
-      "By Mid March / Reuters.",
-      "Theo Ông Trump trên CNN.",
-      "Theo Trung Quốc / Reuters.",
-      "Thông tin từ Nhà Trắng trên CNN.",
-      "From CEO Jensen Huang / CNBC.",
-      "Tin từ Bộ Công Thương / Reuters.",
-    ]) {
+  it.each([
+    "Theo CEO Jensen Huang trên CNBC.",
+    "Theo Bộ Công Thương / Reuters.",
+    "By Monday / Bloomberg.",
+    "By 2027 / Bloomberg.",
+    "By Black Friday / Bloomberg.",
+    "By President Trump / CNBC.",
+    "By Mr. Musk / Reuters.",
+    "By Dr Lisa Su / CNBC.",
+    "By Mid March / Reuters.",
+    "Theo Ông Trump trên CNN.",
+    "Theo Trung Quốc / Reuters.",
+    "Thông tin từ Nhà Trắng trên CNN.",
+    "From CEO Jensen Huang / CNBC.",
+    "Tin từ Bộ Công Thương / Reuters.",
+    // A month after a date word is a date, not a surname ("Tiffany May").
+    "By May / Reuters.",
+    "By Early May / Bloomberg.",
+    "By Late June / CNBC.",
+    "By Next March / Reuters.",
+    "By Last March / Reuters.",
+    "By This May / Reuters.",
+    "By End May / Reuters.",
+    // A company is a byline only before its own handle.
+    "By OpenAI / Reuters.",
+    "By OpenAI / @AnthropicAI.",
+    "By Trump / AP.",
+    // These share a shape with real bylines that stay kept (#738): "MG
+    // Siegler", "J.D. Vance", "Robert Smith III", "Jan van der Berg",
+    // "Phương Nguyễn", "Rob Friday", "Chancellor Agard", "Ina Fried and
+    // Sam Sabin".
+    "By JP Morgan / CNBC.",
+    "By GM Cruise / Reuters.",
+    "By J.P. Morgan / Reuters.",
+    "By U.S. Officials / Reuters.",
+    "By World War II / BBC.",
+    "By Banque de France / Reuters.",
+    "Theo Đài Loan / Reuters.",
+    "Theo Bình Dương trên VnExpress.",
+    "Theo Thủ Tướng Phạm Minh Chính / VnExpress.",
+    "By Christmas Day / Reuters.",
+    "By King Charles / BBC.",
+    "By Goldman Sachs and Morgan Stanley / Reuters.",
+    "Theo Ba Lan và Na Uy / Reuters.",
+  ])(
+    "keeps a speaker attribution that names a known outlet: %s",
+    (fragment) => {
       const text = `Nvidia expects the new fab to ship volume parts. ${fragment}`;
       expect(stripSourceBoilerplate(text)).toBe(text);
     }
+  );
+
+  // A sentence that only looks like a byline goes on, or has no outlet.
+  it.each([
+    "By May, the company had shipped a million units.",
+    "By OpenAI's own estimate, usage doubled.",
+    "Theo báo cáo của Reuters, doanh thu tăng 5%.",
+    "Nvidia shipped the chip to partners / Reuters.",
+    "The deal closed on Monday, according to sources / Reuters.",
+  ])("keeps a sentence that is not a byline: %s", (sentence) => {
+    const text = `Nvidia expects the new fab to ship volume parts. ${sentence}`;
+    expect(stripSourceBoilerplate(text)).toBe(text);
   });
 
   // Stored Techmeme bylines (EN and their VI translations) keep stripping.
-  it("drops a reporter byline to a known outlet", () => {
-    for (const fragment of [
-      "Theo Gao Yuan từ Bloomberg.",
-      "Theo Janice Huang / Bloomberg.",
-      "Theo Jeff John Roberts trên Fortune.",
-      "By Ina Fried / Axios.",
-      "By Lee Ying Shan / CNBC.",
-      "By Camila Grigera Naón / Fortune.",
-      "By Satya Nadella / @satyanadella.",
-      // A title ends a name ("Ian King"); a month starts one ("April Glaser").
-      "By Ian King / Bloomberg.",
-      "By April Glaser / NBC News.",
-      "By Matt Day / Bloomberg.",
-      "Bởi Felix Ng / Cointelegraph.",
-      "Bài viết của Claire Ruckin thuộc Bloomberg.",
-      "Bài viết từ Tim Fernholz thuộc TechCrunch.",
-    ]) {
-      expect(stripSourceBoilerplate(`Giá chip tăng 5%. ${fragment}`)).toBe(
-        "Giá chip tăng 5%."
-      );
-    }
+  it.each([
+    "Theo Gao Yuan từ Bloomberg.",
+    "Theo Janice Huang / Bloomberg.",
+    "Theo Jeff John Roberts trên Fortune.",
+    "By Ina Fried / Axios.",
+    "By Lee Ying Shan / CNBC.",
+    "By Camila Grigera Naón / Fortune.",
+    "By Satya Nadella / @satyanadella.",
+    // A title ends a name ("Ian King"); a month starts or ends one.
+    "By Ian King / Bloomberg.",
+    "By April Glaser / NBC News.",
+    "By Matt Day / Bloomberg.",
+    "Bởi Felix Ng / Cointelegraph.",
+    "Bài viết của Claire Ruckin thuộc Bloomberg.",
+    "Bài viết từ Tim Fernholz thuộc TechCrunch.",
+    // #738
+    "By Tiffany May / New York Times.",
+    "By Brian May / Reuters.",
+    "By Robert Smith Jr. / Axios.",
+    "By OpenAI / @OpenAI.",
+    "By Anthropic / @AnthropicAI.",
+    "Theo Lan Anh / VnExpress.",
+    "By Todd Bishop / GeekWire.",
+    "By Duncan Riley / SiliconANGLE.",
+    "By Luca Bertuzzi / Euronews.",
+    "Bởi Todd Bishop / GeekWire.",
+  ])("drops a reporter byline to a known outlet: %s", (fragment) => {
+    expect(stripSourceBoilerplate(`Giá chip tăng 5%. ${fragment}`)).toBe(
+      "Giá chip tăng 5%."
+    );
   });
 
   it("keeps a domain that only shares its label with an outlet", () => {
