@@ -11,7 +11,7 @@
 
 /** Bump when a card's design or selection changes: a deploy does not purge
  *  either tier, so old renders would otherwise live out their TTL. */
-const OG_RENDER_VERSION = "10";
+const OG_RENDER_VERSION = "11";
 
 type WaitUntil = { waitUntil?: (p: Promise<unknown>) => void } | undefined;
 
@@ -27,7 +27,7 @@ function edgeCache(): Cache | null {
   return c?.default ?? null;
 }
 
-/** R2 key: `v10/api/og/date/2026-10-03.png/vi` or `…/vi/k3f0a` when `v` is
+/** R2 key: `v11/api/og/date/2026-10-03.png/vi` or `…/vi/k3f0a` when `v` is
  *  set. Telegram caches an image by its full URL, so the digest sends a `v`
  *  of the tile ids and that value is part of the key. Other query strings
  *  (utm) stay out. */
@@ -50,11 +50,18 @@ function background(ctx: WaitUntil, work: Promise<unknown>): Promise<void> {
   return safe;
 }
 
+/** A render served as is and kept out of both tiers: its content is about
+ *  to change (a day card before the day's first story). */
+export interface OgUnstored {
+  response: Response;
+  store: false;
+}
+
 /** Serve a cached render, else render, store (in the background) and return. */
 export async function cachedOgResponse(
   request: Request,
   ctx: WaitUntil,
-  render: () => Promise<Response>,
+  render: () => Promise<Response | OgUnstored>,
   options: OgCacheOptions = { maxAgeSec: 0 }
 ): Promise<Response> {
   const url = new URL(request.url);
@@ -85,7 +92,9 @@ export async function cachedOgResponse(
     }
   }
 
-  const res = await render();
+  const rendered = await render();
+  if (!(rendered instanceof Response)) return rendered.response;
+  const res = rendered;
   // Only a rendered PNG is stored; an error or JSON body never is.
   if (!res.ok || !res.headers.get("content-type")?.startsWith("image/png")) {
     return res;

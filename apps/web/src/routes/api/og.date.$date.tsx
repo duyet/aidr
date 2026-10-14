@@ -3,20 +3,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   dayArchiveCacheControl,
   isSettledArchiveDate,
+  latestArchiveDate,
   parseArchiveDate,
 } from "../../lib/day-archive";
 import {
-  DAY_CARD_CANDIDATES,
-  isDayCardPhotoUrl,
-  pickDayCardItems,
-} from "../../lib/day-card-pick";
-import {
   DAY_OG_HEIGHT,
-  DAY_OG_MAX_TILES,
   DAY_OG_WIDTH,
+  dayCardModel,
   dayOgCard,
-  dayOgTile,
-  hasDayOgCopy,
 } from "../../lib/day-og";
 import { readSession } from "../../lib/db";
 import { getDayArchive } from "../../lib/feed-queries";
@@ -33,16 +27,16 @@ import {
 /** Day card: `/api/og/date/YYYY-MM-DD.png?lang=en|vi`. */
 /** Settled days follow the page; a recent day's card refreshes hourly (the
  * pipeline's own cadence) instead of the page's 5 minutes, since each render
- * fetches six remote images. */
+ * fetches up to six remote images. */
 function dayOgCacheControl(date: string): string {
   return isSettledArchiveDate(date, Date.now())
     ? dayArchiveCacheControl(date, Date.now())
     : "public, max-age=600, s-maxage=3600, stale-while-revalidate=3600";
 }
 
-/** A Worker keeps at most 6 outbound connections open; a larger burst
- *  queues, and the queued fetches spend their timeout waiting. */
-const FETCH_BATCH = 6;
+/** A recent day with no story yet: its first stories should show within
+ *  minutes, so the card is neither stored nor cached for long. */
+const EMPTY_RECENT_CACHE_CONTROL = "public, max-age=300";
 
 /** Source photos are kept this long in R2 so EN and VI renders, and later
  *  hourly re-renders, reuse them instead of re-fetching from the publisher
@@ -93,35 +87,6 @@ async function fetchTilePhoto(
   return image;
 }
 
-/** Photos in rank order, fetched 6 at a time until the grid is full. */
-async function fetchTilePhotos(
-  urls: Array<string | null>,
-  bucket: R2Bucket | undefined,
-  imagesBinding: ImagesBinding | undefined
-): Promise<Array<StoryOgImage | null>> {
-  const out: Array<StoryOgImage | null> = urls.map(() => null);
-  let found = 0;
-  for (
-    let i = 0;
-    i < urls.length && found < DAY_OG_MAX_TILES;
-    i += FETCH_BATCH
-  ) {
-    const batch = urls.slice(i, i + FETCH_BATCH);
-    const images = await Promise.all(
-      batch.map((url) =>
-        isDayCardPhotoUrl(url)
-          ? fetchTilePhoto(url, bucket, imagesBinding)
-          : null
-      )
-    );
-    images.forEach((image, j) => {
-      out[i + j] = image;
-      if (image) found++;
-    });
-  }
-  return out;
-}
-
 export const Route = createFileRoute("/api/og/date/$date")({
   server: {
     handlers: {
@@ -169,51 +134,41 @@ export const Route = createFileRoute("/api/og/date/$date")({
             const lang = storyOgLanguage(
               new URL(request.url).searchParams.get("lang")
             );
-            const all = (archive.day?.items ?? []).filter((item) =>
-              hasDayOgCopy(item, lang)
-            );
-            // The day page exists from 00:00 in the audience zone and names
-            // this URL as its og:image before any story publishes. Serve the
-            // site image until then; `no-store` keeps the fallback out of
-            // every tier (cachedOgResponse also skips non-PNG responses), so
-            // the real card takes over as soon as a story lands. A 302 is
-            // the temporary redirect every social scraper follows for a GET.
-            if (all.length === 0) {
-              return new Response(null, {
-                status: 302,
-                headers: {
-                  Location: new URL("/og-home.jpg", request.url).toString(),
-                  "Cache-Control": "no-store",
-                },
-              });
-            }
-            // Fetch photos for the top dozen so a dead, hotlink-blocked or WebP
-            // thumbnail does not cost the grid a photo a lower story has.
-            const candidates = all.slice(0, DAY_CARD_CANDIDATES);
-            // The Telegram digest lists the same stories. A photo that fails
-            // to download stays in its slot as a text tile.
-            const items = pickDayCardItems(candidates);
-            const [fonts, fetched] = await Promise.all([
+            const now = Date.now();
+            const [fonts, model] = await Promise.all([
               loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
-              fetchTilePhotos(
-                items.map((item) => item.image_url),
-                env?.OG_CACHE,
-                env?.IMAGES
-              ),
+              // The digest's stories, at most six: one batch within the
+              // Worker's six outbound connections.
+              dayCardModel({
+                date,
+                lang,
+                items: archive.day?.items ?? [],
+                today: date === latestArchiveDate(now),
+                fetchPhoto: (url) =>
+                  fetchTilePhoto(url, env?.OG_CACHE, env?.IMAGES),
+              }),
             ]);
-            const images = items.map((_, i) => fetched[i] ?? null);
-            const tiles = items.map((item, i) =>
-              dayOgTile(item, images[i], lang)
-            );
-            return await ImageResponse.async(dayOgCard(date, tiles, lang), {
+            // The day page names this URL as its og:image from 00:00, before
+            // any story publishes. Until the day settles, its empty card is
+            // served briefly and never stored, so the real card takes over
+            // as soon as a story lands.
+            const unsettledEmpty =
+              model.layout.variant === "empty" &&
+              !isSettledArchiveDate(date, now);
+            const response = await ImageResponse.async(dayOgCard(model), {
               width: DAY_OG_WIDTH,
               height: DAY_OG_HEIGHT,
               ...(fonts.length ? { fonts } : {}),
               headers: {
-                "Cache-Control": dayOgCacheControl(date),
+                "Cache-Control": unsettledEmpty
+                  ? EMPTY_RECENT_CACHE_CONTROL
+                  : dayOgCacheControl(date),
                 "Content-Language": lang,
               },
             });
+            return unsettledEmpty
+              ? { response, store: false as const }
+              : response;
           },
           {
             bucket: env?.OG_CACHE,
