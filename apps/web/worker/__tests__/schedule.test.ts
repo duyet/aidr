@@ -160,6 +160,22 @@ describe("live AnyRouter model chains", () => {
       expect(generators.has(model), model).toBe(false);
   });
 
+  // The per-run timeout breaker and the 429 skip map are keyed by model,
+  // not task, and qa-translations runs before tldr. A reviewer that also
+  // heads TL;DR lets review hangs push the digest onto its fallback (#663).
+  it("keeps the translation reviewer off the TL;DR chain", () => {
+    const tldr = new Set(idsOf("ANYROUTER_TLDR_MODEL"));
+    for (const model of idsOf("ANYROUTER_REVIEW_MODEL"))
+      expect(tldr.has(model), model).toBe(false);
+  });
+
+  // #655: 406 of 413 review calls failed on 2026-10-13, on the quota every
+  // other task shares. Review stays off until a measured probe picks a
+  // reviewer (#656); that change removes this check.
+  it("keeps translation review paused until a reviewer is probed", () => {
+    expect(wrangler).toMatch(/^TRANSLATION_REVIEW_ENABLED = "false"$/m);
+  });
+
   // Order follows 7-day prod success rate (2026-10-11): Laguna 39% beat
   // gemma-4-31b 30%; gemma-4-26b (24%, mostly timeouts) was dropped.
   it("orders the translate chain by measured success rate", () => {

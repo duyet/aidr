@@ -696,6 +696,9 @@ then independently reviews that candidate. The review path lives in
   `ANYROUTER_TRANSLATE_MODEL` id; missing/overlapping config fails closed
   rather than self-reviewing with the generator. English generation is also
   explicit and never silently falls back.
+- A falsy `TRANSLATION_REVIEW_ENABLED` pauses review and repair. The
+  reviewer config is then not checked, and English candidates are still
+  created. Unset means on.
 - The strict `translation-semantic-v4` JSON verdict (`schema_version` 3)
   scores fidelity, naturalness, and confidence separately and carries the
   reviewer's literal `back_translation` of the candidate, written before it
@@ -1524,12 +1527,22 @@ before reading a bench row as a fixed model.
 
 TL;DR and translate use the same chain without Jev. The VI→EN generator
 uses only concrete ids (`poolside/laguna-s-2.1`). The translation reviewer
-(`openai/gpt-5.6-luna`, then `z-ai/glm-4.6`) shares no id with any
-generator chain and gets a 45s budget (`QA_REVIEW_TIMEOUT_MS`), 30s max for
-the first hop. On 2026-10-14 (#655) `stealth/space-bunny-alpha` was removed
-after 0 of 484 reviews in 7 days, and `glm-4.6` (12 of 259 in 24 hours, now
-timing out rather than failing fast) moved behind TL;DR's `gpt-5.6-luna`;
-see the dated note in `wrangler.toml`.
+(`z-ai/glm-4.6`) shares no id with any generator chain and gets a 45s budget
+(`QA_REVIEW_TIMEOUT_MS`), 30s max for the first hop.
+
+Translation review is paused in production (`TRANSLATION_REVIEW_ENABLED =
+"false"`, #655). On 2026-10-13, 406 of 413 review calls failed:
+`stealth/space-bunny-alpha` (0 of 484 in 7 days, now removed) and `glm-4.6`
+(12 of 259 in 24 hours). Review is post-hoc QA. Translations publish at
+translate time, and no site, email or Telegram query filters on the `qa_*`
+columns, so the pause leaves every published translation as it was. While
+paused, `qa-translations` still creates VI→EN candidates, logs one
+`translation_review.paused` line, reports "review paused", and makes no
+review or repair call. `gpt-5.6-luna` stays off the reviewer chain while it
+heads `ANYROUTER_TLDR_MODEL`. The per-run timeout breaker and the 429 skip
+map are keyed by model, not task, so review hangs would move TL;DR onto its
+fallback (#663). Re-enable after a measured probe on review prompts picks a
+reviewer; the probe needs `ANYROUTER_LOCAL_API_KEY` (#656).
 
 `@preset/aidr` heads the score, translate and TL;DR chains. It resolves to
 `poolside/laguna-s-2.1`; the ids behind it stay as a fallback in case the
