@@ -1831,11 +1831,13 @@ skip.
 
 A failed `llm_calls` row keeps `response_snippet`: the first 160 and last
 80 characters of the rejected answer or provider error, after keys, tokens,
-ids, emails, phone numbers, IPs and internal hosts are redacted
-(`sanitizeLlmSnippet`). Ok rows, `review` rows and `sensitive` calls keep
-none. Every call whose prompt holds reader-written text (suggestions,
-submissions) passes `sensitive`; `llm-reader-data-callers.test.ts` lists
-each call site. A caller's `validate` check logs an answer it cannot use
+private keys, cookies, ids, emails, phone numbers, IPs and internal hosts
+are redacted (`sanitizeLlmSnippet`). Model ids, versions, arXiv ids, DOIs,
+commit SHAs and UUIDs stay readable. Ok rows, `review` rows and
+`sensitive` calls keep none. Every call whose prompt holds reader-written
+text (suggestions, submissions) passes `sensitive`;
+`llm-reader-data-callers.test.ts` parses `worker/` and lists each call
+site. A caller's `validate` check logs an answer it cannot use
 as `bad_output` without moving the chain on. The Telegram caption summary
 logs task `caption`: an over-long answer cut to whole sentences is ok, and
 `bad_output` means the answer was dropped and the caption trimmed the

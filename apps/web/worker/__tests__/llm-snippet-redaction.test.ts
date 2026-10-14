@@ -280,6 +280,19 @@ const LEAK_CASES: Record<
   },
   ipKeyed: { input: "client ip: 10.1.2.3 blocked", leaks: ["10.1.2.3"] },
   ipBare: { input: "connect to 10.1.2.3 failed", leaks: ["10.1.2.3"] },
+  // A version context never shields `user@ip` or `host:port`.
+  ipAfterAt: { input: "ssh deploy@10.1.2.3 refused", leaks: ["10.1.2.3"] },
+  ipPortAfterName: { input: "via proxy/10.1.2.3:8443", leaks: ["10.1.2.3"] },
+  // The slug exemption needs short, word-like parts; random ids have
+  // long or case-flipping ones.
+  opaqueLongSegments: {
+    input: `id ${fakeBody(20)}-${fakeBody(20)} expired`,
+    leaks: [fakeBody(20)],
+  },
+  opaqueShortSegments: {
+    input: `id ${Array(6).fill("aB3cD").join("_")} expired`,
+    leaks: ["aB3cD_aB3cD"],
+  },
 };
 
 /** Ordinary provider and model text that must come through as written. */
@@ -305,7 +318,7 @@ const READABLE: string[] = [
   "openai/gpt-4o-2024-08-06 and gemini-2.0-flash-exp-0827",
   "See arXiv:2410.12345 and arxiv.org/abs/2410.12345v2 for details.",
   "Published as doi:10.1038/s41586-024-07421-0 and DOI 10.1145/3292500.3330701.",
-  "Upgraded to version 1.2.3.4, v1.2.3.4, nginx/1.25.3.1 and pkg@2.0.0.1.",
+  "Upgraded to version 1.2.3.4, v1.2.3.4, nginx/1.25.3.1 and release 2.0.0.1.",
   "gpt-5-1-codex-max-2025-11-19-preview-release-notes-2",
   "llama-3.1-405b-instruct-turbo-fp8-2024-07-23-v2-final",
   "fixed in commit 9fceb02d0ae598e95dc970b74767f19372d61af8 yesterday",

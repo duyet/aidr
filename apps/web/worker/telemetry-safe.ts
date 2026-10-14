@@ -60,10 +60,22 @@ function redactText(value: string): string {
   return (
     value
       .replace(/https?:\/\/[^\s<>"']+/gi, "[url redacted]")
+      .replace(
+        /-{5}BEGIN [A-Z ]*PRIVATE\sKEY-{5}[\s\S]*?(?:-{5}END [A-Z ]*PRIVATE\sKEY-{5}|$)/g,
+        "[redacted]"
+      )
+      // Query credentials in a host/path with no scheme.
+      .replace(
+        /([?&][\w-]*(?:key|token|secret|sig|signature|password)=)[^&\s"'#]+/gi,
+        "$1[redacted]"
+      )
       .replace(/\bBearer\s+[^\s,;"'}]+/gi, "Bearer [redacted]")
       .replace(/\b(?:sk|pk|anyrouter)[-_][A-Za-z0-9._-]{8,}\b/gi, "[redacted]")
+      .replace(/\bar-v\d+-[A-Za-z0-9._-]{10,}/gi, "[redacted]")
+      // `session_token`, `idToken`, `secretKey`, `private_key`. A scheme
+      // word (`Basic`, `Bearer`) goes with its credential.
       .replace(
-        /\b(authorization|x-api-key|api[-_ ]?key|apikey|access[-_ ]?token|refresh[-_ ]?token|client[-_ ]?secret|token|secret|password)\b(["']?)\s*(?:[:=]|%3D)\s*(?:"[^"]*"|'[^']*'|[^,;}\s]+)/gi,
+        /\b(authorization|x-api-key|api[-_ ]?key|apikey|(?:secret|private|access)[-_]?key|client[-_ ]?secret|(?:[a-z]+[-_]?)?(?:token|secret|password|passwd))\b(["']?)\s*(?:[:=]|%3D)\s*(?:(?:basic|bearer|digest|token)\s+)?(?:"[^"]*"|'[^']*'|[^,;}\s&]+)/gi,
         "$1$2: [redacted]"
       )
       // These values can echo the prompt, so everything after the key goes.
@@ -301,10 +313,14 @@ const MIXED_CASE = /[a-z][A-Z].*[a-z][A-Z]/;
 const THOUSANDS = /^[1-9]\d{0,2}(?:[ .]\d{3})*$/;
 const YEAR = /^(?:19|20)\d\d$/;
 
+/** arXiv ids (2410.12345) are YYMM.NNNNN, a shape no phone plan uses. */
+const ARXIV_ID = /^\d{4}\.\d{4,5}$/;
+
 function redactPhone(match: string): string {
   const groups = match.match(/\d+/g) ?? [];
   if (groups.join("").length < 7) return match;
   if (/[+(]/.test(match)) return "[phone redacted]";
+  if (ARXIV_ID.test(match)) return match;
   // Amounts, amount or year ranges, and dates split on "-".
   const parts = match.split("-");
   if (parts.every((part) => THOUSANDS.test(part) || YEAR.test(part))) {
@@ -315,6 +331,36 @@ function redactPhone(match: string): string {
   return groups.length === 2 || long >= 2 ? "[phone redacted]" : match;
 }
 
+/** A dotted quad is an address unless it reads as a version: after
+ *  `version`/`v`/`release`/`build`, or a `name/` product token
+ *  (`nginx/1.25.3.1`). `host:port` always redacts. */
+const VERSION_BEFORE =
+  /(?:\b(?:version|ver|release|build|v)\s*[:=]?\s*|[A-Za-z][\w.-]*\/)$/i;
+
+function redactIpv4(match: string, offset: number, whole: string): string {
+  if (/^:\d/.test(whole.slice(offset + match.length))) return "[ip redacted]";
+  const before = whole.slice(Math.max(0, offset - 40), offset);
+  return VERSION_BEFORE.test(before) ? match : "[ip redacted]";
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** A git SHA-1. Other hex lengths (sha256, request hashes) still redact. */
+const COMMIT_SHA = /^[0-9a-f]{40}$/;
+
+/** A short, word-like part of a slug or model id: `DeepSeek`, `32B`. */
+function wordish(segment: string): boolean {
+  return segment.length <= 12 && !MIXED_CASE.test(segment);
+}
+
+function redactOpaque(match: string): string {
+  if (UUID.test(match) || COMMIT_SHA.test(match)) return match;
+  const segments = match.split(/[-_]+/);
+  if (segments.length >= 3 && segments.every(wordish)) return match;
+  return /\d/.test(match) || MIXED_CASE.test(match) ? "[redacted]" : match;
+}
+
+type SnippetReplacer = (match: string, offset: number, whole: string) => string;
+
 /**
  * Snippet-only rules, on top of `redactText`. They stay out of
  * `sanitizeText`, whose step reasons carry dates, times and slugs that the
@@ -322,7 +368,7 @@ function redactPhone(match: string): string {
  * so `==` padding goes with its token.
  */
 const SNIPPET_RULES: ReadonlyArray<
-  readonly [RegExp, string | ((match: string) => string)]
+  readonly [RegExp, string | SnippetReplacer]
 > = [
   [
     /[A-Za-z0-9._%+-]+(?:@|%40)[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
@@ -333,7 +379,7 @@ const SNIPPET_RULES: ReadonlyArray<
     "[redacted]",
   ],
   [/\bAKIA[0-9A-Z]{16}\b/g, "[redacted]"],
-  [/\b(Set-Cookie|Cookie)\s*:\s*.+/gi, "$1: [redacted]"],
+  [/\b(Set-Cookie|Cookie)\b(["']?)\s*[:=]\s*.+/gi, "$1$2: [redacted]"],
   [
     /\b(account[-_]?id|user[-_]?id|org(?:anization)?[-_]?id|request[-_]?id)\b(["']?)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^,;}\s]+)/gi,
     "$1$2: [redacted]",
@@ -341,7 +387,7 @@ const SNIPPET_RULES: ReadonlyArray<
   [/\breq_[A-Za-z0-9]{8,}\b/g, "[redacted]"],
   [
     /(?<![\w.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?!\w|\.\d)/g,
-    "[ip redacted]",
+    redactIpv4,
   ],
   [
     /(?<![\w:])(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,7}:(?:[0-9a-f]{1,4}(?::[0-9a-f]{1,4}){0,6})?)(?![\w:])/gi,
@@ -349,7 +395,7 @@ const SNIPPET_RULES: ReadonlyArray<
   ],
   [/\b[\w-]+(?:\.[\w-]+)*\.(?:local|internal)\b/gi, "[host redacted]"],
   [
-    /(?<![\w+.,])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{1,4}\)[\s.-]?)?\d{1,8}(?:[\s.-]\d{2,8}){1,4}(?!\w)/g,
+    /(?<![\w+.,/-])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{1,4}\)[\s.-]?)?\d{1,8}(?:[\s.-]\d{2,8}){1,4}(?!\w)/g,
     redactPhone,
   ],
   [
@@ -357,11 +403,7 @@ const SNIPPET_RULES: ReadonlyArray<
     (match) =>
       MIXED_CASE.test(match) || /[+=]/.test(match) ? "[redacted]" : match,
   ],
-  [
-    /(?<![\w-])[A-Za-z0-9_-]{32,}(?![\w-])/g,
-    (match) =>
-      /\d/.test(match) || MIXED_CASE.test(match) ? "[redacted]" : match,
-  ],
+  [/(?<![\w-])[A-Za-z0-9_-]{32,}(?![\w-])/g, redactOpaque],
 ];
 
 /**
