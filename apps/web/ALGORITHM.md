@@ -911,8 +911,9 @@ Every run (30 minutes).
   retry every run). The model digest stays, only `created_at` moves, so the
   retry waits 3 hours as it would after storing headlines, and the step
   reason reads `kept model digest: LLM thin (<error>)`. Rows
-  from before 0061 and rows the homepage inserts have `fallback` NULL and
-  are replaced; a homepage rebuild of an existing row keeps its flag.
+  from before 0061 have `fallback` NULL and are replaced. A homepage rebuild
+  that replaces `bullets_en` with titles writes 1; one that rebuilds only VI
+  keeps the row's flag, since its EN is still the model digest.
   From 2026-10-07 to 10-14, 4 of 6 title-fallback writes replaced a model
   digest; on 10-09 the email, both Telegram channels and Facebook sent the
   headlines.

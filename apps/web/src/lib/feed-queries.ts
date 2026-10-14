@@ -26,6 +26,7 @@ import type { DbReader } from "./db";
 import { NEWEST_PUBLISHED_FETCHED_AT_SQL } from "./feed-freshness";
 import { parseStoredBullets } from "./tldr-bullets";
 import {
+  isThinDisplayTldr,
   resolveTldrForDisplay,
   shouldRebuildTldrForDisplay,
 } from "./tldr-fallback";
@@ -571,18 +572,20 @@ export async function getFeed(
     try {
       await db
         .prepare(
-          `INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at)
-         VALUES (?, ?, ?, ?)
+          `INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback)
+         VALUES (?, ?, ?, ?, ?)
          ON CONFLICT(date) DO UPDATE SET
            bullets_en = excluded.bullets_en,
            bullets_vi = excluded.bullets_vi,
-           created_at = excluded.created_at`
+           created_at = excluded.created_at,
+           fallback = COALESCE(excluded.fallback, tldr_snapshots.fallback)`
         )
         .bind(
           localCalendarDate(Date.now(), AUDIENCE_TIMEZONE),
           JSON.stringify(resolved.bullets_en),
           JSON.stringify(resolved.bullets_vi),
-          Date.now() - 3 * 60 * 60 * 1000
+          Date.now() - 3 * 60 * 60 * 1000,
+          isThinDisplayTldr(tldr) ? 1 : null
         )
         .run();
     } catch {
