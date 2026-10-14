@@ -468,6 +468,45 @@ describe("protected English terms", () => {
     expect(stripSourceBoilerplate(text)).toBe(text);
   });
 
+  // The bare from-lead takes a lone name with no outlet, so a place name
+  // closing the text is "from Thailand", not a credit (#762).
+  it.each([
+    "Từ Thái Lan.",
+    "Từ Na Uy.",
+    "Từ Ba Lan.",
+    "Từ Việt Nam.",
+    "Từ Hàn Quốc.",
+    "Nguồn: Trung Quốc.",
+    "Nguồn tin từ Nhật Bản.",
+    "(Nguồn: Đài Loan)",
+    "From Thailand.",
+    "From Norway.",
+    "From South Korea.",
+    "Source: China.",
+    "Via United States.",
+  ])("keeps a bare from-closing that names a place: %s", (fragment) => {
+    const text = `Giá chip tăng 5%. ${fragment}`;
+    expect(stripSourceBoilerplate(text)).toBe(text);
+  });
+
+  // Credits measured in production on 2026-10-15 that are not on the outlet
+  // list: they must keep stripping.
+  it.each([
+    "Nguồn: Anthropic.",
+    "(Nguồn: MarkTechPost)",
+    "From The San Francisco Standard.",
+    "From Cheeky Pint.",
+    "From Apple.",
+    "From AHM.",
+    "Từ Anthropic.",
+    "Tin từ @openainewsroom.",
+    "From Bloomberg.",
+  ])("drops a bare from-credit: %s", (fragment) => {
+    expect(stripSourceBoilerplate(`Giá chip tăng 5%. ${fragment}`)).toBe(
+      "Giá chip tăng 5%."
+    );
+  });
+
   // A sentence that only looks like a byline goes on, or has no outlet.
   it.each([
     "By May, the company had shipped a million units.",
