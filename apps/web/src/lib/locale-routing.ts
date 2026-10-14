@@ -6,6 +6,7 @@ import {
   type LocaleResolution,
   setClientLang,
 } from "./lang";
+import { isSubscriberTokenRequest } from "./subscriber-token-request";
 import type { Lang } from "./types";
 
 export interface RootSearch {
@@ -139,12 +140,7 @@ export function isPrivateSsrPath(pathname: string, search = ""): boolean {
   ) {
     return true;
   }
-  if (path === "/subscribe") {
-    const params = new URLSearchParams(
-      search.startsWith("?") ? search.slice(1) : search
-    );
-    return params.has("unsubscribe") || params.has("settings");
-  }
+  if (path === "/subscribe") return isSubscriberTokenRequest(path, search);
   return false;
 }
 
