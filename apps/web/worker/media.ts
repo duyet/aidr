@@ -486,6 +486,8 @@ function isImageHostUpload(url: string): boolean {
   }
 }
 
+const CARD_TIER = 2;
+
 /**
  * Rank an image as a picture of the story: 0 for real media, 1 for an
  * image-host upload, 2 for a generated share card. An imgur capture still
@@ -493,7 +495,7 @@ function isImageHostUpload(url: string): boolean {
  */
 function imageTier(url: string): number {
   if (isImageHostUpload(url)) return 1;
-  return isGeneratedOgCard(url) ? 2 : 0;
+  return isGeneratedOgCard(url) ? CARD_TIER : 0;
 }
 
 /** The tier of the picture an asset gives, or null for a video without a
@@ -526,8 +528,19 @@ export function withoutFallbackImages<
   if (pictured.length === 0) return [...assets];
   const best = Math.min(...pictured);
   const rank = (asset: T) => pictureTier(asset) ?? 0;
+  // Two aggregator cards for one story are near-identical, so a card-only
+  // story keeps the first one. Better images may be many.
+  let cardKept = false;
   return assets
-    .filter((asset) => asset.type !== "image" || imageTier(asset.url) <= best)
+    .filter((asset) => {
+      if (asset.type !== "image" || imageTier(asset.url) > best) {
+        return asset.type !== "image";
+      }
+      if (best !== CARD_TIER) return true;
+      if (cardKept) return false;
+      cardKept = true;
+      return true;
+    })
     .sort((a, b) => rank(a) - rank(b));
 }
 
@@ -573,26 +586,54 @@ export interface BuildMediaOptions {
   articleUrls?: readonly unknown[];
 }
 
+const IMAGE_EXTENSION = /\.(?:jpe?g|png|webp|gif|avif|svg)$/i;
+
+function hasImageExtension(url: string): boolean {
+  return IMAGE_EXTENSION.test(new URL(url).pathname);
+}
+
+/**
+ * The image identity key ignores the extension, so a page `/story` would
+ * match its own avatar `/story.png`. A page URL without an image extension
+ * therefore claims only image assets without one (resize and http variants);
+ * an article URL that is itself an image keeps the extension-blind match.
+ */
 function articleIdentities(urls: readonly unknown[] = []): Set<string> {
   const identities = new Set<string>();
   for (const raw of urls) {
     const url = canonicalizeMediaUrl(raw);
     if (!url) continue;
-    identities.add(`image:${mediaIdentityKey("image", url)}`);
+    const imageKey = mediaIdentityKey("image", url);
+    identities.add(
+      `${hasImageExtension(url) ? "image" : "page-image"}:${imageKey}`
+    );
     identities.add(`video:${mediaIdentityKey("video", url)}`);
   }
   return identities;
+}
+
+function isArticleImage(url: string, articles: Set<string>): boolean {
+  const key = mediaIdentityKey("image", url);
+  return (
+    articles.has(`image:${key}`) ||
+    (!hasImageExtension(url) && articles.has(`page-image:${key}`))
+  );
 }
 
 function withoutArticle(
   asset: MediaAsset,
   articles: Set<string>
 ): MediaAsset | null {
-  if (articles.has(assetIdentity(asset))) return null;
+  if (asset.type === "image" && isArticleImage(asset.url, articles)) {
+    return null;
+  }
+  if (asset.type === "video" && articles.has(assetIdentity(asset))) {
+    return null;
+  }
   if (
     asset.type === "video" &&
     asset.poster_url &&
-    articles.has(`image:${mediaIdentityKey("image", asset.poster_url)}`)
+    isArticleImage(asset.poster_url, articles)
   ) {
     return { type: "video", url: asset.url };
   }
