@@ -242,6 +242,92 @@ describe("title similarity dedupe", () => {
     ).toBe(false);
   });
 
+  // #749: the title pass merged these into published canonicals from
+  // 2026-09-30 to 10-14 (canonical first). The English pairs share only
+  // common words; the Vietnamese ones shared diacritic-split fragments.
+  it.each([
+    [
+      "Jeva: System One Models from First Principles",
+      "VideoJev: System One Model for Video Understanding and Interaction",
+    ],
+    [
+      "Anthropic's Claude can now orchestrate up to 1,000 AI agents in parallel through dynamic workflows",
+      "AI agents in a stand-up call",
+    ],
+    [
+      "Show HN: Agent.reviews – Where AI agents read and write reviews on tools",
+      "Show HN: I Put an AI Agent on a Nokia 110",
+    ],
+    [
+      "15 công trình thắng giải Sáng kiến khoa học 2026",
+      "Hôm nay công bố giải Nobel Hóa học 2026",
+    ],
+    [
+      "15 công trình thắng giải Sáng kiến khoa học 2026",
+      "Hôm nay công bố giải Nobel Vật lý 2026",
+    ],
+    [
+      "Phó thủ tướng Hồ Quốc Dũng: Chuyển từ 'có hoạt động' sang 'có kết quả' đổi mới sáng tạo",
+      "Bí ẩn sông thủy ngân trong mộ Tần Thủy Hoàng",
+    ],
+    [
+      "Nữ tướng công nghệ đầu tiên dẫn dắt công ty đạt 1.000 tỷ USD",
+      "Hà Nội tiếp tục dẫn đầu cả nước về đổi mới sáng tạo",
+    ],
+    [
+      "Khai mạc Ngày hội Đổi mới sáng tạo Quốc gia 2026",
+      "Nền tảng quang học siêu phổ thắng giải nhất Sáng kiến Khoa học 2026",
+    ],
+    [
+      "Show HN: Vote on which of Hacker News' challenges for AI have been met",
+      "Show HN: Germany's new sovereign AI model Kolibri",
+    ],
+    [
+      "Chuyên gia bán dẫn: 'Việt Nam cần làm thật, không đầu tư dàn trải'",
+      "Việt Nam sẽ lập ba khu thử nghiệm UAV cấp quốc gia",
+    ],
+    [
+      "Loạt kết quả từ hợp tác công nghệ Việt Nam - Australia",
+      "Lý do Việt Nam có Ngày hội Đổi mới sáng tạo quốc gia",
+    ],
+  ])("does not merge %s <= %s", (canonical, merged) => {
+    expect(isTitleNearDuplicate(canonical, merged)).toBe(false);
+  });
+
+  it.each([
+    // Only common words, but one headline is wholly inside the other.
+    ["'AI' is Not a Tool", "'AI' Is Not a Tool by Rich Hickey"],
+    ["How much of HN is AI?", "Show HN: How much of Hacker News is AI?"],
+    [
+      "Nhà khoa học gốc Việt tìm cách đưa đồng hồ nguyên tử ra không gian",
+      "Nhà khoa học gốc Việt tìm cách đưa đồng hồ nguyên tử vào không gian",
+    ],
+    [
+      "SpaceX lập kỷ lục tàu vũ trụ Mỹ bay nhanh nhất đến trạm ISS",
+      "Tàu SpaceX lập kỷ lục bay nhanh nhất đến trạm ISS",
+    ],
+    [
+      "Tác nhân AI Trung Quốc cũng gian lận trong thử nghiệm",
+      "Tác nhân AI Trung Quốc gian lận trong thử nghiệm",
+    ],
+    [
+      "Chuyên gia bày cách để Việt Nam nâng cao năng lực công nghệ",
+      "Chuyên gia chia sẻ cách để Việt Nam nâng cao năng lực công nghệ",
+    ],
+    [
+      "Cách Meta biến Muse thành 'hiện tượng AI'",
+      "Meta biến Muse thành 'hiện tượng AI' thế nào",
+    ],
+  ])("merges %s <= %s", (canonical, merged) => {
+    expect(isTitleNearDuplicate(canonical, merged)).toBe(true);
+  });
+
+  it("folds Vietnamese diacritics per whole word", () => {
+    expect(normalizeTitleForDedupe("Đổi mới sáng tạo: 700 triệu USD")).toBe(
+      "doi moi sang tao 700 trieu usd"
+    );
+  });
+
   it("merges a short HN headline that sits inside a longer original", () => {
     expect(
       isTitleNearDuplicate(
