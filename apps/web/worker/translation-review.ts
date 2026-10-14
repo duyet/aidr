@@ -136,10 +136,6 @@ function hasUnsafeControlCharacters(value: string): boolean {
   });
 }
 
-interface StrictJsonOptions {
-  allowStrayCloser?: boolean;
-}
-
 /**
  * Small strict JSON parser. JSON.parse silently accepts duplicate object keys
  * by keeping the last value, and the shared salvage parser intentionally accepts
@@ -150,20 +146,12 @@ interface StrictJsonOptions {
 class StrictJsonParser {
   private index = 0;
 
-  constructor(
-    private readonly text: string,
-    private readonly options: StrictJsonOptions = {}
-  ) {}
+  constructor(private readonly text: string) {}
 
   parse(): unknown {
     this.skipWhitespace();
     const value = this.parseValue(0);
     this.skipWhitespace();
-    const next = this.text[this.index];
-    if (this.options.allowStrayCloser && (next === "]" || next === "}")) {
-      this.index++;
-      this.skipWhitespace();
-    }
     if (this.index !== this.text.length) this.fail("trailing content");
     return value;
   }
@@ -319,12 +307,11 @@ class StrictJsonParser {
 
 export function parseExactJson(
   raw: string,
-  maxChars = QA_MAX_JSON_CHARS,
-  options: StrictJsonOptions = {}
+  maxChars = QA_MAX_JSON_CHARS
 ): unknown | null {
   if (typeof raw !== "string" || raw.length > maxChars) return null;
   try {
-    return new StrictJsonParser(raw, options).parse();
+    return new StrictJsonParser(raw).parse();
   } catch {
     return null;
   }
@@ -332,10 +319,9 @@ export function parseExactJson(
 
 function parseRecord(
   raw: string,
-  maxChars = QA_MAX_JSON_CHARS,
-  options: StrictJsonOptions = {}
+  maxChars = QA_MAX_JSON_CHARS
 ): Record<string, unknown> | null {
-  const parsed = parseExactJson(raw, maxChars, options);
+  const parsed = parseExactJson(raw, maxChars);
   return isRecord(parsed) ? parsed : null;
 }
 
@@ -417,7 +403,8 @@ export function parseRepairCandidate(
   maxChars = QA_MAX_JSON_CHARS
 ): TranslationText | null {
   return parseTextRecord(
-    parseRecord(raw, maxChars, { allowStrayCloser: true })
+    parseRecord(raw, maxChars) ??
+      parseRecord(raw.replace(/[\]}]\s*$/, ""), maxChars)
   );
 }
 
