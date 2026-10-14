@@ -447,15 +447,27 @@ function stripLeadingChrome(text: string): string {
   return out;
 }
 
-/** Footers a feed appends after the excerpt, matched only at the very end.
+/** Footers a feed appends after the excerpt. A footer begins a word (so not
+ * inside a quote or bracket) and runs to the end of the text: the outlet name
+ * with no quote marks or sentence break, then an optional period. Quoted
+ * mentions and mentions followed by more prose are kept. Feeds truncate the
+ * excerpt mid-sentence, so the footer need not follow sentence punctuation.
  * The title between the opening words and "appeared first on" may not
  * contain the opening words again, so article text that starts "The
  * article …" earlier is kept. */
+const FOOTER_START = String.raw`(?<!\S)`;
+const FOOTER_OUTLET = String.raw`(?:(?!\.\s)[^\n"“”]){1,60}?\s*\.?$`;
 const FEED_FOOTERS: readonly RegExp[] = [
   // WordPress default: MarkTechPost, The GitHub Blog, Microsoft Research.
-  /\s*\bThe post (?:(?!\bThe post ).)+? appeared first on [^\n]{1,60}?$/s,
+  new RegExp(
+    String.raw`\s*${FOOTER_START}The post (?:(?!\bThe post ).)+? appeared first on ${FOOTER_OUTLET}`,
+    "s"
+  ),
   // The Decoder.
-  /\s*\bThe article (?:(?!\bThe article ).)+? appeared first on [^\n]{1,60}?$/s,
+  new RegExp(
+    String.raw`\s*${FOOTER_START}The article (?:(?!\bThe article ).)+? appeared first on ${FOOTER_OUTLET}`,
+    "s"
+  ),
 ];
 
 function stripFeedFooter(text: string): string {

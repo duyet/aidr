@@ -180,6 +180,37 @@ describe("protected English terms", () => {
     }
   });
 
+  // #662: the tail after "appeared first on" must be the outlet, not prose.
+  it("keeps a footer phrase that is quoted or mentioned mid-text", () => {
+    for (const text of [
+      'Critics said "The post Foo appeared first on The Decoder" was misleading, and the outlet agreed.',
+      'Critics called it a lie: "The post Foo appeared first on The Decoder."',
+      "The article Foo appeared first on The Decoder . More text follows here.",
+      "He noted the post Foo appeared first on The Decoder and moved on.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+  });
+
+  it("strips a footer after an excerpt truncated mid-sentence", () => {
+    expect(
+      stripSourceBoilerplate(
+        "It covers async production workflows The post A Coding Guide to Jev appeared first on MarkTechPost ."
+      )
+    ).toBe("It covers async production workflows");
+  });
+
+  it("strips a footer that is the whole text or follows a closing quote", () => {
+    expect(
+      stripSourceBoilerplate("The post Foo appeared first on The Decoder.")
+    ).toBe("");
+    expect(
+      stripSourceBoilerplate(
+        'He said "no." The post Foo appeared first on The Decoder .'
+      )
+    ).toBe('He said "no."');
+  });
+
   it("keeps article text that merely looks like chrome", () => {
     for (const text of [
       "3 stories dominated the week: OpenAI shipped.",
