@@ -13,7 +13,7 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installAnalyticsStubs, type PosthogStub } from "./stubs";
 import { track } from "./track";
-import { scrubPosthogEvent } from "./url-privacy";
+import { maskRecordedRequest, scrubPosthogEvent } from "./url-privacy";
 
 type QueueWindow = Window & {
   dataLayer?: IArguments[];
@@ -103,6 +103,9 @@ describe("track() before the vendor scripts load", () => {
           defaults: "2026-05-30",
           capture_exceptions: true,
           before_send: scrubPosthogEvent,
+          session_recording: {
+            maskCapturedNetworkRequestFn: maskRecordedRequest,
+          },
         },
         "posthog",
       ],

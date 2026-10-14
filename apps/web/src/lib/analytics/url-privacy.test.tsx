@@ -242,6 +242,80 @@ describe("the PostHog scrub rewrites only URLs of this site", () => {
   });
 });
 
+describe("the PostHog network recording never carries tokens", () => {
+  function config() {
+    installAnalyticsStubs({
+      gaMeasurementId: "",
+      posthog: { token: "phc_test", host: "https://us.i.posthog.com" },
+    });
+    return w.posthog?._i[0]?.[1] as {
+      before_send: (event: object) => object;
+      session_recording?: {
+        maskCapturedNetworkRequestFn?: (r: { name: string }) => {
+          name: string;
+        };
+      };
+    };
+  }
+
+  it("masks each captured request URL", () => {
+    const mask = config().session_recording?.maskCapturedNetworkRequestFn;
+    expect(mask).toBeTypeOf("function");
+    const origin = location.origin;
+    expect(
+      mask?.({ name: `${origin}/api/subscribe?token=SECRET&lang=en` }).name
+    ).toBe(`${origin}/api/subscribe?lang=en`);
+    expect(mask?.({ name: "https://other.example/?q=keep" }).name).toBe(
+      "https://other.example/?q=keep"
+    );
+  });
+
+  it("cleans URLs inside rrweb/network@1 plugin events", () => {
+    const origin = location.origin;
+    const networkEvent = {
+      type: 6,
+      timestamp: 1,
+      data: {
+        plugin: "rrweb/network@1",
+        payload: {
+          requests: [
+            {
+              entryType: "navigation",
+              name: `${origin}/subscribe?settings=SECRET&lang=en`,
+              initiatorType: "navigation",
+              duration: 120,
+            },
+            {
+              entryType: "resource",
+              name: `${origin}/api/subscribe?token=SECRET`,
+              initiatorType: "fetch",
+              method: "GET",
+              status: 200,
+            },
+            {
+              entryType: "resource",
+              name: "https://other.example/x?q=keep",
+              initiatorType: "img",
+            },
+          ],
+          isInitial: true,
+        },
+      },
+    };
+    const sent = config().before_send({
+      event: "$snapshot",
+      properties: { $snapshot_data: [networkEvent] },
+    }) as { properties: { $snapshot_data: any[] } };
+    expect(JSON.stringify(sent)).not.toContain("SECRET");
+    const { requests } = sent.properties.$snapshot_data[0].data.payload;
+    expect(requests[0].name).toBe(`${origin}/subscribe?lang=en`);
+    expect(requests[1].name).toBe(`${origin}/api/subscribe`);
+    expect(requests[2].name).toBe("https://other.example/x?q=keep");
+    expect(requests[0].duration).toBe(120);
+    expect(requests[1].status).toBe(200);
+  });
+});
+
 describe("Jitsu never sees subscribe tokens or search text", () => {
   beforeEach(() => {
     vi.useFakeTimers();

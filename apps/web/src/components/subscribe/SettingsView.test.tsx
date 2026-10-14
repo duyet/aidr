@@ -50,6 +50,12 @@ describe("SettingsView unsubscribe", () => {
     }
   });
 
+  it("shows a pointer cursor, as the link it replaced did", async () => {
+    render(<SettingsView token="TOK" lang="en" />);
+    const button = await screen.findByRole("button", { name: "Unsubscribe" });
+    expect(button.className).toContain("cursor-pointer");
+  });
+
   it("unsubscribes by navigating with the token in history state", async () => {
     render(<SettingsView token="SECRET" lang="en" />);
     fireEvent.click(await screen.findByRole("button", { name: "Unsubscribe" }));

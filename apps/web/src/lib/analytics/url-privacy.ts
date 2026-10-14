@@ -137,11 +137,16 @@ function scrubSiteUrl(value: string, origin: string): string {
 
 /**
  * Walks an rrweb event body: full-snapshot nodes (`node`, `childNodes`) and
- * mutations (`adds[].node`, `attributes[].attributes`). Every `attributes`
- * record has its link-valued entries cleaned. Text content and every other
- * value is left as recorded.
+ * mutations (`adds[].node`, `attributes[].attributes`), and plugin events
+ * such as `rrweb/network@1`, whose requests carry full URLs. Every
+ * `attributes` record has its link-valued entries cleaned, and any absolute
+ * URL of this site anywhere else is cleaned too. Relative text and URLs of
+ * other sites are left as recorded.
  */
 function scrubRecordedNode(value: unknown, origin: string): unknown {
+  if (typeof value === "string") {
+    return isOwnAbsoluteUrl(value, origin) ? dropUnsafeParams(value) : value;
+  }
   if (Array.isArray(value)) {
     return value.map((item) => scrubRecordedNode(item, origin));
   }
@@ -160,6 +165,21 @@ function scrubRecordedNode(value: unknown, origin: string): unknown {
     }
   }
   return out;
+}
+
+/**
+ * PostHog `session_recording.maskCapturedNetworkRequestFn`. The network
+ * plugin records each request's full URL as `name`, including the page's own
+ * navigation entry, which keeps the URL it was loaded with.
+ */
+export function maskRecordedRequest<R extends { name?: string }>(
+  request: R
+): R {
+  if (typeof request.name !== "string") return request;
+  return {
+    ...request,
+    name: scrubSiteUrl(request.name, window.location.origin),
+  };
 }
 
 /**
