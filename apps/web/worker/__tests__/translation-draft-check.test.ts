@@ -613,6 +613,27 @@ describe("translationDraftIssues version numbers", () => {
     }
   });
 
+  // Prod 5a022d30: the headline is shorter, and the summary keeps GPT-5.6.
+  it("passes a shortened title when the summary keeps the version", () => {
+    const issues = translationDraftIssues(
+      {
+        title:
+          "SpaceXAI Launches Grok 4.7 With 19.6% Legal Benchmark Score to Beat GPT 5.6",
+        summary:
+          "The new AI model is available via Grok Build, Cursor, and API for developers specializing in coding and knowledge work. SpaceXAI's latest release scored 19.6% on the Harvey Legal Agent Benchmark, outperforming GPT-5.6 Sol Max at 2.5% and Fable 5.1 Max at 6.7%. The model also reached 38.0% on Terminal-Bench 4.0 compared to 20.3% for Grok 4.6, while headline pricing remains at $2 per 1 million input tokens and $6 per 1 million output tokens.",
+      },
+      {
+        title:
+          "SpaceXAI ra mắt Grok 4.7, đạt 19,6% trên benchmark pháp lý Harvey",
+        summary:
+          "Mô hình AI mới đã có trên Grok Build, Cursor và API, hướng tới lập trình viên và chuyên gia tri thức. Trên Harvey Legal Agent Benchmark, Grok 4.7 đạt 19,6%, vượt trội so với GPT-5.6 Sol Max (2,5%) và Fable 5.1 Max (6,7%). Trên Terminal-Bench 4.0, mô hình đạt 38,0% so với 20,3% của Grok 4.6. Giá cả vẫn giữ ở mức 2 USD cho 1 triệu token đầu vào và 6 USD cho 1 triệu token đầu ra.",
+      },
+      [],
+      false
+    );
+    expect(issues).toEqual([]);
+  });
+
   // Prod 41eeccef: the title says 0.6.0, the summary 0.6.
   it("passes a version the summary writes the way the title does", () => {
     const issues = translationDraftIssues(

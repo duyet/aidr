@@ -1008,7 +1008,18 @@ alone is not judged, since paper titles and product names stay English on
 purpose. In 60 days to 2026-10-15 this flags 4 of 4,480 rows (8eb3e0ba,
 669d8cd0, 1af7ebf2, f924232d); every kept-English summary it spares is a
 name of ≤ 4 words. A repair that echoes again is rejected, so the English
-draft is stored (#777). Flagged items in a batch get
+draft is stored (#777). It also flags a changed version: a name and number
+from the source ("Gemini 3.8", "GPT-6", "VR72") written with a number the
+source never uses ("Gemini 1.5", "GPT-4o"), in the title or summary, and a
+dotted version in the source title ("GLM-5.3") that neither Vietnamese
+field keeps. Money, percentages, multipliers and magnitudes ("$1.4T",
+"19.6%", "1.9x", "70B") are not versions, and a decimal comma counts as the
+same number. Over all 4,503 VI rows to 2026-10-15 this flags 5, all wrong
+versions: c4c7ba8f, 45a86641, b0e46c0d, 7fa80fb0 in the title and
+9f46901a ("GPT-5.6" cut to "GPT-5") in the summary (#781). A shortened
+title whose summary keeps the version, an integer version dropped from a
+title ("Gemini 4"), and a version dropped from a summary are not judged.
+Flagged items in a batch get
 one repair call with their issues as a `fix` list; a repaired row replaces
 the draft only when it has fewer issues, and the repair is skipped under
 25s of budget. Missing proper names are left to the review guard: they are
