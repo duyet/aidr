@@ -17,6 +17,7 @@ vi.mock("../llm.js", async (original) => ({
 
 const { generateTldr } = await import("../llm.js");
 const { ensureDailyTldr, TLDR_REFRESH_MS } = await import("../tldr.js");
+const { getFeed } = await import("../../src/lib/feed-queries.js");
 
 import type { Env } from "../types.js";
 
@@ -46,6 +47,10 @@ class SqliteD1 {
       },
     };
     return prepared;
+  }
+
+  async batch(statements: Array<{ all: () => Promise<unknown> }>) {
+    return Promise.all(statements.map((statement) => statement.all()));
   }
 }
 
@@ -238,5 +243,29 @@ describe("TL;DR refresh that degrades to headlines", () => {
     await ensureDailyTldr(env);
 
     expect(storedDigest().bullets_en[0]?.text).toBe(breaking.title);
+  });
+
+  it("does not keep a homepage headline rebuild as a model digest", async () => {
+    sqlite.exec("UPDATE items SET published_at = published_at - 2 * 86400");
+    const nowSec = Math.floor(FIRST_WRITE.getTime() / 1000);
+    sqlite
+      .prepare("UPDATE items SET published_at = ? WHERE id = ?")
+      .run(nowSec - 3600, STORIES[0].id);
+    tldrResult.next = {
+      ...GOOD,
+      bullets_en: GOOD.bullets_en.slice(0, 1),
+      bullets_vi: GOOD.bullets_vi.slice(0, 1),
+    };
+    await ensureDailyTldr(env);
+    await getFeed(env.DB);
+    expect(storedDigest().bullets_en).toHaveLength(STORIES.length);
+
+    tldrResult.next = FAILED;
+    const stats = await ensureDailyTldr(env);
+
+    expect(stats.reason).not.toMatch(/^kept model digest/);
+    expect(storedDigest().bullets_en.map((b) => b.text)).toEqual([
+      STORIES[0].title,
+    ]);
   });
 });
