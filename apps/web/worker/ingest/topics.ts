@@ -1,5 +1,5 @@
 import { captureAndLearnTopics } from "../topic-learning.js";
-import { normalizeTopics } from "../topics.js";
+import { dedupeNormalized, normalizeTopics } from "../topics.js";
 import { jsonMap, mapEntries } from "../workflow-run.js";
 import { llmStep, safeStep } from "../workflow-step.js";
 import { type IngestContext, LLM_STEP, type NewRow } from "./context.js";
@@ -18,7 +18,7 @@ export async function normalizeNewRowTopics(
   now: number
 ): Promise<Map<string, string[]>> {
   const { step, env, runId } = ctx;
-  return jsonMap(
+  const canonical = jsonMap(
     await llmStep(
       step,
       env,
@@ -40,6 +40,14 @@ export async function normalizeNewRowTopics(
       { config: LLM_STEP }
     )
   );
+  // A failed or interrupted step leaves no entry; keep the scorer's own tags
+  // (as backfill-score does) rather than storing the row untagged.
+  for (const row of newRows) {
+    if (!canonical.has(row.id)) {
+      canonical.set(row.id, dedupeNormalized(scored.get(row.id)?.tags ?? []));
+    }
+  }
+  return canonical;
 }
 
 /** Capture per-day topic frequencies and promote emerging entity / model
