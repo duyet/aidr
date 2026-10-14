@@ -153,12 +153,17 @@ function nameOf(node: AstNode | undefined): string | undefined {
   return undefined;
 }
 
+const appDir = path.dirname(workerDir);
+
+/** `./llm.js`, `./llm`, `./llm.ts` and the `@/` alias all name llm.ts. */
 function importsLlm(file: string, specifier: unknown): boolean {
-  if (typeof specifier !== "string" || !specifier.startsWith(".")) {
-    return false;
-  }
-  const target = path.resolve(path.dirname(file), specifier);
-  return target.replace(/\.js$/, ".ts") === llmModule;
+  if (typeof specifier !== "string") return false;
+  const target = specifier.startsWith("@/")
+    ? path.join(appDir, specifier.slice(2))
+    : specifier.startsWith(".")
+      ? path.resolve(path.dirname(file), specifier)
+      : null;
+  return target?.replace(/\.[jt]s$/, "") === llmModule.replace(/\.ts$/, "");
 }
 
 /** Local names bound to an LLM call function, and `import * as` names. */
@@ -425,6 +430,16 @@ describe("the call-site scan fails closed", () => {
     ["a computed member", `${NAMESPACE}llm["completeJson"](env, [], {});`],
     ["a dynamic import", 'const m = await import("./llm.js");'],
     ["a non-literal import", "const m = await import(name);"],
+    [
+      "an extensionless alias",
+      `${IMPORT.replace(".js", "")}const a = completeJson;`,
+    ],
+    ["a .ts alias", `${IMPORT.replace(".js", ".ts")}const a = completeJson;`],
+    [
+      "an @/ alias",
+      `${IMPORT.replace("./", "@/worker/")}const a = completeJson;`,
+    ],
+    ["an @/ re-export", 'export * from "@/worker/llm.js";'],
   ])("flags %s", (_, source) => {
     expect(scanSnippet(source).indirect).toHaveLength(1);
   });

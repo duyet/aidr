@@ -56,9 +56,23 @@ function boundedText(value: string, maxLength: number): string {
   return withoutControls.replace(/\s+/g, " ").trim();
 }
 
+/** `OPENAI_API_KEY`, `stripeSecretKey`, `session_id`, `idToken`. */
+const SECRET_KEY_NAME =
+  "(?:[a-z0-9]+[-_])*(?:[a-z0-9]*(?:api[-_ ]?key|apikey|(?:secret|private|access)[-_]?key)|authorization|client[-_ ]?secret|session[-_]?id|credentials?|passphrase|[a-z]*(?:token|secret|password|passwd))";
+const SECRET_KEY = new RegExp(`^${SECRET_KEY_NAME}$`, "i");
+/** A scheme word (`Basic`, `Bearer`) goes with its credential. */
+const SECRET_KEY_VALUE = new RegExp(
+  String.raw`\b(${SECRET_KEY_NAME})\b(["']?)\s*(?:[:=]|%3D)\s*(?:(?:basic|bearer|digest|token)\s+)?("[^"]*"|'[^']*'|[^,;}\s&]+)`,
+  "gi"
+);
+
 /** Usage counters (`input_token: 512`) share the `token` suffix. */
 const TOKEN_COUNT_KEY =
   /^(?:input|output|prompt|completion|total|max|cached|reasoning)[-_]token$/i;
+
+function isSecretValue(key: string, value: string): boolean {
+  return !(TOKEN_COUNT_KEY.test(key) && /^\d{1,7}$/.test(value));
+}
 
 function redactText(value: string): string {
   return (
@@ -77,14 +91,10 @@ function redactText(value: string): string {
       .replace(/\bBearer\s+[^\s,;"'}]+/gi, "Bearer [redacted]")
       .replace(/\b(?:sk|pk|anyrouter)[-_][A-Za-z0-9._-]{8,}\b/gi, "[redacted]")
       .replace(/\bar-v\d+-[A-Za-z0-9._-]{10,}/gi, "[redacted]")
-      // `OPENAI_API_KEY`, `stripeSecretKey`, `session_id`, `idToken`. A
-      // scheme word (`Basic`, `Bearer`) goes with its credential.
       .replace(
-        /\b((?:[a-z0-9]+[-_])*(?:[a-z0-9]*(?:api[-_ ]?key|apikey|(?:secret|private|access)[-_]?key)|authorization|client[-_ ]?secret|session[-_]?id|credentials?|passphrase|[a-z]*(?:token|secret|password|passwd)))\b(["']?)\s*(?:[:=]|%3D)\s*(?:(?:basic|bearer|digest|token)\s+)?("[^"]*"|'[^']*'|[^,;}\s&]+)/gi,
+        SECRET_KEY_VALUE,
         (match, key: string, quote: string, value: string) =>
-          TOKEN_COUNT_KEY.test(key) && /^\d{1,7}$/.test(value)
-            ? match
-            : `${key}${quote}: [redacted]`
+          isSecretValue(key, value) ? `${key}${quote}: [redacted]` : match
       )
       // These values can echo the prompt, so everything after the key goes.
       // A quoted "message" is a provider error's own text, the part worth
@@ -105,6 +115,7 @@ function redactValue(value: unknown, key = ""): unknown {
       : "[redacted]";
   }
   if (typeof value === "string") {
+    if (SECRET_KEY.test(key) && isSecretValue(key, value)) return "[redacted]";
     if (normalizedKey === "error" || normalizedKey.endsWith("_error")) {
       return sanitizeError(value)?.message ?? null;
     }
@@ -381,8 +392,12 @@ function safeText(value: unknown): string | undefined {
 }
 
 const ERROR_CODE = /^(?:[a-z][a-z_.-]{0,47}|[A-Z][A-Z_]{0,47})$/;
-/** A request field name: `messages[0].content`, `max_tokens`. */
-const PARAM_NAME = /^[A-Za-z_]+(?:\[\d{1,4}\]|\.[A-Za-z_]+)*$/;
+/** A request field name: `messages[0].content`, `max_tokens`, `responseFormat`. */
+const PARAM_SEGMENT =
+  "[a-z]{1,24}(?:_[a-z]{1,24}){0,4}(?:[A-Z][a-z]{1,11}){0,3}";
+const PARAM_NAME = new RegExp(
+  `^${PARAM_SEGMENT}(?:\\[\\d{1,4}\\]|\\.${PARAM_SEGMENT})*$`
+);
 
 function safeCode(value: unknown): string | number | undefined {
   if (typeof value === "number") {

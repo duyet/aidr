@@ -4,6 +4,7 @@ import {
   canonicalLlmSnippet,
   modelOutputSnippet,
   providerErrorSnippet,
+  sanitizeRunStats,
   sanitizeText,
 } from "../telemetry-safe.js";
 import {
@@ -298,11 +299,15 @@ describe("provider error snippets keep allowlisted fields only", () => {
   });
 
   it("drops a param that is not a field name", () => {
-    const body = JSON.stringify({
-      error: { message: "bad", param: `Dear Jane, ${shortValue}` },
-    });
-    const out = JSON.parse(stored(providerErrorSnippet(400, body))!);
-    expect(out.error).toEqual({ message: "bad" });
+    for (const param of [`Dear Jane, ${shortValue}`, digitlessKey]) {
+      const body = JSON.stringify({ error: { message: "bad", param } });
+      const out = JSON.parse(stored(providerErrorSnippet(400, body))!);
+      expect(out.error).toEqual({ message: "bad" });
+    }
+    const camel = JSON.stringify({ error: { param: "responseFormat" } });
+    expect(JSON.parse(stored(providerErrorSnippet(400, camel))!).error).toEqual(
+      { param: "responseFormat" }
+    );
   });
 
   it("nginx HTML 502: status and the tag-free words", () => {
@@ -507,6 +512,18 @@ describe("canonicalLlmSnippet", () => {
       }
     }
   });
+
+  it("is idempotent when the 120-char cut lands inside a value", () => {
+    for (let pad = 90; pad <= 120; pad++) {
+      const message = `${"a".repeat(pad)} input_token: 512 used, password=hunter2 then`;
+      const snippet = providerErrorSnippet(
+        400,
+        JSON.stringify({ error: { message } })
+      );
+      expect(snippet).not.toContain("hunter2");
+      expect(canonicalLlmSnippet(snippet)).toBe(snippet);
+    }
+  });
 });
 
 describe("sanitizeText for step reasons", () => {
@@ -524,6 +541,27 @@ describe("sanitizeText for step reasons", () => {
       const out = sanitizeText(input) ?? "";
       for (const leak of leaks) expect(out).not.toContain(leak);
     }
+  });
+
+  it("redacts prefixed secret keys in JSON reasons and run stats", () => {
+    const json = sanitizeText(
+      `{"service_${API_KEY}":"${shortValue}","stripe_secret_key":"${shortValue}","input_tokens":512}`
+    );
+    expect(json).not.toContain(shortValue);
+    expect(JSON.parse(json ?? "{}").input_tokens).toBe(512);
+    expect(
+      sanitizeRunStats({
+        stripeSecretKey: shortValue,
+        session_id: shortValue,
+        max_tokens: 4096,
+        input_token: "512",
+      })
+    ).toEqual({
+      stripeSecretKey: "[redacted]",
+      session_id: "[redacted]",
+      max_tokens: 4096,
+      input_token: "512",
+    });
   });
 
   it("redacts a numeric secret but keeps token counts", () => {
