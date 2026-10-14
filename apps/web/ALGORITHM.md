@@ -288,13 +288,13 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
   the last 24h of live runs plus this one and raises
   `translation-english:<model>` (warning; Telegram DM, and a GitHub issue in
   `duyet/aidr` only when `GITHUB_ALERT_TOKEN` is set, see below)
-  when a model wrote ≥ 40 rows and > 15% kept English. A key fires once per
+  when a model wrote ≥ 40 rows and > 10% kept English (5 of 40, 9 of 80, 13 of 120). A key fires once per
   24h: the check reads the window's `stats.alerts`, not the 6h cooldown.
   Baseline, 7 days to 2026-10-14, items attributed by fetch run, summaries
   only: gemini 1/558 (0.2%), Laguna 2/78 (2.6%), gemma-latest 0/36. Judging
   titles too read 7/558 (1.3%), 5/78 (6.4%) and 3/36 (8.3%); all the
   difference was kept titles, so a paper-heavy day could have false-alerted.
-  No 24h window reached 15% either way. The daily summary lists each
+  No 24h window reached 10% either way. At 10% a model whose true rate is 2.6% false-fires 0.37% of 40-row windows and 0.024% of 80-row windows, while one at 10% fires 37-41% of them (15% would catch it only 5-10%). The daily summary lists each
   model's 24h count.
 - Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
   `TELEGRAM_OWNER_CHAT_ID` DMs each freshly fired alert (same 6h cooldown)
