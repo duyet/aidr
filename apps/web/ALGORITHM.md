@@ -1000,8 +1000,15 @@ deterministic check against the exact (stripped, clipped) source the model
 saw: missing keep-English jargon, active `translation_knowledge` bad phrases
 (counted per occurrence, so one kept "agent" does not excuse an "đại lý";
 each non-AI "FBI agents" licenses one "đặc vụ"), wrong magnitude words
-("$20B" → "20 triệu"), a Title Case Vietnamese title, and a summary under
-0.6× the source length (sources ≥ 200 chars). Flagged items in a batch get
+("$20B" → "20 triệu"), a Title Case Vietnamese title, a summary under
+0.6× the source length (sources ≥ 200 chars), and an English echo: a
+summary with no Vietnamese diacritics when the source summary has ≥ 6
+words (the issue names the title too when it is English as well). A title
+alone is not judged, since paper titles and product names stay English on
+purpose. In 60 days to 2026-10-15 this flags 4 of 4,480 rows (8eb3e0ba,
+669d8cd0, 1af7ebf2, f924232d); every kept-English summary it spares is a
+name of ≤ 4 words. A repair that echoes again is rejected, so the English
+draft is stored (#777). Flagged items in a batch get
 one repair call with their issues as a `fix` list; a repaired row replaces
 the draft only when it has fewer issues, and the repair is skipped under
 25s of budget. Missing proper names are left to the review guard: they are

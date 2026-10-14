@@ -23,6 +23,35 @@ const MIN_SOURCE_CHARS_FOR_RATIO = 200;
  * were dropped (prod median was 0.42 when the prompt said "rephrase
  * freely"). */
 export const MIN_VI_EN_LENGTH_RATIO = 0.6;
+/** A source summary this long is prose, not a name. In 60 days of prod
+ * (4,480 EN→VI rows to 2026-10-15) every summary kept English on purpose
+ * was a name of at most 4 words ("Earth AI", "Agents.md in Google Docs"),
+ * and the shortest English echo was 10 words. */
+const MIN_ECHO_SOURCE_WORDS = 6;
+
+function wordCount(text: string): number {
+  return text.split(/\s+/).filter((word) => /\p{L}/u.test(word)).length;
+}
+
+/** The draft returned the English instead of translating it: a prose
+ * summary with no Vietnamese diacritics, the same test the English-in-VI
+ * alert counts (translation-english.ts). A title alone is never judged:
+ * the prompt keeps paper titles and product names in English. When the
+ * title is English too, the issue names it, because the repair fixes only
+ * what the issue lists. */
+function englishEchoIssues(
+  source: TranslationText,
+  candidate: TranslationText
+): string[] {
+  if (wordCount(source.summary) < MIN_ECHO_SOURCE_WORDS) return [];
+  if (!candidate.summary.trim() || looksVietnamese(candidate.summary))
+    return [];
+  return [
+    looksVietnamese(candidate.title)
+      ? "the summary is still English; translate it into Vietnamese"
+      : "the title and summary are still the English source; translate both into Vietnamese",
+  ];
+}
 
 function pairOf(source: TranslationText, candidate: TranslationText) {
   return {
@@ -231,7 +260,7 @@ export function translationDraftIssues(
 ): string[] {
   const src = titlesOnly ? { title: source.title, summary: "" } : source;
   const cand = titlesOnly ? { title: candidate.title, summary: "" } : candidate;
-  const issues: string[] = [];
+  const issues = englishEchoIssues(src, cand);
   const missing = missingProtectedTerms(src, cand).jargon;
   if (missing.length > 0) {
     issues.push(
@@ -281,9 +310,10 @@ export function tldrBulletIssues(
 }
 
 /** A repair replaces a draft only when it fixes something without
- * cheating: an English echo of the source or a clause cut out of the draft
- * passes every check above, so each Vietnamese field must stay Vietnamese
- * and the text must keep ≥ 80% of the draft's length. */
+ * cheating: an English title, or a short summary, echoed from the source
+ * and a clause cut out of the draft pass every check above, so each
+ * Vietnamese field must stay Vietnamese and the text must keep ≥ 80% of the
+ * draft's length. */
 export function acceptsRepair(
   draft: readonly string[],
   repair: readonly string[],
