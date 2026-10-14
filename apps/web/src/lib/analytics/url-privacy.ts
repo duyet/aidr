@@ -72,22 +72,82 @@ export function gaPageFields(): {
   return { page_location: page.url, page_referrer: page.referrer };
 }
 
-/** An absolute or root-relative URL on this site, sanitized; anything else unchanged. */
-function sanitizeOwnUrl(raw: string, origin: string): string {
-  if (raw.startsWith(origin)) return sanitizeUrl(raw, SAFE_PARAMS);
-  if (raw.startsWith("/") && !raw.startsWith("//")) {
-    return sanitizeUrl(origin + raw, SAFE_PARAMS).slice(origin.length);
+/**
+ * Drops the query params outside SAFE_PARAMS from a URL as written. The
+ * rest (path encoding, hash) is kept byte for byte, and a URL with nothing
+ * to drop comes back unchanged.
+ */
+function dropUnsafeParams(raw: string): string {
+  const hash = raw.indexOf("#");
+  const query = raw.indexOf("?");
+  if (query === -1 || (hash !== -1 && hash < query)) return raw;
+  const end = hash === -1 ? raw.length : hash;
+  const pairs = raw.slice(query + 1, end).split("&");
+  const kept = pairs.filter((pair) => {
+    const key = new URLSearchParams(pair).keys().next().value;
+    return key !== undefined && SAFE_PARAMS.includes(key);
+  });
+  if (kept.length === pairs.length) return raw;
+  return (
+    raw.slice(0, query) +
+    (kept.length ? `?${kept.join("&")}` : "") +
+    raw.slice(end)
+  );
+}
+
+/** Property names whose values PostHog fills with a URL or path. */
+const URL_KEY =
+  /^(?:href|attr__href|\$referrer)$|(?:_url|_referrer|pathname|_path)$/;
+
+function isOwnAbsoluteUrl(value: string, origin: string): boolean {
+  return (
+    value.startsWith(origin) &&
+    /^(?:[/?#]|$)/.test(value.slice(origin.length)) &&
+    !/\s/.test(value)
+  );
+}
+
+function scrubString(value: string, key: string, origin: string): string {
+  if (isOwnAbsoluteUrl(value, origin)) return dropUnsafeParams(value);
+  if (URL_KEY.test(key) && value.startsWith("/") && !value.startsWith("//")) {
+    return dropUnsafeParams(value);
   }
-  return raw;
+  return value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
 }
 
 const ELEMENT_HREF = /href="([^"]*)"/g;
 
 /**
- * PostHog `before_send`. Rewrites every URL on this site anywhere in the
- * event: `$current_url`, `$referrer`, `$session_entry_url`, the `$set_once`
- * initial values, and link hrefs in autocaptured `$elements_chain` and
- * `$elements`. Links to other sites keep their query.
+ * rrweb events in a `$snapshot`: only the meta event's page URL is ours to
+ * clean. Everything else is the recorded page, which must replay as it was.
+ */
+function scrubRecording(events: unknown, origin: string): unknown {
+  if (!Array.isArray(events)) return events;
+  return events.map((e) =>
+    isRecord(e) &&
+    e.type === 4 &&
+    isRecord(e.data) &&
+    typeof e.data.href === "string"
+      ? {
+          ...e,
+          data: { ...e.data, href: scrubString(e.data.href, "href", origin) },
+        }
+      : e
+  );
+}
+
+/**
+ * PostHog `before_send`. Drops unsafe query params from URLs of this site:
+ * any absolute same-origin URL, and root-relative values under the keys
+ * PostHog uses for URLs (`$current_url`, `$pathname`, `$referrer`, the
+ * `$initial_*` and `$session_entry_*` values, autocaptured link hrefs).
+ * Free text, links to other sites, and recorded page content are left alone.
  */
 export function scrubPosthogEvent<E>(event: E): E {
   const origin = window.location.origin;
@@ -96,17 +156,22 @@ export function scrubPosthogEvent<E>(event: E): E {
       if (key === "$elements_chain") {
         return value.replace(
           ELEMENT_HREF,
-          (_match, href: string) => `href="${sanitizeOwnUrl(href, origin)}"`
+          (_match, href: string) =>
+            `href="${scrubString(href, "href", origin)}"`
         );
       }
-      return sanitizeOwnUrl(value, origin);
+      return scrubString(value, key, origin);
     }
+    if (key === "$snapshot_data") return scrubRecording(value, origin);
     if (Array.isArray(value)) return value.map((item) => visit(item, key));
-    // Only plain objects: the event also carries values like a Date
-    // timestamp, which must pass through as they are.
-    if (value && Object.getPrototypeOf(value) === Object.prototype) {
+    // Only plain records: the event also carries values like a Date
+    // timestamp, which must pass through as they are. Keys can be URLs too
+    // (`$heatmap_data` is keyed by page URL).
+    if (isRecord(value)) {
       const out: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(value)) out[k] = visit(v, k);
+      for (const [k, v] of Object.entries(value)) {
+        out[scrubString(k, "", origin)] = visit(v, k);
+      }
       return out;
     }
     return value;
@@ -163,6 +228,9 @@ function bootUrlPrivacy(
   };
   w.dataLayer = w.dataLayer || [];
   const dataLayer = w.dataLayer;
+  // Someone else's dataLayer that cannot be read or pushed to: gtag.js
+  // cannot use it either, so there is no hit to clean up.
+  if (!Array.isArray(dataLayer) || !Object.isExtensible(dataLayer)) return;
   for (const entry of dataLayer) {
     const args = entry as { [i: number]: unknown; length: number } | null;
     if (args && args[0] === "config") {

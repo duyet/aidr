@@ -108,3 +108,23 @@ describe("the subscribe token leaves the URL before any vendor loads", () => {
     expect(bootSubscribeLink()).toBeUndefined();
   });
 });
+
+describe("a dataLayer the boot script cannot use", () => {
+  for (const [name, make] of [
+    ["frozen", () => Object.freeze([])],
+    ["a plain object", () => ({})],
+    ["a number", () => 7],
+  ] as const) {
+    it(`${name}: the token still leaves the URL and nothing throws`, () => {
+      history.replaceState(null, "", "/subscribe?settings=SECRET&lang=vi");
+      (w as { dataLayer?: unknown }).dataLayer = make();
+      expect(runBootScript).not.toThrow();
+      expect(location.search).toBe("?lang=vi");
+      atEntry(0);
+      expect(bootSubscribeLink()).toEqual({
+        kind: "settings",
+        token: "SECRET",
+      });
+    });
+  }
+});
