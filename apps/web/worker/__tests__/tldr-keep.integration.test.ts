@@ -289,82 +289,6 @@ describe("TL;DR refresh that degrades to headlines", () => {
     expect(storedDigest().bullets_en[0]?.text).toBe(breaking.title);
   });
 
-  it("does not keep a homepage headline rebuild as a model digest", async () => {
-    sqlite.exec("UPDATE items SET published_at = published_at - 2 * 86400");
-    const nowSec = Math.floor(FIRST_WRITE.getTime() / 1000);
-    sqlite
-      .prepare("UPDATE items SET published_at = ? WHERE id = ?")
-      .run(nowSec - 3600, STORIES[0].id);
-    tldrResult.next = {
-      ...GOOD,
-      bullets_en: GOOD.bullets_en.slice(0, 1),
-      bullets_vi: GOOD.bullets_vi.slice(0, 1),
-    };
-    await ensureDailyTldr(env);
-    await getFeed(env.DB);
-    expect(storedDigest().bullets_en).toHaveLength(STORIES.length);
-
-    tldrResult.next = FAILED;
-    const stats = await ensureDailyTldr(env);
-
-    expect(stats.reason).not.toMatch(/^kept model digest/);
-    expect(storedDigest().bullets_en.map((b) => b.text)).toEqual([
-      STORIES[0].title,
-    ]);
-  });
-
-  it("does not keep a homepage Vietnamese-only headline rebuild as a model digest", async () => {
-    sqlite
-      .prepare(
-        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback) VALUES (?, ?, ?, ?, 0)"
-      )
-      .run(
-        DATE,
-        JSON.stringify(GOOD.bullets_en),
-        JSON.stringify(GOOD.bullets_en),
-        FIRST_WRITE.getTime() - 60_000
-      );
-    await getFeed(env.DB);
-    expect(storedDigest().bullets_en).toEqual(GOOD.bullets_en);
-    expect(storedDigest().bullets_vi.map((b) => b.text)).toEqual(
-      STORIES.map((story) => story.titleVi)
-    );
-
-    at(FIRST_WRITE.getTime() + TLDR_REFRESH_MS + 60_000);
-    tldrResult.next = FAILED;
-    const stats = await ensureDailyTldr(env);
-
-    expect(stats.reason).not.toMatch(/^kept model digest/);
-    expect(storedDigest().bullets_en.map((b) => b.text)).toEqual(
-      STORIES.map((story) => story.title)
-    );
-  });
-
-  it("leaves a stored digest alone when the homepage has nothing to rebuild it from", async () => {
-    sqlite.prepare("DELETE FROM items WHERE id <> ?").run(STORIES[0].id);
-    const createdAt = FIRST_WRITE.getTime() - 60_000;
-    sqlite
-      .prepare(
-        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback) VALUES (?, ?, ?, ?, 0)"
-      )
-      .run(
-        DATE,
-        JSON.stringify(GOOD.bullets_en),
-        JSON.stringify(GOOD.bullets_en),
-        createdAt
-      );
-
-    await getFeed(env.DB);
-
-    expect(
-      sqlite
-        .prepare(
-          "SELECT created_at, fallback FROM tldr_snapshots WHERE date = ?"
-        )
-        .get(DATE)
-    ).toEqual({ created_at: createdAt, fallback: 0 });
-  });
-
   it("overwrites a pre-migration row whose fallback is NULL", async () => {
     sqlite
       .prepare(
@@ -385,6 +309,88 @@ describe("TL;DR refresh that degrades to headlines", () => {
     expect(storedDigest().bullets_en.map((b) => b.text)).toEqual(
       STORIES.map((story) => story.title)
     );
+  });
+});
+
+describe("homepage TL;DR rebuild", () => {
+  const snapshots = () =>
+    sqlite.prepare("SELECT * FROM tldr_snapshots ORDER BY date").all();
+  const seed = (
+    date: string,
+    bullets: { bullets_en: TldrBullet[]; bullets_vi: TldrBullet[] }
+  ) =>
+    sqlite
+      .prepare(
+        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback) VALUES (?, ?, ?, ?, 0)"
+      )
+      .run(
+        date,
+        JSON.stringify(bullets.bullets_en),
+        JSON.stringify(bullets.bullets_vi),
+        FIRST_WRITE.getTime() - 60_000
+      );
+
+  // The model restated EN in VI and no last-24h story is translated yet, so
+  // ingest keeps the row. One older story in the feed has title_vi, which
+  // is what made the homepage rebuild VI from untranslated titles.
+  const translatedOnlyOutsideIngestWindow = () => {
+    sqlite.exec("DELETE FROM translations");
+    insertStory(
+      {
+        id: "f000000066666666",
+        title: "Two-day-old story with a translation",
+        titleVi: "Tin hai ngày trước đã có bản dịch",
+      },
+      1,
+      Math.floor(FIRST_WRITE.getTime() / 1000) - 2 * 86_400
+    );
+    seed(DATE, { bullets_en: GOOD.bullets_en, bullets_vi: GOOD.bullets_en });
+  };
+
+  it("never writes the snapshot, however many times the page is viewed", async () => {
+    translatedOnlyOutsideIngestWindow();
+    const before = snapshots();
+
+    for (let view = 1; view <= 3; view++) {
+      at(FIRST_WRITE.getTime() + view * 60_000);
+      await getFeed(env.DB);
+    }
+
+    expect(snapshots()).toEqual(before);
+  });
+
+  it("leaves the model digest protected by the keep rule after a visit", async () => {
+    translatedOnlyOutsideIngestWindow();
+    await getFeed(env.DB);
+
+    tldrResult.next = FAILED;
+    at(FIRST_WRITE.getTime() + 30 * 60_000);
+    await ensureDailyTldr(env);
+    at(FIRST_WRITE.getTime() + TLDR_REFRESH_MS + 60_000);
+    const stats = await ensureDailyTldr(env);
+
+    expect(storedDigest().bullets_en).toEqual(GOOD.bullets_en);
+    expect(stats.reason).toMatch(/^kept model digest/);
+  });
+
+  it("shows an earlier day's thin digest rebuilt without writing today's row", async () => {
+    const yesterday = "2026-10-08";
+    seed(yesterday, {
+      bullets_en: GOOD.bullets_en.slice(0, 1),
+      bullets_vi: GOOD.bullets_vi.slice(0, 1),
+    });
+    const before = snapshots();
+
+    const feed = await getFeed(env.DB);
+
+    expect(feed.tldr?.date).toBe(yesterday);
+    expect(feed.tldr?.bullets_en.map((b) => b.text)).toEqual(
+      STORIES.map((story) => story.title)
+    );
+    expect(feed.tldr?.bullets_vi.map((b) => b.text)).toEqual(
+      STORIES.map((story) => story.titleVi)
+    );
+    expect(snapshots()).toEqual(before);
   });
 });
 

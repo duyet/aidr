@@ -83,7 +83,6 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED | REJECTED
 These describe access-control or credential-verification gaps. They are not GitHub issues until someone explicitly confirms publication.
 
 - Confirmed-subscriber preference overwrite on resubmit, `worker/subscribe/handlers.ts` conflict update. No token check.
-- Filtered feed reads can persist today's TL;DR snapshot, `src/lib/feed-queries.ts` `shouldRebuildTldrForDisplay` path.
 - Clerk verifier loads JWKS from the token's own issuer when `CLERK_ISSUER` is unset, `worker/admin/clerk.ts`.
 - MCP bearer failures do not use the admin failure counter, `worker/admin/mcp.ts` `checkAuth` versus `checkAdminAuth`.
 - Clerk webhook `svix-id` is parsed and not stored, `worker/clerk-webhook.ts`.

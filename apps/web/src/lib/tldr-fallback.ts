@@ -66,17 +66,6 @@ export function synthesizeTldrFromItems(
   return { bullets_en, bullets_vi };
 }
 
-/** True when the homepage should replace a stored snapshot: thin leftover,
- * or English-only bullets_vi while title_vi now exists. */
-export function shouldRebuildTldrForDisplay(
-  tldr: FeedResponse["tldr"],
-  items: Array<{ title_vi?: string | null }>
-): boolean {
-  if (isThinDisplayTldr(tldr)) return items.length >= 2;
-  if (!tldr) return false;
-  return isEnglishOnlyViTldr(tldr.bullets_vi) && itemsHaveTitleVi(items);
-}
-
 /** If the stored snapshot is thin — or bullets_vi is English-only while
  * title_vi exists — replace with a last-24h ranked title-fallback. A
  * useful EN digest keeps its bullets_en; only VI is rebuilt from

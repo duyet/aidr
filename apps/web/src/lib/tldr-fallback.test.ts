@@ -4,7 +4,6 @@ import {
   isThinDisplayTldr,
   pickLast24hRanked,
   resolveTldrForDisplay,
-  shouldRebuildTldrForDisplay,
   synthesizeTldrFromItems,
 } from "./tldr-fallback";
 import type { FeedItem } from "./types";
@@ -153,16 +152,6 @@ describe("resolveTldrForDisplay", () => {
       "Story B",
       "Story C",
     ]);
-    expect(
-      shouldRebuildTldrForDisplay(
-        {
-          date: "2026-08-19",
-          bullets_en: [{ text: "A" }, { text: "B" }],
-          bullets_vi: [{ text: "A" }, { text: "B" }],
-        },
-        items
-      )
-    ).toBe(true);
   });
 
   it("does not rebuild English-only VI when no title_vi exists", () => {
@@ -176,7 +165,6 @@ describe("resolveTldrForDisplay", () => {
       bullets_vi: [{ text: "Story A" }, { text: "Story B" }],
     };
     expect(resolveTldrForDisplay(frozen, noVi, now)).toBe(frozen);
-    expect(shouldRebuildTldrForDisplay(frozen, noVi)).toBe(false);
   });
 });
 
