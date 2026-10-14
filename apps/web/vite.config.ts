@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { writeSubsetFonts } from "./scripts/subset-fonts.js";
@@ -106,6 +107,9 @@ function baseConfig(clerkProxyUrl: string): UserConfig {
           generatedRouteTree: "./routeTree.gen.ts",
         },
       }),
+      // Start's dev client entry imports /@react-refresh, which this plugin
+      // serves. It must come after tanstackStart().
+      viteReact(),
       tailwindcss(),
       tsconfigPaths(),
     ],
