@@ -1,11 +1,13 @@
 import { localizedTitle, looksVietnamese } from "./display-title";
 import type { Lang } from "./types";
 
-/** 3×2 grid; a thin day falls back to 2×2 or one row. Same rule as the card. */
+/** Stories on the card and in the digest: up to six. The card's layout
+ *  adapts to any count (`day-card-layout.ts`), so a thin day shows all of
+ *  its stories. */
+export const DAY_CARD_MAX_STORIES = 6;
+
 export function dayCardTileCount(available: number): number {
-  if (available >= 6) return 6;
-  if (available >= 4) return 4;
-  return Math.max(0, Math.min(3, available));
+  return Math.max(0, Math.min(DAY_CARD_MAX_STORIES, available));
 }
 
 /** Aggregator images that are only the headline set in type. They repeat
