@@ -5,6 +5,7 @@ import {
   type EventParams,
   type PageType,
 } from "./events";
+import { SLUG_RE } from "./schema";
 
 export type CampaignAttribution = {
   ref?: string;
@@ -26,7 +27,7 @@ function clean(value: string | null | undefined): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim().slice(0, 64);
   if (!trimmed) return undefined;
-  if (!/^[a-zA-Z0-9_.:-]+$/.test(trimmed)) return undefined;
+  if (!SLUG_RE.test(trimmed)) return undefined;
   return trimmed;
 }
 

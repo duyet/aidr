@@ -194,7 +194,7 @@ export function NewsFooter() {
                   }
                   onClick={() =>
                     track("nav_click", {
-                      to: "/data?tab=runs",
+                      to: "/data/runs",
                       placement: "footer",
                     })
                   }

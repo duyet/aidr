@@ -142,7 +142,8 @@ export const EVENTS = {
   },
   nav_click: {
     sender: "browser",
-    question: "Which navigation links get used, from which placement?",
+    question:
+      "`to` is a static slug id (route path like `/weeks` or `/data/runs`, or a bare name like `github`, never an href or query). Which navigation links get used, from which placement?",
     params: { to: slug(), placement: dim(oneOf(LINK_PLACEMENTS)) },
   },
   channel_click: {

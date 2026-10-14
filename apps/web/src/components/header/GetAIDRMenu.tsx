@@ -186,7 +186,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
             search={{ tab: "algo" }}
             onClick={() =>
               track("nav_click", {
-                to: "/data?tab=algo",
+                to: "/data/algo",
                 placement: "header_menu",
               })
             }

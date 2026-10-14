@@ -425,11 +425,13 @@ a best-effort welcome email.
 
 ## Newsletter composer
 
-The same `subscribers` D1 table is the mailing list. Blog and home capture
-via `SubscribeCapture` (`packages/components/subscribe/`) posting CORS
-`POST /api/subscribe` with `{email, lang, timezone, source}`. `source` is
-`blog` | `news` | `home` (table `subscriber_sources`, migration
-`0015_mail.sql`). IP rate limit: 8/day (`subscribe_attempts`). CORS is
+The same `subscribers` D1 table is the mailing list. The web app and the
+Chrome extension capture via `POST /api/subscribe` with
+`{email, lang, timezone, source}`. `source` is `news` | `extension`
+(`SUBSCRIBE_SOURCES` in `worker/subscribe/handlers.ts`, table
+`subscriber_sources`, migration `0015_mail.sql`). An unknown source,
+including the retired `blog` and `home`, is recorded as `news`. IP rate
+limit: 8/day (`subscribe_attempts`). CORS is
 applied in `src/server.ts` (`handleSubscribeCors`) before TanStack Start:
 Pages `not_found_handling = "single-page-application"` otherwise serves
 `index.html` for `OPTIONS`, which browsers treat as a CORS failure.

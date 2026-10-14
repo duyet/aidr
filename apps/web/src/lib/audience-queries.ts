@@ -60,7 +60,7 @@ export interface SubscriberAudience {
   confirmed: number;
   /** Rows present but not yet confirmed, so the two never silently disagree. */
   unconfirmed: number;
-  /** Signup source per subscriber: blog / news / home / extension / unknown. */
+  /** Signup source per subscriber: news / extension. Unknown sources are stored as news; rows from before that may still say blog or home. */
   bySource: NamedCount[];
   byLang: NamedCount[];
   byDigestSize: DigestSizeCount[];
