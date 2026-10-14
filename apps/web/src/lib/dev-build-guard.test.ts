@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { devClerkSkipFiles } from "./dev-build-guard";
+import { devBuildMessage, devClerkSkipFiles } from "./dev-build-guard";
 
 const roots: string[] = [];
 
@@ -42,5 +42,15 @@ var startInstance = createStart(() => {
 const SECRET_KEY = getEnvVariable("CLERK_SECRET_KEY");`
     );
     expect(devClerkSkipFiles(root)).toEqual([]);
+  });
+});
+
+describe("devBuildMessage", () => {
+  it("says the artifact looks like a dev build and how to rebuild it", () => {
+    const message = devBuildMessage(["dist/server/assets/start-abc.js"]);
+    expect(message).toContain("looks like a dev build");
+    expect(message).toContain("dist/server/assets/start-abc.js");
+    expect(message).toContain("Rebuild with NODE_ENV=production");
+    expect(message).not.toContain("NODE_ENV=test");
   });
 });
