@@ -17,6 +17,7 @@ import { castProblems, hostOrder, loadCast } from "./cast.mjs";
 import { lintText, scriptTexts } from "./gate.mjs";
 import { download } from "./media.mjs";
 import { readEnvLocal, videoScriptKey } from "./local-llm-key.mjs";
+import { MONEY } from "./look.mjs";
 import { envVar } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -61,7 +62,7 @@ export const statSpoken = (voice, statWord) => {
 const UNIT = { K: "thousand", M: "million", B: "billion", T: "trillion" };
 /** "$870M" → "$870 million": the screen keeps "$870M" in `stat`, the voice reads the unit. */
 export const speakable = (t) => t.replace(/\$([\d.,]+)\s?([KMBT])\b/g, (_, n, u) => `$${n} ${UNIT[u]}`).replace(/~/g, "about ");
-const money = (t) => t.match(/\$[\d.,]+\s?[KMBT]?\b/)?.[0]?.replace(/\s/g, "");
+const money = (t) => t.match(MONEY)?.[0]?.replace(/\s/g, "");
 /** Digit runs in a text ("$7.5B" → ["7.5"]); the fact check compares these with the bullet. */
 const numbers = (t) => (String(t ?? "").match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) => n.replace(/,/g, ""));
 

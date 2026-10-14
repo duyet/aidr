@@ -15,8 +15,8 @@ const PIN_ONLY = ["accent"];
 // Story layouts are chosen per story from what the story has, not rotated by date. Only `full` needs an image:
 // `stat` shows the paper card in its media box when it has none.
 const LAYOUTS = { split: { image: false, max: Infinity }, full: { image: true, max: Infinity }, stat: { image: false, max: 2 } };
-// Same as auto-script's money: a story whose English bullet names a dollar figure leads with it.
-const MONEY = /\$[\d.,]+\s?[KMBT]?\b/;
+/** A dollar figure ("$40B"): a story whose English bullet names one leads with it. auto-script reads its stat with it. */
+export const MONEY = /\$[\d.,]+\s?[KMBT]?\b/;
 
 const DAY = 86400000;
 const mod = (a, n) => ((a % n) + n) % n;
