@@ -514,6 +514,23 @@ const REPORTER_NAME_RE = new RegExp(
  * the English credit does, so a word with one of these is a translated noun:
  * "Trung Quốc", "Bộ Công Thương", "Nhà Trắng", "Thủ Tướng". */
 const VIETNAMESE_LETTER_RE = /[ăĂđĐĩĨũŨơƠưƯẠ-ỹ]/u;
+/** One Vietnamese syllable with its marks dropped: an optional initial, a
+ * vowel group, and a final consonant when the group takes one. "Thái" →
+ * "thai", "Uy", "Nguyên" → "nguyen". "Ian", "Cook" and "Yuan" are not. */
+const VIETNAMESE_SYLLABLE_RE =
+  /^(?:ngh|ch|gh|gi|kh|ng|nh|ph|qu|th|tr|[bcdghklmnprstvx])?(?:ieu|oai|oay|oeo|uay|uoi|uou|uya|uyu|yeu|ai|ao|au|ay|eo|eu|ia|iu|oi|ui|uu|y|(?:uye|ie|oa|oe|ua|ue|uo|uy|ye|[aeiou])(?:ch|ng|nh|[cmnpt])?)$/;
+/** "Thái Lan", "Na Uy", "Tây Ban Nha", "Lan Anh": every word a Vietnamese
+ * syllable. A place and a person share this shape, so neither counts as a
+ * reporter (#759). VIETNAMESE_LETTER_RE misses them: á, à, â and ô are
+ * Latin-1, and "Ba Lan" has no mark at all. */
+function isVietnameseName(name: string): boolean {
+  return name
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .split(/\s+/)
+    .every((word) => VIETNAMESE_SYLLABLE_RE.test(word));
+}
 const words = (...lines: string[]): ReadonlySet<string> =>
   new Set(lines.join(" ").split(" "));
 /** A title stands before a name ("President Trump", "Mr. Musk", "Ông
@@ -544,7 +561,11 @@ const NON_NAME_WORDS = words(
 
 /** A reporter's name, not a speaker's or a date: see `REPORTER_NAME_RE`. */
 function isReporterName(name: string): boolean {
-  if (!REPORTER_NAME_RE.test(name) || VIETNAMESE_LETTER_RE.test(name)) {
+  if (
+    !REPORTER_NAME_RE.test(name) ||
+    VIETNAMESE_LETTER_RE.test(name) ||
+    isVietnameseName(name)
+  ) {
     return false;
   }
   const parts = name.split(/\s+/);
@@ -556,10 +577,12 @@ function isReporterName(name: string): boolean {
 }
 
 /** "OpenAI / @OpenAI", "Anthropic / @AnthropicAI": one name crediting its
- * own handle. "Trump / AP" and "OpenAI / @AnthropicAI" are not. */
+ * own handle. "Trump / AP", "OpenAI / @AnthropicAI" and "Monday /
+ * @monday" are not. */
 function isOwnHandle(author: string, sources: string): boolean {
   return (
     /^\p{Lu}[\p{L}\p{N}]*$/u.test(author) &&
+    !NON_NAME_WORDS.has(author) &&
     HANDLE_RE.test(sources) &&
     sources.toLowerCase().startsWith(`@${author.toLowerCase()}`)
   );
