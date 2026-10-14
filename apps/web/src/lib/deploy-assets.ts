@@ -110,38 +110,75 @@ async function html(url: string): Promise<string> {
  */
 async function seedFromCachedPages(
   base: string,
-  now: number,
-  warn: (message: string) => void
-): Promise<AssetHistory> {
+  now: number
+): Promise<LiveHistory> {
   const pages = [
     ...deployCheckPages(await html(`${base}/?lang=en`)),
     "/?lang=vi",
   ];
-  warn(
-    `${base}/${ASSET_HISTORY_PATH} not found; seeding from ${pages.join(", ")}`
-  );
   const seed: Record<string, number> = {};
   for (const page of pages) {
     for (const ref of assetRefs(await html(`${base}${page}`))) {
       seed[ref.slice(1)] = now;
     }
   }
-  return parseAssetHistory(seed);
+  return { kind: "seeded", history: parseAssetHistory(seed), pages };
 }
 
+type LiveHistory =
+  | { kind: "published"; history: AssetHistory }
+  | { kind: "seeded"; history: AssetHistory; pages: readonly string[] }
+  | { kind: "unreadable"; reason: string };
+
+function describeError(e: unknown): string {
+  if (!(e instanceof Error)) return String(e);
+  return e.cause instanceof Error
+    ? `${e.message} (${e.cause.message})`
+    : e.message;
+}
+
+async function readLiveHistory(
+  base: string,
+  now: number
+): Promise<LiveHistory> {
+  try {
+    const res = await fetch(`${base}/${ASSET_HISTORY_PATH}?t=${now}`, {
+      headers: { "cache-control": "no-cache" },
+    });
+    if (res.status === 404) return await seedFromCachedPages(base, now);
+    if (!res.ok) {
+      throw new Error(`GET ${ASSET_HISTORY_PATH} -> HTTP ${res.status}`);
+    }
+    return {
+      kind: "published",
+      history: parseAssetHistory(await res.json()),
+    };
+  } catch (e) {
+    return { kind: "unreadable", reason: describeError(e) };
+  }
+}
+
+/** The history to carry from. Never throws: see `carryLiveAssets`. */
 async function liveHistory(
   base: string,
   now: number,
   warn: (message: string) => void
 ): Promise<AssetHistory> {
-  const res = await fetch(`${base}/${ASSET_HISTORY_PATH}?t=${now}`, {
-    headers: { "cache-control": "no-cache" },
-  });
-  if (res.status === 404) return seedFromCachedPages(base, now, warn);
-  if (!res.ok) {
-    throw new Error(`GET ${ASSET_HISTORY_PATH} -> HTTP ${res.status}`);
+  const live = await readLiveHistory(base, now);
+  switch (live.kind) {
+    case "published":
+      return live.history;
+    case "seeded":
+      warn(
+        `${base}/${ASSET_HISTORY_PATH} not found; seeded from ${live.pages.join(", ")}`
+      );
+      return live.history;
+    case "unreadable":
+      warn(
+        `could not read the live site (${live.reason}); deploying without carrying earlier assets, so HTML cached from earlier builds may load missing chunks until it expires`
+      );
+      return {};
   }
-  return parseAssetHistory(await res.json());
 }
 
 async function download(base: string, path: string): Promise<Uint8Array> {
@@ -183,6 +220,11 @@ export interface CarryResult {
 /**
  * Re-ship the live site's still-retained files the new build lacks. A file
  * that fails to download is warned about and dropped from the history.
+ *
+ * When the live site can't be read at all, this warns and plans from an empty
+ * history rather than throwing: the deploy it runs in may be the one meant to
+ * fix that site. The published history then lists only the new build, so the
+ * next deploy carries normally.
  */
 export async function carryLiveAssets(
   options: CarryOptions

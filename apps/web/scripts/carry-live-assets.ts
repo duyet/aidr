@@ -44,7 +44,12 @@ async function main() {
       mkdirSync(dirname(out), { recursive: true });
       writeFileSync(out, bytes);
     },
-    warn: (message) => console.log(`::warning::${message}`),
+    warn: (message) =>
+      console.log(
+        process.env.GITHUB_ACTIONS === "true"
+          ? `::warning::${message}`
+          : `WARNING ${message}`
+      ),
   });
 
   writeFileSync(
