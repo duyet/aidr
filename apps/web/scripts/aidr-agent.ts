@@ -22,6 +22,10 @@
  *     (dry run reads prod D1 with SELECTs only; --apply writes, sends nothing)
  *   pnpm --filter @aidr/web agent unmerge --undo <batchId> [--apply]
  *     (reverses one apply from its admin_audit rows; dry run by default)
+ *   pnpm --filter @aidr/web agent backfill-tags [--apply]
+ *     (fallback tags for published stories stored with none; the dry run
+ *     reads prod D1 with SELECTs only, neither calls a model; undo with
+ *     unmerge --undo <batchId>)
  *
  * `run` and `rerun` are dry runs unless `--live` is passed. A dry run sends
  * no email, Telegram or owner alert and only previews the TL;DR, but still
@@ -41,10 +45,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { latestArchiveDate } from "../src/lib/day-archive";
 import type {
+  BackfillTagsResult,
   UndoUnmergeResult,
   UnmergeResult,
 } from "../worker/admin/handlers";
 import { isPipelineStep, PIPELINE_STEPS } from "../worker/ingest/mode";
+import { loadTagBackfill, planTagBackfill } from "../worker/tag-backfill";
 import { loadUnmergeSnapshot } from "../worker/unmerge/load";
 import {
   parseUnmergePairs,
@@ -406,6 +412,38 @@ async function undoUnmergeBatch(args: Args): Promise<void> {
   );
 }
 
+/** Plan (default) or apply the fallback-tag backfill. The dry run reads
+ * production D1 through `wrangler d1 execute` with SELECTs only; `--apply`
+ * posts to the admin endpoint, which re-plans from live rows and writes. */
+async function backfillTags(args: Args): Promise<void> {
+  if (args.flags.has("apply")) {
+    const result = await api<BackfillTagsResult>("/api/admin/tags/backfill", {
+      method: "POST",
+      admin: true,
+      body: { dryRun: false },
+    });
+    const applied = result.applied;
+    print(
+      result,
+      `backfill-tags: tagged ${applied?.canonicals ?? 0} stories as batch ${applied?.batchId} (undo: unmerge --undo ${applied?.batchId}), ${JSON.stringify(result.counts)}${applied?.remaining ? `; ${applied.remaining} over the statement budget, rerun --apply` : ""}${applied?.stale.length ? `; ${applied.stale.length} changed since planning and were not written, rerun --apply` : ""}${applied?.failed ? `; stopped at ${applied.failed.canonicalId}: ${applied.failed.error}` : ""}`
+    );
+    return;
+  }
+  const { rows, known } = await loadTagBackfill(async (sql) =>
+    wranglerSelect(sql)
+  );
+  const plan = planTagBackfill(rows, known, Date.now());
+  const counts = {
+    tag: plan.tag.length,
+    noMatch: plan.noMatch.length,
+    recent: plan.recent.length,
+  };
+  print(
+    { dryRun: true, readOnly: wranglerSelectTotals, counts, plan },
+    `backfill-tags dry run (nothing written, no model call; ${wranglerSelectTotals.queries} read-only queries): ${JSON.stringify(counts)}`
+  );
+}
+
 /** Rebuild one date's TL;DR row. Always uses the dated route, which a
  * server without it answers 404, so nothing is written there. */
 async function tldrRegenerate(args: Args): Promise<void> {
@@ -633,9 +671,11 @@ async function main(): Promise<void> {
       return dayVideoPosted(args, stepArg);
     case "unmerge":
       return unmerge(args, stepArg);
+    case "backfill-tags":
+      return backfillTags(args);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --undo <batchId> [--apply]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --undo <batchId> [--apply] | backfill-tags [--apply]"
       );
   }
 }

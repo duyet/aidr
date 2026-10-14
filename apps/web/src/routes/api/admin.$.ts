@@ -7,6 +7,7 @@ import {
   recordAdminAuthFailure,
 } from "../../../worker/admin/auth.js";
 import {
+  backfillTags,
   decideSubmission,
   decideSuggestion,
   decideTranslationKnowledge,
@@ -507,6 +508,25 @@ async function handle(
     const { body, error } = await parseOptionalJsonObject(request);
     if (error !== null) return Response.json({ error }, { status: 400 });
     const result = await undoUnmerge(env, body);
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  // Body `{ dryRun? }`; dry unless `dryRun: false`. Writes only `tags`.
+  if (
+    method === "POST" &&
+    segments.length === 2 &&
+    segments[0] === "tags" &&
+    segments[1] === "backfill"
+  ) {
+    const { body, error } = await parseOptionalJsonObject(request);
+    if (error !== null) return Response.json({ error }, { status: 400 });
+    const result = await backfillTags(env, body);
     if (isHandlerError(result)) {
       return Response.json(
         { error: result.error },

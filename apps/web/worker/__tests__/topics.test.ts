@@ -11,6 +11,9 @@ import {
 } from "../topics.js";
 import type { Env } from "../types.js";
 
+/** A scored story with these raw tags and a headline that names nothing. */
+const story = (tags: string[]) => ({ tags, title: "", sourceId: "hn" });
+
 describe("normalizeTopicName", () => {
   it("lowercases and trims", () => {
     expect(normalizeTopicName("  OpenAI  ")).toBe("openai");
@@ -219,7 +222,7 @@ describe("normalizeTopics", () => {
 
     const result = await normalizeTopics(
       { ...env, DB: db },
-      new Map([["item1", ["LLMs"]]]),
+      new Map([["item1", story(["LLMs"])]]),
       1_700_000_000_000
     );
 
@@ -244,7 +247,7 @@ describe("normalizeTopics", () => {
 
     const result = await normalizeTopics(
       { ...env, DB: db },
-      new Map([["item1", ["Open Source AI"]]]),
+      new Map([["item1", story(["Open Source AI"])]]),
       1_700_000_000_000
     );
 
@@ -261,7 +264,7 @@ describe("normalizeTopics", () => {
     const manyTags = Array.from({ length: 10 }, (_, i) => `topic-${i}`);
     const result = await normalizeTopics(
       { ...env, DB: db },
-      new Map([["item1", manyTags]]),
+      new Map([["item1", story(manyTags)]]),
       1_700_000_000_000
     );
 
@@ -277,7 +280,7 @@ describe("normalizeTopics", () => {
 
     await normalizeTopics(
       { ...env, DB: db },
-      new Map([["item1", ["new-topic"]]]),
+      new Map([["item1", story(["new-topic"])]]),
       1_700_000_000_000
     );
 
@@ -287,11 +290,11 @@ describe("normalizeTopics", () => {
     expect(statements.some((s) => s.sql.startsWith("BATCH"))).toBe(true);
   });
 
-  it("returns empty arrays for items with no tags, without touching the DB", async () => {
+  it("returns empty arrays for items with no tags and no fallback name, writing nothing", async () => {
     const { db, statements } = makeDb({ existingTopics: [] });
     const result = await normalizeTopics(
       { ...env, DB: db },
-      new Map([["item1", []]]),
+      new Map([["item1", story([])]]),
       1_700_000_000_000
     );
     expect(result.get("item1")).toEqual([]);

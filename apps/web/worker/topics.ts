@@ -1,4 +1,5 @@
 import { callAnyrouter, parseJson } from "./llm.js";
+import { fallbackTags, type TaggableStory } from "./tag-fallback.js";
 import type { Env } from "./types.js";
 
 /** Cap on canonical topics stored per item — mirrors the scoring prompt's
@@ -34,7 +35,7 @@ export function normalizeTopicName(raw: string): string {
 
 /** Normalizes and dedupes a raw tag list, dropping anything that
  * normalizes to empty (e.g. pure punctuation). */
-export function dedupeNormalized(tags: string[]): string[] {
+export function dedupeNormalized(tags: readonly string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const tag of tags) {
@@ -152,33 +153,29 @@ async function mapUnseenTopics(
   }
 }
 
+/** One scored story: the scorer's raw tags, and the headline and source
+ * `fallbackTags` reads when the scorer gave none. */
+export interface ScoredStoryTags extends TaggableStory {
+  tags: readonly string[];
+}
+
 /**
  * Normalizes every item's raw score tags into canonical topic names,
  * persisting a per-variant row in the `topics` table (name -> canonical,
  * with a running `count`/`last_seen`) so the mapping is stable and
  * traceable across runs, and returns the rewritten canonical tags to use
  * in place of the raw ones before write-d1. New/unseen variants are
- * batched into a single LLM call per run.
+ * batched into a single LLM call per run. A story the scorer left with no
+ * tags gets `fallbackTags`, which names only existing canonicals, so it
+ * never adds to that call.
  */
 export async function normalizeTopics(
   env: Env,
-  rawTagsByItem: Map<string, string[]>,
+  storiesById: ReadonlyMap<string, ScoredStoryTags>,
   now: number
 ): Promise<Map<string, string[]>> {
-  const normalizedTagsByItem = new Map<string, string[]>();
-  const allNormalized = new Set<string>();
-  for (const [itemId, rawTags] of rawTagsByItem) {
-    const normalized = dedupeNormalized(rawTags);
-    normalizedTagsByItem.set(itemId, normalized);
-    for (const name of normalized) allNormalized.add(name);
-  }
-
   const canonicalTagsByItem = new Map<string, string[]>();
-  if (allNormalized.size === 0) {
-    for (const itemId of rawTagsByItem.keys())
-      canonicalTagsByItem.set(itemId, []);
-    return canonicalTagsByItem;
-  }
+  if (storiesById.size === 0) return canonicalTagsByItem;
 
   const { results: existingRows } = await env.DB.prepare(
     "SELECT name, canonical FROM topics"
@@ -189,6 +186,16 @@ export async function normalizeTopics(
   const existingCanonicals = [
     ...new Set((existingRows ?? []).map((r) => r.canonical)),
   ];
+
+  const normalizedTagsByItem = new Map<string, string[]>();
+  const allNormalized = new Set<string>();
+  for (const [itemId, story] of storiesById) {
+    const scored = dedupeNormalized(story.tags);
+    const normalized =
+      scored.length > 0 ? scored : fallbackTags(story, existingByName);
+    normalizedTagsByItem.set(itemId, normalized);
+    for (const name of normalized) allNormalized.add(name);
+  }
 
   const unseen = [...allNormalized].filter((name) => !existingByName.has(name));
   const mapping = await mapUnseenTopics(env, unseen, existingCanonicals);

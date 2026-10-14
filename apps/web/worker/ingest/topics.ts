@@ -28,10 +28,17 @@ export async function normalizeNewRowTopics(
       async () => {
         if (newRows.length === 0) return [];
         try {
-          const rawTagsByItem = new Map<string, string[]>(
-            newRows.map((row) => [row.id, scored.get(row.id)?.tags ?? []])
+          const storiesById = new Map(
+            newRows.map((row) => [
+              row.id,
+              {
+                tags: scored.get(row.id)?.tags ?? [],
+                title: row.item.title,
+                sourceId: row.source.id,
+              },
+            ])
           );
-          return mapEntries(await normalizeTopics(env, rawTagsByItem, now));
+          return mapEntries(await normalizeTopics(env, storiesById, now));
         } catch (error) {
           console.error("normalize-topics step failed:", error);
           return [];

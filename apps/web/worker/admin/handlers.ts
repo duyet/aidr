@@ -34,6 +34,12 @@ import {
 import { adapters } from "../sources/registry.js";
 import type { SourceLanguage } from "../sources/types.js";
 import {
+  applyTagBackfill,
+  loadTagBackfill,
+  planTagBackfill,
+  type TagBackfillPlan,
+} from "../tag-backfill.js";
+import {
   safeErrorCode,
   safeErrorStatus,
   sanitizeError,
@@ -49,7 +55,7 @@ import {
   tldrSnapshotDate,
 } from "../tldr.js";
 import { captureAndLearnTopics } from "../topic-learning.js";
-import { normalizeTopics } from "../topics.js";
+import { normalizeTopics, type ScoredStoryTags } from "../topics.js";
 import type { Env } from "../types.js";
 import { applyUnmerge, type BatchResult } from "../unmerge/apply.js";
 import { d1Select, loadUnmergeSnapshot } from "../unmerge/load.js";
@@ -540,6 +546,43 @@ export async function undoUnmerge(
   };
 }
 
+export interface BackfillTagsResult {
+  dryRun: boolean;
+  counts: { tag: number; noMatch: number; recent: number };
+  plan: TagBackfillPlan;
+  applied?: BatchResult;
+}
+
+/**
+ * Re-tags published stories stored with no tags (#770) with `fallbackTags`.
+ * Body `{ dryRun? }`. A dry run (the default) returns the plan and writes
+ * nothing. Neither calls a model. The apply writes only `items.tags`, as one
+ * undoable unmerge batch (`undoUnmerge` with `applied.batchId`). See
+ * ALGORITHM.md, "Tag backfill (admin)".
+ */
+export async function backfillTags(
+  env: Env,
+  input: { dryRun?: unknown }
+): Promise<BackfillTagsResult | HandlerError> {
+  if (input.dryRun !== undefined && typeof input.dryRun !== "boolean") {
+    return { error: "dryRun must be a boolean", status: 400 };
+  }
+  const { rows, known } = await loadTagBackfill(d1Select(env.DB));
+  const plan = planTagBackfill(rows, known, Date.now());
+  const counts = {
+    tag: plan.tag.length,
+    noMatch: plan.noMatch.length,
+    recent: plan.recent.length,
+  };
+  if (input.dryRun !== false) return { dryRun: true, counts, plan };
+  return {
+    dryRun: false,
+    counts,
+    plan,
+    applied: await applyTagBackfill(env.DB, plan),
+  };
+}
+
 /**
  * The TL;DR a run would publish from current data, without writing
  * `tldr_snapshots` and without sending anything. LLM attempts are logged
@@ -811,17 +854,21 @@ export async function reprocessToday(
         )
       );
 
-      const rawTagsByItem = new Map<string, string[]>();
+      const storiesById = new Map<string, ScoredStoryTags>();
       const scoreByItemId = new Map<string, (typeof scoreResults)[number]>();
       for (const result of scoreResults) {
         const row = items[result.i];
         if (!row) continue;
-        rawTagsByItem.set(row.id, result.tags);
+        storiesById.set(row.id, {
+          tags: result.tags,
+          title: row.title,
+          sourceId: row.source_id,
+        });
         scoreByItemId.set(row.id, result);
       }
       const nowMs = Date.now();
       const canonicalTagsByItem = await withLlmCallContext(operationId, () =>
-        normalizeTopics(env, rawTagsByItem, nowMs)
+        normalizeTopics(env, storiesById, nowMs)
       );
       await captureAndLearnTopics(env.DB, canonicalTagsByItem, nowMs);
 
