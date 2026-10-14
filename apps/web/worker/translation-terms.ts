@@ -729,6 +729,43 @@ function isByline(
   );
 }
 
+/** English country names. Production credits on the bare from-lead are
+ * outlets and companies; none is a country (#762). */
+const ENGLISH_PLACES: ReadonlySet<string> = new Set([
+  "Australia",
+  "Brazil",
+  "Canada",
+  "China",
+  "France",
+  "Germany",
+  "India",
+  "Israel",
+  "Italy",
+  "Japan",
+  "Korea",
+  "Norway",
+  "Russia",
+  "Singapore",
+  "South Korea",
+  "Spain",
+  "Taiwan",
+  "Thailand",
+  "Ukraine",
+  "United Kingdom",
+  "United States",
+  "Vietnam",
+]);
+
+/** A bare name after "From" or "Nguồn:" that is a country, not a credit:
+ * "Từ Thái Lan.", "Nguồn: Trung Quốc.", "From Thailand." */
+function isPlaceName(name: string): boolean {
+  return (
+    ENGLISH_PLACES.has(name) ||
+    VIETNAMESE_LETTER_RE.test(name) ||
+    isVietnameseName(name)
+  );
+}
+
 /** Each way a sentence opens a credit, the bare name it accepts besides a
  * byline, and who may write the byline (a reporter unless given). */
 const ATTRIBUTION_LEADS: readonly {
@@ -739,7 +776,9 @@ const ATTRIBUTION_LEADS: readonly {
 }[] = [
   {
     lead: String.raw`(?:(?:[Tt]in|[Bb]ài)\s+)?[Tt]ừ|[Bb]ài viết (?:của|từ)|[Nn]guồn(?:\s+tin)?\s*:?|[Ff]rom|[Vv]ia|[Ss]ource\s*:?`,
-    bare: (name) => ATTRIBUTION_NAME_RE.test(name) || isSourceList(name),
+    bare: (name) =>
+      isSourceList(name) ||
+      (ATTRIBUTION_NAME_RE.test(name) && !isPlaceName(name)),
   },
   // "Theo" also cites a country or a ministry: "Theo Mỹ.", "Theo Trung Quốc.".
   { lead: "[Tt]heo|[Tt]hông tin từ", bare: isSourceList },
