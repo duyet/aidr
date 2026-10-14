@@ -2,7 +2,7 @@
 /**
  * Verify the artifact `wrangler deploy` actually uploads.
  *
- * Two things, both of which fail silently otherwise:
+ * Three things, each of which fails silently or only on master otherwise:
  *
  * 1. `dist/server/wrangler.json` must exist. `wrangler deploy` reads this exact
  *    file, so a build that "succeeded" without it fails at the deploy step.
@@ -15,12 +15,18 @@
  *    the source tree, so it stays green either way — this is the only gate that
  *    covers the copy into the artifact.
  *
+ * 3. Every `dist/client/assets` entry must be a flat file name the deploy's
+ *    carry step can publish (`readBuildAssets` in `src/lib/deploy-assets.ts`).
+ *    The carry runs only on the master deploy, so without this a new
+ *    build-output name passes the PR and then fails the deploy.
+ *
  * Runs in `validate:deploy-artifact`, so it is the same check locally and in
  * CI, after the same build.
  */
 import { statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readBuildAssets } from "../src/lib/deploy-assets";
 import { STORY_OG_FONT_SOURCES } from "../src/lib/og-fonts";
 
 const webRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -58,6 +64,15 @@ for (const [weight, path] of Object.entries(STORY_OG_FONT_SOURCES)) {
     );
   }
   console.log(`Verified ${statSync(built).size} bytes in dist/client${path}`);
+}
+
+try {
+  const assets = readBuildAssets(clientRoot);
+  console.log(
+    `Verified ${assets.length} carry-safe names in dist/client/assets`
+  );
+} catch (e) {
+  fail((e as Error).message);
 }
 
 console.log("Deploy artifact assertion passed");

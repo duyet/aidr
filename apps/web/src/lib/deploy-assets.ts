@@ -7,48 +7,99 @@
  * lazy-load route chunks. Each deploy re-ships the files the live site still
  * lists in its asset history, so that HTML keeps hydrating (issue #702).
  */
+import { readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 /** Published at the site root by the assets binding, not by the Worker. */
 export const ASSET_HISTORY_PATH = "asset-history.json";
 
-/** How long a file stays servable after the last deploy that built it. */
+/**
+ * How long a file stays servable after the last build that emitted it was
+ * replaced. `html-cache.test.ts` holds every HTML cache policy under it.
+ */
 export const ASSET_RETENTION_MS = 48 * 60 * 60 * 1000;
 
-/** Published path (`assets/index-abc.js`) → epoch ms of the last deploy that built it. */
-export type AssetHistory = Readonly<Record<string, number>>;
+/**
+ * Retention runs from the deploy that replaced a file's last build, not the
+ * one that built it: a build that stays live for a day renders HTML naming
+ * its files until the moment it is replaced.
+ */
+export interface AssetHistory {
+  /** The live build's own files (`assets/index-abc.js`). */
+  readonly built: readonly string[];
+  /** Earlier builds' files → epoch ms of the deploy that replaced the last build emitting them. */
+  readonly retired: Readonly<Record<string, number>>;
+}
 
 const ASSET_NAME = "[A-Za-z0-9_-][A-Za-z0-9._-]*";
 const ASSET_PATH = new RegExp(`^assets/${ASSET_NAME}$`);
 
-/** Parse the live history file. Keys become write paths, so reject anything outside `assets/`. */
-export function parseAssetHistory(raw: unknown): AssetHistory {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    throw new Error("asset history must be a JSON object");
+function assertAssetPaths(paths: readonly string[], source: string): void {
+  const invalid = paths.filter((path) => !ASSET_PATH.test(path));
+  if (invalid.length > 0) {
+    throw new Error(
+      `${source} has unsupported asset path(s): ${invalid.join(", ")}`
+    );
   }
-  const history: Record<string, number> = {};
-  for (const [path, lastBuilt] of Object.entries(raw)) {
-    if (!ASSET_PATH.test(path)) {
-      throw new Error(`asset history has an invalid path: ${path}`);
-    }
-    if (typeof lastBuilt !== "number" || !Number.isFinite(lastBuilt)) {
+}
+
+/**
+ * The new build's `/assets/*` files. Both the carry step and the PR gate
+ * (`assert-deploy-artifact.ts`) read the build through this, so a file the
+ * carry could not publish fails a pull request rather than the deploy.
+ *
+ * `vite build` empties `dist/client`, so a history file there means the
+ * output was carried into and not rebuilt since; its carried files would
+ * otherwise be read as this build's own.
+ */
+export function readBuildAssets(clientRoot: string): string[] {
+  if (readdirSync(clientRoot).includes(ASSET_HISTORY_PATH)) {
+    throw new Error(
+      `${clientRoot} already holds ${ASSET_HISTORY_PATH} from an earlier carry; rebuild first`
+    );
+  }
+  const paths = readdirSync(join(clientRoot, "assets"), {
+    withFileTypes: true,
+  }).map((entry) => `assets/${entry.name}${entry.isFile() ? "" : "/"}`);
+  assertAssetPaths(paths, "the build");
+  return paths.sort();
+}
+
+function isRecord(raw: unknown): raw is Record<string, unknown> {
+  return typeof raw === "object" && raw !== null && !Array.isArray(raw);
+}
+
+/**
+ * Parse the live history file. Its paths become write paths, so reject
+ * anything outside `assets/`. A time after `now`, from a deploy machine with a
+ * fast clock, reads as `now`; kept as is, it would outlive retention.
+ */
+export function parseAssetHistory(raw: unknown, now: number): AssetHistory {
+  if (!(isRecord(raw) && Array.isArray(raw.built) && isRecord(raw.retired))) {
+    throw new Error("asset history must be { built: [...], retired: {...} }");
+  }
+  const built = raw.built.map(String);
+  assertAssetPaths([...built, ...Object.keys(raw.retired)], "asset history");
+  const retired: Record<string, number> = {};
+  for (const [path, replacedAt] of Object.entries(raw.retired)) {
+    if (typeof replacedAt !== "number" || !Number.isFinite(replacedAt)) {
       throw new Error(`asset history has an invalid time for ${path}`);
     }
-    history[path] = lastBuilt;
+    retired[path] = Math.min(replacedAt, now);
   }
-  return history;
+  return { built, retired };
 }
 
 export interface AssetCarryPlan {
   /** History to publish with the new build. */
-  history: Record<string, number>;
+  history: { built: string[]; retired: Record<string, number> };
   /** Live files the new build lacks and must re-ship. */
   carry: string[];
 }
 
 /**
- * The new build's files are stamped `now`. A live file the new build lacks
- * keeps its original time, so it expires `retentionMs` after the last deploy
- * that built it rather than living forever through re-carrying.
+ * The live build's files that the new build lacks retire `now`. Files that
+ * retired earlier keep their time, so re-carrying never extends them.
  */
 export function planAssetCarry(
   current: readonly string[],
@@ -56,20 +107,20 @@ export function planAssetCarry(
   now: number,
   retentionMs: number = ASSET_RETENTION_MS
 ): AssetCarryPlan {
-  const history: Record<string, number> = {};
-  for (const path of current) {
-    if (!ASSET_PATH.test(path)) {
-      throw new Error(`build emitted an unsupported asset path: ${path}`);
-    }
-    history[path] = now;
+  assertAssetPaths(current, "the build");
+  const building = new Set(current);
+  const retired: Record<string, number> = {};
+  for (const [path, replacedAt] of Object.entries(live.retired)) {
+    if (building.has(path) || now - replacedAt >= retentionMs) continue;
+    retired[path] = replacedAt;
   }
-  const carry: string[] = [];
-  for (const [path, lastBuilt] of Object.entries(live)) {
-    if (path in history || now - lastBuilt >= retentionMs) continue;
-    history[path] = lastBuilt;
-    carry.push(path);
+  for (const path of live.built) {
+    if (!building.has(path)) retired[path] = now;
   }
-  return { history, carry: carry.sort() };
+  return {
+    history: { built: [...building].sort(), retired },
+    carry: Object.keys(retired).sort(),
+  };
 }
 
 /**
@@ -153,6 +204,9 @@ export function assetBodyProblem(
 /** Per-request limit, so a hung live site can't stall a deploy. */
 export const REQUEST_TIMEOUT_MS = 15_000;
 
+/** Limit on the whole carry step; after it the deploy goes on with what it has. */
+export const CARRY_DEADLINE_MS = 5 * 60 * 1000;
+
 export function timedFetch(
   url: string,
   init: RequestInit = {},
@@ -175,24 +229,23 @@ async function html(get: Get, url: string): Promise<string> {
 /**
  * Without a history file (the first deploy with one, or a deploy that skipped
  * the carry step) fall back to what the cached pages the post-deploy smoke
- * checks load right now, plus the Vietnamese home.
+ * checks load right now, plus the Vietnamese home, as the live build's files.
  */
 async function seedFromCachedPages(
   get: Get,
-  base: string,
-  now: number
+  base: string
 ): Promise<LiveHistory> {
   const pages = [
     ...deployCheckPages(await html(get, `${base}/?lang=en`)),
     "/?lang=vi",
   ];
-  const seed: Record<string, number> = {};
+  const built = new Set<string>();
   for (const page of pages) {
     for (const ref of assetRefs(await html(get, `${base}${page}`), base)) {
-      seed[ref.slice(1)] = now;
+      built.add(ref.slice(1));
     }
   }
-  return { kind: "seeded", history: parseAssetHistory(seed), pages };
+  return { kind: "seeded", history: { built: [...built], retired: {} }, pages };
 }
 
 type LiveHistory =
@@ -216,13 +269,13 @@ async function readLiveHistory(
     const res = await get(`${base}/${ASSET_HISTORY_PATH}?t=${now}`, {
       headers: { "cache-control": "no-cache" },
     });
-    if (res.status === 404) return await seedFromCachedPages(get, base, now);
+    if (res.status === 404) return await seedFromCachedPages(get, base);
     if (!res.ok) {
       throw new Error(`GET ${ASSET_HISTORY_PATH} -> HTTP ${res.status}`);
     }
     return {
       kind: "published",
-      history: parseAssetHistory(await res.json()),
+      history: parseAssetHistory(await res.json(), now),
     };
   } catch (e) {
     return { kind: "unreadable", reason: describeError(e) };
@@ -249,34 +302,35 @@ async function liveHistory(
       warn(
         `could not read the live site (${live.reason}); deploying without carrying earlier assets, so HTML cached from earlier builds may load missing chunks until it expires`
       );
-      return {};
+      return { built: [], retired: {} };
   }
 }
 
-async function download(
-  get: Get,
-  sleep: (ms: number) => Promise<void>,
-  base: string,
-  path: string
-): Promise<Uint8Array> {
-  let reason = "";
-  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-    const fetched = await fetchAsset(get, base, path);
-    if (fetched.kind === "ok") return fetched.bytes;
-    // The server said what the file is; asking again won't change that.
-    if (fetched.kind === "refused") {
-      throw new Error(`refused /${path}: ${fetched.reason}`);
-    }
-    reason = fetched.reason;
-    if (attempt < ATTEMPTS) await sleep(attempt * 1000);
-  }
-  throw new Error(`GET /${path} failed after ${ATTEMPTS} attempts: ${reason}`);
-}
-
+/**
+ * `refused`: the site answered and the file can't be carried, so it leaves the
+ * history. `failed`: the cause may be passing, so the file stays listed for the
+ * next deploy to try until it expires.
+ */
 type AssetFetch =
   | { kind: "ok"; bytes: Uint8Array }
   | { kind: "refused"; reason: string }
   | { kind: "failed"; reason: string };
+
+async function download(
+  get: Get,
+  sleep: (ms: number) => Promise<void>,
+  msLeft: () => number,
+  base: string,
+  path: string
+): Promise<AssetFetch> {
+  let result: AssetFetch = { kind: "failed", reason: "carry deadline reached" };
+  for (let attempt = 1; attempt <= ATTEMPTS && msLeft() > 0; attempt++) {
+    if (attempt > 1) await sleep(Math.min((attempt - 1) * 1000, msLeft()));
+    result = await fetchAsset(get, base, path);
+    if (result.kind !== "failed") return result;
+  }
+  return result;
+}
 
 async function fetchAsset(
   get: Get,
@@ -287,7 +341,9 @@ async function fetchAsset(
     const res = await get(`${base}/${path}`);
     if (!res.ok) {
       await res.body?.cancel();
-      return { kind: "failed", reason: `HTTP ${res.status}` };
+      const kind =
+        res.status === 404 || res.status === 410 ? "refused" : "failed";
+      return { kind, reason: `HTTP ${res.status}` };
     }
     const type = res.headers.get("content-type") ?? "";
     const declared = Number(res.headers.get("content-length") ?? 0);
@@ -306,6 +362,27 @@ async function fetchAsset(
   }
 }
 
+/**
+ * Write a carried file under its hashed name only once all of it is on disk:
+ * a partial file under that name would be published and served as the chunk.
+ */
+export function writeCarriedAsset(
+  clientRoot: string,
+  path: string,
+  bytes: Uint8Array,
+  write: (file: string, bytes: Uint8Array) => void = writeFileSync
+): void {
+  const out = join(clientRoot, path);
+  const partial = `${out}.partial`;
+  try {
+    write(partial, bytes);
+    renameSync(partial, out);
+  } catch (e) {
+    rmSync(partial, { force: true });
+    throw e;
+  }
+}
+
 export interface CarryOptions {
   /** Live site origin, e.g. `https://aidr.today`. */
   base: string;
@@ -316,31 +393,40 @@ export interface CarryOptions {
   save: (path: string, bytes: Uint8Array) => void;
   warn: (message: string) => void;
   timeoutMs?: number;
+  /** Limit on the whole step, history read included. */
+  deadlineMs?: number;
   /** Waits between download attempts. */
   sleep?: (ms: number) => Promise<void>;
 }
 
 export interface CarryResult {
   /** History to publish with the new build. */
-  history: Record<string, number>;
+  history: AssetCarryPlan["history"];
   carried: number;
   attempted: number;
 }
 
 /**
- * Re-ship the live site's still-retained files the new build lacks. A file
- * that fails to download is warned about and dropped from the history.
+ * Re-ship the live site's still-retained files the new build lacks.
  *
- * When the live site can't be read at all, this warns and plans from an empty
- * history rather than throwing: the deploy it runs in may be the one meant to
- * fix that site. The published history then lists only the new build, so the
- * next deploy carries normally.
+ * The live site never fails the deploy this runs in, which may be the one
+ * meant to fix that site: an unreadable site plans from an empty history, and
+ * the step stops downloading at `deadlineMs` and publishes what it has. Only
+ * this build's own output (`planAssetCarry`) can throw.
  */
 export async function carryLiveAssets(
   options: CarryOptions
 ): Promise<CarryResult> {
   const { base, now, save, warn } = options;
-  const get: Get = (url, init) => timedFetch(url, init, options.timeoutMs);
+  const deadlineMs = options.deadlineMs ?? CARRY_DEADLINE_MS;
+  const deadlineAt = Date.now() + deadlineMs;
+  const msLeft = () => deadlineAt - Date.now();
+  const get: Get = (url, init) =>
+    timedFetch(
+      url,
+      init,
+      Math.max(0, Math.min(options.timeoutMs ?? REQUEST_TIMEOUT_MS, msLeft()))
+    );
   const sleep =
     options.sleep ??
     ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)));
@@ -350,24 +436,38 @@ export async function carryLiveAssets(
     now
   );
 
-  const failed: string[] = [];
+  let carried = 0;
   const queue = [...plan.carry];
+  const drop = (path: string, reason: string) => {
+    delete plan.history.retired[path];
+    warn(`not carried: /${path}: ${reason}`);
+  };
   await Promise.all(
     Array.from({ length: CONCURRENCY }, async () => {
-      for (let path = queue.shift(); path; path = queue.shift()) {
-        try {
-          save(path, await download(get, sleep, base, path));
-        } catch (e) {
-          failed.push(path);
-          warn(`not carried: ${(e as Error).message}`);
+      while (queue.length > 0 && msLeft() > 0) {
+        const path = queue.shift() as string;
+        const fetched = await download(get, sleep, msLeft, base, path);
+        if (fetched.kind === "refused") {
+          drop(path, fetched.reason);
+        } else if (fetched.kind === "failed") {
+          warn(
+            `not carried this deploy, kept in the history: /${path}: ${fetched.reason}`
+          );
+        } else {
+          try {
+            save(path, fetched.bytes);
+            carried++;
+          } catch (e) {
+            drop(path, `could not write it: ${describeError(e)}`);
+          }
         }
       }
     })
   );
-  for (const path of failed) delete plan.history[path];
-  return {
-    history: plan.history,
-    carried: plan.carry.length - failed.length,
-    attempted: plan.carry.length,
-  };
+  if (queue.length > 0) {
+    warn(
+      `stopped carrying at the ${deadlineMs / 1000}s deadline; ${queue.length} file(s) not tried stay in the history`
+    );
+  }
+  return { history: plan.history, carried, attempted: plan.carry.length };
 }

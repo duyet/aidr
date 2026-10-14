@@ -1,9 +1,19 @@
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  ASSET_HISTORY_PATH,
   ASSET_RETENTION_MS,
   assetBodyProblem,
   assetRefs,
@@ -13,7 +23,9 @@ import {
   MAX_ASSET_BYTES,
   parseAssetHistory,
   planAssetCarry,
+  readBuildAssets,
   timedFetch,
+  writeCarriedAsset,
 } from "./deploy-assets";
 
 const HOUR = 60 * 60 * 1000;
@@ -88,67 +100,172 @@ const HOME_EN = `<a href="/date/2026-10-14?lang=en"></a><a href="/74c9e10c?lang=
 describe("planAssetCarry", () => {
   it("re-ships a previous build's chunk that the new build dropped", () => {
     const t0 = 1_000 * HOUR;
-    const live = { "assets/index-old.js": t0, "assets/shared-a.js": t0 };
+    const live = {
+      built: ["assets/index-old.js", "assets/shared-a.js"],
+      retired: {},
+    };
     const plan = planAssetCarry(
       ["assets/index-new.js", "assets/shared-a.js"],
       live,
-      t0 + HOUR
+      t0
     );
     expect(plan.carry).toEqual(["assets/index-old.js"]);
     expect(plan.history).toEqual({
-      "assets/index-new.js": t0 + HOUR,
-      "assets/shared-a.js": t0 + HOUR,
-      "assets/index-old.js": t0,
+      built: ["assets/index-new.js", "assets/shared-a.js"],
+      retired: { "assets/index-old.js": t0 },
     });
   });
 
-  it("expires a chunk by the last build that emitted it, however often it was carried", () => {
+  // A build stays live, and keeps rendering HTML that names its chunks, until
+  // the deploy that replaces it, however long after its own deploy that is.
+  it("keeps a chunk for the retention after the deploy that replaced its build", () => {
     const t0 = 1_000 * HOUR;
-    let history = planAssetCarry(["assets/index-a.js"], {}, t0).history;
+    const first = planAssetCarry(
+      ["assets/index-a.js"],
+      { built: [], retired: {} },
+      t0
+    );
+    const replaced = t0 + 47 * HOUR;
+    let history = planAssetCarry(
+      ["assets/index-b.js"],
+      first.history,
+      replaced
+    ).history;
     for (let hours = 6; hours < 48; hours += 6) {
       const plan = planAssetCarry(
         [`assets/index-${hours}.js`],
         history,
-        t0 + hours * HOUR
+        replaced + hours * HOUR
       );
       expect(plan.carry).toContain("assets/index-a.js");
       history = plan.history;
     }
-    expect(history["assets/index-a.js"]).toBe(t0);
+    expect(history.retired["assets/index-a.js"]).toBe(replaced);
 
     const expired = planAssetCarry(
       ["assets/index-48.js"],
       history,
-      t0 + ASSET_RETENTION_MS
+      replaced + ASSET_RETENTION_MS
     );
     expect(expired.carry).not.toContain("assets/index-a.js");
-    expect(expired.history).not.toHaveProperty("assets/index-a.js");
+    expect(expired.history.retired).not.toHaveProperty("assets/index-a.js");
+  });
+
+  it("lists a retired file the new build emits again as built", () => {
+    const plan = planAssetCarry(
+      ["assets/index-a.js"],
+      { built: [], retired: { "assets/index-a.js": 5 } },
+      10
+    );
+    expect(plan).toEqual({
+      history: { built: ["assets/index-a.js"], retired: {} },
+      carry: [],
+    });
   });
 
   it("rejects a build file it could not publish safely", () => {
-    expect(() => planAssetCarry(["assets/sub/x.js"], {}, 0)).toThrow(
-      /unsupported asset path/
-    );
+    expect(() =>
+      planAssetCarry(["assets/sub/x.js"], { built: [], retired: {} }, 0)
+    ).toThrow(/unsupported asset path/);
   });
 });
 
 describe("parseAssetHistory", () => {
+  const now = 1_000 * HOUR;
+
   it("accepts the published shape", () => {
-    expect(parseAssetHistory({ "assets/index-abc.js": 5 })).toEqual({
-      "assets/index-abc.js": 5,
-    });
+    const raw = {
+      built: ["assets/index-abc.js"],
+      retired: { "assets/index-old.js": now - HOUR },
+    };
+    expect(parseAssetHistory(raw, now)).toEqual(raw);
+  });
+
+  // A history written by a machine whose clock ran ahead would otherwise keep
+  // its files until that clock's time plus retention.
+  it("reads a time after now as now", () => {
+    const parsed = parseAssetHistory(
+      { built: [], retired: { "assets/a.js": now + 1_000 * HOUR } },
+      now
+    );
+    expect(parsed.retired["assets/a.js"]).toBe(now);
+    const plan = planAssetCarry([], parsed, now + ASSET_RETENTION_MS);
+    expect(plan.carry).toEqual([]);
   });
 
   it.each([
-    [{ "assets/../server/index.js": 1 }],
-    [{ "../wrangler.json": 1 }],
-    [{ "assets/..": 1 }],
-    [{ "fonts/a.woff2": 1 }],
-    [{ "assets/a.js": "1" }],
+    [{ built: ["assets/../server/index.js"], retired: {} }],
+    [{ built: [], retired: { "../wrangler.json": 1 } }],
+    [{ built: ["assets/.."], retired: {} }],
+    [{ built: [], retired: { "fonts/a.woff2": 1 } }],
+    [{ built: [5], retired: {} }],
+    [{ built: [], retired: { "assets/a.js": "1" } }],
+    [{ "assets/a.js": 1 }],
     [["assets/a.js"]],
     [null],
-  ])("rejects %j, whose keys become write paths", (raw) => {
-    expect(() => parseAssetHistory(raw)).toThrow();
+  ])("rejects %j, whose paths become write paths", (raw) => {
+    expect(() => parseAssetHistory(raw, now)).toThrow();
+  });
+});
+
+describe("readBuildAssets", () => {
+  function clientRoot(files: string[]): string {
+    const root = mkdtempSync(join(tmpdir(), "deploy-assets-"));
+    mkdirSync(join(root, "assets"));
+    for (const file of files) {
+      mkdirSync(join(root, file, ".."), { recursive: true });
+      writeFileSync(join(root, file), "x");
+    }
+    return root;
+  }
+
+  it("lists the build's flat asset files", () => {
+    expect(
+      readBuildAssets(clientRoot(["assets/index-b.js", "assets/a-1.css"]))
+    ).toEqual(["assets/a-1.css", "assets/index-b.js"]);
+  });
+
+  // The PR gate reads the build through this, so a name the deploy's carry
+  // would refuse fails the pull request instead of the master deploy.
+  it.each(["assets/sub/x.js", "assets/a~b.js", "assets/.hidden.js"])(
+    "rejects %s",
+    (file) => {
+      expect(() =>
+        readBuildAssets(clientRoot(["assets/index-a.js", file]))
+      ).toThrow(/unsupported asset path/);
+    }
+  );
+
+  // `vite build` empties dist/client. A history file there means this output
+  // was carried into already, and its carried files would read as built.
+  it("refuses an output dir an earlier carry wrote into", () => {
+    const root = clientRoot(["assets/index-a.js", "assets/index-old.js"]);
+    writeFileSync(join(root, ASSET_HISTORY_PATH), "{}");
+    expect(() => readBuildAssets(root)).toThrow(/rebuild first/);
+  });
+});
+
+describe("writeCarriedAsset", () => {
+  it("writes the file under its name", () => {
+    const root = mkdtempSync(join(tmpdir(), "deploy-assets-"));
+    mkdirSync(join(root, "assets"));
+    writeCarriedAsset(root, "assets/a.js", new TextEncoder().encode("a()"));
+    expect(readFileSync(join(root, "assets/a.js"), "utf8")).toBe("a()");
+    expect(readdirSync(join(root, "assets"))).toEqual(["a.js"]);
+  });
+
+  // Anything under the hashed name is published as that chunk.
+  it("leaves nothing behind when the write fails partway", () => {
+    const root = mkdtempSync(join(tmpdir(), "deploy-assets-"));
+    mkdirSync(join(root, "assets"));
+    const bytes = new TextEncoder().encode("whole()");
+    expect(() =>
+      writeCarriedAsset(root, "assets/a.js", bytes, (file, data) => {
+        writeFileSync(file, data.subarray(0, 3));
+        throw new Error("ENOSPC");
+      })
+    ).toThrow(/ENOSPC/);
+    expect(readdirSync(join(root, "assets"))).toEqual([]);
   });
 });
 
@@ -226,24 +343,44 @@ describe("carryLiveAssets", () => {
     type: "text/html",
     body,
   });
+  /** A live history whose files retired an hour ago. */
+  const history = (...paths: string[]): Reply => ({
+    status: 200,
+    type: "application/json",
+    body: JSON.stringify({
+      built: [],
+      retired: Object.fromEntries(paths.map((path) => [path, now - HOUR])),
+    }),
+  });
+  const recordSleeps = (sleeps: number[]) => async (ms: number) => {
+    sleeps.push(ms);
+  };
 
-  it("re-ships a live file the new build lacks, keeping its original time", async () => {
+  it("re-ships the live build's files and earlier ones the new build lacks", async () => {
     const base = await liveSite({
       "/asset-history.json": {
         status: 200,
         type: "application/json",
-        body: JSON.stringify({ "assets/index-old.js": now - HOUR }),
+        body: JSON.stringify({
+          built: ["assets/index-live.js"],
+          retired: { "assets/index-old.js": now - HOUR },
+        }),
       },
+      "/assets/index-live.js": js("live()"),
       "/assets/index-old.js": js("old()"),
     });
     const result = await carry(base);
     expect(result.history).toEqual({
-      "assets/index-new.js": now,
-      "assets/index-old.js": now - HOUR,
+      built: ["assets/index-new.js"],
+      retired: {
+        "assets/index-live.js": now,
+        "assets/index-old.js": now - HOUR,
+      },
     });
     expect(
       new TextDecoder().decode(result.saved.get("assets/index-old.js"))
     ).toBe("old()");
+    expect(result.saved.size).toBe(2);
     expect(result.warnings).toEqual([]);
   });
 
@@ -268,10 +405,12 @@ describe("carryLiveAssets", () => {
       "assets/story-old.js",
     ]);
     expect(result.history).toEqual({
-      "assets/index-new.js": now,
-      "assets/index-old.js": now,
-      "assets/day-old.js": now,
-      "assets/story-old.js": now,
+      built: ["assets/index-new.js"],
+      retired: {
+        "assets/index-old.js": now,
+        "assets/day-old.js": now,
+        "assets/story-old.js": now,
+      },
     });
   });
 
@@ -284,13 +423,27 @@ describe("carryLiveAssets", () => {
       () => liveSite({ "/asset-history.json": page("<html>") }),
     ],
     [
+      "history in the old flat shape",
+      () =>
+        liveSite({
+          "/asset-history.json": {
+            status: 200,
+            type: "application/json",
+            body: JSON.stringify({ "assets/index-old.js": now }),
+          },
+        }),
+    ],
+    [
       "history with a path outside assets/",
       () =>
         liveSite({
           "/asset-history.json": {
             status: 200,
             type: "application/json",
-            body: JSON.stringify({ "assets/../server/index.js": now }),
+            body: JSON.stringify({
+              built: ["assets/../server/index.js"],
+              retired: {},
+            }),
           },
         }),
     ],
@@ -305,7 +458,10 @@ describe("carryLiveAssets", () => {
     ],
   ])("deploys without carrying on %s", async (_, site) => {
     const result = await carry(await site());
-    expect(result.history).toEqual({ "assets/index-new.js": now });
+    expect(result.history).toEqual({
+      built: ["assets/index-new.js"],
+      retired: {},
+    });
     expect(result.attempted).toBe(0);
     expect(result.saved.size).toBe(0);
     expect(result.warnings).toEqual([
@@ -318,22 +474,18 @@ describe("carryLiveAssets", () => {
     const started = Date.now();
     const result = await carry(base, { timeoutMs: 100 });
     expect(Date.now() - started).toBeLessThan(2_000);
-    expect(result.history).toEqual({ "assets/index-new.js": now });
+    expect(result.history.retired).toEqual({});
     expect(result.warnings).toEqual([
       expect.stringMatching(/timeout.*deploying without carrying/),
     ]);
   });
 
-  it("drops a download that never answers and carries the rest", async () => {
+  it("keeps a download that never answers in the history and carries the rest", async () => {
     const base = await liveSite({
-      "/asset-history.json": {
-        status: 200,
-        type: "application/json",
-        body: JSON.stringify({
-          "assets/hung-old.js": now - HOUR,
-          "assets/index-old.js": now - HOUR,
-        }),
-      },
+      "/asset-history.json": history(
+        "assets/hung-old.js",
+        "assets/index-old.js"
+      ),
       "/assets/hung-old.js": "hang",
       "/assets/index-old.js": js("old()"),
     });
@@ -342,31 +494,88 @@ describe("carryLiveAssets", () => {
       sleep: async () => {},
     });
     expect([...result.saved.keys()]).toEqual(["assets/index-old.js"]);
-    expect(result.history).not.toHaveProperty("assets/hung-old.js");
+    expect(result.history.retired).toHaveProperty("assets/hung-old.js");
     expect(result.warnings).toEqual([
-      expect.stringMatching(/not carried: GET \/assets\/hung-old\.js.*timeout/),
+      expect.stringMatching(
+        /kept in the history: \/assets\/hung-old\.js.*timeout/
+      ),
     ]);
   });
 
-  it("waits between download attempts but not after the last one", {
+  // The deploy waits on this step; past its deadline the deploy goes on with
+  // what was carried, and the rest stays listed for the next deploy to try.
+  it("stops at the step deadline and keeps what it has not carried", {
+    timeout: 5_000,
+  }, async () => {
+    const base = await liveSite({
+      "/asset-history.json": history(
+        ...Array.from({ length: 9 }, (_, i) => `assets/hung-${i}.js`),
+        "assets/a-old.js"
+      ),
+      "/assets/a-old.js": js("old()"),
+      ...Object.fromEntries(
+        Array.from({ length: 9 }, (_, i) => [`/assets/hung-${i}.js`, "hang"])
+      ),
+    });
+    const started = Date.now();
+    const result = await carry(base, {
+      timeoutMs: 60_000,
+      deadlineMs: 300,
+      sleep: async () => {},
+    });
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect([...result.saved.keys()]).toEqual(["assets/a-old.js"]);
+    expect(Object.keys(result.history.retired)).toHaveLength(10);
+    expect(result.warnings).toContainEqual(
+      expect.stringMatching(/stopped carrying at the 0.3s deadline; 1 file/)
+    );
+  });
+
+  it("keeps a file that failed transiently, after waiting between attempts", {
     timeout: 10_000,
   }, async () => {
     const base = await liveSite({
-      "/asset-history.json": {
-        status: 200,
-        type: "application/json",
-        body: JSON.stringify({ "assets/gone-old.js": now - HOUR }),
-      },
+      "/asset-history.json": history("assets/flaky-old.js"),
+      "/assets/flaky-old.js": { status: 503 },
     });
     const sleeps: number[] = [];
+    const result = await carry(base, { sleep: recordSleeps(sleeps) });
+    expect(sleeps).toEqual([1000, 2000]);
+    expect(result.history.retired).toHaveProperty("assets/flaky-old.js");
+    expect(result.warnings).toEqual([
+      expect.stringMatching(
+        /kept in the history: \/assets\/flaky-old\.js: HTTP 503/
+      ),
+    ]);
+  });
+
+  it("drops a file the live site no longer has, without retrying", async () => {
+    const base = await liveSite({
+      "/asset-history.json": history("assets/gone-old.js"),
+    });
+    const sleeps: number[] = [];
+    const result = await carry(base, { sleep: recordSleeps(sleeps) });
+    expect(sleeps).toEqual([]);
+    expect(result.history.retired).toEqual({});
+    expect(result.warnings).toEqual([
+      expect.stringMatching(/not carried: \/assets\/gone-old\.js: HTTP 404/),
+    ]);
+  });
+
+  it("drops a file it could not write", async () => {
+    const base = await liveSite({
+      "/asset-history.json": history("assets/index-old.js"),
+      "/assets/index-old.js": js("old()"),
+    });
     const result = await carry(base, {
-      sleep: async (ms) => {
-        sleeps.push(ms);
+      save: () => {
+        throw new Error("EACCES");
       },
     });
-    expect(sleeps).toHaveLength(2);
+    expect(result.carried).toBe(0);
+    expect(result.history.retired).toEqual({});
     expect(result.warnings).toEqual([
-      expect.stringMatching(/gone-old\.js failed after 3 attempts: HTTP 404/),
+      expect.stringMatching(/index-old\.js: could not write it: EACCES/),
     ]);
   });
 
@@ -374,17 +583,13 @@ describe("carryLiveAssets", () => {
   // isn't what the name says would be served to every cached page asking.
   it("refuses a body of the wrong kind or size, without retrying", async () => {
     const base = await liveSite({
-      "/asset-history.json": {
-        status: 200,
-        type: "application/json",
-        body: JSON.stringify({
-          "assets/plain-old.js": now - HOUR,
-          "assets/font-old.woff2": now - HOUR,
-          "assets/huge-old.js": now - HOUR,
-          "assets/streamed-old.js": now - HOUR,
-          "assets/index-old.js": now - HOUR,
-        }),
-      },
+      "/asset-history.json": history(
+        "assets/plain-old.js",
+        "assets/font-old.woff2",
+        "assets/huge-old.js",
+        "assets/streamed-old.js",
+        "assets/index-old.js"
+      ),
       "/assets/streamed-old.js": {
         ...js("x".repeat(MAX_ASSET_BYTES + 1)),
         chunked: true,
@@ -399,14 +604,9 @@ describe("carryLiveAssets", () => {
       "/assets/index-old.js": js("old()"),
     });
     const sleeps: number[] = [];
-    const result = await carry(base, {
-      sleep: async (ms) => {
-        sleeps.push(ms);
-      },
-    });
+    const result = await carry(base, { sleep: recordSleeps(sleeps) });
     expect([...result.saved.keys()]).toEqual(["assets/index-old.js"]);
-    expect(Object.keys(result.history).sort()).toEqual([
-      "assets/index-new.js",
+    expect(Object.keys(result.history.retired)).toEqual([
       "assets/index-old.js",
     ]);
     expect(result.warnings.sort()).toEqual([
@@ -479,6 +679,77 @@ describe("deploy-web.yml", () => {
       );
     }
   );
+});
+
+/**
+ * Runs a package.json script in `sh` with every command it calls stubbed to
+ * log its arguments, and `pnpm run <failing>` exiting 1.
+ */
+function runScript(
+  name: string,
+  failing = ""
+): { calls: string[]; code: number } {
+  const scripts: Record<string, string> = JSON.parse(
+    readFileSync(
+      fileURLToPath(new URL("../../package.json", import.meta.url)),
+      "utf8"
+    )
+  ).scripts;
+  const log = join(mkdtempSync(join(tmpdir(), "deploy-script-")), "calls");
+  writeFileSync(log, "");
+  const stubs = `
+pnpm() { echo "pnpm $*" >> "$LOG"; [ "$2" != "$FAILING" ]; }
+tsx() { echo "tsx $*" >> "$LOG"; }
+dotenvx() { while [ "$1" != "--" ]; do shift; done; shift; "$@"; }
+`;
+  let code = 0;
+  try {
+    execFileSync("sh", ["-c", `${stubs}\n${scripts[name]}`], {
+      env: { ...process.env, LOG: log, FAILING: failing },
+    });
+  } catch (e) {
+    code = (e as { status: number }).status;
+  }
+  return { calls: readFileSync(log, "utf8").trim().split("\n"), code };
+}
+
+describe("package.json deploy scripts", () => {
+  // Carried chunks hold the live site's `pk_live_` key, so a check that runs
+  // after the carry passes a keyless build, and a carried `pk_test_` chunk
+  // would fail a good one. The key check must see only this build's files.
+  it("checks the new build's Clerk key before carrying earlier builds' files", () => {
+    const { calls } = runScript("deploy");
+    expect(calls).toEqual([
+      "pnpm run check:migrations",
+      "pnpm run verify:translation-schema",
+      "pnpm run build",
+      "tsx scripts/assert-clerk-proxy-config.ts --require-live-key",
+      "tsx scripts/carry-live-assets.ts",
+      "pnpm exec wrangler deploy --config dist/server/wrangler.json",
+    ]);
+  });
+
+  it("deploys through the same script locally", () => {
+    expect(runScript("cf:deploy:prod").calls[0]).toBe("pnpm run deploy");
+  });
+
+  // Same as deploy-web.yml: the asset check first, and a failed asset check
+  // doesn't hide the Clerk and API checks.
+  it.each(["smoke:assets", "smoke"])(
+    "runs both post-deploy smoke checks and fails when %s fails",
+    (failing) => {
+      const { calls, code } = runScript("cf:deploy:prod", failing);
+      expect(calls.slice(1)).toEqual([
+        "pnpm run smoke:assets",
+        "pnpm run smoke",
+      ]);
+      expect(code).not.toBe(0);
+    }
+  );
+
+  it("passes when the deploy and both smoke checks pass", () => {
+    expect(runScript("cf:deploy:prod").code).toBe(0);
+  });
 });
 
 describe("timedFetch", () => {
