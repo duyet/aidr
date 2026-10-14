@@ -1,9 +1,10 @@
 /**
  * Right after the daily digest, each Telegram channel posts the digest's top
- * story on its own, once. Real SQLite, real migrations, the real dispatcher;
- * only `fetch` is stubbed. The rules under test: a retry never posts the
- * highlight twice, an ambiguous digest never triggers it, and it does not
- * count as a trending post.
+ * postable story on its own, once. Real SQLite, real migrations, the real
+ * dispatcher; only `fetch` is stubbed. The rules under test: a retry never
+ * posts the highlight twice, an ambiguous digest never triggers it, it does
+ * not count as a trending post, a gated top story falls back to the next
+ * card story, and a highlight with no postable story is skipped once.
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -13,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   dispatchStoryNotifications,
+  forceSendDigest,
   localDayStartMs,
   trendingGapSql,
 } from "../notify/index.js";
@@ -321,6 +323,34 @@ describe("digest highlight", () => {
       expect(later.reasons.telegram?.highlight).toBeUndefined();
     }
     expect(row("telegram", key)).toEqual({ status: "skipped", attempts: 1 });
+  });
+
+  it("lets an admin force-send retry a skipped highlight, once", async () => {
+    for (const story of STORIES.slice(0, 3)) gateVietnamese(story.id);
+    await dispatchStoryNotifications(env);
+    const key = `digest:${TODAY}:top`;
+    expect(row("telegram", key)?.status).toBe("skipped");
+
+    // The VI copy is fixed, then the owner forces the digest out again.
+    sqlite
+      .prepare(
+        "UPDATE translations SET summary = ? WHERE item_id = ? AND lang = 'vi'"
+      )
+      .run(SUMMARY_VI, STORIES[2].id);
+    calls = [];
+    await forceSendDigest(env);
+
+    const viCalls = callsTo("@vi");
+    expect(viCalls.filter((call) => !isDigest(call))).toHaveLength(1);
+    expect(String(viCalls[1].body.caption)).toContain(STORIES[2].titleVi);
+    expect(row("telegram", key)?.status).toBe("sent");
+    // English already had its highlight: the force-send does not repeat it.
+    expect(callsTo("@en").filter((call) => !isDigest(call))).toEqual([]);
+
+    calls = [];
+    vi.setSystemTime(new Date(NOW.getTime() + 30 * 60_000));
+    await dispatchStoryNotifications(env);
+    expect(callsTo("@vi")).toEqual([]);
   });
 
   it("retries a rejected highlight on the next run without reposting the digest", async () => {

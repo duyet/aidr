@@ -1093,7 +1093,8 @@ deliberately non-spammy.
   in order, up to `HIGHLIGHT_CANDIDATES` (3); the story posted is the run's
   `highlightStory` reason, and the row's `last_error` lists the stories
   passed over. When none passes, or the day has no card stories, the row is
-  `skipped`: final, never re-claimed, nothing posted. It is keyed `digest:<date>:top` in
+  `skipped`: nothing posted, and scheduled runs never re-claim it; only the
+  admin force-send reopens it. It is keyed `digest:<date>:top` in
   `notifications`, claimed like every send, and runs only when that day's
   digest row is `sent`, in the same run or within `HIGHLIGHT_WINDOW_MS`
   (3h) of it: an `ambiguous` or `sending` digest never triggers it, and an

@@ -59,7 +59,8 @@ import { webhookNotifier } from "./webhook.js";
  * 1. Daily TL;DR digest — ONE message per local day per channel, that
  *    channel's language edition, each bullet linked to its story. A channel
  *    with `postsDigestHighlight` (Telegram) then posts the digest's top
- *    story on its own, once, and only after a digest that surely posted.
+ *    postable story on its own, once, and only after a digest that surely
+ *    posted.
  * 2. Trending stories — individual posts only when the ranking algo
  *    flags a story as exceptional (rank + importance bar), capped per day
  *    and spaced by a minimum gap.
@@ -150,8 +151,8 @@ export function digestKey(localDate: string): string {
   return `digest:${localDate}`;
 }
 
-/** The `notifications.item_id` of the post that repeats the digest's top
- *  story. It sits under `digest:` so trending's daily count, gap and
+/** The `notifications.item_id` of the post that repeats one of the digest's
+ *  top stories (`pickDigestHighlight`). It sits under `digest:` so trending's daily count, gap and
  *  posted-events window leave it out; the story itself is already in
  *  `notify_digest_items`, which keeps trending from posting it again. */
 export function highlightKey(localDate: string): string {
@@ -643,8 +644,9 @@ export type HighlightOutcome =
  * its highlight would be a stray post. Only the gate falls through to the
  * next card story; a send that fails is that story's failure, retried by
  * later runs up to NOTIFY_MAX_ATTEMPTS. When no candidate passes, the row is
- * `skipped` and never re-claimed. Null when the highlight is already
- * claimed: sent, ambiguous, skipped, in flight or given up.
+ * `skipped`, which only the admin force-send reopens. Null when the
+ * highlight is already claimed: sent, ambiguous, skipped, in flight or given
+ * up.
  */
 export async function sendDigestHighlight(
   env: Env,
@@ -687,8 +689,8 @@ export async function sendDigestHighlight(
   return pick ? { result, storyId: pick.story.id } : { result };
 }
 
-/** Ends a claimed send that had nothing to post. `skipped` is final:
- *  `claimDelivery` re-claims only `failed` rows. */
+/** Ends a claimed send that had nothing to post. `skipped` is final for
+ *  scheduled runs: `claimDelivery` re-claims only `failed` rows. */
 async function recordSkipped(
   env: Pick<Env, "DB">,
   channel: string,
@@ -701,6 +703,21 @@ async function recordSkipped(
      WHERE channel = ? AND item_id = ?`
   )
     .bind(reason, Date.now(), nn(channel), nn(key))
+    .run();
+}
+
+/** Makes a skipped highlight claimable again, for the admin force-send. A
+ *  skip posted nothing, so this can never lead to a second post. */
+async function reopenSkippedHighlight(
+  env: Pick<Env, "DB">,
+  channel: string,
+  date: string
+): Promise<void> {
+  await env.DB.prepare(
+    `UPDATE notifications SET status = 'failed'
+     WHERE channel = ? AND item_id = ? AND status = 'skipped'`
+  )
+    .bind(nn(channel), highlightKey(date))
     .run();
 }
 
@@ -791,8 +808,8 @@ export async function claimDelivery(
  * message may be posted). An `ambiguous` row is final like `sent`: the
  * trending query and the digest gate both skip it, so an unknown outcome costs
  * at most a missed post and never a second one. It is not counted as a post.
- * A highlight with no postable story is `skipped` (`recordSkipped`): final,
- * and nothing was posted.
+ * A highlight with no postable story is `skipped` (`recordSkipped`): final for
+ * scheduled runs, and nothing was posted.
  */
 export async function recordDelivery(
   env: Pick<Env, "DB">,
@@ -1243,6 +1260,7 @@ export async function forceSendDigest(
       );
     }
     if (result.ok && notifier.postsDigestHighlight) {
+      await reopenSkippedHighlight(env, notifier.id, date);
       await sendDigestHighlight(env, notifier, target, date);
     }
     if (result.ok) sent++;
