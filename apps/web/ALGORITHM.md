@@ -965,9 +965,8 @@ Every run (30 minutes).
   retry waits 3 hours as it would after storing headlines. The step
   records action `kept`, reason `kept model digest: LLM thin (<error>)`,
   which the system page shows as degraded. Rows
-  from before 0061 have `fallback` NULL and are replaced. A homepage rebuild
-  that replaces `bullets_en` with titles writes 1; one that rebuilds only VI
-  keeps the row's flag, since its EN is still the model digest.
+  from before 0061 have `fallback` NULL and are replaced. Only ingest and
+  admin regenerate write the bullets, so `fallback` describes what they stored.
   From 2026-10-07 to 10-14, 4 of 6 title-fallback writes replaced a model
   digest; on 10-09 the email, both Telegram channels and Facebook sent the
   headlines.
@@ -978,8 +977,12 @@ Every run (30 minutes).
 - Empty results are never persisted.
 - The homepage also synthesizes a last-24h title-fallback at read time
   when the stored snapshot is thin *or* English-only in VI while
-  `title_vi` exists, and persists it so the frozen EN copy cannot
-  return.
+  `title_vi` exists. It only displays it and never writes
+  `tldr_snapshots`; ingest owns the row and repairs it under the rules
+  above. Before 2026-10-14 it persisted the rebuild, which rewrote the
+  row on every view when the rebuild matched the stored bullets, marked a
+  model EN digest `fallback = 1`, and stored a rebuild of an earlier
+  day's snapshot under today's date.
 - UI shows 8 by default (user preference 8/12/16).
 
 ### 10b. Weekly edition (LLM)

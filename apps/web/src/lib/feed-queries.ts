@@ -9,7 +9,6 @@ import {
 } from "../../worker/media.js";
 import { VOTE_NET_COLUMN, VOTE_NET_JOIN_I } from "../../worker/ranking.js";
 import { sourceFamily } from "../../worker/source-diversity.js";
-import { AUDIENCE_TIMEZONE, localCalendarDate } from "../../worker/time.js";
 import {
   collectTrendingCandidates,
   ensureTopicLearningSchema,
@@ -24,10 +23,7 @@ import { DAY_VIDEO_TITLE_MAX, type DayVideo, isYoutubeId } from "./day-video";
 import type { DbReader } from "./db";
 import { NEWEST_PUBLISHED_FETCHED_AT_SQL } from "./feed-freshness";
 import { parseStoredBullets } from "./tldr-bullets";
-import {
-  resolveTldrForDisplay,
-  shouldRebuildTldrForDisplay,
-} from "./tldr-fallback";
+import { resolveTldrForDisplay } from "./tldr-fallback";
 import { imageUrlByItemId, withTldrImages } from "./tldr-images";
 import type { DayGroup, FeedItem, FeedResponse, Lang } from "./types";
 
@@ -559,40 +555,11 @@ export async function getFeed(
     }
   }
 
-  const resolved = resolveTldrForDisplay(tldr, items);
-  // Persist a rebuilt last-24h fallback so Telegram and the next request
-  // see the ranked digest, not a leftover or English-copied bullets_vi.
-  // Stamp created_at as already stale so the next ingest still tries the LLM.
-  if (
-    resolved &&
-    resolved !== tldr &&
-    shouldRebuildTldrForDisplay(tldr, items)
-  ) {
-    try {
-      await db
-        .prepare(
-          `INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback)
-         VALUES (?, ?, ?, ?, 1)
-         ON CONFLICT(date) DO UPDATE SET
-           bullets_en = excluded.bullets_en,
-           bullets_vi = excluded.bullets_vi,
-           created_at = excluded.created_at,
-           fallback = 1`
-        )
-        .bind(
-          localCalendarDate(Date.now(), AUDIENCE_TIMEZONE),
-          JSON.stringify(resolved.bullets_en),
-          JSON.stringify(resolved.bullets_vi),
-          Date.now() - 3 * 60 * 60 * 1000
-        )
-        .run();
-    } catch {
-      // read-time persist is best-effort — display still uses `resolved`
-    }
-  }
-
   return boundFeedResponse({
-    tldr: withTldrImages(resolved, imageUrlByItemId(items)),
+    tldr: withTldrImages(
+      resolveTldrForDisplay(tldr, items),
+      imageUrlByItemId(items)
+    ),
     days: groupByDay(items),
     categories: (catsRes.results ?? []) as { name: string; count: number }[],
     trending,
