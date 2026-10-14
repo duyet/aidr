@@ -16,7 +16,9 @@ vi.mock("../llm.js", async (original) => ({
 }));
 
 const { generateTldr } = await import("../llm.js");
-const { ensureDailyTldr, TLDR_REFRESH_MS } = await import("../tldr.js");
+const { ensureDailyTldr, previewDailyTldr, TLDR_REFRESH_MS } = await import(
+  "../tldr.js"
+);
 const { getFeed } = await import("../../src/lib/feed-queries.js");
 const { generateTldr: tldrStep } = await import("../ingest/publish.js");
 const { stepState } = await import("../../src/components/system/run-format.js");
@@ -293,5 +295,92 @@ describe("TL;DR refresh that degrades to headlines", () => {
     expect(storedDigest().bullets_en.map((b) => b.text)).toEqual([
       STORIES[0].title,
     ]);
+  });
+
+  it("does not keep a homepage Vietnamese-only headline rebuild as a model digest", async () => {
+    sqlite
+      .prepare(
+        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback) VALUES (?, ?, ?, ?, 0)"
+      )
+      .run(
+        DATE,
+        JSON.stringify(GOOD.bullets_en),
+        JSON.stringify(GOOD.bullets_en),
+        FIRST_WRITE.getTime() - 60_000
+      );
+    await getFeed(env.DB);
+    expect(storedDigest().bullets_en).toEqual(GOOD.bullets_en);
+    expect(storedDigest().bullets_vi.map((b) => b.text)).toEqual(
+      STORIES.map((story) => story.titleVi)
+    );
+
+    at(FIRST_WRITE.getTime() + TLDR_REFRESH_MS + 60_000);
+    tldrResult.next = FAILED;
+    const stats = await ensureDailyTldr(env);
+
+    expect(stats.reason).not.toMatch(/^kept model digest/);
+    expect(storedDigest().bullets_en.map((b) => b.text)).toEqual(
+      STORIES.map((story) => story.title)
+    );
+  });
+
+  it("overwrites a pre-migration row whose fallback is NULL", async () => {
+    sqlite
+      .prepare(
+        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback) VALUES (?, ?, ?, ?, NULL)"
+      )
+      .run(
+        DATE,
+        JSON.stringify(GOOD.bullets_en),
+        JSON.stringify(GOOD.bullets_vi),
+        FIRST_WRITE.getTime() - TLDR_REFRESH_MS - 60_000
+      );
+    tldrResult.next = FAILED;
+
+    const stats = await ensureDailyTldr(env);
+
+    expect(stats.generated).toBe(true);
+    expect(stats.reason).not.toMatch(/^kept model digest/);
+    expect(storedDigest().bullets_en.map((b) => b.text)).toEqual(
+      STORIES.map((story) => story.title)
+    );
+  });
+});
+
+describe("TL;DR dry-run preview", () => {
+  const createdAt = () =>
+    (
+      sqlite
+        .prepare("SELECT created_at FROM tldr_snapshots WHERE date = ?")
+        .get(DATE) as { created_at: number }
+    ).created_at;
+
+  it("reports the kept model digest and writes nothing", async () => {
+    tldrResult.next = GOOD;
+    await ensureDailyTldr(env);
+    const before = createdAt();
+    at(FIRST_WRITE.getTime() + TLDR_REFRESH_MS + 60_000);
+    tldrResult.next = FAILED;
+
+    const preview = await previewDailyTldr(env);
+
+    expect(preview).toMatchObject({ generated: false, kept: true });
+    expect(preview.reason).toMatch(/^preview: kept model digest/);
+    expect(preview.bullets_en).toEqual(GOOD.bullets_en);
+    expect(preview.bullets_vi).toEqual(GOOD.bullets_vi);
+    expect(createdAt()).toBe(before);
+    expect(storedDigest().bullets_en).toEqual(GOOD.bullets_en);
+  });
+
+  it("still previews headlines when there is no model digest to keep", async () => {
+    tldrResult.next = FAILED;
+
+    const preview = await previewDailyTldr(env);
+
+    expect(preview.generated).toBe(true);
+    expect(preview.kept).toBeUndefined();
+    expect(preview.bullets_en.map((b) => b.text)).toEqual(
+      STORIES.map((story) => story.title)
+    );
   });
 });
