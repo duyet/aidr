@@ -19,7 +19,6 @@ import {
   RULES_OVERVIEW,
   RUN_TIMEOUT_BREAKER_THRESHOLD,
   raceTimeout,
-  redactLlmCallEntry,
   resetUnavailableModels,
   SCORE_CHAT_TIMEOUT_MS,
   SCORE_DECISION_TIMEOUT_MS,
@@ -40,9 +39,9 @@ import {
   withLlmCallContext,
 } from "../llm.js";
 import { servedByJev } from "../systemone.js";
-import { sanitizeError } from "../telemetry-safe.js";
+import { providerErrorSnippet, sanitizeError } from "../telemetry-safe.js";
 import type { Env } from "../types.js";
-import { API_KEY, BEARER, fakeSkKey } from "./fake-secrets.js";
+import { API_KEY, fakeSkKey } from "./fake-secrets.js";
 
 const env: Env = {
   DB: {} as D1Database,
@@ -161,53 +160,112 @@ function logged(entry: LlmCallLogEntry): LlmCallLogEntry {
 }
 
 describe("llm_calls failure snippets", () => {
-  it("keeps a bounded head and tail of a failed output", () => {
-    const body = `${"a".repeat(160)}${"MIDDLE".repeat(200)}${"z".repeat(80)}`;
-    const snippet = logged(failedEntry({ responseSnippet: body }))
-      .responseSnippet as string;
-    expect(snippet.startsWith("a".repeat(160))).toBe(true);
-    expect(snippet.endsWith("z".repeat(80))).toBe(true);
-    expect(snippet.length).toBeLessThanOrEqual(160 + 80 + 3);
-  });
-
-  it("strips secrets, tokens and emails", () => {
-    const liveKey = fakeSkKey("live");
-    const opaque = "0123456789abcdef".repeat(2);
-    const snippet = logged(
-      failedEntry({
-        responseSnippet: `mail reader@example.com ${BEARER} abc123def ${liveKey} ${API_KEY}=hunter2 tok ${opaque} see https://x.test/p?t=1`,
-      })
-    ).responseSnippet as string;
-    for (const leak of [
-      "reader@example.com",
-      "abc123def",
-      liveKey,
-      "hunter2",
-      opaque,
-      "https://x.test",
-    ]) {
-      expect(snippet).not.toContain(leak);
-    }
-  });
-
-  it("is stable under the second redaction pass in the D1 sink", () => {
-    const once = logged(failedEntry({ responseSnippet: "x".repeat(400) }));
-    expect(redactLlmCallEntry(once).responseSnippet).toBe(once.responseSnippet);
-  });
-
   it("stores nothing for ok, sensitive and review rows", () => {
+    const snippet = providerErrorSnippet(503, "Service Unavailable");
     expect(
-      logged(failedEntry({ ok: true, error: null, responseSnippet: "out" }))
+      logged(failedEntry({ responseSnippet: snippet })).responseSnippet
+    ).toBe(snippet);
+    expect(
+      logged(failedEntry({ ok: true, error: null, responseSnippet: snippet }))
         .responseSnippet
     ).toBeNull();
     expect(
-      logged(failedEntry({ sensitive: true, responseSnippet: "out" }))
+      logged(failedEntry({ sensitive: true, responseSnippet: snippet }))
         .responseSnippet
     ).toBeNull();
     expect(
-      logged(failedEntry({ task: "review", responseSnippet: "out" }))
+      logged(failedEntry({ task: "review", responseSnippet: snippet }))
         .responseSnippet
     ).toBeNull();
+  });
+
+  describe("from callAnyrouter", () => {
+    beforeEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    async function attempts(
+      response: () => Promise<Response>,
+      opts: Parameters<typeof callAnyrouter>[2] = {}
+    ): Promise<LlmCallLogEntry[]> {
+      vi.stubGlobal("fetch", vi.fn().mockImplementation(response));
+      const entries: LlmCallLogEntry[] = [];
+      setLlmCallLogger((e) => {
+        entries.push(e);
+      });
+      await callAnyrouter(env, [{ role: "user", content: "q" }], {
+        modelSpec: "m/a",
+        task: "cluster",
+        ...opts,
+      })
+        .catch(() => {})
+        .finally(() => setLlmCallLogger(null));
+      return entries;
+    }
+
+    it("keeps only allowlisted fields of a provider error body", async () => {
+      const key = fakeSkKey("proj");
+      const body = JSON.stringify({
+        error: {
+          message: `Incorrect API key provided: ${key}. Contact reader@example.com.`,
+          type: "invalid_request_error",
+          param: null,
+          code: "invalid_api_key",
+        },
+      });
+      const [entry] = await attempts(
+        async () => new Response(body, { status: 401 })
+      );
+      expect(entry?.responseSnippet).toBe(
+        JSON.stringify({
+          kind: "provider_error",
+          status: 401,
+          error: {
+            code: "invalid_api_key",
+            type: "invalid_request_error",
+            message: "Incorrect API key provided: [redacted]. Contact *",
+          },
+        })
+      );
+    });
+
+    it("stores no snippet for a transport failure", async () => {
+      const [entry] = await attempts(async () => {
+        throw new TypeError(`fetch failed for ${API_KEY}=hunter2`);
+      });
+      expect(entry).toMatchObject({ ok: false, responseSnippet: null });
+    });
+
+    it("stores the shape of an answer that fails accept", async () => {
+      const [entry] = await attempts(
+        async () => chatResponse("Dear Jane, no JSON today"),
+        { accept: () => false }
+      );
+      expect(entry?.error).toBe("anyrouter invalid response");
+      expect(JSON.parse(entry?.responseSnippet ?? "null")).toEqual({
+        kind: "model_output",
+        len: 24,
+        startsWith: "letter",
+        jsonParse: "not-json",
+        fenced: false,
+        truncatedAtMax: false,
+      });
+    });
+
+    it("marks an answer that used every allowed token as truncated", async () => {
+      const [entry] = await attempts(
+        async () =>
+          sseResponse([
+            { choices: [{ delta: { content: '{"bullets":["Dear' } }] },
+            { usage: { completion_tokens: 64 } },
+          ]),
+        { maxTokens: 64, validate: () => false }
+      );
+      expect(JSON.parse(entry?.responseSnippet ?? "null")).toMatchObject({
+        jsonParse: "error at pos 17",
+        truncatedAtMax: true,
+      });
+    });
   });
 
   describe("bad_output", () => {
@@ -236,7 +294,14 @@ describe("llm_calls failure snippets", () => {
       expect(entries[0]).toMatchObject({
         ok: false,
         error: "anyrouter bad output",
-        responseSnippet: "not json at all",
+        responseSnippet: JSON.stringify({
+          kind: "model_output",
+          len: 15,
+          startsWith: "letter",
+          jsonParse: "not-json",
+          fenced: false,
+          truncatedAtMax: false,
+        }),
       });
       expect(sanitizeError(entries[0]?.error)?.code).toBe("bad_output");
     });

@@ -4,8 +4,8 @@ import {
   createD1LlmCallLogger,
   resetLlmCallLogSchemaCache,
 } from "../llm-call-log.js";
+import { providerErrorSnippet } from "../telemetry-safe.js";
 import type { Env } from "../types.js";
-import { BEARER } from "./fake-secrets.js";
 
 function fakeEnv() {
   const statements: { sql: string; args: unknown[] }[] = [];
@@ -43,7 +43,10 @@ describe("D1 LLM call telemetry", () => {
       error:
         "anyrouter request failed: 502 prompt=secret https://provider.test/raw",
       promptChars: 100,
-      responseSnippet: `bad reply from reader@example.com ${BEARER} tok123`,
+      responseSnippet: providerErrorSnippet(
+        502,
+        '{"error":{"message":"Upstream overloaded, mail reader@example.com","code":502}}'
+      ),
     });
 
     const insert = statements.find((s) =>
@@ -55,9 +58,38 @@ describe("D1 LLM call telemetry", () => {
     expect(insert?.args).toContain("provider_error");
     expect(insert?.args).toContain(502);
     expect(insert?.args).toContain(
-      `bad reply from [email redacted] ${BEARER} [redacted]`
+      '{"kind":"provider_error","status":502,"error":{"code":502,"message":"Upstream overloaded, mail *"}}'
     );
     expect(insert?.args).not.toContain("secret");
+  });
+
+  it("writes no snippet for raw text that is not a descriptor", async () => {
+    resetLlmCallLogSchemaCache();
+    const { env, statements } = fakeEnv();
+    const raw = "bad reply from reader@example.com";
+    await createD1LlmCallLogger(
+      env,
+      "r"
+    )({
+      ts: 1,
+      task: "score",
+      model: "m",
+      ok: false,
+      tokens: 0,
+      promptTokens: null,
+      completionTokens: null,
+      cachedTokens: null,
+      durationMs: 1,
+      error: "anyrouter bad output",
+      promptChars: 1,
+      responseSnippet: raw,
+    });
+    const insert = statements.find((s) =>
+      s.sql.includes("INSERT INTO llm_calls")
+    );
+    expect(insert?.args.some((arg) => String(arg).includes("reader"))).toBe(
+      false
+    );
   });
 
   it("writes no snippet for an ok row", async () => {

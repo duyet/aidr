@@ -33,6 +33,7 @@ import {
   createD1LlmCallLogger,
   resetLlmCallLogSchemaCache,
 } from "../llm-call-log.js";
+import { providerErrorSnippet } from "../telemetry-safe.js";
 import type { Env } from "../types.js";
 import { BEARER } from "./fake-secrets.js";
 
@@ -357,7 +358,10 @@ describe("llm_calls run identity over a real D1 (#189)", () => {
         tokens: 0,
         error:
           "anyrouter request failed: 502 Bearer sk-live-secret https://provider.test/raw",
-        responseSnippet: `upstream said no to reader@example.com ${BEARER} sk-live-secret`,
+        responseSnippet: providerErrorSnippet(
+          502,
+          `<html><body>Bad Gateway for reader@example.com ${BEARER} sk-live-secret</body></html>`
+        ),
       })
     );
     logLlmCall(entry({ ok: true, responseSnippet: "served answer" }));
@@ -379,9 +383,11 @@ describe("llm_calls run identity over a real D1 (#189)", () => {
     // Secrets and the raw provider body never reach the column.
     expect(String(row.error)).not.toContain("sk-live-secret");
     expect(String(row.error)).not.toContain("provider.test");
-    expect(row.response_snippet).toBe(
-      `upstream said no to [email redacted] ${BEARER} [redacted]`
-    );
+    expect(JSON.parse(String(row.response_snippet))).toEqual({
+      kind: "provider_error",
+      status: 502,
+      body: "non-json error body (82 bytes)",
+    });
     const served = res.results.find((r) => r.error_code == null)!;
     expect(served.response_snippet).toBeNull();
   });

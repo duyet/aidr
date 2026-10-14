@@ -245,8 +245,9 @@ function passesSensitive(call: AstNode): boolean {
 function isDeclarationSlot(node: AstNode, parent: AstNode | undefined) {
   switch (parent?.type) {
     case "ImportSpecifier":
-    case "ExportSpecifier":
+    case "ImportNamespaceSpecifier":
     case "TSTypeQuery":
+    case "TSQualifiedName":
       return true;
     case "FunctionDeclaration":
       return parent.id === node;
@@ -268,31 +269,68 @@ interface CallSite {
 
 interface Scan {
   sites: CallSite[];
-  /** References that are not a direct call, e.g. `const ask = callAnyrouter`. */
+  /** References the scan cannot follow to a call, e.g.
+   *  `const ask = callAnyrouter` or `export * from "./llm.js"`. */
   indirect: string[];
   parseErrors: string[];
 }
 
-function scanFile(file: string, scan: Scan): void {
-  const text = readFileSync(file, "utf8");
+function scanSource(file: string, text: string, scan: Scan): void {
   const rel = path.relative(workerDir, file).split(path.sep).join("/");
   const { program, errors } = parseSync(file, text, { lang: "ts" });
   if (errors.length > 0) scan.parseErrors.push(rel);
   const root = program as unknown as AstNode;
   const { direct, namespaces } = llmBindings(file, root);
-  if (direct.size === 0 && namespaces.size === 0) return;
 
+  const isNamespace = (node: AstNode | undefined): boolean =>
+    node?.type === "Identifier" && namespaces.has(node.name as string);
   const isLlmRef = (node: AstNode | undefined): boolean =>
     (node?.type === "Identifier" && direct.has(node.name as string)) ||
     (node?.type === "MemberExpression" &&
       !node.computed &&
-      namespaces.has(nameOf(child(node, "object")) ?? "") &&
+      isNamespace(child(node, "object")) &&
       LLM_CALLS.has(nameOf(child(node, "property")) ?? ""));
 
   const line = (node: AstNode) => text.slice(0, node.start).split("\n").length;
+  const flag = (node: AstNode) => scan.indirect.push(`${rel}:${line(node)}`);
+
+  /** An export the scan cannot follow: importers of a renamed or
+   *  re-exported entry point call it under a name it does not track. */
+  const opaqueExport = (node: AstNode): boolean => {
+    if (node.type === "ExportAllDeclaration") {
+      return importsLlm(file, child(node, "source")?.value);
+    }
+    if (node.type !== "ExportNamedDeclaration" || node.exportKind === "type") {
+      return false;
+    }
+    const source = child(node, "source");
+    return list(node, "specifiers").some((spec) => {
+      const local = nameOf(child(spec, "local")) ?? "";
+      if (source) {
+        return importsLlm(file, source.value) && LLM_CALLS.has(local);
+      }
+      const sameName = nameOf(child(spec, "exported")) === local;
+      return direct.has(local) && !(file === llmModule && sameName);
+    });
+  };
 
   const visit = (node: AstNode, ancestors: AstNode[]): void => {
     const trail = [...ancestors, node];
+    const parent = ancestors.at(-1);
+    if (opaqueExport(node)) {
+      flag(node);
+      return;
+    }
+    if (node.type === "ExportNamedDeclaration" && !child(node, "declaration")) {
+      return;
+    }
+    if (node.type === "ImportExpression") {
+      const source = child(node, "source");
+      if (source?.type !== "Literal" || importsLlm(file, source.value)) {
+        flag(node);
+        return;
+      }
+    }
     if (node.type === "CallExpression" && isLlmRef(child(node, "callee"))) {
       scan.sites.push({
         key: `${rel}#${enclosingFunction(ancestors)}`,
@@ -301,18 +339,41 @@ function scanFile(file: string, scan: Scan): void {
       for (const arg of list(node, "arguments")) visit(arg, trail);
       return;
     }
-    if (isLlmRef(node) && !isDeclarationSlot(node, ancestors.at(-1))) {
-      scan.indirect.push(`${rel}:${line(node)}`);
+    if (isLlmRef(node) && !isDeclarationSlot(node, parent)) {
+      flag(node);
       return;
+    }
+    // `const l = llm`, `const { completeJson: ask } = llm`, `llm["…"]`.
+    if (isNamespace(node) && !isDeclarationSlot(node, parent)) {
+      const plainMember =
+        parent?.type === "MemberExpression" &&
+        parent.object === node &&
+        !parent.computed;
+      if (!plainMember) {
+        flag(node);
+        return;
+      }
     }
     for (const next of children(node)) visit(next, trail);
   };
   visit(root, []);
 }
 
+function emptyScan(): Scan {
+  return { sites: [], indirect: [], parseErrors: [] };
+}
+
 function scanWorker(): Scan {
-  const scan: Scan = { sites: [], indirect: [], parseErrors: [] };
-  for (const file of sourceFiles(workerDir)) scanFile(file, scan);
+  const scan = emptyScan();
+  for (const file of sourceFiles(workerDir)) {
+    scanSource(file, readFileSync(file, "utf8"), scan);
+  }
+  return scan;
+}
+
+function scanSnippet(text: string, file = "zz-probe.ts"): Scan {
+  const scan = emptyScan();
+  scanSource(path.join(workerDir, file), text, scan);
   return scan;
 }
 
@@ -346,5 +407,48 @@ describe("LLM call sites that carry reader data", () => {
     );
     expect(snippets.length).toBeGreaterThan(0);
     expect(new Set(snippets)).toEqual(new Set(["null"]));
+  });
+});
+
+describe("the call-site scan fails closed", () => {
+  const IMPORT = 'import { completeJson } from "./llm.js";\n';
+  const NAMESPACE = 'import * as llm from "./llm.js";\n';
+
+  it.each([
+    ["an alias binding", `${IMPORT}const ask = completeJson;`],
+    ["a renamed re-export", 'export { completeJson as ask } from "./llm.js";'],
+    ["a same-name re-export", 'export { completeJson } from "./llm.js";'],
+    ["a star re-export", 'export * from "./llm.js";'],
+    ["a helper export", `${IMPORT}export { completeJson as ask };`],
+    ["a namespace alias", `${NAMESPACE}const l = llm;`],
+    ["namespace destructuring", `${NAMESPACE}const { completeJson: a } = llm;`],
+    ["a computed member", `${NAMESPACE}llm["completeJson"](env, [], {});`],
+    ["a dynamic import", 'const m = await import("./llm.js");'],
+    ["a non-literal import", "const m = await import(name);"],
+  ])("flags %s", (_, source) => {
+    expect(scanSnippet(source).indirect).toHaveLength(1);
+  });
+
+  it("flags a renamed export inside llm.ts", () => {
+    const scan = scanSnippet(
+      "async function callAnyrouter() {}\nexport { callAnyrouter as ask };",
+      "llm.ts"
+    );
+    expect(scan.indirect).toEqual(["llm.ts:2"]);
+  });
+
+  it("follows calls it can classify", () => {
+    const scan = scanSnippet(
+      `${NAMESPACE}${IMPORT.replace("completeJson }", "completeJson as cj }")}` +
+        "export function viaNamespace() { return llm.completeJson(env, [], { sensitive: true }); }\n" +
+        "export function viaAlias() { return cj(env, []); }\n" +
+        "export type Parsed = ReturnType<typeof llm.parseJson>;\n" +
+        'const other = await import("./topics.js");'
+    );
+    expect(scan.indirect).toEqual([]);
+    expect(scan.sites).toEqual([
+      { key: "zz-probe.ts#viaNamespace", sensitive: true },
+      { key: "zz-probe.ts#viaAlias", sensitive: false },
+    ]);
   });
 });
