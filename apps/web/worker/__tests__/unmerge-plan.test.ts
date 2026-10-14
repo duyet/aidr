@@ -188,6 +188,37 @@ describe("attributeSources", () => {
     expect(attribution.every((a) => a.ambiguous)).toBe(true);
   });
 
+  it("keeps the canonical's own tweets behind an official link moved to the front", () => {
+    const hugCanonical = item(
+      12,
+      "huggingnews",
+      "https://huggingnews.com/own-1",
+      {
+        status: "published",
+        duplicate_of: null,
+      }
+    );
+    const official = item(13, "openai", "https://openai.com/index/post");
+    const wrong = item(14, "huggingnews", "https://huggingnews.com/wrong-2");
+    const attribution = attributeSources(
+      hugCanonical,
+      [official, wrong],
+      [
+        entry("openai", official.url),
+        tweet("ownA"),
+        tweet("ownB"),
+        entry("huggingnews", wrong.url),
+      ],
+      new Map([[wrong.id as string, "wrong"]])
+    );
+    expect(attribution.map((a) => [a.owner, a.ambiguous])).toEqual([
+      [official.id, false],
+      [hugCanonical.id, true],
+      [hugCanonical.id, true],
+      [wrong.id, false],
+    ]);
+  });
+
   it("matches an HN or Lobsters discussion row to the item it was posted with", () => {
     const hnCanonical = item(6, "hn", "https://example.test/a", {
       status: "published",
@@ -252,6 +283,34 @@ describe("planUnmerge", () => {
       action: "restore",
       leadId: low.id,
       status: "rejected",
+    });
+  });
+
+  it("drops a removed item's video poster from the canonical's image_url", () => {
+    const video = {
+      type: "video" as const,
+      url: "https://www.youtube.com/watch?v=abc123",
+      poster_url: "https://i.ytimg.com/vi/abc123/hqdefault.jpg",
+    };
+    const manifest = JSON.stringify({ version: 1, assets: [video] });
+    const withVideo = {
+      ...canonical,
+      image_url: video.poster_url,
+      media_manifest: manifest,
+    };
+    const member = item(15, "techcrunch-ai", "https://example.test/video", {
+      media_manifest: manifest,
+      image_url: video.poster_url,
+    });
+    const plan = planUnmerge(
+      [{ canonicalId: canonical.id, mergedId: member.id, group: member.id }],
+      snapshot([withVideo, member]),
+      NOW_MS
+    );
+    expect(plan.canonicals[0].leads[0]).toMatchObject({
+      role: "canonical",
+      before: video.poster_url,
+      after: null,
     });
   });
 

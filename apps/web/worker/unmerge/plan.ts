@@ -43,6 +43,7 @@ import {
   rankScore,
   rankSignals,
 } from "../ranking.js";
+import { officialSourceFor } from "../sources/catalog.js";
 import type {
   FetchedItem,
   FetchedItemSource,
@@ -363,7 +364,14 @@ export function attributeSources(
     return null;
   });
   const boundaries = direct.flatMap((owner, index) => (owner ? [index] : []));
-  const first = boundaries[0] ?? rows.length;
+  // `unionSources` moves official links to the front, ahead of the
+  // canonical's own rows; the leading run starts after them.
+  let officialPrefix = 0;
+  while (officialPrefix < rows.length && isOfficialRow(rows[officialPrefix])) {
+    officialPrefix++;
+  }
+  const first =
+    boundaries.find((index) => index >= officialPrefix) ?? rows.length;
   const last = boundaries.at(-1) ?? -1;
   const attributed = new Set(
     boundaries.map((index) => direct[index]?.owner as string)
@@ -431,11 +439,26 @@ function mediaOf(row: UnmergeItemRow): MediaAsset[] {
 const hasPicture = (asset: MediaAsset) =>
   asset.type === "image" || Boolean(asset.poster_url);
 
+/** Same test `unionSources` uses to move a link to the front. */
+function isOfficialRow(row: StoredSource): boolean {
+  return (
+    row.kind === "source" &&
+    officialSourceFor(row.author ?? "", row.url ?? undefined) !== undefined
+  );
+}
+
+/** Identity keys of a row's assets, plus each video's poster as an image,
+ * since a poster can become the canonical's `image_url`. */
 function assetKeys(row: UnmergeItemRow): Set<string> {
   const keys = new Set<string>();
   for (const asset of mediaOf(row)) {
     const key = assetKey(asset);
     if (key) keys.add(key);
+    const poster =
+      asset.type === "video" && asset.poster_url
+        ? mediaIdentityKey("image", asset.poster_url)
+        : null;
+    if (poster) keys.add(poster);
   }
   return keys;
 }
@@ -1045,7 +1068,7 @@ function planShrunkCanonical(ctx: CanonicalContext): void {
     if (!setByRemoved || value === 0) return value;
     const next = engagedMax(remaining, field);
     plan.lossy.push(
-      `canonical ${field} ${value} came from a removed item; set to ${next}${hasReaderEngagement(canonical.source_id) ? " (its own count is unknown)" : ""}`
+      `canonical ${field} ${value} came from a removed item; set to ${next} (its own count is unknown)`
     );
     return next;
   };

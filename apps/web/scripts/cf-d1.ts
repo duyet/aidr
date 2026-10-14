@@ -63,7 +63,13 @@ export const wranglerSelectTotals = { queries: 0, rowsRead: 0 };
  * Refuses anything but a single SELECT, and throws if D1 reports a write.
  */
 export function wranglerSelect(sql: string): Record<string, unknown>[] {
-  if (!/^\s*(SELECT|WITH)\s/i.test(sql) || sql.includes(";")) {
+  if (
+    !/^\s*(SELECT|WITH)\s/i.test(sql) ||
+    sql.includes(";") ||
+    /\b(INSERT|UPDATE|DELETE|REPLACE|UPSERT|DROP|ALTER|CREATE|ATTACH|PRAGMA|VACUUM)\b/i.test(
+      sql
+    )
+  ) {
     throw new Error("wranglerSelect runs one SELECT only");
   }
   let out: string;
