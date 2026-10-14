@@ -101,6 +101,55 @@ export function assetRefs(html: string, origin: string): string[] {
   return [...refs].sort();
 }
 
+/** Largest file carried; the live site's biggest chunk is about 0.5 MB. */
+export const MAX_ASSET_BYTES = 5 * 1024 * 1024;
+
+const JAVASCRIPT = /^(text|application)\/(x-)?javascript$/;
+const FONT = /^(font\/|application\/(x-)?font-)/;
+const IMAGE = /^image\//;
+
+/** Media types a carried file may be served as, by file extension. */
+const MEDIA_TYPES = new Map<string, RegExp>([
+  ["js", JAVASCRIPT],
+  ["css", /^text\/css$/],
+  ["woff2", FONT],
+  ["woff", FONT],
+  ["ttf", FONT],
+  ["otf", FONT],
+  ["png", IMAGE],
+  ["jpg", IMAGE],
+  ["jpeg", IMAGE],
+  ["gif", IMAGE],
+  ["webp", IMAGE],
+  ["avif", IMAGE],
+  ["ico", IMAGE],
+  ["svg", /^image\/svg\+xml$/],
+]);
+
+/**
+ * Why a downloaded body can't be published as `path`, or null when it can.
+ * A carried file is served under its hashed name to every cached page that
+ * asks, so it must be the kind of file that name promises.
+ */
+export function assetBodyProblem(
+  path: string,
+  contentType: string,
+  byteLength: number
+): string | null {
+  const dot = path.lastIndexOf(".");
+  const expected =
+    dot === -1 ? undefined : MEDIA_TYPES.get(path.slice(dot + 1));
+  if (!expected) return "no expected content type for this file extension";
+  const media = contentType.split(";")[0].trim().toLowerCase();
+  if (!expected.test(media)) {
+    return `content-type ${media || "(none)"} does not match the extension`;
+  }
+  if (byteLength > MAX_ASSET_BYTES) {
+    return `${byteLength} bytes is over the ${MAX_ASSET_BYTES}-byte cap`;
+  }
+  return null;
+}
+
 /** Per-request limit, so a hung live site can't stall a deploy. */
 export const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -212,19 +261,49 @@ async function download(
 ): Promise<Uint8Array> {
   let reason = "";
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-    try {
-      const res = await get(`${base}/${path}`);
-      const type = res.headers.get("content-type") ?? "";
-      if (res.ok && !type.startsWith("text/html")) {
-        return new Uint8Array(await res.arrayBuffer());
-      }
-      reason = `HTTP ${res.status} ${type}`;
-    } catch (e) {
-      reason = describeError(e);
+    const fetched = await fetchAsset(get, base, path);
+    if (fetched.kind === "ok") return fetched.bytes;
+    // The server said what the file is; asking again won't change that.
+    if (fetched.kind === "refused") {
+      throw new Error(`refused /${path}: ${fetched.reason}`);
     }
+    reason = fetched.reason;
     if (attempt < ATTEMPTS) await sleep(attempt * 1000);
   }
   throw new Error(`GET /${path} failed after ${ATTEMPTS} attempts: ${reason}`);
+}
+
+type AssetFetch =
+  | { kind: "ok"; bytes: Uint8Array }
+  | { kind: "refused"; reason: string }
+  | { kind: "failed"; reason: string };
+
+async function fetchAsset(
+  get: Get,
+  base: string,
+  path: string
+): Promise<AssetFetch> {
+  try {
+    const res = await get(`${base}/${path}`);
+    if (!res.ok) {
+      await res.body?.cancel();
+      return { kind: "failed", reason: `HTTP ${res.status}` };
+    }
+    const type = res.headers.get("content-type") ?? "";
+    const declared = Number(res.headers.get("content-length") ?? 0);
+    const early = assetBodyProblem(path, type, declared);
+    if (early) {
+      await res.body?.cancel();
+      return { kind: "refused", reason: early };
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const problem = assetBodyProblem(path, type, bytes.byteLength);
+    return problem
+      ? { kind: "refused", reason: problem }
+      : { kind: "ok", bytes };
+  } catch (e) {
+    return { kind: "failed", reason: describeError(e) };
+  }
 }
 
 export interface CarryOptions {

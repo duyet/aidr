@@ -5,10 +5,12 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   ASSET_RETENTION_MS,
+  assetBodyProblem,
   assetRefs,
   type CarryOptions,
   carryLiveAssets,
   deployCheckPages,
+  MAX_ASSET_BYTES,
   parseAssetHistory,
   planAssetCarry,
   timedFetch,
@@ -19,7 +21,13 @@ const ORIGIN = "https://aidr.today";
 
 /** `"hang"` accepts the request and never answers. */
 type Reply =
-  | { status: number; type?: string; body?: string | Uint8Array }
+  | {
+      status: number;
+      type?: string;
+      body?: string | Uint8Array;
+      /** Send without a content-length header. */
+      chunked?: boolean;
+    }
   | "hang";
 
 const servers: Array<() => Promise<void>> = [];
@@ -38,7 +46,8 @@ async function liveSite(routes: Record<string, Reply>): Promise<string> {
       routes[url.pathname] ?? { status: 404, type: "text/html", body: "<h1>" };
     if (reply === "hang") return;
     res.writeHead(reply.status, { "content-type": reply.type ?? "" });
-    res.end(reply.body ?? "");
+    if (reply.chunked) res.write(reply.body ?? "");
+    res.end(reply.chunked ? undefined : (reply.body ?? ""));
   });
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
   servers.push(
@@ -207,7 +216,7 @@ describe("assetRefs", () => {
 
 describe("carryLiveAssets", () => {
   const now = 1_000 * HOUR;
-  const js = (body: string): Reply => ({
+  const js = (body: string): Exclude<Reply, "hang"> => ({
     status: 200,
     type: "text/javascript",
     body,
@@ -359,6 +368,80 @@ describe("carryLiveAssets", () => {
     expect(result.warnings).toEqual([
       expect.stringMatching(/gone-old\.js failed after 3 attempts: HTTP 404/),
     ]);
+  });
+
+  // A carried file is published as-is under its hashed name, so a body that
+  // isn't what the name says would be served to every cached page asking.
+  it("refuses a body of the wrong kind or size, without retrying", async () => {
+    const base = await liveSite({
+      "/asset-history.json": {
+        status: 200,
+        type: "application/json",
+        body: JSON.stringify({
+          "assets/plain-old.js": now - HOUR,
+          "assets/font-old.woff2": now - HOUR,
+          "assets/huge-old.js": now - HOUR,
+          "assets/streamed-old.js": now - HOUR,
+          "assets/index-old.js": now - HOUR,
+        }),
+      },
+      "/assets/streamed-old.js": {
+        ...js("x".repeat(MAX_ASSET_BYTES + 1)),
+        chunked: true,
+      },
+      "/assets/plain-old.js": { status: 200, type: "text/plain", body: "x" },
+      "/assets/font-old.woff2": {
+        status: 200,
+        type: "text/html; charset=utf-8",
+        body: "<h1>",
+      },
+      "/assets/huge-old.js": js("x".repeat(MAX_ASSET_BYTES + 1)),
+      "/assets/index-old.js": js("old()"),
+    });
+    const sleeps: number[] = [];
+    const result = await carry(base, {
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+    });
+    expect([...result.saved.keys()]).toEqual(["assets/index-old.js"]);
+    expect(Object.keys(result.history).sort()).toEqual([
+      "assets/index-new.js",
+      "assets/index-old.js",
+    ]);
+    expect(result.warnings.sort()).toEqual([
+      expect.stringMatching(/font-old\.woff2: content-type text\/html/),
+      expect.stringMatching(/huge-old\.js: \d+ bytes is over/),
+      expect.stringMatching(/plain-old\.js: content-type text\/plain/),
+      expect.stringMatching(/streamed-old\.js: \d+ bytes is over/),
+    ]);
+    expect(sleeps).toEqual([]);
+  });
+});
+
+describe("assetBodyProblem", () => {
+  it.each([
+    ["assets/index-a.js", "text/javascript; charset=utf-8"],
+    ["assets/index-a.js", "application/javascript"],
+    ["assets/index-a.css", "text/css"],
+    ["assets/serif-a.woff2", "font/woff2"],
+    ["assets/logo-a.png", "image/png"],
+    ["assets/logo-a.svg", "image/svg+xml"],
+  ])("accepts %s served as %s", (path, type) => {
+    expect(assetBodyProblem(path, type, 1_000)).toBeNull();
+  });
+
+  it.each([
+    ["assets/index-a.js", "text/html", 1_000],
+    ["assets/index-a.js", "", 1_000],
+    ["assets/index-a.css", "text/javascript", 1_000],
+    ["assets/serif-a.woff2", "application/octet-stream", 1_000],
+    ["assets/logo-a.svg", "text/xml", 1_000],
+    ["assets/data-a.wasm", "application/wasm", 1_000],
+    ["assets/constructor", "text/javascript", 1_000],
+    ["assets/index-a.js", "text/javascript", MAX_ASSET_BYTES + 1],
+  ])("refuses %s served as %j, %i bytes", (path, type, bytes) => {
+    expect(assetBodyProblem(path, type, bytes)).toEqual(expect.any(String));
   });
 });
 
