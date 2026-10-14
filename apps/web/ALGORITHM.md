@@ -1065,7 +1065,10 @@ deliberately non-spammy.
   did not make the card. It is a `sendMessage` (4096 characters, not a
   1024-character photo caption) naming the six stories on the day card,
   each with the first sentence of that language's summary after the title
-  when one exists. The card is the link preview, large and above the text:
+  when one exists. A first sentence that opens with the headline word for
+  word (case and spacing ignored, a trailing "(@handle)" or "(Source)"
+  ignored) and carries on replaces the headline: the line is that sentence
+  alone. The card is the link preview, large and above the text:
   `link_preview_options.url` is the versioned card PNG
   (`/api/og/date/{date}.png?lang=&v=`, `v` a hash of the tile ids). The Bot
   API does not need that URL in the text, and pointing at the image instead
