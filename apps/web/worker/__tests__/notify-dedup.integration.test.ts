@@ -10,7 +10,10 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { dispatchStoryNotifications } from "../notify/index.js";
+import {
+  dispatchStoryNotifications,
+  forceSendDigest,
+} from "../notify/index.js";
 import type { Env } from "../types.js";
 
 const migrationsDir = path.resolve(
@@ -376,5 +379,98 @@ describe("digest bookkeeping", () => {
       { channel: "telegram-en", item_id: "d2" },
       { channel: "telegram-en", item_id: "d3" },
     ]);
+  });
+
+  // #673: a bullet that is only an outlet credit strips to "". It must not
+  // take a numbered slot, so the next bullet moves up into the message.
+  it("drops a bullet left empty by the attribution strip and fills its slot", async () => {
+    const stories = ["a1", "credit", "a3", "a4", "a5", "a6", "a7"];
+    for (const id of stories) {
+      addItem({ id, title: `Digest story ${id}`, rank: 2, importance: 5 });
+    }
+    const bullets = JSON.stringify(
+      stories.map((id) => ({
+        text:
+          id === "credit"
+            ? "From Bloomberg. View the full context on Techmeme."
+            : `Story ${id} shipped today.`,
+        item_ids: [id],
+      }))
+    );
+    sqlite
+      .prepare(
+        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at) VALUES (?, ?, ?, ?)"
+      )
+      .run(TODAY, bullets, bullets, NOW.getTime());
+
+    await dispatchStoryNotifications(env);
+
+    const digest = sendBodies.find((body) => body.includes("Story a1"));
+    expect(digest).toBeDefined();
+    const text = JSON.parse(digest as string).text as string;
+    expect(text).not.toContain("Bloomberg");
+    expect(text).toContain("Story a7 shipped today.");
+    const rows = sqlite
+      .prepare(
+        "SELECT item_id FROM notify_digest_items WHERE channel = 'telegram-en' AND date = ? ORDER BY item_id"
+      )
+      .all(TODAY) as Array<{ item_id: string }>;
+    expect(rows.map((row) => row.item_id)).toEqual([
+      "a1",
+      "a3",
+      "a4",
+      "a5",
+      "a6",
+      "a7",
+    ]);
+  });
+
+  // The snapshot exists, so "no_snapshot" would send ops looking for a TL;DR
+  // run that did happen.
+  it("tells a digest the strip emptied apart from a missing snapshot", async () => {
+    addItem({ id: "credit", title: "Credit only", rank: 2, importance: 5 });
+    const credit = JSON.stringify([
+      { text: "From Bloomberg.", item_ids: ["credit"] },
+    ]);
+
+    const missing = await dispatchStoryNotifications(env);
+    expect(missing.reasons["telegram-en"]?.digest).toBe("no_snapshot");
+
+    sqlite
+      .prepare(
+        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at) VALUES (?, ?, ?, ?)"
+      )
+      .run(TODAY, credit, credit, NOW.getTime());
+    const empty = await dispatchStoryNotifications(env);
+    expect(empty.reasons["telegram-en"]?.digest).toBe("empty_after_strip");
+    expect(empty.reasons.telegram?.digest).toBe("empty_after_strip");
+    expect(
+      sqlite
+        .prepare("SELECT COUNT(*) AS n FROM notifications WHERE item_id = ?")
+        .get(`digest:${TODAY}`)
+    ).toEqual({ n: 0 });
+    expect(await forceSendDigest(env)).toEqual({
+      sent: 0,
+      reason: `every TL;DR bullet for ${TODAY} is only an outlet credit on telegram, telegram-en`,
+    });
+  });
+
+  // Vietnamese has no bullets yet, so only the English channel was emptied by
+  // the strip. The reason must not blame the Vietnamese channel's bullets.
+  it("names only the channels whose bullets the strip emptied", async () => {
+    addItem({ id: "credit", title: "Credit only", rank: 2, importance: 5 });
+    sqlite
+      .prepare(
+        "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at) VALUES (?, ?, NULL, ?)"
+      )
+      .run(
+        TODAY,
+        JSON.stringify([{ text: "From Bloomberg.", item_ids: ["credit"] }]),
+        NOW.getTime()
+      );
+    expect(await forceSendDigest(env)).toEqual({
+      sent: 0,
+      reason: `every TL;DR bullet for ${TODAY} is only an outlet credit on telegram-en`,
+    });
   });
 });

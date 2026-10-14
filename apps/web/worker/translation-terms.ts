@@ -485,22 +485,191 @@ function stripFeedFooter(text: string): string {
   return text;
 }
 
-/** A source name or handle: "Bloomberg", "The Information", "@openainewsroom",
- * "Goldman Sachs and Reuters". Capitalised words only, so a sentence that goes
- * on ("Theo dự báo từ …", "From Nvidia to Obvious Ventures …") is not a name. */
+/** A capitalised name or handle: "Bloomberg", "The Information",
+ * "@openainewsroom", "Goldman Sachs and Reuters". Capitalised words only, so a
+ * sentence that goes on ("Theo dự báo từ …", "From Nvidia to Obvious Ventures
+ * …") is not a name. */
 const ATTRIBUTION_WORD = String.raw`[@\p{Lu}\p{N}][\p{L}\p{N}_.'’&@-]*`;
-const ATTRIBUTION_NAME = `${ATTRIBUTION_WORD}(?:\\s+(?:${ATTRIBUTION_WORD}|and|of|the|và|từ|trên|thuộc|[/&])){0,6}`;
+const ATTRIBUTION_NAME_RE = new RegExp(
+  String.raw`^${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|and|of|the|và|từ|trên|thuộc|[/&])){0,6}$`,
+  "u"
+);
+const AUTHOR_RE = new RegExp(
+  String.raw`^${ATTRIBUTION_WORD}(?:\s+${ATTRIBUTION_WORD}){0,5}$`,
+  "u"
+);
+const HANDLE_RE = /^@[\p{L}\p{N}_.@-]+$/u;
+
+/** Outlets that Techmeme and the stored "Theo X." rows credit, taken from
+ * production rows. A credit to an outlet missing here keeps its sentence,
+ * which loses nothing. A publisher that is also the subject of claims (Apple,
+ * OpenAI) does not belong here: "Tác giả Mỹ thuộc Apple." is a claim. */
+const KNOWN_OUTLETS: ReadonlySet<string> = new Set([
+  "AP",
+  "Axios",
+  "BBC",
+  "Bloomberg",
+  "Bloomberg Law",
+  "Business Insider",
+  "CBS News",
+  "CNBC",
+  "CNN",
+  "Cointelegraph",
+  "Command Line",
+  "Daring Fireball",
+  "Engadget",
+  "Fierce Healthcare",
+  "Financial Times",
+  "Forbes",
+  "Fortune",
+  "Krebs on Security",
+  "MacRumors",
+  "MarkTechPost",
+  "NBC News",
+  "New York Times",
+  "Nikkei Asia",
+  "Politico",
+  "Reuters",
+  "Semafor",
+  "SemiAnalysis",
+  "Shtetl-Optimized",
+  "TechCrunch",
+  "Techmeme",
+  "The Decoder",
+  "The Information",
+  "The New York Times",
+  "The Verge",
+  "The Wall Street Journal",
+  "The Washington Post",
+  "Time",
+  "VentureBeat",
+  "Wall Street Journal",
+  "Washington Post",
+  "Wired",
+  "ZDNET",
+]);
+
+/** The domains a known outlet publishes on. A domain counts only when it is
+ * listed here: "axios.js", "time.ly" and "commandline.dev" share a label with
+ * an outlet but are not its site, and "x.com" or "me.com" name a product. */
+const OUTLET_DOMAINS: ReadonlySet<string> = new Set([
+  "apnews.com",
+  "asia.nikkei.com",
+  "axios.com",
+  "bbc.co.uk",
+  "bbc.com",
+  "bloomberg.com",
+  "bloomberglaw.com",
+  "businessinsider.com",
+  "cbsnews.com",
+  "cnbc.com",
+  "cnn.com",
+  "cointelegraph.com",
+  "daringfireball.net",
+  "engadget.com",
+  "fiercehealthcare.com",
+  "forbes.com",
+  "fortune.com",
+  "ft.com",
+  "krebsonsecurity.com",
+  "macrumors.com",
+  "marktechpost.com",
+  "nbcnews.com",
+  "nytimes.com",
+  "politico.com",
+  "reuters.com",
+  "semafor.com",
+  "semianalysis.com",
+  "techcrunch.com",
+  "techmeme.com",
+  "the-decoder.com",
+  "theinformation.com",
+  "theverge.com",
+  "time.com",
+  "venturebeat.com",
+  "washingtonpost.com",
+  "wired.com",
+  "wsj.com",
+  "zdnet.com",
+]);
+
+/** "techcrunch.com", "www.theverge.com": a known outlet's own domain. */
+function isOutletDomain(name: string): boolean {
+  return OUTLET_DOMAINS.has(name.toLowerCase().replace(/^www\./, ""));
+}
+
+/** One source: a known outlet, an @handle, or an outlet's domain. */
+function isSource(name: string): boolean {
+  return (
+    KNOWN_OUTLETS.has(name) || HANDLE_RE.test(name) || isOutletDomain(name)
+  );
+}
+
+/** "Reuters và Bloomberg", "Bloomberg / Politico / New York Times": every
+ * part is a source. */
+function isSourceList(name: string): boolean {
+  return name.split(/\s*\/\s*|\s+(?:và|and|&)\s+/u).every(isSource);
+}
+
+/** "Ina Fried / Axios", "Sarah Hilton từ Bloomberg", "Brian Krebs / Krebs on
+ * Security": capitalised words, then sources. The author is never checked
+ * against a list, so the sources after it carry the whole decision: "Elon
+ * Musk / Tesla on Monday" and "Mỹ thuộc Nvidia" are claims. */
+function isByline(name: string, joiners = true): boolean {
+  const joiner = joiners
+    ? String.raw`(?:\s*\/\s*|\s+(?:từ|trên|thuộc)\s+)`
+    : String.raw`\s*\/\s*`;
+  const match = new RegExp(`^(.+?)${joiner}(.+)$`, "u").exec(name);
+  return match !== null && AUTHOR_RE.test(match[1]) && isSourceList(match[2]);
+}
+
+/** Each way a sentence opens a credit, and the bare name it accepts besides
+ * a byline. */
+const ATTRIBUTION_LEADS: readonly {
+  lead: string;
+  bare: (name: string) => boolean;
+  joiners?: boolean;
+}[] = [
+  {
+    lead: String.raw`(?:(?:[Tt]in|[Bb]ài)\s+)?[Tt]ừ|[Bb]ài viết (?:của|từ)|[Nn]guồn(?:\s+tin)?\s*:?|[Ff]rom|[Vv]ia|[Ss]ource\s*:?`,
+    bare: (name) => ATTRIBUTION_NAME_RE.test(name) || isSourceList(name),
+  },
+  // "Theo" also cites a country or a ministry: "Theo Mỹ.", "Theo Trung Quốc.".
+  { lead: "[Tt]heo|[Tt]hông tin từ", bare: isSourceList },
+  // "By" also opens a deadline or an adverb: "By March.", "By @sama.".
+  { lead: "[Bb]y", bare: (name) => KNOWN_OUTLETS.has(name) },
+  // "Bởi" is also "because": "Bởi Time.", "Bởi CNBC thuộc NBC News." and
+  // "Bởi Mỹ trên CNN." are claims. Only "author / outlet" counts as a byline.
+  {
+    lead: "[Bb]ởi",
+    bare: (name) => HANDLE_RE.test(name) || isOutletDomain(name),
+    joiners: false,
+  },
+  { lead: "[Tt]ác giả", bare: () => false },
+];
 
 /** A whole sentence that only names where the story came from: "Từ The
  * Information.", "Tin từ @openainewsroom.", "Theo Reuters.", "Nguồn: Axios.",
  * "From Bloomberg.", "Via @x.", "Source: X.", Techmeme's "By Ina Fried / Axios."
- * byline, or the same in parentheses. A
- * sentence that carries a claim ("Theo Reuters, Nvidia …") has more after the
- * name, so it does not match. */
-const ATTRIBUTION_SENTENCE_RE = new RegExp(
-  String.raw`^\(?\s*(?:(?:(?:[Tt]in|[Bb]ài)\s+)?[Tt]ừ|[Bb]ài viết (?:của|từ)|[Tt]heo|[Nn]guồn(?:\s+tin)?\s*:?|[Ff]rom|[Vv]ia|[Ss]ource\s*:?|(?:[Bb]y|[Bb]ởi|[Tt]ác giả)(?=[^/]*\/))\s+${ATTRIBUTION_NAME}\s*[.!]?\s*\)?\.?$`,
-  "u"
+ * byline, or the same in parentheses. A sentence that carries a claim ("Theo
+ * Reuters, Nvidia …") has more after the name, so it does not match. */
+const ATTRIBUTION_SENTENCES = ATTRIBUTION_LEADS.map(
+  ({ lead, bare, joiners }) => ({
+    pattern: new RegExp(
+      String.raw`^\(?\s*(?:${lead})\s+(.+?)\s*[.!]?\s*\)?\.?$`,
+      "u"
+    ),
+    bare,
+    joiners,
+  })
 );
+
+function isAttributionSentence(sentence: string): boolean {
+  return ATTRIBUTION_SENTENCES.some(({ pattern, bare, joiners }) => {
+    const name = pattern.exec(sentence)?.[1];
+    return name !== undefined && (bare(name) || isByline(name, joiners));
+  });
+}
 
 /** The Techmeme "see the page" pointer, English or Vietnamese. */
 const CONTEXT_LINK_SENTENCE_RE =
@@ -518,10 +687,7 @@ export function stripTrailingAttribution(text: string): string {
   for (;;) {
     const start = sentenceEnds(out).findLast((end) => end < out.length) ?? 0;
     const last = out.slice(start).trim();
-    if (
-      !ATTRIBUTION_SENTENCE_RE.test(last) &&
-      !CONTEXT_LINK_SENTENCE_RE.test(last)
-    ) {
+    if (!isAttributionSentence(last) && !CONTEXT_LINK_SENTENCE_RE.test(last)) {
       return out === original ? text : out;
     }
     out = out.slice(0, start).trimEnd();

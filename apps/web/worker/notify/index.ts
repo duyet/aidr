@@ -163,6 +163,7 @@ export function highlightKey(localDate: string): string {
 export type DigestSkipReason =
   | "sent"
   | "no_snapshot"
+  | "empty_after_strip"
   | "already_sent"
   | "outcome_unknown"
   | "before_hour"
@@ -520,21 +521,35 @@ export function localDayStartMs(nowMs: number, timezone: string): number {
   return nowMs - elapsedSec * 1000 - (nowMs % 1000);
 }
 
+/** Why there is no digest to send: no snapshot (or no bullets in this
+ *  language), or every bullet was only an outlet credit. */
+type DigestUnavailable = Extract<
+  DigestSkipReason,
+  "no_snapshot" | "empty_after_strip"
+>;
+
 /** Loads one language of the TL;DR snapshot. Vietnamese uses `bullets_vi`
  *  only; English uses `bullets_en` only. Neither falls back to the other. */
 async function loadDigest(
   env: Env,
   date: string,
   lang: Lang
-): Promise<DailyDigest | null> {
-  const edition = await loadEdition(env, date, lang, DIGEST_MAX_BULLETS);
-  if (!edition) return null;
+): Promise<DailyDigest | DigestUnavailable> {
+  const edition = await loadEdition(env, date, lang, Number.POSITIVE_INFINITY);
+  if (!edition) return "no_snapshot";
+  // A bullet that is only an outlet credit cleans to "". It is dropped before
+  // the cap, so it never costs a numbered slot.
+  const bullets = edition.bullets
+    .map((bullet) => ({ ...bullet, text: stripEmbeddedChrome(bullet.text) }))
+    .filter((bullet) => bullet.text.length > 0)
+    .slice(0, DIGEST_MAX_BULLETS);
+  if (bullets.length === 0) return "empty_after_strip";
 
   // One query for every bullet's story: each D1 call is a subrequest out of
   // the same per-instance budget the sends need.
   const ids = [
     ...new Set(
-      edition.bullets
+      bullets
         .map((bullet) => primaryItemId(bullet))
         .filter((id): id is string => Boolean(id))
     ),
@@ -548,11 +563,11 @@ async function loadDigest(
       .all<{ id: string; category: string | null }>();
     for (const row of results ?? []) items.set(row.id, row);
   }
-  const resolved: DigestBullet[] = edition.bullets.map((bullet) => {
+  const resolved: DigestBullet[] = bullets.map((bullet) => {
     const itemId = primaryItemId(bullet);
     const item = itemId ? items.get(itemId) : undefined;
     return {
-      text: stripEmbeddedChrome(bullet.text),
+      text: bullet.text,
       url: item ? absoluteSiteUrl(storyPath(item), lang) : null,
       ...(bullet.emoji ? { emoji: bullet.emoji } : {}),
       category: item?.category ?? null,
@@ -560,7 +575,7 @@ async function loadDigest(
   });
   const citedItemIds = [
     ...new Set(
-      edition.bullets.flatMap((bullet) => [
+      bullets.flatMap((bullet) => [
         ...(bullet.item_id ? [bullet.item_id] : []),
         ...(bullet.item_ids ?? []),
       ])
@@ -905,7 +920,7 @@ export async function dispatchStoryNotifications(
     .map((row) => row.rank_score ?? 0);
   const maxRank = recentRanks.length > 0 ? Math.max(...recentRanks) : null;
 
-  const digestByLang = new Map<Lang, DailyDigest | null>();
+  const digestByLang = new Map<Lang, DailyDigest | DigestUnavailable>();
   const digestIdsByLang = new Map<Lang, string[]>();
   // Set once a send is refused for lack of subrequests: every later send in
   // this dispatch would be refused too, and each refusal is not a real try.
@@ -938,8 +953,8 @@ export async function dispatchStoryNotifications(
         digest = await loadDigest(env, date, notifier.lang);
         digestByLang.set(notifier.lang, digest);
       }
-      if (!digest) {
-        digestReason = "no_snapshot";
+      if (typeof digest === "string") {
+        digestReason = digest;
       } else if (budgetSpent) {
         digestReason = "send_failed";
         digestError = BUDGET_SPENT_ERROR;
@@ -1187,8 +1202,8 @@ export async function previewDigest(
   const out: Record<string, string> = {};
   for (const lang of ["vi", "en"] as const) {
     const digest = await loadDigest(env, date, lang);
-    if (!digest) {
-      out[lang] = `no ${lang} snapshot for ${date}`;
+    if (typeof digest === "string") {
+      out[lang] = `${digest}: no ${lang} digest for ${date}`;
       continue;
     }
     const notifier = telegramPreviewNotifier(lang, chatId);
@@ -1224,7 +1239,8 @@ export async function forceSendDigest(
   const { date } = getLocalHourAndDate(now, DIGEST_TIMEZONE);
   const key = digestKey(date);
   let sent = 0;
-  let sawSnapshot = false;
+  let sawDigest = false;
+  const emptied: string[] = [];
   let enabled = 0;
   for (const notifier of notifiers) {
     // A channel that is off (no Facebook token, no webhook) must not abort
@@ -1233,8 +1249,11 @@ export async function forceSendDigest(
     if (!notifier.enabled(env)) continue;
     enabled++;
     const digest = await loadDigest(env, date, notifier.lang);
-    if (!digest) continue;
-    sawSnapshot = true;
+    if (typeof digest === "string") {
+      if (digest === "empty_after_strip") emptied.push(notifier.id);
+      continue;
+    }
+    sawDigest = true;
     const target = notifier.target(env);
     let result: SendResult;
     try {
@@ -1269,8 +1288,14 @@ export async function forceSendDigest(
   if (enabled === 0) {
     return { sent: 0, reason: "no channel configured" };
   }
-  if (!sawSnapshot) {
-    return { sent: 0, reason: `no TL;DR snapshot for ${date}` };
+  if (!sawDigest) {
+    return {
+      sent: 0,
+      reason:
+        emptied.length === 0
+          ? `no TL;DR snapshot for ${date}`
+          : `every TL;DR bullet for ${date} is only an outlet credit on ${emptied.join(", ")}`,
+    };
   }
   return { sent, reason: sent > 0 ? `sent digest ${date}` : "no channel sent" };
 }

@@ -240,6 +240,188 @@ describe("protected English terms", () => {
     }
   });
 
+  // Production rows the #671 strip missed (#673): a "Tác giả" byline joined
+  // by từ/trên, a lowercase word inside the outlet, and "Thông tin từ".
+  it("drops the residual Techmeme byline shapes", () => {
+    for (const text of [
+      // 281ca0f32b
+      "Tác giả Sarah Hilton từ Bloomberg. Xem toàn bộ ngữ cảnh trên Techmeme.",
+      // 7eea0490cf
+      "Tác giả David Pierce trên The Verge. Xem toàn bộ bối cảnh trên Techmeme.",
+      // bc1b223920, EN and VI
+      "By Brian Krebs / Krebs on Security. View the full context on Techmeme.",
+      "Theo Brian Krebs / Krebs on Security. Xem toàn bộ nội dung trên Techmeme.",
+      // d415b9354c
+      "Thông tin từ Bloomberg. Xem bối cảnh đầy đủ trên Techmeme.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe("");
+    }
+  });
+
+  // "Theo" and "Bởi" also open a claim about a country or an institution.
+  // Only a source-shaped name after them is an attribution.
+  it("keeps a closing Theo or Bởi sentence whose name is not a source", () => {
+    for (const text of [
+      "Hàn Quốc siết xuất khẩu chip AI sang Trung Quốc. Theo Mỹ.",
+      "Nhật Bản tạm dừng thương vụ bán chip cho Huawei. Theo Trung Quốc.",
+      "Bộ Thương mại công bố danh sách công ty bị hạn chế. Theo Hoa Kỳ.",
+      "Lệnh cấm có hiệu lực từ tuần sau. Theo Nhà Trắng.",
+      "Lệnh cấm có hiệu lực từ tuần sau. Bởi Mỹ.",
+      "Tác giả huấn luyện một world model quy mô nhỏ theo kiến trúc JEPA trên Pokémon Red.",
+      "Nvidia expects the new fab to ship volume parts. By 2030.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+  });
+
+  it("drops a closing Theo sentence that names a source", () => {
+    for (const [text, kept] of [
+      ["Giá chip tăng 5%. Theo Bloomberg.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo Politico.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo New York Times.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo Janice Huang / Bloomberg.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo Gao Yuan từ Bloomberg.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo @openainewsroom.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Theo techcrunch.com.", "Giá chip tăng 5%."],
+    ] as const) {
+      expect(stripSourceBoilerplate(text)).toBe(kept);
+    }
+  });
+
+  // "Bởi" is also "because", so "Bởi Nvidia thuộc Mỹ." ("because Nvidia is
+  // American") is a claim. Every stored Bởi credit is an author byline.
+  it("drops a closing Bởi sentence only when it is a byline, handle or domain", () => {
+    for (const text of [
+      "Giá chip tăng 5%. Bởi CNBC thuộc NBC News.",
+      "Giá chip tăng 5%. Bởi Bloomberg Law thuộc Bloomberg.",
+      "Giá chip tăng 5%. Bởi Time thuộc Fortune.",
+      "Giá chip tăng 5%. Bởi Trung Quốc thuộc Bloomberg.",
+      "Giá chip tăng 5%. Bởi Mỹ trên CNN.",
+      "Lệnh cấm không áp dụng cho chip H20. Bởi Nvidia thuộc Mỹ.",
+      "Lệnh cấm có hiệu lực từ tuần sau. Bởi Mỹ từ Trung Quốc.",
+      "Công cụ chạy được trên mọi máy chủ. Bởi Node.js.",
+      "Ông được chọn là nhân vật của năm. Bởi Time.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+    for (const [text, kept] of [
+      ["Giá chip tăng 5%. Bởi Felix Ng / Cointelegraph.", "Giá chip tăng 5%."],
+      [
+        "Giá chip tăng 5%. Bởi Heather Landi / Fierce Healthcare.",
+        "Giá chip tăng 5%.",
+      ],
+      ["Giá chip tăng 5%. Bởi @openainewsroom.", "Giá chip tăng 5%."],
+      ["Giá chip tăng 5%. Bởi techcrunch.com.", "Giá chip tăng 5%."],
+    ] as const) {
+      expect(stripSourceBoilerplate(text)).toBe(kept);
+    }
+  });
+
+  // "By" opens a deadline or an adverb as often as a credit. A credit is a
+  // known outlet or an author byline.
+  it("keeps a closing By sentence that is a date or an adverb", () => {
+    for (const fragment of [
+      "By Q3 2026.",
+      "By December 2026.",
+      "By March.",
+      "By Contrast.",
+      "By Default.",
+      "By Then.",
+      "By Tuesday's Close.",
+      "By AI.",
+      "By @sama.",
+      "By numpy.org.",
+      "By Apple / Google on Android.",
+    ]) {
+      const text = `Nvidia expects the new fab to ship volume parts. ${fragment}`;
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+    for (const text of [
+      "By Bloomberg.",
+      "By Donald J. Trump / @realDonaldTrump@truthsocial.com. View the full context on Techmeme.",
+    ]) {
+      expect(stripSourceBoilerplate(text)).toBe("");
+    }
+  });
+
+  // A lowercase word after a name is part of a source only when the whole
+  // source is a known outlet ("Krebs on Security"). Elsewhere it starts a
+  // claim.
+  it("keeps a credit-led sentence that goes on after the outlet", () => {
+    for (const fragment of [
+      "From OpenAI / Anthropic on Monday.",
+      "Via v1.2.",
+      "From gpt-4.1.",
+    ]) {
+      const text = `The rollout reaches every paid plan. ${fragment}`;
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+    expect(stripSourceBoilerplate("Via theverge.com.")).toBe("");
+  });
+
+  // A credit names a known outlet, an @handle or an outlet's domain. A name
+  // that only looks like an author, an outlet or a domain is a claim (#653).
+  it("keeps a closing sentence whose source is not a known outlet", () => {
+    for (const fragment of [
+      "By Labor Day / Thanksgiving in the US.",
+      "By Christmas Day / New Year in Europe.",
+      "By Lunar New Year / Tet in Vietnam.",
+      "By Black Friday / Cyber Monday in the US.",
+      "By End Of Year / Q1 in 2027.",
+      "By Monday / Tuesday.",
+      "By Elon Musk / Tesla on Monday.",
+      "Theo Elon Musk / Tesla on Monday.",
+      "Theo Nvidia thuộc Mỹ.",
+      "Tác giả ChatGPT thuộc OpenAI.",
+      "Tác giả Mỹ thuộc Nvidia.",
+      "Tác giả Mỹ thuộc Apple.",
+      "From socket.io.",
+      "Theo socket.io.",
+      "Via x.com.",
+      "From me.com.",
+    ]) {
+      const text = `Nvidia expects the new fab to ship volume parts. ${fragment}`;
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+  });
+
+  it("keeps a domain that only shares its label with an outlet", () => {
+    for (const fragment of [
+      "Bởi axios.js.",
+      "Via axios.js.",
+      "Theo axios.js.",
+      "From axios.js.",
+      "Theo time.js.",
+      "Via time.ly.",
+      "Theo commandline.dev.",
+    ]) {
+      const text = `Giá chip tăng 5%. ${fragment}`;
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+    for (const fragment of [
+      "Via theverge.com.",
+      "Theo techcrunch.com.",
+      "From www.reuters.com.",
+    ]) {
+      expect(stripSourceBoilerplate(`Giá chip tăng 5%. ${fragment}`)).toBe(
+        "Giá chip tăng 5%."
+      );
+    }
+  });
+
+  it("drops a credit that lists several known outlets", () => {
+    for (const fragment of [
+      "From Bloomberg / Reuters / AP.",
+      "Theo Bloomberg / Politico / New York Times.",
+      "Theo Reuters và Bloomberg.",
+      "By Reuters / Bloomberg.",
+    ]) {
+      expect(stripSourceBoilerplate(`Giá chip tăng 5%. ${fragment}`)).toBe(
+        "Giá chip tăng 5%."
+      );
+    }
+  });
+
   it("keeps a sentence that carries a claim or a mid-text từ", () => {
     for (const text of [
       "Theo Reuters, Nvidia sẽ ra chip mới vào tháng 3.",
