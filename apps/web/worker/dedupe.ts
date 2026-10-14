@@ -191,8 +191,10 @@ function standalone(word: string): string | undefined {
  *  adjacent syllable pairs. */
 export function evidenceTokens(title: string): Set<string> {
   const out = new Set<string>();
-  const vietnamese = looksVietnamese(title);
-  const text = title
+  // A decomposed mark is not a letter, so it would split the word around it.
+  const composed = title.normalize("NFC");
+  const vietnamese = looksVietnamese(composed);
+  const text = composed
     .toLowerCase()
     .replace(/^update:\s*/, "")
     .replace(/[“”"'`’]/g, "")
@@ -323,29 +325,67 @@ function emitClusters(
   );
 }
 
+/** Sites whose URL ends in the article's numeric id, so one article under
+ *  two slugs (an edited headline) is still one id. A vnexpress live page
+ *  carries its article's id ("-5128002-tong-thuat.html"). */
+const ARTICLE_ID_PATTERNS: readonly { host: RegExp; id: RegExp }[] = [
+  { host: /(?:^|\.)vnexpress\.net$/i, id: /-(\d{6,})(?:-tong-thuat)?\.html$/i },
+];
+
+/** The publisher's own article id ("vnexpress.net:5125902"), or null. */
+export function articleId(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  for (const { host, id } of ARTICLE_ID_PATTERNS) {
+    const match = host.test(parsed.hostname) ? id.exec(parsed.pathname) : null;
+    if (match) return `${parsed.hostname.replace(/^www\./, "")}:${match[1]}`;
+  }
+  return null;
+}
+
+interface TitlePassHeadline {
+  title: string;
+  url: string;
+}
+
 /**
  * Deterministic fallback for the LLM clusterer: same story, different URL
- * (HuggingNews slug churn, HN vs original). Does not invent merges — only
- * high-overlap / normalized-equal titles.
+ * (HuggingNews slug churn, HN vs original, a vnexpress article whose
+ * headline was edited). Does not invent merges — only one publisher article
+ * id, or high-overlap / normalized-equal titles.
  */
 export function clusterByTitleSimilarity(
-  newItems: ClusterNewInput[],
-  recentItems: ClusterExistingInput[]
+  newItems: (TitlePassHeadline & { i: number })[],
+  recentItems: (TitlePassHeadline & { id: string })[]
 ): Cluster[] {
   if (newItems.length === 0) return [];
   const uf = unionFind();
   for (const item of newItems) uf.ensure(`n:${item.i}`);
   for (const item of recentItems) uf.ensure(`e:${item.id}`);
+  const keyed = <T extends TitlePassHeadline>(items: T[]) =>
+    items.map((item) => ({ ...item, article: articleId(item.url) }));
+  const fresh = keyed(newItems);
+  const recent = keyed(recentItems);
+  const sameStory = (
+    a: { title: string; article: string | null },
+    b: { title: string; article: string | null }
+  ) =>
+    (a.article !== null && a.article === b.article) ||
+    isTitleNearDuplicate(a.title, b.title);
 
-  for (let i = 0; i < newItems.length; i++) {
-    for (let j = i + 1; j < newItems.length; j++) {
-      if (isTitleNearDuplicate(newItems[i].title, newItems[j].title)) {
-        uf.union(`n:${newItems[i].i}`, `n:${newItems[j].i}`);
+  for (let i = 0; i < fresh.length; i++) {
+    for (let j = i + 1; j < fresh.length; j++) {
+      if (sameStory(fresh[i], fresh[j])) {
+        uf.union(`n:${fresh[i].i}`, `n:${fresh[j].i}`);
       }
     }
-    for (const existing of recentItems) {
-      if (isTitleNearDuplicate(newItems[i].title, existing.title)) {
-        uf.union(`n:${newItems[i].i}`, `e:${existing.id}`);
+    for (const existing of recent) {
+      if (sameStory(fresh[i], existing)) {
+        uf.union(`n:${fresh[i].i}`, `e:${existing.id}`);
       }
     }
   }

@@ -12,6 +12,7 @@
  * unmerge holds the row for a human decision.
  */
 import {
+  articleId,
   isTitleNearDuplicate,
   normalizeTitleForDedupe,
   significantTitleTokens,
@@ -37,26 +38,6 @@ const AGGREGATOR_SLUG =
 
 export function aggregatorSlugHash(url: string): string | null {
   return AGGREGATOR_SLUG.exec(url)?.[1]?.toLowerCase() ?? null;
-}
-
-/** Sites whose URL ends in the article's numeric id, so one article under
- * two slugs (an edited headline) is still one id. */
-const ARTICLE_ID_PATTERNS: readonly { host: RegExp; id: RegExp }[] = [
-  { host: /(?:^|\.)vnexpress\.net$/i, id: /-(\d{6,})\.html$/i },
-];
-
-function articleId(url: string): string | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return null;
-  }
-  for (const { host, id } of ARTICLE_ID_PATTERNS) {
-    const match = host.test(parsed.hostname) ? id.exec(parsed.pathname) : null;
-    if (match) return `${parsed.hostname.replace(/^www\./, "")}:${match[1]}`;
-  }
-  return null;
 }
 
 /** A ref's identity keys, computed once: a plan compares each paired row

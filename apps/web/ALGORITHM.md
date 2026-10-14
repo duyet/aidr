@@ -820,11 +820,19 @@ deterministic pass.
   ("Show HN", "AI", "agent", "System One Model") and on Vietnamese
   fragments merged unrelated stories: normalization turned each diacritic
   into a space ("triệu" -> "trie u"); it now folds whole words
-  ("trieu"). Replayed over the 3,245 merges of 2026-08-15 to 10-14 the
-  rule now splits 28 the old rule allowed (the 11 #749 pairs, 15 more
-  different stories, 2 unclear) and merges none it did not; over 1.14M
-  published pairs within 72h it flags 175 instead of 185, all 10 dropped
-  pairs different stories.
+  ("trieu").
+- The same pass merges two URLs of one publisher article whatever their
+  headlines (`articleId`). vnexpress ends each URL in the article's
+  numeric id and keeps it when it edits a headline under a new slug, or
+  serves the event's live page (`-tong-thuat`): `586b7f43` "Thủ tướng:
+  Nhiệm vụ khoa học công nghệ phải trả lời 4 câu hỏi" is `7afadede` "Thủ
+  tướng: Phải đo đếm đóng góp của công nghệ vào tăng trưởng" under a new
+  headline, and shares too few words for the title rule. Replayed over
+  the 3,245 merges of 2026-08-15 to 10-14 the pass now splits 27 the old
+  rule allowed (the 11 #749 pairs, 15 more different stories, and two
+  different articles on liability for rogue AI agents) and merges none it
+  did not. Over 1.14M published pairs within 72h it flags 176 instead of
+  185; the 9 dropped pairs are all different stories.
 - Cluster gate (`worker/cluster-gate.ts`, #733): an existing id stays in
   a model cluster only when one of the cluster's new items shares
   evidence with it: a headline that names an org the other item is the
