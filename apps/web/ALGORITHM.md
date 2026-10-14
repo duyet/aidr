@@ -1527,10 +1527,11 @@ then this chat chain:
 
 This chain also runs the cluster call. On the gold cluster set, Laguna
 scored F1 0.51, while Gemma, GLM 5.2 and the preset scored 1.0. TL;DR uses
-`openai/gpt-5.6-luna`, then `google/gemini-3-flash` (`anyrouter/auto`
-served 0 of 26 tldr calls over 7 days). Translate runs
-`google/gemini-3-flash`, `google/gemma-latest`, Laguna, then the
-`gemma-4-31b` :free route, ordered by 7-day success rate (2026-10-11). The rolling
+`openai/gpt-5.6-luna`, then Laguna (`anyrouter/auto` served 0 of 26 tldr
+calls over 7 days). Translate, summarize and the VI→EN generator run
+Laguna, then `google/gemma-latest`. On 2026-10-14 `google/gemini-3-flash`
+stopped serving (404, 502) and the `gemma-4-31b` :free route had served
+nothing since 10-12, so both left every chain (#663). The rolling
 aliases follow new models without a deploy, so re-probe what they serve
 before reading a bench row as a fixed model.
 
@@ -1553,10 +1554,8 @@ map are keyed by model, not task, so review hangs would move TL;DR onto its
 fallback (#663). Re-enable after a measured probe on review prompts picks a
 reviewer; the probe needs `ANYROUTER_LOCAL_API_KEY` (#656).
 
-`@preset/aidr` heads the score, translate and TL;DR chains. It resolves to
-`poolside/laguna-s-2.1`; the ids behind it stay as a fallback in case the
-preset 404s or 429s again (both happened until AnyRouter fixed them on
-2026-10-01).
+`@preset/aidr` is third on the score and cluster chain and on no other
+chain. It served 2 of 101 calls in the 7 days to 2026-10-14 (#663).
 
 An id that returns 404 (`model_not_found`, BYOK-only `model_unavailable`)
 is skipped by later calls in the same isolate for 15 minutes, and a 429
