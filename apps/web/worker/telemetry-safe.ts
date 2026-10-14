@@ -69,7 +69,7 @@ const SECRET_KEY_VALUE = new RegExp(
 /** Usage and cost counters (`input_token: 512`, `cost_per_token: 0.000002`)
  *  share the `token` suffix with credentials. A short plain number is kept
  *  unless the word before `token` names a credential. */
-const TOKEN_COUNT_KEY = /[-_]tokens?$/i;
+const TOKEN_COUNT_KEY = /_tokens?$/i;
 const CREDENTIAL_TOKEN_KEY =
   /(?:^|[-_])(?:access|refresh|session|id|auth|csrf|xsrf|bearer|api)[-_]tokens?$/i;
 const COUNT_VALUE = /^\d{1,7}(?:\.\d{1,9})?$/;

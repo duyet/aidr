@@ -624,6 +624,16 @@ describe("sanitizeText for step reasons", () => {
     expect(sanitizeText(text)).toBe(text);
   });
 
+  it.each([
+    ["bot-token=123456", "123456"],
+    ["reset-token=1234567", "1234567"],
+    ["verify-token=1234567.123456789", "1234567.123456789"],
+    ["failed push-token: 1234567", "1234567"],
+    ['{"note":"verify-token=123456"}', "123456"],
+  ])("redacts the hyphenated token key in %s", (text, value) => {
+    expect(sanitizeText(text)).not.toContain(value);
+  });
+
   it("still redacts a short number after a credential token key", () => {
     for (const key of ["access_token", "refresh_token", "id_token"]) {
       expect(sanitizeText(`${key}=123456`)).not.toContain("123456");
