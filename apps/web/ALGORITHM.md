@@ -1511,9 +1511,11 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 - Reasoning-model fallback (extracts JSON from `message.reasoning` when
   content is starved).
 - Comma-separated model fallback chains (`ANYROUTER_MODEL`).
-- Skips: a 404 skips an id for 15 min and a 429 for 2 min (isolate-wide).
-  Inside a run (`withLlmCallContext`), an id that times out 3 times in a
-  row is skipped for the rest of that run; a served call resets the count.
+- Skips (isolate-wide): a 404 skips an id for 15 min for the task that got
+  it, and a 429 skips it for 2 min for every task. Inside a run
+  (`withLlmCallContext`), an id that times out 3 times in a row in one task
+  is skipped for that task for the rest of the run; a served call resets
+  the count.
 - Per-task overrides (`ANYROUTER_TRANSLATE_MODEL` /
   `ANYROUTER_TLDR_MODEL`).
 
@@ -1549,18 +1551,28 @@ columns, so the pause leaves every published translation as it was. While
 paused, `qa-translations` still creates VI→EN candidates, logs one
 `translation_review.paused` line, reports "review paused", and makes no
 review or repair call. `gpt-5.6-luna` stays off the reviewer chain while it
-heads `ANYROUTER_TLDR_MODEL`. The per-run timeout breaker and the 429 skip
-map are keyed by model, not task, so review hangs would move TL;DR onto its
-fallback (#663). Re-enable after a measured probe on review prompts picks a
+heads `ANYROUTER_TLDR_MODEL`. Review timeouts no longer trip the id for
+TL;DR, but the 429 skip is model-wide, so a reviewer 429 on luna would move
+TL;DR onto its fallback for 2 minutes (#663). Re-enable after a measured probe on review prompts picks a
 reviewer; the probe needs `ANYROUTER_LOCAL_API_KEY` (#656).
 
 `@preset/aidr` is third on the score and cluster chain and on no other
 chain. It served 2 of 101 calls in the 7 days to 2026-10-14 (#663).
 
 An id that returns 404 (`model_not_found`, BYOK-only `model_unavailable`)
-is skipped by later calls in the same isolate for 15 minutes, and a 429
-for 2 minutes. Skipped ids take no budget slice. If every id in a chain is
-skipped, the chain is tried in full. 5xx and timeouts never skip.
+is skipped by later calls of the same task in the same isolate for 15
+minutes. Other tasks keep it. A 404 is not model-wide: `gemma-latest`
+served other tasks after 5 of 5 cluster 404s, and in run 1f3851a2
+(2026-10-10) a translate 404 on gemini left TL;DR with only luna, which
+hung, so a headline-only digest shipped. A 429 skips the id for every task
+for 2 minutes, because it is the account quota or the id's capacity, which
+every task shares: all 1,005 429s from 2026-09-30 to 10-14 fell in one 3-hour
+window (10-13 21:00-24:00 UTC) across 9 ids and 5 tasks. The quota alert
+(`llm-rate-limited`) counts 429 rows in `llm_calls` and does not read the
+skip map. The translate batch, the VI→EN generator and translation repair
+all log task `translate`, so they share their skips. Skipped ids take no
+budget slice. If every id in a chain is skipped, the chain is tried in
+full. 5xx and timeouts never skip.
 
 `parseJson` drops stray closers when a plain parse fails: Laguna often ends
 with an extra `]`, or closes the root `}` before `,"bullets_vi":[...]`.

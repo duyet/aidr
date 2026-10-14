@@ -802,32 +802,55 @@ export function raceTimeout<T>(
 }
 
 /** A 404 from AnyRouter (model_not_found, or model_unavailable for a
- *  BYOK-only id) does not change within a run, so the id is skipped by
- *  later calls in this isolate instead of each batch paying for it again.
- *  A 429 (billing_concurrency_limited hit @preset/aidr 27x in one run)
- *  skips it briefly. 5xx and timeouts never trip it. */
-const SKIP_MODEL_TTL_MS: Record<number, number> = {
-  404: 15 * 60_000,
-  429: 2 * 60_000,
+ *  BYOK-only id) skips the id for later calls of the same task in this
+ *  isolate instead of each batch paying for it again. Other tasks keep it:
+ *  a 404 is not model-wide (gemma-latest served other tasks after 5 of 5
+ *  cluster 404s), and a translate 404 cost TL;DR its fallback in run
+ *  1f3851a2. A 429 is the account quota or the id's capacity
+ *  (billing_concurrency_limited hit @preset/aidr 27x in one run), which
+ *  every task shares, so it skips the id briefly for every task.
+ *  5xx and timeouts never trip it. */
+const SKIP_RULES: Record<number, { ttlMs: number; perTask: boolean }> = {
+  404: { ttlMs: 15 * 60_000, perTask: true },
+  429: { ttlMs: 2 * 60_000, perTask: false },
 };
-const unavailableModels = new Map<string, number>();
+/** Keyed by model for a model-wide skip, by taskModelKey for a per-task one. */
+const skippedUntil = new Map<string, number>();
 
-function isUnavailable(model: string): boolean {
-  const until = unavailableModels.get(model);
+/** Model ids never contain a space, so this never equals a bare model id. */
+function taskModelKey(task: LlmTask, model: string): string {
+  return `${task} ${model}`;
+}
+
+function isSkipped(key: string): boolean {
+  const until = skippedUntil.get(key);
   if (until === undefined) return false;
   if (until > Date.now()) return true;
-  unavailableModels.delete(model);
+  skippedUntil.delete(key);
   return false;
+}
+
+function isUnavailable(task: LlmTask, model: string): boolean {
+  return isSkipped(model) || isSkipped(taskModelKey(task, model));
+}
+
+function markUnavailable(task: LlmTask, model: string, status: number): void {
+  const rule = SKIP_RULES[status];
+  if (!rule) return;
+  const key = rule.perTask ? taskModelKey(task, model) : model;
+  skippedUntil.set(key, Date.now() + rule.ttlMs);
 }
 
 /** Timeouts come in bursts where every hop of a chain hangs together, and
  *  each hung hop burns its full slice (15-30s) on every call of the run.
- *  After this many consecutive timeouts within one run (withLlmCallContext),
- *  the id is skipped for the rest of that run. A success resets the count.
- *  Calls outside a run never trip it. */
+ *  After this many consecutive timeouts of one task within one run
+ *  (withLlmCallContext), the id is skipped for that task for the rest of
+ *  the run. Other tasks keep it: review prompts hang where TL;DR prompts do
+ *  not (#663). A success resets the count. Calls outside a run never trip it. */
 export const RUN_TIMEOUT_BREAKER_THRESHOLD = 3;
 /** Runs tracked at once; the oldest is dropped past this (concurrent runs). */
 const RUN_BREAKER_MAX_RUNS = 8;
+/** Run id → taskModelKey → consecutive timeouts. */
 const runTimeoutStreaks = new Map<string, Map<string, number>>();
 
 function runStreaks(runId: string): Map<string, number> {
@@ -843,34 +866,39 @@ function runStreaks(runId: string): Map<string, number> {
   return streaks;
 }
 
-function isTrippedForRun(model: string): boolean {
+function isTrippedForRun(task: LlmTask, model: string): boolean {
   const runId = currentLlmCallRunId();
   if (!runId) return false;
   return (
-    (runTimeoutStreaks.get(runId)?.get(model) ?? 0) >=
+    (runTimeoutStreaks.get(runId)?.get(taskModelKey(task, model)) ?? 0) >=
     RUN_TIMEOUT_BREAKER_THRESHOLD
   );
 }
 
-function recordRunOutcome(model: string, timedOut: boolean): void {
+function recordRunOutcome(
+  task: LlmTask,
+  model: string,
+  timedOut: boolean
+): void {
   const runId = currentLlmCallRunId();
   if (!runId) return;
   const streaks = runStreaks(runId);
+  const key = taskModelKey(task, model);
   if (!timedOut) {
-    streaks.delete(model);
+    streaks.delete(key);
     return;
   }
-  const count = (streaks.get(model) ?? 0) + 1;
-  streaks.set(model, count);
+  const count = (streaks.get(key) ?? 0) + 1;
+  streaks.set(key, count);
   if (count === RUN_TIMEOUT_BREAKER_THRESHOLD)
     console.warn(
-      `anyrouter model ${model} skipped for run ${runId} after ${count} consecutive timeouts`
+      `anyrouter model ${model} skipped for ${task} in run ${runId} after ${count} consecutive timeouts`
     );
 }
 
 /** Test hook: forget every skipped id. */
 export function resetUnavailableModels(): void {
-  unavailableModels.clear();
+  skippedUntil.clear();
   runTimeoutStreaks.clear();
 }
 
@@ -909,7 +937,7 @@ async function callAnyrouter(
   // without a request.
   const callId = newLlmCallId();
   const live = configured.filter(
-    (model) => !isUnavailable(model) && !isTrippedForRun(model)
+    (model) => !isUnavailable(task, model) && !isTrippedForRun(task, model)
   );
   const models = live.length > 0 ? live : configured;
 
@@ -986,7 +1014,7 @@ async function callAnyrouter(
         failures.push(`${model}: anyrouter response failed accept check`);
         continue;
       }
-      recordRunOutcome(model, false);
+      recordRunOutcome(task, model, false);
       console.log(`anyrouter completion served by ${model}`);
       logLlmCall({
         ts: attemptStartedAt,
@@ -1014,10 +1042,9 @@ async function callAnyrouter(
         error instanceof Error
           ? /^anyrouter request failed: (\d{3})\b/.exec(error.message)?.[1]
           : undefined;
-      const skipMs = status ? SKIP_MODEL_TTL_MS[Number(status)] : undefined;
-      if (skipMs) unavailableModels.set(model, Date.now() + skipMs);
+      if (status) markUnavailable(task, model, Number(status));
       const msg = sanitizeProviderError(error);
-      recordRunOutcome(model, msg === "anyrouter request timed out");
+      recordRunOutcome(task, model, msg === "anyrouter request timed out");
       failures.push(`${model}: ${msg}`);
       // The chain moves on to the next model; only exhaustion is a failure.
       console.warn(`anyrouter model ${model} failed: ${msg}`);
