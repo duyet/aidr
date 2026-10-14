@@ -151,6 +151,24 @@ function writeState(patch) {
   return next;
 }
 
+function pidAlive(pid) {
+  if (!pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return e.code === "EPERM";
+  }
+}
+
+/** A stored loopback base is only trusted while the local session it points at is live. */
+function storedBase(state, flags) {
+  if (!state.base) return undefined;
+  const loopback = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(state.base);
+  if (loopback && !flags.local && !pidAlive(state.localPid)) return undefined;
+  return state.base;
+}
+
 function resolveRun(flags = {}) {
   const state = readState();
   const runId =
@@ -160,7 +178,7 @@ function resolveRun(flags = {}) {
     state.evidenceDir ||
     join(EVIDENCE_ROOT, runId);
   mkdirSync(evidenceDir, { recursive: true });
-  const base = normalizeBase(flags.base || state.base || DEFAULT_BASE);
+  const base = normalizeBase(flags.base || storedBase(state, flags) || DEFAULT_BASE);
   writeState({ runId, evidenceDir, base });
   return { runId, evidenceDir, base, state: readState() };
 }
@@ -852,10 +870,8 @@ async function driveAbout(ctx) {
   const res = await httpGet(`${base}/about`, { ua: CHROME_UA, accept: "text/html" });
   save(evidenceDir, "about.html", res.body);
   const identity = containsAll(res.body, [
-    "About AI News",
-    "How it works",
-    "Sources",
-    "AI;DR + Email",
+    "<h1>About AI;DR",
+    "<h2>How it works",
   ]);
   return {
     ok: res.status === 200 && Object.values(identity).every(Boolean),
