@@ -385,6 +385,49 @@ describe("protected English terms", () => {
     }
   });
 
+  // Who said it is content (#653, #722). Before "/" or từ/trên/thuộc, only a
+  // reporter's name makes the sentence a byline. A title, an institution, a
+  // country, a date or a number there names a speaker.
+  it("keeps a speaker attribution that names a known outlet", () => {
+    for (const fragment of [
+      "Theo CEO Jensen Huang trên CNBC.",
+      "Theo Bộ Công Thương / Reuters.",
+      "By Monday / Bloomberg.",
+      "By 2027 / Bloomberg.",
+      "By Black Friday / Bloomberg.",
+      "By President Trump / CNBC.",
+      "By Mr. Musk / Reuters.",
+      "Theo Ông Trump trên CNN.",
+      "Theo Trung Quốc / Reuters.",
+      "Thông tin từ Nhà Trắng trên CNN.",
+      "From CEO Jensen Huang / CNBC.",
+      "Tin từ Bộ Công Thương / Reuters.",
+    ]) {
+      const text = `Nvidia expects the new fab to ship volume parts. ${fragment}`;
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+  });
+
+  // Stored Techmeme bylines (EN and their VI translations) keep stripping.
+  it("drops a reporter byline to a known outlet", () => {
+    for (const fragment of [
+      "Theo Gao Yuan từ Bloomberg.",
+      "Theo Janice Huang / Bloomberg.",
+      "Theo Jeff John Roberts trên Fortune.",
+      "By Ina Fried / Axios.",
+      "By Lee Ying Shan / CNBC.",
+      "By Camila Grigera Naón / Fortune.",
+      "By Satya Nadella / @satyanadella.",
+      "Bởi Felix Ng / Cointelegraph.",
+      "Bài viết của Claire Ruckin thuộc Bloomberg.",
+      "Bài viết từ Tim Fernholz thuộc TechCrunch.",
+    ]) {
+      expect(stripSourceBoilerplate(`Giá chip tăng 5%. ${fragment}`)).toBe(
+        "Giá chip tăng 5%."
+      );
+    }
+  });
+
   it("keeps a domain that only shares its label with an outlet", () => {
     for (const fragment of [
       "Bởi axios.js.",
