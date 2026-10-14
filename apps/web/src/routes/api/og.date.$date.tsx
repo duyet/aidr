@@ -172,8 +172,20 @@ export const Route = createFileRoute("/api/og/date/$date")({
             const all = (archive.day?.items ?? []).filter((item) =>
               hasDayOgCopy(item, lang)
             );
+            // The day page exists from 00:00 in the audience zone and names
+            // this URL as its og:image before any story publishes. Serve the
+            // site image until then; `no-store` keeps the fallback out of
+            // every tier (cachedOgResponse also skips non-PNG responses), so
+            // the real card takes over as soon as a story lands. A 302 is
+            // the temporary redirect every social scraper follows for a GET.
             if (all.length === 0) {
-              return Response.json({ error: "not found" }, { status: 404 });
+              return new Response(null, {
+                status: 302,
+                headers: {
+                  Location: new URL("/og-home.jpg", request.url).toString(),
+                  "Cache-Control": "no-store",
+                },
+              });
             }
             // Fetch photos for the top dozen so a dead, hotlink-blocked or WebP
             // thumbnail does not cost the grid a photo a lower story has.
