@@ -39,8 +39,10 @@ export interface GateHeadline {
 const wordSet = (list: string) => new Set(list.trim().split(/\s+/));
 
 /** Function words, plus headline verbs and AI nouns common enough to tie
- *  unrelated stories: each, with its inflections, is in 0.5% or more of the
- *  English titles published 2026-09-30 to 10-14 ("agent", "model" over 5%).
+ *  unrelated stories. The headline verbs and AI nouns, with their
+ *  inflections, are each in 0.5% or more of the English titles published
+ *  2026-09-30 to 10-14 ("agent", "model" over 5%); the function words are
+ *  listed whatever their rate.
  *  Company names stay evidence although "openai" is in 9%: without them the
  *  gate blocked two correct #728 merges, follow-ups that share only
  *  "OpenAI" with the first story (#745). */
@@ -175,10 +177,10 @@ function sharesStoryEvidence(
 ): boolean {
   if (namesOfficialOrg(member.title, target)) return true;
   if (namesOfficialOrg(target.title, member)) return true;
+  if (isTitleNearDuplicate(member.title, target.title)) return true;
   const tokens = evidenceTokens(member.title);
   return [target.title, target.translation].some((headline) => {
     if (!headline) return false;
-    if (isTitleNearDuplicate(member.title, headline)) return true;
     for (const token of evidenceTokens(headline)) {
       if (tokens.has(token)) return true;
     }
