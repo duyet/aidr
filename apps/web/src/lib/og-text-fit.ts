@@ -88,10 +88,21 @@ function linesAt(box: FitBox, size: number): number {
   return Math.max(1, Math.min(box.maxLines ?? byHeight, byHeight));
 }
 
+/** The longest prefix of `word` that, with an ellipsis, fits one row. */
+function clipWord(word: string, maxEm: number): string {
+  const chars = [...word];
+  while (chars.length > 1 && textWidthEm(`${chars.join("")}…`) > maxEm) {
+    chars.pop();
+  }
+  return `${chars.join("")}…`;
+}
+
 /**
  * The largest size from `box.sizes` at which `text` wraps inside the box.
  * When none fits, the smallest size with the text cut after the last whole
- * word that fits, plus an ellipsis.
+ * word that fits, plus an ellipsis. A word wider than one row never fits:
+ * the renderer would break it inside the row and nothing would mark the cut,
+ * so it is clipped to the row with an ellipsis and nothing follows it.
  */
 export function fitText(text: string, box: FitBox): FittedText {
   const clean = text.replace(/\s+/g, " ").trim();
@@ -99,13 +110,23 @@ export function fitText(text: string, box: FitBox): FittedText {
   for (const size of box.sizes) {
     const max = linesAt(box, size);
     const wrapped = wrapLines(words, box.width / size);
-    if (wrapped.length <= max) {
+    const rowEm = box.width / size;
+    if (wrapped.length <= max && words.every((w) => textWidthEm(w) <= rowEm)) {
       return { text: clean, fontSize: size, lines: wrapped.length };
     }
   }
   const size = box.sizes[box.sizes.length - 1];
   const max = linesAt(box, size);
-  const kept = [...words];
+  const rowEm = box.width / size;
+  const tooWide = words.findIndex((w) => textWidthEm(w) > rowEm);
+  const kept = tooWide < 0 ? [...words] : words.slice(0, tooWide + 1);
+  if (tooWide >= 0) {
+    kept[tooWide] = clipWord(kept[tooWide], rowEm);
+    if (wrapLines(kept, rowEm).length <= max) {
+      return { text: kept.join(" "), fontSize: size, lines: max };
+    }
+    kept[tooWide] = words[tooWide];
+  }
   while (kept.length > 1) {
     kept.pop();
     const candidate = `${kept.join(" ").replace(/[\s,;:.–—-]+$/u, "")}…`;
@@ -113,5 +134,5 @@ export function fitText(text: string, box: FitBox): FittedText {
       return { text: candidate, fontSize: size, lines: max };
     }
   }
-  return { text: `${words[0]}…`, fontSize: size, lines: max };
+  return { text: clipWord(words[0], rowEm), fontSize: size, lines: max };
 }
