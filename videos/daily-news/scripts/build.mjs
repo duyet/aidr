@@ -23,13 +23,13 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
+import { gridCss } from "./grid.mjs";
 import { cutFor, cutOf, formatsOf } from "./lang.mjs";
 import { resolveLook } from "./look.mjs";
-import { formatRange, parseWeek } from "./week.mjs";
-import { gridCss } from "./grid.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
 import { spreadWords, subsMismatch } from "./visub.mjs";
 import { applyScreen } from "./visub-screen.mjs";
+import { formatRange, parseWeek } from "./week.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const BRAND = resolve(ROOT, "../brand");
@@ -45,7 +45,9 @@ const config = read(join(ROOT, "config.json"));
 const dir = join(ROOT, "editions", date);
 const edition = read(join(dir, "edition.json"));
 if (cut.subs && !existsSync(join(dir, cut.subs.screen)))
-  throw new Error(`${cut.subs.screen} is missing: run scripts/visub-screen.mjs ${date}`);
+  throw new Error(
+    `${cut.subs.screen} is missing: run scripts/visub-screen.mjs ${date}`
+  );
 const byRank = Object.fromEntries(edition.stories.map((s) => [s.rank, s]));
 // Each story keeps only the image files that exist, so a failed download never reaches the grid, the story, the
 // cover or the layout choice.
@@ -63,7 +65,11 @@ const withImages = (sc) => ({
 // visub: the English script with its screen text in Vietnamese; voice and timing fields stay English.
 const script = withImages(
   cut.subs
-    ? applyScreen(read(join(dir, cut.script)), edition, read(join(dir, cut.subs.screen)).fields)
+    ? applyScreen(
+        read(join(dir, cut.script)),
+        edition,
+        read(join(dir, cut.subs.screen)).fields
+      )
     : read(join(dir, cut.script))
 );
 const modeFile = join(dir, cut.voice, "mode.json");
@@ -151,7 +157,9 @@ const UI_WEEKLY = {
   },
 };
 const UI = { ...UI_BASE[lang], ...(WEEKLY ? UI_WEEKLY[lang] : {}) };
-const issueTag = WEEKLY ? ` · ${lang === "vi" ? "Số" : "Issue"} ${edition.issue}` : "";
+const issueTag = WEEKLY
+  ? ` · ${lang === "vi" ? "Số" : "Issue"} ${edition.issue}`
+  : "";
 // One look per day for every cut: a pin is read from the English script.json, never script.vi.json.
 const look = resolveLook(withImages(read(join(dir, "script.json"))), edition);
 for (const n of look.notes) console.log(`! look: ${n}`);
@@ -198,13 +206,17 @@ const segs = [
 let clock = 0;
 for (const seg of segs) {
   if (noVoice) {
-    const line = {
-      intro: script.intro,
-      outro: script.outro,
-    }[seg.id]?.voice ?? seg.story.voice;
+    const line =
+      {
+        intro: script.intro,
+        outro: script.outro,
+      }[seg.id]?.voice ?? seg.story.voice;
     seg.words = estimateWords(
       partsOf(line),
-      { wordsPerSecond: config.timing.noVoice.wordsPerSecond, gap: config.voice.gap },
+      {
+        wordsPerSecond: config.timing.noVoice.wordsPerSecond,
+        gap: config.voice.gap,
+      },
       cut.audio
     );
     seg.voiceDur = seg.words.at(-1).end;
@@ -315,7 +327,9 @@ if (cut.subs) {
   // Translated captions: same cues and times as the English build, Vietnamese words spread over each cue.
   const file = join(dir, cut.subs.json);
   if (!existsSync(file))
-    throw new Error(`${cut.subs.json} is missing: run scripts/visub.mjs ${date}`);
+    throw new Error(
+      `${cut.subs.json} is missing: run scripts/visub.mjs ${date}`
+    );
   const tr = read(file).cues;
   const en = allCaps.map((c) => ({
     start: srtTime(c.start),
@@ -324,7 +338,9 @@ if (cut.subs) {
   }));
   const bad = subsMismatch(tr, en);
   if (bad)
-    throw new Error(`${cut.subs.json} does not match this build (${bad}): rerun scripts/visub.mjs ${date}`);
+    throw new Error(
+      `${cut.subs.json} does not match this build (${bad}): rerun scripts/visub.mjs ${date}`
+    );
   allCaps.forEach((c, i) => {
     c.words = spreadWords(tr[i].vi, c.start, c.words.at(-1).e);
   });
@@ -357,13 +373,18 @@ const logo = (cls) => logoSvg.replace("<svg ", `<svg class="${cls}" `);
 // Weekly: the date parts become the week (WEEK / 41 / OCT 5–11) and the dateline the week range.
 const d = new Date(`${WEEKLY ? edition.start_date : date}T12:00:00Z`);
 const DOW = WEEKLY
-  ? lang === "vi" ? "Tuần" : "Week"
+  ? lang === "vi"
+    ? "Tuần"
+    : "Week"
   : d.toLocaleDateString(UI.locale, {
       weekday: "long",
       timeZone: "UTC",
     });
 const MON = WEEKLY
-  ? formatRange(edition.start_date, edition.end_date, UI.locale).replace(/(,? |\/)\d{4}$/, "")
+  ? formatRange(edition.start_date, edition.end_date, UI.locale).replace(
+      /(,? |\/)\d{4}$/,
+      ""
+    )
   : d.toLocaleDateString(UI.locale, { month: "long", timeZone: "UTC" });
 const DAY = WEEKLY ? parseWeek(edition.week).n : d.getUTCDate();
 const dateline =
@@ -629,7 +650,8 @@ function buildMix(outFile) {
 // the thumb story when it has an image, else the first ranked story with one (its kicker as the hook),
 // else the thumb story with its paper card.
 const thumbStory =
-  script.stories.find((s) => s.rank === (script.thumb?.story ?? 1)) ?? script.stories[0];
+  script.stories.find((s) => s.rank === (script.thumb?.story ?? 1)) ??
+  script.stories[0];
 const coverStory = firstImage(thumbStory)
   ? thumbStory
   : (script.stories.find(firstImage) ?? thumbStory);
@@ -700,9 +722,13 @@ mkdirSync(outRoot, { recursive: true });
 if (withAudio && cut.subs) {
   // The English cut's own mix, so the voice is the very same audio; its timeline must be this one.
   const enMix = join(dir, cutFor("en").out, "mix.wav");
-  const enTotal = existsSync(join(dir, cut.timeline)) ? read(join(dir, cut.timeline)).total : null;
+  const enTotal = existsSync(join(dir, cut.timeline))
+    ? read(join(dir, cut.timeline)).total
+    : null;
   if (!existsSync(enMix) || enTotal !== total)
-    throw new Error(`the English build is missing or stale (${enMix}, timeline ${enTotal}s vs ${total}s): build the en cut first`);
+    throw new Error(
+      `the English build is missing or stale (${enMix}, timeline ${enTotal}s vs ${total}s): build the en cut first`
+    );
   cpSync(enMix, mixShared);
 } else if (withAudio) buildMix(mixShared);
 
@@ -773,7 +799,14 @@ for (const fmt of formatsOf(cut, config)) {
 }
 
 if (cut.subs) {
-  console.log(`✓ ${date} ${cut.lang}: ${total}s · ${allCaps.length} cues from ${cut.subs.json} · ${formatsOf(cut, config).map((f) => `${cut.out}/${f}`).join(", ")}`);
+  console.log(
+    `✓ ${date} ${cut.lang}: ${total}s · ${allCaps.length} cues from ${cut.subs.json} · ${formatsOf(
+      cut,
+      config
+    )
+      .map((f) => `${cut.out}/${f}`)
+      .join(", ")}`
+  );
   process.exit(0);
 }
 

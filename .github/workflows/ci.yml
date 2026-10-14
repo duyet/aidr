@@ -65,8 +65,5 @@ jobs:
           NODE_ENV: test
           CI: true
 
-      - name: Test video scripts
-        run: node --test videos/daily-news/scripts/*.test.mjs
-
       - name: Check types
         run: pnpm run check-types

@@ -13,7 +13,8 @@ export function cutOf(argv) {
 }
 
 export function cutFor(lang) {
-  if (!LANGS.includes(lang)) throw new Error(`--lang ${lang}: ${LANGS.join(" | ")}`);
+  if (!LANGS.includes(lang))
+    throw new Error(`--lang ${lang}: ${LANGS.join(" | ")}`);
   if (lang === "visub") return subsCut();
   const dot = lang === "en" ? "" : `.${lang}`;
   const dash = lang === "en" ? "" : `-${lang}`;
@@ -76,7 +77,8 @@ function subsCut() {
 }
 
 /** The formats a cut renders: its own list, else every format in config.json. */
-export const formatsOf = (cut, config) => cut.formats ?? Object.keys(config.formats);
+export const formatsOf = (cut, config) =>
+  cut.formats ?? Object.keys(config.formats);
 
 // A weekly edition's directory (and "date" argument) is `week-<YYYY-Www>`, e.g. week-2026-W41.
 export const isWeekly = (date) => /^week-\d{4}-W\d{2}$/.test(date);

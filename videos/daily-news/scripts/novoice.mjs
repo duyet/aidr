@@ -10,7 +10,8 @@ export const partsOf = (line) =>
 // Same shape voice.mjs writes, so captions and cues need no special case.
 export function estimateWords(parts, { wordsPerSecond, gap }, lang) {
   const rate = wordsPerSecond[lang];
-  if (!rate) throw new Error(`config.timing.noVoice.wordsPerSecond has no "${lang}"`);
+  if (!rate)
+    throw new Error(`config.timing.noVoice.wordsPerSecond has no "${lang}"`);
   const words = [];
   let offset = 0;
   for (const p of parts) {

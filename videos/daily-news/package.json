@@ -1,0 +1,9 @@
+{
+  "name": "@aidr/daily-news",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "biome check scripts",
+    "test": "node --test scripts/*.test.mjs"
+  }
+}
