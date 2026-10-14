@@ -7,7 +7,10 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { defineConfig, loadEnv, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { writeSubsetFonts } from "./scripts/subset-fonts.js";
-import { requireClerkProxyUrl } from "./src/lib/clerk-proxy-config.js";
+import {
+  clerkProxyUrlForMode,
+  requireClerkProxyUrl,
+} from "./src/lib/clerk-proxy-config.js";
 
 function readWranglerVar(wrangler: string, name: string): string | undefined {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -28,7 +31,7 @@ function buildEnv(mode: string): Record<string, string> {
   };
 }
 
-function configuredPublicProxyUrl(mode: string): string {
+function configuredPublicProxyUrl(mode: string): string | undefined {
   const env = buildEnv(mode);
 
   if (env.VITE_CLERK_PROXY_URL !== undefined) {
@@ -37,8 +40,6 @@ function configuredPublicProxyUrl(mode: string): string {
     );
   }
 
-  // wrangler.toml is the canonical deploy source. Development may use an
-  // explicit loopback override, but production builds must match it exactly.
   const wrangler = readFileSync(
     new URL("./wrangler.toml", import.meta.url),
     "utf8"
@@ -46,14 +47,7 @@ function configuredPublicProxyUrl(mode: string): string {
   const canonicalUrl = requireClerkProxyUrl(
     readWranglerVar(wrangler, "CLERK_PROXY_URL")
   );
-  const environmentUrl = env.CLERK_PROXY_URL;
-  if (environmentUrl === undefined) return canonicalUrl;
-
-  const normalizedEnvironmentUrl = requireClerkProxyUrl(environmentUrl);
-  if (mode !== "development" && normalizedEnvironmentUrl !== canonicalUrl) {
-    throw new Error("CLERK_PROXY_URL must match wrangler.toml for this build");
-  }
-  return normalizedEnvironmentUrl;
+  return clerkProxyUrlForMode(mode, env.CLERK_PROXY_URL, canonicalUrl);
 }
 
 const baseConfig: UserConfig = {
@@ -167,7 +161,7 @@ export default defineConfig(({ mode }) => ({
     "import.meta.env.VITE_AIDR_VERSION": JSON.stringify(identity.version),
     "import.meta.env.VITE_AIDR_SHA": JSON.stringify(identity.sha),
     "import.meta.env.CLERK_PROXY_URL": JSON.stringify(
-      configuredPublicProxyUrl(mode)
+      configuredPublicProxyUrl(mode) ?? ""
     ),
     // A local deploy keeps the key in the repo-root .env.local, which Vite
     // does not read for VITE_*; without this the bundle shipped no key and

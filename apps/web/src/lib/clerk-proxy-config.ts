@@ -82,3 +82,21 @@ export function requireClerkProxyUrl(value: string | undefined): string {
   }
   return url;
 }
+
+/**
+ * The proxy URL Vite bakes into both bundles for `mode`. `canonicalUrl` is
+ * wrangler.toml's value; every build must match it exactly.
+ */
+export function clerkProxyUrlForMode(
+  mode: string,
+  configuredUrl: string | undefined,
+  canonicalUrl: string
+): string | undefined {
+  if (configuredUrl === undefined) return canonicalUrl;
+
+  const normalizedUrl = requireClerkProxyUrl(configuredUrl);
+  if (mode !== "development" && normalizedUrl !== canonicalUrl) {
+    throw new Error("CLERK_PROXY_URL must match wrangler.toml for this build");
+  }
+  return normalizedUrl;
+}
