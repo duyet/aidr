@@ -32,7 +32,8 @@ const USAGE = `usage (from the repo root):
 pull    reads each day from production D1 (SELECT only, through wrangler) with
         the same getDayArchive the route uses, and downloads its photos.
 render  draws every fixture in en and vi. A spec is a fixture date, optionally
-        cut to the first N stories published that day ("2026-10-14@3"), or
+        cut to the first N stories published that day ("2026-10-14@3") and
+        with photo fetches failed by position ("2026-10-14@3~P-P"), or
         "empty:YYYY-MM-DD:pending|settled" for a day with no stories.`;
 
 const LANGS: Lang[] = ["en", "vi"];
@@ -191,15 +192,24 @@ interface Case {
   date: string;
   items: FeedItem[];
   today: boolean;
+  /** "-" at position i: the i-th photo fetch fails. */
+  failures: string;
 }
 
 async function loadCase(dir: string, spec: string): Promise<Case> {
   const empty = /^empty:(\d{4}-\d{2}-\d{2}):(pending|settled)$/.exec(spec);
   if (empty) {
     const today = empty[2] === "pending";
-    return { name: `empty-${empty[2]}`, date: empty[1], items: [], today };
+    return {
+      name: `empty-${empty[2]}`,
+      date: empty[1],
+      items: [],
+      today,
+      failures: "",
+    };
   }
-  const [date, cut] = spec.split("@");
+  const [dayCut, failures = ""] = spec.split("~");
+  const [date, cut] = dayCut.split("@");
   const fixture = JSON.parse(
     await readFile(resolve(dir, `${date}.json`), "utf8")
   ) as Fixture;
@@ -214,11 +224,13 @@ async function loadCase(dir: string, spec: string): Promise<Case> {
     items = items.filter((it) => firstIds.has(it.id));
   }
   // A cut stands for the same day early on, while it is still today.
+  const name = cut ? `${date}-first${cut}` : date;
   return {
-    name: cut ? `${date}-first${cut}` : date,
+    name: failures ? `${name}-${failures.replace(/-/g, "x")}` : name,
     date,
     items,
     today: Boolean(cut),
+    failures,
   };
 }
 
@@ -239,12 +251,16 @@ async function render(dir: string, outDir: string, specs: string[]) {
   for (const spec of all) {
     const c = await loadCase(dir, spec);
     for (const lang of LANGS) {
+      let fetchIndex = 0;
       const model = await dayCardModel({
         date: c.date,
         lang,
         items: c.items,
         today: c.today,
-        fetchPhoto: (url) => cachedPhoto(dir, url),
+        fetchPhoto: (url) =>
+          c.failures[fetchIndex++] === "-"
+            ? Promise.resolve(null)
+            : cachedPhoto(dir, url),
       });
       const res = await ImageResponse.async(dayOgCard(model), {
         width: DAY_OG_WIDTH,
