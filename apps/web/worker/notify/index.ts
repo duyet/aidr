@@ -527,14 +527,21 @@ async function loadDigest(
   date: string,
   lang: Lang
 ): Promise<DailyDigest | null> {
-  const edition = await loadEdition(env, date, lang, DIGEST_MAX_BULLETS);
+  const edition = await loadEdition(env, date, lang, Number.POSITIVE_INFINITY);
   if (!edition) return null;
+  // A bullet that is only an outlet credit cleans to "". It is dropped before
+  // the cap, so it never costs a numbered slot.
+  const bullets = edition.bullets
+    .map((bullet) => ({ ...bullet, text: stripEmbeddedChrome(bullet.text) }))
+    .filter((bullet) => bullet.text.length > 0)
+    .slice(0, DIGEST_MAX_BULLETS);
+  if (bullets.length === 0) return null;
 
   // One query for every bullet's story: each D1 call is a subrequest out of
   // the same per-instance budget the sends need.
   const ids = [
     ...new Set(
-      edition.bullets
+      bullets
         .map((bullet) => primaryItemId(bullet))
         .filter((id): id is string => Boolean(id))
     ),
@@ -548,11 +555,11 @@ async function loadDigest(
       .all<{ id: string; category: string | null }>();
     for (const row of results ?? []) items.set(row.id, row);
   }
-  const resolved: DigestBullet[] = edition.bullets.map((bullet) => {
+  const resolved: DigestBullet[] = bullets.map((bullet) => {
     const itemId = primaryItemId(bullet);
     const item = itemId ? items.get(itemId) : undefined;
     return {
-      text: stripEmbeddedChrome(bullet.text),
+      text: bullet.text,
       url: item ? absoluteSiteUrl(storyPath(item), lang) : null,
       ...(bullet.emoji ? { emoji: bullet.emoji } : {}),
       category: item?.category ?? null,
@@ -560,7 +567,7 @@ async function loadDigest(
   });
   const citedItemIds = [
     ...new Set(
-      edition.bullets.flatMap((bullet) => [
+      bullets.flatMap((bullet) => [
         ...(bullet.item_id ? [bullet.item_id] : []),
         ...(bullet.item_ids ?? []),
       ])
