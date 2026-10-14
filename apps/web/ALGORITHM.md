@@ -1524,12 +1524,12 @@ before reading a bench row as a fixed model.
 
 TL;DR and translate use the same chain without Jev. The VI→EN generator
 uses only concrete ids (`poolside/laguna-s-2.1`). The translation reviewer
-(`z-ai/glm-4.6`, then `stealth/space-bunny-alpha`) shares no id with any
+(`openai/gpt-5.6-luna`, then `z-ai/glm-4.6`) shares no id with any
 generator chain and gets a 45s budget (`QA_REVIEW_TIMEOUT_MS`), 30s max for
-the first hop. Since ~08:40 UTC 2026-10-02 every `z-ai/*` id is BYOK-only on
-this key (404 in ~2s), so reviews depend on space-bunny (1 of 3 probe pairs
-inside the slice) until a Z.ai BYOK key is added; see the dated note in
-`wrangler.toml`.
+the first hop. On 2026-10-14 (#655) `stealth/space-bunny-alpha` was removed
+after 0 of 484 reviews in 7 days, and `glm-4.6` (12 of 277 in 24 hours, now
+timing out rather than failing fast) moved behind TL;DR's `gpt-5.6-luna`;
+see the dated note in `wrangler.toml`.
 
 `@preset/aidr` heads the score, translate and TL;DR chains. It resolves to
 `poolside/laguna-s-2.1`; the ids behind it stay as a fallback in case the
