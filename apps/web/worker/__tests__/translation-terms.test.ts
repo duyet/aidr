@@ -261,14 +261,15 @@ describe("protected English terms", () => {
     }
   });
 
-  // "Theo" also opens a claim about a country or an institution. Only a
-  // source-shaped name after it is an attribution.
-  it("keeps a closing Theo sentence whose name is not a source", () => {
+  // "Theo" and "Bởi" also open a claim about a country or an institution.
+  // Only a source-shaped name after them is an attribution.
+  it("keeps a closing Theo or Bởi sentence whose name is not a source", () => {
     for (const text of [
       "Hàn Quốc siết xuất khẩu chip AI sang Trung Quốc. Theo Mỹ.",
       "Nhật Bản tạm dừng thương vụ bán chip cho Huawei. Theo Trung Quốc.",
       "Bộ Thương mại công bố danh sách công ty bị hạn chế. Theo Hoa Kỳ.",
       "Lệnh cấm có hiệu lực từ tuần sau. Theo Nhà Trắng.",
+      "Lệnh cấm có hiệu lực từ tuần sau. Bởi Mỹ.",
       "Tác giả huấn luyện một world model quy mô nhỏ theo kiến trúc JEPA trên Pokémon Red.",
       "Nvidia expects the new fab to ship volume parts. By 2030.",
     ]) {

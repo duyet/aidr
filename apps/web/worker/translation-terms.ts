@@ -486,21 +486,111 @@ function stripFeedFooter(text: string): string {
 }
 
 /** A source name or handle: "Bloomberg", "The Information", "@openainewsroom",
- * "Goldman Sachs and Reuters". Capitalised words only, so a sentence that goes
- * on ("Theo dự báo từ …", "From Nvidia to Obvious Ventures …") is not a name. */
-const ATTRIBUTION_WORD = String.raw`[@\p{Lu}\p{N}][\p{L}\p{N}_.'’&@-]*`;
-const ATTRIBUTION_NAME = `${ATTRIBUTION_WORD}(?:\\s+(?:${ATTRIBUTION_WORD}|and|of|the|và|từ|trên|thuộc|[/&])){0,6}`;
+ * "techcrunch.com", "Goldman Sachs and Reuters". Capitalised words only, so a
+ * sentence that goes on ("Theo dự báo từ …", "From Nvidia to Obvious Ventures
+ * …") is not a name. After a byline's "/", the outlet may keep a lowercase
+ * word: "Brian Krebs / Krebs on Security". */
+const ATTRIBUTION_WORD = String.raw`(?:[@\p{Lu}\p{N}][\p{L}\p{N}_.'’&@-]*|[\p{Ll}\p{N}][\p{L}\p{N}-]*(?:\.[\p{L}\p{N}-]+)+)`;
+const NAME_JOINER = "and|of|the|và|từ|trên|thuộc|&";
+const OUTLET_JOINER = `${NAME_JOINER}|on|in|for|at|de|la`;
+const ATTRIBUTION_NAME = String.raw`${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|${NAME_JOINER})){0,6}(?:\s+\/\s+${ATTRIBUTION_WORD}(?:\s+(?:${ATTRIBUTION_WORD}|${OUTLET_JOINER})){0,6})?`;
+
+/** Outlets that credit a story by name alone. Seeded from production
+ * Techmeme credits and stored "Theo X." rows. A missing outlet only keeps its
+ * credit sentence. */
+const KNOWN_OUTLETS: ReadonlySet<string> = new Set([
+  "AP",
+  "Axios",
+  "BBC",
+  "Bloomberg",
+  "Bloomberg Law",
+  "Business Insider",
+  "CBS News",
+  "CNBC",
+  "CNN",
+  "Cointelegraph",
+  "Engadget",
+  "Financial Times",
+  "Forbes",
+  "Fortune",
+  "MacRumors",
+  "MarkTechPost",
+  "NBC News",
+  "New York Times",
+  "Nikkei Asia",
+  "Politico",
+  "Reuters",
+  "Semafor",
+  "SemiAnalysis",
+  "TechCrunch",
+  "Techmeme",
+  "The Decoder",
+  "The Information",
+  "The New York Times",
+  "The Verge",
+  "The Wall Street Journal",
+  "The Washington Post",
+  "Time",
+  "VentureBeat",
+  "Wall Street Journal",
+  "Washington Post",
+  "Wired",
+  "ZDNET",
+]);
+
+/** "Ina Fried / Axios", "Sarah Hilton từ Bloomberg": an author and an outlet. */
+function isByline(name: string): boolean {
+  return /\s(?:\/|từ|trên|thuộc)\s/u.test(name);
+}
+
+/** A name that can only be a source. "Theo" also opens "Theo Mỹ." or "Theo
+ * Trung Quốc." (according to a country), so a capitalised name alone is not
+ * enough. */
+function isSourceName(name: string): boolean {
+  return (
+    isByline(name) ||
+    KNOWN_OUTLETS.has(name) ||
+    name.startsWith("@") ||
+    /\p{L}\.\p{L}{2,}/u.test(name)
+  );
+}
+
+/** Each way a sentence opens a credit, and what the name after it must be. */
+const ATTRIBUTION_LEADS: readonly {
+  lead: string;
+  accepts: (name: string) => boolean;
+}[] = [
+  {
+    lead: String.raw`(?:(?:[Tt]in|[Bb]ài|[Tt]hông tin)\s+)?[Tt]ừ|[Bb]ài viết (?:của|từ)|[Nn]guồn(?:\s+tin)?\s*:?|[Ff]rom|[Vv]ia|[Ss]ource\s*:?`,
+    accepts: () => true,
+  },
+  // "By Apple." but not "By 2030."
+  { lead: "[Bb]y", accepts: (name) => /^[@\p{L}]/u.test(name) },
+  { lead: "[Tt]ác giả", accepts: isByline },
+  { lead: "[Tt]heo|[Bb]ởi", accepts: isSourceName },
+];
 
 /** A whole sentence that only names where the story came from: "Từ The
  * Information.", "Tin từ @openainewsroom.", "Theo Reuters.", "Nguồn: Axios.",
  * "From Bloomberg.", "Via @x.", "Source: X.", Techmeme's "By Ina Fried / Axios."
- * byline, or the same in parentheses. A
- * sentence that carries a claim ("Theo Reuters, Nvidia …") has more after the
- * name, so it does not match. */
-const ATTRIBUTION_SENTENCE_RE = new RegExp(
-  String.raw`^\(?\s*(?:(?:(?:[Tt]in|[Bb]ài)\s+)?[Tt]ừ|[Bb]ài viết (?:của|từ)|[Tt]heo|[Nn]guồn(?:\s+tin)?\s*:?|[Ff]rom|[Vv]ia|[Ss]ource\s*:?|(?:[Bb]y|[Bb]ởi|[Tt]ác giả)(?=[^/]*\/))\s+${ATTRIBUTION_NAME}\s*[.!]?\s*\)?\.?$`,
-  "u"
-);
+ * byline, or the same in parentheses. A sentence that carries a claim ("Theo
+ * Reuters, Nvidia …") has more after the name, so it does not match. */
+const ATTRIBUTION_SENTENCES = ATTRIBUTION_LEADS.map(({ lead, accepts }) => ({
+  pattern: new RegExp(
+    String.raw`^\(?\s*(?:${lead})\s+(${ATTRIBUTION_NAME})\s*[.!]?\s*\)?\.?$`,
+    "u"
+  ),
+  accepts,
+}));
+
+function isAttributionSentence(sentence: string): boolean {
+  return ATTRIBUTION_SENTENCES.some(({ pattern, accepts }) => {
+    // A word may end in "." ("Donald J."), so the closing period can land in
+    // the name.
+    const name = pattern.exec(sentence)?.[1]?.replace(/\.$/, "");
+    return name !== undefined && accepts(name);
+  });
+}
 
 /** The Techmeme "see the page" pointer, English or Vietnamese. */
 const CONTEXT_LINK_SENTENCE_RE =
@@ -518,10 +608,7 @@ export function stripTrailingAttribution(text: string): string {
   for (;;) {
     const start = sentenceEnds(out).findLast((end) => end < out.length) ?? 0;
     const last = out.slice(start).trim();
-    if (
-      !ATTRIBUTION_SENTENCE_RE.test(last) &&
-      !CONTEXT_LINK_SENTENCE_RE.test(last)
-    ) {
+    if (!isAttributionSentence(last) && !CONTEXT_LINK_SENTENCE_RE.test(last)) {
       return out === original ? text : out;
     }
     out = out.slice(0, start).trimEnd();
