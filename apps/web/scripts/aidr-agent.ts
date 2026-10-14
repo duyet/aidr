@@ -20,6 +20,8 @@
  *     --channel telegram-en|telegram-vi --ref <chat_id>/<message_id>
  *   pnpm --filter @aidr/web agent unmerge <pairs.json> [--apply]
  *     (dry run reads prod D1 with SELECTs only; --apply writes, sends nothing)
+ *   pnpm --filter @aidr/web agent unmerge --undo <batchId> [--apply]
+ *     (reverses one apply from its admin_audit rows; dry run by default)
  *
  * `run` and `rerun` are dry runs unless `--live` is passed. A dry run sends
  * no email, Telegram or owner alert and only previews the TL;DR, but still
@@ -38,11 +40,15 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { latestArchiveDate } from "../src/lib/day-archive";
-import type { UnmergeResult } from "../worker/admin/handlers";
+import type {
+  UndoUnmergeResult,
+  UnmergeResult,
+} from "../worker/admin/handlers";
 import { isPipelineStep, PIPELINE_STEPS } from "../worker/ingest/mode";
 import { loadUnmergeSnapshot } from "../worker/unmerge/load";
 import { parseUnmergePairs, planUnmerge } from "../worker/unmerge/plan";
 import { countUnmerge } from "../worker/unmerge/report";
+import { loadUndo, parseBatchId, planUndo } from "../worker/unmerge/undo";
 import { wranglerSelect, wranglerSelectTotals } from "./cf-d1";
 
 const DEFAULT_BASE = "https://aidr.today";
@@ -149,6 +155,7 @@ function takesValue(flag: string): boolean {
     "channel",
     "ref",
     "date",
+    "undo",
   ].includes(flag);
 }
 
@@ -330,6 +337,7 @@ async function tldrPreview(): Promise<void> {
  * `--apply` posts the pairs to the admin endpoint, which re-plans from live
  * rows and writes. */
 async function unmerge(args: Args, file: string | undefined): Promise<void> {
+  if (args.flags.has("undo")) return undoUnmergeBatch(args);
   if (!file) fail("unmerge needs a pairs JSON file");
   const raw: unknown = JSON.parse(readFileSync(file, "utf-8"));
   const parsed = parseUnmergePairs(
@@ -346,7 +354,7 @@ async function unmerge(args: Args, file: string | undefined): Promise<void> {
     });
     print(
       result,
-      `unmerge: applied ${result.applied?.canonicals ?? 0} canonical(s), ${JSON.stringify(result.counts.pairs)}${result.applied?.remaining ? `; ${result.applied.remaining} canonical(s) over the statement budget, rerun --apply` : ""}`
+      `unmerge: applied ${result.applied?.canonicals ?? 0} canonical(s) as batch ${result.applied?.batchId} (undo: --undo ${result.applied?.batchId}), ${JSON.stringify(result.counts.pairs)}${result.applied?.remaining ? `; ${result.applied.remaining} canonical(s) over the statement budget, rerun --apply` : ""}${result.applied?.stale.length ? `; ${result.applied.stale.length} canonical(s) changed since planning and were not written, rerun --apply` : ""}`
     );
     return;
   }
@@ -359,6 +367,38 @@ async function unmerge(args: Args, file: string | undefined): Promise<void> {
   print(
     { dryRun: true, readOnly: wranglerSelectTotals, counts, plan },
     `unmerge dry run (nothing written; ${wranglerSelectTotals.queries} read-only queries): ${JSON.stringify(counts.pairs)}`
+  );
+}
+
+/** Plan (default) or apply the undo of one unmerge apply. The dry run reads
+ * the batch's `admin_audit` rows and the touched rows through `wrangler d1
+ * execute` with SELECTs only. */
+async function undoUnmergeBatch(args: Args): Promise<void> {
+  const batchId = parseBatchId(args.flags.get("undo"));
+  if (batchId === null) fail("--undo needs the apply's batch id");
+  if (args.flags.has("apply")) {
+    const result = await api<UndoUnmergeResult>("/api/admin/unmerge/undo", {
+      method: "POST",
+      admin: true,
+      body: { batchId, dryRun: false },
+    });
+    print(
+      result,
+      `unmerge undo of ${batchId}: wrote ${result.applied?.canonicals ?? 0} canonical(s), ${result.applied?.stale.length ?? 0} changed since planning`
+    );
+    return;
+  }
+  const { records, state } = await loadUndo(
+    async (sql) => wranglerSelect(sql),
+    batchId
+  );
+  if (records.length === 0) fail(`no unmerge audit rows for batch ${batchId}`);
+  const plan = planUndo(batchId, records, state);
+  const states: Record<string, number> = {};
+  for (const c of plan.canonicals) states[c.state] = (states[c.state] ?? 0) + 1;
+  print(
+    { dryRun: true, readOnly: wranglerSelectTotals, plan },
+    `unmerge undo dry run of ${batchId} (nothing written; ${wranglerSelectTotals.queries} read-only queries): ${JSON.stringify(states)}`
   );
 }
 
@@ -591,7 +631,7 @@ async function main(): Promise<void> {
       return unmerge(args, stepArg);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --undo <batchId> [--apply]"
       );
   }
 }

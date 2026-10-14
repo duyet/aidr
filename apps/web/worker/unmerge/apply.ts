@@ -1,8 +1,12 @@
 /**
- * Turns an `UnmergePlan` into D1 writes, one batch per canonical, with an
- * `admin_audit` row per pair and per canonical in the same batch. Writes no
- * `notifications`, `tldr_snapshots`, digest or weekly rows: restored rows
- * sit outside every send window (`UNMERGE_QUIET_SEC`).
+ * Turns a `ChangeSet` into one D1 batch. The batch opens with one guarded
+ * `admin_audit` insert per write target: the insert's `action` is NULL, so
+ * the NOT NULL constraint fails the whole batch, unless the target still
+ * holds every value the plan read. So a stale plan writes nothing, and the
+ * audit rows hold every before and after, which undo reads back.
+ *
+ * Writes no `notifications`, `tldr_snapshots`, digest or weekly rows:
+ * restored rows sit outside every send window (`UNMERGE_QUIET_SEC`).
  */
 import {
   buildItemSourceBindArgs,
@@ -10,146 +14,279 @@ import {
   prepareTranslationUpsert,
 } from "../d1-bind.js";
 import { INSERT_ITEM_SOURCE_SQL } from "../ingest/write.js";
-import type { CanonicalPlan, RowTarget, UnmergePlan } from "./plan.js";
+import {
+  type ChangeSet,
+  type ItemId,
+  ROW_STATE_COLUMNS,
+  type RowTarget,
+  type SourcesTarget,
+  type TranslationTarget,
+  type UnmergePlan,
+} from "./plan.js";
 
-export const UNMERGE_AUDIT_PAIR = "unmerge.pair";
+/** `admin_audit.action` prefixes: an apply writes `unmerge.*`, an undo
+ * `unmerge.undo.*`. */
+export type AuditPrefix = "unmerge" | "unmerge.undo";
+
+export const UNMERGE_AUDIT_ROW = "unmerge.row";
+export const UNMERGE_AUDIT_SOURCES = "unmerge.sources";
+export const UNMERGE_AUDIT_TRANSLATION = "unmerge.translation";
 export const UNMERGE_AUDIT_CANONICAL = "unmerge.canonical";
 
-const WRITABLE_COLUMNS = new Set([
-  "status",
-  "duplicate_of",
-  "points",
-  "comments",
-  "tags",
-  "image_url",
-  "media_manifest",
-  "rank_score",
-]);
+/** The audit detail of one write target; `batchId` is the batch's `ts`. */
+export type TargetAudit = { batchId: number; canonicalId: ItemId } & (
+  | { kind: "row"; target: RowTarget }
+  | { kind: "sources"; target: SourcesTarget }
+  | { kind: "translation"; target: TranslationTarget }
+);
 
-function rowUpdate(db: D1Database, row: RowTarget): D1PreparedStatement {
-  for (const { column } of row.changes) {
+const WRITABLE_COLUMNS = new Set<string>(ROW_STATE_COLUMNS);
+
+interface Guard {
+  sql: string;
+  args: unknown[];
+}
+
+/** The row still holds every value the plan read. */
+function rowGuard(row: RowTarget): Guard {
+  const columns = Object.keys(row.guard);
+  for (const column of [...columns, ...row.changes.map((c) => c.column)]) {
     if (!WRITABLE_COLUMNS.has(column))
       throw new Error(`unmerge cannot write ${column}`);
   }
-  const sets = row.changes.map(({ column }) => `${column} = ?`).join(", ");
+  return {
+    sql: `EXISTS (SELECT 1 FROM items WHERE id = ? AND ${columns
+      .map((column) => `${column} IS ?`)
+      .join(" AND ")})`,
+    args: [row.id, ...Object.values(row.guard).map(nn)],
+  };
+}
+
+/** The item's `item_sources` rows are exactly `before`, in position order. */
+function sourcesGuard(target: SourcesTarget): Guard {
+  const rows = JSON.stringify(
+    target.before.map((r) => [r.kind, r.author, r.posted_at, r.quote, r.url])
+  );
+  return {
+    sql: `(SELECT COUNT(*) FROM item_sources WHERE item_id = ?) = json_array_length(?)
+      AND NOT EXISTS (SELECT 1 FROM json_each(?) e WHERE NOT EXISTS (
+        SELECT 1 FROM item_sources s WHERE s.item_id = ? AND s.position = e.key
+          AND s.kind IS json_extract(e.value, '$[0]')
+          AND s.author IS json_extract(e.value, '$[1]')
+          AND s.posted_at IS json_extract(e.value, '$[2]')
+          AND s.quote IS json_extract(e.value, '$[3]')
+          AND s.url IS json_extract(e.value, '$[4]')))`,
+    args: [target.itemId, rows, rows, target.itemId],
+  };
+}
+
+function translationGuard(target: TranslationTarget): Guard {
+  return target.before === null
+    ? {
+        sql: "NOT EXISTS (SELECT 1 FROM translations WHERE item_id = ? AND lang = 'vi')",
+        args: [target.itemId],
+      }
+    : {
+        sql: "EXISTS (SELECT 1 FROM translations WHERE item_id = ? AND lang = 'vi' AND title IS ? AND summary IS ?)",
+        args: [target.itemId, target.before.title, target.before.summary],
+      };
+}
+
+function guardedAudit(
+  db: D1Database,
+  ts: number,
+  action: string,
+  detail: TargetAudit,
+  guard: Guard
+): D1PreparedStatement {
   return db
     .prepare(
-      `UPDATE items SET ${sets} WHERE id = ? AND status = ? AND duplicate_of IS ?`
+      `INSERT INTO admin_audit (ts, action, detail) VALUES (?, (SELECT ? WHERE ${guard.sql}), ?)`
     )
-    .bind(
-      ...row.changes.map(({ after }) => nn(after)),
-      row.id,
-      row.guard.status,
-      row.guard.duplicateOf
-    );
+    .bind(ts, action, ...guard.args, JSON.stringify(detail));
 }
 
-function audit(db: D1Database, ts: number, action: string, detail: unknown) {
+function rowUpdate(db: D1Database, row: RowTarget): D1PreparedStatement {
+  const sets = row.changes.map(({ column }) => `${column} = ?`).join(", ");
   return db
-    .prepare("INSERT INTO admin_audit (ts, action, detail) VALUES (?, ?, ?)")
-    .bind(ts, action, JSON.stringify(detail));
+    .prepare(`UPDATE items SET ${sets} WHERE id = ?`)
+    .bind(...row.changes.map(({ after }) => nn(after)), row.id);
 }
 
-/** Statements for one canonical; empty when nothing is restored. */
-export function canonicalStatements(
+function sourcesWrite(
   db: D1Database,
-  plan: CanonicalPlan,
-  ts: number
+  target: SourcesTarget
 ): D1PreparedStatement[] {
-  const moved = plan.pairs.filter(
-    ({ outcome }) =>
-      outcome.action === "restore" || outcome.action === "regroup"
-  );
-  if (moved.length === 0) return [];
-  const statements: D1PreparedStatement[] = [];
-  for (const row of plan.rows) {
-    if (row.changes.length > 0) statements.push(rowUpdate(db, row));
-  }
-  for (const target of plan.sources) {
-    statements.push(
-      db
-        .prepare("DELETE FROM item_sources WHERE item_id = ?")
+  const fetched = target.after.map((row) => ({
+    kind: row.kind,
+    author: row.author ?? undefined,
+    postedAt: row.posted_at ?? undefined,
+    quote: row.quote ?? undefined,
+    url: row.url ?? undefined,
+  }));
+  return [
+    db
+      .prepare("DELETE FROM item_sources WHERE item_id = ?")
+      .bind(target.itemId),
+    ...buildItemSourceBindArgs(target.itemId, fetched).map((args) =>
+      db.prepare(INSERT_ITEM_SOURCE_SQL).bind(...args)
+    ),
+  ];
+}
+
+function translationWrite(
+  db: D1Database,
+  target: TranslationTarget
+): D1PreparedStatement {
+  return target.after === null
+    ? db
+        .prepare("DELETE FROM translations WHERE item_id = ? AND lang = 'vi'")
         .bind(target.itemId)
-    );
-    const fetched = target.after.map((row) => ({
-      kind: row.kind,
-      author: row.author ?? undefined,
-      postedAt: row.posted_at ?? undefined,
-      quote: row.quote ?? undefined,
-      url: row.url ?? undefined,
-    }));
-    for (const args of buildItemSourceBindArgs(target.itemId, fetched)) {
-      statements.push(db.prepare(INSERT_ITEM_SOURCE_SQL).bind(...args));
-    }
-  }
-  for (const vi of plan.viTranslations) {
-    statements.push(
-      prepareTranslationUpsert(db, {
-        id: vi.itemId,
+    : prepareTranslationUpsert(db, {
+        id: target.itemId,
         lang: "vi",
         sourceLang: "vi",
         targetLang: "vi",
-        title: vi.title,
-        summary: vi.summary,
-      })
-    );
+        title: target.after.title,
+        summary: target.after.summary,
+      });
+}
+
+/** The batch for one change set: every guard first, then the writes, then
+ * an unguarded summary row. Empty when the set writes nothing. */
+export function changeSetStatements(
+  db: D1Database,
+  set: ChangeSet,
+  ts: number,
+  prefix: AuditPrefix,
+  summary: Record<string, unknown>
+): D1PreparedStatement[] {
+  const rows = set.rows.filter((row) => row.changes.length > 0);
+  if (rows.length + set.sources.length + set.translations.length === 0) {
+    return [];
   }
-  const rowById = new Map(plan.rows.map((row) => [row.id as string, row]));
-  for (const { pair, outcome } of moved) {
-    statements.push(
-      audit(db, ts, UNMERGE_AUDIT_PAIR, {
-        canonicalId: pair.canonicalId,
-        mergedId: pair.mergedId,
-        group: pair.group,
-        outcome,
-        changes: rowById.get(pair.mergedId)?.changes ?? [],
-      })
-    );
-  }
-  statements.push(
-    audit(db, ts, UNMERGE_AUDIT_CANONICAL, {
-      canonicalId: plan.canonicalId,
-      mergedIds: moved.map(({ pair }) => pair.mergedId),
-      changes: rowById.get(plan.canonicalId)?.changes ?? [],
-      sources: plan.sources.find((s) => s.itemId === plan.canonicalId) ?? null,
-      lossy: plan.lossy,
-    })
-  );
-  return statements;
+  const base = { batchId: ts, canonicalId: set.canonicalId };
+  return [
+    ...rows.map((target) =>
+      guardedAudit(
+        db,
+        ts,
+        `${prefix}.row`,
+        { ...base, kind: "row", target },
+        rowGuard(target)
+      )
+    ),
+    ...set.sources.map((target) =>
+      guardedAudit(
+        db,
+        ts,
+        `${prefix}.sources`,
+        { ...base, kind: "sources", target },
+        sourcesGuard(target)
+      )
+    ),
+    ...set.translations.map((target) =>
+      guardedAudit(
+        db,
+        ts,
+        `${prefix}.translation`,
+        { ...base, kind: "translation", target },
+        translationGuard(target)
+      )
+    ),
+    ...rows.map((row) => rowUpdate(db, row)),
+    ...set.sources.flatMap((target) => sourcesWrite(db, target)),
+    ...set.translations.map((target) => translationWrite(db, target)),
+    db
+      .prepare("INSERT INTO admin_audit (ts, action, detail) VALUES (?, ?, ?)")
+      .bind(ts, `${prefix}.canonical`, JSON.stringify({ ...base, ...summary })),
+  ];
 }
 
 /** Every statement in a batch counts toward D1's per-invocation query
  * limit; this leaves room for the snapshot reads under it. */
 export const UNMERGE_MAX_STATEMENTS = 800;
 
-export interface UnmergeApplyResult {
+export interface BatchResult {
+  /** The `admin_audit.ts` of every row this request wrote; undo takes it. */
+  batchId: number;
   canonicals: number;
   statements: number;
   /** Canonicals left for a rerun because the request hit
    * `UNMERGE_MAX_STATEMENTS`. */
   remaining: number;
+  /** Canonicals whose rows changed after the plan read them: a guard failed
+   * and the batch wrote nothing. A rerun re-plans them from fresh rows. */
+  stale: ItemId[];
 }
 
-/** One atomic batch per canonical, so a failure leaves that canonical as it
+const GUARD_FAILED = "NOT NULL constraint failed: admin_audit.action";
+
+/** One atomic batch per change set, so a failure leaves that canonical as it
  * was and a rerun picks it up again. */
-export async function applyUnmerge(
+export async function applyChangeSets(
+  db: D1Database,
+  batches: readonly {
+    canonicalId: ItemId;
+    statements: D1PreparedStatement[];
+  }[],
+  batchId: number,
+  maxStatements = UNMERGE_MAX_STATEMENTS
+): Promise<BatchResult> {
+  const result: BatchResult = {
+    batchId,
+    canonicals: 0,
+    statements: 0,
+    remaining: 0,
+    stale: [],
+  };
+  for (const { canonicalId, statements } of batches) {
+    if (statements.length === 0) continue;
+    if (result.statements + statements.length > maxStatements) {
+      result.remaining++;
+      continue;
+    }
+    try {
+      await db.batch(statements);
+    } catch (error) {
+      if (!String(error).includes(GUARD_FAILED)) throw error;
+      result.stale.push(canonicalId);
+      continue;
+    }
+    result.canonicals++;
+    result.statements += statements.length;
+  }
+  return result;
+}
+
+const MOVED = new Set(["restore", "regroup"]);
+
+/** Statements for one canonical's plan; empty when nothing moves. */
+export function canonicalStatements(
+  db: D1Database,
+  plan: UnmergePlan["canonicals"][number],
+  ts: number
+): D1PreparedStatement[] {
+  const moved = plan.pairs.filter(({ outcome }) => MOVED.has(outcome.action));
+  if (moved.length === 0) return [];
+  return changeSetStatements(db, plan, ts, "unmerge", {
+    pairs: moved,
+    lossy: plan.lossy,
+  });
+}
+
+export function applyUnmerge(
   db: D1Database,
   plan: UnmergePlan,
   maxStatements = UNMERGE_MAX_STATEMENTS
-): Promise<UnmergeApplyResult> {
-  let canonicals = 0;
-  let statements = 0;
-  let remaining = 0;
-  for (const canonical of plan.canonicals) {
-    const batch = canonicalStatements(db, canonical, plan.nowMs);
-    if (batch.length === 0) continue;
-    if (statements + batch.length > maxStatements) {
-      remaining++;
-      continue;
-    }
-    await db.batch(batch);
-    canonicals++;
-    statements += batch.length;
-  }
-  return { canonicals, statements, remaining };
+): Promise<BatchResult> {
+  return applyChangeSets(
+    db,
+    plan.canonicals.map((canonical) => ({
+      canonicalId: canonical.canonicalId,
+      statements: canonicalStatements(db, canonical, plan.nowMs),
+    })),
+    plan.nowMs,
+    maxStatements
+  );
 }

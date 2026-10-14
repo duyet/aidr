@@ -59,7 +59,7 @@ export function countUnmerge(plan: UnmergePlan): UnmergeCounts {
     counts.sourceRowsAmbiguous += canonical.attribution.filter(
       (a) => a.ambiguous
     ).length;
-    counts.viTranslations += canonical.viTranslations.length;
+    counts.viTranslations += canonical.translations.length;
     counts.lossyNotes += canonical.lossy.length;
   }
   return counts;

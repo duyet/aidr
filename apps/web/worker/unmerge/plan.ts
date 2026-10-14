@@ -206,11 +206,32 @@ export interface ColumnChange {
   after: unknown;
 }
 
+/** The `items` columns an unmerge reads to plan a row and may write. */
+export const ROW_STATE_COLUMNS = [
+  "status",
+  "duplicate_of",
+  "points",
+  "comments",
+  "tags",
+  "image_url",
+  "media_manifest",
+  "rank_score",
+] as const;
+
+export type RowState = Pick<UnmergeItemRow, (typeof ROW_STATE_COLUMNS)[number]>;
+
+export function rowState(row: UnmergeItemRow): RowState {
+  return Object.fromEntries(
+    ROW_STATE_COLUMNS.map((column) => [column, row[column]])
+  ) as RowState;
+}
+
 export interface RowTarget {
   id: ItemId;
   role: "canonical" | "lead" | "twin";
-  /** The row is written only while it still holds these values. */
-  guard: { status: string; duplicateOf: string | null };
+  /** The row is written only while it still holds every one of these
+   * values: the plan derived its writes from all of them. */
+  guard: RowState;
   changes: ColumnChange[];
 }
 
@@ -236,14 +257,32 @@ export interface SourcesTarget {
   after: StoredSource[];
 }
 
-export interface CanonicalPlan {
+export interface TranslationText {
+  title: string | null;
+  summary: string | null;
+}
+
+/** A `translations` row with `lang = 'vi'`; null is no row. */
+export interface TranslationTarget {
+  itemId: ItemId;
+  before: TranslationText | null;
+  after: TranslationText | null;
+}
+
+/** Every write of one canonical's batch, each with its before and after.
+ * `apply.ts` guards on the befores, audits the whole set, and undo writes
+ * the befores back. */
+export interface ChangeSet {
   canonicalId: ItemId;
-  pairs: { pair: UnmergePair; outcome: PairOutcome }[];
   rows: RowTarget[];
   sources: SourcesTarget[];
   /** VI-source restored rows get the native `translations` row ingest
    * writes for a published VI item. */
-  viTranslations: { itemId: ItemId; title: string; summary: string }[];
+  translations: TranslationTarget[];
+}
+
+export interface CanonicalPlan extends ChangeSet {
+  pairs: { pair: UnmergePair; outcome: PairOutcome }[];
   attribution: AttributedSource[];
   /** The lead image a reader sees (`displayLead`) on the canonical and on
    * each restored row, before and after. */
@@ -651,7 +690,7 @@ function planCanonical(
     pairs: [],
     rows: [],
     sources: [],
-    viTranslations: [],
+    translations: [],
     attribution: [],
     leads: [],
     lossy: [],
@@ -884,7 +923,7 @@ function planRestoredGroup(
   plan.rows.push({
     id: lead.id,
     role: "lead",
-    guard: { status: "merged", duplicateOf: lead.duplicate_of },
+    guard: rowState(lead),
     changes: [
       ...change("status", lead.status, status),
       ...change("duplicate_of", lead.duplicate_of, null),
@@ -913,10 +952,13 @@ function planRestoredGroup(
     plan.sources.push({ itemId: lead.id, before: [], after: leadSources });
   }
   if (write.translation && lead.has_vi === 0) {
-    plan.viTranslations.push({
+    plan.translations.push({
       itemId: lead.id,
-      title: write.translation.title,
-      summary: write.translation.summary,
+      before: null,
+      after: {
+        title: write.translation.title,
+        summary: write.translation.summary,
+      },
     });
   }
   outcomes.set(lead.id, { action: "restore", leadId: lead.id, status });
@@ -936,7 +978,7 @@ function planRestoredGroup(
     plan.rows.push({
       id: row.id,
       role: "twin",
-      guard: { status: "merged", duplicateOf: row.duplicate_of },
+      guard: rowState(row),
       changes: change("duplicate_of", row.duplicate_of, lead.id),
     });
     outcomes.set(row.id, { action: "regroup", leadId: lead.id });
@@ -1107,7 +1149,7 @@ function planShrunkCanonical(ctx: CanonicalContext): void {
   plan.rows.unshift({
     id: canonical.id,
     role: "canonical",
-    guard: { status: "published", duplicateOf: null },
+    guard: rowState(canonical),
     changes: [
       ...change("points", canonical.points, points),
       ...change("comments", canonical.comments, comments),

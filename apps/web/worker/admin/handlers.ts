@@ -51,7 +51,7 @@ import {
 import { captureAndLearnTopics } from "../topic-learning.js";
 import { normalizeTopics } from "../topics.js";
 import type { Env } from "../types.js";
-import { applyUnmerge, type UnmergeApplyResult } from "../unmerge/apply.js";
+import { applyUnmerge, type BatchResult } from "../unmerge/apply.js";
 import { d1Select, loadUnmergeSnapshot } from "../unmerge/load.js";
 import {
   parseUnmergePairs,
@@ -59,6 +59,13 @@ import {
   type UnmergePlan,
 } from "../unmerge/plan.js";
 import { countUnmerge, type UnmergeCounts } from "../unmerge/report.js";
+import {
+  applyUndo,
+  loadUndo,
+  parseBatchId,
+  planUndo,
+  type UndoPlan,
+} from "../unmerge/undo.js";
 import { SELECT_RECENT_WORKFLOW_RUNS_SQL } from "../workflow-run.js";
 
 export async function writeAudit(
@@ -465,7 +472,7 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
 export interface UnmergeResult {
   dryRun: boolean;
   counts: UnmergeCounts;
-  applied?: UnmergeApplyResult;
+  applied?: BatchResult;
   plan: UnmergePlan;
 }
 
@@ -493,6 +500,43 @@ export async function unmergeItems(
     counts,
     applied: await applyUnmerge(env.DB, plan),
     plan,
+  };
+}
+
+export interface UndoUnmergeResult {
+  dryRun: boolean;
+  plan: UndoPlan;
+  applied?: BatchResult;
+}
+
+/**
+ * Reverses one unmerge apply from its `admin_audit` rows. Body
+ * `{ batchId, dryRun? }`, where `batchId` is the apply's `applied.batchId`.
+ * A dry run (the default) returns the plan and writes nothing. A canonical
+ * is written back only while every row it touched still holds what the
+ * apply wrote. See ALGORITHM.md, "Unmerge".
+ */
+export async function undoUnmerge(
+  env: Env,
+  input: { batchId?: unknown; dryRun?: unknown }
+): Promise<UndoUnmergeResult | HandlerError> {
+  const batchId = parseBatchId(input.batchId);
+  if (batchId === null) {
+    return { error: "batchId must be a positive integer", status: 400 };
+  }
+  if (input.dryRun !== undefined && typeof input.dryRun !== "boolean") {
+    return { error: "dryRun must be a boolean", status: 400 };
+  }
+  const { records, state } = await loadUndo(d1Select(env.DB), batchId);
+  if (records.length === 0) {
+    return { error: `no unmerge audit rows for batch ${batchId}`, status: 404 };
+  }
+  const plan = planUndo(batchId, records, state);
+  if (input.dryRun !== false) return { dryRun: true, plan };
+  return {
+    dryRun: false,
+    plan,
+    applied: await applyUndo(env.DB, plan, Date.now()),
   };
 }
 

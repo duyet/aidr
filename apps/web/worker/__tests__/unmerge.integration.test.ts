@@ -9,7 +9,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { unmergeItems } from "../admin/handlers.js";
+import { undoUnmerge, unmergeItems } from "../admin/handlers.js";
 import { MAX_SOURCES_PER_ITEM } from "../d1-bind.js";
 import { buildMergePlan, type ExistingCandidate } from "../dedupe.js";
 import type { IngestContext, NewRow } from "../ingest/context.js";
@@ -23,7 +23,8 @@ import type { Env } from "../types.js";
 import {
   applyUnmerge,
   UNMERGE_AUDIT_CANONICAL,
-  UNMERGE_AUDIT_PAIR,
+  UNMERGE_AUDIT_ROW,
+  UNMERGE_AUDIT_SOURCES,
 } from "../unmerge/apply.js";
 import { d1Select, loadUnmergeSnapshot } from "../unmerge/load.js";
 import {
@@ -297,6 +298,37 @@ function dump(db: DatabaseSync) {
   ].map((table) => db.prepare(`SELECT * FROM ${table} ORDER BY 1, 2`).all());
 }
 
+/** items, item_sources and translations: everything an unmerge writes
+ * besides its own audit rows. */
+function tables(db: DatabaseSync) {
+  return ["items", "item_sources", "translations"].map((table) =>
+    db.prepare(`SELECT * FROM ${table} ORDER BY 1, 2`).all()
+  );
+}
+
+// A Vietnamese story the same wrong cluster call put into the canonical.
+const VI = id(0xa5);
+
+async function writeVietnameseLoser() {
+  const url = "https://vnexpress.net/tau-spacex-lap-ky-luc-5127535.html";
+  await writeCluster(
+    db,
+    [
+      row(VI, "vnexpress-tech", {
+        url,
+        title: "Tàu SpaceX lập kỷ lục bay nhanh nhất đến trạm ISS",
+        summary: "Tàu Crew Dragon đến trạm ISS sau 3 giờ bay.",
+        publishedAt: OLD + 8500,
+        sourceLang: "vi",
+        imageUrl: "https://vcdn1-vnexpress.vnecdn.net/2026/10/02/crew.jpg",
+        sources: [{ kind: "source", url, postedAt: OLD + 8500 }],
+      }),
+    ],
+    { id: C, row: canonical },
+    OLD + 9500
+  );
+}
+
 const canonical = canonicalRow(C, OLD, "shopping");
 const pairs = [
   { canonicalId: C, mergedId: HUG, group: "anjney" },
@@ -394,16 +426,26 @@ describe("unmerge", () => {
     const audit = db
       .prepare("SELECT action, detail FROM admin_audit ORDER BY id")
       .all() as { action: string; detail: string }[];
+    // One row per write target, then the canonical's summary.
     expect(audit.map((a) => a.action)).toEqual([
-      UNMERGE_AUDIT_PAIR,
-      UNMERGE_AUDIT_PAIR,
+      UNMERGE_AUDIT_ROW,
+      UNMERGE_AUDIT_ROW,
+      UNMERGE_AUDIT_ROW,
+      UNMERGE_AUDIT_SOURCES,
+      UNMERGE_AUDIT_SOURCES,
       UNMERGE_AUDIT_CANONICAL,
     ]);
     // The before-state is kept, so the unmerge itself can be reversed.
-    const canonicalAudit = JSON.parse(audit[2].detail);
-    expect(canonicalAudit.sources.before).toHaveLength(4);
+    const written = audit.map((a) => JSON.parse(a.detail));
+    const canonicalSources = written.find(
+      (d) => d.kind === "sources" && d.target.itemId === C
+    );
+    expect(canonicalSources.target.before).toHaveLength(4);
+    const canonicalRowAudit = written.find(
+      (d) => d.kind === "row" && d.target.id === C
+    );
     expect(
-      canonicalAudit.changes.find(
+      canonicalRowAudit.target.changes.find(
         (c: { column: string }) => c.column === "image_url"
       ).before
     ).toContain("/og/");
@@ -415,10 +457,11 @@ describe("unmerge", () => {
     const again = await unmergeItems(env, { pairs, dryRun: false });
     if ("error" in again) throw new Error(again.error);
     expect(again.counts.pairs).toEqual({ "noop:already-unmerged": 2 });
-    expect(again.applied).toEqual({
+    expect(again.applied).toMatchObject({
       canonicals: 0,
       statements: 0,
       remaining: 0,
+      stale: [],
     });
     expect(dump(db)).toEqual(after);
   });
@@ -430,7 +473,7 @@ describe("unmerge", () => {
       await loadUnmergeSnapshot(d1Select(env.DB), parsePairs(pairs)),
       NOW.getTime()
     );
-    expect(await applyUnmerge(env.DB, plan, 1)).toEqual({
+    expect(await applyUnmerge(env.DB, plan, 1)).toMatchObject({
       canonicals: 0,
       statements: 0,
       remaining: 1,
@@ -440,6 +483,104 @@ describe("unmerge", () => {
     if ("error" in rerun) throw new Error(rerun.error);
     expect(rerun.applied?.remaining).toBe(0);
     expect(shape(db, C)).toEqual(preMerge.shape);
+  });
+
+  it.each([
+    [
+      "an admin hid the canonical",
+      "UPDATE items SET status = 'rejected' WHERE id = ?",
+    ],
+    ["its points refreshed", "UPDATE items SET points = 99 WHERE id = ?"],
+    [
+      "a source row was added",
+      "INSERT INTO item_sources (item_id, position, kind, url) VALUES (?, 7, 'support', 'https://x.com/late/status/1')",
+    ],
+  ])("writes nothing when, after the plan was read, %s", async (_case, sql) => {
+    const plan = planUnmerge(
+      parsePairs(pairs),
+      await loadUnmergeSnapshot(d1Select(env.DB), parsePairs(pairs)),
+      NOW.getTime()
+    );
+    db.prepare(sql).run(C);
+    const before = dump(db);
+    const result = await applyUnmerge(env.DB, plan);
+    expect(dump(db)).toEqual(before);
+    expect(result).toMatchObject({ canonicals: 0, stale: [C] });
+  });
+
+  it("records every write in admin_audit: the lead's new sources and its VI translation too", async () => {
+    await writeVietnameseLoser();
+    const result = await unmergeItems(env, {
+      pairs: [...pairs, { canonicalId: C, mergedId: VI }],
+      dryRun: false,
+    });
+    if ("error" in result) throw new Error(result.error);
+    const details = (
+      db.prepare("SELECT detail FROM admin_audit ORDER BY id").all() as {
+        detail: string;
+      }[]
+    ).map((a) => JSON.parse(a.detail));
+    const written = (itemId: string, kind: string) =>
+      details.find((d) => d.kind === kind && d.target?.itemId === itemId)
+        ?.target;
+    const lead = [HUG, MB].find(
+      (rowId) => (shape(db, rowId) as { status: string }).status === "published"
+    ) as string;
+    expect(written(lead, "sources")).toEqual({
+      itemId: lead,
+      before: [],
+      after: sources(db, lead).map(({ position, ...rest }) => rest),
+    });
+    expect(written(VI, "translation")).toEqual({
+      itemId: VI,
+      before: null,
+      after: db
+        .prepare(
+          "SELECT title, summary FROM translations WHERE item_id = ? AND lang = 'vi'"
+        )
+        .get(VI),
+    });
+  });
+
+  it("undo returns every row an apply wrote to its pre-apply state", async () => {
+    await writeVietnameseLoser();
+    const preApply = tables(db);
+    const applied = await unmergeItems(env, {
+      pairs: [...pairs, { canonicalId: C, mergedId: VI }],
+      dryRun: false,
+    });
+    if ("error" in applied) throw new Error(applied.error);
+    const batchId = applied.applied?.batchId as number;
+    expect(tables(db)).not.toEqual(preApply);
+
+    const dry = await undoUnmerge(env, { batchId });
+    if ("error" in dry) throw new Error(dry.error);
+    expect(dry.dryRun).toBe(true);
+    expect(dry.plan.canonicals.map((c) => c.state)).toEqual(["undo"]);
+    expect(tables(db)).not.toEqual(preApply);
+
+    const undone = await undoUnmerge(env, { batchId, dryRun: false });
+    if ("error" in undone) throw new Error(undone.error);
+    expect(tables(db)).toEqual(preApply);
+
+    const again = await undoUnmerge(env, { batchId, dryRun: false });
+    if ("error" in again) throw new Error(again.error);
+    expect(again.plan.canonicals.map((c) => c.state)).toEqual(["noop"]);
+    expect(tables(db)).toEqual(preApply);
+  });
+
+  it("undo refuses a canonical whose rows changed since the apply", async () => {
+    const applied = await unmergeItems(env, { pairs, dryRun: false });
+    if ("error" in applied) throw new Error(applied.error);
+    db.prepare("UPDATE items SET points = 42 WHERE id = ?").run(C);
+    const changed = tables(db);
+    const undo = await undoUnmerge(env, {
+      batchId: applied.applied?.batchId,
+      dryRun: false,
+    });
+    if ("error" in undo) throw new Error(undo.error);
+    expect(undo.plan.canonicals[0]).toMatchObject({ state: "conflict" });
+    expect(tables(db)).toEqual(changed);
   });
 
   it("posts nothing: restored rows are outside every send window, recent ones wait", async () => {

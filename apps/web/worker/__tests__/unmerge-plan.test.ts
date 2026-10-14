@@ -265,8 +265,12 @@ describe("planUnmerge", () => {
       snapshot([canonical, vi], [self(vi.url)]),
       NOW_MS
     );
-    expect(plan.canonicals[0].viTranslations).toEqual([
-      { itemId: vi.id, title: "Tàu SpaceX lập kỷ lục", summary: "Tóm tắt." },
+    expect(plan.canonicals[0].translations).toEqual([
+      {
+        itemId: vi.id,
+        before: null,
+        after: { title: "Tàu SpaceX lập kỷ lục", summary: "Tóm tắt." },
+      },
     ]);
   });
 
