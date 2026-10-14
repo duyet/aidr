@@ -314,6 +314,148 @@ describe("planUnmerge", () => {
     });
   });
 
+  const rawManifest = (...urls: string[]) =>
+    JSON.stringify({
+      version: 1,
+      assets: urls.map((url) => ({ type: "image", url })),
+    });
+  const canonicalAfter = (
+    plan: ReturnType<typeof planUnmerge>,
+    column: string
+  ) =>
+    plan.canonicals[0].rows
+      .find((r) => r.role === "canonical")
+      ?.changes.find((c) => c.column === column)?.after;
+
+  it("drops a removed story's share card and avatar that its parsed manifest hides (production c8680b9d)", () => {
+    // The stored manifests are raw: the merge kept every asset, while
+    // `parseMediaManifest` drops the card next to a real photo and the
+    // avatar altogether.
+    const own =
+      "https://vcdn1-vnexpress.vnecdn.net/2026/10/01/gemini-argon.png?w=1200";
+    const grokCard =
+      "https://huggingnews.com/og/grok-47-launches-in-general-apps-eb1f6886.png?v=1c9yll4";
+    const grokPhoto =
+      "https://static.huggingnews.com/story-media/2105725672089854306/HTkJvM5X0AArlmT-large.jpg";
+    const portrait =
+      "https://secure.gravatar.com/avatar/213d511460b4d497?d=identicon&r=g&s=96";
+    const vn = {
+      ...canonical,
+      image_url: own,
+      media_manifest: rawManifest(own, grokCard, grokPhoto, portrait),
+    };
+    const grok = item(16, "huggingnews", "https://huggingnews.com/ai/grok", {
+      image_url: grokCard,
+      media_manifest: rawManifest(grokCard, grokPhoto),
+    });
+    const other = item(17, "techcrunch-ai", "https://example.test/amazon", {
+      image_url: "https://example.test/amazon.jpg",
+      media_manifest: rawManifest("https://example.test/amazon.jpg", portrait),
+    });
+    const plan = planUnmerge(
+      [
+        { canonicalId: canonical.id, mergedId: grok.id, group: grok.id },
+        { canonicalId: canonical.id, mergedId: other.id, group: other.id },
+      ],
+      snapshot([vn, grok, other]),
+      NOW_MS
+    );
+    expect(canonicalAfter(plan, "media_manifest")).toBe(rawManifest(own));
+  });
+
+  it("leaves no removed avatar behind on a canonical with no image of its own (production 4474df4c)", () => {
+    const photo = "https://techcrunch.com/wp-content/uploads/2026/08/g.jpg";
+    const portrait =
+      "https://secure.gravatar.com/avatar/213d511460b4d497?d=identicon&r=g&s=96";
+    const hn = {
+      ...canonical,
+      image_url: photo,
+      media_manifest: rawManifest(photo, portrait),
+    };
+    const amazon = item(18, "techcrunch-ai", "https://techcrunch.com/amazon", {
+      image_url: photo,
+      media_manifest: rawManifest(photo, portrait),
+    });
+    const plan = planUnmerge(
+      [{ canonicalId: canonical.id, mergedId: amazon.id, group: amazon.id }],
+      snapshot([hn, amazon]),
+      NOW_MS
+    );
+    expect(canonicalAfter(plan, "media_manifest")).toBe(rawManifest());
+    expect(canonicalAfter(plan, "image_url")).toBeNull();
+  });
+
+  it("keeps an asset a remaining member also carries in its raw manifest", () => {
+    const card = "https://huggingnews.com/og/shared-story-aa11bb22.png?v=1";
+    const photo = "https://example.test/real-photo.jpg";
+    const withCard = {
+      ...canonical,
+      image_url: photo,
+      media_manifest: rawManifest(photo, card),
+    };
+    const removed = item(19, "huggingnews", "https://huggingnews.com/a", {
+      media_manifest: rawManifest(photo, card),
+    });
+    const stays = item(20, "marketbrief", "https://marketbrief.now/a", {
+      media_manifest: rawManifest(card),
+    });
+    const plan = planUnmerge(
+      [{ canonicalId: canonical.id, mergedId: removed.id, group: removed.id }],
+      snapshot([withCard, removed, stays]),
+      NOW_MS
+    );
+    expect(canonicalAfter(plan, "media_manifest")).toBe(rawManifest(card));
+  });
+
+  it("keeps a restored lead's own image over its twin's picture (production 0af325cb)", () => {
+    const slug = "ai-agents-probed-white-house-df053323";
+    const ownCard = `https://marketbrief.now/og/${slug}.png?v=l1q564`;
+    const twinPhoto =
+      "https://pbs.twimg.com/card_img/2105460326389161984/PeEQR7Oq?format=webp&name=medium";
+    const lead = item(
+      21,
+      "marketbrief",
+      `https://marketbrief.now/cyber/${slug}`,
+      {
+        points: 15,
+        llm_importance: 6.79,
+        image_url: ownCard,
+        media_manifest: rawManifest(ownCard),
+      }
+    );
+    const twin = item(
+      22,
+      "huggingnews",
+      `https://huggingnews.com/cyber/${slug}`,
+      {
+        points: 1,
+        llm_importance: 6.65,
+        image_url: twinPhoto,
+        media_manifest: rawManifest(
+          twinPhoto,
+          `https://huggingnews.com/og/${slug}.png?v=jifxl8`
+        ),
+      }
+    );
+    const plan = planUnmerge(
+      [
+        { canonicalId: canonical.id, mergedId: lead.id, group: "slug" },
+        { canonicalId: canonical.id, mergedId: twin.id, group: "slug" },
+      ],
+      snapshot([canonical, lead, twin]),
+      NOW_MS
+    );
+    expect(plan.canonicals[0].pairs[0].outcome).toMatchObject({
+      action: "restore",
+      leadId: lead.id,
+    });
+    const leadRow = plan.canonicals[0].rows.find((r) => r.role === "lead");
+    expect(leadRow?.changes.map((c) => c.column)).not.toContain("image_url");
+    expect(plan.canonicals[0].leads).toContainEqual(
+      expect.objectContaining({ id: lead.id, after: ownCard })
+    );
+  });
+
   it("refuses a demoted canonical, whose notifications and votes already moved", () => {
     const demoted = item(11, "techcrunch-ai", "https://example.test/old", {
       fetched_at: canonical.fetched_at - 3600,

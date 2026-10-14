@@ -18,7 +18,7 @@
  * attributable to a removed item.
  */
 import { MAX_SOURCES_PER_ITEM } from "../d1-bind.js";
-import { buildMergePlan } from "../dedupe.js";
+import { buildMergePlan, type CanonicalUpdate } from "../dedupe.js";
 import {
   RANK_RECOMPUTE_WINDOW_SEC,
   RELEVANCE_THRESHOLD,
@@ -31,6 +31,7 @@ import {
   canonicalizeMediaUrl,
   MEDIA_MANIFEST_VERSION,
   type MediaAsset,
+  type MediaManifest,
   mediaIdentityKey,
   parseMediaManifest,
   primaryThumbnailUrl,
@@ -447,11 +448,17 @@ function isOfficialRow(row: StoredSource): boolean {
   );
 }
 
-/** Identity keys of a row's assets, plus each video's poster as an image,
- * since a poster can become the canonical's `image_url`. */
+/** Identity keys of a row's stored assets as written, its `image_url`, and
+ * each video's poster as an image, since a poster can become the canonical's
+ * `image_url`. Read raw like the canonical's manifest: the parsed form drops
+ * share cards next to a photo and avatars, which the merge still copied. */
 function assetKeys(row: UnmergeItemRow): Set<string> {
   const keys = new Set<string>();
-  for (const asset of mediaOf(row)) {
+  const assets: MediaAsset[] = [
+    ...storedAssets(row.media_manifest),
+    ...(row.image_url ? [{ type: "image" as const, url: row.image_url }] : []),
+  ];
+  for (const asset of assets) {
     const key = assetKey(asset);
     if (key) keys.add(key);
     const poster =
@@ -857,7 +864,10 @@ function planRestoredGroup(
     score: scored.get(lead.id),
     translation: undefined,
     mergeEntry: undefined,
-    canonicalUpdate: mergePlan?.canonicalUpdates.get(lead.id),
+    canonicalUpdate: withoutTwinPictures(
+      mergePlan?.canonicalUpdates.get(lead.id),
+      newRows[leadIndex].item.mediaManifest
+    ),
     canonicalTags: tags.get(lead.id),
     now: freezeNowMs(lead.published_at, nowMs),
     voteNet: lead.vote_net,
@@ -931,6 +941,22 @@ function planRestoredGroup(
     });
     outcomes.set(row.id, { action: "regroup", leadId: lead.id });
   }
+}
+
+/** A row with a picture of its own keeps it: twins' pictures are not merged
+ * in, so a twin's better-tier image (an expiring `pbs.twimg.com/card_img`)
+ * cannot replace the row's working card. This is stricter than ingest, whose
+ * tier rule would take the twin's photo. Videos without a poster still join. */
+function withoutTwinPictures(
+  update: CanonicalUpdate | undefined,
+  own: MediaManifest | null | undefined
+): CanonicalUpdate | undefined {
+  if (!update || !own?.assets.some(hasPicture)) return update;
+  return {
+    ...update,
+    extraMedia: update.extraMedia?.filter((asset) => !hasPicture(asset)),
+    extraImageUrls: [],
+  };
 }
 
 /** The canonical rows attributed to `item`, minus the URL row the merge
