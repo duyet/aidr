@@ -1,5 +1,5 @@
-import { captureAndLearnTopics } from "../topic-learning.js";
 import { fallbackTags, type KnownTopics } from "../tag-fallback.js";
+import { captureAndLearnTopics } from "../topic-learning.js";
 import { dedupeNormalized, normalizeTopics } from "../topics.js";
 import { jsonMap, mapEntries } from "../workflow-run.js";
 import { llmStep, safeStep } from "../workflow-step.js";

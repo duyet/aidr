@@ -8,8 +8,8 @@ import {
   isSpecificTrendingTopic,
   learningDayKey,
   loadLearnedKeywords,
-  readableLearnedKeywords,
   rankTrendingWithGrowth,
+  readableLearnedKeywords,
   trendingKey,
   trendingSourceWeight,
 } from "../topic-learning.js";
