@@ -1,11 +1,12 @@
 /** @vitest-environment happy-dom */
 
 /**
- * The Cloudflare Google tag gateway puts `gtag('config', …)` at the top of
- * <head>, before any app code, and gtag.js sends that config's page_view
- * with whatever the URL was. Only the inline boot script runs early enough
- * to clean it up: it moves a subscribe token out of the URL and gives the
- * queued config a sanitized page_location.
+ * The Cloudflare Google tag gateway inlines `gtag('config', …)` at the top
+ * of <head>, and gtag.js sends that config's page_view with whatever the URL
+ * was. The Worker puts the boot script ahead of the gateway (ssr-head.ts),
+ * so the boot script moves a subscribe token out of the URL and queues a
+ * sanitized page_location before that config. If the gateway still comes
+ * first, the boot script patches the config already queued.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { gaHits, gatewaySnippet } from "../__fixtures__/gtag";
@@ -42,17 +43,18 @@ describe("GA4 never sees subscribe tokens or search text", () => {
     "/subscribe?settings=SECRET&lang=vi",
     "/?q=john+salary",
   ]) {
-    for (const gateway of [true, false]) {
-      it(`${path}, ${gateway ? "with" : "without"} the tag gateway`, () => {
+    for (const gateway of ["after", "before", "without"] as const) {
+      it(`${path}, ${gateway} the tag gateway`, () => {
         history.replaceState(null, "", path);
-        if (gateway) gatewaySnippet();
+        if (gateway === "before") gatewaySnippet();
         runBootScript();
+        if (gateway === "after") gatewaySnippet();
         installAnalyticsStubs({ gaMeasurementId: "G-HXJPPQVYQN" });
         track("page_view", { page_path: location.pathname, page_type: "home" });
 
         const hits = gaHits();
         expect(hits.map((h) => h.en)).toEqual(
-          gateway ? ["page_view", "page_view"] : ["page_view"]
+          gateway === "without" ? ["page_view"] : ["page_view", "page_view"]
         );
         expect(JSON.stringify(hits)).not.toMatch(LEAK);
       });

@@ -187,17 +187,18 @@ export type SubscribeLink = {
 const SUBSCRIBE_LINK_GLOBAL = "__aidrSubscribeLink";
 
 /**
- * Runs inline in <head>, after the Cloudflare tag gateway's snippet and
- * before any vendor script executes. Self-contained, because its source is
- * inlined.
+ * The first script in <head>, ahead of the Cloudflare tag gateway's snippet
+ * (the Worker puts it there, ssr-head.ts). Self-contained, because its
+ * source is inlined.
  *
  * 1. Moves a subscribe token out of the URL into a window global, so no
  *    vendor ever reads it. Stripping it later is too late: once gtag.js has
  *    loaded, the `replaceState` sends a history page_view whose referrer is
  *    the tokened URL.
- * 2. Gives the gateway's queued `config` a sanitized page_location. A
- *    `gtag('set')` does not reach the page_view of a `config` queued before
- *    it, and the gateway's `config` is the first thing in <head>.
+ * 2. Queues a sanitized page_location with `gtag('set')`, which reaches the
+ *    page_view of every `config` queued after it. A `config` already queued
+ *    (the gateway ran first) gets it patched in, since a later `set` does
+ *    not reach that page_view.
  */
 function bootUrlPrivacy(
   sanitize: typeof sanitizeUrl,

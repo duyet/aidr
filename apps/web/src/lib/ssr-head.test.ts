@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  clearInlinedSheets,
-  withHomepageInlineStylesheets,
-} from "./inline-stylesheet";
+import { clearInlinedSheets } from "./inline-stylesheet";
+import { withBootScriptFirst, withSsrHead } from "./ssr-head";
 
 const HREF = "/assets/index-Abc123.css";
 const CSS = ".a{color:red}@font-face{font-family:X;font-display:optional}";
@@ -25,7 +23,7 @@ function html(body: string): Response {
 }
 
 async function render(path: string, a: ReturnType<typeof assets>) {
-  const res = withHomepageInlineStylesheets(
+  const res = withSsrHead(
     new Request(`https://aidr.today${path}`),
     html(PAGE),
     a
@@ -35,7 +33,7 @@ async function render(path: string, a: ReturnType<typeof assets>) {
 
 afterEach(() => clearInlinedSheets());
 
-describe("withHomepageInlineStylesheets", () => {
+describe("withSsrHead inlines the homepage stylesheet", () => {
   it("inlines the built sheet on the homepage so first paint needs no CSS request", async () => {
     const out = await render("/?lang=vi", assets(CSS));
     expect(out).toContain(`<style>${CSS}</style>`);
@@ -55,14 +53,18 @@ describe("withHomepageInlineStylesheets", () => {
   it("leaves other routes on the cacheable blocking link", async () => {
     const a = assets(CSS);
     const out = await render("/about", a);
-    expect(out).toBe(PAGE);
+    expect(out).toBe(withBootScriptFirst(PAGE));
     expect(a.fetch).not.toHaveBeenCalled();
   });
 
   it("leaves the link alone when the sheet cannot be read", async () => {
-    expect(await render("/", assets("nope", "text/css", 404))).toBe(PAGE);
+    expect(await render("/", assets("nope", "text/css", 404))).toBe(
+      withBootScriptFirst(PAGE)
+    );
     // SPA fallback: index.html for a missing asset must never be inlined.
-    expect(await render("/", assets("<html></html>", "text/html"))).toBe(PAGE);
+    expect(await render("/", assets("<html></html>", "text/html"))).toBe(
+      withBootScriptFirst(PAGE)
+    );
   });
 
   it("fetches a hashed sheet once per isolate", async () => {
@@ -76,7 +78,7 @@ describe("withHomepageInlineStylesheets", () => {
     const json = new Response("{}", {
       headers: { "Content-Type": "application/json" },
     });
-    const res = withHomepageInlineStylesheets(
+    const res = withSsrHead(
       new Request("https://aidr.today/"),
       json,
       assets(CSS)
@@ -94,7 +96,7 @@ describe("withHomepageInlineStylesheets", () => {
         c.close();
       },
     });
-    const res = withHomepageInlineStylesheets(
+    const res = withSsrHead(
       new Request("https://aidr.today/"),
       new Response(body, { headers: { "Content-Type": "text/html" } }),
       assets(CSS)
