@@ -1,6 +1,6 @@
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
-import { bootSubscribeLink } from "./analytics/url-privacy";
+import { subscribeLinkToRender } from "./analytics/url-privacy";
 
 /** Raw query state for route head policy, including keys route validators drop. */
 const QUERY_UNAVAILABLE = "__route_query_unavailable";
@@ -16,7 +16,7 @@ export const getRouteSearch = createIsomorphicFn()
     // The server saw the emailed subscribe token in the URL; the browser
     // removed it before hydrating. Head policy (noindex for a tokened link)
     // has to match what the server rendered.
-    const link = bootSubscribeLink();
+    const link = subscribeLinkToRender(window.history.state, false);
     if (link) search.set(link.kind, link.token);
     return search;
   })

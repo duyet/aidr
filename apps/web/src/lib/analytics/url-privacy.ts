@@ -246,29 +246,60 @@ function bootUrlPrivacy(
   gtag("set", page);
 }
 
-/** The inline <head> script the root route renders. */
+/** The inline script the Worker puts first in <head> (ssr-head.ts). */
 export const URL_PRIVACY_BOOT_SCRIPT = `(${bootUrlPrivacy})(${sanitizeUrl},${JSON.stringify(SAFE_PARAMS)},${JSON.stringify(SUBSCRIBE_LINK_GLOBAL)});`;
 
-let claimed: { entry: number; link: SubscribeLink } | undefined;
+/** The history state key that carries a subscribe link on its entry. */
+const SUBSCRIBE_LINK_STATE = "aidrSubscribeLink";
+
+/** Set once the boot script handed over a link from this page load's URL. */
+let arrivedInUrl = false;
 
 /**
- * The subscribe token the boot script took out of the URL, while the current
- * history entry is the one it arrived on. The first call (once the router
- * has indexed the entry) claims it for that entry's index, so it survives a
- * remount (the tree remounts once Clerk loads), a replace navigation and
- * back/forward, while a later visit to /subscribe in the same tab starts
- * clean.
+ * Client only, once, after the router has created its history and before it
+ * hydrates. Moves the link the boot script took out of the URL onto the
+ * history entry it arrived on. That state survives a remount, a reload and
+ * back/forward to the entry, and the router compares it, so a link to the
+ * same URL (the footer's "Get AI;DR") pushes a fresh entry without it.
  */
-export function bootSubscribeLink(): SubscribeLink | undefined {
-  if (typeof window === "undefined") return undefined;
-  const state = window.history.state as { __TSR_index?: number } | null;
-  const entry = state?.__TSR_index;
-  if (entry === undefined) return undefined;
-  const w = window as unknown as Record<string, SubscribeLink | undefined>;
-  const found = w[SUBSCRIBE_LINK_GLOBAL];
-  if (found) {
-    claimed = { entry, link: found };
-    delete w[SUBSCRIBE_LINK_GLOBAL];
+export function adoptSubscribeLink(): void {
+  const w = window as unknown as Record<string, unknown>;
+  const link = subscribeLinkOf({
+    [SUBSCRIBE_LINK_STATE]: w[SUBSCRIBE_LINK_GLOBAL],
+  });
+  delete w[SUBSCRIBE_LINK_GLOBAL];
+  if (!link) return;
+  arrivedInUrl = true;
+  window.history.replaceState(
+    { ...window.history.state, [SUBSCRIBE_LINK_STATE]: link },
+    ""
+  );
+}
+
+/** The subscribe link a history entry's state carries, if well formed. */
+export function subscribeLinkOf(state: unknown): SubscribeLink | undefined {
+  const link = (state as Record<string, unknown> | null)?.[
+    SUBSCRIBE_LINK_STATE
+  ] as Partial<SubscribeLink> | undefined;
+  if (
+    (link?.kind === "unsubscribe" || link?.kind === "settings") &&
+    typeof link.token === "string" &&
+    link.token
+  ) {
+    return { kind: link.kind, token: link.token };
   }
-  return claimed?.entry === entry ? claimed.link : undefined;
+  return undefined;
+}
+
+/**
+ * The link to render for a history entry. Before hydration completes, only
+ * if this page load's URL carried it: the server then saw the token and
+ * rendered the same view. After a reload the server rendered the plain
+ * page, so the entry's link shows once hydrated.
+ */
+export function subscribeLinkToRender(
+  state: unknown,
+  hydrated: boolean
+): SubscribeLink | undefined {
+  return hydrated || arrivedInUrl ? subscribeLinkOf(state) : undefined;
 }

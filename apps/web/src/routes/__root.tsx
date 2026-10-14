@@ -206,7 +206,9 @@ function RootComponent() {
         `${current.pathname}${current.search}${current.hash}`,
         next
       );
-      void navigate({ href, replace: true });
+      // Same entry in another language: keep its history state, which can
+      // carry a subscribe link (url-privacy.ts).
+      void navigate({ href, replace: true, state: true });
     }
   };
 
