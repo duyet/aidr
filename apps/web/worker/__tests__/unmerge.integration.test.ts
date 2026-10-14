@@ -1,0 +1,493 @@
+/**
+ * Unmerge (#733) on real SQLite with every migration. The wrong merge goes
+ * through the real ingest write path, so "pre-merge shape" is what ingest
+ * itself wrote: the canonical before the merge, and the twins as ingest
+ * writes them when nothing else is in their cluster.
+ */
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { fileURLToPath } from "node:url";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { unmergeItems } from "../admin/handlers.js";
+import { MAX_SOURCES_PER_ITEM } from "../d1-bind.js";
+import { buildMergePlan, type ExistingCandidate } from "../dedupe.js";
+import type { IngestContext, NewRow } from "../ingest/context.js";
+import { buildMergeCandidates, EMPTY_MERGE_PLAN } from "../ingest/merge.js";
+import type { ItemScore } from "../ingest/score.js";
+import { writeItems } from "../ingest/write.js";
+import { dispatchStoryNotifications } from "../notify/index.js";
+import type { FetchedItem } from "../sources/types.js";
+import { MAX_MERGED_TOPICS } from "../topics.js";
+import type { Env } from "../types.js";
+import {
+  UNMERGE_AUDIT_CANONICAL,
+  UNMERGE_AUDIT_PAIR,
+} from "../unmerge/apply.js";
+import { UNMERGE_QUIET_SEC } from "../unmerge/plan.js";
+
+const migrationsDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../migrations"
+);
+
+type SqliteInput = null | number | bigint | string | NodeJS.ArrayBufferView;
+
+class SqliteD1 {
+  constructor(readonly db: DatabaseSync) {}
+
+  prepare(sql: string) {
+    const statement = this.db.prepare(sql);
+    let args: SqliteInput[] = [];
+    const prepared = {
+      bind: (...next: unknown[]) => {
+        args = next as SqliteInput[];
+        return prepared;
+      },
+      all: async () => ({ results: statement.all(...args) as unknown[] }),
+      first: async () => statement.get(...args) ?? null,
+      run: async () => {
+        const result = statement.run(...args);
+        return { success: true, meta: { changes: Number(result.changes) } };
+      },
+    };
+    return prepared;
+  }
+
+  async batch(statements: Array<{ all: () => Promise<unknown> }>) {
+    this.db.exec("BEGIN");
+    try {
+      const out = [];
+      for (const statement of statements) out.push(await statement.all());
+      this.db.exec("COMMIT");
+      return out;
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+}
+
+// 10:00 in the audience timezone: inside the trending hours.
+const NOW = new Date("2026-10-14T03:00:00Z");
+const NOW_SEC = Math.floor(NOW.getTime() / 1000);
+const OLD = NOW_SEC - 10 * 86_400;
+
+const id = (n: number) => n.toString(16).padStart(64, "0");
+const C = id(0xc1);
+const HUG = id(0xa1);
+const MB = id(0xa2);
+const RECENT_C = id(0xc2);
+const RECENT_L = id(0xb1);
+
+const slug = "anjney-midha-launches-4-b300-gpu-nodes-2f269c2e";
+const HUG_URL = `https://huggingnews.com/ai/${slug}`;
+const MB_URL = `https://marketbrief.now/ai/${slug}`;
+const HUG_IMG = `https://huggingnews.com/og/${slug}.png?v=1`;
+const MB_IMG = `https://marketbrief.now/og/${slug}.png?v=2`;
+const LOSER_TITLE = "Anjney Midha Launches $4 B300 GPU Nodes for Gov and Edu";
+
+function migratedDb(): DatabaseSync {
+  const db = new DatabaseSync(":memory:");
+  for (const name of readdirSync(migrationsDir)
+    .filter((file) => file.endsWith(".sql"))
+    .sort()) {
+    db.exec(readFileSync(path.join(migrationsDir, name), "utf8"));
+  }
+  return db;
+}
+
+function ingest(db: DatabaseSync): IngestContext {
+  return {
+    env: { DB: new SqliteD1(db) as unknown as D1Database } as Env,
+    step: { do: (_name: string, fn: () => Promise<unknown>) => fn() },
+  } as unknown as IngestContext;
+}
+
+function row(rowId: string, sourceId: string, item: FetchedItem): NewRow {
+  return {
+    id: rowId,
+    source: { id: sourceId, type: "rss", config: "{}", enabled: 1 },
+    item,
+  };
+}
+
+const score = (importance: number): ItemScore => ({
+  i: 0,
+  relevance: 0.9,
+  importance,
+  quality: 6,
+  category: "",
+  tags: [],
+  tokens: 0,
+});
+
+function canonicalRow(rowId: string, publishedAt: number, slugPart: string) {
+  return row(rowId, "hn", {
+    url: `https://www.example.test/${slugPart}`,
+    title:
+      "Study: Claude, ChatGPT Offer Different Shopping Prices Based on Wealth",
+    publishedAt,
+    points: 15,
+    comments: 1,
+    sources: [
+      {
+        kind: "discussion",
+        author: "sbulaev",
+        postedAt: publishedAt,
+        url: `https://news.ycombinator.com/item?id=${slugPart}`,
+      },
+    ],
+  });
+}
+
+/** The huggingnews and marketbrief copies of one unrelated story. */
+function twins(publishedAt: number): NewRow[] {
+  return [
+    row(HUG, "huggingnews", {
+      url: HUG_URL,
+      title: LOSER_TITLE,
+      publishedAt,
+      points: 1,
+      comments: 5,
+      imageUrl: HUG_IMG,
+      mediaManifest: { version: 1, assets: [{ type: "image", url: HUG_IMG }] },
+      sources: [
+        {
+          kind: "source",
+          author: "@anjneymidha",
+          postedAt: publishedAt - 600,
+          url: "https://x.com/AnjneyMidha/status/1",
+        },
+      ],
+    }),
+    row(MB, "marketbrief", {
+      url: MB_URL,
+      title: LOSER_TITLE,
+      publishedAt,
+      points: 3,
+      comments: 5,
+      imageUrl: MB_IMG,
+      mediaManifest: { version: 1, assets: [{ type: "image", url: MB_IMG }] },
+      sources: [{ kind: "source", url: MB_URL, postedAt: publishedAt }],
+    }),
+  ];
+}
+
+const TAGS = new Map([
+  [C, ["anthropic", "llm"]],
+  [HUG, ["nvidia", "funding"]],
+  [MB, ["nvidia", "funding"]],
+]);
+
+async function writeCanonical(
+  db: DatabaseSync,
+  newRow: NewRow,
+  nowSec: number
+) {
+  await writeItems(ingest(db), {
+    newRows: [newRow],
+    scored: new Map([[newRow.id, score(6)]]),
+    translated: new Map(),
+    mergePlan: EMPTY_MERGE_PLAN,
+    canonicalTagsByItem: TAGS,
+    now: nowSec * 1000,
+  });
+}
+
+/** Ingest's merge of `newRows` into `existing` (none: they only cluster
+ * with each other), written by the real write step. */
+async function writeCluster(
+  db: DatabaseSync,
+  newRows: NewRow[],
+  existing: { id: string; row: NewRow } | null,
+  nowSec: number,
+  importance = 5
+) {
+  const scored = new Map(newRows.map((r) => [r.id, score(importance)]));
+  const existingById = new Map<string, ExistingCandidate>(
+    existing
+      ? [
+          [
+            existing.id,
+            {
+              points: existing.row.item.points ?? 0,
+              comments: existing.row.item.comments ?? 0,
+              imageUrl: null,
+              mediaManifest: null,
+              sourceId: existing.row.source.id,
+              url: existing.row.item.url,
+              topics: TAGS.get(existing.id),
+            },
+          ],
+        ]
+      : []
+  );
+  const candidates = buildMergeCandidates(newRows, scored, TAGS, nowSec * 1000);
+  const mergePlan = buildMergePlan(
+    [
+      {
+        new: candidates.map((c) => c.i),
+        existing: existing ? [existing.id] : [],
+      },
+    ],
+    candidates,
+    existingById,
+    MAX_SOURCES_PER_ITEM,
+    MAX_MERGED_TOPICS
+  );
+  await writeItems(ingest(db), {
+    newRows,
+    scored,
+    translated: new Map(),
+    mergePlan,
+    canonicalTagsByItem: TAGS,
+    now: nowSec * 1000,
+  });
+}
+
+const SHAPE = `status, duplicate_of, points, comments, tags, image_url, media_manifest`;
+
+function shape(db: DatabaseSync, rowId: string) {
+  return db.prepare(`SELECT ${SHAPE} FROM items WHERE id = ?`).get(rowId);
+}
+
+function sources(db: DatabaseSync, rowId: string) {
+  return db
+    .prepare(
+      "SELECT position, kind, author, posted_at, quote, url FROM item_sources WHERE item_id = ? ORDER BY position"
+    )
+    .all(rowId);
+}
+
+function dump(db: DatabaseSync) {
+  return [
+    "items",
+    "item_sources",
+    "translations",
+    "admin_audit",
+    "notifications",
+  ].map((table) => db.prepare(`SELECT * FROM ${table} ORDER BY 1, 2`).all());
+}
+
+const canonical = canonicalRow(C, OLD, "shopping");
+const pairs = [
+  { canonicalId: C, mergedId: HUG, group: "anjney" },
+  { canonicalId: C, mergedId: MB, group: "anjney" },
+];
+
+let db: DatabaseSync;
+let env: Env;
+let preMerge: { shape: unknown; sources: unknown[] };
+let insertRank: Map<string, number>;
+
+beforeEach(async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(NOW);
+  db = migratedDb();
+  await writeCanonical(db, canonical, OLD + 600);
+  preMerge = { shape: shape(db, C), sources: sources(db, C) };
+  // The LLM cluster call put the twins into the unrelated canonical.
+  await writeCluster(
+    db,
+    twins(OLD + 8000),
+    { id: C, row: canonical },
+    OLD + 9000
+  );
+  insertRank = new Map(
+    (
+      db
+        .prepare("SELECT id, rank_score FROM items WHERE id IN (?, ?)")
+        .all(HUG, MB) as { id: string; rank_score: number }[]
+    ).map((r) => [r.id, r.rank_score])
+  );
+  env = { DB: new SqliteD1(db) as unknown as D1Database } as Env;
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+  db.close();
+});
+
+describe("unmerge", () => {
+  it("the merge under test hid the story and moved its sources, tags and image", () => {
+    expect(shape(db, HUG)).toMatchObject({ status: "merged", duplicate_of: C });
+    expect(shape(db, C)).toMatchObject({
+      image_url: expect.stringContaining("/og/"),
+    });
+    expect(sources(db, C)).toHaveLength(4);
+  });
+
+  it("a dry run writes nothing and says what it would change", async () => {
+    const before = dump(db);
+    const result = await unmergeItems(env, { pairs });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.dryRun).toBe(true);
+    expect(result.counts.pairs).toEqual({ restore: 1, regroup: 1 });
+    expect(result.plan.canonicals[0].rows.map((r) => r.role)).toEqual([
+      "canonical",
+      "lead",
+      "twin",
+    ]);
+    expect(dump(db)).toEqual(before);
+  });
+
+  it("returns both rows to their pre-merge shape", async () => {
+    const result = await unmergeItems(env, { pairs, dryRun: false });
+    if ("error" in result) throw new Error(result.error);
+
+    // The canonical is what ingest wrote before the merge.
+    expect(shape(db, C)).toEqual(preMerge.shape);
+    expect(sources(db, C)).toEqual(preMerge.sources);
+
+    // The twins are what ingest writes for them with no canonical to join.
+    const oracle = migratedDb();
+    await writeCanonical(oracle, canonical, OLD + 600);
+    await writeCluster(oracle, twins(OLD + 8000), null, OLD + 9000);
+    for (const rowId of [HUG, MB]) {
+      expect(shape(db, rowId)).toEqual(shape(oracle, rowId));
+      expect(sources(db, rowId)).toEqual(sources(oracle, rowId));
+    }
+    const lead = [HUG, MB].find(
+      (rowId) =>
+        (shape(oracle, rowId) as { status: string }).status === "published"
+    ) as string;
+    expect(sources(db, lead).length).toBeGreaterThan(0);
+    oracle.close();
+
+    // Scored like its day, not with the insert-time score of a fresh story.
+    const leadRank = (
+      db.prepare("SELECT rank_score FROM items WHERE id = ?").get(lead) as {
+        rank_score: number;
+      }
+    ).rank_score;
+    expect(leadRank).toBeLessThan(insertRank.get(lead) as number);
+
+    const audit = db
+      .prepare("SELECT action, detail FROM admin_audit ORDER BY id")
+      .all() as { action: string; detail: string }[];
+    expect(audit.map((a) => a.action)).toEqual([
+      UNMERGE_AUDIT_PAIR,
+      UNMERGE_AUDIT_PAIR,
+      UNMERGE_AUDIT_CANONICAL,
+    ]);
+    // The before-state is kept, so the unmerge itself can be reversed.
+    const canonicalAudit = JSON.parse(audit[2].detail);
+    expect(canonicalAudit.sources.before).toHaveLength(4);
+    expect(
+      canonicalAudit.changes.find(
+        (c: { column: string }) => c.column === "image_url"
+      ).before
+    ).toContain("/og/");
+  });
+
+  it("a repeated unmerge changes nothing", async () => {
+    await unmergeItems(env, { pairs, dryRun: false });
+    const after = dump(db);
+    const again = await unmergeItems(env, { pairs, dryRun: false });
+    if ("error" in again) throw new Error(again.error);
+    expect(again.counts.pairs).toEqual({ "noop:already-unmerged": 2 });
+    expect(again.applied).toEqual({ canonicals: 0, statements: 0 });
+    expect(dump(db)).toEqual(after);
+  });
+
+  it("posts nothing: restored rows are outside every send window, recent ones wait", async () => {
+    // A wrong merge from two hours ago: restoring it now would make an
+    // importance-9 story trend.
+    const recent = canonicalRow(RECENT_C, NOW_SEC - 3 * 3600, "recent");
+    await writeCanonical(db, recent, NOW_SEC - 3 * 3600 + 60);
+    const recentLoser = row(RECENT_L, "techcrunch-ai", {
+      url: "https://techcrunch.example.test/amazon-ndas",
+      title:
+        "Amazon responds to data center backlash, says it no longer uses NDAs",
+      summary:
+        "Amazon says it stopped asking towns to sign NDAs before it builds data centers, after months of local pushback over secrecy and power use.",
+      publishedAt: NOW_SEC - 2 * 3600,
+      imageUrl: "https://techcrunch.example.test/amazon.jpg",
+      sources: [
+        {
+          kind: "source",
+          url: "https://techcrunch.example.test/amazon-ndas",
+          postedAt: NOW_SEC - 2 * 3600,
+        },
+      ],
+    });
+    await writeCluster(
+      db,
+      [recentLoser],
+      { id: RECENT_C, row: recent },
+      NOW_SEC - 2 * 3600 + 60,
+      9
+    );
+
+    const result = await unmergeItems(env, {
+      pairs: [...pairs, { canonicalId: RECENT_C, mergedId: RECENT_L }],
+      dryRun: false,
+    });
+    if ("error" in result) throw new Error(result.error);
+    const recentOutcome = result.plan.canonicals[1].pairs[0].outcome;
+    expect(recentOutcome).toMatchObject({
+      action: "skip",
+      reason: "inside-quiet-window",
+    });
+    expect(shape(db, RECENT_L)).toMatchObject({
+      status: "merged",
+      duplicate_of: RECENT_C,
+    });
+
+    const bodies: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        bodies.push(String(init?.body ?? ""));
+        return new Response(
+          JSON.stringify({ ok: true, result: { message_id: bodies.length } }),
+          { headers: { "content-type": "application/json" } }
+        );
+      })
+    );
+    await dispatchStoryNotifications({
+      ...env,
+      TELEGRAM_BOT_TOKEN: "token",
+      TELEGRAM_VI_CHAT_ID: "@vi",
+      TELEGRAM_EN_CHAT_ID: "@en",
+    } as Env);
+    for (const text of [LOSER_TITLE, "Amazon responds", HUG_URL, MB_URL]) {
+      expect(bodies.join("\n")).not.toContain(text);
+    }
+    for (const restored of [HUG, MB, RECENT_L]) {
+      for (const short of [restored, restored.slice(0, 8)]) {
+        expect(bodies.join("\n")).not.toContain(short);
+      }
+    }
+    expect(
+      db
+        .prepare(
+          "SELECT COUNT(*) AS n FROM notifications WHERE item_id IN (?, ?, ?)"
+        )
+        .get(HUG, MB, RECENT_L)
+    ).toEqual({ n: 0 });
+    expect(UNMERGE_QUIET_SEC).toBeGreaterThanOrEqual(8 * 86_400);
+  });
+
+  it("leaves tldr_snapshots and digest rows alone", async () => {
+    db.prepare(
+      "INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at) VALUES (?, ?, ?, ?)"
+    ).run(
+      "2026-10-04",
+      JSON.stringify([{ text: "x", item_ids: [C] }]),
+      "[]",
+      1
+    );
+    const read = () => [
+      db.prepare("SELECT * FROM tldr_snapshots").all(),
+      db.prepare("SELECT * FROM notify_digest_items").all(),
+      db.prepare("SELECT * FROM weekly_snapshots").all(),
+      db.prepare("SELECT * FROM weekly_digests").all(),
+    ];
+    const before = read();
+    await unmergeItems(env, { pairs, dryRun: false });
+    expect(read()).toEqual(before);
+  });
+});

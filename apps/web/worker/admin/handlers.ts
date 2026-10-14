@@ -51,6 +51,14 @@ import {
 import { captureAndLearnTopics } from "../topic-learning.js";
 import { normalizeTopics } from "../topics.js";
 import type { Env } from "../types.js";
+import { applyUnmerge, type UnmergeApplyResult } from "../unmerge/apply.js";
+import { d1Select, loadUnmergeSnapshot } from "../unmerge/load.js";
+import {
+  parseUnmergePairs,
+  planUnmerge,
+  type UnmergePlan,
+} from "../unmerge/plan.js";
+import { countUnmerge, type UnmergeCounts } from "../unmerge/report.js";
 import { SELECT_RECENT_WORKFLOW_RUNS_SQL } from "../workflow-run.js";
 
 export async function writeAudit(
@@ -451,6 +459,40 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
         },
       };
     }),
+  };
+}
+
+export interface UnmergeResult {
+  dryRun: boolean;
+  counts: UnmergeCounts;
+  applied?: UnmergeApplyResult;
+  plan: UnmergePlan;
+}
+
+/**
+ * Reverses wrong cluster merges (#733). Body `{ pairs, dryRun? }`, each pair
+ * `{ canonicalId, mergedId, group? }`. A dry run (the default) returns the
+ * plan and writes nothing. Sends nothing either way. See ALGORITHM.md,
+ * "Unmerge".
+ */
+export async function unmergeItems(
+  env: Env,
+  input: { pairs?: unknown; dryRun?: unknown }
+): Promise<UnmergeResult | HandlerError> {
+  const parsed = parseUnmergePairs(input.pairs);
+  if ("error" in parsed) return { error: parsed.error, status: 400 };
+  if (input.dryRun !== undefined && typeof input.dryRun !== "boolean") {
+    return { error: "dryRun must be a boolean", status: 400 };
+  }
+  const snapshot = await loadUnmergeSnapshot(d1Select(env.DB), parsed.pairs);
+  const plan = planUnmerge(parsed.pairs, snapshot, Date.now());
+  const counts = countUnmerge(plan);
+  if (input.dryRun !== false) return { dryRun: true, counts, plan };
+  return {
+    dryRun: false,
+    counts,
+    applied: await applyUnmerge(env.DB, plan),
+    plan,
   };
 }
 

@@ -212,10 +212,43 @@ their final values, not their values at each hour, and the TL;DR snapshot was
 picked under the formula live then, so treat it as a comparison between
 formulas, not a forecast. Run it before changing `worker/ranking.ts`.
 
-Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|tldr-regenerate|run|rerun>`
+Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|tldr-regenerate|run|rerun|unmerge>`
 (`apps/web/scripts/aidr-agent.ts`). `run` / `rerun` are dry unless `--live`.
 `tldr-regenerate [--date YYYY-MM-DD] [--dry-run]` always calls the dated
 route, which a server without it answers 404.
+
+### Unmerge (admin)
+
+`POST /api/admin/unmerge` with `{ pairs, dryRun? }` reverses wrong cluster
+merges (#733); each pair is `{ canonicalId, mergedId, group? }`, and pairs
+sharing a `group` under one canonical are one story (aggregator twins). It
+is a dry run unless `dryRun: false`. `agent unmerge <pairs.json>` plans
+locally from production D1 through `wrangler d1 execute`, SELECT only, and
+`--apply` posts to the endpoint. `worker/unmerge/` holds the planner.
+
+- A restored group is replayed through the merge planner and
+  `planNewItemWrite` as ingest would have written it without the wrong
+  canonical: one lead row, its twins merged into it, its own sources and
+  media. Its status follows the relevance bar, so a row under 0.4 comes back
+  `rejected`. A VI-source lead gets its native `translations` row; others
+  wait for `backfill-translate`.
+- The canonical loses the sources, assets, tags and points attributable to
+  the removed items. Source rows are attributed by URL, by an HN/Lobsters
+  discussion's `posted_at`, and by position (a tweet run belongs to the
+  member whose appended URL row ends it). Rows it cannot attribute stay on
+  the canonical and are reported as ambiguous.
+- Scores: stored scores of old rows were frozen by earlier formulas, so new
+  scores are fresh `rankScore` values at the 72h point times a stored/fresh
+  scale (the canonical's own for the canonical, the plan's median for
+  restored rows).
+- Sends nothing. A group whose canonical or rows were published inside
+  `UNMERGE_QUIET_SEC` (8 days: the rolling weekly mail lists D-7..D-1,
+  trending and Facebook read 24-48h) is skipped until it ages out. Writes no
+  `notifications`, `tldr_snapshots`, digest or weekly rows.
+- One D1 batch per canonical, guarded on the rows' `status` and
+  `duplicate_of`, with `admin_audit` rows (`unmerge.pair`,
+  `unmerge.canonical`) holding each change's before and after. A repeat run
+  is a no-op.
 
 ## Day archive (`/date/YYYY-MM-DD`)
 
