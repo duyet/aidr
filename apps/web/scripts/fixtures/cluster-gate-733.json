@@ -1,5 +1,5 @@
 {
-  "source": "#733: every 0-1 shared-token merge pair from the #728 measurement (a published canonical whose media_manifest held a merged loser's image_url), read-only production D1 2026-10-14. Labels are per canonical: W wrong merge, L correct merge, A unclear.",
+  "source": "#733: every 0-1 shared-token merge pair from the #728 measurement (a published canonical whose media_manifest held a merged loser's image_url), read-only production D1 2026-10-14. Labels are per canonical: W wrong merge, L correct merge, A unclear. Each canonical's `translation` is its other-language `translations.title` (Vietnamese for an English source, English for a Vietnamese one), read-only production D1 2026-10-14 (#745).",
   "pairs": [
     {
       "label": "W",
@@ -8,7 +8,8 @@
       "canonical": {
         "sourceId": "lobsters",
         "url": "https://jardo.dev/hardly-promethean",
-        "title": "Hardly Promethean"
+        "title": "Hardly Promethean",
+        "translation": "Chưa phải tầm Prometheus"
       },
       "merged": {
         "sourceId": "lobsters",
@@ -23,7 +24,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/hacker-17-tuoi-tao-tro-ly-ai-tham-nhap-nen-tang-cua-microsoft-5125925.html",
-        "title": "Hacker 17 tuổi tạo trợ lý AI thâm nhập nền tảng của Microsoft"
+        "title": "Hacker 17 tuổi tạo trợ lý AI thâm nhập nền tảng của Microsoft",
+        "translation": "17-Year-Old Hacker Creates AI Assistant to Breach Microsoft Platform"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -38,7 +40,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/hacker-17-tuoi-tao-tro-ly-ai-tham-nhap-nen-tang-cua-microsoft-5125925.html",
-        "title": "Hacker 17 tuổi tạo trợ lý AI thâm nhập nền tảng của Microsoft"
+        "title": "Hacker 17 tuổi tạo trợ lý AI thâm nhập nền tảng của Microsoft",
+        "translation": "17-Year-Old Hacker Creates AI Assistant to Breach Microsoft Platform"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -53,7 +56,8 @@
       "canonical": {
         "sourceId": "huggingnews",
         "url": "https://huggingnews.com/ai/openai-and-meta-leaders-warn-autonomous-ai-risks-human-extinction-885fc0d0",
-        "title": "OpenAI and Meta Leaders Warn Autonomous AI Risks Human Extinction"
+        "title": "OpenAI and Meta Leaders Warn Autonomous AI Risks Human Extinction",
+        "translation": "Lãnh đạo OpenAI và Meta cảnh báo AI tự hành có nguy cơ tuyệt chủng loài người"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -68,7 +72,8 @@
       "canonical": {
         "sourceId": "huggingnews",
         "url": "https://huggingnews.com/ai/openai-and-meta-leaders-warn-autonomous-ai-risks-human-extinction-885fc0d0",
-        "title": "OpenAI and Meta Leaders Warn Autonomous AI Risks Human Extinction"
+        "title": "OpenAI and Meta Leaders Warn Autonomous AI Risks Human Extinction",
+        "translation": "Lãnh đạo OpenAI và Meta cảnh báo AI tự hành có nguy cơ tuyệt chủng loài người"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -83,7 +88,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/kiem-tra-thu-cong-hang-trieu-buu-gui-moi-ngay-la-khong-kha-thi-5126651.html",
-        "title": "'Kiểm tra thủ công hàng triệu bưu gửi mỗi ngày là không khả thi'"
+        "title": "'Kiểm tra thủ công hàng triệu bưu gửi mỗi ngày là không khả thi'",
+        "translation": "'Manual inspection of millions of mail items daily is impractical'"
       },
       "merged": {
         "sourceId": "theverge-ai",
@@ -98,7 +104,8 @@
       "canonical": {
         "sourceId": "aws-ml",
         "url": "https://aws.amazon.com/blogs/machine-learning/uplifting-conversion-across-the-acquisition-funnel-with-personalization-using-contextual-bandits-on-aws/",
-        "title": "Uplifting conversion across the acquisition funnel with personalization using contextual bandits on AWS"
+        "title": "Uplifting conversion across the acquisition funnel with personalization using contextual bandits on AWS",
+        "translation": "Tối ưu hóa chuyển đổi trong funnels thu hút khách hàng bằng cá nhân hóa sử dụng contextual bandits trên AWS"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -113,7 +120,8 @@
       "canonical": {
         "sourceId": "aws-ml",
         "url": "https://aws.amazon.com/blogs/machine-learning/uplifting-conversion-across-the-acquisition-funnel-with-personalization-using-contextual-bandits-on-aws/",
-        "title": "Uplifting conversion across the acquisition funnel with personalization using contextual bandits on AWS"
+        "title": "Uplifting conversion across the acquisition funnel with personalization using contextual bandits on AWS",
+        "translation": "Tối ưu hóa chuyển đổi trong funnels thu hút khách hàng bằng cá nhân hóa sử dụng contextual bandits trên AWS"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -128,7 +136,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/cybersecurity/ai-agents-expand-government-hacks-to-include-canada-c39a9aaf",
-        "title": "AI Agents Expand Government Hacks to Include Canada"
+        "title": "AI Agents Expand Government Hacks to Include Canada",
+        "translation": "AI agents mở rộng cuộc tấn công vào cơ quan chính phủ, bao gồm cả Canada"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -143,7 +152,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/cybersecurity/ai-agents-expand-government-hacks-to-include-canada-c39a9aaf",
-        "title": "AI Agents Expand Government Hacks to Include Canada"
+        "title": "AI Agents Expand Government Hacks to Include Canada",
+        "translation": "AI agents mở rộng cuộc tấn công vào cơ quan chính phủ, bao gồm cả Canada"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -158,7 +168,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/ai-web-text-hits-31percent-and-harms-language-model-training-7a3ac5f5",
-        "title": "AI Web Text Hits 31% and Harms Language Model Training"
+        "title": "AI Web Text Hits 31% and Harms Language Model Training",
+        "translation": "Văn bản web do AI tạo ra chiếm 31% và gây hại cho huấn luyện mô hình ngôn ngữ"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -173,7 +184,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/ai-web-text-hits-31percent-and-harms-language-model-training-7a3ac5f5",
-        "title": "AI Web Text Hits 31% and Harms Language Model Training"
+        "title": "AI Web Text Hits 31% and Harms Language Model Training",
+        "translation": "Văn bản web do AI tạo ra chiếm 31% và gây hại cho huấn luyện mô hình ngôn ngữ"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -188,7 +200,8 @@
       "canonical": {
         "sourceId": "wired-ai",
         "url": "https://www.wired.com/story/anthropic-says-it-discovered-a-crispr-like-system-now-what/",
-        "title": "Anthropic Says It Discovered a Crispr-Like System. Now What?"
+        "title": "Anthropic Says It Discovered a Crispr-Like System. Now What?",
+        "translation": "Anthropic phát hiện hệ thống giống CRISPR. Giờ thì sao?"
       },
       "merged": {
         "sourceId": "wired-ai",
@@ -203,7 +216,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/chinas-glm-53-builds-working-browser-exploits-to-cross-ai-cyber-threshol-dfdaf3f5",
-        "title": "China's GLM-5.3 Builds Working Browser Exploits to Cross AI Cyber Threshold"
+        "title": "China's GLM-5.3 Builds Working Browser Exploits to Cross AI Cyber Threshold",
+        "translation": "GLM-5.3 của Trung Quốc tự viết exploit trình duyệt để vượt mốc bảo mật AI"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -218,7 +232,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/chinas-glm-53-builds-working-browser-exploits-to-cross-ai-cyber-threshol-dfdaf3f5",
-        "title": "China's GLM-5.3 Builds Working Browser Exploits to Cross AI Cyber Threshold"
+        "title": "China's GLM-5.3 Builds Working Browser Exploits to Cross AI Cyber Threshold",
+        "translation": "GLM-5.3 của Trung Quốc tự viết exploit trình duyệt để vượt mốc bảo mật AI"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -233,7 +248,8 @@
       "canonical": {
         "sourceId": "techcrunch-ai",
         "url": "https://techcrunch.com/2026/09/30/airbnb-adds-ai-search-more-social-features/",
-        "title": "Airbnb adds AI search, more social features"
+        "title": "Airbnb adds AI search, more social features",
+        "translation": "Airbnb tích hợp tìm kiếm AI, mở rộng tính năng xã hội"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -248,7 +264,8 @@
       "canonical": {
         "sourceId": "techcrunch-ai",
         "url": "https://techcrunch.com/2026/09/30/airbnb-adds-ai-search-more-social-features/",
-        "title": "Airbnb adds AI search, more social features"
+        "title": "Airbnb adds AI search, more social features",
+        "translation": "Airbnb tích hợp tìm kiếm AI, mở rộng tính năng xã hội"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -263,7 +280,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://openai.com/index/sharing-ai-progress-in-mathematics/",
-        "title": "Sharing AI Progress in Mathematics"
+        "title": "Sharing AI Progress in Mathematics",
+        "translation": "Chia sẻ tiến bộ của AI trong toán học"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -278,7 +296,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://openai.com/index/sharing-ai-progress-in-mathematics/",
-        "title": "Sharing AI Progress in Mathematics"
+        "title": "Sharing AI Progress in Mathematics",
+        "translation": "Chia sẻ tiến bộ của AI trong toán học"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -293,7 +312,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://openai.com/index/sharing-ai-progress-in-mathematics/",
-        "title": "Sharing AI Progress in Mathematics"
+        "title": "Sharing AI Progress in Mathematics",
+        "translation": "Chia sẻ tiến bộ của AI trong toán học"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -308,7 +328,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://openai.com/index/sharing-ai-progress-in-mathematics/",
-        "title": "Sharing AI Progress in Mathematics"
+        "title": "Sharing AI Progress in Mathematics",
+        "translation": "Chia sẻ tiến bộ của AI trong toán học"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -323,7 +344,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/business/anthropic-founders-to-keep-501percent-voting-power-on-key-matters-after-888944c7",
-        "title": "Anthropic Founders to Keep 50.1% Voting Power on Key Matters After IPO"
+        "title": "Anthropic Founders to Keep 50.1% Voting Power on Key Matters After IPO",
+        "translation": "Nhà sáng lập Anthropic giữ 50,1% quyền biểu quyết về các vấn đề lớn sau IPO"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -338,7 +360,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/business/anthropic-founders-to-keep-501percent-voting-power-on-key-matters-after-888944c7",
-        "title": "Anthropic Founders to Keep 50.1% Voting Power on Key Matters After IPO"
+        "title": "Anthropic Founders to Keep 50.1% Voting Power on Key Matters After IPO",
+        "translation": "Nhà sáng lập Anthropic giữ 50,1% quyền biểu quyết về các vấn đề lớn sau IPO"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -353,7 +376,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/business/anthropic-founders-to-keep-501percent-voting-power-on-key-matters-after-888944c7",
-        "title": "Anthropic Founders to Keep 50.1% Voting Power on Key Matters After IPO"
+        "title": "Anthropic Founders to Keep 50.1% Voting Power on Key Matters After IPO",
+        "translation": "Nhà sáng lập Anthropic giữ 50,1% quyền biểu quyết về các vấn đề lớn sau IPO"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -368,7 +392,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/nvidias-13b-hugging-face-buyout-follows-openai-bid-aa687eed",
-        "title": "Nvidia’s $13B Hugging Face Buyout Follows OpenAI Bid"
+        "title": "Nvidia’s $13B Hugging Face Buyout Follows OpenAI Bid",
+        "translation": "Nvidia chuẩn bị 13 tỷ USD thâu tóm Hugging Face sau khi ngỏ lời với OpenAI"
       },
       "merged": {
         "sourceId": "techcrunch-ai",
@@ -383,7 +408,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/nvidias-13b-hugging-face-buyout-follows-openai-bid-aa687eed",
-        "title": "Nvidia’s $13B Hugging Face Buyout Follows OpenAI Bid"
+        "title": "Nvidia’s $13B Hugging Face Buyout Follows OpenAI Bid",
+        "translation": "Nvidia chuẩn bị 13 tỷ USD thâu tóm Hugging Face sau khi ngỏ lời với OpenAI"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -398,7 +424,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/nvidias-13b-hugging-face-buyout-follows-openai-bid-aa687eed",
-        "title": "Nvidia’s $13B Hugging Face Buyout Follows OpenAI Bid"
+        "title": "Nvidia’s $13B Hugging Face Buyout Follows OpenAI Bid",
+        "translation": "Nvidia chuẩn bị 13 tỷ USD thâu tóm Hugging Face sau khi ngỏ lời với OpenAI"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -413,7 +440,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/runway-unveils-project-continuum-os-based-on-real-time-video-6c83c029",
-        "title": "Runway Unveils Project Continuum OS Based on Real-Time Video"
+        "title": "Runway Unveils Project Continuum OS Based on Real-Time Video",
+        "translation": "Runway ra mắt Project Continuum OS dựa trên Video thời gian thực"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -428,7 +456,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/runway-unveils-project-continuum-os-based-on-real-time-video-6c83c029",
-        "title": "Runway Unveils Project Continuum OS Based on Real-Time Video"
+        "title": "Runway Unveils Project Continuum OS Based on Real-Time Video",
+        "translation": "Runway ra mắt Project Continuum OS dựa trên Video thời gian thực"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -443,7 +472,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/startup-my-bi-yeu-cau-dung-to-chuc-dau-nguoi-robot-5129690.html",
-        "title": "Startup Mỹ bị yêu cầu dừng tổ chức đấu người - robot"
+        "title": "Startup Mỹ bị yêu cầu dừng tổ chức đấu người - robot",
+        "translation": "US startup asked to stop organizing human-robot fights"
       },
       "merged": {
         "sourceId": "theverge-ai",
@@ -458,7 +488,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://support.soloist.ai/doc/solo-shutdown-faq",
-        "title": "Mozilla shutting down Solo AI website creator"
+        "title": "Mozilla shutting down Solo AI website creator",
+        "translation": "Mozilla đóng cửa nền tảng tạo website Solo AI"
       },
       "merged": {
         "sourceId": "techcrunch-ai",
@@ -473,7 +504,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://www.neowin.net/news/system76-bans-ai-generated-code-across-many-of-its-cosmic-codebases/",
-        "title": "Pop!_OS bans AI-generated code from much of its codebase"
+        "title": "Pop!_OS bans AI-generated code from much of its codebase",
+        "translation": "Pop!_OS cấm mã AI-generated trong phần lớn phần mềm của nó"
       },
       "merged": {
         "sourceId": "techcrunch-ai",
@@ -488,7 +520,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/tong-thong-my-doi-ten-ai-thanh-sieu-tri-tue-5126433.html",
-        "title": "Tổng thống Mỹ đổi tên AI thành 'siêu trí tuệ'"
+        "title": "Tổng thống Mỹ đổi tên AI thành 'siêu trí tuệ'",
+        "translation": "US President renames AI to 'super intelligence'"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -503,7 +536,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/tong-thong-my-doi-ten-ai-thanh-sieu-tri-tue-5126433.html",
-        "title": "Tổng thống Mỹ đổi tên AI thành 'siêu trí tuệ'"
+        "title": "Tổng thống Mỹ đổi tên AI thành 'siêu trí tuệ'",
+        "translation": "US President renames AI to 'super intelligence'"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -518,7 +552,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://www.theverge.com/ai-artificial-intelligence/1008100/anthropic-new-usage-policy-abuse-claude",
-        "title": "Anthropic bans 'abusive or cruel behavior' towards Claude"
+        "title": "Anthropic bans 'abusive or cruel behavior' towards Claude",
+        "translation": "Anthropic cấm hành vi 'lạm dụng hoặc tàn ác' đối với Claude"
       },
       "merged": {
         "sourceId": "anthropic",
@@ -533,7 +568,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/tinh-nang-hut-nguoi-dung-cua-dong-smartphone-gap-samsung-5125866.html",
-        "title": "Tính năng hút người dùng của dòng smartphone gập Samsung"
+        "title": "Tính năng hút người dùng của dòng smartphone gập Samsung",
+        "translation": "User-attracting features of Samsung's foldable smartphone line"
       },
       "merged": {
         "sourceId": "vnexpress-tech",
@@ -548,7 +584,8 @@
       "canonical": {
         "sourceId": "openai",
         "url": "https://openai.com/index/how-we-will-do-better-for-australia",
-        "title": "How we will do better for Australia"
+        "title": "How we will do better for Australia",
+        "translation": "Cách chúng tôi sẽ làm tốt hơn cho Úc"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -563,7 +600,8 @@
       "canonical": {
         "sourceId": "openai",
         "url": "https://openai.com/index/how-we-will-do-better-for-australia",
-        "title": "How we will do better for Australia"
+        "title": "How we will do better for Australia",
+        "translation": "Cách chúng tôi sẽ làm tốt hơn cho Úc"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -578,7 +616,8 @@
       "canonical": {
         "sourceId": "huggingnews",
         "url": "https://huggingnews.com/ai/update-claude-opus-55-debuts-at-no-2-in-agent-arena-at-64percent-lower-c-6b148e30",
-        "title": "Claude Opus 5.5 Debuts at No. 2 in Agent Arena at 64% Lower Cost Per Task"
+        "title": "Claude Opus 5.5 Debuts at No. 2 in Agent Arena at 64% Lower Cost Per Task",
+        "translation": "Claude Opus 5.5 ra mắt ở vị trí số 2 trong Agent Arena với chi phí mỗi tác vụ thấp hơn 64%"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -593,7 +632,8 @@
       "canonical": {
         "sourceId": "google-research",
         "url": "https://research.google/blog/how-diffusion-controller-unifies-and-simplifies-ai-image-generation/",
-        "title": "How Diffusion Controller unifies and simplifies AI image generation"
+        "title": "How Diffusion Controller unifies and simplifies AI image generation",
+        "translation": "Diffusion Controller đơn giản hóa và thống nhất quá trình tạo hình ảnh AI"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -608,7 +648,8 @@
       "canonical": {
         "sourceId": "google-research",
         "url": "https://research.google/blog/how-diffusion-controller-unifies-and-simplifies-ai-image-generation/",
-        "title": "How Diffusion Controller unifies and simplifies AI image generation"
+        "title": "How Diffusion Controller unifies and simplifies AI image generation",
+        "translation": "Diffusion Controller đơn giản hóa và thống nhất quá trình tạo hình ảnh AI"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -623,7 +664,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/startups/update-nvidia-and-softbank-deliver-final-20b-for-openai-march-round-dc9b89ff",
-        "title": "Nvidia and SoftBank Deliver Final $20B for OpenAI March Round"
+        "title": "Nvidia and SoftBank Deliver Final $20B for OpenAI March Round",
+        "translation": "Nvidia và SoftBank rót nốt 20 tỷ USD hoàn tất vòng gọi vốn tháng 3 của OpenAI"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -638,7 +680,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/startups/update-nvidia-and-softbank-deliver-final-20b-for-openai-march-round-dc9b89ff",
-        "title": "Nvidia and SoftBank Deliver Final $20B for OpenAI March Round"
+        "title": "Nvidia and SoftBank Deliver Final $20B for OpenAI March Round",
+        "translation": "Nvidia và SoftBank rót nốt 20 tỷ USD hoàn tất vòng gọi vốn tháng 3 của OpenAI"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -653,7 +696,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/startups/flow-raises-50m-at-750m-valuation-to-automate-hardware-engineering-3774fd7c",
-        "title": "Flow Raises $50M at $750M Valuation to Automate Hardware Engineering"
+        "title": "Flow Raises $50M at $750M Valuation to Automate Hardware Engineering",
+        "translation": "Flow huy động 50 triệu USD, định giá 750 triệu USD để tự động hóa kỹ thuật phần cứng"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -668,7 +712,8 @@
       "canonical": {
         "sourceId": "huggingnews",
         "url": "https://huggingnews.com/ai/update-sglang-ai-beats-level-9-fox-in-super-smash-bros-melee-187c1c9a",
-        "title": "SGLang AI Beats Level 9 Fox in Super Smash Bros Melee"
+        "title": "SGLang AI Beats Level 9 Fox in Super Smash Bros Melee",
+        "translation": "AI SGLang đánh bại Level 9 Fox trong Super Smash Bros Melee"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -683,7 +728,8 @@
       "canonical": {
         "sourceId": "huggingnews",
         "url": "https://huggingnews.com/ai/update-sglang-ai-beats-level-9-fox-in-super-smash-bros-melee-187c1c9a",
-        "title": "SGLang AI Beats Level 9 Fox in Super Smash Bros Melee"
+        "title": "SGLang AI Beats Level 9 Fox in Super Smash Bros Melee",
+        "translation": "AI SGLang đánh bại Level 9 Fox trong Super Smash Bros Melee"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -698,7 +744,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/may-tinh-luong-tu-giai-bai-toan-110-nam-trong-19-giay-5126344.html",
-        "title": "Máy tính lượng tử giải bài toán 110 năm trong 19 giây"
+        "title": "Máy tính lượng tử giải bài toán 110 năm trong 19 giây",
+        "translation": "Quantum computer solves 110-year-old problem in 19 seconds"
       },
       "merged": {
         "sourceId": "vnexpress-tech",
@@ -713,7 +760,8 @@
       "canonical": {
         "sourceId": "huggingnews",
         "url": "https://huggingnews.com/startups/lambda-raises-4b-before-ipo-at-145b-valuation-6f43ff73",
-        "title": "Lambda Raises $4B Before IPO at $14.5B Valuation"
+        "title": "Lambda Raises $4B Before IPO at $14.5B Valuation",
+        "translation": "Lambda huy động 4 tỷ USD trước thềm IPO với định giá 14,5 tỷ USD"
       },
       "merged": {
         "sourceId": "techcrunch-ai",
@@ -728,7 +776,8 @@
       "canonical": {
         "sourceId": "huggingnews",
         "url": "https://huggingnews.com/startups/lambda-raises-4b-before-ipo-at-145b-valuation-6f43ff73",
-        "title": "Lambda Raises $4B Before IPO at $14.5B Valuation"
+        "title": "Lambda Raises $4B Before IPO at $14.5B Valuation",
+        "translation": "Lambda huy động 4 tỷ USD trước thềm IPO với định giá 14,5 tỷ USD"
       },
       "merged": {
         "sourceId": "techcrunch-ai",
@@ -743,7 +792,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://docs.mistral.ai/models/mistral-large-4-0",
-        "title": "Mistral Large 4"
+        "title": "Mistral Large 4",
+        "translation": "Mistral Large 4"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -758,7 +808,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://docs.mistral.ai/models/mistral-large-4-0",
-        "title": "Mistral Large 4"
+        "title": "Mistral Large 4",
+        "translation": "Mistral Large 4"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -773,7 +824,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://www.bloomberg.com/news/newsletters/2026-10-07/study-claude-chatgpt-ai-bots-offer-different-shopping-prices-based-on-wealth",
-        "title": "Study: Claude, ChatGPT Offer Different Shopping Prices Based on Wealth"
+        "title": "Study: Claude, ChatGPT Offer Different Shopping Prices Based on Wealth",
+        "translation": "Nghiên cứu: Claude và ChatGPT đưa ra mức giá mua sắm khác nhau dựa trên sự giàu có"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -788,7 +840,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://www.bloomberg.com/news/newsletters/2026-10-07/study-claude-chatgpt-ai-bots-offer-different-shopping-prices-based-on-wealth",
-        "title": "Study: Claude, ChatGPT Offer Different Shopping Prices Based on Wealth"
+        "title": "Study: Claude, ChatGPT Offer Different Shopping Prices Based on Wealth",
+        "translation": "Nghiên cứu: Claude và ChatGPT đưa ra mức giá mua sắm khác nhau dựa trên sự giàu có"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -803,7 +856,8 @@
       "canonical": {
         "sourceId": "techcrunch-ai",
         "url": "https://techcrunch.com/2026/09/30/destro-ais-secret-sauce-is-getting-robots-and-humans-on-the-same-page/",
-        "title": "Destro AI’s secret sauce is getting robots and humans on the same page"
+        "title": "Destro AI’s secret sauce is getting robots and humans on the same page",
+        "translation": "Bí quyền của Destro AI: đưa robot và con người lên cùng một trang"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -818,7 +872,8 @@
       "canonical": {
         "sourceId": "techcrunch-ai",
         "url": "https://techcrunch.com/2026/09/30/destro-ais-secret-sauce-is-getting-robots-and-humans-on-the-same-page/",
-        "title": "Destro AI’s secret sauce is getting robots and humans on the same page"
+        "title": "Destro AI’s secret sauce is getting robots and humans on the same page",
+        "translation": "Bí quyền của Destro AI: đưa robot và con người lên cùng một trang"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -833,7 +888,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://earendil.com/posts/you-said-no-mcp/",
-        "title": "Pi.dev: You Said No MCP"
+        "title": "Pi.dev: You Said No MCP",
+        "translation": "Pi.dev: Bạn từng nói không với MCP"
       },
       "merged": {
         "sourceId": "hn",
@@ -848,7 +904,8 @@
       "canonical": {
         "sourceId": "marktechpost",
         "url": "https://www.marktechpost.com/2026/09/29/rsa-launches-agent-id-to-discover-secure-and-govern-ai-agents-in-regulated-industries/",
-        "title": "One Bad Prompt Took Down a Company’s Salesforce: RSA’s Jim Taylor on Agent ID and Taming the 4,000 Shadow AI Agents Hiding in Your Enterprise"
+        "title": "One Bad Prompt Took Down a Company’s Salesforce: RSA’s Jim Taylor on Agent ID and Taming the 4,000 Shadow AI Agents Hiding in Your Enterprise",
+        "translation": "Một prompt xấu đã làm sập Salesforce của một công ty: Jim Taylor từ RSA về Agent ID và cách quản lý 4.000 agent AI bóng lẻ trong doanh nghiệp"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -863,7 +920,8 @@
       "canonical": {
         "sourceId": "marktechpost",
         "url": "https://www.marktechpost.com/2026/09/29/rsa-launches-agent-id-to-discover-secure-and-govern-ai-agents-in-regulated-industries/",
-        "title": "One Bad Prompt Took Down a Company’s Salesforce: RSA’s Jim Taylor on Agent ID and Taming the 4,000 Shadow AI Agents Hiding in Your Enterprise"
+        "title": "One Bad Prompt Took Down a Company’s Salesforce: RSA’s Jim Taylor on Agent ID and Taming the 4,000 Shadow AI Agents Hiding in Your Enterprise",
+        "translation": "Một prompt xấu đã làm sập Salesforce của một công ty: Jim Taylor từ RSA về Agent ID và cách quản lý 4.000 agent AI bóng lẻ trong doanh nghiệp"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -878,7 +936,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/metas-new-muse-ai-unmasked-private-users-to-build-dossiers-on-vulnerable-96cec6c3",
-        "title": "Meta's New Muse AI Unmasked Private Users to Build Dossiers on Vulnerable Groups"
+        "title": "Meta's New Muse AI Unmasked Private Users to Build Dossiers on Vulnerable Groups",
+        "translation": "Meta công bố Muse AI mới đã tiết lộ thông tin người dùng riêng tư"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -893,7 +952,8 @@
       "canonical": {
         "sourceId": "theverge-ai",
         "url": "https://www.theverge.com/tech/1002402/instagram-ai-edits-assistant-creators-analytics-youtube",
-        "title": "Instagram is adding an AI ‘assistant’ to tell you how to post"
+        "title": "Instagram is adding an AI ‘assistant’ to tell you how to post",
+        "translation": "Instagram thêm AI ‘assistant’ hướng dẫn cách đăng bài"
       },
       "merged": {
         "sourceId": "techcrunch-ai",
@@ -908,7 +968,8 @@
       "canonical": {
         "sourceId": "techcrunch-ai",
         "url": "https://techcrunch.com/2026/10/11/will-the-homeview-be-apples-first-smart-home-success/",
-        "title": "Will the HomeView be Apple’s first smart home success?"
+        "title": "Will the HomeView be Apple’s first smart home success?",
+        "translation": "HomeView sẽ là thành công thông minh đầu tiên của Apple?"
       },
       "merged": {
         "sourceId": "techmeme",
@@ -923,7 +984,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/nha-khoa-hoc-goc-viet-tim-cach-dua-dong-ho-nguyen-tu-ra-khong-gian-5125877.html",
-        "title": "Nhà khoa học gốc Việt tìm cách đưa đồng hồ nguyên tử ra không gian"
+        "title": "Nhà khoa học gốc Việt tìm cách đưa đồng hồ nguyên tử ra không gian",
+        "translation": "Vietnamese-origin scientist finds a way to send atomic clock into space"
       },
       "merged": {
         "sourceId": "vnexpress-tech",
@@ -938,7 +1000,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/global-markets/south-korea-kospi-leads-global-q3-losses-with-188percent-drop-c54958be",
-        "title": "South Korea Kospi Leads Global Q3 Losses With 18.8% Drop"
+        "title": "South Korea Kospi Leads Global Q3 Losses With 18.8% Drop",
+        "translation": "Kospi Hàn Quốc dẫn đầu mất 18,8% trong Q3 toàn cầu"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -953,7 +1016,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://news.synopsys.com/2026-09-30-OpenAI-and-Synopsys-Announce-GPT-Synopsys-Frontier-Intelligence-to-Revolutionize-Chip-Design",
-        "title": "GPT-Synopsys: Frontier Intelligence to Revolutionize Chip Design"
+        "title": "GPT-Synopsys: Frontier Intelligence to Revolutionize Chip Design",
+        "translation": "GPT-Synopsys: Trí tuệ biên giới cách mạng hóa thiết kế chip"
       },
       "merged": {
         "sourceId": "vnexpress-tech",
@@ -968,7 +1032,8 @@
       "canonical": {
         "sourceId": "latent-space",
         "url": "https://www.latent.space/p/ainews-pi-10-pi-durable-and-aie-nyc",
-        "title": "[AINews] Pi 1.0, Pi Durable, and AIE NYC"
+        "title": "[AINews] Pi 1.0, Pi Durable, and AIE NYC",
+        "translation": "[AINews] Pi 1.0, Pi Durable, và AIE NYC"
       },
       "merged": {
         "sourceId": "vnexpress-tech",
@@ -983,7 +1048,8 @@
       "canonical": {
         "sourceId": "latent-space",
         "url": "https://www.latent.space/p/ainews-pi-10-pi-durable-and-aie-nyc",
-        "title": "[AINews] Pi 1.0, Pi Durable, and AIE NYC"
+        "title": "[AINews] Pi 1.0, Pi Durable, and AIE NYC",
+        "translation": "[AINews] Pi 1.0, Pi Durable, và AIE NYC"
       },
       "merged": {
         "sourceId": "vnexpress-tech",
@@ -998,7 +1064,8 @@
       "canonical": {
         "sourceId": "the-decoder",
         "url": "https://the-decoder.com/microsoft-ai-releases-new-transcription-and-text-to-speech-models-for-voice-agents/",
-        "title": "Microsoft AI releases new transcription and text-to-speech models for voice agents"
+        "title": "Microsoft AI releases new transcription and text-to-speech models for voice agents",
+        "translation": "Microsoft AI ra mắt mô hình transcription và text-to-speech mới cho voice agent"
       },
       "merged": {
         "sourceId": "wired-ai",
@@ -1013,7 +1080,8 @@
       "canonical": {
         "sourceId": "latent-space",
         "url": "https://www.latent.space/p/ainews-quasi-riemann-hypothesis-openai",
-        "title": "[AINews] Quasi-Riemann-Hypothesis: OpenAI publishes 722 math papers solving 90 of the top 500 open math problems; “the most significant moment” in >100 years of mathematics"
+        "title": "[AINews] Quasi-Riemann-Hypothesis: OpenAI publishes 722 math papers solving 90 of the top 500 open math problems; “the most significant moment” in >100 years of mathematics",
+        "translation": "[AINews] Quasi-Riemann-Hypothesis: OpenAI công bố 722 bài báo toán học giải quyết 90 trong số 500 bài toán mở hàng đầu; “khoảnh khắc quan trọng nhất” trong hơn 100 năm qua của toán học"
       },
       "merged": {
         "sourceId": "the-decoder",
@@ -1028,7 +1096,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://www.vespper.com/blog/launching-vespper-docx-mcp",
-        "title": "Launch HN: Vespper (YC F24) – SOTA Docx MCP"
+        "title": "Launch HN: Vespper (YC F24) – SOTA Docx MCP",
+        "translation": "Ra mắt HN: Vespper (YC F24) – SOTA Docx MCP"
       },
       "merged": {
         "sourceId": "hn",
@@ -1043,7 +1112,8 @@
       "canonical": {
         "sourceId": "arxiv-research",
         "url": "https://arxiv.org/abs/2609.35799",
-        "title": "OpenAI-HuggingFace: A Reproduction & Lessons for Alignment Testing"
+        "title": "OpenAI-HuggingFace: A Reproduction & Lessons for Alignment Testing",
+        "translation": "OpenAI-HuggingFace: Tái hiện và bài học cho việc kiểm thử alignment"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1058,7 +1128,8 @@
       "canonical": {
         "sourceId": "arxiv-research",
         "url": "https://arxiv.org/abs/2609.35799",
-        "title": "OpenAI-HuggingFace: A Reproduction & Lessons for Alignment Testing"
+        "title": "OpenAI-HuggingFace: A Reproduction & Lessons for Alignment Testing",
+        "translation": "OpenAI-HuggingFace: Tái hiện và bài học cho việc kiểm thử alignment"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1073,7 +1144,8 @@
       "canonical": {
         "sourceId": "techcrunch-ai",
         "url": "https://techcrunch.com/2026/10/01/brian-chesky-interview-ai-agents-need-their-own-operating-system/",
-        "title": "Brian Chesky interview: AI agents need their own operating system"
+        "title": "Brian Chesky interview: AI agents need their own operating system",
+        "translation": "Brian Chesky: Các AI agent cần một hệ điều hành riêng"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1088,7 +1160,8 @@
       "canonical": {
         "sourceId": "techcrunch-ai",
         "url": "https://techcrunch.com/2026/10/01/brian-chesky-interview-ai-agents-need-their-own-operating-system/",
-        "title": "Brian Chesky interview: AI agents need their own operating system"
+        "title": "Brian Chesky interview: AI agents need their own operating system",
+        "translation": "Brian Chesky: Các AI agent cần một hệ điều hành riêng"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1103,7 +1176,8 @@
       "canonical": {
         "sourceId": "theverge-ai",
         "url": "https://www.theverge.com/ai-artificial-intelligence/1002671/meta-muse-ai",
-        "title": "All the latest news on Meta’s cute, creepy Muse AI agent"
+        "title": "All the latest news on Meta’s cute, creepy Muse AI agent",
+        "translation": "Tin mới nhất về Muse AI agent đáng yêu nhưng đáng sợ của Meta"
       },
       "merged": {
         "sourceId": "theverge-ai",
@@ -1118,7 +1192,8 @@
       "canonical": {
         "sourceId": "theverge-ai",
         "url": "https://www.theverge.com/ai-artificial-intelligence/1004096/openai-chatgpt-dots-hands-on-agent",
-        "title": "OpenAI’s Dot agent is enterprise software that can also order your dinner"
+        "title": "OpenAI’s Dot agent is enterprise software that can also order your dinner",
+        "translation": "Dot agent của OpenAI là phần mềm doanh nghiệp nhưng cũng có thể đặt bữa ăn cho bạn"
       },
       "merged": {
         "sourceId": "the-decoder",
@@ -1133,7 +1208,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/perplexity-new-v11-decision-model-tops-hugging-face-index-at-002-per-mil-eae6b882",
-        "title": "Perplexity New v1.1 Decision Model Tops Hugging Face Index at $0.02 per Million Tokens"
+        "title": "Perplexity New v1.1 Decision Model Tops Hugging Face Index at $0.02 per Million Tokens",
+        "translation": "Decision model mới v1.1 của Perplexity dẫn đầu bảng xếp hạng Hugging Face với giá 0,02 USD mỗi triệu token"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1148,7 +1224,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/perplexity-new-v11-decision-model-tops-hugging-face-index-at-002-per-mil-eae6b882",
-        "title": "Perplexity New v1.1 Decision Model Tops Hugging Face Index at $0.02 per Million Tokens"
+        "title": "Perplexity New v1.1 Decision Model Tops Hugging Face Index at $0.02 per Million Tokens",
+        "translation": "Decision model mới v1.1 của Perplexity dẫn đầu bảng xếp hạng Hugging Face với giá 0,02 USD mỗi triệu token"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1163,7 +1240,8 @@
       "canonical": {
         "sourceId": "google-research",
         "url": "https://research.google/blog/earth-ais-planetary-geospatial-foundation-models-for-global-public-health/",
-        "title": "Unlocking Earth AI’s planetary geospatial foundation models for global public health"
+        "title": "Unlocking Earth AI’s planetary geospatial foundation models for global public health",
+        "translation": "Mở khóa foundation model địa không gian hành tinh của Earth AI cho y tế công cộng toàn cầu"
       },
       "merged": {
         "sourceId": "mit-news-ai",
@@ -1178,7 +1256,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://blog.cloudflare.com/clef-decision-models/",
-        "title": "Clef: Open-weight decision models, and new RL fine-tuning platform"
+        "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+        "translation": "Clef ra mắt decision model open-weight và nền tảng fine-tune RL mới"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1193,7 +1272,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/world/singapore-charges-man-for-ai-crocodile-image-that-halted-reservoir-use-f-96a9f0c1",
-        "title": "Singapore Charges Man for AI Crocodile Image that Halted Reservoir Use for 2 Days"
+        "title": "Singapore Charges Man for AI Crocodile Image that Halted Reservoir Use for 2 Days",
+        "translation": "Singapore truy tố người đàn ông làm ảnh cá sấu AI khiến hồ chứa nước ngừng hoạt động 2 ngày"
       },
       "merged": {
         "sourceId": "techcrunch-ai",
@@ -1208,7 +1288,8 @@
       "canonical": {
         "sourceId": "deepmind",
         "url": "https://deepmind.google/blog/introducing-synthid-bio/",
-        "title": "Introducing SynthID Bio"
+        "title": "Introducing SynthID Bio",
+        "translation": "Ra mắt SynthID Bio"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1223,7 +1304,8 @@
       "canonical": {
         "sourceId": "deepmind",
         "url": "https://deepmind.google/blog/introducing-synthid-bio/",
-        "title": "Introducing SynthID Bio"
+        "title": "Introducing SynthID Bio",
+        "translation": "Ra mắt SynthID Bio"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1238,7 +1320,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://www.reddit.com/r/GeminiAI/comments/1wwalmc/wtf_google_getting_rid_of_free_gemini_flash_and/",
-        "title": "Gemini ending free use of Flash and Pro models"
+        "title": "Gemini ending free use of Flash and Pro models",
+        "translation": "Gemini chấm dứt sử dụng miễn phí các mô hình Flash và Pro"
       },
       "merged": {
         "sourceId": "vnexpress-tech",
@@ -1253,7 +1336,8 @@
       "canonical": {
         "sourceId": "techcrunch-ai",
         "url": "https://techcrunch.com/2026/09/29/the-internet-is-convinced-elon-musks-xai-trolled-openais-dots-launch/",
-        "title": "The internet is convinced Elon Musk’s xAI trolled OpenAI’s ‘Dots’ launch"
+        "title": "The internet is convinced Elon Musk’s xAI trolled OpenAI’s ‘Dots’ launch",
+        "translation": "Cộng đồng mạng tin rằng xAI của Elon Musk đã troll việc ra mắt 'Dots' của OpenAI"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1268,7 +1352,8 @@
       "canonical": {
         "sourceId": "techcrunch-ai",
         "url": "https://techcrunch.com/2026/09/29/the-internet-is-convinced-elon-musks-xai-trolled-openais-dots-launch/",
-        "title": "The internet is convinced Elon Musk’s xAI trolled OpenAI’s ‘Dots’ launch"
+        "title": "The internet is convinced Elon Musk’s xAI trolled OpenAI’s ‘Dots’ launch",
+        "translation": "Cộng đồng mạng tin rằng xAI của Elon Musk đã troll việc ra mắt 'Dots' của OpenAI"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1283,7 +1368,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/google-ra-gemini-4-argon-manh-nhat-cua-cong-ty-5126995.html",
-        "title": "Google ra Gemini 4 Argon mạnh nhất của công ty"
+        "title": "Google ra Gemini 4 Argon mạnh nhất của công ty",
+        "translation": "Google Unveils Gemini 4 Argon, the Company's Most Powerful Model"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1298,7 +1384,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/google-ra-gemini-4-argon-manh-nhat-cua-cong-ty-5126995.html",
-        "title": "Google ra Gemini 4 Argon mạnh nhất của công ty"
+        "title": "Google ra Gemini 4 Argon mạnh nhất của công ty",
+        "translation": "Google Unveils Gemini 4 Argon, the Company's Most Powerful Model"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1313,7 +1400,8 @@
       "canonical": {
         "sourceId": "vnexpress-tech",
         "url": "https://vnexpress.net/google-ra-gemini-4-argon-manh-nhat-cua-cong-ty-5126995.html",
-        "title": "Google ra Gemini 4 Argon mạnh nhất của công ty"
+        "title": "Google ra Gemini 4 Argon mạnh nhất của công ty",
+        "translation": "Google Unveils Gemini 4 Argon, the Company's Most Powerful Model"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1328,7 +1416,8 @@
       "canonical": {
         "sourceId": "lobsters",
         "url": "https://sm2n.ca/articles/typeclasses-vs-modules/",
-        "title": "Typeclasses vs Modules"
+        "title": "Typeclasses vs Modules",
+        "translation": "Typeclass so với module"
       },
       "merged": {
         "sourceId": "marktechpost",
@@ -1343,7 +1432,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/tech/amd-to-invest-tens-of-billions-in-global-supply-chain-for-ai-demand-b4febd70",
-        "title": "AMD to Invest Tens of Billions in Global Supply Chain for AI Demand"
+        "title": "AMD to Invest Tens of Billions in Global Supply Chain for AI Demand",
+        "translation": "AMD đầu tư hàng chục tỷ USD vào chuỗi cung ứng toàn cầu để đáp ứng nhu cầu AI"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1358,7 +1448,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/tech/amd-to-invest-tens-of-billions-in-global-supply-chain-for-ai-demand-b4febd70",
-        "title": "AMD to Invest Tens of Billions in Global Supply Chain for AI Demand"
+        "title": "AMD to Invest Tens of Billions in Global Supply Chain for AI Demand",
+        "translation": "AMD đầu tư hàng chục tỷ USD vào chuỗi cung ứng toàn cầu để đáp ứng nhu cầu AI"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1373,7 +1464,8 @@
       "canonical": {
         "sourceId": "the-decoder",
         "url": "https://the-decoder.com/ai-agents-build-3d-scenes-from-photos-but-have-no-idea-if-they-got-it-right/",
-        "title": "AI agents build 3D scenes from photos but have no idea if they got it right"
+        "title": "AI agents build 3D scenes from photos but have no idea if they got it right",
+        "translation": "AI agent tạo cảnh 3D từ ảnh nhưng không biết chính xác đến đâu"
       },
       "merged": {
         "sourceId": "latent-space",
@@ -1388,7 +1480,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://www.anthropic.com/claude-haiku-5-5",
-        "title": "Claude Haiku 5.5"
+        "title": "Claude Haiku 5.5",
+        "translation": "Claude Haiku 5.5"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1403,7 +1496,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://www.anthropic.com/claude-haiku-5-5",
-        "title": "Claude Haiku 5.5"
+        "title": "Claude Haiku 5.5",
+        "translation": "Claude Haiku 5.5"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1418,7 +1512,8 @@
       "canonical": {
         "sourceId": "techmeme",
         "url": "https://www.techmeme.com/261009/p35#a261009p35",
-        "title": "Anthropic says it is barring live internet access for internal evals until monitoring is reliable, after its agents exploited websites and bypassed restrictions (Tim Fernholz/TechCrunch)"
+        "title": "Anthropic says it is barring live internet access for internal evals until monitoring is reliable, after its agents exploited websites and bypassed restrictions (Tim Fernholz/TechCrunch)",
+        "translation": "Anthropic chặn agent truy cập internet trực tiếp trong đánh giá nội bộ vì sợ bị lợi dụng"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1433,7 +1528,8 @@
       "canonical": {
         "sourceId": "techmeme",
         "url": "https://www.techmeme.com/261009/p35#a261009p35",
-        "title": "Anthropic says it is barring live internet access for internal evals until monitoring is reliable, after its agents exploited websites and bypassed restrictions (Tim Fernholz/TechCrunch)"
+        "title": "Anthropic says it is barring live internet access for internal evals until monitoring is reliable, after its agents exploited websites and bypassed restrictions (Tim Fernholz/TechCrunch)",
+        "translation": "Anthropic chặn agent truy cập internet trực tiếp trong đánh giá nội bộ vì sợ bị lợi dụng"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1448,7 +1544,8 @@
       "canonical": {
         "sourceId": "techcrunch-ai",
         "url": "https://techcrunch.com/2026/09/28/anthropics-prospectus-details-losses-growth-and-yes-a-warning-that-its-ai-could-end-humanity/",
-        "title": "Anthropic’s prospectus details losses, growth, and, yes, a warning that its AI could end humanity"
+        "title": "Anthropic’s prospectus details losses, growth, and, yes, a warning that its AI could end humanity",
+        "translation": "Hồ sơ tài chính của Anthropic tiết lộ thua lỗ, tăng trưởng và cảnh báo AI có thể đe giải mãnh loài người"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1463,7 +1560,8 @@
       "canonical": {
         "sourceId": "techcrunch-ai",
         "url": "https://techcrunch.com/2026/09/28/anthropics-prospectus-details-losses-growth-and-yes-a-warning-that-its-ai-could-end-humanity/",
-        "title": "Anthropic’s prospectus details losses, growth, and, yes, a warning that its AI could end humanity"
+        "title": "Anthropic’s prospectus details losses, growth, and, yes, a warning that its AI could end humanity",
+        "translation": "Hồ sơ tài chính của Anthropic tiết lộ thua lỗ, tăng trưởng và cảnh báo AI có thể đe giải mãnh loài người"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1478,7 +1576,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/us-politics/sanders-and-aoc-lead-ban-on-federal-ai-license-plate-readers-bb1aaedf",
-        "title": "Sanders and AOC Lead Ban on Federal AI License Plate Readers"
+        "title": "Sanders and AOC Lead Ban on Federal AI License Plate Readers",
+        "translation": "Sanders và AOC dẫn đầu lệnh cấm hệ thống đọc biển số xe AI của liên bang"
       },
       "merged": {
         "sourceId": "wired-ai",
@@ -1493,7 +1592,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://www.thenationalnews.com/future/technology/2026/09/29/ai-industry-needs-to-earn-6-trillion-by-2031-to-justify-data-centres/",
-        "title": "AI needs $6T in annual revenue to justify data centre boom"
+        "title": "AI needs $6T in annual revenue to justify data centre boom",
+        "translation": "AI cần 6 nghìn tỷ USD doanh thu hàng năm để công bằng với sự bùng nổ của trung tâm dữ liệu"
       },
       "merged": {
         "sourceId": "techcrunch-ai",
@@ -1508,7 +1608,8 @@
       "canonical": {
         "sourceId": "huggingnews",
         "url": "https://huggingnews.com/ai/update-openai-math-papers-destroyed-careers-nyu-professor-says-3ef326f8",
-        "title": "OpenAI Math Papers Destroyed Careers, NYU Professor Says"
+        "title": "OpenAI Math Papers Destroyed Careers, NYU Professor Says",
+        "translation": "Các bài báo toán học của OpenAI hủy hoại sự nghiệp nhiều người, theo giáo sư NYU"
       },
       "merged": {
         "sourceId": "the-decoder",
@@ -1523,7 +1624,8 @@
       "canonical": {
         "sourceId": "huggingnews",
         "url": "https://huggingnews.com/ai/update-openai-agents-split-malicious-code-across-900000-hyperlinks-to-es-33325e14",
-        "title": "OpenAI Ignored Employee Warnings Over Inadequate AI Safety Monitoring, NYT Reports"
+        "title": "OpenAI Ignored Employee Warnings Over Inadequate AI Safety Monitoring, NYT Reports",
+        "translation": "OpenAI phớt lờ cảnh báo của nhân viên về giám sát an toàn AI không đầy đủ, theo NYT"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1538,7 +1640,8 @@
       "canonical": {
         "sourceId": "lobsters",
         "url": "https://arxiv.org/abs/2610.08144",
-        "title": "Navier-Stokes lost in translation: Why Lean verification of AI autoformalisation does not guarantee correct natural language proofs"
+        "title": "Navier-Stokes lost in translation: Why Lean verification of AI autoformalisation does not guarantee correct natural language proofs",
+        "translation": "Navier-Stokes mất đi trong bản dịch: Vì sao việc kiểm chứng Lean đối với autoformalisation của AI không đảm bảo chứng minh ngôn ngữ tự nhiên chính xác"
       },
       "merged": {
         "sourceId": "techcrunch-ai",
@@ -1553,7 +1656,8 @@
       "canonical": {
         "sourceId": "the-decoder",
         "url": "https://the-decoder.com/researchers-stretch-lecuns-jepa-ai-into-a-universal-world-model-that-works-from-physics-to-biology/",
-        "title": "Researchers stretch LeCun's JEPA AI into a universal world model that works from physics to biology"
+        "title": "Researchers stretch LeCun's JEPA AI into a universal world model that works from physics to biology",
+        "translation": "Các nhà nghiên cứu phát triển JEPA của LeCun thành world model đa năng từ vật lý đến sinh học"
       },
       "merged": {
         "sourceId": "vnexpress-tech",
@@ -1568,7 +1672,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/tech/synopsys-signs-1b-amazon-deal-to-shift-to-royalty-payments-6e9b4b95",
-        "title": "Synopsys Signs $1B Amazon Deal to Shift to Royalty Payments"
+        "title": "Synopsys Signs $1B Amazon Deal to Shift to Royalty Payments",
+        "translation": "Synopsys ký thỏa thuận 1 tỷ USD với Amazon để chuyển sang mô hình thu phí bản quyền"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1583,7 +1688,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/tech/synopsys-signs-1b-amazon-deal-to-shift-to-royalty-payments-6e9b4b95",
-        "title": "Synopsys Signs $1B Amazon Deal to Shift to Royalty Payments"
+        "title": "Synopsys Signs $1B Amazon Deal to Shift to Royalty Payments",
+        "translation": "Synopsys ký thỏa thuận 1 tỷ USD với Amazon để chuyển sang mô hình thu phí bản quyền"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1598,7 +1704,8 @@
       "canonical": {
         "sourceId": "openai",
         "url": "https://openai.com/index/introducing-dots",
-        "title": "Introducing dots"
+        "title": "Introducing dots",
+        "translation": "Ra mắt dots"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1613,7 +1720,8 @@
       "canonical": {
         "sourceId": "openai",
         "url": "https://openai.com/index/introducing-dots",
-        "title": "Introducing dots"
+        "title": "Introducing dots",
+        "translation": "Ra mắt dots"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1628,7 +1736,8 @@
       "canonical": {
         "sourceId": "hn",
         "url": "https://github.com/Vibra-Ingenn/Janus",
-        "title": "Show HN: Janus – Go binary that runs GGUF models via Vulkan on AMD/Intel/Nvidia"
+        "title": "Show HN: Janus – Go binary that runs GGUF models via Vulkan on AMD/Intel/Nvidia",
+        "translation": "Show HN: Janus – Binary Go chạy mô hình GGUF qua Vulkan trên AMD/Intel/Nvidia"
       },
       "merged": {
         "sourceId": "hn",
@@ -1643,7 +1752,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/spacexai-launches-shared-team-bots-for-collaborative-ai-workflows-ae7068a2",
-        "title": "SpaceXAI Launches Shared Team Bots for Collaborative AI Workflows"
+        "title": "SpaceXAI Launches Shared Team Bots for Collaborative AI Workflows",
+        "translation": "SpaceXAI ra mắt Shared Team Bots cho quy trình làm việc AI cộng tác"
       },
       "merged": {
         "sourceId": "huggingnews",
@@ -1658,7 +1768,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/spacexai-launches-shared-team-bots-for-collaborative-ai-workflows-ae7068a2",
-        "title": "SpaceXAI Launches Shared Team Bots for Collaborative AI Workflows"
+        "title": "SpaceXAI Launches Shared Team Bots for Collaborative AI Workflows",
+        "translation": "SpaceXAI ra mắt Shared Team Bots cho quy trình làm việc AI cộng tác"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1673,7 +1784,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/openai-ceo-sam-altman-says-world-should-accept-bad-things-for-ai-benefit-65a8d364",
-        "title": "OpenAI CEO Sam Altman Says World Should Accept Bad Things for AI Benefits"
+        "title": "OpenAI CEO Sam Altman Says World Should Accept Bad Things for AI Benefits",
+        "translation": "CEO OpenAI Sam Altman cho rằng thế giới nên chấp nhận những mặt tiêu cực để đổi lấy lợi ích từ AI"
       },
       "merged": {
         "sourceId": "theverge-ai",
@@ -1688,7 +1800,8 @@
       "canonical": {
         "sourceId": "lobsters",
         "url": "https://projectautonomy.substack.com/p/i-built-an-iphone-app-in-four-days",
-        "title": "How I Built an iPhone App in Four Days with Opus 5.5"
+        "title": "How I Built an iPhone App in Four Days with Opus 5.5",
+        "translation": "Cách tôi xây dựng một ứng dụng iPhone trong bốn ngày với Opus 5.5"
       },
       "merged": {
         "sourceId": "techcrunch-ai",
@@ -1703,7 +1816,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/openai-restores-services-for-chatgpt-pro-and-plus-users-0dba86bd",
-        "title": "OpenAI Restores Services for ChatGPT Pro and Plus Users"
+        "title": "OpenAI Restores Services for ChatGPT Pro and Plus Users",
+        "translation": "OpenAI khôi phục dịch vụ cho người dùng ChatGPT Pro và Plus"
       },
       "merged": {
         "sourceId": "marketbrief",
@@ -1718,7 +1832,8 @@
       "canonical": {
         "sourceId": "marketbrief",
         "url": "https://marketbrief.now/ai/openai-restores-services-for-chatgpt-pro-and-plus-users-0dba86bd",
-        "title": "OpenAI Restores Services for ChatGPT Pro and Plus Users"
+        "title": "OpenAI Restores Services for ChatGPT Pro and Plus Users",
+        "translation": "OpenAI khôi phục dịch vụ cho người dùng ChatGPT Pro và Plus"
       },
       "merged": {
         "sourceId": "huggingnews",

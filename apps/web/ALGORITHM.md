@@ -392,7 +392,11 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
   10%, so this rule would not have fired then. gemma-latest: median 0%,
   max 2.7%, 1 of 95 links overall. A model at 1.1% false-fires 0.12% of
   20-link windows; one at Laguna's era mean (10.4%) fires 35-51% of them,
-  one at 25% fires 91-99%.
+  one at 25% fires 91-99%. Re-measured with the #745 gate over 09-30 to
+  10-14 (431 links): Laguna windows above 10% rise from 63 to 120 of 371,
+  Laguna by `llm_calls` (10-07 to 10-10) max 6.7% -> 9.1%, and the
+  windows from 10-10 14:00 (gemma-latest, glm-latest) stay at median 0%,
+  max 4.3%, none above 10%.
 - Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
   `TELEGRAM_OWNER_CHAT_ID` DMs each freshly fired alert (same 6h cooldown)
   with evidence and the run link, plus one daily summary in the first run
@@ -810,24 +814,40 @@ deterministic pass.
   so same-story URLs the model misses still collapse.
 - Cluster gate (`worker/cluster-gate.ts`, #733): an existing id stays in
   a model cluster only when one of the cluster's new items shares
-  evidence with it: a near-duplicate title, a shared significant title
-  word of 3+ letters, or a headline that names an org the other item is
-  the official source of ("Google DeepMind …" against a deepmind post,
-  also through an HN link's URL). Only new items in the existing story's
-  language are judged; when all of them are in the other language
-  (Vietnamese against English) the link is allowed. The rest of the
-  cluster is kept, so correctly paired twins still fold together; a
-  cluster with no new item is dropped. The Laguna era attached paired
+  evidence with it: a headline that names an org the other item is the
+  official source of ("Google DeepMind …" against a deepmind post, also
+  through an HN link's URL), or the item's title against the story's
+  title or its stored translation (`translations.title` in the other
+  language, read with the candidates): a near-duplicate (the title pass
+  merges those anyway), or a shared evidence token. Tokens (#745): words
+  of 3+ letters minus `COMMON_WORDS` (function words, and headline verbs
+  and AI nouns such as "agent", "model", "launch", "data"); numbers of
+  100+ that are not years; numbers with a unit ("13b", "b300"). In a
+  Vietnamese title, diacritics fold per whole syllable ("triệu" ->
+  "trieu", not dedupe's "trie u"), a word with no diacritics that is not
+  a Vietnamese syllable ("Google", "Gemini", "robot") counts alone as a
+  name, and other syllables count as adjacent pairs ("thiet ke"), minus
+  function syllables and common pairs ("mo hinh", "du lieu", "viet
+  nam"). Company names stay evidence: dropping them blocked two correct
+  #728 merges that share only "OpenAI". When some new items are in the
+  story's language only those are judged. The rest of the cluster is
+  kept, so correctly paired twins still fold together; a cluster with no
+  new item is dropped. The Laguna era attached paired
   huggingnews/marketbrief twins to unrelated published stories. On the
-  #728 hand labels (`scripts/cluster-gate-eval.ts`) the gate blocks 56 of
-  86 wrong pairs (37 of 56 wrong canonicals fully) and 0 of 17 correct
-  low-overlap pairs. Over every merge into an existing story from
-  2026-09-28 to 10-14 it blocks 46 of 552 links: 44 clearly different
+  #728 hand labels (`scripts/cluster-gate-eval.ts`) the gate blocks 70 of
+  86 wrong pairs (46 of 56 wrong canonicals fully) and 0 of 17 correct
+  low-overlap pairs. Of the 136 links only the model made into existing
+  stories from 2026-09-30 to 10-14 (431 links in all; the title and
+  official passes made the rest) it blocks 27: 25 clearly different
   stories, 1 labelled unclear (`af4c8dc5`) and 1 judged different on
   review (`a7af6f12`, US and UK regulators vs the AI Safety Institute).
-  Misses are same-company stories that share the company name, and
-  cross-language pairs. Each rejection logs `cluster gate: <model> linked
-  …` and counts in `stats.clusterGate` (per served model: links
+  Two random published titles pass 3.9% of the time in English (9.1%
+  before #745), 2.9% in Vietnamese (28.1%) and 2.3-2.9% across languages
+  (every pair before); on the half of titles the word lists were not
+  drawn from, 4.8% (10.0%), 4.1% (21.5%, 38 Vietnamese titles) and
+  2.9-3.4%. Misses are same-company stories that
+  share the company name. Each rejection logs `cluster gate: <model>
+  linked …` and counts in `stats.clusterGate` (per served model: links
   proposed, links rejected).
 - The prompt merges different outlets' first-day coverage of one
   announcement whatever the headline angle, and keeps later developments
