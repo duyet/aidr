@@ -10,18 +10,9 @@
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  ASSET_HISTORY_PATH,
-  type AssetHistory,
-  assetRefs,
-  deployCheckPages,
-  parseAssetHistory,
-  planAssetCarry,
-} from "../src/lib/deploy-assets";
+import { ASSET_HISTORY_PATH, carryLiveAssets } from "../src/lib/deploy-assets";
 
 const DEFAULT_BASE = "https://aidr.today";
-const ATTEMPTS = 3;
-const CONCURRENCY = 8;
 
 const clientRoot = resolve(
   fileURLToPath(new URL("..", import.meta.url)),
@@ -42,96 +33,26 @@ function builtAssets(): string[] {
     .map((entry) => `assets/${entry.name}`);
 }
 
-async function html(url: string): Promise<string> {
-  const res = await fetch(url, { headers: { accept: "text/html" } });
-  if (!res.ok) throw new Error(`GET ${url} -> HTTP ${res.status}`);
-  return res.text();
-}
-
-/**
- * Without a history file (the first deploy with one, or a deploy that skipped
- * this step) fall back to what the cached pages the post-deploy smoke checks
- * load right now, plus the Vietnamese home.
- */
-async function seedFromCachedPages(
-  base: string,
-  now: number
-): Promise<AssetHistory> {
-  const pages = [
-    ...deployCheckPages(await html(`${base}/?lang=en`)),
-    "/?lang=vi",
-  ];
-  console.log(
-    `::warning::${base}/${ASSET_HISTORY_PATH} not found; seeding from ${pages.join(", ")}`
-  );
-  const seed: Record<string, number> = {};
-  for (const page of pages) {
-    for (const ref of assetRefs(await html(`${base}${page}`))) {
-      seed[ref.slice(1)] = now;
-    }
-  }
-  return parseAssetHistory(seed);
-}
-
-async function liveHistory(base: string, now: number): Promise<AssetHistory> {
-  const res = await fetch(`${base}/${ASSET_HISTORY_PATH}?t=${now}`, {
-    headers: { "cache-control": "no-cache" },
-  });
-  if (res.status === 404) return seedFromCachedPages(base, now);
-  if (!res.ok) {
-    throw new Error(`GET ${ASSET_HISTORY_PATH} -> HTTP ${res.status}`);
-  }
-  return parseAssetHistory(await res.json());
-}
-
-async function download(base: string, path: string): Promise<Uint8Array> {
-  let reason = "";
-  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-    try {
-      const res = await fetch(`${base}/${path}`);
-      const type = res.headers.get("content-type") ?? "";
-      if (res.ok && !type.startsWith("text/html")) {
-        return new Uint8Array(await res.arrayBuffer());
-      }
-      reason = `HTTP ${res.status} ${type}`;
-    } catch (e) {
-      reason = e instanceof Error ? e.message : String(e);
-    }
-    await new Promise((r) => setTimeout(r, attempt * 1000));
-  }
-  throw new Error(`GET /${path} failed after ${ATTEMPTS} attempts: ${reason}`);
-}
-
 async function main() {
   const base = parseBase(process.argv.slice(2));
-  const now = Date.now();
-  const plan = planAssetCarry(builtAssets(), await liveHistory(base, now), now);
-
-  const failed: string[] = [];
-  const queue = [...plan.carry];
-  await Promise.all(
-    Array.from({ length: CONCURRENCY }, async () => {
-      for (let path = queue.shift(); path; path = queue.shift()) {
-        try {
-          const bytes = await download(base, path);
-          const out = join(clientRoot, path);
-          mkdirSync(dirname(out), { recursive: true });
-          writeFileSync(out, bytes);
-        } catch (e) {
-          failed.push(path);
-          console.log(`::warning::not carried: ${(e as Error).message}`);
-        }
-      }
-    })
-  );
-  for (const path of failed) delete plan.history[path];
+  const result = await carryLiveAssets({
+    base,
+    built: builtAssets(),
+    now: Date.now(),
+    save: (path, bytes) => {
+      const out = join(clientRoot, path);
+      mkdirSync(dirname(out), { recursive: true });
+      writeFileSync(out, bytes);
+    },
+    warn: (message) => console.log(`::warning::${message}`),
+  });
 
   writeFileSync(
     join(clientRoot, ASSET_HISTORY_PATH),
-    `${JSON.stringify(plan.history)}\n`
+    `${JSON.stringify(result.history)}\n`
   );
   console.log(
-    `Carried ${plan.carry.length - failed.length}/${plan.carry.length} earlier asset(s) from ${base}; history lists ${Object.keys(plan.history).length}`
+    `Carried ${result.carried}/${result.attempted} earlier asset(s) from ${base}; history lists ${Object.keys(result.history).length}`
   );
 }
 

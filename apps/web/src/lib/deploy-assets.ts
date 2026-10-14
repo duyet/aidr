@@ -93,3 +93,125 @@ export function assetRefs(html: string): string[] {
   }
   return [...refs].sort();
 }
+
+const ATTEMPTS = 3;
+const CONCURRENCY = 8;
+
+async function html(url: string): Promise<string> {
+  const res = await fetch(url, { headers: { accept: "text/html" } });
+  if (!res.ok) throw new Error(`GET ${url} -> HTTP ${res.status}`);
+  return res.text();
+}
+
+/**
+ * Without a history file (the first deploy with one, or a deploy that skipped
+ * the carry step) fall back to what the cached pages the post-deploy smoke
+ * checks load right now, plus the Vietnamese home.
+ */
+async function seedFromCachedPages(
+  base: string,
+  now: number,
+  warn: (message: string) => void
+): Promise<AssetHistory> {
+  const pages = [
+    ...deployCheckPages(await html(`${base}/?lang=en`)),
+    "/?lang=vi",
+  ];
+  warn(
+    `${base}/${ASSET_HISTORY_PATH} not found; seeding from ${pages.join(", ")}`
+  );
+  const seed: Record<string, number> = {};
+  for (const page of pages) {
+    for (const ref of assetRefs(await html(`${base}${page}`))) {
+      seed[ref.slice(1)] = now;
+    }
+  }
+  return parseAssetHistory(seed);
+}
+
+async function liveHistory(
+  base: string,
+  now: number,
+  warn: (message: string) => void
+): Promise<AssetHistory> {
+  const res = await fetch(`${base}/${ASSET_HISTORY_PATH}?t=${now}`, {
+    headers: { "cache-control": "no-cache" },
+  });
+  if (res.status === 404) return seedFromCachedPages(base, now, warn);
+  if (!res.ok) {
+    throw new Error(`GET ${ASSET_HISTORY_PATH} -> HTTP ${res.status}`);
+  }
+  return parseAssetHistory(await res.json());
+}
+
+async function download(base: string, path: string): Promise<Uint8Array> {
+  let reason = "";
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`${base}/${path}`);
+      const type = res.headers.get("content-type") ?? "";
+      if (res.ok && !type.startsWith("text/html")) {
+        return new Uint8Array(await res.arrayBuffer());
+      }
+      reason = `HTTP ${res.status} ${type}`;
+    } catch (e) {
+      reason = e instanceof Error ? e.message : String(e);
+    }
+    await new Promise((r) => setTimeout(r, attempt * 1000));
+  }
+  throw new Error(`GET /${path} failed after ${ATTEMPTS} attempts: ${reason}`);
+}
+
+export interface CarryOptions {
+  /** Live site origin, e.g. `https://aidr.today`. */
+  base: string;
+  /** Asset paths the new build emitted (`assets/index-abc.js`). */
+  built: readonly string[];
+  now: number;
+  /** Writes one carried file into the build output. */
+  save: (path: string, bytes: Uint8Array) => void;
+  warn: (message: string) => void;
+}
+
+export interface CarryResult {
+  /** History to publish with the new build. */
+  history: Record<string, number>;
+  carried: number;
+  attempted: number;
+}
+
+/**
+ * Re-ship the live site's still-retained files the new build lacks. A file
+ * that fails to download is warned about and dropped from the history.
+ */
+export async function carryLiveAssets(
+  options: CarryOptions
+): Promise<CarryResult> {
+  const { base, now, save, warn } = options;
+  const plan = planAssetCarry(
+    options.built,
+    await liveHistory(base, now, warn),
+    now
+  );
+
+  const failed: string[] = [];
+  const queue = [...plan.carry];
+  await Promise.all(
+    Array.from({ length: CONCURRENCY }, async () => {
+      for (let path = queue.shift(); path; path = queue.shift()) {
+        try {
+          save(path, await download(base, path));
+        } catch (e) {
+          failed.push(path);
+          warn(`not carried: ${(e as Error).message}`);
+        }
+      }
+    })
+  );
+  for (const path of failed) delete plan.history[path];
+  return {
+    history: plan.history,
+    carried: plan.carry.length - failed.length,
+    attempted: plan.carry.length,
+  };
+}
