@@ -2,6 +2,7 @@
  * The cluster gate reads each published story's translation from D1 (#745):
  * `planMerges` must join the other-language `translations` row, the English
  * one for a Vietnamese source and the Vietnamese one for an English source.
+ * The title pass reads each published story's URL.
  */
 
 import type { WorkflowStep } from "cloudflare:workers";
@@ -200,5 +201,44 @@ describe("planMerges cluster gate across languages (#745)", () => {
     expect(clusterGate).toEqual({
       "test/cluster": { proposed: 3, rejected: 1 },
     });
+  });
+});
+
+describe("planMerges title pass", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("folds an edited vnexpress headline into its published article", async () => {
+    const db = migratedDb();
+    publish(
+      db,
+      {
+        id: "7afadede",
+        sourceId: "vnexpress-tech",
+        url: "https://vnexpress.net/thu-tuong-phai-do-dem-dong-gop-cua-cong-nghe-vao-tang-truong-5125902.html",
+        title: "Thủ tướng: Phải đo đếm đóng góp của công nghệ vào tăng trưởng",
+      },
+      "vi",
+      {}
+    );
+    modelAnswers([]);
+
+    const { plan } = await planMerges(
+      ctx(db),
+      [
+        fresh(
+          "586b7f43",
+          "vnexpress-tech",
+          "https://vnexpress.net/thu-tuong-nhiem-vu-khoa-hoc-cong-nghe-phai-tra-loi-4-cau-hoi-5125902.html",
+          "Thủ tướng: Nhiệm vụ khoa học công nghệ phải trả lời 4 câu hỏi"
+        ),
+      ],
+      new Map(),
+      new Map(),
+      NOW
+    );
+
+    expect(plan.merged.get("586b7f43")?.duplicateOf).toBe("7afadede");
   });
 });

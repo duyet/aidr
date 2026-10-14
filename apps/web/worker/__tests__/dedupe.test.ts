@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  articleId,
   buildMergePlan,
   type Cluster,
   clusterByTitleSimilarity,
   clusterSimilar,
   type ExistingCandidate,
+  evidenceTokens,
   isTitleNearDuplicate,
   type MergeCandidate,
   mergeClusters,
@@ -328,6 +330,14 @@ describe("title similarity dedupe", () => {
     );
   });
 
+  it("reads a decomposed (NFD) Vietnamese headline as whole words", () => {
+    const title = "Chuyên gia bày cách để Việt Nam nâng cao năng lực công nghệ";
+    expect(evidenceTokens(title)).toContain("chuyen gia");
+    expect(evidenceTokens(title.normalize("NFD"))).toEqual(
+      evidenceTokens(title)
+    );
+  });
+
   it("merges a short HN headline that sits inside a longer original", () => {
     expect(
       isTitleNearDuplicate(
@@ -365,12 +375,18 @@ describe("title similarity dedupe", () => {
           i: 0,
           title:
             "Stripe Buys OpenRouter for $8B, More Than 5x Its May Valuation",
+          url: "https://a.example/stripe",
         },
-        { i: 1, title: "Unrelated story about a new GPU" },
+        {
+          i: 1,
+          title: "Unrelated story about a new GPU",
+          url: "https://b.example/gpu",
+        },
         {
           i: 2,
           title:
             "Stripe Buys OpenRouter for Over $7 Billion, Five Times its May Valuation",
+          url: "https://c.example/stripe",
         },
       ],
       [
@@ -378,6 +394,7 @@ describe("title similarity dedupe", () => {
           id: "existing-1",
           title:
             "Stripe Buys OpenRouter for Over $8 Billion to Flip Its AI Business Model",
+          url: "https://d.example/stripe",
         },
       ]
     );
@@ -406,10 +423,85 @@ describe("title similarity dedupe", () => {
   it("returns no clusters when nothing overlaps", () => {
     expect(
       clusterByTitleSimilarity(
-        [{ i: 0, title: "OpenAI ships GPT-6" }],
-        [{ id: "x", title: "A totally different story" }]
+        [{ i: 0, title: "OpenAI ships GPT-6", url: "https://a.example/gpt6" }],
+        [
+          {
+            id: "x",
+            title: "A totally different story",
+            url: "https://b.example/x",
+          },
+        ]
       )
     ).toEqual([]);
+  });
+
+  // vnexpress edits a headline and serves the article under a new slug with
+  // the same id: `7afadede` <= `586b7f43` (2026-09-28), whose titles share
+  // too few words for the title rule.
+  const PM_ARTICLE = {
+    title: "Thủ tướng: Phải đo đếm đóng góp của công nghệ vào tăng trưởng",
+    url: "https://vnexpress.net/thu-tuong-phai-do-dem-dong-gop-cua-cong-nghe-vao-tang-truong-5125902.html",
+  };
+  const PM_EDITED = {
+    title: "Thủ tướng: Nhiệm vụ khoa học công nghệ phải trả lời 4 câu hỏi",
+    url: "https://vnexpress.net/thu-tuong-nhiem-vu-khoa-hoc-cong-nghe-phai-tra-loi-4-cau-hoi-5125902.html",
+  };
+
+  it("clusters two slugs of one vnexpress article whatever the headline", () => {
+    expect(isTitleNearDuplicate(PM_ARTICLE.title, PM_EDITED.title)).toBe(false);
+    expect(
+      clusterByTitleSimilarity(
+        [{ i: 0, ...PM_EDITED }],
+        [{ id: "7afadede", ...PM_ARTICLE }]
+      )
+    ).toEqual([{ new: [0], existing: ["7afadede"] }]);
+    expect(
+      clusterByTitleSimilarity(
+        [
+          { i: 0, ...PM_ARTICLE },
+          { i: 1, ...PM_EDITED },
+        ],
+        []
+      )
+    ).toEqual([{ new: [0, 1], existing: [] }]);
+  });
+
+  it("keeps vnexpress articles with different ids apart", () => {
+    expect(
+      clusterByTitleSimilarity(
+        [
+          {
+            i: 0,
+            ...PM_EDITED,
+            url: PM_EDITED.url.replace("5125902", "5125903"),
+          },
+        ],
+        [{ id: "7afadede", ...PM_ARTICLE }]
+      )
+    ).toEqual([]);
+  });
+});
+
+describe("articleId", () => {
+  it.each([
+    [
+      "https://vnexpress.net/thu-tuong-phai-do-dem-dong-gop-cua-cong-nghe-vao-tang-truong-5125902.html",
+      "vnexpress.net:5125902",
+    ],
+    [
+      "https://www.vnexpress.net/thu-tuong-nhiem-vu-khoa-hoc-cong-nghe-phai-tra-loi-4-cau-hoi-5125902.html",
+      "vnexpress.net:5125902",
+    ],
+    // The live coverage page of article 5128002 (2026-10-04).
+    [
+      "https://vnexpress.net/khai-mac-ngay-hoi-doi-moi-sang-tao-quoc-gia-2026-5128002-tong-thuat.html",
+      "vnexpress.net:5128002",
+    ],
+    ["https://vnexpress.net/so-hoa", null],
+    ["https://example.com/story-5125902.html", null],
+    ["not a url", null],
+  ])("%s -> %s", (url, id) => {
+    expect(articleId(url)).toBe(id);
   });
 });
 
