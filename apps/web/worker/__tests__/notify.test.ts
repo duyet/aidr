@@ -51,7 +51,7 @@ import {
   telegramChatId,
   telegramEnNotifier,
   telegramNotifier,
-  withUtm,
+  withTelegramUtm,
 } from "../notify/telegram.js";
 import type { DailyDigest, StoryPayload } from "../notify/types.js";
 import { digestEvent, storyEvent } from "../notify/webhook.js";
@@ -244,7 +244,7 @@ describe("digest message", () => {
     expect(markup.inline_keyboard[0][0].text).toContain("full digest");
     // The button opens that day's page, not the live homepage.
     expect(markup.inline_keyboard[0][0].url).toBe(
-      "https://aidr.today/date/2026-08-17?lang=en&utm_source=telegram"
+      "https://aidr.today/date/2026-08-17?lang=en&utm_source=telegram&utm_medium=social&utm_campaign=digest-2026-08-17&utm_content=button"
     );
   });
 
@@ -455,7 +455,7 @@ describe("trending story message", () => {
     expect(row).toHaveLength(1);
     expect(row[0].text).toBe("Đọc bài →");
     expect(row[0].url).toBe(
-      "https://aidr.today/abcdef12?lang=vi&utm_source=telegram"
+      "https://aidr.today/abcdef12?lang=vi&utm_source=telegram&utm_medium=social&utm_campaign=story&utm_content=button"
     );
   });
 
@@ -744,7 +744,7 @@ describe("telegram channels", () => {
     expect(body.text).toContain("Bản tin số 5");
     expect(body.text).not.toContain("Bản tin số 6");
     expect(body.link_preview_options).toEqual({
-      url: "https://aidr.today/date/2026-08-17?lang=vi&utm_source=telegram",
+      url: "https://aidr.today/date/2026-08-17?lang=vi&utm_source=telegram&utm_medium=social&utm_campaign=digest-2026-08-17&utm_content=preview",
       prefer_large_media: true,
       show_above_text: true,
     });
@@ -918,7 +918,12 @@ describe("telegramNotifier gating", () => {
     // Albums cannot carry buttons. The same URL the button would use is one
     // HTML link in the caption, and nothing follows the album.
     const href = escapeHtml(
-      withUtm(storyUrl({ id: "abcdef1234567890" }, "vi"), "vi")
+      withTelegramUtm(
+        storyUrl({ id: "abcdef1234567890" }, "vi"),
+        "vi",
+        "story",
+        "link"
+      )
     );
     expect(body.media[0].caption).toContain(`<a href="${href}">Đọc bài →</a>`);
     expect(body.media[0].caption).toContain("utm_source=telegram");
@@ -1415,8 +1420,10 @@ describe("helpers", () => {
   it("escapes ampersands first", () => {
     expect(escapeHtml("&lt;")).toBe("&amp;lt;");
   });
-  it("keeps invalid URLs unchanged in withUtm", () => {
-    expect(withUtm("not a url")).toBe("not a url");
+  it("keeps invalid URLs unchanged in withTelegramUtm", () => {
+    expect(withTelegramUtm("not a url", "vi", "story", "link")).toBe(
+      "not a url"
+    );
   });
 });
 

@@ -99,7 +99,11 @@ describe("Facebook Page posts", () => {
       link: string;
     };
     expect(body.link).toBe(
-      facebookLink("https://example.test/date/2026-10-04", "en")
+      facebookLink(
+        "https://example.test/date/2026-10-04",
+        "en",
+        "digest-2026-10-04"
+      )
     );
     expect(body.link).toContain("utm_source=facebook");
     expect(new URL(body.link).searchParams.get("lang")).toBe("en");

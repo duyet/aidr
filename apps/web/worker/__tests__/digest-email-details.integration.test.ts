@@ -205,7 +205,7 @@ describe("renderEditionEmail day video", () => {
       `<img src="https://i.ytimg.com/vi/${YESTERDAY_ID}/mqdefault.jpg"`
     );
     expect(html).toContain(
-      `https://youtu.be/${YESTERDAY_ID}?utm_source=email&amp;utm_medium=digest&amp;utm_campaign=digest&amp;utm_content=video`
+      `https://youtu.be/${YESTERDAY_ID}?utm_source=email&amp;utm_medium=digest&amp;utm_campaign=digest-2026-10-10&amp;utm_content=video`
     );
     expect(html).not.toContain("Today's video brief");
     expect(text).toContain(

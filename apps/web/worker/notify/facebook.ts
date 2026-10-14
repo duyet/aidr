@@ -5,6 +5,7 @@ import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
 import { splitSentences } from "../sentences.js";
 import type { Env } from "../types.js";
+import { digestCampaign, STORY_CAMPAIGN, withUtm } from "../utm.js";
 import {
   type DailyDigest,
   isSubrequestLimitError,
@@ -98,12 +99,16 @@ export function facebookSiteOrigin(env: Env): string {
  *  `withLang`, not `withSiteLang`: the latter only rewrites aidr.today, and
  *  the default language is Vietnamese. A fork origin would otherwise post
  *  the English digest onto the Vietnamese day page. */
-export function facebookLink(url: string, lang: Lang): string {
-  const localized = withLang(url, lang);
-  const parsed = new URL(localized);
-  parsed.searchParams.set("utm_source", "facebook");
-  parsed.searchParams.set("utm_medium", "social");
-  return parsed.toString();
+export function facebookLink(
+  url: string,
+  lang: Lang,
+  campaign: string
+): string {
+  return withUtm(
+    withLang(url, lang),
+    { source: "facebook", medium: "social", campaign, content: "post" },
+    { trustedOrigin: true }
+  );
 }
 
 function oneLine(value: string): string {
@@ -155,7 +160,8 @@ export function buildFacebookDigest(
   }
   const link = facebookLink(
     new URL(dayArchivePath(digest.date), origin).toString(),
-    digest.lang
+    digest.lang,
+    digestCampaign(digest.date)
   );
   return { message: joinParagraphs(paragraphs), link };
 }
@@ -173,7 +179,8 @@ export function buildFacebookStory(
   if (story.summary) paragraphs.push(...asParagraphs(story.summary));
   const link = facebookLink(
     new URL(storyPath(story, story.lang), origin).toString(),
-    story.lang
+    story.lang,
+    STORY_CAMPAIGN
   );
   return { message: joinParagraphs(paragraphs), link };
 }

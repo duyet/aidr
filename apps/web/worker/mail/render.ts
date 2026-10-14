@@ -9,6 +9,7 @@ import { SITE_URL } from "../../src/lib/site.js";
 import { formatWeekRange, weekPath } from "../../src/lib/week.js";
 import { isGeneratedOgCard } from "../media.js";
 import { splitSentences } from "../sentences.js";
+import { digestCampaign } from "../utm.js";
 import { shiftDate } from "../weekly-digest.js";
 import { feedbackUrl } from "./feedback.js";
 import {
@@ -590,12 +591,17 @@ export function headerBlock(
     </tr>`;
 }
 
-function youtubeHref(id: string, lang: MailLang, content: string): string {
+function youtubeHref(
+  id: string,
+  lang: MailLang,
+  content: string,
+  campaign: string
+): string {
   return withMailUtm(
     `https://youtu.be/${encodeURIComponent(id)}`,
     "digest",
     lang,
-    { content, external: true }
+    { content, campaign, external: true }
   );
 }
 
@@ -946,7 +952,10 @@ export function feedbackBlock(
 }
 
 /** Telegram (per language), YouTube and the Chrome extension. */
-export function channelsBlock(lang: MailLang): string {
+export function channelsBlock(
+  lang: MailLang,
+  campaign: string = "digest"
+): string {
   const vi = lang === "vi";
   const items = [
     {
@@ -973,6 +982,7 @@ export function channelsBlock(lang: MailLang): string {
       const href = escapeHtml(
         withMailUtm(it.url, "digest", lang, {
           content: `channel-${it.key}`,
+          campaign,
           external: true,
         })
       );
@@ -1000,11 +1010,27 @@ interface FooterOpts {
   unsubscribeUrl: string;
   settingsUrl: string;
   kind: MailUtmKind;
+  /** `utm_campaign` for the footer links. Defaults to `kind`. */
+  campaign?: string;
   /** Digest only: the day page. */
   viewInBrowserUrl?: string;
   postalAddress?: string;
   /** The weekly digest: "one email a week". */
   weekly?: boolean;
+}
+
+function footerDataUrl(o: FooterOpts): string {
+  return withMailUtm(DATA_URL, o.kind, o.lang, {
+    content: "footer-data",
+    campaign: o.campaign,
+  });
+}
+
+function footerSubscribeUrl(o: FooterOpts): string {
+  return withMailUtm(SUBSCRIBE_URL, o.kind, o.lang, {
+    content: "footer-subscribe",
+    campaign: o.campaign,
+  });
 }
 
 /** Why you get this, the links, "Forwarded this?", the postal address. */
@@ -1034,7 +1060,7 @@ export function footerBlock(o: FooterOpts): string {
       "m-link m-tap"
     ),
     link(
-      withMailUtm(DATA_URL, o.kind, o.lang, { content: "footer-data" }),
+      footerDataUrl(o),
       vi ? "Cách xếp hạng" : "How we rank",
       style,
       "m-link m-tap"
@@ -1044,7 +1070,7 @@ export function footerBlock(o: FooterOpts): string {
     ? `Bạn nhận email này vì đã đăng ký tại aidr.today. ${o.weekly ? "Mỗi tuần một email." : "Mỗi ngày một email."}`
     : `You get this because you subscribed at aidr.today. ${o.weekly ? "One email a week." : "One email a day."}`;
   const forwarded = `${escapeHtml(vi ? "Được chuyển tiếp?" : "Forwarded this?")} ${link(
-    withMailUtm(SUBSCRIBE_URL, o.kind, o.lang, { content: "footer-subscribe" }),
+    footerSubscribeUrl(o),
     vi ? "Đăng ký" : "Subscribe",
     style,
     "m-link m-tap"
@@ -1068,8 +1094,8 @@ function footerText(o: FooterOpts): string {
       : "",
     `${vi ? "Cài đặt" : "Settings"}: ${withSiteLang(o.settingsUrl, o.lang)}`,
     `${vi ? "Hủy đăng ký" : "Unsubscribe"}: ${withSiteLang(o.unsubscribeUrl, o.lang)}`,
-    `${vi ? "Cách xếp hạng" : "How we rank"}: ${DATA_URL}`,
-    `${vi ? "Được chuyển tiếp? Đăng ký" : "Forwarded this? Subscribe"}: ${SUBSCRIBE_URL}`,
+    `${vi ? "Cách xếp hạng" : "How we rank"}: ${footerDataUrl(o)}`,
+    `${vi ? "Được chuyển tiếp? Đăng ký" : "Forwarded this? Subscribe"}: ${footerSubscribeUrl(o)}`,
     o.postalAddress?.trim() ? `AI;DR · ${o.postalAddress.trim()}` : "",
   ];
   return lines.filter(Boolean).join("\n");
@@ -1085,7 +1111,9 @@ export function renderNoteEmail(input: NoteEmailInput): {
 } {
   const lang: MailLang = normalizeMailLang(input.lang);
   const mailKind: MailUtmKind = input.mailKind ?? "welcome";
-  const body = markdownToEmailHtml(input.bodyMd);
+  const tagBodyHref = (href: string) =>
+    withMailUtm(href, mailKind, lang, { content: "body" });
+  const body = markdownToEmailHtml(input.bodyMd, tagBodyHref);
   const ctaUrl =
     input.cta?.label && input.cta.url
       ? withMailUtm(input.cta.url, mailKind, lang, { content: "cta" })
@@ -1116,7 +1144,7 @@ export function renderNoteEmail(input: NoteEmailInput): {
 
   const safeCtaUrl = ctaUrl ? safeHref(ctaUrl) : null;
   const textParts = [
-    markdownToPlainText(input.bodyMd),
+    markdownToPlainText(input.bodyMd, tagBodyHref),
     safeCtaUrl ? `${input.cta!.label}: ${safeCtaUrl}` : "",
     footerText(footer),
   ].filter(Boolean);
@@ -1149,13 +1177,23 @@ function wrapText(text: string, indent: string, width = 76): string {
 function storyHref(
   story: DigestStory,
   lang: MailLang,
-  content: string
+  content: string,
+  campaign: string
 ): string {
-  const opts: MailUtmOptions = { content };
+  const opts: MailUtmOptions = { content, campaign };
   return (
     safeHref(withMailUtm(story.url ?? SITE_URL, "digest", lang, opts)) ??
     withMailUtm(SITE_URL, "digest", lang, opts)
   );
+}
+
+/** One campaign per edition, so GA4 can tell Monday's mail from Tuesday's. */
+function digestMailCampaign(
+  date: string,
+  weekly: WeeklyMailMeta | null
+): string {
+  if (weekly) return `weekly-${weekly.week ?? weekly.end_date}`;
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? digestCampaign(date) : "digest";
 }
 
 export function renderDigestEmail(input: DigestEmailInput): {
@@ -1169,6 +1207,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
   const count = stories.length;
   const minutes = readMinutes(stories);
   const weekly = input.weekly ?? null;
+  const campaign = digestMailCampaign(input.date, weekly);
   const video = !weekly && input.video?.youtubeId ? input.video : null;
   const recency = video ? videoRecency(video.date, input.date) : null;
   const dayVideo =
@@ -1176,7 +1215,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
       ? {
           video,
           recency,
-          url: youtubeHref(video.youtubeId, lang, "video"),
+          url: youtubeHref(video.youtubeId, lang, "video", campaign),
         }
       : null;
   const weekVideos: WeekVideoLink[] = weekly
@@ -1187,7 +1226,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
           (lang === "vi"
             ? "Tin trong ngày, chưa tới hai phút"
             : "The day's stories in under two minutes"),
-        href: youtubeHref(v.youtubeId, lang, `video-${v.date}`),
+        href: youtubeHref(v.youtubeId, lang, `video-${v.date}`, campaign),
       }))
     : [];
   const intro = weekly?.intro?.trim() || null;
@@ -1242,14 +1281,19 @@ export function renderDigestEmail(input: DigestEmailInput): {
       : total
         ? `See all ${total} stories on aidr.today`
         : "See all stories on aidr.today";
-  const ctaUrl = withMailUtm(dayUrl, "digest", lang, { content: "cta" });
+  const ctaUrl = withMailUtm(dayUrl, "digest", lang, {
+    content: "cta",
+    campaign,
+  });
   const footer: FooterOpts = {
     lang,
     unsubscribeUrl: input.unsubscribeUrl,
     settingsUrl: input.settingsUrl,
     kind: "digest",
+    campaign,
     viewInBrowserUrl: withMailUtm(dayUrl, "digest", lang, {
       content: "view-in-browser",
+      campaign,
     }),
     postalAddress: input.postalAddress,
     weekly: Boolean(weekly),
@@ -1264,7 +1308,12 @@ export function renderDigestEmail(input: DigestEmailInput): {
     const numWidth = String(count).length;
     const indent = " ".repeat(numWidth + 2);
     const textStories = stories.map((st, i) => {
-      const href = storyHref(st, lang, i === 0 ? "lead" : `s${i + 1}`);
+      const href = storyHref(
+        st,
+        lang,
+        i === 0 ? "lead" : `s${i + 1}`,
+        campaign
+      );
       const summary = i === 0 ? st.text.trim() : storySummary(st);
       const meta = [
         st.category ? mailCategoryLabel(st.category, lang) : "",
@@ -1303,7 +1352,10 @@ export function renderDigestEmail(input: DigestEmailInput): {
   };
   const text = buildText(76);
 
-  const homeHref = withMailUtm(SITE_URL, "digest", lang, { content: "header" });
+  const homeHref = withMailUtm(SITE_URL, "digest", lang, {
+    content: "header",
+    campaign,
+  });
   const header = headerBlock(lang, homeHref, {
     date: input.date,
     dateLabel: weekly ? weeklyTag(weekly, lang) : undefined,
@@ -1311,6 +1363,7 @@ export function renderDigestEmail(input: DigestEmailInput): {
     minutes,
     switchHref: withMailUtm(switchUrl, "digest", otherLang, {
       content: "lang-switch",
+      campaign,
     }),
   });
 
@@ -1339,13 +1392,18 @@ export function renderDigestEmail(input: DigestEmailInput): {
       ? issueIndexBlock(
           stories.map((st, i) => ({
             headline: storyHeadline(st),
-            href: storyHref(st, lang, i === 0 ? "lead" : `s${i + 1}`),
+            href: storyHref(st, lang, i === 0 ? "lead" : `s${i + 1}`, campaign),
           })),
           lang
         )
       : "",
     lead
-      ? leadStory(lead, storyHref(lead, lang, "lead"), lang, showImages)
+      ? leadStory(
+          lead,
+          storyHref(lead, lang, "lead", campaign),
+          lang,
+          showImages
+        )
       : "",
     dayVideo
       ? videoBlock(
@@ -1368,14 +1426,20 @@ export function renderDigestEmail(input: DigestEmailInput): {
         )
       : "",
     ...rest.map((s, i) =>
-      storyRow(s, i + 2, storyHref(s, lang, `s${i + 2}`), format, lang)
+      storyRow(
+        s,
+        i + 2,
+        storyHref(s, lang, `s${i + 2}`, campaign),
+        format,
+        lang
+      )
     ),
     weekVideos.length > 0 ? weekVideosBlock(weekVideos, lang) : "",
     ctaRow(ctaLabel, ctaUrl),
     !weekly && input.feedbackToken && validDate
       ? feedbackBlock(input.date, lang, input.feedbackToken)
       : "",
-    channelsBlock(lang),
+    channelsBlock(lang, campaign),
   ];
 
   const html = wrapHtml({

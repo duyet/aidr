@@ -1083,8 +1083,12 @@ all" button, the channel strip (Telegram, YouTube, Chrome extension) and the foo
 browser, settings, unsubscribe, how we rank, "Forwarded this?", and
 `MAIL_POSTAL_ADDRESS` when set). The headline is `items.title` or
 `title_vi` for that language only; without it, the bullet's first sentence.
-Every link carries `utm_content` for its position (`lead`, `s2`…, `cta`,
-`video`, `channel-*`). After the button, a "Was today's edition useful?" row links to `GET /feedback?d=&l=&v=1|0&t=<token>`. That stores one vote per subscriber and date in `email_feedback` (0054); the last click wins. Counts are at `GET /api/admin/mail/feedback` and in `aidr-agent audit`. Layouts: `design` (lead image plus thumbnails),
+Every aidr.today link carries `utm_source=email`, `utm_medium=digest`,
+`utm_campaign=digest-YYYY-MM-DD` (`weekly-YYYY-Www` for the weekly) and
+`utm_content` for its position (`lead`, `s2`…, `cta`, `video`, `channel-*`).
+Settings, unsubscribe and feedback links carry a token and stay untagged. The
+shared tagger is `worker/utm.ts`; Telegram and Facebook use it too (see
+`docs/analytics-events.md`). After the button, a "Was today's edition useful?" row links to `GET /feedback?d=&l=&v=1|0&t=<token>`. That stores one vote per subscriber and date in `email_feedback` (0054); the last click wins. Counts are at `GET /api/admin/mail/feedback` and in `aidr-agent audit`. Layouts: `design` (lead image plus thumbnails),
 `large` (an image per story), `no-images`, `text`. Admin preview:
 `GET /api/admin/mail/preview?date=&lang=&format=`.
 
