@@ -33,7 +33,9 @@ import {
   createD1LlmCallLogger,
   resetLlmCallLogSchemaCache,
 } from "../llm-call-log.js";
+import { providerErrorSnippet } from "../telemetry-safe.js";
 import type { Env } from "../types.js";
+import { BEARER } from "./fake-secrets.js";
 
 function statements(sql: string): string[] {
   return sql
@@ -348,7 +350,7 @@ describe("llm_calls run identity over a real D1 (#189)", () => {
     ).toEqual([{ run_id: null, model: "anyrouter/auto", tokens: 1_000 }]);
   });
 
-  it("persists structured error fields without the provider payload", async () => {
+  it("persists a sanitized snippet on failed rows only", async () => {
     setLlmCallLogger(createD1LlmCallLogger(env(), RUN_A));
     logLlmCall(
       entry({
@@ -356,11 +358,16 @@ describe("llm_calls run identity over a real D1 (#189)", () => {
         tokens: 0,
         error:
           "anyrouter request failed: 502 Bearer sk-live-secret https://provider.test/raw",
+        responseSnippet: providerErrorSnippet(
+          502,
+          `<html><body>Bad Gateway for reader@example.com ${BEARER} sk-live-secret</body></html>`
+        ),
       })
     );
+    logLlmCall(entry({ ok: true, responseSnippet: "served answer" }));
     await waitFor(
       () => rows(RUN_A),
-      (r) => r.length > 0
+      (r) => r.length > 1
     );
 
     const res = await db
@@ -369,14 +376,20 @@ describe("llm_calls run identity over a real D1 (#189)", () => {
       )
       .bind(RUN_A)
       .all<Record<string, unknown>>();
-    const row = res.results[0];
+    const row = res.results.find((r) => r.error_code != null)!;
     expect(row).toBeDefined();
     expect(row.error_code).toBe("provider_error");
     expect(row.error_status).toBe(502);
     // Secrets and the raw provider body never reach the column.
     expect(String(row.error)).not.toContain("sk-live-secret");
     expect(String(row.error)).not.toContain("provider.test");
-    expect(row.response_snippet).toBeNull();
+    expect(JSON.parse(String(row.response_snippet))).toEqual({
+      kind: "provider_error",
+      status: 502,
+      body: "non-json error body (82 bytes)",
+    });
+    const served = res.results.find((r) => r.error_code == null)!;
+    expect(served.response_snippet).toBeNull();
   });
 
   it("keeps identity when a write hits a schema without usage columns", async () => {

@@ -30,7 +30,12 @@ import {
   scoreJudgmentFromJev,
   servedByJev,
 } from "./systemone.js";
-import { sanitizeError } from "./telemetry-safe.js";
+import {
+  canonicalLlmSnippet,
+  modelOutputSnippet,
+  providerErrorSnippet,
+  sanitizeError,
+} from "./telemetry-safe.js";
 import {
   acceptsRepair,
   tldrBulletIssues,
@@ -232,6 +237,7 @@ export type LlmTask =
   | "cluster"
   | "review"
   | "mail"
+  | "caption"
   | "other";
 
 /** One row of the `llm_calls` observability log: one entry per model
@@ -251,8 +257,9 @@ export interface LlmCallLogEntry {
   durationMs: number;
   error: string | null;
   promptChars: number;
-  /** Legacy response-body field. Runtime redaction suppresses it for every
-   * task before any logger receives the entry. */
+  /** Failure descriptor from `providerErrorSnippet` or
+   * `modelOutputSnippet`, never response text. Redaction nulls it for ok,
+   * `sensitive` and review rows and for anything that is not a descriptor. */
   responseSnippet: string | null;
   sensitive?: boolean;
   /** Requested id → resolved model(s), e.g. ["@preset/aidr", "x/y"]. */
@@ -302,7 +309,7 @@ export function setLlmCallLogger(fn: LlmCallLogger | null): void {
  *  re-sanitized "anyrouter request timed out" used to become "anyrouter
  *  provider error"). */
 const SANITIZED_LABEL =
-  /^(?:anyrouter request failed: \d{3}|jev request failed: \d{3}|anyrouter request timed out|anyrouter budget exhausted|anyrouter chain exhausted|anyrouter invalid response|anyrouter model not configured|anyrouter provider error)$/;
+  /^(?:anyrouter request failed: \d{3}|jev request failed: \d{3}|anyrouter request timed out|anyrouter budget exhausted|anyrouter chain exhausted|anyrouter invalid response|anyrouter bad output|anyrouter model not configured|anyrouter provider error)$/;
 
 function sanitizeProviderError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
@@ -321,19 +328,22 @@ function sanitizeProviderError(error: unknown): string {
     return "anyrouter budget exhausted";
   if (/chain exhausted/i.test(message)) return "anyrouter chain exhausted";
   const safe = sanitizeError(message);
+  if (safe?.code === "bad_output") return "anyrouter bad output";
   if (safe?.code === "invalid_response") return "anyrouter invalid response";
   if (safe?.code === "not_configured") return "anyrouter model not configured";
   return "anyrouter provider error";
 }
 
 export function redactLlmCallEntry(entry: LlmCallLogEntry): LlmCallLogEntry {
-  // LLM output is untrusted content for every pipeline task, not only the
-  // translation reviewer. Keep only bounded classifications/counters in
-  // telemetry; the database column remains for schema compatibility.
+  // A failed call keeps a descriptor of what failed, never the text;
+  // reviewer and `sensitive` calls keep nothing.
+  const keepSnippet = !entry.ok && !entry.sensitive && entry.task !== "review";
   return {
     ...entry,
     error: entry.error ? sanitizeProviderError(entry.error) : null,
-    responseSnippet: null,
+    responseSnippet: keepSnippet
+      ? canonicalLlmSnippet(entry.responseSnippet)
+      : null,
     sensitive: undefined,
   };
 }
@@ -481,6 +491,17 @@ function isQueued(data: { object?: string }): boolean {
   return typeof data.object === "string" && data.object.endsWith(".queued");
 }
 
+/** The message format is what `markUnavailable` and `sanitizeError` read;
+ *  the fields let the failure snippet keep allowlisted parts of the body. */
+class ProviderHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly body: string
+  ) {
+    super(`anyrouter request failed: ${status} ${body}`);
+  }
+}
+
 async function readBoundedErrorBody(response: Response): Promise<string> {
   if (!response.body) return "";
   const reader = response.body.getReader();
@@ -573,7 +594,7 @@ async function streamCompletion(
         maxTokens: affordable,
       });
     }
-    throw new Error(`anyrouter request failed: ${res.status} ${body}`);
+    throw new ProviderHttpError(res.status, body);
   }
   if (!res.body) throw new Error("anyrouter response missing content");
 
@@ -917,6 +938,11 @@ async function callAnyrouter(
     sensitive?: boolean;
     strictOutput?: boolean;
     maxOutputChars?: number;
+    /** Post-call usability check. Unlike `accept` it does not advance the
+     *  chain: the answer is still returned, but the attempt is logged as
+     *  failed with error_code `bad_output` instead of ok, so success rates
+     *  count usable answers only. */
+    validate?: (content: string) => boolean;
   } = {}
 ): Promise<AnyrouterCallResult> {
   const task = opts.task ?? "other";
@@ -950,6 +976,12 @@ async function callAnyrouter(
   const deadline = Date.now() + budget;
   const failures: string[] = [];
   const promptChars = messages.reduce((sum, m) => sum + m.content.length, 0);
+  const maxTokens = opts.maxTokens ?? MAX_TOKENS;
+  const outputSnippet = (result: AnyrouterCompletion) =>
+    modelOutputSnippet(result.content, {
+      parse: parseJson,
+      truncatedAtMax: (result.completionTokens ?? 0) >= maxTokens,
+    });
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
@@ -1000,9 +1032,7 @@ async function callAnyrouter(
           durationMs: Date.now() - attemptStartedAt,
           error: "anyrouter response failed accept check",
           promptChars,
-          responseSnippet: opts.sensitive
-            ? null
-            : result.content.slice(0, 2000),
+          responseSnippet: outputSnippet(result),
           sensitive: opts.sensitive,
           route: buildRoute(model, trace),
           provider: trace.provider,
@@ -1015,19 +1045,27 @@ async function callAnyrouter(
       }
       recordRunOutcome(task, model, false);
       console.log(`anyrouter completion served by ${model}`);
+      let usable = true;
+      if (opts.validate) {
+        try {
+          usable = opts.validate(result.content);
+        } catch {
+          usable = false;
+        }
+      }
       logLlmCall({
         ts: attemptStartedAt,
         task,
         model,
-        ok: true,
+        ok: usable,
         tokens: result.tokens,
         promptTokens: result.promptTokens,
         completionTokens: result.completionTokens,
         cachedTokens: result.cachedTokens,
         durationMs: Date.now() - attemptStartedAt,
-        error: null,
+        error: usable ? null : "anyrouter bad output",
         promptChars,
-        responseSnippet: opts.sensitive ? null : result.content.slice(0, 2000),
+        responseSnippet: usable ? null : outputSnippet(result),
         sensitive: opts.sensitive,
         route: buildRoute(model, trace),
         provider: trace.provider,
@@ -1059,7 +1097,10 @@ async function callAnyrouter(
         durationMs: Date.now() - attemptStartedAt,
         error: msg,
         promptChars,
-        responseSnippet: null,
+        responseSnippet:
+          error instanceof ProviderHttpError
+            ? providerErrorSnippet(error.status, error.body)
+            : null,
         sensitive: opts.sensitive,
         route: buildRoute(model, trace),
         provider: trace.provider,
@@ -1082,6 +1123,8 @@ interface CompleteJsonOptions {
   maxTokens?: number;
   /** Per-model cap for long prompts (default MODEL_SLICE_MAX_MS). */
   maxSliceMs?: number;
+  /** See callAnyrouter `validate`: a false/throwing check logs `bad_output`. */
+  validate?: (content: string) => boolean;
 }
 
 /** `completeJson` plus the chain id that served the answer, for callers
@@ -1097,6 +1140,7 @@ export async function completeJsonWithModel(
     timeoutMs: opts.timeoutMs,
     maxTokens: opts.maxTokens,
     maxSliceMs: opts.maxSliceMs,
+    validate: opts.validate,
   });
   return { content: result.content, model: result.model };
 }
@@ -1385,6 +1429,10 @@ async function scoreBatchWithChat(
         // decision + Jev + that default are ~330s and outlive LLM_STEP.
         timeoutMs: SCORE_CHAT_TIMEOUT_MS,
         maxSliceMs: SCORE_SLICE_MAX_MS,
+        validate: (content) => {
+          const p = parseJson<{ results?: unknown } | unknown[]>(content);
+          return Array.isArray(p) || Array.isArray(p.results);
+        },
       }
     );
     const parsed = parseJson<{ results?: unknown } | unknown[]>(raw);
@@ -2255,6 +2303,8 @@ Respond with strict JSON only: {"bullets":[{"i":0,"text":"..."}]}`,
         timeoutMs: Math.min(timeoutMs, TLDR_REPAIR_MAX_MS),
         maxSliceMs: TRANSLATE_SLICE_MAX_MS,
         maxTokens: TRANSLATE_MAX_TOKENS,
+        validate: (raw) =>
+          Array.isArray(parseJson<{ bullets?: unknown }>(raw).bullets),
       }
     );
     const parsed = parseJson<{ bullets?: unknown }>(content).bullets;

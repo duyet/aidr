@@ -13,6 +13,7 @@ const SAFE_ERROR_CODES = new Set([
   "rate_limited",
   "auth_error",
   "invalid_response",
+  "bad_output",
   "not_configured",
   "provider_error",
   "unknown_error",
@@ -55,19 +56,62 @@ function boundedText(value: string, maxLength: number): string {
   return withoutControls.replace(/\s+/g, " ").trim();
 }
 
+/** `OPENAI_API_KEY`, `stripeSecretKey`, `session_id`, `idToken`. */
+const SECRET_KEY_NAME =
+  "(?:[a-z0-9]+[-_])*(?:[a-z0-9]*(?:api[-_ ]?key|apikey|(?:secret|private|access)[-_]?key)|authorization|client[-_ ]?secret|session[-_]?id|credentials?|passphrase|[a-z]*(?:token|secret|password|passwd))";
+const SECRET_KEY = new RegExp(`^${SECRET_KEY_NAME}$`, "i");
+/** A scheme word (`Basic`, `Bearer`) goes with its credential. */
+const SECRET_KEY_VALUE = new RegExp(
+  String.raw`\b(${SECRET_KEY_NAME})\b(["']?)\s*(?:[:=]|%3D)\s*(?:(?:basic|bearer|digest|token)\s+)?("[^"]*"|'[^']*'|[^,;}\s&]+)`,
+  "gi"
+);
+
+/** Usage and cost counters (`input_token: 512`, `cost_per_token: 0.000002`)
+ *  share the `token` suffix with credentials. A short plain number is kept
+ *  unless the word before `token` names a credential. */
+const TOKEN_COUNT_KEY = /_tokens?$/i;
+const CREDENTIAL_TOKEN_KEY =
+  /(?:^|[-_])(?:access|refresh|session|id|auth|csrf|xsrf|bearer|api)[-_]tokens?$/i;
+const COUNT_VALUE = /^\d{1,7}(?:\.\d{1,9})?$/;
+
+function isSecretValue(key: string, value: string): boolean {
+  return !(
+    TOKEN_COUNT_KEY.test(key) &&
+    !CREDENTIAL_TOKEN_KEY.test(key) &&
+    COUNT_VALUE.test(value.replace(/^(["'])(.*)\1$/, "$2"))
+  );
+}
+
 function redactText(value: string): string {
-  return value
-    .replace(/https?:\/\/[^\s<>"']+/gi, "[url redacted]")
-    .replace(/\bBearer\s+[^\s,;]+/gi, "Bearer [redacted]")
-    .replace(/\b(?:sk|pk|anyrouter)[-_][A-Za-z0-9._-]{8,}\b/gi, "[redacted]")
-    .replace(
-      /\b(authorization|api[-_ ]?key|apikey|access[-_ ]?token|refresh[-_ ]?token|client[-_ ]?secret|token|secret|password)\b\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^,;}\s]+)/gi,
-      "$1: [redacted]"
-    )
-    .replace(
-      /\b(prompt|messages?|content|input|body|response|request|payload|raw)\b\s*[:=]\s*.+/gi,
-      "$1: [redacted]"
-    );
+  return (
+    value
+      .replace(/https?:\/\/[^\s<>"']+/gi, "[url redacted]")
+      .replace(
+        /-{5}BEGIN [A-Z ]*PRIVATE\sKEY-{5}[\s\S]*?(?:-{5}END [A-Z ]*PRIVATE\sKEY-{5}|$)/g,
+        "[redacted]"
+      )
+      // Query credentials in a host/path with no scheme. The name is a
+      // credential word or ends in one after `-`/`_`, so `monkey=` stays.
+      .replace(
+        /([?&](?:[\w-]*[-_])?(?:api[-_]?key|apikey|key|token|secret|sig|signature|password|passwd|session[-_]?id|credentials?|passphrase)=)[^&\s"'#]+/gi,
+        "$1[redacted]"
+      )
+      .replace(/\bBearer\s+[^\s,;"'}]+/gi, "Bearer [redacted]")
+      .replace(/\b(?:sk|pk|anyrouter)[-_][A-Za-z0-9._-]{8,}\b/gi, "[redacted]")
+      .replace(/\bar-v\d+-[A-Za-z0-9._-]{10,}/gi, "[redacted]")
+      .replace(
+        SECRET_KEY_VALUE,
+        (match, key: string, quote: string, value: string) =>
+          isSecretValue(key, value) ? `${key}${quote}: [redacted]` : match
+      )
+      // These values can echo the prompt, so everything after the key goes.
+      // A quoted "message" is a provider error's own text, the part worth
+      // keeping, so only the bare `message:` form matches.
+      .replace(
+        /\b(flagged_input|prompt|messages|message(?!["'])|content|input|body|response|request|payload|raw)\b(["']?)\s*[:=]\s*.+/gi,
+        "$1$2: [redacted]"
+      )
+  );
 }
 
 function redactValue(value: unknown, key = ""): unknown {
@@ -79,6 +123,7 @@ function redactValue(value: unknown, key = ""): unknown {
       : "[redacted]";
   }
   if (typeof value === "string") {
+    if (SECRET_KEY.test(key) && isSecretValue(key, value)) return "[redacted]";
     if (normalizedKey === "error" || normalizedKey.endsWith("_error")) {
       return sanitizeError(value)?.message ?? null;
     }
@@ -220,6 +265,9 @@ export function sanitizeError(value: unknown): SafeError | null {
   ) {
     code = "auth_error";
     message = "Provider authentication failed";
+  } else if (/\bbad output\b/.test(lower)) {
+    code = "bad_output";
+    message = "Provider output was not usable";
   } else if (
     /\b(?:response missing|failed accept|invalid response|bad json|unusable)\b/.test(
       lower
@@ -277,4 +325,348 @@ export function sanitizeRunStatsJson(raw: string): string {
 
 export function sanitizeRunError(value: unknown): string | null {
   return sanitizeError(value)?.message ?? null;
+}
+
+/*
+ * `llm_calls.response_snippet` holds a JSON descriptor of a failed call,
+ * never the provider body or the model's answer. A denylist cannot make
+ * arbitrary text safe to store, so every field is allowlisted:
+ *
+ *   {"kind":"provider_error","status":401,"error":{"code":…,"message":…}}
+ *   {"kind":"provider_error","status":502,"text":"502 Bad Gateway nginx"}
+ *   {"kind":"provider_error","status":502,"body":"non-json error body (812 bytes)"}
+ *   {"kind":"model_output","len":48,"startsWith":"object","jsonParse":"error at pos 48",…}
+ *
+ * `canonicalLlmSnippet` rebuilds a descriptor from those fields alone and
+ * returns null for anything else, so a raw string never reaches D1 and a
+ * second pass leaves a stored descriptor unchanged.
+ */
+
+const MESSAGE_MAX = 120;
+const TEXT_MAX = 60;
+const TOP_KEYS_MAX = 10;
+/** Stands in for a top-level key no aidr prompt asks for. */
+const UNKNOWN_KEY = "*";
+
+/** `Bad`, `API`, `OpenRouter`, `rate-limit`, `max_tokens`, with light
+ *  punctuation. Mixed-case runs, digits inside words and long tokens are
+ *  how keys, ids and hosts look, so none of them match. */
+const WORD =
+  "(?:[A-Z]?[a-z]{1,23}|[A-Z]{1,12}|(?:[A-Z][a-z]{1,11}){2,3}[A-Z]{0,3})";
+const PROSE_WORD = new RegExp(
+  `^[([]?(?:${WORD}(?:['’-]${WORD}){0,3}|[a-z]{1,24}(?:_[a-z]{1,24}){1,4})[)\\].,:;!?…]*$`
+);
+const PROSE_NUMBER = /^\d{1,7}(?:\.\d{1,3})?[a-z]{0,2}[).,:;!?…]*$/;
+
+/** Each token that is not a word, or a number standing alone, becomes `*`.
+ *  Adjacent numbers go too: `0912 345 678` is a phone number. */
+function proseOnly(text: string): string {
+  const tokens = text.split(" ");
+  const kinds = tokens.map((token) =>
+    PROSE_WORD.test(token)
+      ? "word"
+      : PROSE_NUMBER.test(token)
+        ? "number"
+        : "other"
+  );
+  return tokens
+    .map((token, i) => {
+      if (kinds[i] === "word") return token;
+      const alone = kinds[i - 1] !== "number" && kinds[i + 1] !== "number";
+      return kinds[i] === "number" && alone ? token : "*";
+    })
+    .join(" ");
+}
+
+function safeMessage(value: unknown): string | undefined {
+  // A JSON message is an echoed payload, not the provider's own words.
+  if (typeof value !== "string" || /^\s*[[{]/.test(value)) return undefined;
+  const redacted = sanitizeText(value, MESSAGE_MAX);
+  return redacted ? proseOnly(redacted) : undefined;
+}
+
+/** A short non-JSON body is kept only when it is words and no more:
+ *  `Service Unavailable`, or nginx's 502 page without its tags. */
+function safeText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const text = value
+    .replace(/<\/?[A-Za-z][A-Za-z0-9]*\s*\/?>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, TEXT_MAX)
+    .trim();
+  if (!text || /[=:"'`@]|\d{4}/.test(text)) return undefined;
+  if (sanitizeText(text, TEXT_MAX) !== text) return undefined;
+  return proseOnly(text) === text ? text : undefined;
+}
+
+const ERROR_CODE = /^(?:[a-z][a-z_.-]{0,47}|[A-Z][A-Z_]{0,47})$/;
+/** A request field name: `messages[0].content`, `max_tokens`, `responseFormat`. */
+const PARAM_SEGMENT =
+  "[a-z]{1,24}(?:_[a-z]{1,24}){0,4}(?:[A-Z][a-z]{1,11}){0,3}";
+const PARAM_NAME = new RegExp(
+  `^${PARAM_SEGMENT}(?:\\[\\d{1,4}\\]|\\.${PARAM_SEGMENT})*$`
+);
+
+function safeCode(value: unknown): string | number | undefined {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 && value < 10_000
+      ? value
+      : undefined;
+  }
+  return typeof value === "string" && ERROR_CODE.test(value)
+    ? value
+    : undefined;
+}
+
+interface ErrorFields {
+  code?: string | number;
+  type?: string;
+  status?: string | number;
+  param?: string;
+  message?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function errorFields(value: unknown): ErrorFields | undefined {
+  const raw = typeof value === "string" ? { message: value } : value;
+  if (!isRecord(raw)) return undefined;
+  const type = safeCode(raw.type);
+  const param =
+    typeof raw.param === "string" &&
+    raw.param.length <= 64 &&
+    PARAM_NAME.test(raw.param)
+      ? raw.param
+      : undefined;
+  const fields: ErrorFields = {
+    code: safeCode(raw.code),
+    type: typeof type === "string" ? type : undefined,
+    status: safeCode(raw.status),
+    param,
+    message: safeMessage(raw.message),
+  };
+  const kept = Object.entries(fields).filter(([, v]) => v !== undefined);
+  return kept.length > 0
+    ? (Object.fromEntries(kept) as ErrorFields)
+    : undefined;
+}
+
+const BODY_NOTE = /^(?:non-)?json error body \(\d{1,7} bytes\)$/;
+
+function canonicalProviderError(raw: Record<string, unknown>) {
+  const head = { kind: "provider_error", status: safeErrorStatus(raw.status) };
+  const error = errorFields(raw.error);
+  if (error) return { ...head, error };
+  const text = safeText(raw.text);
+  if (text) return { ...head, text };
+  if (typeof raw.body === "string" && BODY_NOTE.test(raw.body)) {
+    return { ...head, body: raw.body };
+  }
+  return head;
+}
+
+const STARTS_WITH = new Set([
+  "object",
+  "array",
+  "fence",
+  "quote",
+  "markup",
+  "letter",
+  "digit",
+  "other",
+  "empty",
+]);
+const JSON_PARSE = /^(?:ok|not-json|error|error at pos \d{1,9})$/;
+/** Root keys of the JSON answers the prompts and validators in `worker/`
+ *  ask for. Any other key name is the model's own text. */
+const SCHEMA_KEYS: ReadonlySet<string> = new Set([
+  // score, translate, English summary
+  "results",
+  "translations",
+  "summaries",
+  "items",
+  // TL;DR and its repair
+  "bullets",
+  "bullets_en",
+  "bullets_vi",
+  "en",
+  "vi",
+  // weekly edition
+  "intro_en",
+  "intro_vi",
+  "stories",
+  // cluster, topics
+  "clusters",
+  "mappings",
+  // submission and suggestion review
+  "relevance",
+  "note",
+  "valid",
+  "rating",
+  "edits",
+  "translation",
+  // translation knowledge
+  "reusable",
+  "kind",
+  "source_term",
+  "vi_term",
+  "bad_vi",
+  // Jev panel
+  "vote",
+  "confidence",
+  "score",
+  "category",
+  "claims",
+  "rationale",
+  // translation review and repair
+  "schema_version",
+  "direction",
+  "verdict",
+  "fidelity",
+  "naturalness",
+  "checks",
+  "reason",
+  "back_translation",
+  "title",
+  "summary",
+  // mail wrap
+  "subject",
+  "preheader",
+  "body_md",
+  "cta_label",
+  "cta_url",
+]);
+
+function schemaKey(key: unknown): string {
+  return typeof key === "string" && SCHEMA_KEYS.has(key) ? key : UNKNOWN_KEY;
+}
+
+function canonicalModelOutput(raw: Record<string, unknown>) {
+  const len =
+    typeof raw.len === "number" && Number.isInteger(raw.len) && raw.len >= 0
+      ? raw.len
+      : undefined;
+  const topKeys = Array.isArray(raw.topKeys)
+    ? raw.topKeys.slice(0, TOP_KEYS_MAX).map(schemaKey)
+    : undefined;
+  const pick = <T>(value: T, ok: boolean) => (ok ? value : undefined);
+  return {
+    kind: "model_output",
+    len,
+    startsWith: pick(
+      raw.startsWith,
+      typeof raw.startsWith === "string" && STARTS_WITH.has(raw.startsWith)
+    ),
+    jsonParse: pick(
+      raw.jsonParse,
+      typeof raw.jsonParse === "string" && JSON_PARSE.test(raw.jsonParse)
+    ),
+    topKeys,
+    fenced: pick(raw.fenced, typeof raw.fenced === "boolean"),
+    truncatedAtMax: pick(
+      raw.truncatedAtMax,
+      typeof raw.truncatedAtMax === "boolean"
+    ),
+  };
+}
+
+/** The stored form of a snippet descriptor, or null when `value` is not
+ *  one. Accepts the descriptor object or its JSON. */
+export function canonicalLlmSnippet(value: unknown): string | null {
+  let raw = value;
+  if (typeof value === "string") {
+    try {
+      raw = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  if (!isRecord(raw)) return null;
+  if (raw.kind === "provider_error") {
+    return JSON.stringify(canonicalProviderError(raw));
+  }
+  if (raw.kind === "model_output") {
+    return JSON.stringify(canonicalModelOutput(raw));
+  }
+  return null;
+}
+
+/** Snippet for a non-2xx provider answer: the HTTP status plus the
+ *  allowlisted `error` fields of a JSON body, the words of a short text
+ *  body, or the body's size. */
+export function providerErrorSnippet(
+  status: number,
+  body: string
+): string | null {
+  const bytes = new TextEncoder().encode(body).length;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return canonicalLlmSnippet({
+      kind: "provider_error",
+      status,
+      text: safeText(body),
+      body: `non-json error body (${bytes} bytes)`,
+    });
+  }
+  const error = isRecord(parsed) ? errorFields(parsed.error) : undefined;
+  return canonicalLlmSnippet({
+    kind: "provider_error",
+    status,
+    error,
+    body: `json error body (${bytes} bytes)`,
+  });
+}
+
+function startsWithClass(content: string): string {
+  const first = content.trimStart()[0];
+  if (first === undefined) return "empty";
+  const fixed: Record<string, string> = {
+    "{": "object",
+    "[": "array",
+    "`": "fence",
+    '"': "quote",
+    "<": "markup",
+  };
+  if (fixed[first]) return fixed[first];
+  if (/\p{L}/u.test(first)) return "letter";
+  return /\d/.test(first) ? "digit" : "other";
+}
+
+/** Snippet for an answer that failed `accept` or `validate`: its shape,
+ *  read with the caller's own parser. The parse error's text quotes the
+ *  input, so only its position is kept. */
+export function modelOutputSnippet(
+  content: string,
+  opts: { parse: (raw: string) => unknown; truncatedAtMax: boolean }
+): string | null {
+  let jsonParse = "not-json";
+  let topKeys: string[] | undefined;
+  if (/[[{]/.test(content)) {
+    try {
+      const parsed = opts.parse(content);
+      jsonParse = "ok";
+      if (isRecord(parsed)) {
+        topKeys = Object.keys(parsed).slice(0, TOP_KEYS_MAX).map(schemaKey);
+      }
+    } catch (error) {
+      const at = /at position (\d+)/.exec(
+        error instanceof Error ? error.message : ""
+      );
+      jsonParse = at ? `error at pos ${at[1]}` : "error";
+    }
+  }
+  return canonicalLlmSnippet({
+    kind: "model_output",
+    len: content.length,
+    startsWith: startsWithClass(content),
+    jsonParse,
+    topKeys,
+    fenced: content.includes("```"),
+    truncatedAtMax: opts.truncatedAtMax,
+  });
 }

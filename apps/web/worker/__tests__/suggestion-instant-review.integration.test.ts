@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getOwnSuggestion, listContributions } from "../contributions.js";
+import { type LlmCallLogEntry, setLlmCallLogger } from "../llm.js";
 import { resetLlmCallLogSchemaCache } from "../llm-call-log.js";
 import {
   approveSuggestionById,
@@ -410,6 +411,41 @@ describe("approveSuggestionById — a failed re-translation", () => {
     expect(retry).toEqual({ ok: false, error: "re-translation failed" });
     expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirst);
     expect(suggestionRow(db, "s1").status).toBe("needs_review");
+  });
+});
+
+describe("approveSuggestionById — reader text in LLM telemetry", () => {
+  it("stores no snippet when the provider error echoes the suggestion", async () => {
+    const db = freshDb();
+    const env = envFor(db);
+    const readerText = "Jane Reader thinks OpenAI ra mắt mô hình mới";
+    db.prepare(
+      "INSERT INTO translation_suggestions (id, item_id, lang, field, suggestion, user_id, created_at, status) VALUES ('s1', 'item1', 'vi', 'title', ?, 'user-a', 1, 'pending')"
+    ).run(readerText);
+    // Moderation-style 400: the provider quotes the prompt back.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ error: { message: `Flagged: ${readerText}` } }),
+            { status: 400 }
+          )
+      )
+    );
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    try {
+      await approveSuggestionById(env, "s1");
+    } finally {
+      setLlmCallLogger(null);
+    }
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ task: "review", ok: false });
+    expect(entries[0]?.responseSnippet).toBeNull();
   });
 });
 

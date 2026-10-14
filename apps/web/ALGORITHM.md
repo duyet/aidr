@@ -1829,6 +1829,30 @@ run 23b4ed50 (2026-10-13) the old fail-open re-sent each item's full chain
 after the first wave, 225 translate 429s in 88 s. 5xx and timeouts never
 skip.
 
+A failed `llm_calls` row keeps `response_snippet`, a JSON descriptor built
+from allowlisted fields, never response text. A provider error keeps the
+HTTP status and, from a JSON body, `error.code`, `type`, `status`, `param`
+(a field name) and `message` (redacted, 120 chars, every token that is not
+a plain word or lone number shown as `*`). A text body keeps its first 60
+characters only when they are plain words (nginx's `502 Bad Gateway`);
+otherwise the row says `non-json error body (N bytes)`. A rejected answer
+keeps only its shape: length, first-character class, whether
+`parseJson` reads it (or the error position), up to ten top-level keys
+(a key no aidr prompt asks for is stored as `*`), whether it is fenced, and whether it used every allowed token. Transport
+failures and timeouts keep none; `error_code` covers them. Ok rows,
+`review` rows and `sensitive` calls keep none, and the logger drops any
+snippet that is not a descriptor (`canonicalLlmSnippet`). Every call
+whose prompt holds reader-written text (suggestions, submissions) passes
+`sensitive`; `llm-reader-data-callers.test.ts` parses `worker/`, lists
+each call site, and fails on any reference to `callAnyrouter`,
+`completeJson` or `completeJsonWithModel` it cannot follow to a call
+(aliases, re-exports, namespace aliases, computed members, dynamic
+imports of `llm.ts`). A caller's `validate` check logs an answer it cannot use
+as `bad_output` without moving the chain on. The Telegram caption summary
+logs task `caption`: an over-long answer cut to whole sentences is ok, and
+`bad_output` means the answer was dropped and the caption trimmed the
+source instead.
+
 `parseJson` drops stray closers when a plain parse fails: Laguna often ends
 with an extra `]`, or closes the root `}` before `,"bullets_vi":[...]`.
 Without that, a translate batch is lost and a TL;DR keeps only
