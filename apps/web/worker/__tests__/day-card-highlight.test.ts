@@ -97,6 +97,43 @@ describe("highlightBulletText", () => {
     ).toBe("Pop!_OS bans AI-generated code");
   });
 
+  it("drops a summary that repeats a headline ending in its source", () => {
+    // 2026-10-14 EN digest, bullet 1: the summary is the headline without
+    // "(@openainewsroom)", so a prefix check missed it and the line said the
+    // same news twice.
+    const title =
+      "OpenAI says the FBI arrested one of its staffers after the company found a hidden recording device in its offices and used its models to identify who placed it (@openainewsroom)";
+    expect(
+      highlightBulletText(
+        {
+          title,
+          title_vi: null,
+          summary:
+            "OpenAI says the FBI arrested one of its staffers after the company found a hidden recording device in its offices and used its models to identify who placed it.",
+          summary_vi: null,
+        },
+        "en"
+      )
+    ).toBe(title);
+  });
+
+  it("keeps the next sentence when the first only repeats the headline", () => {
+    expect(
+      highlightBulletText(
+        {
+          title: "Pop!_OS bans AI-generated code",
+          title_vi: null,
+          summary:
+            "Pop!_OS bans AI-generated code. System76 says the rule covers the desktop and its installer.",
+          summary_vi: null,
+        },
+        "en"
+      )
+    ).toBe(
+      "Pop!_OS bans AI-generated code — System76 says the rule covers the desktop and its installer."
+    );
+  });
+
   it("does not end the sentence at an initialism", () => {
     expect(
       highlightBulletText(
