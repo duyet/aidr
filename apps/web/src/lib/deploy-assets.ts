@@ -100,6 +100,10 @@ export interface AssetCarryPlan {
 /**
  * The live build's files that the new build lacks retire `now`. Files that
  * retired earlier keep their time, so re-carrying never extends them.
+ *
+ * `carry` lists the newest retired files first, ties by path. The download
+ * step can hit its deadline, and the build just replaced is the one whose
+ * HTML is most likely still cached, so it goes before 47-hour-old files.
  */
 export function planAssetCarry(
   current: readonly string[],
@@ -119,7 +123,9 @@ export function planAssetCarry(
   }
   return {
     history: { built: [...building].sort(), retired },
-    carry: Object.keys(retired).sort(),
+    carry: Object.keys(retired).sort(
+      (a, b) => retired[b] - retired[a] || (a < b ? -1 : a > b ? 1 : 0)
+    ),
   };
 }
 
@@ -177,6 +183,22 @@ const MEDIA_TYPES = new Map<string, RegExp>([
   ["svg", /^image\/svg\+xml$/],
 ]);
 
+const NO_MEDIA_TYPE = "no expected content type for this file extension";
+
+function expectedMediaType(path: string): RegExp | undefined {
+  const dot = path.lastIndexOf(".");
+  return dot === -1 ? undefined : MEDIA_TYPES.get(path.slice(dot + 1));
+}
+
+/**
+ * Build files the carry would refuse for their extension. `assetBodyProblem`
+ * drops them after the deploy, so a new output type (`.map`, `.wasm`, `.json`)
+ * must fail the PR gate instead.
+ */
+export function uncarriableAssets(paths: readonly string[]): string[] {
+  return paths.filter((path) => !expectedMediaType(path));
+}
+
 /**
  * Why a downloaded body can't be published as `path`, or null when it can.
  * A carried file is served under its hashed name to every cached page that
@@ -187,10 +209,8 @@ export function assetBodyProblem(
   contentType: string,
   byteLength: number
 ): string | null {
-  const dot = path.lastIndexOf(".");
-  const expected =
-    dot === -1 ? undefined : MEDIA_TYPES.get(path.slice(dot + 1));
-  if (!expected) return "no expected content type for this file extension";
+  const expected = expectedMediaType(path);
+  if (!expected) return NO_MEDIA_TYPE;
   const media = contentType.split(";")[0].trim().toLowerCase();
   if (!expected.test(media)) {
     return `content-type ${media || "(none)"} does not match the extension`;

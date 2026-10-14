@@ -61,14 +61,16 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
+/** Any literal that sets a cache lifetime, whichever directive carries it. */
+const LIFETIME_LITERAL =
+  /(["'`])([^"'`\n]*(?:max-age|s-maxage|stale-while-revalidate)=\d+[^"'`\n]*)\1/g;
+
 const cacheLiterals = new Map<string, string[]>();
 for (const file of ["src", "worker"].flatMap((dir) =>
   sourceFiles(join(WEB_ROOT, dir))
 )) {
   const literals = [
-    ...readFileSync(file, "utf8").matchAll(
-      /(["'`])([^"'`\n]*max-age=\d+[^"'`\n]*)\1/g
-    ),
+    ...readFileSync(file, "utf8").matchAll(LIFETIME_LITERAL),
   ].map((match) => match[2]);
   if (literals.length > 0)
     cacheLiterals.set(relative(WEB_ROOT, file), literals);
@@ -104,7 +106,7 @@ function htmlLifetimeSeconds(cacheControl: string, samplePage: string): number {
 }
 
 describe("HTML cache lifetime", () => {
-  it("classifies every file that sets a max-age", () => {
+  it("classifies every file that sets a cache lifetime", () => {
     const unclassified = [...cacheLiterals.keys()].filter(
       (file) => !(file in HTML_POLICY_FILES || NON_HTML_FILES.has(file))
     );
