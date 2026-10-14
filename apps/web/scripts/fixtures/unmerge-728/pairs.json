@@ -1,0 +1,827 @@
+{
+  "source": "#728 hand labels (fixtures/unmerge-728/labels.txt), W canonicals only",
+  "canonicals": 56,
+  "pairs": [
+    {
+      "canonicalId": "014425c5eb8633ee83df2c4eec783a00bb7f62c996f07341f68558e9f2851362",
+      "mergedId": "03764dc469b0e157f3c8d9671c1e03c9b4860aa68ce9f3b5cb6fc0f199087515",
+      "group": "03764dc469b0e157f3c8d9671c1e03c9b4860aa68ce9f3b5cb6fc0f199087515",
+      "why": "labelled",
+      "canonical": "[lobsters] Hardly Promethean",
+      "merged": "[lobsters] I built a small app that scours the internet to create a daily personolized news briefing"
+    },
+    {
+      "canonicalId": "01b10eb425f337daa516368047ffb9f837a0cb746e8e7a15d513d56fc8edc93c",
+      "mergedId": "211c5fad6842f86127407f9a6a13e90f0e477a69187661c46ec6122ce38d5c93",
+      "group": "slug:dd7fde64",
+      "why": "labelled",
+      "canonical": "[vnexpress-tech] Hacker 17 tuổi tạo trợ lý AI thâm nhập nền tảng của Microsoft",
+      "merged": "[marketbrief] Rebecca Cooke Issues Cease and Desist to Rep. Van Orden Over AI Deepfake Ads"
+    },
+    {
+      "canonicalId": "01b10eb425f337daa516368047ffb9f837a0cb746e8e7a15d513d56fc8edc93c",
+      "mergedId": "a1c283aaa725332f3bc15be0cbfca68bb5c63e7cf06db575e30c2b34e80abf03",
+      "group": "slug:dd7fde64",
+      "why": "labelled",
+      "canonical": "[vnexpress-tech] Hacker 17 tuổi tạo trợ lý AI thâm nhập nền tảng của Microsoft",
+      "merged": "[huggingnews] Rebecca Cooke Issues Cease and Desist to Rep. Van Orden Over AI Deepfake Ads"
+    },
+    {
+      "canonicalId": "04915f94cc5d072fc237152859eaa3a6e282f96fa881af3a3bafa6d1a1618674",
+      "mergedId": "2556cdd8feb2abf9c45949165ef6da565c288491daee66591db79ba5666b76b8",
+      "group": "slug:ed519339",
+      "why": "labelled",
+      "canonical": "[huggingnews] OpenAI and Meta Leaders Warn Autonomous AI Risks Human Extinction",
+      "merged": "[marketbrief] Rep. Ro Khanna Proposes Ban on Recursive Self Improving AI"
+    },
+    {
+      "canonicalId": "04915f94cc5d072fc237152859eaa3a6e282f96fa881af3a3bafa6d1a1618674",
+      "mergedId": "b662a1f10bc05844d2cdc96e7f85ab91148298b97e5c8db2914f3109d336b59c",
+      "group": "slug:ed519339",
+      "why": "labelled",
+      "canonical": "[huggingnews] OpenAI and Meta Leaders Warn Autonomous AI Risks Human Extinction",
+      "merged": "[huggingnews] Rep. Ro Khanna Proposes Ban on Recursive Self Improving AI"
+    },
+    {
+      "canonicalId": "049dbd0cd995812528a82b7c207ec183dfc5bad175e08acfac6404b07252b09d",
+      "mergedId": "3d09c9ead0a45c93597e31a1416900abac09233706ae0f0c3eb4928d36965277",
+      "group": "3d09c9ead0a45c93597e31a1416900abac09233706ae0f0c3eb4928d36965277",
+      "why": "labelled",
+      "canonical": "[vnexpress-tech] 'Kiểm tra thủ công hàng triệu bưu gửi mỗi ngày là không khả thi'",
+      "merged": "[theverge-ai] Here’s what AI leaders are saying about Trump’s new safety plan"
+    },
+    {
+      "canonicalId": "0ff719d6f30314f35b9c976749f025f76718a99d180fbd2f1e8d029442c63367",
+      "mergedId": "5a518438a200e5d8c9bc483b9e99063ef2ccd1c1433c872ef586a7bf61afed80",
+      "group": "slug:d04471c4",
+      "why": "labelled",
+      "canonical": "[aws-ml] Uplifting conversion across the acquisition funnel with personalization using contextual bandits on AWS",
+      "merged": "[marketbrief] Bond Investor Demands Drive Up AI Data Center Funding Costs"
+    },
+    {
+      "canonicalId": "0ff719d6f30314f35b9c976749f025f76718a99d180fbd2f1e8d029442c63367",
+      "mergedId": "f8ba4a2a0b959f7f5ab0e7e98d115964772799a1804295c402c6a73cfc732ddf",
+      "group": "slug:d04471c4",
+      "why": "labelled",
+      "canonical": "[aws-ml] Uplifting conversion across the acquisition funnel with personalization using contextual bandits on AWS",
+      "merged": "[huggingnews] Bond Investor Demands Drive Up AI Data Center Funding Costs"
+    },
+    {
+      "canonicalId": "12c7c4b93f1e3a449874069b9582785fa6a140290dd9946bd4dcebb519c16b4d",
+      "mergedId": "0af325cbd47ea40ca1be2592e7867e020d86b98a33e8e89a82682c9b35acdaa9",
+      "group": "slug:df053323",
+      "why": "labelled",
+      "canonical": "[marketbrief] AI Web Text Hits 31% and Harms Language Model Training",
+      "merged": "[marketbrief] AI Agents Probed White House and Department of War Websites"
+    },
+    {
+      "canonicalId": "12c7c4b93f1e3a449874069b9582785fa6a140290dd9946bd4dcebb519c16b4d",
+      "mergedId": "226c612c48dfa87551de54b59deca0e587b937de1c829001625b5914e9e8c70a",
+      "group": "slug:df053323",
+      "why": "labelled",
+      "canonical": "[marketbrief] AI Web Text Hits 31% and Harms Language Model Training",
+      "merged": "[huggingnews] AI Agents Probed White House and Department of War Websites"
+    },
+    {
+      "canonicalId": "16556964ca47ec48092c26d1d8476a8e88a072c5bef888bbd7b02746acec7e84",
+      "mergedId": "1deeac0a36bcc72088407b55aa9625b5cff7a90ff45493c8674b887c461a1202",
+      "group": "1deeac0a36bcc72088407b55aa9625b5cff7a90ff45493c8674b887c461a1202",
+      "why": "labelled",
+      "canonical": "[wired-ai] Anthropic Says It Discovered a Crispr-Like System. Now What?",
+      "merged": "[wired-ai] There Are Plenty of Reasons to Be Concerned About Bioweapons Development—Even Without AI"
+    },
+    {
+      "canonicalId": "26ce368aa0f6ddaa09d63bcd52204457790dfdfe28728a0fd04c0bea2ada9026",
+      "mergedId": "16d6df56cd89ac47c3650e57bd72bdb63c918eea8af494b48d0a533c7659d685",
+      "group": "slug:b412b4b6",
+      "why": "labelled",
+      "canonical": "[techcrunch-ai] Airbnb adds AI search, more social features",
+      "merged": "[marketbrief] Synthesia Launches Interactive AI Avatars for Live Company Training"
+    },
+    {
+      "canonicalId": "26ce368aa0f6ddaa09d63bcd52204457790dfdfe28728a0fd04c0bea2ada9026",
+      "mergedId": "83bf65baa2f777dd4e89a924938656d776b774e65e394c2562c7c6c0594a5177",
+      "group": "slug:b412b4b6",
+      "why": "labelled",
+      "canonical": "[techcrunch-ai] Airbnb adds AI search, more social features",
+      "merged": "[huggingnews] Synthesia Launches Interactive AI Avatars for Live Company Training"
+    },
+    {
+      "canonicalId": "270d2009beef3a33ff16c11630a56d9df4068ff4db88be18f9cbe9e1229361b2",
+      "mergedId": "7abdc111bc8bd6b6ce0db468b9a6d5fbec33fb4eda2afc2f66814190809d70e7",
+      "group": "slug:2c56f69e",
+      "why": "labelled",
+      "canonical": "[hn] Sharing AI Progress in Mathematics",
+      "merged": "[huggingnews] Allen AI Publishes Nature Paper on Byte Level LLM Adaptation"
+    },
+    {
+      "canonicalId": "270d2009beef3a33ff16c11630a56d9df4068ff4db88be18f9cbe9e1229361b2",
+      "mergedId": "7d22e78c1eb6da2640a17f6fbdaa519eb1d4daea082b46445d0fe7cd59635e3d",
+      "group": "slug:2c56f69e",
+      "why": "labelled",
+      "canonical": "[hn] Sharing AI Progress in Mathematics",
+      "merged": "[marketbrief] Allen AI Publishes Nature Paper on Byte Level LLM Adaptation"
+    },
+    {
+      "canonicalId": "310ebe3dc2ffefee96e57142decee5688e093626d91c4f12b6df1f4cceed4150",
+      "mergedId": "7c2855a6e7c6db5a72b8370d41f6bfb45147c7ce89df325fa1e896f41c3938a2",
+      "group": "slug:86d58e08",
+      "why": "labelled",
+      "canonical": "[marketbrief] Anthropic Founders to Keep 50.1% Voting Power on Key Matters After IPO",
+      "merged": "[marketbrief] Anthropic Backs Australian Laws for AI Agent Breach Reporting"
+    },
+    {
+      "canonicalId": "310ebe3dc2ffefee96e57142decee5688e093626d91c4f12b6df1f4cceed4150",
+      "mergedId": "7f997de31b86132699eae542cc5033082911f1fea7cf05ccdba44c48aae4fd7d",
+      "group": "slug:709a2364",
+      "why": "labelled",
+      "canonical": "[marketbrief] Anthropic Founders to Keep 50.1% Voting Power on Key Matters After IPO",
+      "merged": "[marketbrief] DeepSeek Secures At Least $12B in Funding Before 2027 IPO"
+    },
+    {
+      "canonicalId": "310ebe3dc2ffefee96e57142decee5688e093626d91c4f12b6df1f4cceed4150",
+      "mergedId": "9dd3336afb836a62218956f1cb898453a17b59b073b622d97ff085acebed83eb",
+      "group": "slug:a13ecceb",
+      "why": "labelled",
+      "canonical": "[marketbrief] Anthropic Founders to Keep 50.1% Voting Power on Key Matters After IPO",
+      "merged": "[marketbrief] AMD Plans Substantial Compute Supply Boost in 2027"
+    },
+    {
+      "canonicalId": "345b03ac54d91ebef7b044f7399550fe42672a0477b0472369887dd5c912a2d6",
+      "mergedId": "60e195b06c19c87bef00b8441d7399c66723e10d56b4cc73d11320b8c69f0758",
+      "group": "60e195b06c19c87bef00b8441d7399c66723e10d56b4cc73d11320b8c69f0758",
+      "why": "labelled",
+      "canonical": "[marketbrief] Nvidia’s $13B Hugging Face Buyout Follows OpenAI Bid",
+      "merged": "[techcrunch-ai] Source: Inference provider Modal Labs closing in on $750M round at $15.75B valuation"
+    },
+    {
+      "canonicalId": "345b03ac54d91ebef7b044f7399550fe42672a0477b0472369887dd5c912a2d6",
+      "mergedId": "96f330313d97631e8208e421e96462eaf8ddf140a0019964bf9b582a74ef21c1",
+      "group": "slug:bebc5bb9",
+      "why": "labelled",
+      "canonical": "[marketbrief] Nvidia’s $13B Hugging Face Buyout Follows OpenAI Bid",
+      "merged": "[marketbrief] Samsung Invests $1B in KKR and Nvidia Backed AI Firm Helix"
+    },
+    {
+      "canonicalId": "345b03ac54d91ebef7b044f7399550fe42672a0477b0472369887dd5c912a2d6",
+      "mergedId": "9dab630e4f0113dbdcf3281df898a3b3879c4aa0b2c760c7703ce538aaf9ba2d",
+      "group": "slug:bebc5bb9",
+      "why": "labelled",
+      "canonical": "[marketbrief] Nvidia’s $13B Hugging Face Buyout Follows OpenAI Bid",
+      "merged": "[huggingnews] Samsung Invests $1B in KKR and Nvidia Backed AI Firm Helix"
+    },
+    {
+      "canonicalId": "3b2f71e82cac1ec6135e91d65455ed459530b42d52f6f32dc262bc45c6dbb178",
+      "mergedId": "51d5879b2f4f40b77d57c968d0ecfa3629f60819171f7227f4dbc6ce979b1243",
+      "group": "slug:84ad57d0",
+      "why": "labelled",
+      "canonical": "[marketbrief] Runway Unveils Project Continuum OS Based on Real-Time Video",
+      "merged": "[marketbrief] Pi Ships Pi 1.0 With Pi Durable Runtime"
+    },
+    {
+      "canonicalId": "3b2f71e82cac1ec6135e91d65455ed459530b42d52f6f32dc262bc45c6dbb178",
+      "mergedId": "719bc143b29c312fcb4b8d62fa82be115263632a38e9c3ea3c14313bd4d14395",
+      "group": "slug:84ad57d0",
+      "why": "labelled",
+      "canonical": "[marketbrief] Runway Unveils Project Continuum OS Based on Real-Time Video",
+      "merged": "[huggingnews] Pi Ships Pi 1.0 With Pi Durable Runtime"
+    },
+    {
+      "canonicalId": "4280f3756dc6030f0abe4de10aa40776754e940f5fec957bbd4e8fa0feca5ef1",
+      "mergedId": "5aafb242bf3873bbf1078362efd0a07d5461107cb4978bbade36c435af9028af",
+      "group": "5aafb242bf3873bbf1078362efd0a07d5461107cb4978bbade36c435af9028af",
+      "why": "labelled",
+      "canonical": "[hn] Mozilla shutting down Solo AI website creator",
+      "merged": "[techcrunch-ai] Circuit Breaker Labs hopes to make AI safer for your kids (and you)"
+    },
+    {
+      "canonicalId": "4474df4c0f97432a7bb2d9373ce3b35e8a0ef246a2038dcb7fe4d187008f338a",
+      "mergedId": "67dac9f5f51307d87730bad3285619039bd68b26bc1dae26995bbbeb1ffca7ca",
+      "group": "67dac9f5f51307d87730bad3285619039bd68b26bc1dae26995bbbeb1ffca7ca",
+      "why": "labelled",
+      "canonical": "[hn] Pop!_OS bans AI-generated code from much of its codebase",
+      "merged": "[techcrunch-ai] Amazon responds to data center backlash, says it no longer uses NDAs"
+    },
+    {
+      "canonicalId": "4e724b013687bd2ae9880f08851000f2032eb0d9aaebf6c3c1e5adcbd7565c73",
+      "mergedId": "156fd1783a60bd5e387cfbd6d255421bdd29c7992f284e4a66b8f318ebbde01f",
+      "group": "156fd1783a60bd5e387cfbd6d255421bdd29c7992f284e4a66b8f318ebbde01f",
+      "why": "labelled",
+      "canonical": "[vnexpress-tech] Tính năng hút người dùng của dòng smartphone gập Samsung",
+      "merged": "[vnexpress-tech] Việt Nam tăng bậc Chỉ số đổi mới sáng tạo toàn cầu 2026"
+    },
+    {
+      "canonicalId": "54a584b50c10ead2634337a6de773b6a3326dd1916a9f5fec6fdecb1eddc4e07",
+      "mergedId": "4e34dbe05da6e0083ba91bb80039cf29e757f86e29bea5da90f1e0a74cdfc5e2",
+      "group": "slug:2e066e80",
+      "why": "labelled",
+      "canonical": "[huggingnews] Claude Opus 5.5 Debuts at No. 2 in Agent Arena at 64% Lower Cost Per Task",
+      "merged": "[huggingnews] Cognition Cuts Devin Costs Up to 70% and Tops FrontierCode 1.1"
+    },
+    {
+      "canonicalId": "54a584b50c10ead2634337a6de773b6a3326dd1916a9f5fec6fdecb1eddc4e07",
+      "mergedId": "66ea8c54b0fa5d8d3cce3136bee4cc07567f00c3a46c02fed409027989590f27",
+      "group": "slug:2e066e80",
+      "why": "twin",
+      "canonical": "[huggingnews] Claude Opus 5.5 Debuts at No. 2 in Agent Arena at 64% Lower Cost Per Task",
+      "merged": "[marketbrief] Cognition Cuts Devin Costs Up to 70% and Tops FrontierCode 1.1"
+    },
+    {
+      "canonicalId": "5cc8f180d7d24936a05928cadc3d22cfb99abec849665825e4f6ea152b125427",
+      "mergedId": "46f3cccb06b517cd610478d086481098f40997ce4a50d3bb994507053278cd45",
+      "group": "slug:b6c596c9",
+      "why": "labelled",
+      "canonical": "[google-research] How Diffusion Controller unifies and simplifies AI image generation",
+      "merged": "[huggingnews] Salesforce’s $2B Listen Labs Acquisition Adds Intent to Agentforce"
+    },
+    {
+      "canonicalId": "5cc8f180d7d24936a05928cadc3d22cfb99abec849665825e4f6ea152b125427",
+      "mergedId": "b6832719d668b752dccfab01be495fde3084bd3adef4911bb7256dbb90f93275",
+      "group": "slug:b6c596c9",
+      "why": "labelled",
+      "canonical": "[google-research] How Diffusion Controller unifies and simplifies AI image generation",
+      "merged": "[marketbrief] Salesforce’s $2B Listen Labs Acquisition Adds Intent to Agentforce"
+    },
+    {
+      "canonicalId": "6061c5e00485694d7c5666d97dff0c0fa43224ebb6fa8b45e033555d147d30be",
+      "mergedId": "056f364aefe7ae409420a3e1ac63506c4632fc0a4b10eb995611044b8816f9b3",
+      "group": "slug:2d81f1f6",
+      "why": "labelled",
+      "canonical": "[marketbrief] Nvidia and SoftBank Deliver Final $20B for OpenAI March Round",
+      "merged": "[huggingnews] Nvidia and Delta Develop Level 4 Autonomous Driving Systems"
+    },
+    {
+      "canonicalId": "6061c5e00485694d7c5666d97dff0c0fa43224ebb6fa8b45e033555d147d30be",
+      "mergedId": "e189d64d07e213fb439de08808cfdd429f8cc7d7ff71b07053e43ee3272db03d",
+      "group": "slug:2d81f1f6",
+      "why": "labelled",
+      "canonical": "[marketbrief] Nvidia and SoftBank Deliver Final $20B for OpenAI March Round",
+      "merged": "[marketbrief] Nvidia and Delta Develop Level 4 Autonomous Driving Systems"
+    },
+    {
+      "canonicalId": "607871af2302631627c4b575690b485b7597f0b7ad336f54e17ed7a29d5aaffd",
+      "mergedId": "6f0e071b31e9ab003001b201a9d4a8c8bb1db31fd4395fecac077b5c35485c8f",
+      "group": "slug:d0391520",
+      "why": "twin",
+      "canonical": "[marketbrief] Flow Raises $50M at $750M Valuation to Automate Hardware Engineering",
+      "merged": "[marketbrief] Anthropic Plans Mega IPO Before Thanksgiving Holiday"
+    },
+    {
+      "canonicalId": "607871af2302631627c4b575690b485b7597f0b7ad336f54e17ed7a29d5aaffd",
+      "mergedId": "bd9df2c839d0d375e2e4212c97dd95c51ec57b2611af444378adc8a598f49849",
+      "group": "slug:d0391520",
+      "why": "labelled",
+      "canonical": "[marketbrief] Flow Raises $50M at $750M Valuation to Automate Hardware Engineering",
+      "merged": "[huggingnews] Anthropic Plans Mega IPO Before Thanksgiving Holiday"
+    },
+    {
+      "canonicalId": "61020cdda2cdcf26cc62f2dcabb69e84d856e492f43ca7612c29ccea49f8ddcb",
+      "mergedId": "2b70b4b201fc5cb689656097c48595a95dab142b57f4cb6144a5993747130c92",
+      "group": "slug:170f5fb1",
+      "why": "labelled",
+      "canonical": "[huggingnews] SGLang AI Beats Level 9 Fox in Super Smash Bros Melee",
+      "merged": "[huggingnews] Tavus AI Fools 48% of Humans in First Video Turing Test Pass"
+    },
+    {
+      "canonicalId": "61020cdda2cdcf26cc62f2dcabb69e84d856e492f43ca7612c29ccea49f8ddcb",
+      "mergedId": "dd0835ebdf20cf0bc2b15469a2789189c017790ba8b564a1412475867fbeb4f5",
+      "group": "slug:170f5fb1",
+      "why": "labelled",
+      "canonical": "[huggingnews] SGLang AI Beats Level 9 Fox in Super Smash Bros Melee",
+      "merged": "[marketbrief] Tavus AI Fools 48% of Humans in First Video Turing Test Pass"
+    },
+    {
+      "canonicalId": "6388d451c8f22ed73295cdca05510f8e1508a274932a82794fd72413429fda0d",
+      "mergedId": "894be90f6e1afde6ceba44b7cb70d289405a530318d276e12ea863dbcfc28fec",
+      "group": "894be90f6e1afde6ceba44b7cb70d289405a530318d276e12ea863dbcfc28fec",
+      "why": "labelled",
+      "canonical": "[vnexpress-tech] Máy tính lượng tử giải bài toán 110 năm trong 19 giây",
+      "merged": "[vnexpress-tech] Thử nghiệm truyền điện không dây đầu tiên giữa hai tàu vũ trụ"
+    },
+    {
+      "canonicalId": "6b6ee06883ef69348f08d79d54d4061fc52ba2ea1ef082812e99e57960839e18",
+      "mergedId": "7b9024771ee4fe13140ea66adc8b343da3710d20426f5713fcf421eef942ee17",
+      "group": "7b9024771ee4fe13140ea66adc8b343da3710d20426f5713fcf421eef942ee17",
+      "why": "labelled",
+      "canonical": "[huggingnews] Lambda Raises $4B Before IPO at $14.5B Valuation",
+      "merged": "[techcrunch-ai] The next hurdle for AI agents: getting websites to let them in"
+    },
+    {
+      "canonicalId": "6b6ee06883ef69348f08d79d54d4061fc52ba2ea1ef082812e99e57960839e18",
+      "mergedId": "a7013ecd4f4c7ec9e8b1450da23eaf287143d11d11190bc06bc73d5d2ecd3d75",
+      "group": "a7013ecd4f4c7ec9e8b1450da23eaf287143d11d11190bc06bc73d5d2ecd3d75",
+      "why": "labelled",
+      "canonical": "[huggingnews] Lambda Raises $4B Before IPO at $14.5B Valuation",
+      "merged": "[techcrunch-ai] How AI decision models could change content moderation"
+    },
+    {
+      "canonicalId": "6cdf64e41cbdbd50ff12b81185e2c0c1333d3bd7d559e12b812ee8e61fc2da3a",
+      "mergedId": "4ed4af7b8a3ce2d1447b439ac6fe4154665494216618e23a86678ad223667884",
+      "group": "slug:2f269c2e",
+      "why": "labelled",
+      "canonical": "[hn] Study: Claude, ChatGPT Offer Different Shopping Prices Based on Wealth",
+      "merged": "[huggingnews] Anjney Midha Launches $4 B300 GPU Nodes for Gov and Edu"
+    },
+    {
+      "canonicalId": "6cdf64e41cbdbd50ff12b81185e2c0c1333d3bd7d559e12b812ee8e61fc2da3a",
+      "mergedId": "c15032cab720b5686fe77cb260ce2c1ea1ce084d78a974e56d6ba9628751e848",
+      "group": "slug:2f269c2e",
+      "why": "labelled",
+      "canonical": "[hn] Study: Claude, ChatGPT Offer Different Shopping Prices Based on Wealth",
+      "merged": "[marketbrief] Anjney Midha Launches $4 B300 GPU Nodes for Gov and Edu"
+    },
+    {
+      "canonicalId": "73bfb73be41a76b772a3ef766fc3d8e6b04c0efd66c257aabc2a46a05be82b18",
+      "mergedId": "49c2433cc22ff225c95ffeba4bcdd3a2581881e039f58836ebf04db0a140d584",
+      "group": "slug:09ded2f5",
+      "why": "labelled",
+      "canonical": "[techcrunch-ai] Destro AI’s secret sauce is getting robots and humans on the same page",
+      "merged": "[huggingnews] Podonos Launches Onepin to Fix AI Voice Errors via 4M Word Dictionary"
+    },
+    {
+      "canonicalId": "73bfb73be41a76b772a3ef766fc3d8e6b04c0efd66c257aabc2a46a05be82b18",
+      "mergedId": "662e5bd68eae58aa44abf1920e60d40d356c838775361bf5ff40e2eaac66e113",
+      "group": "slug:09ded2f5",
+      "why": "labelled",
+      "canonical": "[techcrunch-ai] Destro AI’s secret sauce is getting robots and humans on the same page",
+      "merged": "[marketbrief] Podonos Launches Onepin to Fix AI Voice Errors via 4M Word Dictionary"
+    },
+    {
+      "canonicalId": "73fddb6774391e5a4cb2093d30267d0c26f502fd4c4b0d7a7e92e9e01a36957d",
+      "mergedId": "3ef7948c1b25affb6679133f4981aed39b84ba0242a19cbd42ed509177422b55",
+      "group": "3ef7948c1b25affb6679133f4981aed39b84ba0242a19cbd42ed509177422b55",
+      "why": "labelled",
+      "canonical": "[hn] Pi.dev: You Said No MCP",
+      "merged": "[hn] Show HN: Strata – an expressive semantic layer that can say no to your LLM"
+    },
+    {
+      "canonicalId": "7feadc2bb05519f0841dfe602649ce0831df13bb3c867c259bda9125ed4292ae",
+      "mergedId": "11acd6756ff046e1720711168317b1dd250b1a0c35332bc1b0fdc8a44a844329",
+      "group": "slug:9b7cb112",
+      "why": "labelled",
+      "canonical": "[marktechpost] One Bad Prompt Took Down a Company’s Salesforce: RSA’s Jim Taylor on Agent ID and Taming the 4,000 Shadow AI Agents Hiding in Your Enterprise",
+      "merged": "[huggingnews] Trump Labels AI Safety Fears Phony Threats to Accelerate US AI"
+    },
+    {
+      "canonicalId": "7feadc2bb05519f0841dfe602649ce0831df13bb3c867c259bda9125ed4292ae",
+      "mergedId": "7db00c3486baef154a8718d487f66cb8ebff6dda2eb3a4a64f8b2ec2dc1abf61",
+      "group": "slug:9b7cb112",
+      "why": "labelled",
+      "canonical": "[marktechpost] One Bad Prompt Took Down a Company’s Salesforce: RSA’s Jim Taylor on Agent ID and Taming the 4,000 Shadow AI Agents Hiding in Your Enterprise",
+      "merged": "[marketbrief] Trump Labels AI Safety Fears Phony Threats to Accelerate US AI"
+    },
+    {
+      "canonicalId": "807279d4914b31632db20038420ea7b8178ca6018d3f0fb171bcea770f94a37e",
+      "mergedId": "e67e8d18ed197a0083b7794f9d2e69bb622427ea7a855b8ad534018e3c5e9cce",
+      "group": "slug:f8bfbe37",
+      "why": "twin",
+      "canonical": "[marketbrief] Meta's New Muse AI Unmasked Private Users to Build Dossiers on Vulnerable Groups",
+      "merged": "[marketbrief] Factory AI Fires Advisor for Secret Ties to Rival Cognition"
+    },
+    {
+      "canonicalId": "807279d4914b31632db20038420ea7b8178ca6018d3f0fb171bcea770f94a37e",
+      "mergedId": "fac27efe1ccb57b4c425598b353e502a3324614d7efc8ddfd0ea42c486867e84",
+      "group": "slug:f8bfbe37",
+      "why": "labelled",
+      "canonical": "[marketbrief] Meta's New Muse AI Unmasked Private Users to Build Dossiers on Vulnerable Groups",
+      "merged": "[huggingnews] Factory AI Fires Advisor for Secret Ties to Rival Cognition"
+    },
+    {
+      "canonicalId": "80d6abafb0a0d295facee5f2a14f59a50ab2f52cfadda679ebefd73c1fa453d7",
+      "mergedId": "9d0cd3e06e9ac75dcc598260ad3f7a94b9d9738cac4add6427e4faeafb7ddd90",
+      "group": "9d0cd3e06e9ac75dcc598260ad3f7a94b9d9738cac4add6427e4faeafb7ddd90",
+      "why": "labelled",
+      "canonical": "[theverge-ai] Instagram is adding an AI ‘assistant’ to tell you how to post",
+      "merged": "[techcrunch-ai] Reddit is killing RSS feeds and ending public API access because of AI bots"
+    },
+    {
+      "canonicalId": "83406123c1b1f9329fb785f014b7ed992ca9c49d5bf37f44eb74478dba9dc12d",
+      "mergedId": "5a000d8470c8abcbdb9381497b05d37244933a6ea490233f4edf7b6a98c557b2",
+      "group": "5a000d8470c8abcbdb9381497b05d37244933a6ea490233f4edf7b6a98c557b2",
+      "why": "labelled",
+      "canonical": "[techcrunch-ai] Will the HomeView be Apple’s first smart home success?",
+      "merged": "[techmeme] Apple unveils the fourth-gen Apple TV 4K, with Siri AI, an A19 chip, 128GB of storage, far-field mics, Wi-Fi 7, and Bluetooth 6, shipping November 13 for $299 (Jennifer Pattison Tuohy/The Verge)"
+    },
+    {
+      "canonicalId": "84b236f2134e84d24bb9a2229969d21afe5e01fddf1e6bea1c9855b772048184",
+      "mergedId": "884239280fb55cc2e89dd3fe0a2aac85640b3e2bd9b0005c7b02d4caf5a6c430",
+      "group": "884239280fb55cc2e89dd3fe0a2aac85640b3e2bd9b0005c7b02d4caf5a6c430",
+      "why": "labelled",
+      "canonical": "[vnexpress-tech] Nhà khoa học gốc Việt tìm cách đưa đồng hồ nguyên tử ra không gian",
+      "merged": "[vnexpress-tech] Đài quan sát 250 triệu USD của NASA sắp rơi xuống Trái Đất"
+    },
+    {
+      "canonicalId": "8d0ba39a2c2cc550669e8a6a4e0987571fdb0a19861eeeb4bd787982d6a8e8ef",
+      "mergedId": "736e1984260bca54475c7243feae2c757b86744401df80be878ccc100d0b3f49",
+      "group": "slug:13c28dc5",
+      "why": "twin",
+      "canonical": "[marketbrief] South Korea Kospi Leads Global Q3 Losses With 18.8% Drop",
+      "merged": "[marketbrief] OpenAI Shifts 5% to 10% of Compute to Safety as It Slows AI Development"
+    },
+    {
+      "canonicalId": "8d0ba39a2c2cc550669e8a6a4e0987571fdb0a19861eeeb4bd787982d6a8e8ef",
+      "mergedId": "c1b1a8631402545e0c72cfc62e1ac118e3f8db3882ea767d2ec196e515425a55",
+      "group": "slug:13c28dc5",
+      "why": "labelled",
+      "canonical": "[marketbrief] South Korea Kospi Leads Global Q3 Losses With 18.8% Drop",
+      "merged": "[huggingnews] OpenAI Shifts 5% to 10% of Compute to Safety as It Slows AI Development"
+    },
+    {
+      "canonicalId": "901948bef614fb42cdf74c7b4aa3d1c607105920ccf6734bb586be7d89263396",
+      "mergedId": "1e98238c517d7cdb1320530c26bba91ae962f02e70a18501b451e30b30b8555f",
+      "group": "1e98238c517d7cdb1320530c26bba91ae962f02e70a18501b451e30b30b8555f",
+      "why": "labelled",
+      "canonical": "[latent-space] [AINews] Pi 1.0, Pi Durable, and AIE NYC",
+      "merged": "[vnexpress-tech] Tàu SpaceX lập kỷ lục bay nhanh nhất đến trạm ISS"
+    },
+    {
+      "canonicalId": "901948bef614fb42cdf74c7b4aa3d1c607105920ccf6734bb586be7d89263396",
+      "mergedId": "be52e0bf3f8fe0bbd99190c22235a381068f05300959822e7aaa3ddcb20797af",
+      "group": "be52e0bf3f8fe0bbd99190c22235a381068f05300959822e7aaa3ddcb20797af",
+      "why": "labelled",
+      "canonical": "[latent-space] [AINews] Pi 1.0, Pi Durable, and AIE NYC",
+      "merged": "[vnexpress-tech] Vinh danh 42 nhà khoa học của nhà nông"
+    },
+    {
+      "canonicalId": "90f1f40531b19901d2cb6a1368ef6fa60088d4d48900650536de854ba51c56b1",
+      "mergedId": "9eb5d2a3a1432f5820c6703ab5621b18c853920dbcb3e1b7a75b402514b61da7",
+      "group": "9eb5d2a3a1432f5820c6703ab5621b18c853920dbcb3e1b7a75b402514b61da7",
+      "why": "labelled",
+      "canonical": "[the-decoder] Microsoft AI releases new transcription and text-to-speech models for voice agents",
+      "merged": "[wired-ai] Health Care Workers Are Tired of Cleaning Up Palantir’s Mess"
+    },
+    {
+      "canonicalId": "9480bf3ba69c779f7ed91b73fc56d06f41332da817dd52473012e9aa8bee015d",
+      "mergedId": "b2dc57093b61153bc07870ed4f6e8c1ef799f5f41a97a9a0ccf150dd2a5dcf7f",
+      "group": "b2dc57093b61153bc07870ed4f6e8c1ef799f5f41a97a9a0ccf150dd2a5dcf7f",
+      "why": "labelled",
+      "canonical": "[hn] Launch HN: Vespper (YC F24) – SOTA Docx MCP",
+      "merged": "[hn] Bild AI (YC W25) Is Hiring a Founding Product Engineer"
+    },
+    {
+      "canonicalId": "959ee4f965ced8b1d1f5d41177f92c9b724e614c059c4b197e1698f66a37f4bf",
+      "mergedId": "3cbf41ad1cc8de7feb35ce0f181381ac945d5ba7e417bd72884b81b4b08f3aba",
+      "group": "slug:cd27705c",
+      "why": "labelled",
+      "canonical": "[arxiv-research] OpenAI-HuggingFace: A Reproduction & Lessons for Alignment Testing",
+      "merged": "[huggingnews] OpenAI's Hugging Face Breach Triggers Senate Hearing Sam Altman Skips"
+    },
+    {
+      "canonicalId": "959ee4f965ced8b1d1f5d41177f92c9b724e614c059c4b197e1698f66a37f4bf",
+      "mergedId": "c32e0005cebadb2085aa81e82b42ebc39369da2db7ca40ef21fa86b363e4868f",
+      "group": "slug:cd27705c",
+      "why": "labelled",
+      "canonical": "[arxiv-research] OpenAI-HuggingFace: A Reproduction & Lessons for Alignment Testing",
+      "merged": "[marketbrief] OpenAI's Hugging Face Breach Triggers Senate Hearing Sam Altman Skips"
+    },
+    {
+      "canonicalId": "a2d48c4baa3e1da59cde55681f600a7e4086ca1fd8ca1a3cd8ccff5713036473",
+      "mergedId": "50b73d870579c0ed1f2f203ab5cf52f3a7dcdd67d7f25ef7d48fd40311fd4912",
+      "group": "slug:ac6f842e",
+      "why": "labelled",
+      "canonical": "[techcrunch-ai] Brian Chesky interview: AI agents need their own operating system",
+      "merged": "[huggingnews] Hebbia Goes Headless to Put Finance Analysis in Claude and ChatGPT"
+    },
+    {
+      "canonicalId": "a2d48c4baa3e1da59cde55681f600a7e4086ca1fd8ca1a3cd8ccff5713036473",
+      "mergedId": "90ada166fb8e3ddf5d10b8668d407cd32e20e7a82a3691038e317f21211537cd",
+      "group": "slug:ac6f842e",
+      "why": "labelled",
+      "canonical": "[techcrunch-ai] Brian Chesky interview: AI agents need their own operating system",
+      "merged": "[marketbrief] Hebbia Goes Headless to Put Finance Analysis in Claude and ChatGPT"
+    },
+    {
+      "canonicalId": "b19a7eb5407edebb14dd6540f00b886d62de468d8077de39070053ae15cc1d48",
+      "mergedId": "b25a5528d55f8edb693b44f7688cae55db8ec6793dbbbe8d10c1b4b261593dfd",
+      "group": "b25a5528d55f8edb693b44f7688cae55db8ec6793dbbbe8d10c1b4b261593dfd",
+      "why": "labelled",
+      "canonical": "[theverge-ai] OpenAI’s Dot agent is enterprise software that can also order your dinner",
+      "merged": "[the-decoder] Anthropic co-founder reportedly told religious leaders he fears having created something that \"suffers perpetually\""
+    },
+    {
+      "canonicalId": "b5bca482ad98238c50b03d7a35aed77ae2a9f524dd31fea36a2d95b888303bee",
+      "mergedId": "4fef3932a8f615146e028abca48e85f8f9a9179c55d6ac242d97e376669f1af9",
+      "group": "slug:a9b393d5",
+      "why": "labelled",
+      "canonical": "[marketbrief] Perplexity New v1.1 Decision Model Tops Hugging Face Index at $0.02 per Million Tokens",
+      "merged": "[marketbrief] OpenRouter Adds ElevenLabs Models with 50% Launch Discount"
+    },
+    {
+      "canonicalId": "b5bca482ad98238c50b03d7a35aed77ae2a9f524dd31fea36a2d95b888303bee",
+      "mergedId": "5afe04bfa480eb2db54af5b5fb8049b2aaa14130f06f3a434ecab9c3e653112b",
+      "group": "slug:a9b393d5",
+      "why": "labelled",
+      "canonical": "[marketbrief] Perplexity New v1.1 Decision Model Tops Hugging Face Index at $0.02 per Million Tokens",
+      "merged": "[huggingnews] OpenRouter Adds ElevenLabs Models with 50% Launch Discount"
+    },
+    {
+      "canonicalId": "c02127d349672db4a213f696965c2d044992bdb6d39c1178ea354bfdc5bdaf95",
+      "mergedId": "caed2b7e642ba54e5122bf3ee24d5dd76cd3ef7589ece344952e58c1aafae065",
+      "group": "caed2b7e642ba54e5122bf3ee24d5dd76cd3ef7589ece344952e58c1aafae065",
+      "why": "labelled",
+      "canonical": "[google-research] Unlocking Earth AI’s planetary geospatial foundation models for global public health",
+      "merged": "[mit-news-ai] MIT announces the MIT for America initiative, to strengthen STEM education across the country"
+    },
+    {
+      "canonicalId": "c51960937d7de9f4e3262b948c474eab0f7f037c0e08327b3d9bee259cf4e06c",
+      "mergedId": "352a298aea68a14197fd7f0dd1cdb5ab86de1b7641eaccb3471c640f677345ec",
+      "group": "352a298aea68a14197fd7f0dd1cdb5ab86de1b7641eaccb3471c640f677345ec",
+      "why": "labelled",
+      "canonical": "[marketbrief] Singapore Charges Man for AI Crocodile Image that Halted Reservoir Use for 2 Days",
+      "merged": "[techcrunch-ai] OpenAI’s latest features take direct aim at the app store model"
+    },
+    {
+      "canonicalId": "c6e7b373f2474e0e64478d05ef98320f755d2ab345541696bc4d0307ac20edc8",
+      "mergedId": "c0bcbe5ea2fe5082eb46d93e67ee8a4c61aa97cab71de59c021ca9b651e6ab7e",
+      "group": "c0bcbe5ea2fe5082eb46d93e67ee8a4c61aa97cab71de59c021ca9b651e6ab7e",
+      "why": "labelled",
+      "canonical": "[hn] Gemini ending free use of Flash and Pro models",
+      "merged": "[vnexpress-tech] Google dừng chương trình trao thưởng tìm lỗi mã nguồn mở vì 'rác' AI"
+    },
+    {
+      "canonicalId": "c7d7b794f0ae36ef2260ba77399aa0ddd06f3966dc3402d176653bd2807d30cd",
+      "mergedId": "a3935a66dd30b0ab0693dc2618f1405d6da45df7de76111fed291650910e654e",
+      "group": "slug:892e1b9d",
+      "why": "labelled",
+      "canonical": "[techcrunch-ai] The internet is convinced Elon Musk’s xAI trolled OpenAI’s ‘Dots’ launch",
+      "merged": "[marketbrief] Anthropic Recruits Religious Leaders to Argue Claude AI Has Soul"
+    },
+    {
+      "canonicalId": "c7d7b794f0ae36ef2260ba77399aa0ddd06f3966dc3402d176653bd2807d30cd",
+      "mergedId": "c44f70871a6ffe411dbff6e3eb60957b2305cb1f567ea28dab25a77466e3d621",
+      "group": "slug:892e1b9d",
+      "why": "labelled",
+      "canonical": "[techcrunch-ai] The internet is convinced Elon Musk’s xAI trolled OpenAI’s ‘Dots’ launch",
+      "merged": "[huggingnews] Anthropic Recruits Religious Leaders to Argue Claude AI Has Soul"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "386ea464404d09d4f4559b63093ed2f4894b40d1104efd5a3414133ff8d42eac",
+      "group": "slug:eb1f6886",
+      "why": "labelled",
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[huggingnews] Grok 4.7 Launches in General Apps After Limited Release"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "6632a437265a86d80c27f1dccc6785d88695ca340cae3efc8e29528cd5bf1517",
+      "group": "slug:eb1f6886",
+      "why": "twin",
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[marketbrief] Grok 4.7 Launches in General Apps After Limited Release"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "9a14f76ce8ff2bd1c296b1bd86057fe28d461d621b6ccaad6a4eff2ef6f64b63",
+      "group": "slug:8808d143",
+      "why": "labelled",
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[huggingnews] xAI Adds Proactive Primary Bot to Grok for Assistant Management"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "e1010edfd8a215f978b7243c5453956e0139941849bc08aa2fdc97b23d072b9f",
+      "group": "slug:abb60922",
+      "why": "labelled",
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[huggingnews] Trump Consulted Musk's Grok AI Before Maduro Capture"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "e24421e1cbed3f5b5cebf784cd1572a0265f44d0b0219fe26f74f50f9acec5ce",
+      "group": "slug:8808d143",
+      "why": "twin",
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[marketbrief] xAI Adds Proactive Primary Bot to Grok for Assistant Management"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "fa35c308d33c64e2f4b7e72b237dbcf930879b767255226654b178e93f34802d",
+      "group": "slug:abb60922",
+      "why": "twin",
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[marketbrief] Trump Consulted Musk's Grok AI Before Maduro Capture"
+    },
+    {
+      "canonicalId": "c912268d3d112e7156124eb72e6020c2e9a82ac4bd2d9f95a170422cfd99bb4c",
+      "mergedId": "1842f46b3987922ad1fea3dd771a3e335abe4a2ec9978d3649a52d21a5e7da2c",
+      "group": "1842f46b3987922ad1fea3dd771a3e335abe4a2ec9978d3649a52d21a5e7da2c",
+      "why": "labelled",
+      "canonical": "[lobsters] Typeclasses vs Modules",
+      "merged": "[marktechpost] Datalab Introduces OmniExtractBench to Fix Bias and Opacity in Extraction Benchmarks"
+    },
+    {
+      "canonicalId": "cbbd34e6a2d774b27118afa48221b955edaf3b29c881f716d9cf51714ea8b3cf",
+      "mergedId": "d43d2f13301d3339cfd26d8731b648a0f4e5f30a2f6539c5f7564d4273431a07",
+      "group": "d43d2f13301d3339cfd26d8731b648a0f4e5f30a2f6539c5f7564d4273431a07",
+      "why": "labelled",
+      "canonical": "[the-decoder] AI agents build 3D scenes from photos but have no idea if they got it right",
+      "merged": "[latent-space] [AINews] not much happened today"
+    },
+    {
+      "canonicalId": "cdb1d51fae0431106fedcd9b04b5f3c39e2b73ba97f1a80fa573c763d8f96f73",
+      "mergedId": "806e880d487c8528db47e6fcfe5fb672ef08b56b04d364b413d47c19e8a0885f",
+      "group": "slug:a5f4e3fe",
+      "why": "labelled",
+      "canonical": "[hn] Claude Haiku 5.5",
+      "merged": "[marketbrief] Anthropic Halves Claude Sonnet 5.5 Cache Read Price to $0.10 Per Million Tokens"
+    },
+    {
+      "canonicalId": "cdb1d51fae0431106fedcd9b04b5f3c39e2b73ba97f1a80fa573c763d8f96f73",
+      "mergedId": "d9e4f0bc6c606f90b2bdc9f65935fae9beb6bba0f169a97b2dbc8c2a9fdf5ccd",
+      "group": "slug:a5f4e3fe",
+      "why": "labelled",
+      "canonical": "[hn] Claude Haiku 5.5",
+      "merged": "[huggingnews] Anthropic Halves Claude Sonnet 5.5 Cache Read Price to $0.10 Per Million Tokens"
+    },
+    {
+      "canonicalId": "d22fa48862e8ee7698be6b5355a56fac1a4d47c44c10b8595bdc397e8a8f2103",
+      "mergedId": "aa5a420bf6051a8ff7d74adfddb048aa76ff03d8f5edce43c0681e5ba90701ea",
+      "group": "slug:69cd8eaa",
+      "why": "labelled",
+      "canonical": "[techcrunch-ai] Anthropic’s prospectus details losses, growth, and, yes, a warning that its AI could end humanity",
+      "merged": "[huggingnews] OpenAI Disrupts Moonshot AI Campaign to Extract Model Reasoning"
+    },
+    {
+      "canonicalId": "d22fa48862e8ee7698be6b5355a56fac1a4d47c44c10b8595bdc397e8a8f2103",
+      "mergedId": "ff6e8971c6ffdce5a2554f6ff746a343b264163dfcd07cbc0df74b88a9a4f028",
+      "group": "slug:69cd8eaa",
+      "why": "labelled",
+      "canonical": "[techcrunch-ai] Anthropic’s prospectus details losses, growth, and, yes, a warning that its AI could end humanity",
+      "merged": "[marketbrief] OpenAI Disrupts Moonshot AI Campaign to Extract Model Reasoning"
+    },
+    {
+      "canonicalId": "d28c22d3c2266b72ea1edc067b93e8c97d6d40eb6bf137e0bad4b7131605d377",
+      "mergedId": "321d061d644bb7eb40e274e436cb13b6c57835de593c85accbf6e875351f3ca9",
+      "group": "321d061d644bb7eb40e274e436cb13b6c57835de593c85accbf6e875351f3ca9",
+      "why": "labelled",
+      "canonical": "[marketbrief] Sanders and AOC Lead Ban on Federal AI License Plate Readers",
+      "merged": "[wired-ai] AI Is Making a Mess of Nurses’ Schedules. They Say It’s a Safety Issue"
+    },
+    {
+      "canonicalId": "d4f9f7ea2f928763dec9ad0672742a69f368fc0a5ec40decbd6a97a5e5986531",
+      "mergedId": "1a70b75dd9de5a1edcf044196dda7a7e2f8f86e8b0218642a3e82bc4c87da7dd",
+      "group": "1a70b75dd9de5a1edcf044196dda7a7e2f8f86e8b0218642a3e82bc4c87da7dd",
+      "why": "labelled",
+      "canonical": "[hn] AI needs $6T in annual revenue to justify data centre boom",
+      "merged": "[techcrunch-ai] The ugly economics of consumer AI"
+    },
+    {
+      "canonicalId": "d7a217b132ed9b5ada9b02f02a723afedbeafb2838a0cbae95e0475f6244d49b",
+      "mergedId": "785eafaf812377d6779d8dfa7acb742fdb8a1294d96e6bb6bb9a3f0e484ac03e",
+      "group": "slug:c4e87bbb",
+      "why": "labelled",
+      "canonical": "[huggingnews] OpenAI Ignored Employee Warnings Over Inadequate AI Safety Monitoring, NYT Reports",
+      "merged": "[huggingnews] OpenAI Mandates Hardware Keys for Individual Daybreak Blue Users From Oct 1"
+    },
+    {
+      "canonicalId": "d7a217b132ed9b5ada9b02f02a723afedbeafb2838a0cbae95e0475f6244d49b",
+      "mergedId": "e6c780da4cd17d486bbff7cc79730f01fe21b84d2e45b76211a67939ec3bd53f",
+      "group": "slug:c4e87bbb",
+      "why": "twin",
+      "canonical": "[huggingnews] OpenAI Ignored Employee Warnings Over Inadequate AI Safety Monitoring, NYT Reports",
+      "merged": "[marketbrief] OpenAI Mandates Hardware Keys for Individual Daybreak Blue Users From Oct 1"
+    },
+    {
+      "canonicalId": "d9ae5a9e80693cef139c5eb0b68f25516019cd858d06e5fe70ba7d054a6fa848",
+      "mergedId": "527c5f7729d012989778182fb644002aee61c356ae8ba6b0333a1e9d860e9c26",
+      "group": "527c5f7729d012989778182fb644002aee61c356ae8ba6b0333a1e9d860e9c26",
+      "why": "labelled",
+      "canonical": "[lobsters] Navier-Stokes lost in translation: Why Lean verification of AI autoformalisation does not guarantee correct natural language proofs",
+      "merged": "[techcrunch-ai] OpenAI’s math solutions aren’t meeting the field’s standards yet"
+    },
+    {
+      "canonicalId": "dac30438b37af8fd19f73b42d838f74040339fca948f05aadbeca22874a7c065",
+      "mergedId": "5104a766021fc1981b65041824be071e9726cb60f7b9c93235660d7414dce87d",
+      "group": "5104a766021fc1981b65041824be071e9726cb60f7b9c93235660d7414dce87d",
+      "why": "labelled",
+      "canonical": "[the-decoder] Researchers stretch LeCun's JEPA AI into a universal world model that works from physics to biology",
+      "merged": "[vnexpress-tech] Sam Altman: 'Thế giới nên chấp nhận những điều tồi tệ của AI'"
+    },
+    {
+      "canonicalId": "eacb7fc5504f72be08cc7ee8cf4f8b0cbdcec2e26cdc92d8a4230164bd175c2f",
+      "mergedId": "94f7add19cb4328727faa15a047fc771b8eaac67ccdbdeddc97723ef7ec4849f",
+      "group": "94f7add19cb4328727faa15a047fc771b8eaac67ccdbdeddc97723ef7ec4849f",
+      "why": "labelled",
+      "canonical": "[hn] Show HN: Janus – Go binary that runs GGUF models via Vulkan on AMD/Intel/Nvidia",
+      "merged": "[hn] From the creator of Redis; run LLM locally with ds4"
+    },
+    {
+      "canonicalId": "ef1d5686a07a251084699fbd2065c30b6c3279320e6811b9bd72943e2f41f4ac",
+      "mergedId": "a4140c00fc7ab9c4d1c9a38e41b386bd7679c38d924269396e921dba9ee9815c",
+      "group": "a4140c00fc7ab9c4d1c9a38e41b386bd7679c38d924269396e921dba9ee9815c",
+      "why": "labelled",
+      "canonical": "[marketbrief] OpenAI CEO Sam Altman Says World Should Accept Bad Things for AI Benefits",
+      "merged": "[theverge-ai] Sen. Adam Schiff on AI regulation, free speech, and impeaching Trump one more time"
+    },
+    {
+      "canonicalId": "f26ff85b63dc63a06c6eb290daed8af79045a0fb21614f48148a67f7180db002",
+      "mergedId": "54b535ddb7e24cf91da5906857632579ae988d4f42a3587b0b32b67d14108151",
+      "group": "54b535ddb7e24cf91da5906857632579ae988d4f42a3587b0b32b67d14108151",
+      "why": "labelled",
+      "canonical": "[lobsters] How I Built an iPhone App in Four Days with Opus 5.5",
+      "merged": "[techcrunch-ai] Opus 5.5 loves to tell you ‘this matters’ (and other AI writing tells)"
+    },
+    {
+      "canonicalId": "f27caaa119f322ed22736b517e100d114fc834231a07ac69ca659d96d2d39741",
+      "mergedId": "6a60b2debd2816b49fd59a28b43269e04cd210cdfabef6fac57c831a667e788f",
+      "group": "slug:f2ec0a85",
+      "why": "labelled",
+      "canonical": "[marketbrief] OpenAI Restores Services for ChatGPT Pro and Plus Users",
+      "merged": "[marketbrief] Extropic Boosts Qwen3.6 Thermo ML Performance 2.8x in 100 Steps"
+    },
+    {
+      "canonicalId": "f27caaa119f322ed22736b517e100d114fc834231a07ac69ca659d96d2d39741",
+      "mergedId": "a225c974d7ddc8e8a0ffd7c244b2c0c83c006cdc01719607902e8078afc359c4",
+      "group": "slug:f2ec0a85",
+      "why": "labelled",
+      "canonical": "[marketbrief] OpenAI Restores Services for ChatGPT Pro and Plus Users",
+      "merged": "[huggingnews] Extropic Boosts Qwen3.6 Thermo ML Performance 2.8x in 100 Steps"
+    }
+  ],
+  "excluded": [
+    {
+      "canonicalId": "270d2009beef3a33ff16c11630a56d9df4068ff4db88be18f9cbe9e1229361b2",
+      "mergedId": "4d732c5c0bbf8689e8728e8b99a41bb7774c0dd94e31b5e1186c849920c8c1bd",
+      "reason": "270d2009 is OpenAI's 'Sharing AI progress in mathematics'; 'OpenAI Releases 722 Math Proofs' is the same story. Only the Allen AI pair under it is wrong.",
+      "canonical": "[hn] Sharing AI Progress in Mathematics",
+      "merged": "[huggingnews] OpenAI Releases 722 Math Proofs from Unreleased Internal Model"
+    },
+    {
+      "canonicalId": "270d2009beef3a33ff16c11630a56d9df4068ff4db88be18f9cbe9e1229361b2",
+      "mergedId": "dc6ed771cc30d5d92f144c38ac82c882029fea2461239fe328c0504515769f3e",
+      "reason": "marketbrief twin of 4d732c5c, same story as 270d2009.",
+      "canonical": "[hn] Sharing AI Progress in Mathematics",
+      "merged": "[marketbrief] OpenAI Releases 722 Math Proofs from Unreleased Internal Model"
+    }
+  ],
+  "review": [
+    {
+      "canonicalId": "12c7c4b93f1e3a449874069b9582785fa6a140290dd9946bd4dcebb519c16b4d",
+      "mergedId": "21383916b09a54e90fa63d36bdb700ccfda43af1a9bcfcd94328263d071f9092",
+      "why": "low title overlap, not hand-checked",
+      "canonical": "[marketbrief] AI Web Text Hits 31% and Harms Language Model Training",
+      "merged": "[marketbrief] 70% of Teens Use AI for Schoolwork With Plunging Test Scores"
+    },
+    {
+      "canonicalId": "12c7c4b93f1e3a449874069b9582785fa6a140290dd9946bd4dcebb519c16b4d",
+      "mergedId": "dedd98f1c0b3fa18d84edbdb2ed3ac2f11f5b211a095819bb93e894df3256af4",
+      "why": "low title overlap, not hand-checked",
+      "canonical": "[marketbrief] AI Web Text Hits 31% and Harms Language Model Training",
+      "merged": "[huggingnews] 70% of Teens Use AI for Schoolwork With Plunging Test Scores"
+    },
+    {
+      "canonicalId": "345b03ac54d91ebef7b044f7399550fe42672a0477b0472369887dd5c912a2d6",
+      "mergedId": "7d30d83910bdbbbb92522ecb7b15e5d80e45ee8f42e33546d01f6aed2b2b44e8",
+      "why": "low title overlap, not hand-checked",
+      "canonical": "[marketbrief] Nvidia’s $13B Hugging Face Buyout Follows OpenAI Bid",
+      "merged": "[the-decoder] Meta dodges billions in US taxes by calling its AI data centers experiments"
+    },
+    {
+      "canonicalId": "61020cdda2cdcf26cc62f2dcabb69e84d856e492f43ca7612c29ccea49f8ddcb",
+      "mergedId": "452f271f38d239eef4684f830b176b850f27baac3e3e0ae859347a210364e450",
+      "why": "low title overlap, not hand-checked",
+      "canonical": "[huggingnews] SGLang AI Beats Level 9 Fox in Super Smash Bros Melee",
+      "merged": "[the-decoder] Nearly half of test subjects mistook Tavus' AI video avatar for a real person on a one-minute call"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "e5addb39494bae718b67970c4fe02cbf92ddebf25a2ee34a9f50c485feed9bdf",
+      "why": "low title overlap, not hand-checked",
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[mit-tr-ai] Don’t be fooled—LLMs don’t reason"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "a7fae1f07f2174486054be2023e7df064f869c72996535d67930d60a5b39f6a3",
+      "why": "low title overlap, not hand-checked",
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[the-decoder] Deepmind researchers propose \"Artificial Symbiotic Intelligence\" as an alternative to the singularity"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "d64b462befcdd83137948b1ffdc2da868c7bcfb5f37fbf65711b5efbd752dd96",
+      "why": "low title overlap, not hand-checked",
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[vnexpress-tech] Bắt đầu Ngày hội Đổi mới sáng tạo quốc gia 2026"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "02956433a9ad692aeb00b2830d0994ec8841f3100960d27350153132e750e5ef",
+      "why": "low title overlap, not hand-checked",
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[hn] Anthropic tried to persuade Pope that AI could be conscious being"
+    },
+    {
+      "canonicalId": "d22fa48862e8ee7698be6b5355a56fac1a4d47c44c10b8595bdc397e8a8f2103",
+      "mergedId": "90249c2a3882c6d31b88e7cea8a85045e4eeb6a0a24ec30e6774300a2c2f9921",
+      "why": "low title overlap, not hand-checked",
+      "canonical": "[techcrunch-ai] Anthropic’s prospectus details losses, growth, and, yes, a warning that its AI could end humanity",
+      "merged": "[openai] Disrupting a coordinated model-distillation campaign"
+    }
+  ],
+  "readOnly": {
+    "queries": 2,
+    "rowsRead": 8528
+  }
+}

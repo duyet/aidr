@@ -212,10 +212,89 @@ their final values, not their values at each hour, and the TL;DR snapshot was
 picked under the formula live then, so treat it as a comparison between
 formulas, not a forecast. Run it before changing `worker/ranking.ts`.
 
-Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|tldr-regenerate|run|rerun>`
+Local CLI: `pnpm --filter @aidr/web agent <audit|ranking|tldr-preview|tldr-regenerate|run|rerun|unmerge>`
 (`apps/web/scripts/aidr-agent.ts`). `run` / `rerun` are dry unless `--live`.
 `tldr-regenerate [--date YYYY-MM-DD] [--dry-run]` always calls the dated
 route, which a server without it answers 404.
+
+### Unmerge (admin)
+
+`POST /api/admin/unmerge` with `{ pairs, dryRun? }` reverses wrong cluster
+merges (#733); each pair is `{ canonicalId, mergedId, group? }`, and pairs
+sharing a `group` under one canonical are one story (aggregator twins). It
+is a dry run unless `dryRun: false`. `agent unmerge <pairs.json>` plans
+locally from production D1 through `wrangler d1 execute`, SELECT only, and
+`--apply` posts to the endpoint. `worker/unmerge/` holds the planner.
+
+- A restored group is replayed through the merge planner and
+  `planNewItemWrite` as ingest would have written it without the wrong
+  canonical: one lead row, its twins merged into it, its own sources and
+  media. Its status follows the relevance bar, so a row under 0.4 comes back
+  `rejected`. A VI-source lead gets its native `translations` row; others
+  wait for `backfill-translate`. One rule is stricter than ingest: a lead
+  with a picture of its own keeps it and takes no twin's picture, so a
+  twin's better-tier image (an expiring `pbs.twimg.com/card_img`) never
+  replaces the lead's working card.
+- A restored story can already be live: the aggregator twin that arrived
+  after the wrong merge publishes on its own, since ingest clusters only
+  against published rows. Before restoring a group, the plan reads the
+  published rows within `MERGE_LOOKBACK_SEC` of it (`worker/unmerge/twins.ts`).
+  A row with the same canonical URL, the same huggingnews/marketbrief slug
+  hash, the same vnexpress article id, or the same normalized title from
+  another source is the same story: the group stays `merged`, re-pointed
+  to that row (`repoint`), which takes the group's sources, topics, reader
+  engagement and corroboration as ingest's merge into a published canonical
+  would. A live row with a picture of its own keeps it. A row whose title is
+  only a near-duplicate (the title pass's rule) is likely the same event, so
+  the group waits as `needs-decision` until the pairs file says
+  `"sameAs": "<id>"` (re-point to that row) or `"distinct": true`
+  (publish). A group under the relevance bar restores as `rejected` and
+  needs no decision. A live twin inside the quiet window, written by
+  another batch of the request, or restored by an earlier group of the
+  same request defers the group to a rerun.
+- The canonical loses the sources, assets, tags and points attributable to
+  the removed items. Source rows are attributed by URL, by an HN/Lobsters
+  discussion's `posted_at`, and by position (a tweet run belongs to the
+  member whose appended URL row ends it). Rows it cannot attribute stay on
+  the canonical and are reported as ambiguous. Assets are matched on the
+  stored manifests as written plus `image_url`, never the parsed form,
+  which hides a share card next to a photo and every avatar the merge
+  still copied.
+- Scores: stored scores of old rows were frozen by earlier formulas, so new
+  scores are fresh `rankScore` values at the 72h point times a stored/fresh
+  scale (the canonical's own for the canonical, the plan's median for
+  restored rows).
+- Sends nothing. A group whose canonical or rows were published inside
+  `UNMERGE_QUIET_SEC` (8 days: the rolling weekly mail lists D-7..D-1,
+  trending and Facebook read 24-48h) is skipped until it ages out. Writes no
+  `notifications`, `tldr_snapshots`, digest or weekly rows.
+- One D1 batch per canonical. It opens with one `admin_audit` insert per
+  write target (`unmerge.row`, `unmerge.sources`, `unmerge.translation`),
+  each holding the target's before and after. The insert's `action` is
+  `(SELECT ? WHERE <guard>)`, and the guard is every value the plan read: an
+  `items` row's `status`, `duplicate_of`, `points`, `comments`, `tags`,
+  `image_url`, `media_manifest` and `rank_score`; an item's whole
+  `item_sources` list; the absence of the VI `translations` row. If any
+  target changed after the plan read it, `action` is NULL, the NOT NULL
+  constraint fails, and D1 rolls back the whole batch, so a stale plan
+  writes nothing. The response lists those canonicals in `stale`; a rerun
+  re-plans them. An `unmerge.canonical` row closes the batch with the pair
+  outcomes and lossy notes. A repeat run is a no-op.
+- Every audit row of one request has the same `ts`, returned as
+  `applied.batchId`. `POST /api/admin/unmerge/undo` with
+  `{ batchId, dryRun? }` (`agent unmerge --undo <batchId> [--apply]`, a dry
+  run by default) writes each target's before back through the same guarded
+  batch, as `unmerge.undo.*` rows. A canonical is undone only while every
+  target still holds what the apply wrote (`undo`); one already back is a
+  `noop`, and anything else is a `conflict` that writes nothing. Undo does
+  not touch what later jobs wrote, such as `backfill-translate` and
+  `backfill-en-summary` rows for the restored items. Each apply request is
+  its own batch, and a later batch can write rows an earlier one wrote (a
+  rerun re-points into a lead the first batch restored), so undo the newest
+  batch first. A batch that fails for a reason other than a guard stops the
+  request; the response still carries `batchId` and names the canonical in
+  `failed`. If a response is lost, the batch ids are
+  `SELECT DISTINCT ts FROM admin_audit WHERE action LIKE 'unmerge.%' ORDER BY ts DESC`.
 
 ## Day archive (`/date/YYYY-MM-DD`)
 

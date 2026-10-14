@@ -32,6 +32,8 @@ import {
   sendDayVideoTelegram,
   setDayVideo,
   triggerIngest,
+  undoUnmerge,
+  unmergeItems,
   updateItem,
   upsertSource,
 } from "../../../worker/admin/handlers.js";
@@ -479,6 +481,39 @@ async function handle(
     return Response.json(await previewTldr(env), {
       headers: { "Cache-Control": "no-store" },
     });
+  }
+
+  // Body `{ pairs, dryRun? }`; dry unless `dryRun: false`. Never sends.
+  if (method === "POST" && segments.length === 1 && segments[0] === "unmerge") {
+    const { body, error } = await parseOptionalJsonObject(request);
+    if (error !== null) return Response.json({ error }, { status: 400 });
+    const result = await unmergeItems(env, body);
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  // Body `{ batchId, dryRun? }`; dry unless `dryRun: false`. Never sends.
+  if (
+    method === "POST" &&
+    segments.length === 2 &&
+    segments[0] === "unmerge" &&
+    segments[1] === "undo"
+  ) {
+    const { body, error } = await parseOptionalJsonObject(request);
+    if (error !== null) return Response.json({ error }, { status: 400 });
+    const result = await undoUnmerge(env, body);
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   }
 
   // `tldr/regenerate` is today; `tldr/regenerate/YYYY-MM-DD` a recent closed
