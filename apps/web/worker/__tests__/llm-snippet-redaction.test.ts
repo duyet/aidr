@@ -176,6 +176,8 @@ const LEAK_CASES: Record<
   phoneUs: { input: "call +1 (415) 555-0132", leaks: ["555-0132", "415"] },
   phoneVn: { input: "SĐT 0912 345 678 nhé", leaks: ["0912 345 678"] },
   phoneDots: { input: "fax 415.555.0132 today", leaks: ["415.555.0132"] },
+  phoneTwoGroups: { input: "call 555-0132 now", leaks: ["555-0132"] },
+  phoneLongGroup: { input: "SĐT 0912-345678 nhé", leaks: ["0912-345678"] },
   urlToken: {
     input: "see https://api.example.com/v1?key=AIzaSyA1234567890abcdef&sig=xyz",
     leaks: ["api.example.com", "AIzaSyA1234567890abcdef"],
@@ -230,6 +232,8 @@ const READABLE: string[] = [
   "Expected ',' or '}' after property value in JSON at position 512",
   "OpenAI công bố 372 kết quả vào ngày 14/10.",
   '{"error":{"message":"Model is overloaded, retry later","code":503}}',
+  "Giá 15.000.000 đồng, vốn 1.500.000.000 VND, quỹ 12 500 000 USD.",
+  "Lương 10.000-20.000 USD, at 2026-10-14 12:30 UTC.",
 ];
 
 function viaEntry(raw: string): string | null {

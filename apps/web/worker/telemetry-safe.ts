@@ -297,15 +297,22 @@ const SNIPPET_WINDOW = 2000;
 /** Two lowercase-to-uppercase steps: base64 and random ids, not words. */
 const MIXED_CASE = /[a-z][A-Z].*[a-z][A-Z]/;
 
+/** 15.000.000, 12 500 000: Vietnamese and SI thousands grouping. */
+const THOUSANDS = /^[1-9]\d{0,2}(?:[ .]\d{3})*$/;
+const YEAR = /^(?:19|20)\d\d$/;
+
 function redactPhone(match: string): string {
   const groups = match.match(/\d+/g) ?? [];
   if (groups.join("").length < 7) return match;
+  if (/[+(]/.test(match)) return "[phone redacted]";
+  // Amounts, amount or year ranges, and dates split on "-".
+  const parts = match.split("-");
+  if (parts.every((part) => THOUSANDS.test(part) || YEAR.test(part))) {
+    return match;
+  }
+  // Two groups (555-0132), or two long groups; "2026-10-14 12" has one.
   const long = groups.filter((group) => group.length >= 3).length;
-  // A dial prefix, or three groups with two long ones; a date or a year
-  // range ("2025-2026") is neither.
-  return /[+(]/.test(match) || (groups.length >= 3 && long >= 2)
-    ? "[phone redacted]"
-    : match;
+  return groups.length === 2 || long >= 2 ? "[phone redacted]" : match;
 }
 
 /**
@@ -342,7 +349,7 @@ const SNIPPET_RULES: ReadonlyArray<
   ],
   [/\b[\w-]+(?:\.[\w-]+)*\.(?:local|internal)\b/gi, "[host redacted]"],
   [
-    /(?<![\w+])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{1,4}\)[\s.-]?)?\d{2,4}(?:[\s.-]\d{2,4}){1,4}(?!\w)/g,
+    /(?<![\w+.,])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{1,4}\)[\s.-]?)?\d{1,8}(?:[\s.-]\d{2,8}){1,4}(?!\w)/g,
     redactPhone,
   ],
   [
@@ -361,8 +368,9 @@ const SNIPPET_RULES: ReadonlyArray<
  * Short, sanitized excerpt of a failed model output or provider error body
  * for `llm_calls.response_snippet`: first 160 and last 80 characters after
  * secrets, tokens, ids, addresses and contact details are redacted.
- * Idempotent, so the two redaction passes (logLlmCall, then the D1 sink)
- * leave it unchanged.
+ * The D1 sink runs it again on the stored excerpt. That pass leaves a
+ * redacted excerpt as it is, except where the head/tail cut split a word
+ * (`user_input:` cut to `input:`), and then it can only redact more.
  */
 export function sanitizeLlmSnippet(value: unknown): string | null {
   if (typeof value !== "string") return null;
