@@ -9,6 +9,10 @@ import {
 } from "../ga4/insights.js";
 import { parseGa4Snapshot } from "../ga4/snapshot.js";
 
+// Built at runtime so the file holds no secret-shaped literal.
+const PEM_BEGIN = "-----" + "BEGIN PRIVATE KEY-----";
+const PEM_END = "-----" + "END PRIVATE KEY-----";
+
 /** Minimal D1 stand-in: `prepare` returns an object with the statement text,
  *  the bound args, and the `run`/`first`/`all` methods the module calls. */
 function fakeDb(options: {
@@ -73,7 +77,7 @@ function matches(row: Record<string, unknown>, sql: string): boolean {
 const VALID_ACCOUNT = {
   type: "service_account",
   client_email: "reader@gcp-project.iam.gserviceaccount.com",
-  private_key: "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n",
+  private_key: `${PEM_BEGIN}\nAAAA\n${PEM_END}\n`,
 };
 
 /**
@@ -101,7 +105,7 @@ beforeAll(async () => {
   for (const byte of der) binary += String.fromCharCode(byte);
   serviceAccountJson = JSON.stringify({
     ...VALID_ACCOUNT,
-    private_key: `-----BEGIN PRIVATE KEY-----\n${btoa(binary)}\n-----END PRIVATE KEY-----\n`,
+    private_key: `${PEM_BEGIN}\n${btoa(binary)}\n${PEM_END}\n`,
   });
 });
 

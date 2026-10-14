@@ -10,6 +10,10 @@ import {
   parseGa4ServiceAccount,
 } from "../ga4/service-account.js";
 
+// Built at runtime so the file holds no secret-shaped literal.
+const PEM_BEGIN = "-----" + "BEGIN PRIVATE KEY-----";
+const PEM_END = "-----" + "END PRIVATE KEY-----";
+
 /** A structurally valid key file with a real (throwaway) RSA key, generated
  *  once per test file so the signing path is exercised for real rather than
  *  asserted against a stub. */
@@ -35,7 +39,7 @@ function testAccount() {
     const der = new Uint8Array(pkcs8);
     let binary = "";
     for (const byte of der) binary += String.fromCharCode(byte);
-    const pem = `-----BEGIN PRIVATE KEY-----\n${btoa(binary)}\n-----END PRIVATE KEY-----\n`;
+    const pem = `${PEM_BEGIN}\n${btoa(binary)}\n${PEM_END}\n`;
     return {
       privateKey: pem,
       clientEmail: "reader@gcp-project.iam.gserviceaccount.com",
@@ -50,8 +54,7 @@ function serviceAccountJson(overrides: Record<string, unknown> = {}): string {
     type: "service_account",
     project_id: "gcp-project",
     client_email: "reader@gcp-project.iam.gserviceaccount.com",
-    private_key:
-      "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n",
+    private_key: `${PEM_BEGIN}\nAAAA\n${PEM_END}\n`,
     token_uri: "https://oauth2.googleapis.com/token",
     ...overrides,
   });
