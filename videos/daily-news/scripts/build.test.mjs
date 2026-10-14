@@ -1,38 +1,28 @@
 // node --test videos/daily-news/scripts/*.test.mjs
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { after, test } from "node:test";
+import { ROOT, runBuild, scratchRoot } from "./scratch-root.mjs";
 
-const ROOT = resolve(import.meta.dirname, "..");
 const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
 const FORMATS = Object.keys(config.formats);
 const read = (p) => JSON.parse(readFileSync(p, "utf8"));
-const tmps = [];
+const cleanups = [];
 after(() => {
-  for (const t of tmps) rmSync(t, { recursive: true, force: true });
+  for (const c of cleanups) c();
 });
 
 // Builds a committed edition (no voice, no audio) in a temp root and returns the page reader.
-// build.mjs resolves its root from its own path, so the temp root links the real scripts and template.
 function build(date, edit = (script, edition) => [script, edition]) {
-  const tmp = mkdtempSync(join(tmpdir(), "dn-build-"));
-  tmps.push(tmp);
-  const dn = join(tmp, "daily-news");
+  const { dn, cleanup } = scratchRoot();
+  cleanups.push(cleanup);
   mkdirSync(join(dn, "editions", date), { recursive: true });
-  for (const f of ["scripts", "template", "config.json"]) symlinkSync(join(ROOT, f), join(dn, f));
-  symlinkSync(resolve(ROOT, "../brand"), join(tmp, "brand"));
   const src = join(ROOT, "editions", date);
   const [script, edition] = edit(read(join(src, "script.json")), read(join(src, "edition.json")));
   writeFileSync(join(dn, "editions", date, "script.json"), JSON.stringify(script));
   writeFileSync(join(dn, "editions", date, "edition.json"), JSON.stringify(edition));
-  const run = spawnSync(
-    process.execPath,
-    ["--preserve-symlinks", "--preserve-symlinks-main", join(dn, "scripts/build.mjs"), date, "--no-voice", "--no-audio"],
-    { cwd: dn, encoding: "utf8" }
-  );
+  const run = runBuild(dn, [date, "--no-voice", "--no-audio"]);
   assert.equal(run.status, 0, run.stderr);
   return {
     script,
