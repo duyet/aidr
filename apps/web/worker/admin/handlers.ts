@@ -39,6 +39,7 @@ import {
   sanitizeError,
   sanitizeRunStats,
 } from "../telemetry-safe.js";
+import { toEpochSeconds } from "../time.js";
 import {
   buildTopItemsQuery,
   previewDailyTldr,
@@ -87,7 +88,10 @@ export interface PushItemInput {
   title: string;
   summary?: string;
   source_id?: string;
-  /** Epoch milliseconds (matches `items.published_at`'s existing unit). Defaults to now. */
+  /**
+   * Epoch seconds, the unit of `items.published_at`. Callers may pass
+   * milliseconds; `toEpochSeconds` accepts both. Defaults to now.
+   */
   published_at?: number;
   points?: number;
   comments?: number;
@@ -162,7 +166,7 @@ export async function pushItems(
       item.importance !== undefined ||
       item.quality !== undefined;
     const status = hasScore ? "published" : "new";
-    const publishedAt = item.published_at ?? now;
+    const publishedAt = toEpochSeconds(item.published_at ?? Date.now());
 
     const existing = await env.DB.prepare(
       `SELECT id, source_lang, summary,
