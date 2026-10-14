@@ -2541,6 +2541,66 @@ describe("404 circuit breaker", () => {
     ]);
   });
 
+  it("does not skip an id for TL;DR after a translate 404", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const { model } = JSON.parse(String(init.body));
+      if (model === "google/gemini-3-flash")
+        return new Response("gone", { status: 404 });
+      return ok();
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await callAnyrouter(env, messages, {
+      modelSpec: "google/gemini-3-flash,poolside/laguna-s-2.1",
+      task: "translate",
+      json: true,
+    });
+    await callAnyrouter(env, messages, {
+      modelSpec: "google/gemini-3-flash,openai/gpt-5.6-luna",
+      task: "tldr",
+      json: true,
+    });
+    await callAnyrouter(env, messages, {
+      modelSpec: "google/gemini-3-flash,poolside/laguna-s-2.1",
+      task: "translate",
+      json: true,
+    });
+
+    expect(requested(fetchMock)).toEqual([
+      "google/gemini-3-flash",
+      "poolside/laguna-s-2.1",
+      "google/gemini-3-flash",
+      "openai/gpt-5.6-luna",
+      "poolside/laguna-s-2.1",
+    ]);
+  });
+
+  it("still skips an id for TL;DR after a translate 429", async () => {
+    const fetchMock = vi.fn(async () => new Response("quota", { status: 429 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      callAnyrouter(env, messages, {
+        modelSpec: "poolside/laguna-s-2.1,google/gemma-latest",
+        task: "translate",
+        json: true,
+      })
+    ).rejects.toThrow(/chain exhausted/);
+    await expect(
+      callAnyrouter(env, messages, {
+        modelSpec: "openai/gpt-5.6-luna,poolside/laguna-s-2.1",
+        task: "tldr",
+        json: true,
+      })
+    ).rejects.toThrow(/chain exhausted/);
+
+    expect(requested(fetchMock)).toEqual([
+      "poolside/laguna-s-2.1",
+      "google/gemma-latest",
+      "openai/gpt-5.6-luna",
+    ]);
+  });
+
   // 5xx is transient upstream state; the id must stay in the chain.
   it("keeps an id after a transient failure", async () => {
     const fetchMock = vi
@@ -2645,6 +2705,24 @@ describe("per-run timeout breaker", () => {
     });
 
     expect(slowCount(fetchMock)).toBe(RUN_TIMEOUT_BREAKER_THRESHOLD + 1);
+  });
+
+  it("does not trip an id for TL;DR after review timeouts", async () => {
+    const fetchMock = slowFirst();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await withLlmCallContext("run-a", async () => {
+      for (let i = 0; i < RUN_TIMEOUT_BREAKER_THRESHOLD; i++)
+        await callAnyrouter(env, messages, { ...spec, task: "review" });
+      await callAnyrouter(env, messages, { ...spec, task: "tldr" });
+      await callAnyrouter(env, messages, { ...spec, task: "review" });
+    });
+
+    expect(requested(fetchMock).slice(-3)).toEqual([
+      "slow/model",
+      "ok/model",
+      "ok/model",
+    ]);
   });
 
   // Admin/MCP calls outside a run keep the old behavior.

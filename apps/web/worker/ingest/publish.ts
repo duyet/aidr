@@ -57,12 +57,12 @@ export async function generateTldr(ctx: IngestContext): Promise<{
     },
     { config: TLDR_STEP }
   );
-  recordStep(
-    steps,
-    "tldr",
-    stats.generated ? "generated" : "skipped",
-    stats.reason
-  );
+  const action = stats.generated
+    ? "generated"
+    : stats.kept
+      ? "kept"
+      : "skipped";
+  recordStep(steps, "tldr", action, stats.reason);
   return stats;
 }
 

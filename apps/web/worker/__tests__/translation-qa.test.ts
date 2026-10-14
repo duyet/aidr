@@ -234,6 +234,39 @@ describe("translation review contracts", () => {
     ).toBeNull();
   });
 
+  describe("VI→EN candidate with a stray closer", () => {
+    const candidate = {
+      title:
+        "“The most dangerous thing on the Internet has just been born”: Using Claude Code and Cursor to dissect secrets inside software",
+      summary:
+        "Not only writing code on demand, with the support of Claude Code, this new tool can also delve into software architecture, understand internal logic, and verify what they discover.",
+    };
+    const raw = JSON.stringify(candidate);
+
+    it.each([
+      ["a trailing ]", `${raw}]`],
+      ["a trailing }", `${raw}}`],
+      ["a closer on its own line", `${raw}\n]\n`],
+    ])("accepts %s", (_label, content) => {
+      expect(parseRepairCandidate(content)).toEqual(candidate);
+    });
+
+    it.each([
+      ["two closers", `${raw}]]`],
+      ["a closer then prose", `${raw}] done`],
+      ["a comma", `${raw},`],
+      ["prose", `${raw} Hope this helps.`],
+      ["a second object", `${raw}{}`],
+    ])("rejects %s", (_label, content) => {
+      expect(parseRepairCandidate(content)).toBeNull();
+    });
+
+    it("keeps the reviewer strict", () => {
+      const valid = JSON.stringify(review("vi-en"));
+      expect(parseTranslationReview(`${valid}]`, "vi-en")).toBeNull();
+    });
+  });
+
   it("escapes delimiter-like untrusted data in prompts", () => {
     const pair: TranslationPair = {
       source: {

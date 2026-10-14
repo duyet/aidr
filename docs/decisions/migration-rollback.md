@@ -289,6 +289,18 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0061_tldr_snapshot_fallback.sql
+
+- Change: adds nullable `tldr_snapshots.fallback`. `ensureDailyTldr` writes
+  1 for a headline-only digest and 0 for a model digest, and the homepage
+  writes 1 when it rebuilds the digest from titles; nothing is backfilled.
+- Risk: the Worker selects and writes the column, so apply it before
+  deploying. Existing rows stay NULL and are replaced by the next refresh
+  as before.
+- Rollback: roll the Worker back first, then
+  `ALTER TABLE tldr_snapshots DROP COLUMN fallback;`. A failed refresh then
+  overwrites the model digest with headlines again.
+
 ## 0060_weekly_digests.sql
 
 - Change: new table `weekly_digests` (one rolling 7-day digest per

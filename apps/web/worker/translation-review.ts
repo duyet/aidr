@@ -402,7 +402,10 @@ export function parseRepairCandidate(
   raw: string,
   maxChars = QA_MAX_JSON_CHARS
 ): TranslationText | null {
-  return parseTextRecord(parseRecord(raw, maxChars));
+  return parseTextRecord(
+    parseRecord(raw, maxChars) ??
+      parseRecord(raw.replace(/[\]}]\s*$/, ""), maxChars)
+  );
 }
 
 function parseTextRecord(parsed: unknown): TranslationText | null {
