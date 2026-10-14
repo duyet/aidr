@@ -14,6 +14,7 @@ import {
   runHealthCheck,
 } from "../health.js";
 import {
+  buildIssueBody,
   fingerprint,
   issueEvidence,
   type ModelStat,
@@ -142,6 +143,27 @@ describe("whole-chain task failure alert", () => {
     const evidence = issueEvidence(issue!, ctx).join("\n");
     expect(evidence).toContain("z-ai/glm-4.6: 0/2 ok");
     expect(evidence).not.toContain("gemma-latest");
+  });
+
+  // The issue table must list the same models the fingerprint and DM use,
+  // not every model the run touched for other tasks.
+  it("lists only the failing task's models in the issue body", () => {
+    const [issue] = evaluateHealth(
+      input([ok("score", 20), ok("translate", 8), review(4)])
+    );
+    const ctx = {
+      runId: "r1",
+      nowMs: NOW,
+      models: [
+        ...ok("score", 20).models,
+        ...ok("translate", 8).models,
+        ...review(4).models,
+      ],
+      telegramQuietHours: {},
+    };
+    const body = buildIssueBody(issue!, ctx, fingerprint(issue!, ctx));
+    for (const model of REVIEW_CHAIN) expect(body).toContain(`| ${model} |`);
+    expect(body).not.toContain("gemini-3-flash");
   });
 });
 

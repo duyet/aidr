@@ -215,7 +215,7 @@ export function buildIssueBody(
     ? [
         "| Model | OK | Total | Failed statuses |",
         "| --- | --- | --- | --- |",
-        ...ctx.models.map(
+        ...(issue.models ?? ctx.models).map(
           (m) =>
             `| ${m.model} | ${m.total - m.failed} | ${m.total} | ${
               Object.entries(m.statuses)
