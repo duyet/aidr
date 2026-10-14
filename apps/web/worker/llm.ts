@@ -818,10 +818,13 @@ function isSkipped(skips: Map<string, number>, key: string): boolean {
   return false;
 }
 
+function isRateLimited(model: string): boolean {
+  return isSkipped(rateLimitedUntil, model);
+}
+
 function isUnavailable(task: LlmTask, model: string): boolean {
   return (
-    isSkipped(rateLimitedUntil, model) ||
-    isSkipped(notFoundUntil, taskModelKey(task, model))
+    isRateLimited(model) || isSkipped(notFoundUntil, taskModelKey(task, model))
   );
 }
 
@@ -921,13 +924,21 @@ async function callAnyrouter(
   if (configured.length === 0)
     throw new Error("anyrouter model is not configured");
   // Skipped ids (404/429, or the per-run timeout breaker) take no budget
-  // slice. If every id is skipped, try them all again rather than fail
-  // without a request.
+  // slice. If every id is skipped, the 404 and timeout skips fail open so a
+  // dashboard fix lands at once. A 429 skip never does: the quota stays
+  // spent until its window resets, and failing open re-sent every item's
+  // full chain (run 23b4ed50, 225 429s in 88 s).
   const callId = newLlmCallId();
   const live = configured.filter(
     (model) => !isUnavailable(task, model) && !isTrippedForRun(task, model)
   );
-  const models = live.length > 0 ? live : configured;
+  const models =
+    live.length > 0 ? live : configured.filter((m) => !isRateLimited(m));
+  if (models.length === 0)
+    throw new Error(
+      "anyrouter chain exhausted: " +
+        configured.map((model) => `${model}: rate limit cooldown`).join(" | ")
+    );
 
   // One budget for the whole chain, so a long chain cannot outlive the
   // workflow step that a single call was sized to fit inside. Each attempt

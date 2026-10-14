@@ -1541,7 +1541,8 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
   content is starved).
 - Comma-separated model fallback chains (`ANYROUTER_MODEL`).
 - Skips (isolate-wide): a 404 skips an id for 15 min for the task that got
-  it, and a 429 skips it for 2 min for every task. Inside a run
+  it, and a 429 skips it for 2 min for every task. A chain whose every id
+  is 429-skipped sends nothing for those 2 min. Inside a run
   (`withLlmCallContext`), an id that times out 3 times in a row in one task
   is skipped for that task for the rest of the run; a served call resets
   the count.
@@ -1600,8 +1601,13 @@ window (10-13 21:00-24:00 UTC) across 9 ids and 5 tasks. The quota alert
 (`llm-rate-limited`) counts 429 rows in `llm_calls` and does not read the
 skip map. The translate batch, the VI→EN generator and translation repair
 all log task `translate`, so they share their skips. Skipped ids take no
-budget slice. If every id in a chain is skipped, the chain is tried in
-full. 5xx and timeouts never skip.
+budget slice. If every id in a chain is skipped, the ids skipped for a 404
+or a timeout streak are tried again, so a dashboard fix lands at once. A
+429-skipped id is not: a chain whose every id is 429-skipped fails with
+`anyrouter chain exhausted` and sends nothing until the 2 minutes end. In
+run 23b4ed50 (2026-10-13) the old fail-open re-sent each item's full chain
+after the first wave, 225 translate 429s in 88 s. 5xx and timeouts never
+skip.
 
 `parseJson` drops stray closers when a plain parse fails: Laguna often ends
 with an extra `]`, or closes the root `}` before `,"bullets_vi":[...]`.
