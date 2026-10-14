@@ -904,7 +904,16 @@ Every run (30 minutes).
   min(8, item count), at least 2 when there are 2+ stories), a
   title-fallback snapshot is persisted (EN from item titles; VI from
   `title_vi` or the English title if no translation — never invented
-  prose).
+  prose), with `fallback = 1` (0061).
+- A refresh that degrades to that title fallback never replaces a model
+  digest already stored for the date (`fallback = 0`, both languages
+  present). The model digest stays, only `created_at` moves, so the retry
+  waits 3 hours as it would after storing headlines, and the step reason
+  reads `kept model digest from <time>: LLM thin (<error>)`. Rows from
+  before 0061 and homepage rebuilds have `fallback` NULL and are replaced.
+  From 2026-10-07 to 10-14, 4 of 6 title-fallback writes replaced a model
+  digest; on 10-09 the email, both Telegram channels and Facebook sent the
+  headlines.
 - If the LLM digest is useful in count but `bullets_vi` has no
   Vietnamese diacritics and `title_vi` exists, keep the EN bullets and
   replace VI with the `title_vi` fallback — never persist raw English

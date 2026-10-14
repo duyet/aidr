@@ -349,7 +349,7 @@ class FakeD1 {
         "SELECT date, created_at FROM tldr_snapshots WHERE date = ?"
       ) ||
       sql.startsWith(
-        "SELECT date, created_at, bullets_en, bullets_vi FROM tldr_snapshots WHERE date = ?"
+        "SELECT date, created_at, bullets_en, bullets_vi, fallback FROM tldr_snapshots WHERE date = ?"
       )
     ) {
       const [date] = args as [string];
@@ -360,6 +360,7 @@ class FakeD1 {
             created_at: row.created_at ?? 0,
             bullets_en: row.bullets_en ?? "[]",
             bullets_vi: row.bullets_vi ?? "[]",
+            fallback: row.fallback ?? null,
           }
         : null;
     }

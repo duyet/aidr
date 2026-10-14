@@ -180,7 +180,7 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
   const date = tldrSnapshotDate(nowMs);
 
   const existing = await env.DB.prepare(
-    "SELECT date, created_at, bullets_en, bullets_vi FROM tldr_snapshots WHERE date = ?"
+    "SELECT date, created_at, bullets_en, bullets_vi, fallback FROM tldr_snapshots WHERE date = ?"
   )
     .bind(date)
     .first<{
@@ -188,6 +188,7 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
       created_at: number;
       bullets_en: string | null;
       bullets_vi: string | null;
+      fallback: number | null;
     }>();
 
   const results = await loadTopItems(env, nowMs);
@@ -227,19 +228,43 @@ export async function ensureDailyTldr(env: Env): Promise<TldrRunStats> {
   if (!composed.ok) return composed.stats;
   const { bullets_en, bullets_vi } = composed;
 
+  // A failed refresh must not replace a model digest with headlines. Only
+  // the refresh clock moves, so the retry waits TLDR_REFRESH_MS as it would
+  // after storing headlines.
+  if (
+    composed.degraded &&
+    existing?.fallback === 0 &&
+    existingParsed &&
+    existingParsed.bullets_en.length > 0 &&
+    existingParsed.bullets_vi.length > 0
+  ) {
+    await env.DB.prepare(
+      "UPDATE tldr_snapshots SET created_at = ? WHERE date = ?"
+    )
+      .bind(Date.now(), date)
+      .run();
+    return {
+      generated: false,
+      tokens: composed.tokens,
+      reason: `kept model digest from ${new Date(existingParsed.created_at).toISOString()}: ${composed.degraded}`,
+    };
+  }
+
   await env.DB.prepare(
-    `INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at)
-     VALUES (?, ?, ?, ?)
+    `INSERT INTO tldr_snapshots (date, bullets_en, bullets_vi, created_at, fallback)
+     VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(date) DO UPDATE SET
        bullets_en = excluded.bullets_en,
        bullets_vi = excluded.bullets_vi,
-       created_at = excluded.created_at`
+       created_at = excluded.created_at,
+       fallback = excluded.fallback`
   )
     .bind(
       date,
       JSON.stringify(bullets_en),
       JSON.stringify(bullets_vi),
-      Date.now()
+      Date.now(),
+      composed.degraded ? 1 : 0
     )
     .run();
 
@@ -257,6 +282,9 @@ type ComposedTldr =
       bullets_vi: TldrBullet[];
       tokens: number;
       persistReason?: string;
+      /** Why the bullets are item titles instead of the model digest.
+       *  Absent when the model wrote the digest. */
+      degraded?: string;
     }
   | { ok: false; stats: TldrRunStats };
 
@@ -298,6 +326,7 @@ async function composeTldr(env: Env, rows: ItemRow[]): Promise<ComposedTldr> {
   let bullets_en = tldr.bullets_en;
   let bullets_vi = tldr.bullets_vi;
   let persistReason: string | undefined;
+  let degraded: string | undefined;
 
   // Never write an empty or thin snapshot: a 1-bullet row would satisfy
   // the `existing` gate above and freeze a leftover line for TLDR_REFRESH_MS
@@ -320,7 +349,8 @@ async function composeTldr(env: Env, rows: ItemRow[]): Promise<ComposedTldr> {
     }
     bullets_en = fallback.bullets_en;
     bullets_vi = fallback.bullets_vi;
-    persistReason = `LLM thin (${tldr.error ?? `${Math.max(tldr.bullets_en.length, tldr.bullets_vi.length)} bullets`}); persisted ${fallback.bullets_en.length} title-fallback bullets`;
+    degraded = `LLM thin (${tldr.error ?? `${Math.max(tldr.bullets_en.length, tldr.bullets_vi.length)} bullets`})`;
+    persistReason = `${degraded}; persisted ${fallback.bullets_en.length} title-fallback bullets`;
     console.error(persistReason);
   } else if (needsViTitleFallback(tldr.bullets_vi, results)) {
     // Keep a useful EN digest; never persist raw English as bullets_vi
@@ -337,6 +367,7 @@ async function composeTldr(env: Env, rows: ItemRow[]): Promise<ComposedTldr> {
     bullets_vi,
     tokens: tldr.tokens,
     persistReason,
+    degraded,
   };
 }
 
