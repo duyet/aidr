@@ -16,6 +16,7 @@ import {
   confirmSubscription,
   settingsChangeFromParams,
   subscribe,
+  unsubscribe,
 } from "../subscribe/handlers.js";
 import type { Env } from "../types.js";
 
@@ -275,5 +276,44 @@ describe("subscription mails outlive the response (#626)", () => {
     expect(result).toEqual({ ok: true, token: "tok-confirmed" });
     expect(jobs).toHaveLength(2);
     await expect(Promise.all(jobs)).resolves.toBeDefined();
+  });
+});
+
+describe("unsubscribe, then subscribe again (#723)", () => {
+  const ADDRESS = "again@aidr-test.dev";
+  const signUp = async () => {
+    await subscribe(
+      env,
+      ADDRESS,
+      "en",
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      schedule
+    );
+    const { unsubscribe_token: token } = sqlite
+      .prepare("SELECT unsubscribe_token FROM subscribers WHERE email = ?")
+      .get(ADDRESS) as { unsubscribe_token: string };
+    await confirmSubscription(env, token, undefined, schedule);
+    return token;
+  };
+  const row = () =>
+    sqlite
+      .prepare("SELECT confirmed FROM subscribers WHERE email = ?")
+      .get(ADDRESS);
+
+  it("a link from the old subscription cannot remove the new one", async () => {
+    env = { ...env, NEWS_UNSUBSCRIBE_SECRET: "test-secret" };
+    const first = await signUp();
+    await unsubscribe(env, first);
+    expect(row()).toBeUndefined();
+
+    await signUp();
+    await unsubscribe(env, first);
+    expect(row()).toEqual({ confirmed: 1 });
   });
 });

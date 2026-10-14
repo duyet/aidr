@@ -3,16 +3,13 @@ import { deriveUnsubscribeToken } from "../subscribe/handlers.js";
 import type { Env } from "../types.js";
 
 describe("deriveUnsubscribeToken", () => {
-  it("uses deterministic HMAC when secret is configured", async () => {
+  it("issues a fresh HMAC token per signup when the secret is configured", async () => {
+    // A token that repeats for an address would let a link from an earlier,
+    // unsubscribed signup remove a later one (#723).
     const env = { NEWS_UNSUBSCRIBE_SECRET: "test-secret" } as Env;
-    const a = await deriveUnsubscribeToken(env, "User@Example.com");
+    const a = await deriveUnsubscribeToken(env, "user@example.com");
     const b = await deriveUnsubscribeToken(env, "user@example.com");
-    const c = await deriveUnsubscribeToken(
-      { NEWS_UNSUBSCRIBE_SECRET: "other" } as Env,
-      "user@example.com"
-    );
-    expect(a).toBe(b);
-    expect(a).not.toBe(c);
+    expect(a).not.toBe(b);
     expect(a).toMatch(/^[0-9a-f]{64}$/);
   });
 
