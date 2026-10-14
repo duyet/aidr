@@ -18,7 +18,9 @@ const ROOT = resolve(import.meta.dirname, "..");
 const HF = ["--yes", "hyperframes@0.8.96"];
 const date = process.argv[2];
 if (!date)
-  throw new Error("usage: render.mjs <date> [--lang vi] [--only fmt] [--quality q]");
+  throw new Error(
+    "usage: render.mjs <date> [--lang vi] [--only fmt] [--quality q]"
+  );
 const arg = (n) =>
   process.argv.includes(n) ? process.argv[process.argv.indexOf(n) + 1] : null;
 const cut = cutOf(process.argv);

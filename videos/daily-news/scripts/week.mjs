@@ -27,7 +27,8 @@ export function parseWeek(week) {
   const jan4 = Date.UTC(year, 0, 4); // Jan 4 is always in week 1
   const week1Monday = jan4 - ((new Date(jan4).getUTCDay() + 6) % 7) * DAY;
   const start = ymd(week1Monday + (n - 1) * 7 * DAY);
-  if (isoWeekOf(start) !== week) throw new Error(`week "${week}" does not exist`);
+  if (isoWeekOf(start) !== week)
+    throw new Error(`week "${week}" does not exist`);
   return { year, n, start, end: ymd(utc(start) + 6 * DAY) };
 }
 
@@ -41,7 +42,10 @@ export const lastClosedWeek = (now = new Date()) =>
 // "Oct 5–11, 2026", "Oct 28 – Nov 3, 2026", "Dec 28, 2026 – Jan 3, 2027" (`locale` like en-US or vi-VN).
 export function formatRange(start, end, locale = "en-US") {
   const fmt = (d, o) =>
-    new Date(`${d}T12:00:00Z`).toLocaleDateString(locale, { timeZone: "UTC", ...o });
+    new Date(`${d}T12:00:00Z`).toLocaleDateString(locale, {
+      timeZone: "UTC",
+      ...o,
+    });
   const [s, e] = [new Date(`${start}T12:00:00Z`), new Date(`${end}T12:00:00Z`)];
   if (s.getUTCFullYear() !== e.getUTCFullYear())
     return `${fmt(start, { month: "short", day: "numeric", year: "numeric" })} – ${fmt(end, { month: "short", day: "numeric", year: "numeric" })}`;

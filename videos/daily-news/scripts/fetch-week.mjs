@@ -5,7 +5,7 @@
 // Usage: node scripts/fetch-week.mjs [--week 2026-W41] [--count 8] [--force]
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { UA, download, hasWrittenScript } from "./media.mjs";
+import { download, hasWrittenScript, UA } from "./media.mjs";
 import { lastClosedWeek, parseWeek } from "./week.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -18,7 +18,9 @@ const count = Number(arg("--count") ?? config.weekCount);
 
 const res = await fetch(`${config.weekApi}/${week}`, { headers: UA });
 if (!res.ok) {
-  console.error(`${config.weekApi}/${week}: HTTP ${res.status} (no weekly snapshot for ${week} yet?)`);
+  console.error(
+    `${config.weekApi}/${week}: HTTP ${res.status} (no weekly snapshot for ${week} yet?)`
+  );
   process.exit(1);
 }
 const data = await res.json();
@@ -26,7 +28,9 @@ const date = `week-${week}`;
 const dir = join(ROOT, "editions", date);
 // Same guard as fetch.mjs: a written script is tied to the edition it was written from.
 if (hasWrittenScript(dir) && !process.argv.includes("--force")) {
-  console.error(`editions/${date} already has a written script; refusing to refetch (the edition may have changed). Use --force to refetch anyway.`);
+  console.error(
+    `editions/${date} already has a written script; refusing to refetch (the edition may have changed). Use --force to refetch anyway.`
+  );
   process.exit(1);
 }
 mkdirSync(join(dir, "assets"), { recursive: true });
@@ -47,7 +51,9 @@ for (const s of data.stories.slice(0, count)) {
     title: s.title ?? null,
     title_vi: s.title_vi ?? null,
     url: s.url ?? null,
-    source: s.source ?? (s.url ? new URL(s.url).hostname.replace(/^www\./, "") : null),
+    source:
+      s.source ??
+      (s.url ? new URL(s.url).hostname.replace(/^www\./, "") : null),
     permalink: s.path ? `https://aidr.today${s.path}` : null,
     days: s.days ?? null,
     votes: s.votes ?? null,

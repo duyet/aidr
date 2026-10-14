@@ -7,14 +7,27 @@ import { parseWeek } from "./week.mjs";
 
 const AXES = {
   // The grid is the only thumbnail-safe intro (complete on frame 0); the others are pins on request.
-  intro: { ids: ["grid", "date-slam", "countdown", "headline-stack"], auto: ["grid"] },
-  transition: { ids: ["wipe", "ink", "shutter"], auto: ["wipe", "ink", "shutter"] },
-  background: { ids: ["paper", "soft", "grid"], auto: ["paper", "soft", "grid"] },
+  intro: {
+    ids: ["grid", "date-slam", "countdown", "headline-stack"],
+    auto: ["grid"],
+  },
+  transition: {
+    ids: ["wipe", "ink", "shutter"],
+    auto: ["wipe", "ink", "shutter"],
+  },
+  background: {
+    ids: ["paper", "soft", "grid"],
+    auto: ["paper", "soft", "grid"],
+  },
 };
 const PIN_ONLY = ["accent"];
 // Story layouts are chosen per story from what the story has, not rotated by date. Only `full` needs an image:
 // `stat` shows the paper card in its media box when it has none.
-const LAYOUTS = { split: { image: false, max: Infinity }, full: { image: true, max: Infinity }, stat: { image: false, max: 2 } };
+const LAYOUTS = {
+  split: { image: false, max: Infinity },
+  full: { image: true, max: Infinity },
+  stat: { image: false, max: 2 },
+};
 /** A dollar figure ("$40B"): a story whose English bullet names one leads with it. auto-script reads its stat with it. */
 export const MONEY = /\$[\d.,]+\s?[KMBT]?\b/;
 
@@ -24,7 +37,8 @@ const mod = (a, n) => ((a % n) + n) % n;
 /** FNV-1a, 32-bit. Local on purpose: a change to the cast's seeding must not reshuffle looks. */
 function fnv(s) {
   let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+  for (let i = 0; i < s.length; i++)
+    h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
   return h;
 }
 
@@ -43,9 +57,13 @@ function shuffle(ids, seed) {
 
 /** "YYYY-MM-DD" → days since 1970-01-01; "week-YYYY-Www" → weeks (consecutive weeks are consecutive numbers). */
 export function dayNumber(key) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return Date.parse(`${key}T00:00:00Z`) / DAY;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(key))
+    return Date.parse(`${key}T00:00:00Z`) / DAY;
   const week = /^week-(\d{4}-W\d{2})$/.exec(key ?? "")?.[1];
-  if (week) return Math.floor(Date.parse(`${parseWeek(week).start}T00:00:00Z`) / DAY / 7);
+  if (week)
+    return Math.floor(
+      Date.parse(`${parseWeek(week).start}T00:00:00Z`) / DAY / 7
+    );
   throw new Error(`look key "${key}": expected YYYY-MM-DD or week-YYYY-Www`);
 }
 
@@ -74,8 +92,14 @@ export function rotate(list, day, axis) {
  */
 export function rotatePair(listA, listB, day, axisA, axisB) {
   const n = listA.length;
-  if (n < 3 || listB.length !== n) throw new Error(`rotatePair needs two pools of the same size >= 3, got ${n} and ${listB.length}`);
-  const [a, b] = [shuffle([...listA].sort(), fnv(axisA)), shuffle([...listB].sort(), fnv(axisB))];
+  if (n < 3 || listB.length !== n)
+    throw new Error(
+      `rotatePair needs two pools of the same size >= 3, got ${n} and ${listB.length}`
+    );
+  const [a, b] = [
+    shuffle([...listA].sort(), fnv(axisA)),
+    shuffle([...listB].sort(), fnv(axisB)),
+  ];
   return [a[mod(day, n)], b[mod(day + Math.floor(day / n), n)]];
 }
 
@@ -92,20 +116,37 @@ function chooseLayouts(stories, edition) {
   for (const [index, story] of stories.entries()) {
     const { rank, layout: pin } = story;
     const images = story.images?.length ?? 0;
-    const money = MONEY.test(edition.stories?.find((s) => s.rank === rank)?.text ?? "");
+    const money = MONEY.test(
+      edition.stories?.find((s) => s.rank === rank)?.text ?? ""
+    );
     const fits = (id) => images > 0 || !LAYOUTS[id].image;
     let id;
     if (pin !== undefined) {
-      if (!LAYOUTS[pin]) throw new Error(`script.stories rank ${rank} layout "${pin}": unknown; use ${Object.keys(LAYOUTS).join(" | ")}`);
+      if (!LAYOUTS[pin])
+        throw new Error(
+          `script.stories rank ${rank} layout "${pin}": unknown; use ${Object.keys(LAYOUTS).join(" | ")}`
+        );
       if (fits(pin)) id = pin;
     }
     if (!id) {
       const alt = index % 2 ? "full" : "split";
       const other = alt === "full" ? "split" : "full";
-      const prefs = images === 0 ? ["split", "stat"] : money ? ["stat", alt, other] : [alt, other];
-      const eligible = prefs.filter((p) => fits(p) && history.filter((h) => h === p).length < LAYOUTS[p].max);
-      id = eligible.find((p) => !(history.at(-1) === p && history.at(-2) === p)) ?? eligible[0];
-      if (pin !== undefined) notes.push(`story ${rank}: layout "${pin}" needs an image; chose ${id}`);
+      const prefs =
+        images === 0
+          ? ["split", "stat"]
+          : money
+            ? ["stat", alt, other]
+            : [alt, other];
+      const eligible = prefs.filter(
+        (p) => fits(p) && history.filter((h) => h === p).length < LAYOUTS[p].max
+      );
+      id =
+        eligible.find((p) => !(history.at(-1) === p && history.at(-2) === p)) ??
+        eligible[0];
+      if (pin !== undefined)
+        notes.push(
+          `story ${rank}: layout "${pin}" needs an image; chose ${id}`
+        );
     }
     layouts[rank] = id;
     history.push(id);
@@ -121,14 +162,35 @@ export function resolveLook(script, edition) {
   const pin = script.theme ?? {};
   for (const [axis, id] of Object.entries(pin)) {
     if (PIN_ONLY.includes(axis)) continue;
-    if (!AXES[axis]) throw new Error(`script.theme.${axis}: unknown; theme takes ${[...Object.keys(AXES), ...PIN_ONLY].join(", ")}`);
-    if (!AXES[axis].ids.includes(id)) throw new Error(`script.theme.${axis} "${id}": unknown; use ${AXES[axis].ids.join(" | ")}`);
+    if (!AXES[axis])
+      throw new Error(
+        `script.theme.${axis}: unknown; theme takes ${[...Object.keys(AXES), ...PIN_ONLY].join(", ")}`
+      );
+    if (!AXES[axis].ids.includes(id))
+      throw new Error(
+        `script.theme.${axis} "${id}": unknown; use ${AXES[axis].ids.join(" | ")}`
+      );
   }
   const day = dayNumber(edition.date);
-  const free = Object.keys(AXES).filter((axis) => !(axis in pin) && AXES[axis].auto.length > 1);
-  const joint = free.length === 2 ? rotatePair(AXES[free[0]].auto, AXES[free[1]].auto, day, ...free) : [];
-  const look = Object.fromEntries(
-    Object.entries(AXES).map(([axis, { auto }]) => [axis, pin[axis] ?? (free.length === 2 && free.includes(axis) ? joint[free.indexOf(axis)] : rotate(auto, day, axis))]),
+  const free = Object.keys(AXES).filter(
+    (axis) => !(axis in pin) && AXES[axis].auto.length > 1
   );
-  return { ...look, ...(pin.accent ? { accent: pin.accent } : {}), ...chooseLayouts(script.stories ?? [], edition) };
+  const joint =
+    free.length === 2
+      ? rotatePair(AXES[free[0]].auto, AXES[free[1]].auto, day, ...free)
+      : [];
+  const look = Object.fromEntries(
+    Object.entries(AXES).map(([axis, { auto }]) => [
+      axis,
+      pin[axis] ??
+        (free.length === 2 && free.includes(axis)
+          ? joint[free.indexOf(axis)]
+          : rotate(auto, day, axis)),
+    ])
+  );
+  return {
+    ...look,
+    ...(pin.accent ? { accent: pin.accent } : {}),
+    ...chooseLayouts(script.stories ?? [], edition),
+  };
 }

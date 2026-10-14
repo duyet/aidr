@@ -23,7 +23,7 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { castProblems, hostOrder, loadCast } from "./cast.mjs";
 import { cutOf } from "./lang.mjs";
-import { QuotaError, partsOf, quotaShortfall } from "./novoice.mjs";
+import { partsOf, QuotaError, quotaShortfall } from "./novoice.mjs";
 
 const run = promisify(execFile);
 const ROOT = resolve(import.meta.dirname, "..");
@@ -33,7 +33,8 @@ const TTS = resolve(
 );
 // HeyGen needs an interactive sign-in, so unattended runs (CI, a Managed Agents sandbox) set
 // AIDR_NO_HEYGEN=1: a part ElevenLabs cannot voice then fails the run instead of falling back.
-const NO_HEYGEN = process.env.AIDR_NO_HEYGEN === "1" || process.env.CI === "true";
+const NO_HEYGEN =
+  process.env.AIDR_NO_HEYGEN === "1" || process.env.CI === "true";
 
 const date = process.argv[2];
 if (!date) throw new Error("usage: voice.mjs <date> [--lang vi]");
@@ -129,7 +130,9 @@ async function elevenlabs(voiceId, text, wav, wordsFile) {
     const body = await res.text();
     // 401 is a rejected key or an exhausted quota; 402 is billing; quota_exceeded can ride on a 429.
     const msg = `ElevenLabs ${res.status}: ${body.slice(0, 200)}`;
-    throw res.status === 401 || res.status === 402 || /quota_exceeded/i.test(body)
+    throw res.status === 401 ||
+      res.status === 402 ||
+      /quota_exceeded/i.test(body)
       ? new QuotaError(msg)
       : new Error(msg);
   }
@@ -263,7 +266,10 @@ async function voicePart(part) {
 // ---- no-voice decision: before any synthesis, and again if a part hits a quota or key error.
 const modeFile = join(dir, cut.voice, "mode.json");
 function setMode(voice, reason) {
-  writeFileSync(modeFile, `${JSON.stringify(voice ? { voice } : { voice, reason }, null, 2)}\n`);
+  writeFileSync(
+    modeFile,
+    `${JSON.stringify(voice ? { voice } : { voice, reason }, null, 2)}\n`
+  );
 }
 function goNoVoice(reason) {
   for (const seg of segments)
@@ -289,11 +295,16 @@ if (config.voice.provider === "elevenlabs") {
   const needed = [...todo.values()].reduce((a, b) => a + b, 0);
   if (needed > 0) {
     if (!process.env.ELEVENLABS_API_KEY)
-      goNoVoice(`ELEVENLABS_API_KEY is not set (${needed} characters to voice)`);
+      goNoVoice(
+        `ELEVENLABS_API_KEY is not set (${needed} characters to voice)`
+      );
     try {
-      const res = await fetch("https://api.elevenlabs.io/v1/user/subscription", {
-        headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY },
-      });
+      const res = await fetch(
+        "https://api.elevenlabs.io/v1/user/subscription",
+        {
+          headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY },
+        }
+      );
       if (res.status === 401)
         goNoVoice("ElevenLabs rejected the API key (401)");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -304,7 +315,9 @@ if (config.voice.provider === "elevenlabs") {
         `✓ ElevenLabs quota ok: ${needed} characters to voice, ${sub.character_limit - sub.character_count} left`
       );
     } catch (e) {
-      console.warn(`! could not read the ElevenLabs quota (${e.message}); voicing anyway, a quota error mid-run still ends in a no-voice cut`);
+      console.warn(
+        `! could not read the ElevenLabs quota (${e.message}); voicing anyway, a quota error mid-run still ends in a no-voice cut`
+      );
     }
   }
 }

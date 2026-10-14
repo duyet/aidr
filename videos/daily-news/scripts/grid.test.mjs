@@ -27,21 +27,52 @@ test("every story count the pipeline can emit has a full layout in every format"
       const g = GRID[fmt]?.[n];
       assert.ok(g, `${fmt}: no layout for ${n} stories`);
       const width = g.areas[0].split(" ").length;
-      for (const row of g.areas) assert.equal(row.split(" ").length, width, `${fmt} n=${n}: ragged row "${row}"`);
+      for (const row of g.areas)
+        assert.equal(
+          row.split(" ").length,
+          width,
+          `${fmt} n=${n}: ragged row "${row}"`
+        );
       const cells = cellsOf(g.areas);
-      assert.deepEqual(Object.keys(cells).sort(), [...AREAS.slice(0, n)], `${fmt} n=${n}: one area per tile, no empty cell`);
+      assert.deepEqual(
+        Object.keys(cells).sort(),
+        [...AREAS.slice(0, n)],
+        `${fmt} n=${n}: one area per tile, no empty cell`
+      );
       for (const [name, cs] of Object.entries(cells)) {
         const rows = cs.map(([r]) => r);
         const cols = cs.map(([, c]) => c);
         const h = Math.max(...rows) - Math.min(...rows) + 1;
         const w = Math.max(...cols) - Math.min(...cols) + 1;
-        assert.equal(cs.length, h * w, `${fmt} n=${n}: area ${name} is not a rectangle`);
+        assert.equal(
+          cs.length,
+          h * w,
+          `${fmt} n=${n}: area ${name} is not a rectangle`
+        );
       }
       const lead = cells.a.length;
-      for (const cs of Object.values(cells)) assert.ok(cs.length <= lead, `${fmt} n=${n}: a tile is bigger than the lead`);
-      if (g.cols) assert.equal(g.cols.split(" ").length, width, `${fmt} n=${n}: column tracks`);
-      if (g.rows) assert.equal(g.rows.split(" ").length, g.areas.length, `${fmt} n=${n}: row tracks`);
-      if (cells.a.length > 1) assert.ok(g.hero > g.type, `${fmt} n=${n}: the hero tile has bigger type`);
+      for (const cs of Object.values(cells))
+        assert.ok(
+          cs.length <= lead,
+          `${fmt} n=${n}: a tile is bigger than the lead`
+        );
+      if (g.cols)
+        assert.equal(
+          g.cols.split(" ").length,
+          width,
+          `${fmt} n=${n}: column tracks`
+        );
+      if (g.rows)
+        assert.equal(
+          g.rows.split(" ").length,
+          g.areas.length,
+          `${fmt} n=${n}: row tracks`
+        );
+      if (cells.a.length > 1)
+        assert.ok(
+          g.hero > g.type,
+          `${fmt} n=${n}: the hero tile has bigger type`
+        );
     }
 });
 
@@ -55,10 +86,19 @@ test("fewer stories means bigger type", () => {
 test("the six-story grid is today's 3x2 (16:9) and 2x3 (9:16) at today's type size", () => {
   assert.deepEqual(GRID["16x9"][6], { areas: ["a b c", "d e f"], type: 1 });
   assert.deepEqual(GRID["9x16"][6], { areas: ["a b", "c d", "e f"], type: 1 });
-  assert.match(gridCss(6), /\.f-16x9 \.tiles\[data-n="6"\]\{grid-template-areas:"a b c" "d e f";grid-template-columns:repeat\(3,1fr\);grid-template-rows:repeat\(2,1fr\)/);
-  assert.match(gridCss(6), /\.f-9x16 \.tiles\[data-n="6"\]\{grid-template-areas:"a b" "c d" "e f";grid-template-columns:repeat\(2,1fr\);grid-template-rows:repeat\(3,1fr\)/);
+  assert.match(
+    gridCss(6),
+    /\.f-16x9 \.tiles\[data-n="6"\]\{grid-template-areas:"a b c" "d e f";grid-template-columns:repeat\(3,1fr\);grid-template-rows:repeat\(2,1fr\)/
+  );
+  assert.match(
+    gridCss(6),
+    /\.f-9x16 \.tiles\[data-n="6"\]\{grid-template-areas:"a b" "c d" "e f";grid-template-columns:repeat\(2,1fr\);grid-template-rows:repeat\(3,1fr\)/
+  );
 });
 
 test("a count with no layout fails the build instead of leaving cells empty", () => {
-  assert.throws(() => gridCss(maxStories + 1), new RegExp(`no 16x9 layout for ${maxStories + 1} stories`));
+  assert.throws(
+    () => gridCss(maxStories + 1),
+    new RegExp(`no 16x9 layout for ${maxStories + 1} stories`)
+  );
 });

@@ -23,9 +23,18 @@ function build(
   cleanups.push(cleanup);
   mkdirSync(join(dn, "editions", date), { recursive: true });
   const src = join(ROOT, "editions", date);
-  const [script, edition] = edit(read(join(src, "script.json")), read(join(src, "edition.json")));
-  writeFileSync(join(dn, "editions", date, "script.json"), JSON.stringify(script));
-  writeFileSync(join(dn, "editions", date, "edition.json"), JSON.stringify(edition));
+  const [script, edition] = edit(
+    read(join(src, "script.json")),
+    read(join(src, "edition.json"))
+  );
+  writeFileSync(
+    join(dn, "editions", date, "script.json"),
+    JSON.stringify(script)
+  );
+  writeFileSync(
+    join(dn, "editions", date, "edition.json"),
+    JSON.stringify(edition)
+  );
   // Assets are not committed, and build drops an image whose file is missing: stand in an empty file for each.
   mkdirSync(join(dn, "editions", date, "assets"));
   for (const f of new Set([
@@ -39,21 +48,37 @@ function build(
     script,
     stdout: run.stdout,
     stderr: run.stderr,
-    page: (name) => readFileSync(join(dn, "editions", date, "out", name, "index.html"), "utf8"),
+    page: (name) =>
+      readFileSync(
+        join(dn, "editions", date, "out", name, "index.html"),
+        "utf8"
+      ),
     timeline: () => read(join(dn, "editions", date, "timeline.json")),
   };
 }
 
-const coverImg = (html) => html.match(/<img class="img" id="cover-img" src="([^"]+)"/)?.[1];
+const coverImg = (html) =>
+  html.match(/<img class="img" id="cover-img" src="([^"]+)"/)?.[1];
 
 test("the built intro tags the grid with its story count and carries that count's layout", () => {
   const { script, page } = build("2026-10-13");
   const n = script.stories.length;
   for (const fmt of FORMATS) {
     const html = page(fmt);
-    assert.match(html, new RegExp(`<div class="tiles" data-n="${n}">`), `${fmt}: .tiles carries data-n`);
-    assert.ok(html.includes(`.f-${fmt} .tiles[data-n="${n}"]{grid-template-areas:`), `${fmt}: the ${n}-story layout is in the page`);
-    assert.equal(html.match(/class="tile[ "]/g).length, n, `${fmt}: one tile per story`);
+    assert.match(
+      html,
+      new RegExp(`<div class="tiles" data-n="${n}">`),
+      `${fmt}: .tiles carries data-n`
+    );
+    assert.ok(
+      html.includes(`.f-${fmt} .tiles[data-n="${n}"]{grid-template-areas:`),
+      `${fmt}: the ${n}-story layout is in the page`
+    );
+    assert.equal(
+      html.match(/class="tile[ "]/g).length,
+      n,
+      `${fmt}: one tile per story`
+    );
   }
 });
 
@@ -91,7 +116,8 @@ test("a story whose image files are missing shows no picture and loses its full 
   assert.deepEqual(layouts, { 1: "split", 2: "split", 3: "stat", 4: "full" });
 });
 
-const coverHook = (html) => html.match(/<div class="hook"><span>([^<]*)<\/span>/)?.[1];
+const coverHook = (html) =>
+  html.match(/<div class="hook"><span>([^<]*)<\/span>/)?.[1];
 
 test("a cover whose thumb story has no image takes picture and hook from the first story with an image", () => {
   // 2026-10-13: the thumb is story 2, an arxiv paper with no image; story 1 has one. A hook about the
@@ -104,9 +130,16 @@ test("a cover whose thumb story has no image takes picture and hook from the fir
     const html = page(`cover-${fmt}`);
     assert.equal(coverImg(html), first.images[0], `${fmt}: story 1's image`);
     assert.equal(coverHook(html), first.kicker, `${fmt}: story 1's hook`);
-    assert.notEqual(coverHook(html), script.thumb.hook, `${fmt}: not the thumb story's hook`);
+    assert.notEqual(
+      coverHook(html),
+      script.thumb.hook,
+      `${fmt}: not the thumb story's hook`
+    );
   }
-  assert.match(stderr, /! cover: thumb story 2 has no image; the cover uses story 1/);
+  assert.match(
+    stderr,
+    /! cover: thumb story 2 has no image; the cover uses story 1/
+  );
 });
 
 test("a cover whose thumb story has an image keeps it", () => {
@@ -130,9 +163,15 @@ test("a cover with no story image anywhere shows the thumb story's paper card", 
     const html = page(`cover-${fmt}`);
     assert.equal(coverImg(html), undefined, fmt);
     assert.ok(
-      html.includes('<div class="panel"><span>arxiv.org</span><b>AI Models Can Provably Hide Arbitrary Capabilities</b></div>'),
+      html.includes(
+        '<div class="panel"><span>arxiv.org</span><b>AI Models Can Provably Hide Arbitrary Capabilities</b></div>'
+      ),
       `${fmt}: the paper card fills the picture side`
     );
-    assert.equal(coverHook(html), script.thumb.hook, `${fmt}: the thumb story's hook with its paper card`);
+    assert.equal(
+      coverHook(html),
+      script.thumb.hook,
+      `${fmt}: the thumb story's hook with its paper card`
+    );
   }
 });

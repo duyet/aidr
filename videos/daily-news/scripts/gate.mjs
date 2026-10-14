@@ -28,15 +28,26 @@ const FFPROBE = process.env.FFPROBE || "ffprobe";
 export function probeStreams(file) {
   const p = spawnSync(
     FFPROBE,
-    ["-v", "error", "-show_entries", "format=duration:stream=codec_type,codec_name,width,height,avg_frame_rate,sample_rate,channels", "-of", "json", file],
+    [
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration:stream=codec_type,codec_name,width,height,avg_frame_rate,sample_rate,channels",
+      "-of",
+      "json",
+      file,
+    ],
     { encoding: "utf8" }
   );
-  if (p.status !== 0) throw new Error(`ffprobe ${file}: ${p.error?.message ?? p.stderr.trim()}`);
+  if (p.status !== 0)
+    throw new Error(`ffprobe ${file}: ${p.error?.message ?? p.stderr.trim()}`);
   return { ...JSON.parse(p.stdout), bytes: statSync(file).size };
 }
 
 const fps = (rate) => {
-  const [n, d] = String(rate ?? "0/1").split("/").map(Number);
+  const [n, d] = String(rate ?? "0/1")
+    .split("/")
+    .map(Number);
   return d ? n / d : n;
 };
 
@@ -55,14 +66,30 @@ export function gateVideo(probe, kind = "reel", limits = REEL_LIMITS) {
   if (!(duration > 0)) problems.push("no duration");
   if (!(probe.bytes > 0)) problems.push("empty file");
   if (kind !== "reel") return problems;
-  if (duration && duration < limits.minSeconds) problems.push(`${duration.toFixed(1)}s is shorter than ${limits.minSeconds}s`);
-  if (duration > limits.maxSeconds) problems.push(`${duration.toFixed(1)}s is longer than the ${limits.maxSeconds}s Reel limit`);
-  if (probe.bytes > limits.maxBytes) problems.push(`${(probe.bytes / 1e6).toFixed(0)} MB is over ${(limits.maxBytes / 1e6).toFixed(0)} MB`);
+  if (duration && duration < limits.minSeconds)
+    problems.push(
+      `${duration.toFixed(1)}s is shorter than ${limits.minSeconds}s`
+    );
+  if (duration > limits.maxSeconds)
+    problems.push(
+      `${duration.toFixed(1)}s is longer than the ${limits.maxSeconds}s Reel limit`
+    );
+  if (probe.bytes > limits.maxBytes)
+    problems.push(
+      `${(probe.bytes / 1e6).toFixed(0)} MB is over ${(limits.maxBytes / 1e6).toFixed(0)} MB`
+    );
   if (v) {
-    if (!v.width || !v.height || Math.abs(v.width / v.height - 9 / 16) > 0.01) problems.push(`${v.width}x${v.height} is not 9:16`);
-    else if (v.width < limits.minWidth || v.height < limits.minHeight) problems.push(`${v.width}x${v.height} is under ${limits.minWidth}x${limits.minHeight}`);
+    if (!v.width || !v.height || Math.abs(v.width / v.height - 9 / 16) > 0.01)
+      problems.push(`${v.width}x${v.height} is not 9:16`);
+    else if (v.width < limits.minWidth || v.height < limits.minHeight)
+      problems.push(
+        `${v.width}x${v.height} is under ${limits.minWidth}x${limits.minHeight}`
+      );
     const f = fps(v.avg_frame_rate);
-    if (f < limits.minFps || f > limits.maxFps) problems.push(`${f.toFixed(2)} fps is outside ${limits.minFps}–${limits.maxFps}`);
+    if (f < limits.minFps || f > limits.maxFps)
+      problems.push(
+        `${f.toFixed(2)} fps is outside ${limits.minFps}–${limits.maxFps}`
+      );
   }
   return problems;
 }
@@ -72,7 +99,10 @@ export function lintText(label, text) {
   const t = String(text ?? "").trim();
   if (!t) return [`${label}: empty`];
   const problems = [];
-  if (ENGAGEMENT_BAIT.test(t)) problems.push(`${label}: engagement bait ("${t.match(ENGAGEMENT_BAIT)[0]}")`);
+  if (ENGAGEMENT_BAIT.test(t))
+    problems.push(
+      `${label}: engagement bait ("${t.match(ENGAGEMENT_BAIT)[0]}")`
+    );
   if (/\bTODO\b/.test(t)) problems.push(`${label}: TODO left`);
   return problems;
 }
@@ -81,14 +111,19 @@ export function lintText(label, text) {
 export function scriptTexts(script) {
   const out = [];
   const voice = (label, v) => {
-    for (const [i, p] of (Array.isArray(v) ? v : [{ text: v }]).entries()) out.push([`${label}.voice[${i}]`, p.text]);
+    for (const [i, p] of (Array.isArray(v) ? v : [{ text: v }]).entries())
+      out.push([`${label}.voice[${i}]`, p.text]);
   };
   voice("intro", script.intro?.voice ?? []);
   for (const s of script.stories ?? []) {
-    out.push([`story ${s.rank}.headline`, s.headline], [`story ${s.rank}.kicker`, s.kicker]);
+    out.push(
+      [`story ${s.rank}.headline`, s.headline],
+      [`story ${s.rank}.kicker`, s.kicker]
+    );
     voice(`story ${s.rank}`, s.voice ?? []);
   }
   voice("outro", script.outro?.voice ?? []);
-  for (const k of ["hook", "facebook"]) if (script.post?.[k] !== undefined) out.push([`post.${k}`, script.post[k]]);
+  for (const k of ["hook", "facebook"])
+    if (script.post?.[k] !== undefined) out.push([`post.${k}`, script.post[k]]);
   return out;
 }

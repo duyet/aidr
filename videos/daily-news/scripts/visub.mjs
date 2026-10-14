@@ -16,10 +16,10 @@
 // Usage: node scripts/visub.mjs <date> [--youtube] [--force]
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { DEFAULT_MODELS, complete } from "./auto-script.mjs";
+import { complete, DEFAULT_MODELS } from "./auto-script.mjs";
 import { lintText } from "./gate.mjs";
-import { requireLlmKey } from "./local-llm-key.mjs";
 import { cutFor } from "./lang.mjs";
+import { requireLlmKey } from "./local-llm-key.mjs";
 import { envVar } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -33,13 +33,24 @@ export function parseSrt(text) {
     .map((block) => {
       const lines = block.split(/\r?\n/);
       const at = lines.findIndex((l) => l.includes("-->"));
-      if (at < 0) throw new Error(`SRT block without a time line: ${block.slice(0, 60)}`);
+      if (at < 0)
+        throw new Error(`SRT block without a time line: ${block.slice(0, 60)}`);
       const [start, end] = lines[at].split("-->").map((s) => s.trim());
-      return { start, end, text: lines.slice(at + 1).join(" ").trim() };
+      return {
+        start,
+        end,
+        text: lines
+          .slice(at + 1)
+          .join(" ")
+          .trim(),
+      };
     });
 }
 
-export const formatSrt = (cues) => cues.map((c, i) => `${i + 1}\n${c.start} --> ${c.end}\n${c.text}\n`).join("\n");
+export const formatSrt = (cues) =>
+  cues
+    .map((c, i) => `${i + 1}\n${c.start} --> ${c.end}\n${c.text}\n`)
+    .join("\n");
 
 /** Consecutive cues up to one that ends a sentence: [{ cues: [index], en }]. */
 export function sentences(cues) {
@@ -71,12 +82,15 @@ export function splitAcross(vi, enTexts) {
   let acc = 0;
   for (let k = 0; k < n; k++) {
     acc += weights[k];
-    let to = k === n - 1 ? words.length : Math.round((words.length * acc) / total);
+    let to =
+      k === n - 1 ? words.length : Math.round((words.length * acc) / total);
     const lo = from + 1;
     const hi = words.length - (n - 1 - k);
     to = Math.min(Math.max(to, lo), hi);
     if (k < n - 1) {
-      const marks = [0, -1, 1, -2, 2].map((d) => to + d).filter((c) => c >= lo && c <= hi && /[,.;:!?]$/.test(words[c - 1]));
+      const marks = [0, -1, 1, -2, 2]
+        .map((d) => to + d)
+        .filter((c) => c >= lo && c <= hi && /[,.;:!?]$/.test(words[c - 1]));
       if (marks.length) to = marks[0];
     }
     out.push(words.slice(from, to).join(" "));
@@ -101,16 +115,31 @@ export function spreadWords(text, start, end) {
 /** Why a cache does not belong to these English cues (null = it does). Times and English text must match. */
 export function subsMismatch(cached, enCues) {
   if (!Array.isArray(cached)) return "no cues";
-  if (cached.length !== enCues.length) return `${cached.length} cached cues, ${enCues.length} in the English captions`;
-  const i = enCues.findIndex((c, k) => cached[k].start !== c.start || cached[k].end !== c.end || cached[k].en !== c.text);
+  if (cached.length !== enCues.length)
+    return `${cached.length} cached cues, ${enCues.length} in the English captions`;
+  const i = enCues.findIndex(
+    (c, k) =>
+      cached[k].start !== c.start ||
+      cached[k].end !== c.end ||
+      cached[k].en !== c.text
+  );
   return i < 0 ? null : `cue ${i + 1} differs`;
 }
 
 /** A cache moved onto new cue times when only the times changed (same cues, same English text), else null.
  *  A re-voiced cut (a fresh CI runner keeps no voice files) times the same script differently. */
 export function retime(cached, enCues) {
-  if (!Array.isArray(cached) || cached.length !== enCues.length || cached.some((c, k) => c.en !== enCues[k].text)) return null;
-  return cached.map((c, k) => ({ ...c, start: enCues[k].start, end: enCues[k].end }));
+  if (
+    !Array.isArray(cached) ||
+    cached.length !== enCues.length ||
+    cached.some((c, k) => c.en !== enCues[k].text)
+  )
+    return null;
+  return cached.map((c, k) => ({
+    ...c,
+    start: enCues[k].start,
+    end: enCues[k].end,
+  }));
 }
 
 /** The Worker's Vietnamese house style (VI_STYLE with its KEEP_ENGLISH_PROSE, and RULES_OVERVIEW), read from source. */
@@ -118,11 +147,19 @@ export function houseStyle(workerDir = WORKER) {
   const llm = readFileSync(join(workerDir, "llm.ts"), "utf8");
   const terms = readFileSync(join(workerDir, "translation-terms.ts"), "utf8");
   const style = llm.match(/^const VI_STYLE = `([\s\S]*?)`;$/m)?.[1];
-  const overview = llm.match(/^export const RULES_OVERVIEW = `([\s\S]*?)`;$/m)?.[1];
-  const prose = terms.match(/^export const KEEP_ENGLISH_PROSE =\s*"([^"]+)";/m)?.[1];
-  if (!style || !overview || !prose) throw new Error("cannot read VI_STYLE / RULES_OVERVIEW / KEEP_ENGLISH_PROSE from apps/web/worker");
+  const overview = llm.match(
+    /^export const RULES_OVERVIEW = `([\s\S]*?)`;$/m
+  )?.[1];
+  const prose = terms.match(
+    /^export const KEEP_ENGLISH_PROSE =\s*"([^"]+)";/m
+  )?.[1];
+  if (!style || !overview || !prose)
+    throw new Error(
+      "cannot read VI_STYLE / RULES_OVERVIEW / KEEP_ENGLISH_PROSE from apps/web/worker"
+    );
   const filled = style.replace(/\$\{KEEP_ENGLISH_PROSE\}/g, prose);
-  if (filled.includes("${")) throw new Error("VI_STYLE has an interpolation visub.mjs does not know");
+  if (filled.includes("${"))
+    throw new Error("VI_STYLE has an interpolation visub.mjs does not know");
   return { style: filled, overview };
 }
 
@@ -139,17 +176,28 @@ export function promptFor(lines, title, style = houseStyle()) {
   ];
 }
 
-const digits = (t) => (String(t ?? "").match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) => n.replace(/[.,]/g, ""));
-const flat = (t) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+const digits = (t) =>
+  (String(t ?? "").match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) =>
+    n.replace(/[.,]/g, "")
+  );
+const flat = (t) =>
+  t
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
 
 /** Problems with one translated line (empty = fine). */
 export function lineProblems(label, en, vi) {
   if (typeof vi !== "string" || !vi.trim()) return [`${label}: empty`];
   const p = [];
   const have = new Set(digits(vi));
-  for (const n of digits(en)) if (!have.has(n)) p.push(`${label}: number ${n} is missing`);
-  for (const keep of ["AI;DR", "aidr.today"]) if (en.includes(keep) && !vi.includes(keep)) p.push(`${label}: "${keep}" is missing`);
-  if (en.split(/\s+/).length >= 3 && flat(en) === flat(vi)) p.push(`${label}: not translated`);
+  for (const n of digits(en))
+    if (!have.has(n)) p.push(`${label}: number ${n} is missing`);
+  for (const keep of ["AI;DR", "aidr.today"])
+    if (en.includes(keep) && !vi.includes(keep))
+      p.push(`${label}: "${keep}" is missing`);
+  if (en.split(/\s+/).length >= 3 && flat(en) === flat(vi))
+    p.push(`${label}: not translated`);
   p.push(...lintText(label, vi));
   return p;
 }
@@ -159,13 +207,19 @@ const TITLE_MAX = 100;
 
 /** Parse and check one model answer (`check` judges each line). Returns { title, lines, problems }. */
 export function checkAnswer(text, lines, title, check = lineProblems) {
-  const json = JSON.parse(text.replace(/^[\s\S]*?(\{)/, "$1").replace(/\}[^}]*$/, "}"));
-  const out = Array.isArray(json.lines) ? json.lines.map((l) => (typeof l === "string" ? l.trim() : l)) : [];
-  if (out.length !== lines.length) return { problems: [`${out.length} lines for ${lines.length}`] };
+  const json = JSON.parse(
+    text.replace(/^[\s\S]*?(\{)/, "$1").replace(/\}[^}]*$/, "}")
+  );
+  const out = Array.isArray(json.lines)
+    ? json.lines.map((l) => (typeof l === "string" ? l.trim() : l))
+    : [];
+  if (out.length !== lines.length)
+    return { problems: [`${out.length} lines for ${lines.length}`] };
   const problems = lines.flatMap((en, i) => check(`line ${i + 1}`, en, out[i]));
   const viTitle = typeof json.title === "string" ? json.title.trim() : "";
   if (title) problems.push(...lineProblems("title", title, viTitle));
-  if ([...viTitle].length > TITLE_MAX) problems.push(`title: over ${TITLE_MAX} characters`);
+  if ([...viTitle].length > TITLE_MAX)
+    problems.push(`title: over ${TITLE_MAX} characters`);
   return { title: title ? viTitle : null, lines: out, problems };
 }
 
@@ -190,7 +244,14 @@ async function firstValid({ what, models, llm, messages, check, log }) {
  * Translate English cues. `llm(model, messages)` returns the raw model text (injected for tests).
  * Returns { model, title, cues: [{ start, end, en, vi }] }; throws when no model gives a valid answer.
  */
-export async function translateCues({ cues, title, models, llm, style, log = console.log }) {
+export async function translateCues({
+  cues,
+  title,
+  models,
+  llm,
+  style,
+  log = console.log,
+}) {
   const groups = sentences(cues);
   const lines = groups.map((g) => g.en);
   const a = await firstValid({
@@ -203,11 +264,23 @@ export async function translateCues({ cues, title, models, llm, style, log = con
   });
   const vi = new Array(cues.length);
   groups.forEach((g, i) => {
-    splitAcross(a.lines[i], g.cues.map((k) => cues[k].text)).forEach((t, j) => {
+    splitAcross(
+      a.lines[i],
+      g.cues.map((k) => cues[k].text)
+    ).forEach((t, j) => {
       vi[g.cues[j]] = t;
     });
   });
-  return { model: a.model, title: a.title, cues: cues.map((c, i) => ({ start: c.start, end: c.end, en: c.text, vi: vi[i] })) };
+  return {
+    model: a.model,
+    title: a.title,
+    cues: cues.map((c, i) => ({
+      start: c.start,
+      end: c.end,
+      en: c.text,
+      vi: vi[i],
+    })),
+  };
 }
 
 // --- YouTube metadata ----------------------------------------------------
@@ -217,9 +290,23 @@ export function enPost(postsMd) {
   const yt = postsMd
     .match(/<!-- posts:en -->([\s\S]*?)<!-- \/posts:en -->/)?.[1]
     ?.match(/## YouTube \(16:9\)\n([\s\S]*?)(?=\n## |$)/)?.[1];
-  const field = (name) => yt?.match(new RegExp(`\\*\\*${name}\\*\\*[^\\n]*\\n\\n([\\s\\S]*?)(?=\\n\\n\\*\\*|$)`))?.[1]?.trim();
-  const out = { title: field("Title"), desc: field("Description"), tags: yt?.match(/\*\*Tags:\*\*\s*(.*)/)?.[1]?.trim() };
-  if (!out.title || !out.desc || !out.tags) throw new Error("posts.md has no English YouTube (16:9) title, description and tags: build the English cut first");
+  const field = (name) =>
+    yt
+      ?.match(
+        new RegExp(
+          `\\*\\*${name}\\*\\*[^\\n]*\\n\\n([\\s\\S]*?)(?=\\n\\n\\*\\*|$)`
+        )
+      )?.[1]
+      ?.trim();
+  const out = {
+    title: field("Title"),
+    desc: field("Description"),
+    tags: yt?.match(/\*\*Tags:\*\*\s*(.*)/)?.[1]?.trim(),
+  };
+  if (!out.title || !out.desc || !out.tags)
+    throw new Error(
+      "posts.md has no English YouTube (16:9) title, description and tags: build the English cut first"
+    );
   return out;
 }
 
@@ -235,11 +322,17 @@ const HASHTAGS = /^#\S+(\s+#\S+)*$/;
 /** Problems with one translated description line: every link kept; a line of hashtags stays that many plain hashtags. */
 export function postLineProblems(label, en, vi) {
   if (!HASHTAGS.test(en)) {
-    const lost = (en.match(/https?:\/\/\S+/g) ?? []).filter((u) => typeof vi === "string" && !vi.includes(u));
-    return [...lineProblems(label, en, vi), ...lost.map((u) => `${label}: link ${u} is missing`)];
+    const lost = (en.match(/https?:\/\/\S+/g) ?? []).filter(
+      (u) => typeof vi === "string" && !vi.includes(u)
+    );
+    return [
+      ...lineProblems(label, en, vi),
+      ...lost.map((u) => `${label}: link ${u} is missing`),
+    ];
   }
   const tags = typeof vi === "string" ? vi.trim().split(/\s+/) : [];
-  if (tags.length !== en.split(/\s+/).length) return [`${label}: ${tags.length} hashtags for ${en.split(/\s+/).length}`];
+  if (tags.length !== en.split(/\s+/).length)
+    return [`${label}: ${tags.length} hashtags for ${en.split(/\s+/).length}`];
   const bad = tags.filter((t) => !/^#[A-Za-z0-9_]+$/.test(t));
   return bad.length ? [`${label}: not a plain hashtag: ${bad.join(" ")}`] : [];
 }
@@ -262,7 +355,10 @@ const VI_TAGS = ["tin AI hôm nay", "trí tuệ nhân tạo"];
 
 /** aidr.today links for Vietnamese readers: the day page and home page with ?lang=vi, as build.mjs writes them. */
 export const viLinks = (text) =>
-  text.replace(/https:\/\/aidr\.today(\/date\/\d{4}-\d{2}-\d{2})?\/?(?=\s|$)/gm, (_, day) => `https://aidr.today${day ?? "/"}?lang=vi`);
+  text.replace(
+    /https:\/\/aidr\.today(\/date\/\d{4}-\d{2}-\d{2})?\/?(?=\s|$)/gm,
+    (_, day) => `https://aidr.today${day ?? "/"}?lang=vi`
+  );
 
 /**
  * Vietnamese YouTube metadata for the visub cut. `en` is enPost(posts.md); `title` the translated title (the
@@ -270,9 +366,21 @@ export const viLinks = (text) =>
  * Vietnamese; only new texts go to the model (`chain()` → { models, llm }, called only then).
  * Returns { model, lines, title, desc, tags }: lines is the cache for the next run.
  */
-export async function translatePost({ en, title, cached = {}, chain, style, log = console.log }) {
+export async function translatePost({
+  en,
+  title,
+  cached = {},
+  chain,
+  style,
+  log = console.log,
+}) {
   const parts = en.desc.split("\n").map(splitLine);
-  const texts = [...new Set([...(title ? [] : [en.title]), ...parts.map((p) => p.text).filter((t) => t.trim())])];
+  const texts = [
+    ...new Set([
+      ...(title ? [] : [en.title]),
+      ...parts.map((p) => p.text).filter((t) => t.trim()),
+    ]),
+  ];
   const lines = {};
   for (const t of texts) if (Object.hasOwn(cached, t)) lines[t] = cached[t];
   const todo = texts.filter((t) => !Object.hasOwn(lines, t));
@@ -287,7 +395,9 @@ export async function translatePost({ en, title, cached = {}, chain, style, log 
       check: (text) =>
         checkAnswer(text, todo, null, (label, enLine, vi) => [
           ...postLineProblems(label, enLine, vi),
-          ...(enLine === en.title && [...String(vi)].length > TITLE_MAX ? [`${label}: a title over ${TITLE_MAX} characters`] : []),
+          ...(enLine === en.title && [...String(vi)].length > TITLE_MAX
+            ? [`${label}: a title over ${TITLE_MAX} characters`]
+            : []),
         ]),
       log,
     });
@@ -297,9 +407,20 @@ export async function translatePost({ en, title, cached = {}, chain, style, log 
     model = a.model;
   }
   const viTitle = title ?? lines[en.title];
-  if ([...viTitle].length > TITLE_MAX) throw new Error(`the Vietnamese title is over ${TITLE_MAX} characters: ${viTitle}`);
-  const desc = viLinks(parts.map((p) => p.head + (p.text.trim() ? lines[p.text] : p.text) + p.tail).join("\n"));
-  const tags = [...new Set([...en.tags.split(","), ...VI_TAGS].map((t) => t.trim()).filter(Boolean))].join(", ");
+  if ([...viTitle].length > TITLE_MAX)
+    throw new Error(
+      `the Vietnamese title is over ${TITLE_MAX} characters: ${viTitle}`
+    );
+  const desc = viLinks(
+    parts
+      .map((p) => p.head + (p.text.trim() ? lines[p.text] : p.text) + p.tail)
+      .join("\n")
+  );
+  const tags = [
+    ...new Set(
+      [...en.tags.split(","), ...VI_TAGS].map((t) => t.trim()).filter(Boolean)
+    ),
+  ].join(", ");
   return { model, lines, title: viTitle, desc, tags };
 }
 
@@ -313,38 +434,71 @@ async function main() {
   const force = argv.includes("--force");
   const chain = () => {
     const apiKey = requireLlmKey();
-    const models = (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS).split(",").map((m) => m.trim()).filter(Boolean);
-    const baseUrl = envVar("ANYROUTER_BASE_URL") ?? "https://anyrouter.dev/api/v1";
-    return { models, llm: (model, messages) => complete({ model, messages, apiKey, baseUrl }) };
+    const models = (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS)
+      .split(",")
+      .map((m) => m.trim())
+      .filter(Boolean);
+    const baseUrl =
+      envVar("ANYROUTER_BASE_URL") ?? "https://anyrouter.dev/api/v1";
+    return {
+      models,
+      llm: (model, messages) => complete({ model, messages, apiKey, baseUrl }),
+    };
   };
   if (argv.includes("--youtube")) {
     const subsPath = join(dir, cut.subs.json);
     const ytPath = join(dir, cut.subs.youtube);
-    const prev = existsSync(ytPath) && !force ? JSON.parse(readFileSync(ytPath, "utf8")) : null;
+    const prev =
+      existsSync(ytPath) && !force
+        ? JSON.parse(readFileSync(ytPath, "utf8"))
+        : null;
     const out = await translatePost({
       en: enPost(readFileSync(join(dir, "posts.md"), "utf8")),
-      title: existsSync(subsPath) ? (JSON.parse(readFileSync(subsPath, "utf8")).title ?? null) : null,
+      title: existsSync(subsPath)
+        ? (JSON.parse(readFileSync(subsPath, "utf8")).title ?? null)
+        : null,
       cached: prev?.lines ?? {},
       chain,
     });
-    const meta = { lang: "vi", model: out.model ?? prev?.model, at: out.model ? new Date().toISOString() : prev?.at, title: out.title, desc: out.desc, tags: out.tags, lines: out.lines };
+    const meta = {
+      lang: "vi",
+      model: out.model ?? prev?.model,
+      at: out.model ? new Date().toISOString() : prev?.at,
+      title: out.title,
+      desc: out.desc,
+      tags: out.tags,
+      lines: out.lines,
+    };
     writeFileSync(ytPath, `${JSON.stringify(meta, null, 2)}\n`);
-    console.log(`${out.model ? "✓" : "="} editions/${date}/${cut.subs.youtube}: ${out.model ? `translated with ${out.model}` : "every line cached"}`);
+    console.log(
+      `${out.model ? "✓" : "="} editions/${date}/${cut.subs.youtube}: ${out.model ? `translated with ${out.model}` : "every line cached"}`
+    );
     return;
   }
   const srt = join(dir, cutFor("en").captions);
-  if (!existsSync(srt)) throw new Error(`${srt} is missing: build the English cut first`);
+  if (!existsSync(srt))
+    throw new Error(`${srt} is missing: build the English cut first`);
   const cues = parseSrt(readFileSync(srt, "utf8"));
   const jsonPath = join(dir, cut.subs.json);
-  const cached = existsSync(jsonPath) ? JSON.parse(readFileSync(jsonPath, "utf8")) : null;
+  const cached = existsSync(jsonPath)
+    ? JSON.parse(readFileSync(jsonPath, "utf8"))
+    : null;
   let subs = cached;
-  const moved = !force && cached && subsMismatch(cached.cues, cues) ? retime(cached.cues, cues) : null;
+  const moved =
+    !force && cached && subsMismatch(cached.cues, cues)
+      ? retime(cached.cues, cues)
+      : null;
   if (moved) {
     subs = { ...cached, cues: moved };
     writeFileSync(jsonPath, `${JSON.stringify(subs, null, 2)}\n`);
-    console.log(`= editions/${date}/${cut.subs.json}: same English cues at new times; retimed, not translated again`);
+    console.log(
+      `= editions/${date}/${cut.subs.json}: same English cues at new times; retimed, not translated again`
+    );
   } else if (force || !cached || subsMismatch(cached.cues, cues)) {
-    if (cached && !force) console.log(`  ${cut.subs.json}: ${subsMismatch(cached.cues, cues)}; translating again`);
+    if (cached && !force)
+      console.log(
+        `  ${cut.subs.json}: ${subsMismatch(cached.cues, cues)}; translating again`
+      );
     const { models, llm } = chain();
     const script = JSON.parse(readFileSync(join(dir, "script.json"), "utf8"));
     const out = await translateCues({
@@ -353,11 +507,27 @@ async function main() {
       models,
       llm,
     });
-    subs = { lang: "vi", model: out.model, at: new Date().toISOString(), title: out.title, cues: out.cues };
+    subs = {
+      lang: "vi",
+      model: out.model,
+      at: new Date().toISOString(),
+      title: out.title,
+      cues: out.cues,
+    };
     writeFileSync(jsonPath, `${JSON.stringify(subs, null, 2)}\n`);
-    console.log(`✓ editions/${date}/${cut.subs.json}: ${cues.length} cues from ${out.model}`);
-  } else console.log(`= editions/${date}/${cut.subs.json}: cached (${subs.model}); --force to translate again`);
-  writeFileSync(join(dir, cut.subs.srt), formatSrt(subs.cues.map((c) => ({ start: c.start, end: c.end, text: c.vi }))));
+    console.log(
+      `✓ editions/${date}/${cut.subs.json}: ${cues.length} cues from ${out.model}`
+    );
+  } else
+    console.log(
+      `= editions/${date}/${cut.subs.json}: cached (${subs.model}); --force to translate again`
+    );
+  writeFileSync(
+    join(dir, cut.subs.srt),
+    formatSrt(
+      subs.cues.map((c) => ({ start: c.start, end: c.end, text: c.vi }))
+    )
+  );
   console.log(`✓ editions/${date}/${cut.subs.srt}`);
 }
 

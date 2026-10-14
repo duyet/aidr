@@ -3,12 +3,23 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test } from "node:test";
-import { estimateSeconds, fromModel, speakable, statSpoken, templateScript, validateScript, vnToday, writeScript } from "./auto-script.mjs";
+import {
+  estimateSeconds,
+  fromModel,
+  speakable,
+  statSpoken,
+  templateScript,
+  validateScript,
+  vnToday,
+  writeScript,
+} from "./auto-script.mjs";
 import { castProblems } from "./cast.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const config = JSON.parse(readFileSync(resolve(ROOT, "config.json"), "utf8"));
-const edition = JSON.parse(readFileSync(resolve(ROOT, "editions/2026-10-10/edition.json"), "utf8"));
+const edition = JSON.parse(
+  readFileSync(resolve(ROOT, "editions/2026-10-10/edition.json"), "utf8")
+);
 const hosts = ["alex", "allison", "tyler-cruz", "ivanna", "kristen"];
 const quiet = () => {};
 
@@ -16,17 +27,34 @@ test("the template script is valid, fact-checked, and has no draft markers publi
   const s = templateScript(edition, hosts);
   assert.deepEqual(validateScript(s, edition), []);
   assert.doesNotMatch(JSON.stringify(s), /TODO|_bullet/);
-  assert.deepEqual(castProblems([...s.intro.voice, ...s.stories.flatMap((x) => x.voice), ...s.outro.voice]), []);
+  assert.deepEqual(
+    castProblems([
+      ...s.intro.voice,
+      ...s.stories.flatMap((x) => x.voice),
+      ...s.outro.voice,
+    ]),
+    []
+  );
 });
 
 test("a failing model falls back to the template, trimmed to fit the Reel length", async () => {
   const llm = async () => {
     throw new Error("anyrouter 503");
   };
-  const { script, source } = await writeScript({ edition, config, hostKeys: hosts, maxSeconds: 80, models: ["m1", "m2"], llm, log: quiet });
+  const { script, source } = await writeScript({
+    edition,
+    config,
+    hostKeys: hosts,
+    maxSeconds: 80,
+    models: ["m1", "m2"],
+    llm,
+    log: quiet,
+  });
   assert.equal(source, "template");
   assert.ok(estimateSeconds(script, config) <= 80);
-  assert.ok(script.stories.length >= 3 && script.stories.length < edition.stories.length);
+  assert.ok(
+    script.stories.length >= 3 && script.stories.length < edition.stories.length
+  );
 });
 
 test("a model that invents a number is rejected (facts come only from the bullet)", async () => {
@@ -41,11 +69,32 @@ test("a model that invents a number is rejected (facts come only from the bullet
       voice: ["Some company has $99 billion."],
     })),
     introLine: "Big news today.",
-    post: { hook: "h", facebook: "f", youtubeTitle: "t", shortsTitle: "s", tiktok: "k", hashtags: ["AI", "AINews", "X"] },
+    post: {
+      hook: "h",
+      facebook: "f",
+      youtubeTitle: "t",
+      shortsTitle: "s",
+      tiktok: "k",
+      hashtags: ["AI", "AINews", "X"],
+    },
   };
-  const { source } = await writeScript({ edition, config, hostKeys: hosts, maxSeconds: 200, models: ["m"], llm: async () => JSON.stringify(answer), log: quiet });
+  const { source } = await writeScript({
+    edition,
+    config,
+    hostKeys: hosts,
+    maxSeconds: 200,
+    models: ["m"],
+    llm: async () => JSON.stringify(answer),
+    log: quiet,
+  });
   assert.equal(source, "template");
-  assert.match(validateScript(fromModel(JSON.stringify(answer), edition, hosts), edition).join(), /number 99 is not in the bullet/);
+  assert.match(
+    validateScript(
+      fromModel(JSON.stringify(answer), edition, hosts),
+      edition
+    ).join(),
+    /number 99 is not in the bullet/
+  );
 });
 
 test("a valid model answer is used; anchors come from the cast, not the model", async () => {
@@ -63,7 +112,14 @@ test("a valid model answer is used; anchors come from the cast, not the model", 
     introLine: "Stocks slide today.",
     focus: [{ rank: 1, word: "stocks" }],
     thumbRank: 2,
-    post: { hook: "Hook.", facebook: "Today in AI.", youtubeTitle: "AI News Today | Oct 10, 2026", shortsTitle: "AI today #Shorts", tiktok: "What do you think?", hashtags: ["#AI", "AINews", "OpenAI"] },
+    post: {
+      hook: "Hook.",
+      facebook: "Today in AI.",
+      youtubeTitle: "AI News Today | Oct 10, 2026",
+      shortsTitle: "AI today #Shorts",
+      tiktok: "What do you think?",
+      hashtags: ["#AI", "AINews", "OpenAI"],
+    },
   };
   const { script, source } = await writeScript({
     edition: three,
@@ -78,11 +134,16 @@ test("a valid model answer is used; anchors come from the cast, not the model", 
   assert.equal(script.post.shortsTitle, "AI today");
   assert.deepEqual(script.post.hashtags, ["AI", "AINews", "OpenAI"]);
   assert.equal(script.thumb.story, 2);
-  assert.ok(script.stories.every((s) => s.voice.every((v) => hosts.includes(v.anchor))));
+  assert.ok(
+    script.stories.every((s) => s.voice.every((v) => hosts.includes(v.anchor)))
+  );
 });
 
 test("speakable reads money units; vnToday is UTC+7", () => {
-  assert.equal(speakable("raised ~$870M at a $7.5B valuation"), "raised about $870 million at a $7.5 billion valuation");
+  assert.equal(
+    speakable("raised ~$870M at a $7.5B valuation"),
+    "raised about $870 million at a $7.5 billion valuation"
+  );
   assert.equal(vnToday(new Date("2026-10-10T18:00:00Z")), "2026-10-11");
   assert.equal(vnToday(new Date("2026-10-10T16:00:00Z")), "2026-10-10");
 });
@@ -100,7 +161,8 @@ test("a stat counts as spoken in any equivalent spoken form, but a different num
     ["1,500", "Over 1.5 thousand users joined."],
     ["$300K", "A 300 THOUSAND dollar grant."],
   ];
-  for (const [stat, voice] of spoken) assert.ok(statSpoken(voice, stat), `${stat} in "${voice}"`);
+  for (const [stat, voice] of spoken)
+    assert.ok(statSpoken(voice, stat), `${stat} in "${voice}"`);
   const notSpoken = [
     ["$25B", "Anthropic raised $250 billion."],
     ["$25B", "Anthropic raised 25 million dollars."],
@@ -109,5 +171,6 @@ test("a stat counts as spoken in any equivalent spoken form, but a different num
     ["4.2%", "Growth hit 4.3 percent."],
     ["25%", "Growth hit 25 users."],
   ];
-  for (const [stat, voice] of notSpoken) assert.equal(statSpoken(voice, stat), false, `${stat} in "${voice}"`);
+  for (const [stat, voice] of notSpoken)
+    assert.equal(statSpoken(voice, stat), false, `${stat} in "${voice}"`);
 });

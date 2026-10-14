@@ -4,7 +4,7 @@
 // Usage: node scripts/fetch.mjs [--count 6]
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { UA, download, hasWrittenScript } from "./media.mjs";
+import { download, hasWrittenScript, UA } from "./media.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
@@ -19,7 +19,9 @@ const dir = join(ROOT, "editions", date);
 // the edition; refetching then would pair yesterday's script with other stories' media.
 const written = hasWrittenScript(dir);
 if (written && !process.argv.includes("--force")) {
-  console.error(`editions/${date} already has a written script; refusing to refetch (the edition may have changed). Use --force to refetch anyway.`);
+  console.error(
+    `editions/${date} already has a written script; refusing to refetch (the edition may have changed). Use --force to refetch anyway.`
+  );
   process.exit(1);
 }
 mkdirSync(join(dir, "assets"), { recursive: true });

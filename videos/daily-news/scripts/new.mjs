@@ -103,9 +103,7 @@ if (existsSync(scriptPath) && !process.argv.includes("--force")) {
 const d = new Date(`${weekly ? edition.start_date : date}T12:00:00Z`);
 const DOW = d.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
 const MON = d.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
-const range = weekly
-  ? formatRange(edition.start_date, edition.end_date)
-  : null;
+const range = weekly ? formatRange(edition.start_date, edition.end_date) : null;
 // Hosts take turns in the seeded cast order, in speaking order (intro, stories, outro).
 const order = hostOrder(Object.keys(loadCast(config).hosts), date);
 let turn = 0;
@@ -181,9 +179,14 @@ const draft = {
           ? "That's the week in AI. Every story, ranked and summarized, at aidr dot today."
           : "That's AI DR for today. Every story, ranked and summarized, at aidr dot today.",
       },
-      { anchor: closer, text: weekly ? "See you next week." : "See you tomorrow." },
+      {
+        anchor: closer,
+        text: weekly ? "See you next week." : "See you tomorrow.",
+      },
     ],
-    title: weekly ? "What happened in AI this week?" : "What's happening in AI today?",
+    title: weekly
+      ? "What happened in AI this week?"
+      : "What's happening in AI today?",
   },
 };
 writeFileSync(scriptPath, `${JSON.stringify(draft, null, 2)}\n`);
