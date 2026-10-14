@@ -4,7 +4,8 @@
  * history these functions compare against.
  */
 
-import { significantTitleTokens } from "../dedupe.js";
+import { evidenceTokens, significantTitleTokens } from "../dedupe.js";
+import { looksVietnamese } from "../tldr-lang.js";
 import {
   extractProtectedTerms,
   hasSourceChrome,
@@ -106,27 +107,47 @@ const GENERIC_ENTITIES = new Set([
 export interface EventKey {
   /** The story's source title, the same text on both sides of a compare. */
   title: string;
-  /** Lowercase named entities: org names, products, acronyms. */
+  /** Lowercase named entities: org names, products, acronyms, and the
+   *  capitalized words of a Vietnamese title. */
   entities: readonly string[];
+}
+
+const WORD = /[\p{L}\p{N}]+/gu;
+
+/** A Vietnamese headline capitalizes only names ("Trần Trung Tính", "Nobel
+ *  Vật lý"), so each capitalized word after a sentence's first is one.
+ *  `extractProtectedTerms` reads English: it cut "Việt Nam" into "vi" and
+ *  "nam", and "vi" then matched inside every "việt" (#756). */
+function vietnameseNames(title: string): string[] {
+  return title
+    .split(/(?<=[.!?:;])\s+/)
+    .flatMap((sentence) => (sentence.match(WORD) ?? []).slice(1))
+    .filter((word) => /^\p{Lu}/u.test(word));
 }
 
 export function eventKey(title: string): EventKey {
   const entities = new Set<string>();
-  for (const name of extractProtectedTerms({ title, summary: "" }).names) {
+  const names = looksVietnamese(title)
+    ? vietnameseNames(title)
+    : extractProtectedTerms({ title, summary: "" }).names;
+  for (const name of names) {
     entities.add(name.replace(/['’]s$/i, "").toLowerCase());
   }
-  for (const token of title.toLowerCase().match(/[a-z0-9]+/g) ?? []) {
+  for (const token of title.toLowerCase().match(WORD) ?? []) {
     if (KNOWN_ORGS.has(token)) entities.add(token);
   }
   for (const generic of GENERIC_ENTITIES) entities.delete(generic);
   return { title, entities: [...entities] };
 }
 
+/** `name` as a whole word of `title`. A Vietnamese letter is part of the
+ *  word, so "vi" is not in "việt". */
 function mentions(title: string, name: string): boolean {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`).test(
-    title.toLowerCase()
-  );
+  return new RegExp(
+    `(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`,
+    "u"
+  ).test(title.toLowerCase());
 }
 
 /** Two keys name one event: similar titles that both mention at least
@@ -135,7 +156,12 @@ function mentions(title: string, name: string): boolean {
  *  the sentence-case headline) is shared with the Title Case rewrite where the
  *  extractor cannot tell it from a common word. The name requirement keeps a
  *  generic headline pair ("raises $500M for its agent") from matching on
- *  filler words alone. */
+ *  filler words alone.
+ *
+ *  Two Vietnamese titles compare words (`evidenceTokens`), not syllables.
+ *  In syllables, headlines on one Nobel prize scored 0.18 and different
+ *  stories sharing "Việt Nam" and "công nghệ" 0.21 to 0.25; in words the
+ *  first score 0.21 to 0.40 and the second 0 to 0.07 (#756). */
 export function sameEvent(a: EventKey, b: EventKey): boolean {
   const names = new Set([...a.entities, ...b.entities]);
   let sharedNames = 0;
@@ -143,8 +169,12 @@ export function sameEvent(a: EventKey, b: EventKey): boolean {
     if (mentions(a.title, name) && mentions(b.title, name)) sharedNames++;
   }
   if (sharedNames < EVENT_MIN_SHARED_NAMES) return false;
-  const ta = significantTitleTokens(a.title);
-  const tb = significantTitleTokens(b.title);
+  const words =
+    looksVietnamese(a.title) && looksVietnamese(b.title)
+      ? evidenceTokens
+      : significantTitleTokens;
+  const ta = words(a.title);
+  const tb = words(b.title);
   let shared = 0;
   for (const token of ta) if (tb.has(token)) shared++;
   if (shared < EVENT_MIN_SHARED_TOKENS) return false;
