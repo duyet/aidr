@@ -549,15 +549,53 @@ const KNOWN_OUTLETS: ReadonlySet<string> = new Set([
   "ZDNET",
 ]);
 
-const outletKey = (name: string) =>
-  name.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
-const KNOWN_OUTLET_KEYS = new Set([...KNOWN_OUTLETS].map(outletKey));
+/** The domains a known outlet publishes on. A domain counts only when it is
+ * listed here: "axios.js", "time.ly" and "commandline.dev" share a label with
+ * an outlet but are not its site, and "x.com" or "me.com" name a product. */
+const OUTLET_DOMAINS: ReadonlySet<string> = new Set([
+  "apnews.com",
+  "asia.nikkei.com",
+  "axios.com",
+  "bbc.co.uk",
+  "bbc.com",
+  "bloomberg.com",
+  "bloomberglaw.com",
+  "businessinsider.com",
+  "cbsnews.com",
+  "cnbc.com",
+  "cnn.com",
+  "cointelegraph.com",
+  "daringfireball.net",
+  "engadget.com",
+  "fiercehealthcare.com",
+  "forbes.com",
+  "fortune.com",
+  "ft.com",
+  "krebsonsecurity.com",
+  "macrumors.com",
+  "marktechpost.com",
+  "nbcnews.com",
+  "nytimes.com",
+  "politico.com",
+  "reuters.com",
+  "semafor.com",
+  "semianalysis.com",
+  "techcrunch.com",
+  "techmeme.com",
+  "the-decoder.com",
+  "theinformation.com",
+  "theverge.com",
+  "time.com",
+  "venturebeat.com",
+  "washingtonpost.com",
+  "wired.com",
+  "wsj.com",
+  "zdnet.com",
+]);
 
-/** "techcrunch.com", "www.theverge.com": a known outlet's own domain.
- * "x.com", "me.com" and "socket.io" name a product, not an outlet. */
+/** "techcrunch.com", "www.theverge.com": a known outlet's own domain. */
 function isOutletDomain(name: string): boolean {
-  const label = /^(?:www\.)?([\p{L}\p{N}-]+)(?:\.\p{L}{2,})+$/u.exec(name)?.[1];
-  return label !== undefined && KNOWN_OUTLET_KEYS.has(outletKey(label));
+  return OUTLET_DOMAINS.has(name.toLowerCase().replace(/^www\./, ""));
 }
 
 /** One source: a known outlet, an @handle, or an outlet's domain. */
@@ -577,8 +615,11 @@ function isSourceList(name: string): boolean {
  * Security": capitalised words, then sources. The author is never checked
  * against a list, so the sources after it carry the whole decision: "Elon
  * Musk / Tesla on Monday" and "Mỹ thuộc Nvidia" are claims. */
-function isByline(name: string): boolean {
-  const match = /^(.+?)(?:\s*\/\s*|\s+(?:từ|trên|thuộc)\s+)(.+)$/u.exec(name);
+function isByline(name: string, joiners = true): boolean {
+  const joiner = joiners
+    ? String.raw`(?:\s*\/\s*|\s+(?:từ|trên|thuộc)\s+)`
+    : String.raw`\s*\/\s*`;
+  const match = new RegExp(`^(.+?)${joiner}(.+)$`, "u").exec(name);
   return match !== null && AUTHOR_RE.test(match[1]) && isSourceList(match[2]);
 }
 
@@ -587,6 +628,7 @@ function isByline(name: string): boolean {
 const ATTRIBUTION_LEADS: readonly {
   lead: string;
   bare: (name: string) => boolean;
+  joiners?: boolean;
 }[] = [
   {
     lead: String.raw`(?:(?:[Tt]in|[Bb]ài)\s+)?[Tt]ừ|[Bb]ài viết (?:của|từ)|[Nn]guồn(?:\s+tin)?\s*:?|[Ff]rom|[Vv]ia|[Ss]ource\s*:?`,
@@ -596,10 +638,12 @@ const ATTRIBUTION_LEADS: readonly {
   { lead: "[Tt]heo|[Tt]hông tin từ", bare: isSourceList },
   // "By" also opens a deadline or an adverb: "By March.", "By @sama.".
   { lead: "[Bb]y", bare: (name) => KNOWN_OUTLETS.has(name) },
-  // "Bởi" is also "because": "Bởi Time." is a claim.
+  // "Bởi" is also "because": "Bởi Time.", "Bởi CNBC thuộc NBC News." and
+  // "Bởi Mỹ trên CNN." are claims. Only "author / outlet" counts as a byline.
   {
     lead: "[Bb]ởi",
     bare: (name) => HANDLE_RE.test(name) || isOutletDomain(name),
+    joiners: false,
   },
   { lead: "[Tt]ác giả", bare: () => false },
 ];
@@ -609,18 +653,21 @@ const ATTRIBUTION_LEADS: readonly {
  * "From Bloomberg.", "Via @x.", "Source: X.", Techmeme's "By Ina Fried / Axios."
  * byline, or the same in parentheses. A sentence that carries a claim ("Theo
  * Reuters, Nvidia …") has more after the name, so it does not match. */
-const ATTRIBUTION_SENTENCES = ATTRIBUTION_LEADS.map(({ lead, bare }) => ({
-  pattern: new RegExp(
-    String.raw`^\(?\s*(?:${lead})\s+(.+?)\s*[.!]?\s*\)?\.?$`,
-    "u"
-  ),
-  bare,
-}));
+const ATTRIBUTION_SENTENCES = ATTRIBUTION_LEADS.map(
+  ({ lead, bare, joiners }) => ({
+    pattern: new RegExp(
+      String.raw`^\(?\s*(?:${lead})\s+(.+?)\s*[.!]?\s*\)?\.?$`,
+      "u"
+    ),
+    bare,
+    joiners,
+  })
+);
 
 function isAttributionSentence(sentence: string): boolean {
-  return ATTRIBUTION_SENTENCES.some(({ pattern, bare }) => {
+  return ATTRIBUTION_SENTENCES.some(({ pattern, bare, joiners }) => {
     const name = pattern.exec(sentence)?.[1];
-    return name !== undefined && (bare(name) || isByline(name));
+    return name !== undefined && (bare(name) || isByline(name, joiners));
   });
 }
 

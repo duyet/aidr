@@ -292,6 +292,11 @@ describe("protected English terms", () => {
   // American") is a claim. Every stored Bởi credit is an author byline.
   it("drops a closing Bởi sentence only when it is a byline, handle or domain", () => {
     for (const text of [
+      "Giá chip tăng 5%. Bởi CNBC thuộc NBC News.",
+      "Giá chip tăng 5%. Bởi Bloomberg Law thuộc Bloomberg.",
+      "Giá chip tăng 5%. Bởi Time thuộc Fortune.",
+      "Giá chip tăng 5%. Bởi Trung Quốc thuộc Bloomberg.",
+      "Giá chip tăng 5%. Bởi Mỹ trên CNN.",
       "Lệnh cấm không áp dụng cho chip H20. Bởi Nvidia thuộc Mỹ.",
       "Lệnh cấm có hiệu lực từ tuần sau. Bởi Mỹ từ Trung Quốc.",
       "Công cụ chạy được trên mọi máy chủ. Bởi Node.js.",
@@ -377,6 +382,30 @@ describe("protected English terms", () => {
     ]) {
       const text = `Nvidia expects the new fab to ship volume parts. ${fragment}`;
       expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+  });
+
+  it("keeps a domain that only shares its label with an outlet", () => {
+    for (const fragment of [
+      "Bởi axios.js.",
+      "Via axios.js.",
+      "Theo axios.js.",
+      "From axios.js.",
+      "Theo time.js.",
+      "Via time.ly.",
+      "Theo commandline.dev.",
+    ]) {
+      const text = `Giá chip tăng 5%. ${fragment}`;
+      expect(stripSourceBoilerplate(text)).toBe(text);
+    }
+    for (const fragment of [
+      "Via theverge.com.",
+      "Theo techcrunch.com.",
+      "From www.reuters.com.",
+    ]) {
+      expect(stripSourceBoilerplate(`Giá chip tăng 5%. ${fragment}`)).toBe(
+        "Giá chip tăng 5%."
+      );
     }
   });
 
