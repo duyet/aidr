@@ -7,6 +7,7 @@ import {
   parseReadBeacon,
   READ_COUNT_COLUMN,
   READ_COUNT_JOIN_I,
+  READ_DAY_CAP,
   READ_ROW_CAP,
   READER_READ_HALF,
   READER_READ_MAX_BOOST,
@@ -266,12 +267,11 @@ describe("readFactor", () => {
     expect(readFactor(Number.NaN)).toBe(1);
   });
 
-  it("starts flat, so the one or two counts one client gets past the limiter barely move a story (defect: a steep start lets one IP jump the feed)", () => {
-    expect(readFactor(2)).toBeLessThan(1.005);
-    expect(readFactor(50)).toBeGreaterThan(1.05);
+  it("tops out at x1.03 for the most opens the join counts, so a one-IP drip moves a story a few places (defect: a 24h drip lifted #62 into the top 30)", () => {
+    expect(readFactor(2 * READ_DAY_CAP)).toBeCloseTo(1.03, 6);
   });
 
-  it("never reaches 1 + READER_READ_MAX_BOOST, so reads cannot pass a story stored 1.3x higher", () => {
+  it("stays below 1 + READER_READ_MAX_BOOST however many counts arrive", () => {
     expect(readFactor(1e9)).toBeLessThan(1 + READER_READ_MAX_BOOST);
     expect(readFactor(READER_READ_HALF)).toBeCloseTo(
       1 + READER_READ_MAX_BOOST / 2
@@ -290,14 +290,30 @@ describe("READ_COUNT_JOIN_I", () => {
     ).read_count;
   }
 
-  it("counts today and yesterday UTC only (defect: old reads keep lifting a story)", () => {
+  it("counts opens today and yesterday UTC only (defect: old reads keep lifting a story)", () => {
     const { raw } = seed();
     raw.exec(`INSERT INTO item_reads VALUES
         ('${ITEM}', date('now'), 'web', 'open', 7),
-        ('${ITEM}', date('now'), 'telegram', 'outbound', 2),
         ('${ITEM}', date('now', '-1 day'), 'web', 'open', 5),
         ('${ITEM}', date('now', '-3 days'), 'web', 'open', 1000)`);
-    expect(readCount(raw, ITEM)).toBe(14);
+    expect(readCount(raw, ITEM)).toBe(12);
+  });
+
+  it("ignores outbound clicks (defect: a second beacon kind doubles one IP's drip)", () => {
+    const { raw } = seed();
+    raw.exec(`INSERT INTO item_reads VALUES
+        ('${ITEM}', date('now'), 'web', 'open', 3),
+        ('${ITEM}', date('now'), 'web', 'outbound', 50)`);
+    expect(readCount(raw, ITEM)).toBe(3);
+  });
+
+  it("caps each day at READ_DAY_CAP across channels (defect: one IP dripping all day sets the factor)", () => {
+    const { raw } = seed();
+    raw.exec(`INSERT INTO item_reads VALUES
+        ('${ITEM}', date('now'), 'web', 'open', ${READ_DAY_CAP}),
+        ('${ITEM}', date('now'), 'telegram', 'open', 900),
+        ('${ITEM}', date('now', '-1 day'), 'web', 'open', 30)`);
+    expect(readCount(raw, ITEM)).toBe(READ_DAY_CAP + 30);
   });
 
   it("folds reads on an id that was later merged into its canonical (defect: a merge drops the reads)", () => {
@@ -307,5 +323,14 @@ describe("READ_COUNT_JOIN_I", () => {
         ('${ITEM}', date('now'), 'web', 'open', 3),
         ('${MERGED}', date('now'), 'email', 'open', 4)`);
     expect(readCount(raw, ITEM)).toBe(7);
+  });
+
+  it("caps a story and its merged ids together (defect: each merged id brings its own day cap)", () => {
+    const { raw } = seed();
+    raw.exec(`UPDATE items SET duplicate_of = '${ITEM}' WHERE id = '${MERGED}';
+      INSERT INTO item_reads VALUES
+        ('${ITEM}', date('now'), 'web', 'open', ${READ_DAY_CAP}),
+        ('${MERGED}', date('now'), 'web', 'open', ${READ_DAY_CAP})`);
+    expect(readCount(raw, ITEM)).toBe(READ_DAY_CAP);
   });
 });

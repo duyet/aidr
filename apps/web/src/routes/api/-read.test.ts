@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Route } from "./read";
 
@@ -43,6 +45,43 @@ describe("POST /api/read", () => {
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
     expect(error).toHaveBeenCalledOnce();
+  });
+
+  it("answers 204 and counts nothing when the rate limiter throws (defect: a limiter outage counts every beacon unlimited)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const raw = new DatabaseSync(":memory:");
+    raw.exec("CREATE TABLE items (id TEXT PRIMARY KEY, status TEXT)");
+    raw.exec(
+      readFileSync(
+        new URL("../../../migrations/0065_item_reads.sql", import.meta.url),
+        "utf8"
+      )
+    );
+    raw
+      .prepare("INSERT INTO items VALUES (?, 'published')")
+      .run("a".repeat(64));
+    const DB = {
+      prepare: (sql: string) => ({
+        bind: (...args: never[]) => ({
+          first: async () => raw.prepare(sql).get(...args) ?? null,
+          run: async () => ({
+            meta: { changes: Number(raw.prepare(sql).run(...args).changes) },
+          }),
+        }),
+      }),
+    };
+    const READ_LIMITER = {
+      limit: async () => {
+        throw new Error("rate limiter unavailable");
+      },
+    };
+    const request = beacon();
+    request.headers.set("CF-Connecting-IP", "198.51.100.7");
+    const res = await post({ request, context: { env: { DB, READ_LIMITER } } });
+    expect(res.status).toBe(204);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM item_reads").get()).toEqual({
+      n: 0,
+    });
   });
 
   it("answers a bad body with 400 invalid_read", async () => {

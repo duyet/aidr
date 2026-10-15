@@ -69,7 +69,10 @@ function PrivacyPage() {
             AI;DR never stores your IP address. To stop one client inflating a
             count, Cloudflare's rate limiter keeps a one-minute counter for your
             IP address, the story, and the action at the nearest Cloudflare
-            location. The extension loads no analytics.
+            location. These counts change one thing: the order of stories within
+            a day on the homepage, by at most 3%, using opens only. They never
+            decide which stories appear in a list, a feed, the daily edition, or
+            a post. The extension loads no analytics.
           </li>
           <li>
             <strong className="text-foreground">

@@ -1434,23 +1434,31 @@ SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
   `rank_score` only. A vote does not change digest or email selection
   except by moving that score.
 
-**Reader reads order the homepage only.** `item_reads` (migration 0065)
-counts story opens and publisher clicks per story, UTC day, arrival channel
-and kind (`POST /api/read`, `worker/reads.ts`). `getFeed` multiplies each
-row's stored `rank_score` by `readFactor` before it sorts a day:
+**Reader reads: homepage order within a day only.** `item_reads`
+(migration 0065) counts story opens and publisher clicks per story, UTC
+day, arrival channel and kind (`POST /api/read`, `worker/reads.ts`). Only
+the homepage asks for read order: its SSR loader (`feed-fn.ts`) and its own
+`/api/feed?order=reads` calls (refresh, Load more, Older days). For those,
+`getFeed`'s `readOrder` sorts each day by:
 
 ```text
-homepage order = rank_score × (1 + 0.3·reads / (reads + 200))
-reads          = opens + clicks today and yesterday UTC; reads on an id
-                 later merged, or a canonical later demoted, count for
-                 the canonical it now points at
+homepage in-day order = rank_score × (1 + 0.15·opens / (opens + 800))
+opens = story opens (never outbound clicks) today and yesterday UTC,
+        each UTC day capped at 100 per story; opens on an id later
+        merged count for its canonical, inside that canonical's cap
 ```
 
-Stored `rank_score` never includes reads, so the edition pool (`tldr.ts`),
-the Telegram trending lane and its bar, the day archive and its Telegram day
-card, Facebook, email and the weekly roundup ignore them. A read is
-anonymous, and a script on rotating IPs can fake one, so it must not be
-able to push a story into a public post. Collection:
+The most any story gets is ×1.03 (200 counted opens). Nothing else sees
+reads. Every row keeps its stored `rank_score`, and without `readOrder`
+`getFeed` does not join `item_reads` at all, so the per-source cap
+(`capSourceShare`), the homepage TL;DR fallback, `/api/feed` membership and
+its `rank_score` field, plain `/api/feed` order (the extension, webmcp),
+RSS, the news sitemap, MCP `search_news`, the day archive and its Telegram
+day card, the edition pool (`tldr.ts`), Telegram trending, Facebook, email
+and the weekly roundup ignore them. A read is anonymous and a script can
+fake one, so it must not choose what any list or post contains.
+`worker/__tests__/feed-reads.integration.test.ts` holds a test per surface.
+Collection:
 
 - The browser counts a story once per tab, kind and UTC day with a key in
   `sessionStorage`. That is client-side only; the server cannot enforce it.
@@ -1461,22 +1469,33 @@ able to push a story into a public post. Collection:
   per (IP, story, kind) a minute. aidr stores nothing; Cloudflare keeps the
   counter at that location, eventually consistent, so a parallel burst
   can slip a few extra through. 60 seconds is the longest period the
-  binding offers, so a burst from one client counts once or twice, while a
-  steady drip still counts 60 an hour per kind. Each row also stops at 2000.
-- The factor is flat at the start and tops out below ×1.3: 2 counts ×1.003,
-  50 ×1.06, 100 ×1.10, 200 ×1.15. Simulated on the 2026-10-16 production
-  top 40: 2 counts move any row at most 2 places, 100 reads move #18 to #12,
-  and a one-IP drip for 24h moves #29 to #12.
-- Bound: reads never lift a story past one whose stored rank is 1.3× its
-  own. All other factors equal, that is an importance ratio of 1.19 (a 5
-  never passes a 6). Across factors it is not an importance bound: in that
-  top 40 an importance-4.0 story at #18 can pass an importance-8.26 one at
-  #11.
+  binding offers, so one IP dripping a beacon a minute still counts 1440
+  opens a day. If the limiter throws, the beacon counts nothing. Each
+  stored row stops at 2000 (`READ_ROW_CAP`); that only bounds `/data`.
+- One IP can reach the day cap, and any number of IPs get no more, so the
+  cap sets the worst case, not the curve. Simulated on the 15 Oct 2026 ICT
+  production day (159 stories; the homepage first view is the top 30):
 
-Known gaps: the constants are not replay-tuned with `rank-replay`; after
-in-site navigation the channel falls back to `web`; readers sharing one IP
-(carrier NAT, an office) count at most once a minute per story and kind. Category totals over 28
-days show on `/data` (Algo tab, `GET /api/system/reads`).
+  | Counted opens | Factor | Max climb | Deepest entrant into top 30 |
+  |---|---|---|---|
+  | 200: one IP, 1/min for 24h across UTC midnight | ×1.030 | 10 (#62 to #53) | #33 |
+  | 100: the same drip inside one UTC day | ×1.017 | 6 | #31 |
+  | 50: 50 readers, one open each | ×1.009 | 4 | #31 |
+  | 10: 10 readers | ×1.002 | 2 | none |
+
+  The previous ×1.3 / 200 curve with clicks counted let the 24h drip lift
+  #62 to #30.
+- Bound: reads never lift a story past one whose stored rank is 1.03× its
+  own. All other factors equal, that is an importance ratio of 1.02 (a 7.0
+  never passes a 7.2).
+
+Known gaps: the constants are not replay-tuned with `rank-replay`. Below
+the cap the order cannot tell a one-IP drip from genuine readers (an hour
+of drip is 60 opens, about 60 readers). Above 100 opens a day genuine
+popularity stops separating stories. After in-site navigation the channel
+falls back to `web`; readers sharing one IP (carrier NAT, an office) count
+at most once a minute per story and kind. Category totals over 28 days
+show on `/data` (Algo tab, `GET /api/system/reads`).
 
 ### 8. Write
 

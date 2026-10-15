@@ -12,10 +12,9 @@ import { showFeedBrowseChrome } from "../lib/empty-feed";
 import { setCachedFeed, setFeedMeta } from "../lib/feed-cache";
 import { fetchFeed } from "../lib/feed-fn";
 import { headRouteInput } from "../lib/head-route";
-import { mergeRefreshedFeed } from "../lib/homepage-feed";
+import { homepageFeedUrl, mergeRefreshedFeed } from "../lib/homepage-feed";
 import { timeAgo } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
-import { withLang } from "../lib/locale-url";
 import { usePrefs } from "../lib/prefs";
 import { homepageHead } from "../lib/seo";
 import { storyPath } from "../lib/slug";
@@ -110,8 +109,7 @@ function IndexPage() {
     if (!loaderFeed) {
       setFeed(null);
       setError(false);
-      const params = q ? `?q=${encodeURIComponent(q)}` : "?days=3";
-      fetch(withLang(`/api/feed${params}`, lang))
+      fetch(homepageFeedUrl(q ? { q } : { days: "3" }, lang))
         .then((res) => (res.ok ? (res.json() as Promise<FeedResponse>) : null))
         .then((res) => {
           if (cancelled) return;
@@ -128,7 +126,7 @@ function IndexPage() {
     }
     const refresh = window.setInterval(() => {
       if (q) return;
-      fetch(withLang("/api/feed?days=3", lang))
+      fetch(homepageFeedUrl({ days: "3" }, lang))
         .then((res) => (res.ok ? (res.json() as Promise<FeedResponse>) : null))
         .then((res) => {
           if (!cancelled && res) {

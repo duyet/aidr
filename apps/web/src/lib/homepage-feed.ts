@@ -1,4 +1,5 @@
-import type { DayGroup, FeedResponse } from "./types";
+import { withLang } from "./locale-url";
+import type { DayGroup, FeedResponse, Lang } from "./types";
 
 type TldrItem = NonNullable<FeedResponse["tldrItems"]>[number];
 
@@ -93,9 +94,24 @@ export function mergeRefreshedFeed(
   };
 }
 
-/** `/api/feed` query that returns exactly one audience-zone day. */
-export function dayFeedQuery(date: string): string {
+/** `/api/feed` params that return exactly one audience-zone day. */
+export function dayFeedParams(date: string): Record<string, string> {
   const [y, m, d] = date.split("-").map(Number);
   const next = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
-  return `?days=1&before=${next}`;
+  return { days: "1", before: next };
+}
+
+/** `/api/feed` as the homepage asks for it. `order=reads` returns the in-day
+ * order the SSR loader renders, so a refresh, "Load more" or an older page
+ * keeps it. Every other caller gets stored rank_score order. */
+export function homepageFeedUrl(
+  params: Record<string, string>,
+  lang: Lang
+): string {
+  const search = new URLSearchParams({ ...params, order: "reads" });
+  return withLang(`/api/feed?${search}`, lang);
+}
+
+export function wantsReadOrder(search: URLSearchParams): boolean {
+  return search.get("order") === "reads";
 }

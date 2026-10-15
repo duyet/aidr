@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DAY_STORY_LIMIT,
-  dayFeedQuery,
+  dayFeedParams,
   mergeRefreshedFeed,
   shapeHomepageFeed,
 } from "./homepage-feed";
@@ -156,11 +156,17 @@ describe("mergeRefreshedFeed digest stories", () => {
   });
 });
 
-describe("dayFeedQuery", () => {
+describe("dayFeedParams", () => {
   // getFeed reads the `days` window that ends at `before`'s midnight, so
   // one day ending at the next day's midnight is exactly `date`.
   it("asks for one day ending at the next midnight, across month ends", () => {
-    expect(dayFeedQuery("2026-10-11")).toBe("?days=1&before=2026-10-12");
-    expect(dayFeedQuery("2026-12-31")).toBe("?days=1&before=2027-01-01");
+    expect(dayFeedParams("2026-10-11")).toEqual({
+      days: "1",
+      before: "2026-10-12",
+    });
+    expect(dayFeedParams("2026-12-31")).toEqual({
+      days: "1",
+      before: "2027-01-01",
+    });
   });
 });

@@ -12,15 +12,17 @@ export type ReadChannel = (typeof READ_CHANNELS)[number];
  * limiter (`READ_LIMITER`) for a row nobody should reach. */
 export const READ_ROW_CAP = 2000;
 
-/** Reads only reorder on-site lists (`readFactor`), never the stored
- * `rank_score`. Every public post (edition, Telegram trending, Facebook)
- * ranks on `rank_score`, and a read is anonymous: a script on rotating IPs
- * can fake them. The boost starts flat, so one client's one or two counts
- * move a story a place or two, and tops out at x1.3 (half of it by 200). */
-export const READER_READ_MAX_BOOST = 0.3;
-export const READER_READ_HALF = 200;
+/** Reads only reorder the homepage within a day (`getFeed`'s `readOrder`),
+ * never the stored `rank_score`, the edition, a post, RSS or the API's
+ * membership. A read is anonymous and a script on one IP can drip one open a
+ * minute past `READ_LIMITER`, so the factor counts opens only, caps each
+ * story's day at `READ_DAY_CAP`, and stays near-linear below that cap: the
+ * most any story gets is x1.03 (200 counted opens over the two-day window). */
+export const READER_READ_MAX_BOOST = 0.15;
+export const READER_READ_HALF = 800;
+export const READ_DAY_CAP = 100;
 
-/** Multiplier on `rank_score` for on-site order: 1 with no reads. */
+/** Multiplier on `rank_score` for the homepage's in-day order: 1 with no reads. */
 export function readFactor(readCount = 0): number {
   if (!Number.isFinite(readCount) || readCount <= 0) return 1;
   return (
@@ -28,18 +30,23 @@ export function readFactor(readCount = 0): number {
   );
 }
 
-/** Today's and yesterday's UTC reads per published story, as `read_count`
- * on `items i`. A read on an id that was later merged counts for its
- * canonical. */
+/** Opens per published story today and yesterday UTC, each day capped at
+ * `READ_DAY_CAP`, as `read_count` on `items i`. An open on an id that was
+ * later merged counts for its canonical, inside that canonical's cap.
+ * Outbound clicks are stored for /data but never order anything. */
 export const READ_COUNT_COLUMN =
   "COALESCE(read_sum.read_count, 0) AS read_count";
 export const READ_COUNT_JOIN_I = `LEFT JOIN (
-    SELECT COALESCE(m.duplicate_of, r.item_id) AS item_id,
-           SUM(r.count) AS read_count
-    FROM item_reads r
-    LEFT JOIN items m ON m.id = r.item_id AND m.status = 'merged'
-    WHERE r.day >= date('now', '-1 day')
-    GROUP BY 1
+    SELECT item_id, SUM(MIN(day_count, ${READ_DAY_CAP})) AS read_count
+    FROM (
+      SELECT COALESCE(m.duplicate_of, r.item_id) AS item_id, r.day,
+             SUM(r.count) AS day_count
+      FROM item_reads r
+      LEFT JOIN items m ON m.id = r.item_id AND m.status = 'merged'
+      WHERE r.day >= date('now', '-1 day') AND r.kind = 'open'
+      GROUP BY 1, 2
+    )
+    GROUP BY item_id
   ) AS read_sum ON read_sum.item_id = i.id`;
 
 let readsTableReady: boolean | null = null;

@@ -40,9 +40,9 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
           min(net, 6); a net downvote divides by the same amount
         </li>
         <li>
-          <span className="font-medium text-foreground">reads</span> = 1 + 0.3 ×
-          r / (r + 200), r = opens + clicks today and yesterday UTC; orders the
-          homepage only, never the edition or posts
+          <span className="font-medium text-foreground">reads</span> = 1 + 0.15
+          × r / (r + 800), r = opens today and yesterday UTC, at most 100 a day;
+          homepage order within a day only, at most ×1.03
         </li>
         <li>
           <span className="font-medium text-foreground">breaking</span> = 1 +
