@@ -21,6 +21,8 @@ import { withoutRestatedHeadline } from "./headline-repeat.js";
 import { captionSummaryFor } from "./story-summary.js";
 import {
   checkTelegramMedia,
+  imageVerdict,
+  previewVerdict,
   type TelegramPostKind,
 } from "./telegram-media-guard.js";
 import {
@@ -86,6 +88,9 @@ export interface LinkPreviewOptions {
  *   to the publisher page (`storyTextLinkPreview`), so Telegram fetches the
  *   publisher's own og:image and the reader still sees a real picture. The
  *   digest pins its preview to the day card image (`digestLinkPreview`).
+ *   A story whose publisher URL cannot be previewed (empty after
+ *   canonicalization, a private host) sets `is_disabled` instead and still
+ *   posts: the aidr permalink would preview the share card.
  * - `prefer_small_media` — not set. There is no small-media affordance to
  *   prefer.
  * - `prefer_large_media` / `show_above_text` — set on every pinned preview
@@ -131,12 +136,18 @@ export function digestLinkPreview(
   };
 }
 /** A story with no usable image goes out as text whose preview is the
- *  publisher page: Telegram fetches that page's own og:image. The aidr
- *  permalink would preview the share card, which a story never shows. */
+ *  publisher page: Telegram fetches that page's own og:image. A publisher URL
+ *  the guard refuses turns the preview off rather than losing the post; the
+ *  aidr permalink is no substitute, since its og:image is the share card. */
 export function storyTextLinkPreview(
   story: Pick<StoryPayload, "url">
-): LinkPreviewOptions & { url: string } {
-  return { url: story.url, prefer_large_media: true, show_above_text: true };
+): LinkPreviewOptions {
+  const pinned = {
+    url: story.url,
+    prefer_large_media: true,
+    show_above_text: true,
+  };
+  return previewVerdict("story", pinned).ok ? pinned : { is_disabled: true };
 }
 export const STORY_PHOTO_LINK_PREVIEW: LinkPreviewOptions = {
   is_disabled: true,
@@ -522,8 +533,11 @@ export function buildStoryReplyMarkup(story: StoryPayload): object {
  * generated share card is not in this set; see `telegram-media-guard.ts`.
  */
 export interface StoryMedia {
-  /** Trusted story imagery, de-duplicated, at most `TELEGRAM_ALBUM_CAP`. */
+  /** Story imagery Telegram can take, de-duplicated, at most
+   *  `TELEGRAM_ALBUM_CAP`. */
   gallery: string[];
+  /** Guard reasons for the images left out (a GIF, the share card). */
+  dropped: string[];
 }
 
 /** Photo path: a video contributes only its poster (`sendVideo` runs first
@@ -549,7 +563,13 @@ function galleryImageUrls(story: StoryPayload, cap = TELEGRAM_ALBUM_CAP) {
 }
 
 export function resolveStoryMedia(story: StoryPayload): StoryMedia {
-  return { gallery: galleryImageUrls(story) };
+  const media: StoryMedia = { gallery: [], dropped: [] };
+  for (const url of galleryImageUrls(story, Number.POSITIVE_INFINITY)) {
+    const verdict = imageVerdict("story", url);
+    if (!verdict.ok) media.dropped.push(verdict.reason);
+    else if (media.gallery.length < TELEGRAM_ALBUM_CAP) media.gallery.push(url);
+  }
+  return media;
 }
 
 /** Every media URL for the post. Kept for callers that only need the
@@ -825,9 +845,9 @@ function telegramChannel(options: {
       const story = caption_summary ? { ...payload, caption_summary } : payload;
       const caption = buildStoryCaption(story);
       const replyMarkup = buildStoryReplyMarkup(story);
-      const { gallery } = resolveStoryMedia(story);
+      const { gallery, dropped } = resolveStoryMedia(story);
 
-      const fallback: string[] = [];
+      const fallback = dropped.map((reason) => `gallery:${reason}`);
       const video = await sendVideoStory(
         token,
         chatId,
@@ -838,11 +858,30 @@ function telegramChannel(options: {
       );
       if (video) return video;
       const result = await sendPhotoOrText();
+      if (fallback.length === 0) return result;
+      // A story without its own picture, or one a guard rule refused, is a
+      // defect to look at (a bad manifest, a host Telegram cannot fetch), not
+      // a silent downgrade: it reaches the owner whatever the send's outcome.
+      if (
+        fallback.some(
+          (reason) =>
+            reason.startsWith("photo:") || reason.includes("media guard:")
+        )
+      ) {
+        const outcome = result.ok
+          ? "posted without its own media"
+          : result.ambiguous
+            ? "outcome unknown"
+            : "not posted";
+        await reportDeliveryFailure(
+          env,
+          `${options.id} story ${story.id.slice(0, 8)} ${outcome}: ${fallback.join("; ")}`,
+          { channel: options.id, kind: "story_media" }
+        );
+      }
       // A downgrade (video -> photo -> text) is silent unless the reason lands
       // somewhere: `last_error` keeps it on the sent row, the log on the Worker.
-      if (fallback.length === 0 || result.ambiguous || result.budgetExhausted) {
-        return result;
-      }
+      if (result.ambiguous || result.budgetExhausted) return result;
       const note = `fallback ${result.ok ? "ok" : "failed"}: ${fallback.join("; ")}`;
       console.warn(
         JSON.stringify({
@@ -852,16 +891,6 @@ function telegramChannel(options: {
           delivered: result.ok,
         })
       );
-      // A story that went out without its own picture is a defect to look
-      // at (a bad manifest, a host Telegram cannot fetch), not a silent
-      // downgrade: it reaches the owner through the delivery alert path.
-      if (result.ok && fallback.some((reason) => reason.startsWith("photo:"))) {
-        await reportDeliveryFailure(
-          env,
-          `${options.id} story ${story.id.slice(0, 8)} posted without media: ${fallback.join("; ")}`,
-          { channel: options.id, kind: "story_media" }
-        );
-      }
       return {
         ...result,
         error: result.error ? `${result.error} | ${note}` : note,
@@ -937,12 +966,20 @@ function telegramChannel(options: {
         fallback.push(
           gallery.length > 0 ? "photo:none_sent" : "photo:no_usable_image"
         );
+        const preview = storyTextLinkPreview(story);
+        if (preview.is_disabled) {
+          fallback.push(
+            story.url
+              ? "preview:unusable_publisher_url"
+              : "preview:no_publisher_url"
+          );
+        }
         const msg = await callTelegram("story", token, "sendMessage", {
           chat_id: chatId,
           text: caption,
           parse_mode: "HTML",
           reply_markup: replyMarkup,
-          link_preview_options: storyTextLinkPreview(story),
+          link_preview_options: preview,
         });
         if (!msg.ok) return sendFailure(msg);
         return { ok: true, messageId: telegramMessageId(msg.result) };

@@ -406,6 +406,7 @@ describe("trending story message", () => {
     expect(storyPhotoUrl(withManifest)).toBe("https://img.example/poster.jpg");
     expect(resolveStoryMedia(withManifest)).toEqual({
       gallery: ["https://img.example/poster.jpg"],
+      dropped: [],
     });
     expect(
       JSON.stringify(resolveStoryMedia(story({ lang: "en" })))
