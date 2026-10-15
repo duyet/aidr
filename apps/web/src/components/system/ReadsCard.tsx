@@ -6,6 +6,11 @@ import { CardData } from "./CardData";
 import { ChartCard } from "./ChartCard";
 import { API } from "./endpoints";
 
+const KIND_LABEL: Record<string, string> = {
+  open: "Opens",
+  outbound: "Outbound clicks",
+};
+
 export function ReadsCard() {
   const state = useSystemData<SystemReads>(API.reads);
   return (
@@ -22,6 +27,13 @@ export function ReadsCard() {
             </p>
           ) : (
             <div className="space-y-3">
+              <BarList
+                data={d.by_kind.map((k) => ({
+                  name: KIND_LABEL[k.name] ?? k.name,
+                  count: k.reads,
+                }))}
+                emptyLabel="No reads recorded yet."
+              />
               <BarList
                 data={d.by_category.map((c) => ({
                   name: c.name,
