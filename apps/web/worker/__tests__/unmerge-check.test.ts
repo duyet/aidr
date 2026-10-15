@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   batchPrompt,
   CHECK_VERSION,
@@ -164,5 +164,46 @@ describe("model check verdicts (#797)", () => {
         dropped: [{ id: "x", title: dsecLive.title, reason: "gate" }],
       }),
     ]);
+  });
+});
+
+describe("check version (#802)", () => {
+  afterEach(() => {
+    vi.doUnmock("../dedupe.js");
+    vi.doUnmock("../cluster-gate.js");
+    vi.resetModules();
+  });
+
+  it("reads a verdict stored under the hand-set version 1 as unchecked", () => {
+    expect(Number.isSafeInteger(CHECK_VERSION)).toBe(true);
+    expect(CHECK_VERSION).toBeGreaterThan(1);
+    const checks = parseChecks([
+      { story: "s", version: 1, verdict: "clear", matches: "[]" },
+    ]);
+    expect(checkGate(checks, ["s"], [])).toEqual({ kind: "unchecked" });
+  });
+
+  it("changes when the cluster prompt changes, with no hand bump", async () => {
+    vi.resetModules();
+    vi.doMock("../dedupe.js", async (importOriginal) => {
+      const real = await importOriginal<typeof import("../dedupe.js")>();
+      return {
+        ...real,
+        clusterPrompt: (...args: Parameters<typeof real.clusterPrompt>) =>
+          `${real.clusterPrompt(...args)} Be brief.`,
+      };
+    });
+    const edited = await import("../unmerge/check.js");
+    expect(edited.CHECK_VERSION).not.toBe(CHECK_VERSION);
+  });
+
+  it("changes when the cluster gate version changes", async () => {
+    vi.resetModules();
+    vi.doMock("../cluster-gate.js", async (importOriginal) => {
+      const real = await importOriginal<typeof import("../cluster-gate.js")>();
+      return { ...real, CLUSTER_GATE_VERSION: real.CLUSTER_GATE_VERSION + 1 };
+    });
+    const edited = await import("../unmerge/check.js");
+    expect(edited.CHECK_VERSION).not.toBe(CHECK_VERSION);
   });
 });

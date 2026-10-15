@@ -644,7 +644,7 @@ describe("dedupe and topics caps per run", () => {
                 clusters: [
                   { new: [cap - 2, cap - 1] }, // last two shown items
                   { new: [cap, cap + 1] }, // both past the cap
-                  { new: [cap + 2], existing: ["e0"] }, // one past the cap
+                  { new: [cap + 2], existing: ["E1"] }, // one past the cap
                 ],
               }),
             },

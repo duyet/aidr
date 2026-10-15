@@ -371,8 +371,10 @@ describe("unmerge model check (#797)", () => {
       TITLES[DSEC],
       TITLES[MERCURY],
     ]);
-    expect(prompts[0].existing.map((row) => row.id).sort()).toEqual(
-      [DSEC_LIVE, MERCURY_LIVE].sort()
+    // The prompt names them by alias; the stored verdict by id.
+    expect(prompts[0].existing.map((row) => row.id)).toEqual(["E1", "E2"]);
+    expect(prompts[0].existing.map((row) => row.title).sort()).toEqual(
+      [TITLES[DSEC_LIVE], TITLES[MERCURY_LIVE]].sort()
     );
 
     const rows = stored();
@@ -437,13 +439,18 @@ describe("unmerge model check (#797)", () => {
     expect((await outcomes()).get(DSEC)).toMatchObject({ action: "restore" });
   });
 
-  it("records a mistyped live id as a near miss and still clears the story", async () => {
-    // The model meant DSEC_LIVE and cut its id to 12 characters.
-    model(({ newItems }) => {
+  it("records a slipped or unsent alias as a near miss and still clears the story", async () => {
+    // The model meant DSEC_LIVE and lowercased its alias, then named a
+    // third live row the call never sent.
+    model(({ newItems, existing }) => {
       const member = newItems.find((item) => item.title === TITLES[DSEC]);
+      const alias = existing.find((row) => row.title === TITLES[DSEC_LIVE]);
       return sse(
         JSON.stringify({
-          clusters: [{ new: [member?.i], existing: [DSEC_LIVE.slice(0, 12)] }],
+          clusters: [
+            { new: [member?.i], existing: [alias?.id.toLowerCase()] },
+            { new: [member?.i], existing: [`E${existing.length + 1}`] },
+          ],
         })
       );
     });
@@ -451,10 +458,10 @@ describe("unmerge model check (#797)", () => {
     expect(result.stored).toEqual({ noEvidence: 0, clear: 2, match: 0 });
     expect(result.refs).toMatchObject({
       calls: 1,
-      existingAnswered: 1,
+      existingAnswered: 2,
       existingKept: 0,
-      existingNearMiss: 1,
-      emptied: 1,
+      existingNearMiss: 2,
+      emptied: 2,
     });
     const dsec = stored().find((row) => row.story === DSEC);
     expect(JSON.parse(String(dsec?.matches))).toEqual([]);
