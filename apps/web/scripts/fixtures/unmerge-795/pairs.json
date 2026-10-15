@@ -1,0 +1,57 @@
+{
+  "source": "#795: rows the unmerge batches restored next to a live copy of their own story, hand-checked against titles and summaries. Run each canonical's scoped undo (--undo <batch> --canonical <id>) first: while the rows are published this file plans noop:already-unmerged. 0bca5653 points at a08e5eb6 (the Trump and Johnson White House lunch preview), not cb80fe5e as #795 proposed.",
+  "pairs": [
+    {
+      "canonicalId": "4474df4c0f97432a7bb2d9373ce3b35e8a0ef246a2038dcb7fe4d187008f338a",
+      "mergedId": "67dac9f5f51307d87730bad3285619039bd68b26bc1dae26995bbbeb1ffca7ca",
+      "sameAs": "d9198713ce2a1528671d6c6d8228a26b4cd92f023fbfa1b8e6e2fddce8403394"
+    },
+    {
+      "canonicalId": "c6e7b373f2474e0e64478d05ef98320f755d2ab345541696bc4d0307ac20edc8",
+      "mergedId": "c0bcbe5ea2fe5082eb46d93e67ee8a4c61aa97cab71de59c021ca9b651e6ab7e",
+      "sameAs": "562acc36900e89036c826b02069c062e8c7e17fd3547169c10b8e5a0cfc4d312"
+    },
+    {
+      "canonicalId": "dac30438b37af8fd19f73b42d838f74040339fca948f05aadbeca22874a7c065",
+      "mergedId": "5104a766021fc1981b65041824be071e9726cb60f7b9c93235660d7414dce87d",
+      "sameAs": "ef1d5686a07a251084699fbd2065c30b6c3279320e6811b9bd72943e2f41f4ac"
+    },
+    {
+      "canonicalId": "01b10eb425f337daa516368047ffb9f837a0cb746e8e7a15d513d56fc8edc93c",
+      "mergedId": "76873a97251acec57ff9a8ab1783c0ccefdec54d3f9f1a00da0d2bf9437fb418",
+      "sameAs": "80434392e981f5a48129b9519bef186cf50af653c43a0110a03b4eb686d4a0fd"
+    },
+    {
+      "canonicalId": "607871af2302631627c4b575690b485b7597f0b7ad336f54e17ed7a29d5aaffd",
+      "mergedId": "6f0e071b31e9ab003001b201a9d4a8c8bb1db31fd4395fecac077b5c35485c8f",
+      "group": "slug:d0391520",
+      "sameAs": "539ecbf45711d928ba272dea10803038ad5f04668dbc30296ea05fd679d81596"
+    },
+    {
+      "canonicalId": "607871af2302631627c4b575690b485b7597f0b7ad336f54e17ed7a29d5aaffd",
+      "mergedId": "bd9df2c839d0d375e2e4212c97dd95c51ec57b2611af444378adc8a598f49849",
+      "group": "slug:d0391520",
+      "sameAs": "539ecbf45711d928ba272dea10803038ad5f04668dbc30296ea05fd679d81596"
+    },
+    {
+      "canonicalId": "b19a7eb5407edebb14dd6540f00b886d62de468d8077de39070053ae15cc1d48",
+      "mergedId": "b25a5528d55f8edb693b44f7688cae55db8ec6793dbbbe8d10c1b4b261593dfd",
+      "sameAs": "a3935a66dd30b0ab0693dc2618f1405d6da45df7de76111fed291650910e654e"
+    },
+    {
+      "canonicalId": "28cb7568d8e68af899f22622c30661c2bb66ccb95ec4650895151ec7430ddc35",
+      "mergedId": "55fb34d32e37451b32ad1e8cf70904caa45a9c7969d139e64eea33f04e8bb0e2",
+      "sameAs": "ef73132814d067986b3e80e740c687154893416ec7e889eb7a7e7d7dda2857ec"
+    },
+    {
+      "canonicalId": "e483d8eddbddd9986b3d3089cc340dfe05dd365210b752905dc8b56c73c75e13",
+      "mergedId": "0bca5653ef88da33997dc0a3144516afb0ab222c4ce30e5acc018a2449ca0649",
+      "sameAs": "a08e5eb6329db1ce15118fa7cf013723eb54a606c52f649a281441f69aec21c4"
+    },
+    {
+      "canonicalId": "eab13fd1725ee8c5dfcf32807da79a8ad6202bf7c2892d5e2105790ad240bf30",
+      "mergedId": "1ef1b38c39d016087ddd34b7f05b42bdde86fa8750d3eeffe3f1785094f6de7d",
+      "sameAs": "8ef8b71c2f5a11dd371581285acde0172b67141c887c725d22406747e68140a3"
+    }
+  ]
+}
