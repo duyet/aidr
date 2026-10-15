@@ -237,16 +237,31 @@ locally from production D1 through `wrangler d1 execute`, SELECT only, and
   replaces the lead's working card.
 - A restored story can already be live: the aggregator twin that arrived
   after the wrong merge publishes on its own, since ingest clusters only
-  against published rows. Before restoring a group, the plan reads the
-  published rows within `MERGE_LOOKBACK_SEC` of it (`worker/unmerge/twins.ts`).
-  A row with the same canonical URL, the same huggingnews/marketbrief slug
-  hash, the same vnexpress article id, or the same normalized title from
-  another source is the same story: the group stays `merged`, re-pointed
-  to that row (`repoint`), which takes the group's sources, topics, reader
+  against published rows. Before restoring a group, the plan reads the live
+  rows within `TWIN_WINDOW_SEC` (96h) of it (`worker/unmerge/twins.ts`):
+  published rows, and rows merged into a published root (their
+  `duplicate_of` chain ends at a published row). The rows the request
+  itself moves are left out. A row with the same URL, the same
+  huggingnews/marketbrief slug hash, the same vnexpress article id, or the
+  same normalized title from another source within `MERGE_LOOKBACK_SEC` is
+  the same story: the group stays `merged`, re-pointed to the published
+  root (`repoint`), which takes the group's sources, topics, reader
   engagement and corroboration as ingest's merge into a published canonical
-  would. A live row with a picture of its own keeps it. A row whose title is
-  only a near-duplicate (the title pass's rule) is likely the same event, so
-  the group waits as `needs-decision` until the pairs file says
+  would. A live row with a picture of its own keeps it. The URL key ignores
+  the scheme, `www.`, the fragment, tracking keys and a trailing slash, and
+  keeps the query (HN's `item?id=`); source attribution uses the same key.
+- A merged copy unlike its root (no identity and no near-duplicate title
+  with it) is likely a wrong merge itself, so identity with it holds the
+  group as `needs-decision` instead of re-pointing it under an unrelated
+  story.
+- A row that is only likely the same event waits as `needs-decision`, and
+  its candidates are the published roots, which a `sameAs` can name. Likely
+  is the title pass's near-duplicate rule, or four shared evidence words
+  (`evidenceTokens`: names, numbers with units, uncommon words), within
+  96h, a day past the merge lookback. A Vietnamese row and an English row
+  compare in English through the stored `translations` title (lang `en`),
+  as the trending guard does (#786); the translation is model output, so
+  it never makes identity. The group waits until the pairs file says
   `"sameAs": "<id>"` (re-point to that row) or `"distinctFrom": ["<id>"]`
   (a different story; publish unless another live row matches). A group
   under the relevance bar restores as `rejected` and needs no decision. A
@@ -314,10 +329,10 @@ Until `049e36df` (2026-10-03) `normalizeClusters` kept any id the cluster
 call returned, so a made-up id (`abc123`, `ghi789`, `22`) became
 `duplicate_of`. The merge also wrote the cluster's source union under that
 id. Those rows are hidden and no row holds their story.
-`POST /api/admin/unmerge` with `{ dangling: true, dryRun? }` restores them
-(`agent unmerge --dangling [--apply]`, a dry run by default, the same
-SELECT-only local plan). It finds every merged row whose `duplicate_of`
-names no item and needs no pairs file.
+`POST /api/admin/unmerge` with `{ dangling: true, decisions?, dryRun? }`
+restores them (`agent unmerge --dangling [decisions.json] [--apply]`, a dry
+run by default, the same SELECT-only local plan). It finds every merged row
+whose `duplicate_of` names no item and needs no pairs file.
 
 - Stories: rows are one story when `sameStoryRule` says so (one URL, one
   aggregator slug hash, one article id, an exact title from another
@@ -330,8 +345,14 @@ names no item and needs no pairs file.
   waits as `needs-decision`), the same relevance bar (`rejected` under
   0.4), the same quiet window, the same replay through the merge planner
   and `planNewItemWrite`. The scale for scores is the median `storedScale`
-  over the published rows of the same days. Dangling mode takes no
-  `sameAs`/`distinct` yet, so a held story stays merged.
+  over the published rows of the same days.
+- Decisions: `{ mergedId, sameAs }` or `{ mergedId, distinctFrom: [...] }`
+  on any row of a story settles it as a pair's decision settles its group.
+  A bare `distinct` is refused: there is no canonical to be distinct from.
+  An id that names no item is refused, so a typo fails loudly. A row that
+  is no longer dangling was restored by an earlier apply, so a rerun with
+  the same file passes. Two different decisions on one story hold it. The
+  apply posts the same decisions, so it plans what the dry run printed.
 - Sources: `attributeSources` with no canonical reads the rows under the
   made-up id. A leading run belongs to the member whose URL row ends it.
   The union was capped at 8 rows per made-up id, so most rows sharing a
