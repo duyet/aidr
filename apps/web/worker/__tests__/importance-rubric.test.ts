@@ -126,7 +126,7 @@ describe("importance band content", () => {
     expect(deals).toMatch(/announced by the provider itself, is 6-7/);
     expect(deals).toMatch(/reseller's promo.*is 1-3/);
     expect(deals).toMatch(
-      /reseller listing a model at the same price is not a deal and is 4-6, even on launch day/
+      /reseller listing another company's model at that company's price is not a deal and is 4-6, even on launch day/
     );
   });
 

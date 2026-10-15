@@ -957,18 +957,19 @@ Batches of 5.
   gadgets and their sales, preorders or stock, including AI PCs and AI
   devices, are 4-6. Two anchors in `IMPORTANCE_ANCHORS` reach both
   scorers. A provider's own price cut, free tier or big discount on a
-  major model is 6-7. A cloud platform, app or reseller listing a model
-  at the same price is 4-6, even on launch day, and a reseller promo,
-  affiliate deal or free-credit offer is 1-3. A notable controversy (a
-  leadership fight at a leading lab, a lawsuit between major players, a
-  safety incident, a leak with real consequences) is 7-8, and gossip is
-  1-3. 9-10 stays rare because 8+ gets `BREAKING_BOOST`, and 9+
-  (`TRENDING_BURST_MIN_IMPORTANCE`) skips the normal trending cap of 3
-  posts a day with a 3h gap. It still stays within the burst limits of 6
-  a day per channel with a 1h gap. `scripts/fixtures/importance-eval.json`
-  labels each named case, and `scripts/importance-eval.ts --compare`
-  checks a change against it. The 2026-10-16 change was not run through
-  it, because no non-production key was available (#656).
+  major model is 6-7. A cloud platform, app or reseller listing another
+  company's model at that company's price is 4-6, even on launch day,
+  and a reseller promo, affiliate deal or free-credit offer is 1-3. A
+  notable controversy (a leadership fight at a leading lab, a lawsuit
+  between major players, a safety incident, a leak with real
+  consequences) is 7-8, and gossip is 1-3. 9-10 stays rare because 8+
+  gets `BREAKING_BOOST`, and 9+ (`TRENDING_BURST_MIN_IMPORTANCE`) skips
+  the normal trending cap of 3 posts a day with a 3h gap. It still stays
+  within the burst limits of 6 a day per channel with a 1h gap.
+  `scripts/fixtures/importance-eval.json` labels each named case, and
+  `scripts/importance-eval.ts --compare` checks a change against it.
+  The 2026-10-16 change was not run through it, because no
+  non-production key was available (#656).
 - Neither System One hop emits a free-form tag list.
 - Categories: chat picks one of 14 — ten core (Models, Regulation,
   Products, Agents, Research, Industry, Infra, Releases, Chips, Funding)

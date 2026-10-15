@@ -31,7 +31,7 @@ export const IMPORTANCE_BANDS = [
 
 /** Story kinds the bands alone left ambiguous. */
 export const IMPORTANCE_ANCHORS = [
-  "Deals: a real price cut, free tier or big discount on a major model or API, announced by the provider itself, is 6-7. A cloud platform, app or reseller listing a model at the same price is not a deal and is 4-6, even on launch day. A reseller's promo, an affiliate deal or a free-credit offer is 1-3.",
+  "Deals: a real price cut, free tier or big discount on a major model or API, announced by the provider itself, is 6-7. A cloud platform, app or reseller listing another company's model at that company's price is not a deal and is 4-6, even on launch day. A reseller's promo, an affiliate deal or a free-credit offer is 1-3.",
   "Drama: a notable controversy is 7-8: a leadership fight at a leading lab, a lawsuit between major players, a safety incident, or a leak with real consequences (exposed data, a pulled model, a regulator stepping in). Gossip is 1-3: personal lives, unsourced rumours, social-media spats.",
 ] as const;
 
