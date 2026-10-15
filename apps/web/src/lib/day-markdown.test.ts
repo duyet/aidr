@@ -149,6 +149,38 @@ describe("renderDayMarkdown", () => {
   });
 });
 
+describe("renderDayMarkdown story detail", () => {
+  const ranked = Array.from({ length: 12 }, (_, i) =>
+    item(`${String(i).padStart(2, "0")}aaaaaa`, {
+      url: `https://www.publisher${i}.com/post`,
+      summary: `EN summary ${i}`,
+      summary_vi: i === 0 ? null : `VI tóm tắt ${i}`,
+    })
+  );
+  const day = archive({
+    day: { date: "2026-08-01", items: ranked, categoryCounts: {} },
+  });
+
+  // An agent answering "what happened that day" from one fetch needs the
+  // gist and the publisher, not only a title.
+  it("gives each story its publisher host and the top ten their summary", () => {
+    const md = renderDayMarkdown(day, "en");
+    expect(md).toContain(
+      "1. [Story 00aaaaaa](https://aidr.today/00aaaaaa?lang=en) — Models · publisher0.com\n   EN summary 0\n"
+    );
+    expect(md).toContain("   EN summary 9\n");
+    expect(md).not.toContain("EN summary 10");
+    expect(md).toContain("— Models · publisher11.com");
+  });
+
+  it("never prints the English summary in the Vietnamese edition", () => {
+    const md = renderDayMarkdown(day, "vi");
+    expect(md).not.toContain("EN summary");
+    expect(md).toContain("   VI tóm tắt 1\n");
+    expect(md).toMatch(/publisher0\.com\n2\. /);
+  });
+});
+
 describe("handleDayMarkdownRequest", () => {
   beforeEach(() => {
     getDayArchive.mockReset();
