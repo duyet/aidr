@@ -58,8 +58,10 @@ function PrivacyPage() {
             The website loads Google Analytics 4 to count page views. Once a day
             we read back page views, daily and monthly active users, top pages,
             and traffic sources for the Pipeline page. We store only those
-            totals, never IP addresses or visitor IDs. The extension loads no
-            analytics.
+            totals, never IP addresses or visitor IDs. The site also counts,
+            per story and per day, how often a story is opened or its source
+            link clicked. Those are plain totals with no visitor identifier,
+            cookie, or IP address. The extension loads no analytics.
           </li>
           <li>
             <strong className="text-foreground">
