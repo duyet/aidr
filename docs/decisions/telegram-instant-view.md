@@ -382,20 +382,33 @@ gate approves, so the channel post and the link preview agree.
 > deferred; a poster is the image actually sent. See `worker/notify/telegram.ts`
 > (`TELEGRAM_ALBUM_CAP`, `resolveStoryMedia`).
 >
-> The generated card is also no longer the lead image. It is the fallback: used
-> when the story has no usable image, and as a one-shot retry when Telegram
-> rejects the story image, because the card is first-party and 200 by
-> construction where an upstream URL may be hotlink-blocked. It therefore no
-> longer occupies an album slot, and on the image path the post image is no
-> longer the gate-approved card — so the "post and link preview agree" claim
-> above now holds only when the post falls back to the card.
+> **Superseded (#804): the card is never a trending post's media.** A
+> trending post shows the story's own image: an album of the manifest images
+> (2 to 10), else one `sendPhoto`. Images Telegram cannot take by URL (GIF,
+> SVG and the like, or the share card itself) are dropped from the gallery
+> before the call, so one GIF no longer turns an album into a single photo.
+> A story with no usable image, or whose first 3 photos Telegram rejects,
+> goes out as text with `link_preview_options.url` pinned to the publisher
+> page (http or https on a public host), so Telegram shows the publisher's
+> own `og:image`. When the publisher URL cannot be previewed (empty after
+> canonicalization, a private host), the text goes out with the preview
+> off: the aidr story page is no substitute, since its `og:image` is the
+> card. The story is posted either way, and each of these posts is
+> reported to Bugsink as `kind=story_media`. `checkTelegramMedia`
+> (`worker/notify/telegram-media-guard.ts`) enforces this on every story
+> call, sends and edits (`editMessageMedia`, `editMessageText`), and
+> recognises the card on `aidr.today` or `www.aidr.today`, with or without
+> `.png`, by the 8-character or the full id. The card swap tool
+> (`scripts/telegram-swap-card.ts`) passes the same guard before every bot
+> call. The card still serves the site's `og:image` and email.
 >
 > **Superseded in part (digest).** The digest no longer disables its preview.
 > It is one `sendMessage` whose `link_preview_options` point at the versioned
 > day card PNG (`/api/og/date/{date}.png?lang=&v=`) with `prefer_large_media`
 > and `show_above_text`, so the card shows large above the six story lines.
 > The card URL is not in the text; the Bot API uses `url` as given. Story
-> posts still set `is_disabled`. See `digestLinkPreview` in
+> photo posts still set `is_disabled`; story text posts pin the publisher
+> page as above. See `digestLinkPreview` and `storyTextLinkPreview` in
 > `worker/notify/telegram.ts`.
 
 Neither change touches `lang` as a delivery identity: the digest key is still

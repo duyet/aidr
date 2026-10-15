@@ -46,10 +46,10 @@ import {
   escapeHtml,
   resolveStoryMedia,
   STORY_PHOTO_LINK_PREVIEW,
-  STORY_TEXT_LINK_PREVIEW,
   storyImageCount,
   storyPhotoUrl,
   storyPhotoUrls,
+  storyTextLinkPreview,
   storyUrl,
   telegramChatId,
   telegramEnNotifier,
@@ -393,9 +393,9 @@ describe("trending story message", () => {
     expect(buildStoryCaption(none)).not.toContain("more");
   });
 
-  it("leads with the story's own image and keeps the card as a fallback", () => {
-    // The post leads with the real photo; the generated card is the fallback
-    // for no usable image, or when Telegram rejects this one.
+  it("leads with the story's own image and never names the generated card", () => {
+    // A trending post is the story's photo. The first-party share card is a
+    // text graphic, so it is not a fallback either: the media never lists it.
     const withManifest = story({
       image_url: null,
       media_manifest: {
@@ -406,11 +406,11 @@ describe("trending story message", () => {
     expect(storyPhotoUrl(withManifest)).toBe("https://img.example/poster.jpg");
     expect(resolveStoryMedia(withManifest)).toEqual({
       gallery: ["https://img.example/poster.jpg"],
-      card: "https://aidr.today/api/og/abcdef12.png?lang=vi",
+      dropped: [],
     });
-    expect(resolveStoryMedia(story({ lang: "en" })).card).toBe(
-      "https://aidr.today/api/og/abcdef12.png?lang=en"
-    );
+    expect(
+      JSON.stringify(resolveStoryMedia(story({ lang: "en" })))
+    ).not.toMatch(/api\/og/);
   });
 
   it("posts the imgur image, not a source's share card, when that is all there is", () => {
@@ -431,20 +431,21 @@ describe("trending story message", () => {
     expect(resolveStoryMedia(hydrated).gallery).toEqual([imgur]);
   });
 
-  it("falls back to the generated card when the story has no usable image", () => {
+  it("has no photo to send when the story has no usable image", () => {
     const imageless = story({ image_url: null, media_manifest: null });
     expect(storyImageCount(imageless)).toBe(0);
-    expect(storyPhotoUrls(imageless)).toEqual([
-      "https://aidr.today/api/og/abcdef12.png?lang=vi",
-    ]);
-    // Neither an image nor an addressable card means text-only, not a crash.
-    const unaddressable = story({
-      id: "zzz-not-a-story-id",
-      image_url: null,
-      media_manifest: null,
+    expect(storyPhotoUrls(imageless)).toEqual([]);
+    expect(storyPhotoUrl(imageless)).toBeNull();
+  });
+
+  it("pins the text fallback's preview to the publisher page", () => {
+    // Telegram then fetches the publisher's own og:image; the preview is
+    // never the first-party card.
+    expect(storyTextLinkPreview(story())).toEqual({
+      url: "https://example.com/story?a=1&b=2",
+      prefer_large_media: true,
+      show_above_text: true,
     });
-    expect(resolveStoryMedia(unaddressable).card).toBeNull();
-    expect(storyPhotoUrls(unaddressable)).toEqual([]);
   });
 
   it("builds a single Read button pointing at the aidr story page", () => {
@@ -903,7 +904,7 @@ describe("telegramNotifier gating", () => {
         TELEGRAM_BOT_TOKEN: "token",
         TELEGRAM_CHAT_ID: "chat",
       } as Env,
-      story()
+      story({ image_url: "https://img.example/story.jpg" })
     );
     expect(result.ok).toBe(true);
     expect(result.messageId).toBe("7");
@@ -1018,10 +1019,10 @@ describe("telegramNotifier gating", () => {
     expect(photo.reply_markup).toBeDefined();
   });
 
-  it("retries with the generated card when Telegram rejects the image", async () => {
-    // Hotlink-hostile / dead upstream URLs are the common failure. The card is
-    // a first-party 200 that cannot be blocked, so the post keeps its image
-    // instead of dropping to bare text.
+  it("posts text with the publisher preview when Telegram rejects the image, never the card", async () => {
+    // Hotlink-hostile / dead upstream URLs are the common failure. The
+    // generated card is a text graphic, so the post drops to text whose
+    // preview is pinned to the publisher page, and the reason is recorded.
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -1042,12 +1043,43 @@ describe("telegramNotifier gating", () => {
       story({ image_url: "https://img.example/hotlink-hostile.png" })
     );
     expect(result).toMatchObject({ ok: true, messageId: "31" });
-    expect(result.error).toMatch(/^fallback ok: sendPhoto:/);
+    expect(result.error).toBe(
+      "fallback ok: sendPhoto:wrong file identifier; photo:none_sent"
+    );
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const first = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
     expect(first.photo).toBe("https://img.example/hotlink-hostile.png");
-    const retry = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
-    expect(retry.photo).toBe("https://aidr.today/api/og/abcdef12.png?lang=vi");
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
+    const text = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    expect(text.link_preview_options).toEqual({
+      url: "https://example.com/story?a=1&b=2",
+      prefer_large_media: true,
+      show_above_text: true,
+    });
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toMatch(/api\/og/);
+  });
+
+  it("refuses to send the first-party card even when it is the stored image", async () => {
+    // A row whose image_url is our own share card (an ingest or hand edit)
+    // must not reach Telegram as the story photo: the gallery drops it by the
+    // guard's own rule, and the post goes out as text with the publisher preview.
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, result: { message_id: 32 } }), {
+        status: 200,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await telegramNotifier.sendStory(
+      { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
+      story({ image_url: "https://aidr.today/api/og/abcdef12.png?lang=vi" })
+    );
+    expect(result).toMatchObject({ ok: true, messageId: "32" });
+    expect(result.error).toBe(
+      "fallback ok: gallery:image:first_party_card; photo:no_usable_image"
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMessage");
   });
 
   it("tries the next gallery images before the generated card", async () => {
@@ -1091,10 +1123,10 @@ describe("telegramNotifier gating", () => {
     ).toBe(false);
   });
 
-  it("posts once with the card when the story image is over Telegram's photo cap", async () => {
+  it("posts once as text when the story image is over Telegram's photo cap", async () => {
     // Gallery photos are not preflighted: Telegram fetches the URL and refuses
     // a photo over its 5 MB URL limit. That refusal is a definite answer, so
-    // the card retry is safe, and the Worker itself never downloads the file.
+    // the text fallback is safe, and the Worker itself never downloads the file.
     const big = "https://img.example/huge-12mb.jpg";
     const fetchMock = vi
       .fn()
@@ -1127,8 +1159,8 @@ describe("telegramNotifier gating", () => {
         String(call[0]).startsWith("https://api.telegram.org/")
       )
     ).toBe(true);
-    const retry = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
-    expect(retry.photo).toBe("https://aidr.today/api/og/abcdef12.png?lang=vi");
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toMatch(/api\/og/);
   });
 
   describe("unknown send outcome", () => {
@@ -1276,7 +1308,7 @@ describe("telegramNotifier gating", () => {
     });
   });
 
-  it("uses the generated card as the only media for an imageless story", async () => {
+  it("posts an imageless story as text with the publisher preview, not the card", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true, result: { message_id: 9 } }), {
         status: 200,
@@ -1284,19 +1316,27 @@ describe("telegramNotifier gating", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await telegramNotifier.sendStory(
+    const result = await telegramNotifier.sendStory(
       {
         TELEGRAM_BOT_TOKEN: "token",
         TELEGRAM_CHAT_ID: "chat",
       } as Env,
       story({ image_url: null, media_manifest: null })
     );
+    expect(result).toMatchObject({ ok: true, messageId: "9" });
+    expect(result.error).toBe("fallback ok: photo:no_usable_image");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMessage");
     const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
-    expect(body.photo).toBe("https://aidr.today/api/og/abcdef12.png?lang=vi");
+    expect(body.photo).toBeUndefined();
+    expect(body.link_preview_options).toEqual({
+      url: "https://example.com/story?a=1&b=2",
+      prefer_large_media: true,
+      show_above_text: true,
+    });
   });
 
-  it("disables the link preview on the photo path so the card is the only image", async () => {
+  it("disables the link preview on the photo path so the photo is the only image", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true, result: { message_id: 10 } }), {
         status: 200,
@@ -1305,7 +1345,7 @@ describe("telegramNotifier gating", () => {
     vi.stubGlobal("fetch", fetchMock);
     await telegramNotifier.sendStory(
       { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
-      story()
+      story({ image_url: "https://img.example/story.jpg" })
     );
     const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
     expect(body.link_preview_options).toEqual(STORY_PHOTO_LINK_PREVIEW);
@@ -1334,14 +1374,16 @@ describe("telegramNotifier gating", () => {
       show_above_text: true,
     });
 
-    // Force the text path: an id with no card shape and no usable thumbnail.
+    // Force the text path: no usable thumbnail. The text post pins its
+    // preview to the publisher page, so the reader still sees a real image.
+    const text = story({ id: "NOT-HEX", image_url: "http://127.0.0.1/x.jpg" });
     await telegramNotifier.sendStory(
       { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
-      story({ id: "NOT-HEX", image_url: "http://127.0.0.1/x.jpg" })
+      text
     );
     const textBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
-    expect(textBody.link_preview_options).toEqual(STORY_TEXT_LINK_PREVIEW);
-    expect(textBody.link_preview_options).toEqual({ is_disabled: true });
+    expect(textBody.link_preview_options).toEqual(storyTextLinkPreview(text));
+    expect(textBody.link_preview_options.url).toBe(text.url);
   });
 
   it("throws when chat id is set but the bot token is missing", () => {

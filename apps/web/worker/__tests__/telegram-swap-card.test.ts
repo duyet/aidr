@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   auditInsert,
   buildEditPlan,
@@ -6,6 +6,7 @@ import {
   editResult,
   type PlanFacts,
   type StorySend,
+  telegram,
 } from "../../scripts/telegram-swap-card.js";
 
 const CARD = { kind: "photo", width: 1200, height: 630 } as const;
@@ -208,5 +209,63 @@ describe("editResult", () => {
     expect(editResult({ ok: false, description: "Bad Request: nope" })).toBe(
       "failed"
     );
+  });
+});
+
+describe("bot calls pass the media guard", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  function stubTelegram() {
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", "test-token");
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, result: { message_id: 1 } }), {
+        status: 200,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("refuses to edit the share card onto a live post, without calling Telegram", async () => {
+    const fetchMock = stubTelegram();
+    const res = await telegram("editMessageMedia", {
+      chat_id: "-100",
+      message_id: 255,
+      media: {
+        type: "photo",
+        media: "https://aidr.today/api/og/c920864b.png?lang=vi",
+      },
+    });
+    expect(res).toEqual({
+      ok: false,
+      description: "media guard: image:first_party_card",
+    });
+    expect(editResult(res)).toBe("failed");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to stage the share card", async () => {
+    const fetchMock = stubTelegram();
+    const res = await telegram("sendPhoto", {
+      chat_id: "-100",
+      photo: "https://www.aidr.today/api/og/c920864b",
+    });
+    expect(res.ok).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("sends the story's own image", async () => {
+    const fetchMock = stubTelegram();
+    const res = await telegram("editMessageMedia", {
+      chat_id: "-100",
+      message_id: 255,
+      media: { type: "photo", media: "https://img.example/story.jpg" },
+    });
+    expect(res.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toMatch(/\/editMessageMedia$/);
   });
 });

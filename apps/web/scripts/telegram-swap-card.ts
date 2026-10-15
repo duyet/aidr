@@ -44,6 +44,8 @@ import { fetchArxivFigure } from "../worker/enrich.js";
 import { parseMediaManifest } from "../worker/media.js";
 import { hydrateStory } from "../worker/notify/index.js";
 import { resolveStoryMedia } from "../worker/notify/telegram.js";
+import { checkTelegramMedia } from "../worker/notify/telegram-media-guard.js";
+import { isIvStoryId, ivCardUrl } from "../worker/telegram-iv.js";
 import { cf, D1_DATABASE_ID, d1ResultRows } from "./cf-d1.js";
 
 export type Evidence = "no_image_at_send" | "fallback_to_card";
@@ -163,10 +165,14 @@ export function replacementGallery(send: StorySend): string[] {
   );
 }
 
+/** The card URL a post before #622 went out with. The send path no longer
+ *  names it, so this tool addresses it directly to recognise old sends. */
 export function cardUrl(send: StorySend): string {
-  const { card } = resolveStoryMedia(storyFor(send));
-  if (!card) throw new Error(`story ${send.itemId} cannot address a card`);
-  return card;
+  const story = storyFor(send);
+  const id8 = story.id.slice(0, 8);
+  if (!isIvStoryId(id8))
+    throw new Error(`story ${send.itemId} cannot address a card`);
+  return ivCardUrl(id8, story.lang);
 }
 
 export function isCardSize(photo: PhotoSize): boolean {
@@ -310,10 +316,16 @@ function requireEnv(name: string): string {
   return value;
 }
 
-async function telegram(
+/** Every call passes the Worker's media guard first: a refused edit or
+ *  staging send never reaches Telegram and counts as a failed edit. */
+export async function telegram(
   method: string,
   body: Record<string, unknown>
 ): Promise<TelegramResponse> {
+  const verdict = checkTelegramMedia("story", method, body);
+  if (!verdict.ok) {
+    return { ok: false, description: `media guard: ${verdict.reason}` };
+  }
   const token = requireEnv("TELEGRAM_BOT_TOKEN");
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
