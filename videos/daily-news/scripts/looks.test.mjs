@@ -208,3 +208,122 @@ test("the bed start leaves room for the cut and changes every day", () => {
         keys[i]
       );
 });
+
+// Frame 0 is the thumbnail on Reels, TikTok and Shorts, so a rotating intro is finished on frame 0 and only moves
+// after it. GSAP renders a from()/fromTo() from-state at build time, wherever the tween sits on the timeline, so
+// `fromTo(title, { opacity: 0 }, ..., 2)` leaves the title invisible on frame 0. This runs each auto intro's motion
+// against a recording timeline and fails on any tween that hides an element on frame 0. A bar or rule may grow from
+// nothing (scaleX/scaleY 0): it is the one allowance, and only for elements whose class names a bar or rule.
+const ACCENT = /\.[\w-]*(bar|rule)[\w-]*(\[\d+\])?$/;
+const closedClip = (v) => {
+  const m = /^inset\(([^)]*)\)$/.exec(String(v).trim());
+  if (!m) return false;
+  const [t, r = t, b = t, l = r] = m[1].split(/\s+/).map(parseFloat);
+  return t + b >= 100 || l + r >= 100;
+};
+function hides(vars, target) {
+  const why = [];
+  if (vars.opacity === 0 || vars.autoAlpha === 0) why.push("opacity 0");
+  if (vars.visibility === "hidden" || vars.display === "none")
+    why.push("hidden");
+  if (vars.clipPath !== undefined && closedClip(vars.clipPath))
+    why.push(`clipPath ${vars.clipPath}`);
+  if (vars.width === 0 || vars.height === 0) why.push("zero size");
+  if (vars.scale === 0) why.push("scale 0");
+  if ((vars.scaleX === 0 || vars.scaleY === 0) && !ACCENT.test(target))
+    why.push("scaleX/scaleY 0 on content");
+  return why;
+}
+const stub = (sel, i) => ({
+  sel: i === undefined ? sel : `${sel}[${i}]`,
+  classList: { contains: () => false },
+  offsetWidth: 400,
+  offsetHeight: 300,
+});
+const name = (t) =>
+  [t]
+    .flat()
+    .map((x) => (typeof x === "string" ? x : x?.sel))
+    .join(",");
+function frameZero(motion, { n, vertical, focus }) {
+  const I = { variant: "x", start: 0, dur: 8, focus };
+  const blanks = [];
+  const tl = {};
+  const rec = (kind, target, from, to, at) => {
+    const t = name(target);
+    const pos = typeof at === "number" ? at : 0;
+    const shown = (vars) => hides(vars ?? {}, t);
+    let why = [];
+    if (kind === "fromTo" && !(to.immediateRender === false && pos > I.start))
+      why = shown(from);
+    if (kind === "from" && from.immediateRender !== false) why = shown(from);
+    if ((kind === "set" || kind === "to") && pos <= I.start && !to.duration)
+      why = shown(to);
+    if (why.length) blanks.push(`${kind}(${t}) at ${pos}: ${why.join(", ")}`);
+    return tl;
+  };
+  tl.fromTo = (t, a, b, at) => rec("fromTo", t, a, b, at);
+  tl.from = (t, a, at) => rec("from", t, a, {}, at);
+  tl.to = (t, b, at) => rec("to", t, {}, b, at);
+  tl.set = (t, b, at) => rec("set", t, {}, b, at);
+  const h = {
+    $: (s, root) => stub(root?.sel ? `${root.sel} ${s}` : s),
+    $$: (s, root) =>
+      Array.from({ length: n }, (_, i) =>
+        stub(root?.sel ? `${root.sel} ${s}` : s, i)
+      ),
+    fit: () => {},
+    fitWidth: () => {},
+    fitAbove: () => {},
+    measured: (_el, fn) => fn(),
+    LAND: "expo.out",
+    F: 1 / 30,
+    vertical,
+    IN: 0.32,
+    OUT: 0.4,
+  };
+  motion(tl, I, h);
+  return blanks;
+}
+
+test("every rotating intro is finished on frame 0 (the platforms' thumbnail)", () => {
+  const blank = [];
+  for (const e of AXES.intro.filter((x) => x.auto))
+    for (const n of [1, 4, 8])
+      for (const vertical of [false, true])
+        for (const focus of [
+          [],
+          [
+            { rank: 1, at: 2.1 },
+            { rank: n, at: 3.4 },
+          ],
+        ])
+          for (const b of frameZero(e.motion, { n, vertical, focus }))
+            blank.push(
+              `${e.id} (${n} stories, ${vertical ? "9x16" : "16x9"}): ${b}`
+            );
+  assert.deepEqual([...new Set(blank)], []);
+});
+
+test("the frame-0 check catches an intro that fades in from nothing", () => {
+  const fadeIn = (tl, I, h) => {
+    tl.fromTo(
+      ".title",
+      { y: 50, opacity: 0 },
+      { y: 0, opacity: 1 },
+      I.start + 1.2
+    );
+    tl.fromTo(h.$(".rule"), { scaleX: 0 }, { scaleX: 1 }, I.start + 0.5);
+    tl.fromTo(
+      ".img",
+      { clipPath: "inset(0% 100% 0% 0%)" },
+      { clipPath: "inset(0%)" },
+      I.start
+    );
+    tl.to(".late", { opacity: 0, duration: 0.3 }, I.start + 3);
+  };
+  assert.deepEqual(frameZero(fadeIn, { n: 1, vertical: false, focus: [] }), [
+    "fromTo(.title) at 1.2: opacity 0",
+    "fromTo(.img) at 0: clipPath inset(0% 100% 0% 0%)",
+  ]);
+});
