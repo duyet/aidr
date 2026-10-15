@@ -2,6 +2,7 @@
 // ids for a day; build.mjs asks the registry for the chosen entries' markup, CSS, motion and cues. Adding a
 // variant is adding one entry to its axis file.
 import { BACKGROUNDS } from "./background.mjs";
+import { CHOREOGRAPHIES } from "./choreography.mjs";
 import { INTROS } from "./intro.mjs";
 import { LAYOUTS } from "./layout.mjs";
 import { TRANSITIONS } from "./transition.mjs";
@@ -11,6 +12,7 @@ export const AXES = {
   intro: INTROS,
   transition: TRANSITIONS,
   background: BACKGROUNDS,
+  choreography: CHOREOGRAPHIES,
 };
 export { LAYOUTS };
 
@@ -22,7 +24,7 @@ const INDEX = {
   layout: byId(LAYOUTS),
 };
 
-/** The entry for `id` on `axis` ("intro", "transition", "background", "layout"). */
+/** The entry for `id` on `axis` ("intro", "transition", "background", "choreography", "layout"). */
 export function entry(axis, id) {
   const e = INDEX[axis]?.[id];
   if (!e) throw new Error(`look registry: no ${axis} "${id}"`);
@@ -55,5 +57,5 @@ export function lookScript(look) {
     .filter((e) => e.motion)
     .map((e) => `${JSON.stringify(e.id)}:${e.motion}`)
     .join(",");
-  return `window.__LOOK={intro:${fn("intro")},transition:${fn("transition")},layouts:{${layoutFns}}};`;
+  return `window.__LOOK={intro:${fn("intro")},transition:${fn("transition")},choreography:${fn("choreography")},layouts:{${layoutFns}}};`;
 }

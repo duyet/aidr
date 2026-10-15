@@ -35,8 +35,9 @@ test("every entry has the hooks build.mjs calls for its axis", () => {
       assert.equal(typeof e.cues, "function", `${at}: cues`);
       assert.equal(typeof e.motion, "function", `${at}: motion`);
     }
-    if (axis === "transition") {
-      assert.equal(typeof e.html, "function", `${at}: html`);
+    if (axis === "transition" || axis === "choreography") {
+      if (axis === "transition")
+        assert.equal(typeof e.html, "function", `${at}: html`);
       assert.equal(typeof e.motion, "function", `${at}: motion`);
     }
     if (axis === "layout") {
@@ -61,6 +62,7 @@ test("the page script and CSS carry the chosen variants only", () => {
     intro: "grid",
     transition: "shutter",
     background: "soft",
+    choreography: "slide",
     layouts: { 1: "full", 2: "split", 3: "full" },
   };
   const src = lookScript(look);
@@ -69,6 +71,7 @@ test("the page script and CSS carry the chosen variants only", () => {
   assert.deepEqual(Object.keys(window.__LOOK.layouts), ["full"]);
   assert.equal(typeof window.__LOOK.intro, "function");
   assert.equal(typeof window.__LOOK.transition, "function");
+  assert.equal(typeof window.__LOOK.choreography, "function");
   const css = lookCss(look);
   assert.ok(css.includes(".bg-soft .ground"));
   assert.ok(css.includes(".wipe .half"));

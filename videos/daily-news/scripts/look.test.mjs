@@ -110,6 +110,7 @@ test("a theme in script.json pins that axis; the others still rotate", () => {
       dayNumber("2026-10-13"),
       "background"
     ),
+    choreography: free.choreography,
     accent: "#E0B000",
     layouts: {},
     notes: [],
@@ -401,4 +402,20 @@ test("rotatePair rejects pools it cannot walk", () => {
     () => rotatePair(["a", "b", "c"], ["d", "e", "f", "g"], 0, "x", "y"),
     /same size >= 3/
   );
+});
+
+// A new rotating axis must not reshuffle the days already planned: rotatePair only walks transition and
+// background, so a third free axis (intro, choreography) leaves their schedule as #631 shipped it.
+test("the new axes leave the transition/background schedule of #631 as it was", () => {
+  const was = {
+    "2026-10-14": "shutter/grid",
+    "2026-10-15": "ink/soft",
+    "2026-10-16": "wipe/grid",
+    "2026-10-17": "shutter/soft",
+    "2026-10-18": "ink/paper",
+    "2026-10-22": "wipe/paper",
+    "2026-10-27": "ink/paper",
+  };
+  for (const [date, c] of Object.entries(was))
+    assert.equal(combo(resolveLook({}, { date })), c, date);
 });

@@ -4,7 +4,8 @@
   "theme": {
     "intro": "grid",
     "transition": "ink",
-    "background": "soft"
+    "background": "soft",
+    "choreography": "rise"
   },
   "thumb": {
     "story": 4,

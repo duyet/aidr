@@ -1,7 +1,7 @@
 // The video's look, derived from the edition's date at build time and never stored.
 // Every axis rotates over its `auto` ids so two adjacent days (or weeks) never share a value, with no
 // memory of yesterday: CI never commits, so a look read back from a committed script froze every CI day.
-// When two axes are free they rotate together as combinations, so the whole look never ping-pongs either.
+// Transition and background rotate together as combinations, so the whole look never ping-pongs either.
 // `script.theme` pins an axis: a key it sets wins, and an id outside the axis fails the build.
 import { LAYOUTS as LAYOUT_ENTRIES, AXES as REGISTRY } from "./looks/index.mjs";
 import { parseWeek } from "./week.mjs";
@@ -17,6 +17,7 @@ const AXES = Object.fromEntries(
   ])
 );
 const PIN_ONLY = ["accent"];
+const PAIR = ["transition", "background"];
 // Story layouts are chosen per story from what the story has, not rotated by date (looks/layout.mjs).
 const LAYOUTS = Object.fromEntries(
   LAYOUT_ENTRIES.map(({ id, image, max }) => [id, { image, max }])
@@ -148,7 +149,7 @@ function chooseLayouts(stories, edition) {
 }
 
 /**
- * { intro, transition, background, accent?, layouts, notes } for this edition. Takes no language: build passes
+ * { intro, transition, background, choreography, accent?, layouts, notes } for this edition. Takes no language: build passes
  * script.json for every cut, with each story's images already filtered to the files that exist.
  */
 export function resolveLook(script, edition) {
@@ -165,19 +166,18 @@ export function resolveLook(script, edition) {
       );
   }
   const day = dayNumber(edition.date);
-  const free = Object.keys(AXES).filter(
-    (axis) => !(axis in pin) && AXES[axis].auto.length > 1
-  );
-  const joint =
-    free.length === 2
-      ? rotatePair(AXES[free[0]].auto, AXES[free[1]].auto, day, ...free)
-      : [];
+  // The pair walks its combinations together (rotatePair) while both are free; every other axis, and a lone
+  // free one of the pair, rotates on its own.
+  const paired = PAIR.every((axis) => !(axis in pin));
+  const joint = paired
+    ? rotatePair(AXES[PAIR[0]].auto, AXES[PAIR[1]].auto, day, ...PAIR)
+    : [];
   const look = Object.fromEntries(
     Object.entries(AXES).map(([axis, { auto }]) => [
       axis,
       pin[axis] ??
-        (free.length === 2 && free.includes(axis)
-          ? joint[free.indexOf(axis)]
+        (paired && PAIR.includes(axis)
+          ? joint[PAIR.indexOf(axis)]
           : rotate(auto, day, axis)),
     ])
   );
