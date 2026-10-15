@@ -106,7 +106,7 @@ From the contact sheets and, after render, a few frames of each MP4:
 
 ## Changing the template
 
-- Look and layout: `template/style.css` (`.f-16x9` / `.f-9x16` variables; layouts `.l-*`; intros; transitions).
+- Look and layout: `template/style.css` (shared: `.f-16x9` / `.f-9x16` variables, chrome, the split story, captions, outro). Every variant (intro, transition, background, story layout) is one entry in `scripts/looks/` with its markup, CSS, motion and cues.
 - The grid intro's layout for each story count (1–8, both formats) is the table in `scripts/grid.mjs`. Fewer stories get bigger tiles and type, and an odd count gives the lead a hero tile. Raising `config.count` or `weekCount` past 8 fails `grid.test.mjs` until the table has a layout for the new count.
 - Motion: `template/motion.js` (one paused timeline; follow `aidr-motion-designer`; tween transforms and opacity only — `lint` rejects `left`/`top` tweens).
 - Voices, music, effects, timing, captions: `config.json`. Add a host to `videos/brand/voices.json` (with `name` and `gender`); voice settings live there too.

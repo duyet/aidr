@@ -64,6 +64,21 @@
   function build() {
     const tl = gsap.timeline({ paused: true });
     const vertical = D.fmt === "9x16";
+    // The day's variants (looks/, serialized by build.mjs) get the timeline, their data and these helpers.
+    const L = window.__LOOK;
+    const H = {
+      $,
+      $$,
+      fit,
+      fitWidth,
+      fitAbove,
+      measured,
+      LAND,
+      F,
+      vertical,
+      IN: 0.32,
+      OUT: 0.4,
+    };
 
     // ---------- intro ----------
     const I = D.intro;
@@ -80,151 +95,7 @@
       { yPercent: -4, duration: I.dur, ease: "none" },
       I.start
     );
-    if (I.variant === "grid") {
-      // Frame 0 is the finished grid (title included). Then each tile is underlined in turn, and the grid drifts.
-      tl.fromTo(
-        ".tiles",
-        { y: 0 },
-        { y: vertical ? -18 : -10, duration: I.dur, ease: "none" },
-        I.start
-      );
-      $$(".tile").forEach((tile, i) => {
-        fit($(".th", tile), 3, 20);
-        if (tile.classList.contains("noimg"))
-          fitAbove($(".tpaper b", tile), $(".tt", tile), 16, 22);
-        tl.fromTo(
-          $(".tbar", tile),
-          { scaleX: 0 },
-          { scaleX: 1, duration: 0.35, ease: LAND },
-          I.start + 0.8 + i * 0.3
-        );
-        tl.fromTo(
-          $("img", tile) || $(".tpaper", tile),
-          { scale: 1.0 },
-          { scale: 1.08, duration: I.dur, ease: "none" },
-          I.start
-        );
-      });
-      // A tile lifts while the intro names its story; the others step back. The lift grows a tile by
-      // about 36px whatever its size (1.06 for a six-story tile), so a hero or half-frame tile stays
-      // inside the frame.
-      const F = I.focus ?? [];
-      F.forEach((f) => {
-        const tile = $(`.tile[data-rank="${f.rank}"]`);
-        const others = $$(".tile").filter((t) => t !== tile);
-        const lift = measured(tile, () =>
-          Math.min(1.06, 1 + 36 / Math.max(tile.offsetWidth, tile.offsetHeight))
-        );
-        tl.to(
-          tile,
-          { scale: lift, opacity: 1, zIndex: 2, duration: 0.3, ease: LAND },
-          f.at - 0.1
-        );
-        tl.to(
-          others,
-          {
-            scale: 1,
-            opacity: 0.4,
-            zIndex: 1,
-            duration: 0.3,
-            ease: "power2.out",
-          },
-          f.at - 0.1
-        );
-      });
-      if (F.length)
-        tl.to(
-          ".tile",
-          { scale: 1, opacity: 1, duration: 0.3, ease: "power2.inOut" },
-          I.dur - 0.45
-        );
-    } else if (I.variant === "date-slam") {
-      tl.fromTo(
-        ".slam .dow",
-        { y: -60, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: LAND },
-        I.start + 0.15
-      );
-      tl.fromTo(
-        ".slam .day",
-        { scale: 1.9, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.55, ease: LAND },
-        I.start + 0.3
-      );
-      tl.fromTo(
-        ".slam .mon",
-        { y: 60, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: LAND },
-        I.start + 0.45
-      );
-      tl.fromTo(
-        ".slam-tail .title",
-        { y: 50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, ease: LAND },
-        I.start + 1.2
-      );
-      tl.fromTo(
-        ".slam-tail .with",
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: LAND },
-        I.start + 1.2 + 4 * F
-      );
-    } else if (I.variant === "headline-stack") {
-      tl.fromTo(
-        ".hstack .hdate",
-        { y: -30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: LAND },
-        I.start + 0.1
-      );
-      $$(".hstack .row").forEach((row, i) => {
-        tl.fromTo(
-          row,
-          { x: -80, opacity: 0 },
-          { x: 0, opacity: 1, duration: 0.5, ease: LAND },
-          I.start + 0.25 + i * 0.22
-        );
-      });
-      tl.fromTo(
-        ".hstack",
-        { y: 0 },
-        { y: vertical ? -40 : -20, duration: I.dur, ease: "none" },
-        I.start
-      );
-    } else {
-      // countdown
-      tl.fromTo(
-        ".stack .biglogo",
-        { scale: 0.6, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.6, ease: LAND },
-        I.start + 0.2
-      );
-      tl.fromTo(
-        ".stack .eyebrow",
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: LAND },
-        I.start + 0.45
-      );
-      tl.fromTo(
-        ".stack .title",
-        { y: 50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, ease: LAND },
-        I.start + 0.55
-      );
-      tl.fromTo(
-        ".stack .date",
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: LAND },
-        I.start + 0.7
-      );
-      $$(".dots span").forEach((d, i) => {
-        tl.fromTo(
-          d,
-          { y: 40, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.4, ease: LAND },
-          I.start + 1.3 + i * 0.2
-        );
-      });
-    }
+    L.intro(tl, I, H);
 
     // ---------- chrome ----------
     tl.fromTo(
@@ -372,13 +243,7 @@
           t + 0.3 + k * 3 * F
         );
       });
-      if (S.layout === "full")
-        tl.fromTo(
-          $(".copy", sc),
-          { opacity: 0, y: 40 },
-          { opacity: 1, y: 0, duration: 0.55, ease: LAND },
-          t + 0.25
-        );
+      L.layouts[S.layout]?.(tl, S, sc, H);
       $$(".head .mk", sc).forEach((mk, k) => {
         tl.fromTo(
           mk,
@@ -444,55 +309,7 @@
     );
 
     // ---------- stingers ----------
-    D.wipes.forEach((W, i) => {
-      const w = $("#wipe-" + i);
-      const IN = 0.32;
-      const OUT = 0.4;
-      const a = W.at - IN;
-      if (D.transition === "shutter") {
-        tl.fromTo(
-          $(".half.top", w),
-          { yPercent: -100 },
-          { yPercent: 0, duration: IN, ease: "power3.in" },
-          a
-        );
-        tl.fromTo(
-          $(".half.bot", w),
-          { yPercent: 100 },
-          { yPercent: 0, duration: IN, ease: "power3.in" },
-          a
-        );
-        tl.to(
-          $(".half.top", w),
-          { yPercent: -100, duration: OUT, ease: "power3.out" },
-          W.at + 0.06
-        );
-        tl.to(
-          $(".half.bot", w),
-          { yPercent: 100, duration: OUT, ease: "power3.out" },
-          W.at + 0.06
-        );
-      } else {
-        const panel = $(".panel, .ink-panel", w);
-        tl.fromTo(
-          panel,
-          { xPercent: -101 },
-          { xPercent: 0, duration: IN, ease: "power3.in" },
-          a
-        );
-        tl.fromTo(
-          $(".n", w),
-          { scale: 0.7, opacity: 0 },
-          { scale: 1, opacity: 1, duration: 0.3, ease: LAND },
-          a + 0.12
-        );
-        tl.to(
-          panel,
-          { xPercent: 101, duration: OUT, ease: "power3.out" },
-          W.at + 0.06
-        );
-      }
-    });
+    D.wipes.forEach((W, i) => L.transition(tl, $("#wipe-" + i), W, H));
 
     // ---------- captions: active word gets the marker ----------
     D.caps.forEach((C, ci) => {
