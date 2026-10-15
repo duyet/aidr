@@ -1700,16 +1700,11 @@ deliberately non-spammy.
   would attach to one arbitrary link or double the photo. The digest pins
   its preview to the day card with `prefer_large_media` and
   `show_above_text`. Rationale per flag is in `worker/notify/telegram.ts`.
-- The trending photo path attaches the **generated** first-party card
-  `/api/og/{id8}.png?lang=` (1200×630) — the same `og:image` the card gate
-  approves — instead of the upstream thumb, so a link preview can never be
-  a 404 hotlink-hostile image. The normalized manifest thumbnail remains
-  the fallback when the id cannot address a card.
 - The trending post carries **one** inline button, "Read →" / "Đọc bài →",
   pointing at the aidr story permalink (`/{id8}?lang=` + UTM). It used to be
   two — "Read →" to the publisher, "AI;DR" to the permalink — which meant the
-  image above (already the first-party card) and the link pointed at
-  different stories. One canonical locale-stable URL for both.
+  image above and the link pointed at different stories. One canonical
+  locale-stable URL for both.
 - Not a `t.me/iv` wrapper: Instant View needs an editor-approved template and
   an editor-generated `rhash`, which exists only inside the operator's IV
   Editor session. Telegram's plain link preview from the page's own Open
@@ -1767,15 +1762,32 @@ deliberately non-spammy.
   video), `album:too_many_items`, `album:over_byte_budget`,
   `video:plan_failed:<msg>`, `video:none_sendable`, `sendVideo:<Telegram
   description>`, `sendMediaGroup(video):<description>`, `sendMediaGroup:<d>`,
-  `sendPhoto:<d>`, `sendPhoto(card):<d>`, `photo:none_sent`. Ambiguous and
-  budget-exhausted sends keep their own error.
-- **What is checked before a send.** The poster is fetched and checked
+  `sendPhoto:<d>` (`<d>` is `media guard: <reason>` when the guard refused
+  the URL before the call), `photo:none_sent` (every gallery image was
+  rejected), `photo:no_usable_image` (the story had none). A `photo:` reason
+  on a delivered post also reaches Bugsink (`kind=story_media`). Ambiguous
+  and budget-exhausted sends keep their own error.
+- **What is checked before a send.** Every Bot API call passes
+  `checkTelegramMedia` (`worker/notify/telegram-media-guard.ts`) inside
+  `callTelegram`, keyed by post kind (`story`, `digest`, `day_video`). A
+  story call may not carry the first-party share card `/api/og/{id8}.png`
+  as photo, album item, video thumbnail or text preview
+  (`image:first_party_card`); a `sendMessage` must pin
+  `link_preview_options.url` (`text:no_preview`), so no post is bare text;
+  a media call must carry media (`image:missing`, `album:empty`,
+  `video:missing`); an image URL must be https on a public host
+  (`image:unsafe_url`) and not a type Telegram refuses by URL, GIF, SVG,
+  AVIF, BMP, TIFF, HEIC, ICO (`image:unsupported_type:<ext>`). A rejected
+  call posts nothing and answers like a definite `ok: false` with
+  `media guard: <reason>`, so the sender's own fallback chain runs and the
+  reason lands in `last_error`; it is also logged as one
+  `telegram_media_guard` JSON warning. The poster is fetched and checked
   (JPEG, at most 200 KB, at most 320 px) only when it is about to be used as
   a `sendVideo` thumbnail; a poster that fails is left out and the video
   still goes. Gallery photos (`sendPhoto`, album photos) are not
-  preflighted: Telegram fetches them, and if it rejects one the post tries
-  the next gallery image (at most 3 photos, in order), then the generated
-  card, then text.
+  preflighted for reachability or size: Telegram fetches them and answers
+  with a definite rejection, and if it rejects one the post tries the next
+  gallery image (at most 3 photos, in order), then text.
 - **Ambiguous sends are never repeated.** Only a JSON answer from Telegram
   is a definite outcome. `ok: false` posted nothing, so the next transport
   may run and the row is `failed` (retried up to 3 attempts). A timeout, a
@@ -1788,21 +1800,29 @@ deliberately non-spammy.
   story or digest that is missed when the call really did fail; the owner
   checks the channel and can resend a digest from admin. An album is one
   message: its Read link is in the caption, not a second reply.
-- **Media order: story image first, generated card as fallback.** The post
-  leads with the story's real photo. The first-party OG card
-  `/api/og/{id8}.png?lang=` is used when the story has no usable image, and
-  as a one-shot retry when Telegram rejects the first 3 gallery images
-  (hotlink-hostile or dead upstream URLs) — it is 200 by construction, so the post keeps its
-  image instead of dropping to bare text. The card no longer occupies an
-  album slot.
-  The card itself (`/api/og/{id8}.png`) tries the thumbnail, then the other
-  manifest images (deduped, at most 3 candidates in all), and renders
-  the branded fallback only when every one fails to fetch.
-  A post already sent on the card gets its real image later with
-  `pnpm --filter @aidr/web telegram-swap-card` (dry unless `--apply`).
-  It edits only when D1 says the card went out and the live photo is
-  1200x630, tests the image in the staging chat first, and logs every
-  edit to `admin_audit` as `telegram.edit_media`.
+- **Media: the story's own image, else text with the publisher preview.
+  Never the share card.** The post leads with the story's real photo
+  (manifest images and video posters, the normalized thumbnail as the
+  single-image case). A story with no usable image, or whose first 3
+  gallery images Telegram rejects (hotlink-hostile or dead upstream URLs),
+  goes out as `sendMessage` with `link_preview_options.url` pinned to the
+  publisher page (`storyTextLinkPreview`, large media above the text), so
+  Telegram fetches the publisher's own `og:image`. The first-party OG card
+  `/api/og/{id8}.png?lang=` is a text graphic and is not a story's media in
+  any position: not the lead, not a retry, not the preview (the guard above
+  rejects it even when a row's `image_url` is the card). The reason is
+  recorded (`photo:no_usable_image` or `photo:none_sent` in `last_error`)
+  and the owner is told through the delivery alert path
+  (`reportDeliveryFailure`, tag `kind=story_media`), because a story without
+  its picture is an ingest defect to fix, not a silent downgrade. Before
+  #622 the card was the lead; between #622 and this rule it was the
+  fallback, and 4 of the 45 trending posts in the 14 days to 2026-10-15 went
+  out on it (every one an empty manifest). The card still serves the site's
+  `og:image` and email. A post already sent on the card gets its real image
+  later with `pnpm --filter @aidr/web telegram-swap-card` (dry unless
+  `--apply`). It edits only when D1 says the card went out and the live
+  photo is 1200x630, tests the image in the staging chat first, and logs
+  every edit to `admin_audit` as `telegram.edit_media`.
 - **Each channel is one language.** `telegram` is `vi` and `telegram-en`
   is `en`. Digest bullets come from that language's edition
   (`worker/digest/edition.ts`) and never from the other column. Trending

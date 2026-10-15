@@ -407,9 +407,9 @@ describe("trending story message", () => {
     expect(resolveStoryMedia(withManifest)).toEqual({
       gallery: ["https://img.example/poster.jpg"],
     });
-    expect(JSON.stringify(resolveStoryMedia(story({ lang: "en" })))).not.toMatch(
-      /api\/og/
-    );
+    expect(
+      JSON.stringify(resolveStoryMedia(story({ lang: "en" })))
+    ).not.toMatch(/api\/og/);
   });
 
   it("posts the imgur image, not a source's share card, when that is all there is", () => {
@@ -903,7 +903,7 @@ describe("telegramNotifier gating", () => {
         TELEGRAM_BOT_TOKEN: "token",
         TELEGRAM_CHAT_ID: "chat",
       } as Env,
-      story()
+      story({ image_url: "https://img.example/story.jpg" })
     );
     expect(result.ok).toBe(true);
     expect(result.messageId).toBe("7");
@@ -1335,7 +1335,7 @@ describe("telegramNotifier gating", () => {
     });
   });
 
-  it("disables the link preview on the photo path so the card is the only image", async () => {
+  it("disables the link preview on the photo path so the photo is the only image", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true, result: { message_id: 10 } }), {
         status: 200,
@@ -1344,7 +1344,7 @@ describe("telegramNotifier gating", () => {
     vi.stubGlobal("fetch", fetchMock);
     await telegramNotifier.sendStory(
       { TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as Env,
-      story()
+      story({ image_url: "https://img.example/story.jpg" })
     );
     const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
     expect(body.link_preview_options).toEqual(STORY_PHOTO_LINK_PREVIEW);

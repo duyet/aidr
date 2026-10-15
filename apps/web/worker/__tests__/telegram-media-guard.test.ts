@@ -75,9 +75,9 @@ describe("checkTelegramMedia", () => {
       ok: false,
       reason: "image:missing",
     });
-    expect(checkTelegramMedia("story", "sendMediaGroup", { media: [] })).toEqual(
-      { ok: false, reason: "album:empty" }
-    );
+    expect(
+      checkTelegramMedia("story", "sendMediaGroup", { media: [] })
+    ).toEqual({ ok: false, reason: "album:empty" });
     expect(checkTelegramMedia("story", "sendVideo", {})).toEqual({
       ok: false,
       reason: "video:missing",
