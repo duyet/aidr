@@ -5,6 +5,61 @@
 // only their arguments and page globals.
 import { gridCss } from "../grid.mjs";
 
+const plain = (headline) => headline.replace(/\*/g, "");
+const category = (c, s) => s.category ?? c.byRank[s.rank]?.category ?? "";
+// A story's picture, else its paper card (venue and title) when it has none, so no frame shows an empty box.
+const face = (c, s) => {
+  const img = c.firstImage(s);
+  return img
+    ? `<img src="${c.esc(img)}" alt="" />`
+    : `<div class="pcard"><span>${c.esc(s.paper?.venue ?? c.byRank[s.rank]?.source ?? "")}</span><b>${c.esc(s.paper?.title ?? s.kicker)}</b></div>`;
+};
+// A `.face` box holds a picture or a paper card; each intro positions the box. The card's type is sized in container
+// units, so one rule fits a strip cell, a square and a half-frame panel.
+const FACE_CSS = `
+#intro .face {
+  overflow: hidden;
+  container-type: size;
+  background: var(--ink);
+}
+#intro .face > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+#intro .pcard {
+  position: absolute;
+  inset: 0;
+  background: var(--soft);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3cqh;
+  padding: 0 8cqw;
+  text-align: left;
+}
+#intro .pcard span {
+  font-weight: 800;
+  font-size: max(13px, min(5cqw, 8cqh));
+  letter-spacing: 0.12em;
+  color: #b31b1b;
+}
+#intro .pcard b {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: max(16px, min(9cqw, 13cqh));
+  line-height: 1.02;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+`;
+
 export const INTROS = [
   {
     id: "grid",
@@ -298,275 +353,1309 @@ export const INTROS = [
 `,
   },
   {
-    id: "date-slam",
-    auto: false,
-    html: (c) =>
-      `<div class="slam"><span class="dow">${c.esc(c.DOW.toUpperCase())}</span><span class="day">${c.pad2(c.DAY)}</span><span class="mon">${c.esc(c.MON.toUpperCase())}</span></div>
-      <div class="slam-tail"><div class="title">${c.esc(c.title)}</div><div class="with">${c.logo("")}<span>AI;DR ${c.esc(c.UI.brief)}</span></div></div>`,
-    cues: () => [["rankHit", 0.45, 0.9]],
-    motion: (tl, I, h) => {
-      tl.fromTo(
-        ".slam .dow",
-        { y: -60, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: h.LAND },
-        I.start + 0.15
-      );
-      tl.fromTo(
-        ".slam .day",
-        { scale: 1.9, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.55, ease: h.LAND },
-        I.start + 0.3
-      );
-      tl.fromTo(
-        ".slam .mon",
-        { y: 60, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: h.LAND },
-        I.start + 0.45
-      );
-      tl.fromTo(
-        ".slam-tail .title",
-        { y: 50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, ease: h.LAND },
-        I.start + 1.2
-      );
-      tl.fromTo(
-        ".slam-tail .with",
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: h.LAND },
-        I.start + 1.2 + 4 * h.F
-      );
+    id: "cover",
+    auto: true,
+    // frame.md's Cover: the cover still's story as a half-frame picture with a date tab, its hook as the display,
+    // and a footer band naming the other stories. Then the picture pushes in, the band is underlined cell by cell,
+    // and a story the intro names takes the picture and the band.
+    html: (c) => {
+      const others = c.stories.filter((s) => s !== c.lead);
+      const alts = others
+        .filter((s) => c.firstImage(s))
+        .map(
+          (s) =>
+            `<img class="cv-alt" data-rank="${s.rank}" src="${c.esc(c.firstImage(s))}" alt="" />`
+        )
+        .join("");
+      const cells = others
+        .map(
+          (s) =>
+            `<div class="cv-cell" data-rank="${s.rank}"><span class="cv-bar"></span><b>${s.rank}</b><span>${c.esc(s.kicker)}</span></div>`
+        )
+        .join("");
+      const cols =
+        others.length <= 4 ? others.length : Math.ceil(others.length / 2);
+      return `<div class="cv-media face">${face(c, c.lead)}${alts}</div>
+<div class="cv-date"><b>${c.pad2(c.DAY)}</b><span>${c.esc(c.MON.toUpperCase())}</span></div>
+<div class="cv-label">${c.logo("")}<span>${c.esc(c.UI.daily)} · ${c.esc(c.UI.topIn(c.stories.length))}</span></div>
+<div class="cv-col"><div class="cv-copy"><div class="cv-cat"><b>${c.lead.rank}</b>${c.esc(category(c, c.lead))}</div><div class="cv-hook">${c.esc(c.hook)}</div><div class="cv-head">${c.esc(plain(c.lead.headline))}</div></div>${
+        others.length
+          ? `<div class="cv-band" style="--cols:${cols}">${cells}</div>`
+          : ""
+      }</div>`;
     },
-    css: `
-.slam {
+    cues: (c) => [
+      ...c.stories.slice(1).map((_, i) => ["tick", 0.8 + i * 0.25, 0.7]),
+      ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+    ],
+    motion: (tl, I, h) => {
+      h.fit(h.$(".cv-hook"), 3, 56);
+      h.fit(h.$(".cv-head"), 2, 26);
+      tl.fromTo(
+        ".cv-media > *",
+        { scale: 1 },
+        { scale: 1.08, duration: I.dur, ease: "none" },
+        I.start
+      );
+      tl.fromTo(
+        ".cv-col",
+        { y: 0 },
+        { y: h.vertical ? -14 : -10, duration: I.dur, ease: "none" },
+        I.start
+      );
+      const cells = h.$$(".cv-cell");
+      cells.forEach((cell, i) => {
+        tl.fromTo(
+          h.$(".cv-bar", cell),
+          { scaleX: 0 },
+          { scaleX: 1, duration: 0.35, ease: h.LAND },
+          I.start + 0.8 + i * 0.25
+        );
+      });
+      // A named story in the band takes the picture; naming the lead (or a story with no picture) gives it back.
+      const F = I.focus ?? [];
+      F.forEach((f, k) => {
+        const cell = h.$(`.cv-cell[data-rank="${f.rank}"]`);
+        const alt = h.$(`.cv-alt[data-rank="${f.rank}"]`);
+        tl.to(
+          cells.filter((x) => x !== cell),
+          { opacity: 0.35, duration: 0.3, ease: "power2.out" },
+          f.at - 0.1
+        );
+        if (cell)
+          tl.to(cell, { opacity: 1, duration: 0.3, ease: h.LAND }, f.at - 0.1);
+        if (alt)
+          tl.fromTo(
+            alt,
+            { opacity: 0, zIndex: 2 + k },
+            {
+              opacity: 1,
+              duration: 0.4,
+              ease: "power2.out",
+              immediateRender: false,
+            },
+            f.at - 0.1
+          );
+        else
+          tl.to(
+            ".cv-alt",
+            { opacity: 0, duration: 0.4, ease: "power2.out" },
+            f.at - 0.1
+          );
+      });
+      if (F.length) {
+        tl.to(
+          cells,
+          { opacity: 1, duration: 0.3, ease: "power2.inOut" },
+          I.dur - 0.45
+        );
+        tl.to(
+          ".cv-alt",
+          { opacity: 0, duration: 0.3, ease: "power2.inOut" },
+          I.dur - 0.45
+        );
+      }
+    },
+    css: `${FACE_CSS}
+.cv-media {
   position: absolute;
+}
+.cv-media > :first-child {
+  z-index: 1;
+}
+.f-16x9 .cv-media {
+  left: 1060px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+.f-9x16 .cv-media {
   left: 0;
   right: 0;
+  top: 0;
+  height: 720px;
+}
+.cv-date {
+  position: absolute;
+  z-index: 2;
+  width: 176px;
+  height: 176px;
+  background: var(--yellow);
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
-.f-16x9 .slam {
-  top: 120px;
+.f-16x9 .cv-date {
+  left: 1060px;
+  top: 0;
 }
-.f-9x16 .slam {
-  top: 440px;
+.f-9x16 .cv-date {
+  left: 0;
+  top: 544px;
 }
-.slam .dow {
-  font-weight: 800;
-  font-size: 64px;
-  letter-spacing: 0.4em;
-  margin-right: -0.4em;
-}
-.slam .day {
+.cv-date b {
   font-family: var(--serif);
   font-weight: 600;
-  font-size: 440px;
-  line-height: 0.9;
-  letter-spacing: -0.04em;
+  font-size: 108px;
+  line-height: 0.8;
+  letter-spacing: -0.03em;
 }
-.slam .mon {
+.cv-date span {
   font-weight: 800;
-  font-size: 64px;
-  letter-spacing: 0.4em;
-  margin-right: -0.4em;
+  font-size: 18px;
+  letter-spacing: 0.18em;
+  text-align: center;
 }
-.f-9x16 .slam .day {
-  font-size: 520px;
+.cv-label {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 10px 22px 10px 10px;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.14em;
 }
-.slam-tail {
+.cv-label svg {
+  width: 48px;
+  height: 48px;
+  display: block;
+}
+.field ~ .cam .cv-label svg rect {
+  fill: var(--yellow);
+}
+.field ~ .cam .cv-label svg path {
+  fill: var(--ink);
+}
+.f-16x9 .cv-label {
+  left: 72px;
+  top: 64px;
+}
+.f-9x16 .cv-label {
+  left: 40px;
+  top: 140px;
+}
+.cv-col {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+}
+.cv-copy {
+  margin: auto 0;
+}
+.f-16x9 .cv-col {
+  left: 72px;
+  width: 916px;
+  top: 190px;
+  bottom: 60px;
+}
+.f-9x16 .cv-col {
+  left: 56px;
+  right: 120px;
+  top: 760px;
+  bottom: 540px;
+}
+.cv-cat {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.cv-cat b {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 40px;
+  letter-spacing: 0;
+}
+.cv-hook {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 136px;
+  line-height: 0.98;
+  letter-spacing: -0.015em;
+  margin-top: 12px;
+}
+.f-9x16 .cv-hook {
+  font-size: 104px;
+}
+.cv-head {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 42px;
+  line-height: 1.1;
+  margin-top: 22px;
+}
+.f-9x16 .cv-head {
+  font-size: 38px;
+  margin-top: 16px;
+}
+.cv-band {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  column-gap: 24px;
+  row-gap: 18px;
+}
+.f-9x16 .cv-band {
+  grid-template-columns: repeat(min(var(--cols), 2), 1fr);
+  row-gap: 12px;
+}
+.cv-cell {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  border-top: 1px solid var(--ink);
+  padding-top: 12px;
+}
+.cv-cell b {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 32px;
+  line-height: 1;
+}
+.cv-cell span {
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.cv-cell .cv-bar {
   position: absolute;
   left: 0;
   right: 0;
-  text-align: center;
+  top: -1px;
+  height: 5px;
+  background: var(--ink);
+  transform-origin: 0 50%;
+  display: block;
 }
-.f-16x9 .slam-tail {
-  top: 770px;
+`,
+  },
+  {
+    id: "date-slam",
+    auto: true,
+    // frame.md's Poster Panel: the cover still's picture full bleed, and a flat yellow panel with the date set big
+    // and the intro title. The rule under the date sweeps on the hit, the picture pushes in, and a story the intro
+    // names takes the picture.
+    html: (c) => {
+      const alts = c.stories
+        .filter((s) => s !== c.lead && c.firstImage(s))
+        .map(
+          (s) =>
+            `<img class="ds-alt" data-rank="${s.rank}" src="${c.esc(c.firstImage(s))}" alt="" />`
+        )
+        .join("");
+      return `<div class="ds-media face">${face(c, c.lead)}${alts}</div>
+<div class="ds-panel"><span class="ds-dow">${c.esc(c.DOW.toUpperCase())}</span><span class="ds-day">${c.pad2(c.DAY)}</span><span class="ds-mon">${c.esc(c.MON.toUpperCase())} ${c.year}</span><span class="ds-rule"></span><div class="ds-title">${c.esc(c.title)}</div><div class="ds-brand">${c.logo("")}<span>${c.esc(c.UI.daily)} · ${c.esc(c.UI.topIn(c.stories.length))}</span></div></div>`;
+    },
+    cues: (c) => [
+      ["rankHit", 0.45, 0.9],
+      ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+    ],
+    motion: (tl, I, h) => {
+      h.fit(h.$(".ds-title"), h.vertical ? 3 : 4, 36);
+      tl.fromTo(
+        ".ds-media > *",
+        { scale: 1.02, xPercent: 0 },
+        { scale: 1.12, xPercent: -1.5, duration: I.dur, ease: "none" },
+        I.start
+      );
+      tl.fromTo(
+        ".ds-panel",
+        { y: 0 },
+        { y: h.vertical ? -12 : -8, duration: I.dur, ease: "none" },
+        I.start
+      );
+      tl.fromTo(
+        ".ds-rule",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.45, ease: h.LAND },
+        I.start + 0.45
+      );
+      const F = I.focus ?? [];
+      F.forEach((f, k) => {
+        const alt = h.$(`.ds-alt[data-rank="${f.rank}"]`);
+        if (alt)
+          tl.fromTo(
+            alt,
+            { opacity: 0, zIndex: 2 + k },
+            {
+              opacity: 1,
+              duration: 0.45,
+              ease: "power2.out",
+              immediateRender: false,
+            },
+            f.at - 0.1
+          );
+        else
+          tl.to(
+            ".ds-alt",
+            { opacity: 0, duration: 0.45, ease: "power2.out" },
+            f.at - 0.1
+          );
+      });
+    },
+    css: `${FACE_CSS}
+.ds-media {
+  position: absolute;
+  inset: 0;
 }
-.f-9x16 .slam-tail {
-  top: 1330px;
-  padding: 0 60px;
+.ds-media > :first-child {
+  z-index: 1;
 }
-.slam-tail .title {
+.ds-panel {
+  position: absolute;
+  z-index: 3;
+  background: var(--yellow);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.f-16x9 .ds-panel {
+  left: 72px;
+  top: 72px;
+  bottom: 72px;
+  width: 640px;
+  padding: 52px 56px 44px;
+}
+.f-9x16 .ds-panel {
+  left: 40px;
+  right: 120px;
+  top: 680px;
+  bottom: 540px;
+  padding: 40px 44px 36px;
+}
+.ds-dow,
+.ds-mon {
+  font-weight: 800;
+  font-size: 34px;
+  letter-spacing: 0.3em;
+  line-height: 1;
+  display: block;
+}
+.ds-day {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 330px;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  margin: 26px 0 22px -0.04em;
+  display: block;
+}
+.f-9x16 .ds-day {
+  font-size: 300px;
+  margin: 18px 0 14px -0.04em;
+}
+.f-9x16 .ds-dow,
+.f-9x16 .ds-mon {
+  font-size: 30px;
+}
+.ds-rule {
+  align-self: stretch;
+  height: 1px;
+  background: var(--ink);
+  margin: 30px 0 26px;
+  transform-origin: 0 50%;
+  display: block;
+}
+.f-9x16 .ds-rule {
+  margin: 22px 0 18px;
+}
+.ds-title {
   font-family: var(--serif);
   font-weight: 500;
-  font-size: 84px;
+  font-size: 72px;
   line-height: 1.02;
+  letter-spacing: -0.01em;
 }
-.slam-tail .with {
-  display: inline-flex;
+.f-9x16 .ds-title {
+  font-size: 72px;
+}
+.ds-brand {
+  margin-top: auto;
+  display: flex;
   align-items: center;
-  gap: 18px;
-  margin-top: 22px;
+  gap: 14px;
   font-weight: 800;
-  font-size: 30px;
+  font-size: 20px;
+  letter-spacing: 0.14em;
+}
+.ds-brand svg {
+  width: 48px;
+  height: 48px;
+  display: block;
+}
+`,
+  },
+  {
+    id: "chapter",
+    auto: true,
+    // frame.md's Chapter Divider: the story count as a jumbo numeral, a rail label up the left edge (across the
+    // top in 9:16), the intro title, and every story's picture in a strip. Then the numeral drifts, each strip cell
+    // is underlined in turn, and a cell the intro names lifts while the others step back.
+    html: (c) => {
+      const n = c.stories.length;
+      const cells = c.stories
+        .map(
+          (s) =>
+            `<div class="ch-cell face" data-rank="${s.rank}">${face(c, s)}<span class="ch-rank">${s.rank}</span><div class="ch-cap">${c.esc(s.kicker)}</div><span class="ch-bar"></span></div>`
+        )
+        .join("");
+      return `<div class="ch-rail">${c.esc(c.UI.daily)} · ${c.esc(c.dateline)}</div>
+<div class="ch-num">${n}</div>
+<div class="ch-side"><div class="ch-label">${c.esc(c.UI.topIn(n))}</div><div class="ch-title">${c.esc(c.title)}</div></div>
+<div class="ch-strip" data-n="${n}" style="--n:${n};--cols:${n <= 4 ? n : Math.ceil(n / 2)}">${cells}</div>`;
+    },
+    cues: (c) => [
+      ...c.stories.map((_, i) => ["tick", 0.8 + i * 0.2, 0.7]),
+      ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+    ],
+    motion: (tl, I, h) => {
+      h.fit(h.$(".ch-title"), h.vertical ? 2 : 3, 44);
+      tl.fromTo(
+        ".ch-num",
+        { y: 0 },
+        { y: h.vertical ? -20 : -14, duration: I.dur, ease: "none" },
+        I.start
+      );
+      const cells = h.$$(".ch-cell");
+      cells.forEach((cell, i) => {
+        tl.fromTo(
+          h.$("img", cell) || h.$(".pcard", cell),
+          { scale: 1 },
+          { scale: 1.1, duration: I.dur, ease: "none" },
+          I.start
+        );
+        tl.fromTo(
+          h.$(".ch-bar", cell),
+          { scaleX: 0 },
+          { scaleX: 1, duration: 0.35, ease: h.LAND },
+          I.start + 0.8 + i * 0.2
+        );
+      });
+      const F = I.focus ?? [];
+      F.forEach((f) => {
+        const cell = h.$(`.ch-cell[data-rank="${f.rank}"]`);
+        if (!cell) return;
+        tl.to(
+          cell,
+          { scale: 1.04, opacity: 1, zIndex: 2, duration: 0.3, ease: h.LAND },
+          f.at - 0.1
+        );
+        tl.to(
+          cells.filter((x) => x !== cell),
+          {
+            scale: 1,
+            opacity: 0.4,
+            zIndex: 1,
+            duration: 0.3,
+            ease: "power2.out",
+          },
+          f.at - 0.1
+        );
+      });
+      if (F.length)
+        tl.to(
+          cells,
+          { scale: 1, opacity: 1, duration: 0.3, ease: "power2.inOut" },
+          I.dur - 0.45
+        );
+    },
+    css: `${FACE_CSS}
+.ch-rail {
+  position: absolute;
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.f-16x9 .ch-rail {
+  left: 70px;
+  top: 640px;
+  transform: rotate(-90deg);
+  transform-origin: 0 0;
+}
+.f-9x16 .ch-rail {
+  left: 0;
+  right: 0;
+  top: 140px;
+  text-align: center;
+  font-size: 22px;
+  letter-spacing: 0.2em;
+}
+.ch-num {
+  position: absolute;
+  font-family: var(--serif);
+  font-weight: 500;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+}
+.f-16x9 .ch-num {
+  left: 130px;
+  top: 64px;
+  font-size: 680px;
+}
+.f-9x16 .ch-num {
+  left: 0;
+  right: 0;
+  top: 190px;
+  text-align: center;
+  font-size: 600px;
+}
+.ch-side {
+  position: absolute;
+}
+.f-16x9 .ch-side {
+  left: 560px;
+  right: 72px;
+  top: 110px;
+  bottom: 460px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.f-9x16 .ch-side {
+  left: 56px;
+  right: 56px;
+  top: 690px;
+  text-align: center;
+}
+.ch-label {
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: 0.2em;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--ink);
+}
+.f-9x16 .ch-label {
+  display: inline-block;
+  padding: 0 0 14px;
+}
+.ch-title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 120px;
+  line-height: 0.98;
+  letter-spacing: -0.015em;
+  margin-top: 26px;
+}
+.f-9x16 .ch-title {
+  font-size: 86px;
+  margin-top: 20px;
+}
+.ch-strip {
+  position: absolute;
+  display: grid;
+}
+.f-16x9 .ch-strip {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 360px;
+  grid-template-columns: repeat(var(--n), 1fr);
+  gap: 8px;
+}
+.f-9x16 .ch-strip {
+  left: 40px;
+  right: 120px;
+  bottom: 540px;
+  height: 330px;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 10px;
+}
+.f-9x16 .ch-strip[data-n="5"],
+.f-9x16 .ch-strip[data-n="6"],
+.f-9x16 .ch-strip[data-n="7"],
+.f-9x16 .ch-strip[data-n="8"] {
+  height: 430px;
+}
+.ch-cell {
+  position: relative;
+}
+.ch-rank {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 56px;
+  height: 56px;
+  background: var(--yellow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 40px;
+  line-height: 1;
+}
+.ch-cap {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.15;
+  padding: 12px 16px 14px;
+}
+.ch-bar {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  background: var(--yellow);
+  transform-origin: 0 50%;
+  display: block;
+}
+`,
+  },
+  {
+    id: "hinge",
+    auto: true,
+    // The semicolon hinge (brand.md): two stories' pictures either side of a yellow band carrying the date, a
+    // jumbo semicolon and the count. The intro's named stories take the two sides when they can. Then the pictures
+    // push in opposite ways, each caption is underlined, and the side the intro names holds while the other steps
+    // back.
+    html: (c) => {
+      const named = c.focus
+        .map((f) => c.stories.find((s) => s.rank === f.rank))
+        .filter(Boolean);
+      // Pictures first: a named story with one, the cover's story, any story with one, then the rest.
+      const pair = [
+        ...new Set([
+          ...named.filter((s) => c.firstImage(s)),
+          c.lead,
+          ...c.stories.filter((s) => c.firstImage(s)),
+          ...named,
+          ...c.stories,
+        ]),
+      ]
+        .slice(0, 2)
+        .sort((a, b) => a.rank - b.rank);
+      const side = (s, k) =>
+        `<div class="hg-side hg-${k} face" data-rank="${s.rank}">${face(c, s)}<div class="hg-cap"><b>${s.rank}</b><span>${c.esc(s.kicker)}</span><p>${c.esc(plain(s.headline))}</p></div><span class="hg-bar"></span></div>`;
+      const second = pair[1]
+        ? side(pair[1], "b")
+        : `<div class="hg-side hg-b hg-note"><span>${c.esc(c.UI.daily)}</span><b>${c.esc(c.title)}</b></div>`;
+      return `${side(pair[0], "a")}
+<div class="hg-band"><div class="hg-date"><b>${c.pad2(c.DAY)}</b><span>${c.esc(c.MON.toUpperCase())}</span></div><div class="hg-semi">;</div><div class="hg-top">${c.logo("")}<span>${c.esc(c.UI.topIn(c.stories.length))}</span></div></div>
+${second}`;
+    },
+    cues: (c) => [
+      ["tick", 0.8, 0.7],
+      ["tick", 1.1, 0.7],
+      ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+    ],
+    motion: (tl, I, h) => {
+      for (const p of h.$$(".hg-cap p")) h.fit(p, 2, 26);
+      h.fit(h.$(".hg-note b"), 4, 48);
+      tl.fromTo(
+        ".hg-a > img, .hg-a > .pcard",
+        { scale: 1.02 },
+        { scale: 1.1, duration: I.dur, ease: "none" },
+        I.start
+      );
+      tl.fromTo(
+        ".hg-b > img, .hg-b > .pcard",
+        { scale: 1.1 },
+        { scale: 1.02, duration: I.dur, ease: "none" },
+        I.start
+      );
+      tl.fromTo(
+        ".hg-semi",
+        { yPercent: 0 },
+        { yPercent: -5, duration: I.dur, ease: "none" },
+        I.start
+      );
+      h.$$(".hg-bar").forEach((bar, i) => {
+        tl.fromTo(
+          bar,
+          { scaleX: 0 },
+          { scaleX: 1, duration: 0.4, ease: h.LAND },
+          I.start + 0.8 + i * 0.3
+        );
+      });
+      const F = I.focus ?? [];
+      const sides = h.$$(".hg-side");
+      F.forEach((f) => {
+        const on = h.$(`.hg-side[data-rank="${f.rank}"]`);
+        if (!on) return;
+        tl.to(on, { opacity: 1, duration: 0.3, ease: h.LAND }, f.at - 0.1);
+        tl.to(
+          sides.filter((x) => x !== on),
+          { opacity: 0.45, duration: 0.3, ease: "power2.out" },
+          f.at - 0.1
+        );
+      });
+      if (F.length)
+        tl.to(
+          sides,
+          { opacity: 1, duration: 0.3, ease: "power2.inOut" },
+          I.dur - 0.45
+        );
+    },
+    css: `${FACE_CSS}
+.hg-side {
+  position: absolute;
+}
+.f-16x9 .hg-a {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 830px;
+}
+.f-16x9 .hg-b {
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 830px;
+}
+.f-9x16 .hg-a {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 700px;
+}
+.f-9x16 .hg-b {
+  left: 0;
+  right: 0;
+  top: 930px;
+  height: 450px;
+}
+.hg-cap {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 22px 36px 28px 116px;
+  min-height: 132px;
+}
+.f-9x16 .hg-cap {
+  padding: 18px 140px 22px 108px;
+}
+.hg-cap b {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 84px;
+  height: 84px;
+  background: var(--yellow);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 58px;
+  line-height: 1;
+}
+.hg-cap span {
+  display: block;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.hg-cap p {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 44px;
+  line-height: 1.05;
+  margin-top: 8px;
+}
+.f-9x16 .hg-cap p {
+  font-size: 40px;
+}
+.hg-bar {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  background: var(--yellow);
+  transform-origin: 0 50%;
+  display: block;
+}
+.hg-note {
+  background: var(--soft);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+  padding: 0 72px;
+}
+.hg-note span {
+  font-weight: 800;
+  font-size: 24px;
   letter-spacing: 0.18em;
 }
-.slam-tail .with svg {
-  width: 58px;
-  height: 58px;
+.hg-note b {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 96px;
+  line-height: 1;
+}
+.hg-band {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.f-16x9 .hg-band {
+  left: 830px;
+  width: 260px;
+  top: 0;
+  bottom: 0;
+  flex-direction: column;
+  padding: 64px 0 60px;
+}
+.f-9x16 .hg-band {
+  left: 56px;
+  right: 120px;
+  top: 700px;
+  height: 230px;
+}
+.hg-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.hg-date b {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 120px;
+  line-height: 0.8;
+  letter-spacing: -0.03em;
+}
+.hg-date span {
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.2em;
+  text-align: center;
+}
+.hg-semi {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 560px;
+  line-height: 0.62;
+}
+.f-9x16 .hg-semi {
+  font-size: 250px;
+  line-height: 0.62;
+  padding-bottom: 40px;
+}
+.hg-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.14em;
+  text-align: center;
+}
+.hg-top svg {
+  width: 72px;
+  height: 72px;
   display: block;
 }
 `,
   },
   {
     id: "headline-stack",
-    auto: false,
+    auto: true,
+    // frame.md's Strand List: a dated header, the intro title, then one numbered row per story with its picture,
+    // kicker and headline over hairline rules. Then the list drifts, each row is underlined in turn, and a row the
+    // intro names holds while the others step back.
     html: (c) =>
-      `<div class="hstack"><div class="hdate"><span>${c.esc(c.DOW.toUpperCase())} ${c.pad2(c.DAY)} ${c.esc(c.MON.toUpperCase())}</span><span>AI;DR TOP ${c.stories.length}</span></div>${c.stories.map((s) => `<div class="row"><span class="n">${s.rank}</span><span class="t">${c.esc(s.kicker)}</span></div>`).join("")}</div>`,
-    cues: (c) => c.stories.map((_, i) => ["tick", 0.25 + i * 0.22 + 0.1, 0.7]),
+      `<div class="hs" style="--n:${c.stories.length}"><div class="hs-top"><span>${c.esc(c.DOW.toUpperCase())} ${c.pad2(c.DAY)} ${c.esc(c.MON.toUpperCase())}</span><span>${c.esc(c.UI.daily)} · ${c.esc(c.UI.topIn(c.stories.length))}</span></div><div class="hs-title">${c.esc(c.title)}</div><div class="hs-rows">${c.stories
+        .map(
+          (s) =>
+            `<div class="hs-row" data-rank="${s.rank}"><span class="hs-n">${s.rank}</span><div class="hs-th face">${face(c, s)}</div><div class="hs-t"><span class="hs-k">${c.esc(s.kicker)}</span><span class="hs-h">${c.esc(plain(s.headline))}</span></div><span class="hs-bar"></span></div>`
+        )
+        .join("")}</div></div>`,
+    cues: (c) => [
+      ...c.stories.map((_, i) => ["tick", 0.7 + i * 0.22, 0.7]),
+      ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+    ],
     motion: (tl, I, h) => {
-      tl.fromTo(
-        ".hstack .hdate",
-        { y: -30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: h.LAND },
-        I.start + 0.1
-      );
-      h.$$(".hstack .row").forEach((row, i) => {
+      h.fit(h.$(".hs-title"), h.vertical ? 2 : 1, 44);
+      const rows = h.$$(".hs-row");
+      rows.forEach((row, i) => {
+        h.fit(h.$(".hs-h", row), 2, 22);
         tl.fromTo(
-          row,
-          { x: -80, opacity: 0 },
-          { x: 0, opacity: 1, duration: 0.5, ease: h.LAND },
-          I.start + 0.25 + i * 0.22
+          h.$(".hs-bar", row),
+          { scaleX: 0 },
+          { scaleX: 1, duration: 0.4, ease: h.LAND },
+          I.start + 0.7 + i * 0.22
+        );
+        tl.fromTo(
+          h.$(".hs-th > *", row),
+          { scale: 1 },
+          { scale: 1.1, duration: I.dur, ease: "none" },
+          I.start
         );
       });
       tl.fromTo(
-        ".hstack",
+        ".hs-rows",
         { y: 0 },
-        { y: h.vertical ? -40 : -20, duration: I.dur, ease: "none" },
+        { y: h.vertical ? -16 : -10, duration: I.dur, ease: "none" },
         I.start
       );
+      const F = I.focus ?? [];
+      F.forEach((f) => {
+        const row = h.$(`.hs-row[data-rank="${f.rank}"]`);
+        if (!row) return;
+        tl.to(row, { opacity: 1, duration: 0.3, ease: h.LAND }, f.at - 0.1);
+        tl.to(
+          rows.filter((x) => x !== row),
+          { opacity: 0.35, duration: 0.3, ease: "power2.out" },
+          f.at - 0.1
+        );
+      });
+      if (F.length)
+        tl.to(
+          rows,
+          { opacity: 1, duration: 0.3, ease: "power2.inOut" },
+          I.dur - 0.45
+        );
     },
-    css: `
-.hstack {
+    css: `${FACE_CSS}
+.hs {
   position: absolute;
   display: flex;
   flex-direction: column;
 }
-.f-16x9 .hstack {
+.f-16x9 .hs {
   left: 120px;
-  top: 150px;
-  width: 1680px;
-  gap: 14px;
+  right: 120px;
+  top: 64px;
+  bottom: 56px;
 }
-.f-9x16 .hstack {
-  left: 60px;
-  top: 300px;
-  width: 960px;
-  gap: 18px;
+.f-9x16 .hs {
+  left: 56px;
+  right: 120px;
+  top: 140px;
+  bottom: 540px;
 }
-.hstack .row {
-  display: flex;
-  align-items: baseline;
-  gap: 26px;
-  border-bottom: 1px solid rgba(10, 10, 10, 0.25);
-  padding-bottom: 12px;
-}
-.hstack .row .n {
-  font-family: var(--serif);
-  font-weight: 600;
-  font-size: 64px;
-  width: 70px;
-  display: block;
-}
-.hstack .row .t {
-  font-family: var(--serif);
-  font-weight: 500;
-  font-size: 60px;
-  line-height: 1.05;
-  display: block;
-}
-.f-9x16 .hstack .row .t {
-  font-size: 58px;
-}
-.hdate {
-  font-weight: 800;
-  font-size: 34px;
-  letter-spacing: 0.2em;
-  padding-bottom: 18px;
+.hs-top {
   display: flex;
   justify-content: space-between;
-  border-bottom: 3px solid var(--ink);
+  gap: 24px;
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: 0.18em;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--ink);
+}
+.f-9x16 .hs-top {
+  flex-direction: column;
+  gap: 8px;
+  font-size: 22px;
+}
+.hs-title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 84px;
+  line-height: 1;
+  letter-spacing: -0.015em;
+  margin: 28px 0 24px;
+}
+.f-9x16 .hs-title {
+  font-size: 80px;
+}
+.hs-rows {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.hs-row {
+  position: relative;
+  flex: 0 1 220px;
+  min-height: 0;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  border-bottom: 1px solid rgba(10, 10, 10, 0.2);
+}
+.hs-n {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: min(64cqh, 120px);
+  line-height: 1;
+  width: 0.62em;
+  flex: none;
+  display: block;
+}
+.hs-th {
+  position: relative;
+  height: 80cqh;
+  aspect-ratio: 4 / 3;
+  flex: none;
+}
+.hs-t {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hs-k {
+  font-weight: 800;
+  font-size: clamp(15px, 13cqh, 24px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hs-h {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(24px, 30cqh, 60px);
+  line-height: 1.04;
+  display: block;
+}
+.hs-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 4px;
+  background: var(--ink);
+  transform-origin: 0 50%;
+  display: block;
 }
 `,
   },
   {
     id: "countdown",
-    auto: false,
+    auto: true,
+    // The masthead: the logo, the show line, the intro title and the dateline, centred over a row of numbered
+    // squares, one per story picture. Then the squares are underlined from the last rank to the first, and a square
+    // the intro names lifts while the others step back.
     html: (c) =>
-      `<div class="stack">${c.logo("biglogo")}<div class="eyebrow">AI;DR ${c.esc(c.UI.brief)}${c.esc(c.issueTag)}</div><div class="title">${c.esc(c.title)}</div><div class="date">${c.esc(c.dateline)}</div>
-      <div class="dots">${c.stories.map((s) => `<span>${s.rank}</span>`).join("")}</div></div>`,
-    cues: (c) => c.stories.map((_, i) => ["tick", 1.3 + i * 0.2 + 0.1, 0.7]),
+      `<div class="cd">${c.logo("cd-logo")}<div class="cd-eyebrow">AI;DR ${c.esc(c.UI.brief)}${c.esc(c.issueTag)}</div><div class="cd-title">${c.esc(c.title)}</div><div class="cd-date">${c.esc(c.dateline)}</div><div class="cd-row" data-n="${c.stories.length}" style="--n:${c.stories.length}">${c.stories
+        .map(
+          (s) =>
+            `<div class="cd-sq face" data-rank="${s.rank}">${face(c, s)}<span class="cd-n">${s.rank}</span><span class="cd-bar"></span></div>`
+        )
+        .join("")}</div></div>`,
+    cues: (c) => {
+      const n = c.stories.length;
+      return [
+        ...c.stories.map((_, i) =>
+          i === n - 1
+            ? ["rankHit", 0.8 + i * 0.25, 0.8]
+            : ["tick", 0.8 + i * 0.25, 0.7]
+        ),
+        ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+      ];
+    },
     motion: (tl, I, h) => {
+      h.fit(h.$(".cd-title"), 2, 48);
       tl.fromTo(
-        ".stack .biglogo",
-        { scale: 0.6, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.6, ease: h.LAND },
-        I.start + 0.2
+        ".cd-logo",
+        { scale: 1 },
+        { scale: 1.06, duration: I.dur, ease: "none" },
+        I.start
       );
-      tl.fromTo(
-        ".stack .eyebrow",
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: h.LAND },
-        I.start + 0.45
-      );
-      tl.fromTo(
-        ".stack .title",
-        { y: 50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, ease: h.LAND },
-        I.start + 0.55
-      );
-      tl.fromTo(
-        ".stack .date",
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: h.LAND },
-        I.start + 0.7
-      );
-      h.$$(".dots span").forEach((d, i) => {
+      const sq = h.$$(".cd-sq");
+      sq.forEach((s, i) => {
         tl.fromTo(
-          d,
-          { y: 40, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.4, ease: h.LAND },
-          I.start + 1.3 + i * 0.2
+          h.$("img", s) || h.$(".pcard", s),
+          { scale: 1 },
+          { scale: 1.12, duration: I.dur, ease: "none" },
+          I.start
+        );
+        // Last rank first: the row counts down to the lead.
+        tl.fromTo(
+          h.$(".cd-bar", s),
+          { scaleX: 0 },
+          { scaleX: 1, duration: 0.35, ease: h.LAND },
+          I.start + 0.8 + (sq.length - 1 - i) * 0.25
         );
       });
+      const F = I.focus ?? [];
+      F.forEach((f) => {
+        const on = h.$(`.cd-sq[data-rank="${f.rank}"]`);
+        if (!on) return;
+        tl.to(
+          on,
+          { scale: 1.08, opacity: 1, zIndex: 2, duration: 0.3, ease: h.LAND },
+          f.at - 0.1
+        );
+        tl.to(
+          sq.filter((x) => x !== on),
+          {
+            scale: 1,
+            opacity: 0.4,
+            zIndex: 1,
+            duration: 0.3,
+            ease: "power2.out",
+          },
+          f.at - 0.1
+        );
+      });
+      if (F.length)
+        tl.to(
+          sq,
+          { scale: 1, opacity: 1, duration: 0.3, ease: "power2.inOut" },
+          I.dur - 0.45
+        );
     },
-    css: `
-.stack .eyebrow {
-  margin-top: 44px;
+    css: `${FACE_CSS}
+.cd {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.f-16x9 .cd {
+  top: 110px;
+  padding: 0 160px;
+}
+.f-9x16 .cd {
+  top: 200px;
+  padding: 0 60px;
+}
+.cd-logo {
+  width: 132px;
+  height: 132px;
+  display: block;
+}
+.cd-eyebrow {
+  margin-top: 36px;
   font-weight: 800;
-  font-size: 28px;
+  font-size: 26px;
   letter-spacing: 0.22em;
 }
-.stack .date {
-  margin-top: 26px;
-  font-size: 32px;
+.cd-title {
+  margin-top: 18px;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 100px;
+  line-height: 1;
+  letter-spacing: -0.015em;
+}
+.f-9x16 .cd-title {
+  font-size: 96px;
+}
+.cd-date {
+  margin-top: 22px;
+  font-size: 30px;
   font-weight: 600;
 }
-.dots {
-  display: flex;
-  gap: 22px;
+/* One row in 16:9; in 9:16 at most two rows, each square as big as its count allows. */
+.cd-row {
   margin-top: 48px;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--sq));
+  grid-auto-rows: var(--sq);
+  justify-content: center;
+  gap: 18px;
 }
-.dots span {
-  width: 76px;
-  height: 76px;
-  border: 2px solid var(--ink);
+.cd-sq {
+  position: relative;
+}
+.f-16x9 .cd-row {
+  --cols: var(--n);
+  --sq: 190px;
+}
+.f-16x9 .cd-row[data-n="1"],
+.f-16x9 .cd-row[data-n="2"],
+.f-16x9 .cd-row[data-n="3"] {
+  --sq: 360px;
+}
+.f-16x9 .cd-row[data-n="4"] {
+  --sq: 330px;
+}
+.f-16x9 .cd-row[data-n="5"] {
+  --sq: 290px;
+}
+.f-16x9 .cd-row[data-n="6"] {
+  --sq: 230px;
+}
+.f-9x16 .cd-row {
+  --cols: 4;
+  --sq: 210px;
+  gap: 16px;
+}
+.f-9x16 .cd-row[data-n="1"] {
+  --cols: 1;
+  --sq: 440px;
+}
+.f-9x16 .cd-row[data-n="2"] {
+  --cols: 2;
+  --sq: 400px;
+}
+.f-9x16 .cd-row[data-n="3"] {
+  --cols: 3;
+  --sq: 290px;
+}
+.f-9x16 .cd-row[data-n="4"] {
+  --cols: 2;
+  --sq: 320px;
+}
+.f-9x16 .cd-row[data-n="5"],
+.f-9x16 .cd-row[data-n="6"] {
+  --cols: 3;
+  --sq: 260px;
+}
+.cd-n {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 52px;
+  height: 52px;
+  background: var(--yellow);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--serif);
   font-weight: 600;
-  font-size: 44px;
+  font-size: 38px;
+  line-height: 1;
 }
-.f-9x16 .dots {
-  flex-wrap: wrap;
-  justify-content: center;
-  width: 400px;
-}
-.f-9x16 .dots span {
-  width: 110px;
-  height: 110px;
-  font-size: 60px;
+.cd-bar {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  background: var(--ink);
+  transform-origin: 0 50%;
+  display: block;
 }
 `,
   },

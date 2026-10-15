@@ -642,11 +642,16 @@ if (coverStory !== thumbStory && !cut.subs)
   console.warn(
     `! cover: thumb story ${thumbStory.rank} has no image; the cover uses story ${coverStory.rank} (${coverStory.kicker})`
   );
+const coverHook =
+  coverStory === thumbStory
+    ? (script.thumb?.hook ?? coverStory.kicker)
+    : coverStory.kicker;
+// The cover intro opens on the cover still's story and hook.
+Object.assign(introCtx, { lead: coverStory, hook: coverHook });
 
 function coverHtml(fmt) {
   const lead = coverStory;
-  const hook =
-    lead === thumbStory ? (script.thumb?.hook ?? lead.kicker) : lead.kicker;
+  const hook = coverHook;
   const img = firstImage(lead);
   const list = script.stories
     .slice(0, fmt === "9x16" ? 4 : 3)

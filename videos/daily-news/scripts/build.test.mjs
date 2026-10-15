@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, test } from "node:test";
+import { AXES } from "./looks/index.mjs";
 import { soundFor } from "./looks/sound.mjs";
 import { ROOT, runBuild, scratchRoot } from "./scratch-root.mjs";
 
@@ -211,4 +212,50 @@ test("the en and vi cuts of a day record the same sound, the date's", () => {
   const en = read(join(dir, "timeline.json")).sound;
   assert.deepEqual(en, soundFor(date));
   assert.deepEqual(read(join(dir, "timeline.vi.json")).sound, en);
+});
+
+// An intro's markup reads labels, date parts and story fields from the build: a raw field the vi cut or a story
+// lacks renders as "undefined" or "NaN" on frame 0, the thumbnail. The frame-0 motion check cannot see markup.
+test("every intro builds in English and Vietnamese with no undefined or NaN in its markup", () => {
+  const date = "2026-10-10";
+  for (const { id } of AXES.intro) {
+    const { dn, cleanup } = scratchRoot();
+    cleanups.push(cleanup);
+    const dir = join(dn, "editions", date);
+    mkdirSync(join(dir, "assets"), { recursive: true });
+    cpSync(
+      join(ROOT, "editions", date, "edition.json"),
+      join(dir, "edition.json")
+    );
+    for (const f of ["script.json", "script.vi.json"]) {
+      const s = read(join(ROOT, "editions", date, f));
+      writeFileSync(
+        join(dir, f),
+        JSON.stringify({ ...s, theme: { ...s.theme, intro: id } })
+      );
+    }
+    for (const s of read(join(dir, "edition.json")).stories)
+      for (const im of s.images) writeFileSync(join(dir, im.local), "");
+    for (const lang of ["en", "vi"]) {
+      const run = runBuild(dn, [
+        date,
+        "--lang",
+        lang,
+        "--no-voice",
+        "--no-audio",
+      ]);
+      assert.equal(run.status, 0, `${id} ${lang}: ${run.stderr}`);
+      const out = lang === "en" ? "out" : `out-${lang}`;
+      for (const fmt of FORMATS) {
+        const html = readFileSync(join(dir, out, fmt, "index.html"), "utf8");
+        const intro = html.match(/<section id="intro"[\s\S]*?<\/section>/)?.[0];
+        assert.ok(intro, `${id} ${lang} ${fmt}: no intro section`);
+        assert.doesNotMatch(
+          intro,
+          /undefined|NaN|\[object /,
+          `${id} ${lang} ${fmt}`
+        );
+      }
+    }
+  }
 });

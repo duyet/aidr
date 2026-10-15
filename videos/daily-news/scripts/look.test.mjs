@@ -34,7 +34,7 @@ test("CI's script for the next day gets a different transition and background (n
   const [a, b] = [resolveLook(s13, e13), resolveLook(s14, e14)];
   assert.notEqual(a.transition, b.transition);
   assert.notEqual(a.background, b.background);
-  assert.equal(b.intro, "grid");
+  assert.notEqual(a.intro, b.intro);
 });
 
 test("rotate never repeats on adjacent days over two years, for pools of 2, 3 and 4", () => {
@@ -89,10 +89,17 @@ test("rotate shows every id once per cycle, and the same day always gets the sam
   }
 });
 
-test("the intro is the grid on every unpinned day (frame 0 is the thumbnail)", () => {
-  const edition = { date: "2026-01-01" };
-  for (const date of datesFrom("2026-01-01", 365))
-    assert.equal(resolveLook({}, { ...edition, date }).intro, "grid");
+// Every auto intro is frame-0 safe (looks.test.mjs), so the opening rotates like the other axes; a pin-shaped
+// default would freeze it on the grid again.
+test("the unpinned intro rotates over every auto intro and never repeats on adjacent days", () => {
+  const auto = AXES.intro.filter((e) => e.auto).map((e) => e.id);
+  assert.ok(auto.length >= 4, auto.join(", "));
+  const intros = datesFrom("2026-01-01", 365).map(
+    (date) => resolveLook({}, { date }).intro
+  );
+  for (let i = 1; i < intros.length; i++)
+    assert.notEqual(intros[i], intros[i - 1], `day ${i}`);
+  assert.deepEqual([...new Set(intros)].sort(), [...auto].sort());
 });
 
 test("a theme in script.json pins that axis; the others still rotate", () => {
