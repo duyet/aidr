@@ -27,7 +27,7 @@ import {
   SITE_URL,
   TELEGRAM_HANDLE,
 } from "./site";
-import { SITEMAP_STATIC_PATHS } from "./sitemap";
+import { SITEMAP_STATIC_PAGE_PATHS } from "./sitemap";
 import { storyPath } from "./slug";
 import type { FeedResponse, ItemSource, Lang } from "./types";
 
@@ -951,8 +951,8 @@ describe("static page JSON-LD (WebPage / BreadcrumbList)", () => {
             route: { pathname: path, search: {} },
           });
 
-  it("covers every SITEMAP_STATIC_PATHS entry", () => {
-    for (const path of SITEMAP_STATIC_PATHS) {
+  it("covers every SITEMAP_STATIC_PAGE_PATHS entry", () => {
+    for (const path of SITEMAP_STATIC_PAGE_PATHS) {
       const head = headFor(path);
       const types = head.jsonLd.map((n) => n["@type"]);
       expect(types, path).toContain("WebPage");
@@ -961,7 +961,7 @@ describe("static page JSON-LD (WebPage / BreadcrumbList)", () => {
   });
 
   it("self-canonicals each static page and ends its breadcrumb with itself", () => {
-    for (const path of SITEMAP_STATIC_PATHS) {
+    for (const path of SITEMAP_STATIC_PAGE_PATHS) {
       const head = headFor(path);
       const page = node<JsonLdNode & { url: string; "@id": string }>(
         head,
