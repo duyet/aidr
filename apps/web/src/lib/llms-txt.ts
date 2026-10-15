@@ -151,6 +151,8 @@ rank_score = importance^1.5/√10 × (0.6 + 0.4·quality/10) × exp(−ageHours/
 
 voteNet is the sum of signed-in reader votes on that story (+1 / −1, one per reader). Each net vote is ×1.2, up to six; a negative net divides by the same amount. Do not add a separate trending boost.
 
+Reads change homepage order within a day only: the homepage (and /api/feed?order=reads, which it calls) sorts each day by rank_score × (1 + 0.15·opens/(opens + 800)), where opens is story opens on aidr.today today and yesterday UTC, at most 100 per story per day, totals with no visitor identifier. The most any story gets is ×1.03. rank_score in every response is the stored score; membership, plain /api/feed order, RSS, MCP, the edition and every post ignore reads.
+
 Quality and independent sources beat thin duplicates. Hide rule: relevance < 0.4 is never shown.
 
 ## Contact

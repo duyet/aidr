@@ -11,4 +11,5 @@ export const API = {
   llm: "/api/system/llm",
   sources: "/api/system/sources",
   trends: "/api/system/trends",
+  reads: "/api/system/reads",
 } as const;

@@ -2,6 +2,7 @@ import { ChevronDown, TrendingUp } from "lucide-react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { pageType } from "../lib/analytics/landing";
+import { recordRead } from "../lib/analytics/reads";
 import { track } from "../lib/analytics/track";
 import {
   ARTICLE_TITLE_TAG,
@@ -173,6 +174,10 @@ export function StoryRow({
     Boolean(summary) ||
     item.tags.length > 0 ||
     item.sources.length > 0;
+  useEffect(() => {
+    // A row rendered open (the story page) never toggles, so count it here.
+    if (defaultExpanded && hasDetails) recordRead(item.id, "open");
+  }, []);
   const isMatch = Boolean(
     selectedTag &&
       (item.tags.some(
@@ -203,6 +208,7 @@ export function StoryRow({
         via: "row",
         page_type: pageType(window.location.pathname),
       });
+      recordRead(item.id, "open");
     }
   };
 
@@ -303,6 +309,7 @@ export function StoryRow({
               onClick={(e) => {
                 e.stopPropagation();
                 track("source_click", { item_id: item.id, placement: "row" });
+                recordRead(item.id, "outbound");
               }}
               className="ml-1 text-xs font-normal text-muted-foreground hover:text-foreground"
               aria-label={lang === "vi" ? "Mở bài gốc" : "Open original"}

@@ -58,8 +58,22 @@ function PrivacyPage() {
             The website loads Google Analytics 4 to count page views. Once a day
             we read back page views, daily and monthly active users, top pages,
             and traffic sources for the Pipeline page. We store only those
-            totals, never IP addresses or visitor IDs. The extension loads no
-            analytics.
+            totals, never IP addresses or visitor IDs. The site also counts, per
+            story and per day, how often a story is opened or its source link
+            clicked. Each count is stored with the channel the visit arrived
+            from (for example Telegram, email, or Facebook, read from the link's{" "}
+            <code>ref</code> or <code>utm_*</code> tag) and no visitor
+            identifier, cookie, or IP address. To count a story once per tab and
+            day, your browser keeps a key per story in{" "}
+            <code>sessionStorage</code>, which it clears when the tab closes.
+            AI;DR never stores your IP address. To stop one client inflating a
+            count, Cloudflare's rate limiter keeps a one-minute counter for your
+            IP address, the story, and the action at the nearest Cloudflare
+            location. These counts change one thing: the order of stories within
+            a day on the homepage. Opens only multiply a story's score by at
+            most 1.03, which can move it a few places and so in or out of the
+            first 30 shown. They never add or remove a story from a day, a feed,
+            the daily edition, or a post. The extension loads no analytics.
           </li>
           <li>
             <strong className="text-foreground">

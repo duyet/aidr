@@ -289,6 +289,21 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0065_item_reads.sql
+
+- Change: new table `item_reads` with index `idx_item_reads_day`. One row
+  per story, UTC day, arrival channel and kind (`open` or `outbound`),
+  holding a count and nothing that identifies a reader. Written by
+  `POST /api/read`; read by the homepage feed order (`getFeed`, today and
+  yesterday) and `GET /api/system/reads` (28 days). Stored `rank_score`
+  never reads it.
+- Risk: none for existing rows. Apply it before the Worker deploys so
+  reads count from the first beacon. Without it the collector answers 204
+  and writes nothing, `getFeed` probes the table and orders by `rank_score`
+  alone, and `/api/system/reads` answers as if empty.
+- Rollback: deploy the previous Worker; `DROP TABLE item_reads;`. Nothing
+  else holds a value derived from it.
+
 ## 0064_hf_trending_source.sql
 
 - Change: upserts one probation row, `hf-trending` (type `hftrending`,

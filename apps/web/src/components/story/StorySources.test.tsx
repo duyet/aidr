@@ -11,13 +11,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ItemSource } from "../../lib/types";
 import { StorySources } from "./StorySources";
 
-const { trackMock } = vi.hoisted(() => ({ trackMock: vi.fn() }));
+const { trackMock, readMock } = vi.hoisted(() => ({
+  trackMock: vi.fn(),
+  readMock: vi.fn(),
+}));
 
 vi.mock("../../lib/analytics/track", () => ({ track: trackMock }));
+vi.mock("../../lib/analytics/reads", () => ({ recordRead: readMock }));
 
 afterEach(() => {
   cleanup();
   trackMock.mockReset();
+  readMock.mockReset();
 });
 
 const source = {
@@ -110,6 +115,7 @@ describe("StorySources", () => {
       item_id: "story-123",
       placement: "sources",
     });
+    expect(readMock).toHaveBeenCalledExactlyOnceWith("story-123", "outbound");
   });
 
   it("keeps metadata but omits unsafe source URLs", () => {

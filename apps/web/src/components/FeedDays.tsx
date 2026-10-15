@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { emptyFeedCopy } from "../lib/empty-feed";
-import { DAY_STORY_LIMIT, dayFeedQuery } from "../lib/homepage-feed";
-import { withLang } from "../lib/locale-url";
+import {
+  DAY_STORY_LIMIT,
+  dayFeedParams,
+  homepageFeedUrl,
+} from "../lib/homepage-feed";
 import type { DayGroup, FeedResponse, Lang } from "../lib/types";
 import { DaySection } from "./DaySection";
 
@@ -31,9 +34,7 @@ export function FeedDays({
 
   async function loadDay(day: DayGroup): Promise<boolean> {
     try {
-      const res = await fetch(
-        withLang(`/api/feed${dayFeedQuery(day.date)}`, lang)
-      );
+      const res = await fetch(homepageFeedUrl(dayFeedParams(day.date), lang));
       if (!res.ok) return false;
       const page = (await res.json()) as FeedResponse;
       const full = page.days.find((d) => d.date === day.date);
@@ -69,10 +70,7 @@ export function FeedDays({
               setLoadingOlder(true);
               try {
                 const res = await fetch(
-                  withLang(
-                    `/api/feed?days=5&before=${encodeURIComponent(oldest)}`,
-                    lang
-                  )
+                  homepageFeedUrl({ days: "5", before: oldest }, lang)
                 );
                 if (!res.ok) return;
                 const older = (await res.json()) as FeedResponse;

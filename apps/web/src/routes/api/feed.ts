@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
 import { withEtag } from "../../lib/etag";
 import { feedDaysAndBefore, getFeed } from "../../lib/feed-queries";
+import { wantsReadOrder } from "../../lib/homepage-feed";
 import {
   API_CONTENT_LANGUAGE,
   apiErrorResponse,
@@ -50,6 +51,7 @@ export const Route = createFileRoute("/api/feed")({
             q: url.searchParams.get("q") ?? undefined,
             days,
             before,
+            readOrder: wantsReadOrder(url.searchParams),
           });
           const policy = localeCacheControl(url.search, FEED_CACHE_CONTROL);
           return withEtag(

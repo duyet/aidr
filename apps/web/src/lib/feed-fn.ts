@@ -17,6 +17,7 @@ export const fetchFeed = createServerFn({ method: "GET" })
       const feed = await getFeed(readSession(db), {
         q: data.q,
         days: data.days,
+        readOrder: true,
       });
       if (!feed) return null;
       const stripped = stripExpandableDetail(feed);

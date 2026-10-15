@@ -9,6 +9,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { recordRead } from "../lib/analytics/reads";
 import { track } from "../lib/analytics/track";
 import type { FeedItem } from "../lib/types";
 import { StoryRow } from "./StoryRow";
@@ -18,6 +19,7 @@ vi.mock("./SuggestTranslation", () => ({
   SuggestionBadge: () => null,
 }));
 vi.mock("../lib/analytics/track", () => ({ track: vi.fn() }));
+vi.mock("../lib/analytics/reads", () => ({ recordRead: vi.fn() }));
 vi.mock("../lib/vote-fn", () => ({
   castStoryVote: () => Promise.resolve({ myVote: 0, voteNet: 0, rankScore: 0 }),
   fetchMyVotes: () => Promise.resolve({ votes: {}, nets: {} }),
@@ -55,6 +57,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.mocked(track).mockClear();
+  vi.mocked(recordRead).mockClear();
 });
 
 const row = () => document.querySelector('[role="button"]') as HTMLElement;
@@ -144,5 +147,26 @@ describe("story_view", () => {
       page_type: "day",
     });
     history.replaceState({}, "", "/");
+  });
+});
+
+describe("read beacons", () => {
+  it("count an open on expand, never on collapse (defect: closing a row counts as a read)", () => {
+    render(<StoryRow item={item} index={1} lang="en" />);
+    fireEvent.click(row());
+    expect(recordRead).toHaveBeenCalledExactlyOnceWith(item.id, "open");
+    fireEvent.click(row());
+    expect(recordRead).toHaveBeenCalledTimes(1);
+  });
+
+  it("count an open when the story page renders the row open (defect: permalink visits never count)", () => {
+    render(<StoryRow item={item} index={1} lang="en" defaultExpanded />);
+    expect(recordRead).toHaveBeenCalledExactlyOnceWith(item.id, "open");
+  });
+
+  it("count an outbound click on the original link without counting an open", () => {
+    render(<StoryRow item={item} index={1} lang="en" />);
+    fireEvent.click(screen.getByLabelText("Open original"));
+    expect(recordRead).toHaveBeenCalledExactlyOnceWith(item.id, "outbound");
   });
 });

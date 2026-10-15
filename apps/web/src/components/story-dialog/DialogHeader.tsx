@@ -1,5 +1,6 @@
 import { Check, Columns2, Copy, ExternalLink, X } from "lucide-react";
 import { useState } from "react";
+import { recordRead } from "../../lib/analytics/reads";
 import { track } from "../../lib/analytics/track";
 import { SITE_URL } from "../../lib/site";
 import { storyPath } from "../../lib/slug";
@@ -66,9 +67,13 @@ export function DialogHeader({
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() =>
-                track("source_click", { item_id: item.id, placement: "dialog" })
-              }
+              onClick={() => {
+                track("source_click", {
+                  item_id: item.id,
+                  placement: "dialog",
+                });
+                recordRead(item.id, "outbound");
+              }}
               className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />

@@ -63,6 +63,18 @@ binding = "IMAGES"
 binding = "OG_CACHE"
 bucket_name = "aidr-og"
 
+# POST /api/read: one count per (IP, story, kind) a minute, the longest
+# period the binding allows. aidr stores nothing; Cloudflare keeps the
+# per-location counter.
+# namespace_id must be unique on the account.
+[[ratelimits]]
+name = "READ_LIMITER"
+namespace_id = "8220"
+
+  [ratelimits.simple]
+  limit = 1
+  period = 60
+
 [[d1_databases]]
 binding = "DB"
 database_name = "aidr"

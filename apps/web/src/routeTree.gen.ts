@@ -32,6 +32,7 @@ import { Route as ApiFeedRouteImport } from './routes/api/feed'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiPublicRouteImport } from './routes/api/public'
+import { Route as ApiReadRouteImport } from './routes/api/read'
 import { Route as ApiSubscribeRouteImport } from './routes/api/subscribe'
 import { Route as ApiSystemRouteImport } from './routes/api/system'
 import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
@@ -54,6 +55,7 @@ import { Route as ApiSystemAudienceRouteImport } from './routes/api/system.audie
 import { Route as ApiSystemLlmRouteImport } from './routes/api/system.llm'
 import { Route as ApiSystemModelsRouteImport } from './routes/api/system.models'
 import { Route as ApiSystemOverviewRouteImport } from './routes/api/system.overview'
+import { Route as ApiSystemReadsRouteImport } from './routes/api/system.reads'
 import { Route as ApiSystemRunAttemptsRouteImport } from './routes/api/system.run-attempts'
 import { Route as ApiSystemRunItemsRouteImport } from './routes/api/system.run-items'
 import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
@@ -178,6 +180,11 @@ const ApiPublicRoute = ApiPublicRouteImport.update({
   path: '/api/public',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiReadRoute = ApiReadRouteImport.update({
+  id: '/api/read',
+  path: '/api/read',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSubscribeRoute = ApiSubscribeRouteImport.update({
   id: '/api/subscribe',
   path: '/api/subscribe',
@@ -288,6 +295,11 @@ const ApiSystemOverviewRoute = ApiSystemOverviewRouteImport.update({
   path: '/overview',
   getParentRoute: () => ApiSystemRoute,
 } as any)
+const ApiSystemReadsRoute = ApiSystemReadsRouteImport.update({
+  id: '/reads',
+  path: '/reads',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
 const ApiSystemRunAttemptsRoute = ApiSystemRunAttemptsRouteImport.update({
   id: '/run-attempts',
   path: '/run-attempts',
@@ -353,6 +365,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
+  '/api/read': typeof ApiReadRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
@@ -375,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
+  '/api/system/reads': typeof ApiSystemReadsRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
@@ -408,6 +422,7 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
+  '/api/read': typeof ApiReadRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
@@ -430,6 +445,7 @@ export interface FileRoutesByTo {
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
+  '/api/system/reads': typeof ApiSystemReadsRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
@@ -464,6 +480,7 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
+  '/api/read': typeof ApiReadRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
@@ -486,6 +503,7 @@ export interface FileRoutesById {
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
+  '/api/system/reads': typeof ApiSystemReadsRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
@@ -521,6 +539,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/public'
+    | '/api/read'
     | '/api/subscribe'
     | '/api/system'
     | '/contribute/new'
@@ -543,6 +562,7 @@ export interface FileRouteTypes {
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
+    | '/api/system/reads'
     | '/api/system/run-attempts'
     | '/api/system/run-items'
     | '/api/system/runs'
@@ -576,6 +596,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/public'
+    | '/api/read'
     | '/api/subscribe'
     | '/api/system'
     | '/contribute/new'
@@ -598,6 +619,7 @@ export interface FileRouteTypes {
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
+    | '/api/system/reads'
     | '/api/system/run-attempts'
     | '/api/system/run-items'
     | '/api/system/runs'
@@ -631,6 +653,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/public'
+    | '/api/read'
     | '/api/subscribe'
     | '/api/system'
     | '/contribute/new'
@@ -653,6 +676,7 @@ export interface FileRouteTypes {
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
+    | '/api/system/reads'
     | '/api/system/run-attempts'
     | '/api/system/run-items'
     | '/api/system/runs'
@@ -687,6 +711,7 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   ApiMcpRoute: typeof ApiMcpRoute
   ApiPublicRoute: typeof ApiPublicRoute
+  ApiReadRoute: typeof ApiReadRoute
   ApiSubscribeRoute: typeof ApiSubscribeRouteWithChildren
   ApiSystemRoute: typeof ApiSystemRouteWithChildren
   ContributeNewRoute: typeof ContributeNewRoute
@@ -868,6 +893,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/read': {
+      id: '/api/read'
+      path: '/api/read'
+      fullPath: '/api/read'
+      preLoaderRoute: typeof ApiReadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/subscribe': {
       id: '/api/subscribe'
       path: '/api/subscribe'
@@ -1022,6 +1054,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemOverviewRouteImport
       parentRoute: typeof ApiSystemRoute
     }
+    '/api/system/reads': {
+      id: '/api/system/reads'
+      path: '/reads'
+      fullPath: '/api/system/reads'
+      preLoaderRoute: typeof ApiSystemReadsRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
     '/api/system/run-attempts': {
       id: '/api/system/run-attempts'
       path: '/run-attempts'
@@ -1113,6 +1152,7 @@ interface ApiSystemRouteChildren {
   ApiSystemLlmRoute: typeof ApiSystemLlmRoute
   ApiSystemModelsRoute: typeof ApiSystemModelsRoute
   ApiSystemOverviewRoute: typeof ApiSystemOverviewRoute
+  ApiSystemReadsRoute: typeof ApiSystemReadsRoute
   ApiSystemRunAttemptsRoute: typeof ApiSystemRunAttemptsRoute
   ApiSystemRunItemsRoute: typeof ApiSystemRunItemsRoute
   ApiSystemRunsRoute: typeof ApiSystemRunsRoute
@@ -1127,6 +1167,7 @@ const ApiSystemRouteChildren: ApiSystemRouteChildren = {
   ApiSystemLlmRoute: ApiSystemLlmRoute,
   ApiSystemModelsRoute: ApiSystemModelsRoute,
   ApiSystemOverviewRoute: ApiSystemOverviewRoute,
+  ApiSystemReadsRoute: ApiSystemReadsRoute,
   ApiSystemRunAttemptsRoute: ApiSystemRunAttemptsRoute,
   ApiSystemRunItemsRoute: ApiSystemRunItemsRoute,
   ApiSystemRunsRoute: ApiSystemRunsRoute,
@@ -1162,6 +1203,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   ApiMcpRoute: ApiMcpRoute,
   ApiPublicRoute: ApiPublicRoute,
+  ApiReadRoute: ApiReadRoute,
   ApiSubscribeRoute: ApiSubscribeRouteWithChildren,
   ApiSystemRoute: ApiSystemRouteWithChildren,
   ContributeNewRoute: ContributeNewRoute,
