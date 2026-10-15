@@ -70,9 +70,10 @@ function PrivacyPage() {
             count, Cloudflare's rate limiter keeps a one-minute counter for your
             IP address, the story, and the action at the nearest Cloudflare
             location. These counts change one thing: the order of stories within
-            a day on the homepage, by at most 3%, using opens only. They never
-            decide which stories appear in a list, a feed, the daily edition, or
-            a post. The extension loads no analytics.
+            a day on the homepage. Opens only multiply a story's score by at
+            most 1.03, which can move it a few places and so in or out of the
+            first 30 shown. They never add or remove a story from a day, a feed,
+            the daily edition, or a post. The extension loads no analytics.
           </li>
           <li>
             <strong className="text-foreground">

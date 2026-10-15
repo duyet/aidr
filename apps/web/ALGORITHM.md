@@ -1456,7 +1456,10 @@ its `rank_score` field, plain `/api/feed` order (the extension, webmcp),
 RSS, the news sitemap, MCP `search_news`, the day archive and its Telegram
 day card, the edition pool (`tldr.ts`), Telegram trending, Facebook, email
 and the weekly roundup ignore them. A read is anonymous and a script can
-fake one, so it must not choose what any list or post contains.
+fake one, so it must never add a story to, or drop one from, a day, a feed,
+RSS, the API, the archive or a post. It can only move a story a few places
+inside its day, and so across the homepage's 30-story first view (from #33
+at most on the day simulated below).
 `worker/__tests__/feed-reads.integration.test.ts` holds a test per surface.
 Collection:
 
