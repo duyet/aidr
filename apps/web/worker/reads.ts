@@ -117,8 +117,8 @@ export async function recordRead(
   return result.meta.changes === 0 ? "capped" : "counted";
 }
 
-/** The key `READ_LIMITER` allows once a minute. It lives only in the
- * limiter's memory at the Cloudflare location; nothing stores it. */
+/** The key `READ_LIMITER` allows once a minute. aidr stores nothing;
+ * Cloudflare keeps the counter at that location for the period. */
 function readLimitKey(ip: string, read: ReadBeacon): string {
   return `${ip}|${read.itemId}|${read.kind}`;
 }

@@ -64,7 +64,8 @@ binding = "OG_CACHE"
 bucket_name = "aidr-og"
 
 # POST /api/read: one count per (IP, story, kind) a minute, the longest
-# period the binding allows. The key lives in the limiter's memory only.
+# period the binding allows. aidr stores nothing; Cloudflare keeps the
+# per-location counter.
 # namespace_id must be unique on the account.
 [[ratelimits]]
 name = "READ_LIMITER"

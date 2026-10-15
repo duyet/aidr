@@ -1458,10 +1458,11 @@ able to push a story into a public post. Collection:
   or unpublished ids and malformed bodies. User agent and fetch-site are
   spoofable, so they only stop honest crawlers and other sites' pages.
 - `READ_LIMITER` (`[[ratelimits]]`, limit 1, period 60) counts one beacon
-  per (IP, story, kind) a minute. The key lives only in the limiter's
-  memory at that Cloudflare location. 60 seconds is the longest period the
+  per (IP, story, kind) a minute. aidr stores nothing; Cloudflare keeps the
+  counter at that location, eventually consistent, so a parallel burst
+  can slip a few extra through. 60 seconds is the longest period the
   binding offers, so a burst from one client counts once or twice, while a
-  steady drip still counts 60 an hour. Each row also stops at 2000.
+  steady drip still counts 60 an hour per kind. Each row also stops at 2000.
 - The factor is flat at the start and tops out below ×1.3: 2 counts ×1.003,
   50 ×1.06, 100 ×1.10, 200 ×1.15. Simulated on the 2026-10-16 production
   top 40: 2 counts move any row at most 2 places, 100 reads move #18 to #12,
@@ -1473,7 +1474,8 @@ able to push a story into a public post. Collection:
   #11.
 
 Known gaps: the constants are not replay-tuned with `rank-replay`; after
-in-site navigation the channel falls back to `web`. Category totals over 28
+in-site navigation the channel falls back to `web`; readers sharing one IP
+(carrier NAT, an office) count at most once a minute per story and kind. Category totals over 28
 days show on `/data` (Algo tab, `GET /api/system/reads`).
 
 ### 8. Write
