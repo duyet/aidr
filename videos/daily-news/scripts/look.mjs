@@ -3,31 +3,24 @@
 // memory of yesterday: CI never commits, so a look read back from a committed script froze every CI day.
 // When two axes are free they rotate together as combinations, so the whole look never ping-pongs either.
 // `script.theme` pins an axis: a key it sets wins, and an id outside the axis fails the build.
+import { LAYOUTS as LAYOUT_ENTRIES, AXES as REGISTRY } from "./looks/index.mjs";
 import { parseWeek } from "./week.mjs";
 
-const AXES = {
-  // The grid is the only thumbnail-safe intro (complete on frame 0); the others are pins on request.
-  intro: {
-    ids: ["grid", "date-slam", "countdown", "headline-stack"],
-    auto: ["grid"],
-  },
-  transition: {
-    ids: ["wipe", "ink", "shutter"],
-    auto: ["wipe", "ink", "shutter"],
-  },
-  background: {
-    ids: ["paper", "soft", "grid"],
-    auto: ["paper", "soft", "grid"],
-  },
-};
+// Pools come from the registry (looks/): every entry is pinnable, the `auto` ones rotate.
+const AXES = Object.fromEntries(
+  Object.entries(REGISTRY).map(([axis, list]) => [
+    axis,
+    {
+      ids: list.map((e) => e.id),
+      auto: list.filter((e) => e.auto).map((e) => e.id),
+    },
+  ])
+);
 const PIN_ONLY = ["accent"];
-// Story layouts are chosen per story from what the story has, not rotated by date. Only `full` needs an image:
-// `stat` shows the paper card in its media box when it has none.
-const LAYOUTS = {
-  split: { image: false, max: Infinity },
-  full: { image: true, max: Infinity },
-  stat: { image: false, max: 2 },
-};
+// Story layouts are chosen per story from what the story has, not rotated by date (looks/layout.mjs).
+const LAYOUTS = Object.fromEntries(
+  LAYOUT_ENTRIES.map(({ id, image, max }) => [id, { image, max }])
+);
 /** A dollar figure ("$40B"): a story whose English bullet names one leads with it. auto-script reads its stat with it. */
 export const MONEY = /\$[\d.,]+\s?[KMBT]?\b/;
 

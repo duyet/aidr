@@ -16,8 +16,9 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 | Path | Tracked | What it is |
 |------|---------|------------|
 | `config.json` | yes | Template-wide settings: count, formats, voice, music, effects, timing, captions |
-| `template/style.css` | yes | All layout, both formats (`.f-16x9` / `.f-9x16` variables), layouts, intros, transitions |
-| `template/motion.js` | yes | The single GSAP timeline, driven by `window.__DN` from the build |
+| `template/style.css` | yes | The shared layout, both formats (`.f-16x9` / `.f-9x16` variables): chrome, the split story, captions, outro |
+| `template/motion.js` | yes | The single GSAP timeline, driven by `window.__DN` from the build; it calls the day's variants from `window.__LOOK` |
+| `scripts/looks/` | yes | The look registry: one entry per intro, transition, background and story layout, each with its markup, CSS, motion and sound cues. Add a variant by adding an entry |
 | `scripts/fetch.mjs` | yes | Edition + real post media from `https://aidr.today/api/public?lang=en` |
 | `scripts/new.mjs` | yes | Start the day: fetch, media contact sheet, draft `script.json` (`--week` for the weekly edition) |
 | `scripts/fetch-week.mjs`, `scripts/week.mjs`, `scripts/media.mjs` | yes | Weekly edition fetch; ISO-week math (with `week.test.mjs`); download helper shared with `fetch.mjs` |
@@ -147,7 +148,7 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
 
 ### Looks
 
-The look is derived at build time, never stored. `scripts/look.mjs` `resolveLook(script, edition)` picks the transition and the background from the edition's date (the ISO week for a weekly edition), so the next day always differs on both, with no record of yesterday. The intro is always `grid`. Each key in `script.json` `theme` pins that axis and wins over the rotation; an unknown id fails the build and lists the allowed ones. Every cut reads the pin from `script.json` (a `theme` in `script.vi.json` is ignored), so the English, Vietnamese and `visub` cuts of a day look the same. Adding or removing an id in an axis list in `look.mjs` reshuffles every unpinned day, past ones included. `timeline.json` records the resolved `theme` and `layouts` as a receipt; the build never reads it back. The four committed editions from before this change pin their theme and every story's layout, so they rebuild as they shipped.
+The look is derived at build time, never stored. `scripts/look.mjs` `resolveLook(script, edition)` picks the transition and the background from the edition's date (the ISO week for a weekly edition), so the next day always differs on both, with no record of yesterday. The intro is always `grid`. Each key in `script.json` `theme` pins that axis and wins over the rotation; an unknown id fails the build and lists the allowed ones. Every cut reads the pin from `script.json` (a `theme` in `script.vi.json` is ignored), so the English, Vietnamese and `visub` cuts of a day look the same. Adding or removing an `auto` entry in `scripts/looks/` reshuffles every unpinned day, past ones included. `timeline.json` records the resolved `theme` and `layouts` as a receipt; the build never reads it back. The four committed editions from before this change pin their theme and every story's layout, so they rebuild as they shipped.
 
 Story layouts (`split`, `full`, `stat`) are chosen in the same `resolveLook` call, after the build drops every image that is not on disk (a failed download, or a path that no longer exists). So a story's layout always matches the images it really shows, and a `full` never ships without one. The rules, in priority order:
 
@@ -168,13 +169,13 @@ Spoken text says "AI DR" and "aidr dot today"; `config.captions.replace` shows t
 | `formats` | Size per format and its 4K render preset |
 | `voice` | `provider` (`elevenlabs`), `cast` (path to `voices.json`), `lang` (`en` \| `vi` hosts), `gap` (breath between parts, s), `volume`; `heygen` is the fallback: `anchors` (name → HeyGen voice id + speed) and `byGender` (which HeyGen anchor stands in for a cast host) |
 | `music` | Bed (the launch film's "News Theme"), level, ducked level; ducking is a sidechain on the voice |
-| `sfx` | Library dir, master level, and which effect plays on each cue (`open`, `storyIn`, `rankHit`, `statHit`, `tick`, `outro`) |
+| `sfx` | Library dir and master level; which effect plays on each cue lives in `scripts/looks/sound.mjs` |
 | `timing` | Lead and tail around each voice line, per segment kind; the video length follows the voice. `noVoice.wordsPerSecond` (`en` 2.6, `vi` 3.2) is the reading speed that times a no-voice cut |
 | `captions` | Burn in or not, words per caption, spoken → shown replacements |
 
 ## Sound
 
-One mixed track (`out/mix.wav`, 48 kHz stereo, loudness-normalised to about −14 LUFS): voice lines placed at `start + lead`; the music bed under a sidechain duck with a fade in and a 2.5 s fade out; effects placed so each one's peak lands on its visual hit (wipe, rank tile, stat). Change the sound by editing `config.sfx.cues`, not the build.
+One mixed track (`out/mix.wav`, 48 kHz stereo, loudness-normalised to about −14 LUFS): voice lines placed at `start + lead`; the music bed under a sidechain duck with a fade in and a 2.5 s fade out; effects placed so each one's peak lands on its visual hit (wipe, rank tile, stat). Change the sound in `scripts/looks/sound.mjs` (which effect plays on each cue, and each file's peak), not in the build.
 
 ## No voice (out of ElevenLabs quota)
 

@@ -23,9 +23,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { gridCss } from "./grid.mjs";
 import { cutFor, cutOf, formatsOf } from "./lang.mjs";
 import { resolveLook } from "./look.mjs";
+import { entry, lookCss, lookScript } from "./looks/index.mjs";
+import { CUES, PEAK } from "./looks/sound.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
 import { spreadWords, subsMismatch } from "./visub.mjs";
 import { applyScreen } from "./visub-screen.mjs";
@@ -402,30 +403,27 @@ const marked = (h) =>
     ? esc(h).replace(/\*(.+?)\*/g, '<span class="mk">$1</span>')
     : `<span class="mk">${esc(h)}</span>`;
 
+// What an intro variant's markup and cues read (looks/intro.mjs).
+const introCtx = {
+  stories: script.stories,
+  title: script.intro.title,
+  focus: introFocus,
+  DOW,
+  MON,
+  DAY,
+  year: d.getUTCFullYear(),
+  dateline,
+  UI,
+  issueTag,
+  byRank,
+  esc,
+  pad2,
+  logo,
+  firstImage,
+};
+
 function introHtml() {
-  const v = look.intro;
-  let body;
-  if (v === "grid") {
-    // The summary grid: every story at once, fully drawn on frame 0 (the auto-thumbnail frame).
-    const tiles = script.stories
-      .map((s) => {
-        const img = firstImage(s);
-        const face = img
-          ? `<img id="g${s.rank}-img" src="${esc(img)}" alt="" /><div class="tshade"></div>`
-          : `<div class="tpaper"><span>${esc(s.paper?.venue ?? byRank[s.rank]?.source ?? "")}</span><b>${esc(s.paper?.title ?? s.kicker)}</b></div>`;
-        return `<div class="tile${img ? "" : " noimg"}" data-rank="${s.rank}">${face}<span class="tr">${s.rank}</span><div class="tt"><div class="tk">${esc(s.kicker)}</div><div class="th">${esc(s.headline.replace(/\*/g, ""))}</div></div><span class="tbar"></span></div>`;
-      })
-      .join("");
-    body = `<div class="ghead"><div class="gdate"><span class="gday">${pad2(DAY)}</span><span class="gmon">${esc(DOW.toUpperCase())}<br/>${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</span></div><div class="gbrand">${logo("")}<span>${esc(UI.daily)}<br/>${esc(UI.topIn(script.stories.length))}</span></div></div><style>${gridCss(script.stories.length)}</style><div class="tiles" data-n="${script.stories.length}">${tiles}</div><div class="gfoot">${esc(script.intro.title)}</div>`;
-  } else if (v === "date-slam") {
-    body = `<div class="slam"><span class="dow">${esc(DOW.toUpperCase())}</span><span class="day">${pad2(DAY)}</span><span class="mon">${esc(MON.toUpperCase())}</span></div>
-      <div class="slam-tail"><div class="title">${esc(script.intro.title)}</div><div class="with">${logo("")}<span>AI;DR ${esc(UI.brief)}</span></div></div>`;
-  } else if (v === "headline-stack") {
-    body = `<div class="hstack"><div class="hdate"><span>${esc(DOW.toUpperCase())} ${pad2(DAY)} ${esc(MON.toUpperCase())}</span><span>AI;DR TOP ${script.stories.length}</span></div>${script.stories.map((s) => `<div class="row"><span class="n">${s.rank}</span><span class="t">${esc(s.kicker)}</span></div>`).join("")}</div>`;
-  } else {
-    body = `<div class="stack">${logo("biglogo")}<div class="eyebrow">AI;DR ${esc(UI.brief)}${esc(issueTag)}</div><div class="title">${esc(script.intro.title)}</div><div class="date">${esc(dateline)}</div>
-      <div class="dots">${script.stories.map((s) => `<span>${s.rank}</span>`).join("")}</div></div>`;
-  }
+  const body = entry("intro", look.intro).html(introCtx);
   return `<section id="intro" class="clip scene" data-start="0" data-duration="${r3(intro.dur + 0.05)}" data-track-index="1">
     <div class="field"></div><div class="cam"><div class="semi">;</div>${body}</div></section>`;
 }
@@ -500,12 +498,7 @@ const wipes = segs.slice(1).map((seg) => ({
 function wipesHtml() {
   return wipes
     .map((w, i) => {
-      const inner =
-        look.transition === "shutter"
-          ? `<div class="half top"></div><div class="half bot"></div>`
-          : look.transition === "ink"
-            ? `<div class="ink-panel"><span class="n">${esc(w.label)}</span><div class="edge" style="background:#f5c518"></div></div>`
-            : `<div class="panel"><span class="n">${esc(w.label)}</span><div class="edge"></div></div>`;
+      const inner = entry("transition", look.transition).html(w, esc);
       return `<div id="wipe-${i}" class="clip wipe" data-start="${r3(w.at - 0.34)}" data-duration="0.82" data-track-index="5">${inner}</div>`;
     })
     .join("\n");
@@ -533,6 +526,7 @@ function page(fmt, body, duration, extraHead = "") {
 <style>
 ${fontFaces}
 ${readFileSync(join(ROOT, "template/style.css"), "utf8")}
+${lookCss(look)}
 ${look.accent ? `:root{--yellow:${look.accent}}` : ""}
 </style>
 ${extraHead}
@@ -551,37 +545,15 @@ ${body}
 function buildMix(outFile) {
   const sfxDir = resolve(ROOT, config.sfx.dir);
   const sfxMeta = read(join(sfxDir, "manifest.json"));
-  // Seconds from the start of each effect file to its loudest point, so the PEAK lands on the hit.
-  const PEAK = {
-    whoosh: 0.164,
-    "whoosh-short": 0.164,
-    "impact-bass-1": 0.077,
-    "impact-bass-2": 0.6,
-    "click-soft": 0.053,
-    pop: 0.122,
-    ping: 0.03,
-    chime: 0.05,
-  };
-  const C = config.sfx.cues;
   const cues = [
-    [C.open, 0.25, 1.0],
-    ...wipes.map((w) => [C.storyIn, w.at, 0.8]),
-    ...storySegs.map((s) => [C.rankHit, s.start + 0.3, 0.55]),
-    ...storySegs.map((s) => [C.statHit, s.statAt + 0.1, 0.5]),
-    [C.outro, outro.start + 0.4, 0.8],
+    [CUES.open, 0.25, 1.0],
+    ...wipes.map((w) => [CUES.storyIn, w.at, 0.8]),
+    ...storySegs.map((s) => [CUES.rankHit, s.start + 0.3, 0.55]),
+    ...storySegs.map((s) => [CUES.statHit, s.statAt + 0.1, 0.5]),
+    [CUES.outro, outro.start + 0.4, 0.8],
   ];
-  if (look.intro === "countdown")
-    for (const [i] of script.stories.entries())
-      cues.push([C.tick, 1.3 + i * 0.2 + 0.1, 0.7]);
-  if (look.intro === "headline-stack")
-    for (const [i] of script.stories.entries())
-      cues.push([C.tick, 0.25 + i * 0.22 + 0.1, 0.7]);
-  if (look.intro === "grid") {
-    for (const [i] of script.stories.entries())
-      cues.push([C.tick, 0.8 + i * 0.3, 0.7]);
-    for (const f of introFocus) cues.push([C.tick, f.at - 0.05, 0.8]);
-  }
-  if (look.intro === "date-slam") cues.push([C.rankHit, 0.45, 0.9]);
+  for (const [cue, at, gain] of entry("intro", look.intro).cues(introCtx))
+    cues.push([CUES[cue], at, gain]);
 
   const inputs = [];
   const filters = [];
@@ -771,6 +743,7 @@ for (const fmt of formatsOf(cut, config)) {
       ? `<audio id="mix" src="audio/mix.wav" data-start="0" data-duration="${total}" data-track-index="9" data-volume="1"></audio>`
       : "",
     `<script>window.__DN=${JSON.stringify(D)};</script>`,
+    `<script>${lookScript(look)}</script>`,
     `<script>${motion}</script>`,
   ].join("\n");
 
