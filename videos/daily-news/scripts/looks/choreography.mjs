@@ -85,7 +85,7 @@ export const CHOREOGRAPHIES = [
       tl.fromTo(
         h.$(".media", sc),
         { clipPath: "inset(50% 50% 50% 50%)" },
-        { clipPath: "inset(0% 0% 0% 0%)", duration: 0.9, ease: "expo.inOut" },
+        { clipPath: "inset(0% 0% 0% 0%)", duration: 0.8, ease: "expo.out" },
         t
       );
       h.$$(".media img", sc).forEach((img) => {
