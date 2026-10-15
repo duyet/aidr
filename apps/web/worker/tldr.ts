@@ -1,6 +1,6 @@
 import { dayBoundsSec } from "../src/lib/day-archive.js";
-import { selectEdition } from "./digest/select.js";
 import { stripTitleMarker } from "../src/lib/plain-text.js";
+import { selectEdition } from "./digest/select.js";
 import { generateTldr, type TldrBullet } from "./llm.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
 import { AUDIENCE_TIMEZONE, toEpochSeconds } from "./time.js";
