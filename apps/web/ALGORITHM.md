@@ -1985,6 +1985,8 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 
 - Streaming SSE (bypasses anyrouter's queue for long prompts).
 - JSON mode.
+- `temperature` 0, except on `anthropic/` ids: current Claude ids (5.5)
+  reject it with a 400.
 - `max_tokens` 8192 (2048 on translate).
 - Reasoning-model fallback (extracts JSON from `message.reasoning` when
   content is starved).
@@ -2004,13 +2006,19 @@ then this chat chain:
 - `google/gemma-latest` (rolling alias, served `gemma-4-31b` on 2026-10-10)
 - `z-ai/glm-latest` (rolling alias, served `glm-5.2`)
 - `@preset/aidr` (workspace preset, served `gemma-4-31b` on 2026-10-10)
-- `anyrouter/auto` (router safety net, always last; served Laguna)
+- `anyrouter/auto` (router safety net, after the free ids; served Laguna)
+- `anthropic/claude-sonnet-5-5` (paid last resort, usable on this key since
+  2026-10-15; the 100 calls that reached `anyrouter/auto` in the 7 days
+  before got nothing from it)
 
 This chain also runs the cluster call. On the gold cluster set, Laguna
 scored F1 0.51, while Gemma, GLM 5.2 and the preset scored 1.0. TL;DR uses
 `openai/gpt-5.6-luna`, then Laguna (`anyrouter/auto` served 0 of 26 tldr
 calls over 7 days). Translate, summarize and the VI→EN generator run
-Laguna, then `google/gemma-latest`. On 2026-10-14 `google/gemini-3-flash`
+Laguna, then `google/gemma-latest`. Claude Sonnet stays off those chains
+and TL;DR. A third id there shrinks the head hop: translate's 50s slice in
+a 70s batch becomes 30s, and luna's EN-only TL;DR retry can drop from 40s to
+20s. The VI→EN generator keeps only its first 2 ids. On 2026-10-14 `google/gemini-3-flash`
 stopped serving (404, 502) and the `gemma-4-31b` :free route had served
 nothing since 10-12, so both left every chain (#663). The rolling
 aliases follow new models without a deploy, so re-probe what they serve
