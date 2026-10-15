@@ -33,6 +33,7 @@ import {
 } from "../mail/render.js";
 import { ensureMailSchema } from "../mail/schema.js";
 import { digestFrom, sendSubscriberEmail } from "../mail/send.js";
+import { recordMailStat } from "../mail/stats.js";
 import { canonicalizeMediaImageUrl } from "../media.js";
 import type { Env } from "../types.js";
 import {
@@ -632,14 +633,18 @@ export async function sendEmailLane(
     });
     if (!ok) {
       failed++;
+      await recordMailStat(env.DB, "failed", lang, now);
       continue;
     }
 
-    await env.DB.prepare(
-      "UPDATE subscribers SET last_sent_date = ? WHERE email = ?"
+    // Count only when the stamp moves: a retry that finds it already set
+    // (or a duplicate row) must not add a second `sent`.
+    const stamp = await env.DB.prepare(
+      "UPDATE subscribers SET last_sent_date = ? WHERE email = ? AND last_sent_date IS NOT ?"
     )
-      .bind(localDate, sub.email)
+      .bind(localDate, sub.email, localDate)
       .run();
+    if (stamp.meta?.changes) await recordMailStat(env.DB, "sent", lang, now);
     sent++;
     stampedDate = edition.date;
   }
@@ -844,13 +849,15 @@ export async function sendWeeklyLane(
     }
     if (!ok) {
       failed++;
+      await recordMailStat(env.DB, "failed", lang, now);
       continue;
     }
-    await env.DB.prepare(
-      "UPDATE subscribers SET last_weekly_sent = ? WHERE email = ?"
+    const stamp = await env.DB.prepare(
+      "UPDATE subscribers SET last_weekly_sent = ? WHERE email = ? AND last_weekly_sent IS NOT ?"
     )
-      .bind(end, sub.email)
+      .bind(end, sub.email, end)
       .run();
+    if (stamp.meta?.changes) await recordMailStat(env.DB, "sent", lang, now);
     sent++;
   }
   return { sent, failed };

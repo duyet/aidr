@@ -14,6 +14,7 @@ import { CardData, CardSkeleton } from "./CardData";
 import { ChartCard } from "./ChartCard";
 import { DailyMetricChart } from "./DitherCharts";
 import { API } from "./endpoints";
+import { MailStatsCard } from "./MailStatsCard";
 import { StatTile, StatTileSkeleton } from "./StatTile";
 import { TAB_PANEL } from "./tab-spacing";
 
@@ -331,6 +332,7 @@ function SubscriberCards({ subs }: { subs: SubscriberAudience }) {
           emptyLabel="No signup sources recorded yet."
         />
       </ChartCard>
+      <MailStatsCard />
       <ChartCard title="Subscribers by language" subtitle="Digest language">
         <BarList
           data={(subs.byLang ?? []).map((l) => ({

@@ -302,6 +302,20 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
 - Rollback: deploy the previous Worker; `DROP TABLE ext_events;`. Nothing
   else holds a value derived from it.
 
+## 0067_mail_daily_stats.sql
+
+- Change: new table `mail_daily_stats`, one row per UTC day and digest
+  language with `sent`, `failed` and `unsubscribed` counts and nothing that
+  identifies a subscriber. Written by the daily and weekly send lanes and
+  by unsubscribe (`worker/mail/stats.ts`); read by
+  `GET /api/system/mail-stats` (28 days).
+- Risk: none for existing rows. Apply it before or after the Worker
+  deploys: until it exists every write is skipped silently, sending and
+  unsubscribing are unaffected, and the card answers as if empty. Days sent
+  before it is applied are never counted.
+- Rollback: deploy the previous Worker; `DROP TABLE mail_daily_stats;`.
+  Nothing else holds a value derived from it.
+
 ## 0066_item_summary_checked.sql
 
 - Change: adds nullable `items.summary_checked_at` (unix seconds). Nothing

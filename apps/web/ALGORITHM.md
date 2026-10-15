@@ -1730,6 +1730,25 @@ shared tagger is `worker/utm.ts`; Telegram and Facebook use it too (see
 `large` (an image per story), `no-images`, `text`. Admin preview:
 `GET /api/admin/mail/preview?date=&lang=&format=`.
 
+**Delivery counts.** `mail_daily_stats(date, lang, sent, failed,
+unsubscribed)` (0067, one row per UTC day and language, no address or
+per-subscriber row, no tracking pixel) is written by `recordMailStat`
+(`worker/mail/stats.ts`) as an UPSERT. `sent` is counted only when the
+stamp moves: the lane runs `UPDATE subscribers SET last_sent_date = ? ...
+AND last_sent_date IS NOT ?` (`last_weekly_sent` for the weekly lane) and
+counts only when that changed a row. A send retried for the same
+subscriber and day, such as a run that mailed and died before its own
+bookkeeping, finds the stamp already set and adds nothing (the email can
+still repeat; the count cannot). A crash between the stamp and the UPSERT
+undercounts by one and never overcounts. `failed` counts failed attempts,
+so a subscriber who fails on three runs adds three; it cannot be deduped
+without storing who failed. `unsubscribed` is counted when the `DELETE`
+removed a row, so a repeated click adds nothing. A write error is logged
+and dropped, and a missing table (before 0067) is silent, so counting never
+stops a send or an unsubscribe. `GET /api/system/mail-stats` sums the last
+28 days per language for the /data Audience tab ("Digest delivery"); it
+answers empty until 0067 is applied.
+
 **Weekly frequency.** `subscribers.frequency` is `daily` (default) or
 `weekly`, and `subscribers.weekly_day` (0 = Sunday … 6, default 1 = Monday)
 is the local weekday a weekly subscriber wants the mail

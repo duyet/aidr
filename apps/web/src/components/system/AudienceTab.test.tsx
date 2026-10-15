@@ -19,6 +19,12 @@ vi.mock("@aidr/ui", async (importOriginal) => ({
   ),
 }));
 
+// The card has its own endpoint and its own test; here it is a marker, since
+// this file answers every useSystemData call with the audience payload.
+vi.mock("./MailStatsCard", () => ({
+  MailStatsCard: () => <div data-testid="mail-stats-card" />,
+}));
+
 const mockUseSystemData = vi.mocked(useSystemData);
 
 afterEach(() => {
@@ -104,6 +110,17 @@ describe("AudienceTab", () => {
     expect(screen.getByText("90")).toBeTruthy();
     expect(screen.getByText("7.8%")).toBeTruthy();
     expect(screen.getByText("Subscribers")).toBeTruthy();
+  });
+
+  it("shows the digest delivery card beside the signup sources", () => {
+    respondWith({ data: statsWith({ status: "available" }, { confirmed: 1 }) });
+    render(<AudienceTab lang="en" />);
+
+    const sources = screen
+      .getByText("Subscribers by signup source")
+      .closest("section, div[class]");
+    expect(sources).toBeTruthy();
+    expect(screen.getByTestId("mail-stats-card")).toBeTruthy();
   });
 
   it("states an unconfigured GA4 instead of claiming a zero audience", () => {
