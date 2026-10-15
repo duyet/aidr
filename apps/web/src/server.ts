@@ -26,7 +26,7 @@ import {
   handleHomeMarkdownRequest,
   isHomeMarkdownPath,
 } from "./lib/home-markdown";
-import { llmsTxtResponse } from "./lib/llms-txt";
+import { llmsFullTxtResponse, llmsTxtResponse } from "./lib/llms-txt";
 import {
   apiErrorResponse,
   LOCALE_PRIVATE_CACHE_CONTROL,
@@ -202,6 +202,9 @@ export default {
     }
     if (path === "/llms.txt") {
       return llmsTxtResponse();
+    }
+    if (path === "/llms-full.txt") {
+      return llmsFullTxtResponse(await resolveDb(env));
     }
     const discovery = await handleAgentDiscovery(request);
     if (discovery) return discovery;

@@ -4,10 +4,13 @@
  * still gets HTML; and both carry `Vary: Accept` so Workers Cache, which
  * serves hits before the Worker runs, keeps the two apart.
  */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import handler from "@tanstack/react-start/server-entry";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../worker/types";
 import { archiveDateOfSec } from "./lib/day-archive";
+import { llmsTxt } from "./lib/llms-txt";
 
 vi.mock("@tanstack/react-start/server-entry", () => ({
   default: { fetch: vi.fn() },
@@ -184,5 +187,79 @@ describe("Markdown URL aliases", () => {
     expect(body).toContain(
       `1. [OpenAI ships a faster reasoning model](https://aidr.today/a1b2c3d4?lang=en) — Models · example.com · ${new Date(PUBLISHED_AT * 1000).toISOString().replace(".000", "")}`
     );
+  });
+});
+
+describe("every llms.txt link reaches a real route", () => {
+  // A link an agent follows must land on a Worker surface or a declared
+  // page route, never on the SPA's not-found catch-all.
+  const routeSource = readFileSync(
+    fileURLToPath(new URL("./routeTree.gen.ts", import.meta.url)),
+    "utf8"
+  );
+  const block = /interface FileRoutesByFullPath \{([^}]*)\}/.exec(
+    routeSource
+  )?.[1];
+  const declared = [...(block ?? "").matchAll(/'([^']+)':/g)]
+    .map((match) => match[1] as string)
+    .filter((path) => !["/$", "/$slug", "/$cat/$slug"].includes(path))
+    .map(
+      (path) =>
+        new RegExp(
+          `^${path
+            .replace(/\/$/, "")
+            .replace(/\/\$$/, "(?:/.*)?")
+            .replace(/\$[a-z]+/gi, "[^/]+")}/?$`
+        )
+    );
+
+  it("parses the generated route table", () => {
+    expect(declared.length).toBeGreaterThan(20);
+  });
+
+  it("serves each aidr link from the Worker or a declared route", async () => {
+    const links = [
+      ...llmsTxt().matchAll(/\]\((https:\/\/aidr\.today[^)\s]*)\)/g),
+    ].map((match) => new URL(match[1] as string));
+    expect(links.length).toBeGreaterThan(30);
+    for (const url of links) {
+      vi.mocked(handler.fetch).mockClear();
+      await fetchPath(`${url.pathname}${url.search}`, "*/*");
+      if (!vi.mocked(handler.fetch).mock.calls.length) continue;
+      const path = url.pathname;
+      const isStory = /^\/[0-9a-f]{8}$/.test(path);
+      expect(
+        isStory || declared.some((route) => route.test(path)),
+        `${path} fell through to the SPA catch-all`
+      ).toBe(true);
+    }
+  });
+});
+
+describe("/llms-full.txt", () => {
+  it("is llms.txt followed by today's edition", async () => {
+    const response = await fetchPath("/llms-full.txt", "*/*");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toContain("public");
+    const body = await response.text();
+    expect(body.startsWith(llmsTxt())).toBe(true);
+    expect(body).toContain("# AI;DR: today's ranked AI news");
+    expect(body).toContain("[OpenAI ships a faster reasoning model]");
+  });
+
+  // An agent's context file must not 500 because D1 hiccuped.
+  it("serves the map alone when the edition cannot be read", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const broken = {
+      prepare: () => {
+        throw new Error("D1 unavailable");
+      },
+    } as unknown as D1Database;
+    const response = await server.fetch(
+      new Request("https://aidr.today/llms-full.txt"),
+      { DB: broken } as unknown as Env
+    );
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe(llmsTxt());
   });
 });
