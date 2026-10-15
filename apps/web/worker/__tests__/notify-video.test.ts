@@ -585,7 +585,7 @@ describe("Telegram video delivery", () => {
     );
     expect(result).toMatchObject({ ok: true, messageId: "3" });
     expect(result.error).toBe(
-      "fallback ok: video:oversized; sendPhoto:bad photo; sendPhoto(card):bad photo; photo:none_sent"
+      "fallback ok: video:oversized; sendPhoto:bad photo; photo:none_sent"
     );
   });
 
