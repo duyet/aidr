@@ -1527,6 +1527,8 @@ const STRAY_COPY = id(0xfc);
 const STRAY_D = id(0xfd);
 const LATE_LIVE = id(0xfe);
 const LATE_D = id(0xff);
+const REWORD_LIVE = id(0xe2);
+const REWORD_D = id(0xe3);
 const T = OLD - 10 * 86_400;
 const HOUR = 3600;
 const MUSE_SLUG =
@@ -1650,6 +1652,32 @@ async function writeMissedCopies(target: DatabaseSync) {
     ],
     "vwx234",
     T + 5000 + 77 * HOUR + 100
+  );
+
+  await writeCanonical(
+    target,
+    story(
+      REWORD_LIVE,
+      "the-decoder",
+      "Google Deepmind's Dream-RSI helps AI agents improve by “dreaming” about past attempts",
+      T + 6000,
+      "deepmind-dream-rsi"
+    ),
+    T + 6100
+  );
+  await writeRun(
+    target,
+    [
+      aggregatorCopy(
+        REWORD_D,
+        "marketbrief",
+        "google-deepmind-dream-rsi-boosts-ai-performance-209x-6415fdd4",
+        "Google DeepMind Dream-RSI Boosts AI Performance 2.09x Without Changing Model Weights",
+        T + 6000 + 70 * HOUR
+      ),
+    ],
+    "yz123",
+    T + 6000 + 70 * HOUR + 100
   );
 
   const page = "https://openai.example.test/index/mentalhealthbench";
@@ -1797,6 +1825,16 @@ describe("unmerge of dangling merges: live copies under another form (#794)", ()
       action: "skip",
       reason: "needs-decision",
       candidates: [expect.objectContaining({ id: LATE_LIVE })],
+    });
+  });
+
+  it("holds a reworded headline that shares four evidence words with a live story", async () => {
+    expect(
+      outcomesOf(await unmergeItems(env, { dangling: true })).get(REWORD_D)
+    ).toMatchObject({
+      action: "skip",
+      reason: "needs-decision",
+      candidates: [expect.objectContaining({ id: REWORD_LIVE })],
     });
   });
 

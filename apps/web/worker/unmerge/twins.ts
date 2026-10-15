@@ -14,6 +14,7 @@
  */
 import {
   articleId,
+  evidenceTokens,
   isTitleNearDuplicate,
   normalizeTitleForDedupe,
   significantTitleTokens,
@@ -70,6 +71,7 @@ interface TitleKey {
   raw: string;
   normalized: string;
   tokens: Set<string>;
+  evidence: Set<string>;
 }
 
 function titleKey(raw: string): TitleKey {
@@ -77,6 +79,7 @@ function titleKey(raw: string): TitleKey {
     raw,
     normalized: normalizeTitleForDedupe(raw),
     tokens: significantTitleTokens(raw),
+    evidence: evidenceTokens(raw),
   };
 }
 
@@ -143,6 +146,18 @@ export function sameStoryRule(a: StoryRef, b: StoryRef): TwinRule | null {
   return null;
 }
 
+/** The two titles `a` and `b` compare in: their own in one language, the
+ * English ones across languages (null while a translation is missing). */
+function comparedTitles(a: StoryRef, b: StoryRef): [TitleKey, TitleKey] | null {
+  const ka = keysOf(a);
+  const kb = keysOf(b);
+  const pair =
+    isVietnamese(a) === isVietnamese(b)
+      ? [ka.title, kb.title]
+      : [ka.english, kb.english];
+  return pair[0] && pair[1] ? [pair[0], pair[1]] : null;
+}
+
 /** The title pass's near-duplicate rule inside the merge lookback ("Reddit
  * is killing RSS feeds…" and "Reddit Ends RSS…"). Three shared tokens alone
  * flagged 30 of the #728 pairs, mostly unrelated stories that share "AI",
@@ -158,19 +173,37 @@ export function isLikelySameEvent(
   windowSec = MERGE_LOOKBACK_SEC
 ): boolean {
   if (!withinLookback(a, b, windowSec)) return false;
-  const ka = keysOf(a);
-  const kb = keysOf(b);
-  const [ta, tb] =
-    isVietnamese(a) === isVietnamese(b)
-      ? [ka.title, kb.title]
-      : [ka.english, kb.english];
-  if (!ta || !tb) return false;
+  const titles = comparedTitles(a, b);
+  if (!titles) return false;
+  const [ta, tb] = titles;
   if (ta.normalized !== "" && ta.normalized === tb.normalized) return true;
   // `isTitleNearDuplicate` needs two shared significant tokens beyond an
   // exact match; most pairs share fewer, so skip its re-tokenizing.
   let shared = 0;
   for (const token of ta.tokens) if (tb.tokens.has(token)) shared++;
   return shared >= 2 && isTitleNearDuplicate(ta.raw, tb.raw);
+}
+
+/** Headlines that share this many evidence words (names, numbers with
+ * units, uncommon words) report one event however they are worded:
+ * "Google DeepMind Dream-RSI Boosts AI Performance…" and "Google Deepmind's
+ * Dream-RSI helps AI agents improve…" share google, deepmind, dream, rsi.
+ * Three shared words paired many stories of one company. Four still pair a
+ * few (an Anthropic CEO memo and a dinner, both "White House"), which a
+ * human then separates with `distinctFrom`. */
+const SHARED_EVIDENCE_MIN = 4;
+
+/** A reworded headline of the same event, which `isTitleNearDuplicate`'s
+ * overlap ratio misses. Only ever a reason to hold a story for a human. */
+export function sharesHeadlineEvidence(a: StoryRef, b: StoryRef): boolean {
+  if (!withinLookback(a, b, TWIN_WINDOW_SEC)) return false;
+  const titles = comparedTitles(a, b);
+  if (!titles) return false;
+  let shared = 0;
+  for (const token of titles[0].evidence) {
+    if (titles[1].evidence.has(token)) shared++;
+  }
+  return shared >= SHARED_EVIDENCE_MIN;
 }
 
 export interface TwinMatch<T extends StoryRef = StoryRef> {
@@ -195,7 +228,11 @@ export function twinMatches<T extends StoryRef>(
       null;
     if (
       rule !== null ||
-      rows.some((row) => isLikelySameEvent(row, ref, TWIN_WINDOW_SEC))
+      rows.some(
+        (row) =>
+          isLikelySameEvent(row, ref, TWIN_WINDOW_SEC) ||
+          sharesHeadlineEvidence(row, ref)
+      )
     ) {
       out.push({ ref, rule });
     }
