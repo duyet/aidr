@@ -110,6 +110,10 @@ describe("parseUnmergePairs", () => {
       { sameAs: "abc" },
       { distinct: false },
       { sameAs: c, distinct: true },
+      { sameAs: c, distinctFrom: [hex(4)] },
+      { distinctFrom: [] },
+      { distinctFrom: hex(4) },
+      { distinctFrom: ["abc"] },
     ]) {
       expect(
         parseUnmergePairs([{ canonicalId: a, mergedId: b, ...extra }])
@@ -147,6 +151,12 @@ describe("toWirePair", () => {
     const file = [
       { canonicalId: hex(1), mergedId: hex(2), group: "g1", sameAs: hex(3) },
       { canonicalId: hex(1), mergedId: hex(4), group: "g2", distinct: true },
+      {
+        canonicalId: hex(1),
+        mergedId: hex(5),
+        group: "g3",
+        distinctFrom: [hex(6)],
+      },
     ];
     const cli = parseUnmergePairs(file);
     if ("error" in cli) throw new Error(cli.error);
@@ -154,9 +164,10 @@ describe("toWirePair", () => {
       JSON.stringify({ pairs: cli.pairs.map(toWirePair) })
     );
     expect(parseUnmergePairs(body.pairs)).toEqual(cli);
-    expect(cli.pairs.map((p) => p.decision?.kind)).toEqual([
-      "same-as",
-      "distinct",
+    expect(cli.pairs.map((p) => p.decision)).toEqual([
+      { kind: "same-as", twinId: hex(3) },
+      { kind: "distinct", from: [] },
+      { kind: "distinct", from: [hex(6)] },
     ]);
   });
 });
@@ -682,12 +693,12 @@ describe("planUnmerge: a restored story already live as another row", () => {
     expect(result.canonicals[0].rows).toEqual([]);
   });
 
-  it("follows the pair's decision: distinct publishes it, sameAs re-points it", () => {
-    const distinct = plan(
+  it("follows the pair's decision: distinctFrom publishes it, sameAs re-points it", () => {
+    const distinctFrom = plan(
       [canonical, moonshot, decoder],
-      [pair(moonshot, { distinct: true })]
+      [pair(moonshot, { distinctFrom: [decoder.id] })]
     );
-    expect(distinct.canonicals[0].pairs[0].outcome).toMatchObject({
+    expect(distinctFrom.canonicals[0].pairs[0].outcome).toMatchObject({
       action: "restore",
       status: "published",
     });
@@ -700,6 +711,49 @@ describe("planUnmerge: a restored story already live as another row", () => {
       twinId: decoder.id,
       rule: "same-as",
     });
+  });
+
+  // #749 and #790 wrote `distinct: true` on every pair to mean "not the
+  // canonical's story"; about 18 of #790's restores were live elsewhere.
+  it("holds a distinct pair whose story is likely live as another row", () => {
+    const result = plan(
+      [canonical, moonshot, decoder],
+      [pair(moonshot, { distinct: true })]
+    );
+    expect(result.canonicals[0].pairs[0].outcome).toMatchObject({
+      action: "skip",
+      reason: "needs-decision",
+      candidates: [storyRef(decoder)],
+    });
+  });
+
+  it("re-points a distinct pair to a live row with its identity, even one distinctFrom names", () => {
+    for (const decision of [{ distinct: true }, { distinctFrom: [twin.id] }]) {
+      const result = plan(
+        [canonical, hidden, twin],
+        [pair(hidden, decision)],
+        [self(hidden.url)]
+      );
+      expect(result.canonicals[0].pairs[0].outcome).toEqual({
+        action: "repoint",
+        twinId: twin.id,
+        rule: "aggregator-slug",
+      });
+    }
+  });
+
+  it("lets distinct overrule identity with the canonical only", () => {
+    const sameTitle = item(39, "techcrunch-ai", "https://example.test/t", {
+      title: canonical.title,
+    });
+    expect(
+      plan([canonical, sameTitle], [pair(sameTitle)]).canonicals[0].pairs[0]
+        .outcome
+    ).toMatchObject({ action: "skip", reason: "twin-is-canonical" });
+    expect(
+      plan([canonical, sameTitle], [pair(sameTitle, { distinct: true })])
+        .canonicals[0].pairs[0].outcome
+    ).toMatchObject({ action: "restore", status: "published" });
   });
 
   it("never treats a feed's reused title as the same story", () => {

@@ -669,6 +669,64 @@ describe("unmerge", () => {
     oracle.close();
   });
 
+  // #749 and #790 put `distinct: true` on every pair to say "not the same
+  // story as its canonical". Restoring such a row next to a live copy of its
+  // own story shows that story twice.
+  it("a distinct pair still joins a live copy of its story: distinct judges the canonical only", async () => {
+    const { hidden, live } = australiaCopies(OLD + 7000);
+    await writeCluster(db, [hidden], { id: C, row: canonical }, OLD + 9600);
+    await writeCanonical(db, live, OLD + 9700);
+    const published = () =>
+      db
+        .prepare("SELECT id FROM items WHERE status = 'published' ORDER BY id")
+        .all();
+    const publishedBefore = published();
+
+    const result = await unmergeItems(env, {
+      pairs: [{ canonicalId: C, mergedId: HIDDEN, distinct: true }],
+      dryRun: false,
+    });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.plan.canonicals[0].pairs[0].outcome).toEqual({
+      action: "repoint",
+      twinId: LIVE,
+      rule: "aggregator-slug",
+    });
+    expect(published()).toEqual(publishedBefore);
+    expect(shape(db, HIDDEN)).toMatchObject({
+      status: "merged",
+      duplicate_of: LIVE,
+    });
+  });
+
+  it("a distinct pair whose story is likely live under another URL waits for a decision", async () => {
+    const { hidden } = australiaCopies(OLD + 7000);
+    await writeCluster(db, [hidden], { id: C, row: canonical }, OLD + 9600);
+    await writeCanonical(
+      db,
+      row(LIVE, "the-decoder", {
+        url: "https://the-decoder.com/anthropic-australia-ai-agent-breach-laws/",
+        title: "Anthropic backs Australian laws on AI agent breach reporting",
+        publishedAt: OLD + 7000,
+        points: 2,
+        sources: [],
+      }),
+      OLD + 9700
+    );
+    const before = tables(db);
+
+    const result = await unmergeItems(env, {
+      pairs: [{ canonicalId: C, mergedId: HIDDEN, distinct: true }],
+      dryRun: false,
+    });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.plan.canonicals[0].pairs[0].outcome).toMatchObject({
+      action: "skip",
+      reason: "needs-decision",
+    });
+    expect(tables(db)).toEqual(before);
+  });
+
   it("writes nothing when the live copy was taken down after the plan was read", async () => {
     const { hidden, live } = australiaCopies(OLD + 7000);
     await writeCluster(db, [hidden], { id: C, row: canonical }, OLD + 9600);

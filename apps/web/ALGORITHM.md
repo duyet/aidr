@@ -247,11 +247,20 @@ locally from production D1 through `wrangler d1 execute`, SELECT only, and
   would. A live row with a picture of its own keeps it. A row whose title is
   only a near-duplicate (the title pass's rule) is likely the same event, so
   the group waits as `needs-decision` until the pairs file says
-  `"sameAs": "<id>"` (re-point to that row) or `"distinct": true`
-  (publish). A group under the relevance bar restores as `rejected` and
-  needs no decision. A live twin inside the quiet window, written by
-  another batch of the request, or restored by an earlier group of the
-  same request defers the group to a rerun.
+  `"sameAs": "<id>"` (re-point to that row) or `"distinctFrom": ["<id>"]`
+  (a different story; publish unless another live row matches). A group
+  under the relevance bar restores as `rejected` and needs no decision. A
+  live twin inside the quiet window, written by another batch of the
+  request, or restored by an earlier group of the same request defers the
+  group to a rerun.
+- `"distinct": true` says only that the group is not its canonical's story:
+  it overrules an identity match with the canonical (`twin-is-canonical`)
+  and nothing else. The live-row check above still runs for every group, so
+  a `distinct` row that is live as another id re-points or waits, and never
+  publishes a second copy. An identity match with a live row other than the
+  canonical is never overruled, not even by `distinctFrom`. Until #790 the
+  plan skipped the live-row check for a `distinct` pair, and the #749
+  fixture, all `distinct`, was applied that way.
 - The canonical loses the sources, assets, tags and points attributable to
   the removed items. Source rows are attributed by URL, by an HN/Lobsters
   discussion's `posted_at`, and by position (a tweet run belongs to the
