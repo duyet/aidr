@@ -937,6 +937,31 @@ Batches of 5.
   category is one choice from the fixed 10-value enum (legal stories use
   Regulation), plus one entity tag and one theme tag from fixed 10-value
   enums (`none` is dropped).
+- The importance bands say what a story is, never who published it, so
+  a big lab's small repo does not inherit its flagship's score. 9-10 is
+  rare: a leading lab's new-generation flagship, a major new model family,
+  a law or government action that changes what labs may build or sell,
+  or a market-wide event.
+  It excludes point updates, cheaper tiers, variants, and one company's
+  deal, funding, price or forecast. 7-8 is a new numbered version of a
+  major model line, a state-of-the-art claim on a recognised benchmark,
+  frontier-scale open weights, a notable controversy or a major
+  regulatory action. There is no floor for "any model release". 4-6
+  holds variants whoever ships them (a Lite or Mini cut, a speed or
+  pricing mode, a single small checkpoint), routine releases from smaller labs, reported results
+  of unreleased models, and consumer gadgets, stock moves and supplier
+  earnings whose AI angle is incidental. Two anchors in
+  `IMPORTANCE_ANCHORS` reach both scorers. A provider's own price cut,
+  free tier or big discount on a major model is 6-7, and a reseller
+  promo, affiliate deal or free-credit offer is 1-3. A notable controversy
+  (a leadership fight at a leading lab, a lawsuit between major players,
+  a safety incident, a leak with real consequences) is 7-8, and gossip is
+  1-3. 9-10 stays rare because 8+ gets `BREAKING_BOOST` and 9+
+  (`TRENDING_BURST_MIN_IMPORTANCE`) skips the daily trending cap.
+  `scripts/fixtures/importance-eval.json` labels each named case, and
+  `scripts/importance-eval.ts --compare` checks a change against it. The
+  2026-10-16 change was not run through it, because no non-production
+  key was available (#656).
 - Neither System One hop emits a free-form tag list.
 - Categories: chat picks one of 14 — ten core (Models, Regulation,
   Products, Agents, Research, Industry, Infra, Releases, Chips, Funding)
