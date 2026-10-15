@@ -5,6 +5,7 @@ import {
   isEventName,
   SINKS,
 } from "./events";
+import { GA_MEASUREMENT_ID } from "./measurement-id";
 import { normalizeParams } from "./schema";
 import { gaPageFields } from "./url-privacy";
 
@@ -47,7 +48,7 @@ export function track<N extends BrowserEventName>(
       // The `set` also reaches the gateway's own hits (scroll, engagement)
       // that follow, and moves with each SPA navigation.
       gtag("set", gaPageFields());
-      gtag("event", name, clean);
+      gtag("event", name, { ...clean, send_to: GA_MEASUREMENT_ID });
     }
     // `surface` tells browser events apart from future Worker events; GA4
     // only ever sees browser events, so only PostHog gets it.

@@ -10,6 +10,7 @@
  * the LCP paint (`afterLcpPaint`) while hydrate-time events still land.
  */
 
+import { GA_MEASUREMENT_ID } from "./measurement-id";
 import { maskRecordedRequest, scrubPosthogEvent } from "./url-privacy";
 
 export const POSTHOG_STUB_METHODS =
@@ -23,7 +24,6 @@ export type PosthogStubConfig = {
 };
 
 export type AnalyticsStubOptions = {
-  gaMeasurementId: string;
   posthog?: PosthogStubConfig;
 };
 
@@ -49,18 +49,33 @@ export function posthogArrayScriptUrl(host: string): string {
   return `${host.replace(".i.posthog.com", "-assets.i.posthog.com")}/static/array.js`;
 }
 
-function installGtagStub(w: AnalyticsWindow, measurementId: string): void {
-  if (typeof w.gtag === "function") return;
+function hasConfig(dataLayer: unknown[], measurementId: string): boolean {
+  return dataLayer.some((entry) => {
+    const args = entry as ArrayLike<unknown> | null;
+    return args?.[0] === "config" && args[1] === measurementId;
+  });
+}
+
+/**
+ * The Cloudflare tag gateway defines `gtag` and configures its own id before
+ * this runs (#703). Reusing its queue is fine, but the app's id still needs
+ * its own `config`, or no event of ours ever reaches it.
+ */
+function installGtagStub(w: AnalyticsWindow): void {
   w.dataLayer = w.dataLayer || [];
   const dataLayer = w.dataLayer;
-  // gtag.js only replays `arguments` objects from dataLayer; a plain array
-  // is ignored, so this cannot be an arrow with rest args.
-  w.gtag = function gtag() {
-    // biome-ignore lint/complexity/noArguments: see above
-    dataLayer.push(arguments);
-  };
-  w.gtag("js", new Date());
-  w.gtag("config", measurementId, { send_page_view: false });
+  if (typeof w.gtag !== "function") {
+    // gtag.js only replays `arguments` objects from dataLayer; a plain array
+    // is ignored, so this cannot be an arrow with rest args.
+    w.gtag = function gtag() {
+      // biome-ignore lint/complexity/noArguments: see above
+      dataLayer.push(arguments);
+    };
+    w.gtag("js", new Date());
+  }
+  if (!hasConfig(dataLayer, GA_MEASUREMENT_ID)) {
+    w.gtag("config", GA_MEASUREMENT_ID, { send_page_view: false });
+  }
 }
 
 /** Port of the PostHog snippet, minus the script tag `init` would inject. */
@@ -118,6 +133,6 @@ function installPosthogStub(w: AnalyticsWindow, cfg: PosthogStubConfig): void {
 export function installAnalyticsStubs(options: AnalyticsStubOptions): void {
   if (typeof window === "undefined") return;
   const w = window as AnalyticsWindow;
-  if (options.gaMeasurementId) installGtagStub(w, options.gaMeasurementId);
+  installGtagStub(w);
   if (options.posthog) installPosthogStub(w, options.posthog);
 }

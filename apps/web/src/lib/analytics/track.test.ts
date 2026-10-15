@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { GA_MEASUREMENT_ID as GA } from "./measurement-id";
 import { type FeedTag, feedTag } from "./schema";
 import { track } from "./track";
 
@@ -30,6 +31,7 @@ describe("track", () => {
     expect(gtag).toHaveBeenCalledWith("event", "source_click", {
       item_id: "deadbeef",
       placement: "row",
+      send_to: GA,
     });
     expect(capture).toHaveBeenCalledWith("source_click", {
       item_id: "deadbeef",
@@ -47,7 +49,10 @@ describe("track", () => {
       utm_source: "telegram",
     };
     track("search", leaky);
-    expect(gtag).toHaveBeenCalledWith("event", "search", { query_len: 4 });
+    expect(gtag).toHaveBeenCalledWith("event", "search", {
+      query_len: 4,
+      send_to: GA,
+    });
   });
 
   it("drops values that fail their kind", () => {
@@ -59,6 +64,7 @@ describe("track", () => {
     });
     expect(gtag).toHaveBeenCalledWith("event", "media_open", {
       media: "image",
+      send_to: GA,
     });
   });
 
@@ -66,7 +72,9 @@ describe("track", () => {
     const { gtag } = sinks();
     // @ts-expect-error runtime guard: "modal" is not a placement
     track("calendar_open", { placement: "modal" });
-    expect(gtag).toHaveBeenCalledWith("event", "calendar_open", {});
+    expect(gtag).toHaveBeenCalledWith("event", "calendar_open", {
+      send_to: GA,
+    });
   });
 
   it("cuts the query and hash off a path, which can carry ?q=", () => {
@@ -78,6 +86,7 @@ describe("track", () => {
     expect(gtag).toHaveBeenCalledWith("event", "page_view", {
       page_path: "/date/2026-10-14",
       page_type: "day",
+      send_to: GA,
     });
   });
 
@@ -92,8 +101,8 @@ describe("track", () => {
     // guard is the second line of defense.
     track("topic_filter", { tag: "<script>" as FeedTag, from: "nav" });
     expect(events(gtag).map((c) => c[2])).toEqual([
-      { tag: "Open Source", from: "nav" },
-      { from: "nav" },
+      { tag: "Open Source", from: "nav", send_to: GA },
+      { from: "nav", send_to: GA },
     ]);
   });
 

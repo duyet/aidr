@@ -11,6 +11,7 @@
  */
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GA_MEASUREMENT_ID } from "./measurement-id";
 import { installAnalyticsStubs, type PosthogStub } from "./stubs";
 import { track } from "./track";
 import { maskRecordedRequest, scrubPosthogEvent } from "./url-privacy";
@@ -65,12 +66,16 @@ afterEach(() => {
 
 describe("track() before the vendor scripts load", () => {
   it("queues the gtag call in dataLayer behind js and config", () => {
-    installAnalyticsStubs({ gaMeasurementId: "G-TEST" });
+    installAnalyticsStubs({});
     track("page_view", { page_path: "/", page_type: "home" });
 
     const calls = dataLayerCalls();
     expect(calls[0][0]).toBe("js");
-    expect(calls[1]).toEqual(["config", "G-TEST", { send_page_view: false }]);
+    expect(calls[1]).toEqual([
+      "config",
+      GA_MEASUREMENT_ID,
+      { send_page_view: false },
+    ]);
     expect(calls[2]).toEqual([
       "set",
       { page_location: `${location.origin}/`, page_referrer: "" },
@@ -78,14 +83,13 @@ describe("track() before the vendor scripts load", () => {
     expect(calls[3]).toEqual([
       "event",
       "page_view",
-      { page_path: "/", page_type: "home" },
+      { page_path: "/", page_type: "home", send_to: GA_MEASUREMENT_ID },
     ]);
     expect(calls).toHaveLength(4);
   });
 
   it("queues the PostHog capture with the init the library replays", () => {
     installAnalyticsStubs({
-      gaMeasurementId: "G-TEST",
       posthog: { token: "phc_test", host: "https://us.i.posthog.com" },
     });
     track("channel_landing", {
@@ -126,7 +130,6 @@ describe("track() before the vendor scripts load", () => {
 
   it("delivers each queued event once after the library loads", () => {
     installAnalyticsStubs({
-      gaMeasurementId: "G-TEST",
       posthog: { token: "phc_test", host: "https://us.i.posthog.com" },
     });
     track("source_click", { item_id: "deadbeef", placement: "row" });
@@ -136,7 +139,6 @@ describe("track() before the vendor scripts load", () => {
 
     // A remount re-runs the install; it must not reset or re-queue.
     installAnalyticsStubs({
-      gaMeasurementId: "G-TEST",
       posthog: { token: "phc_test", host: "https://us.i.posthog.com" },
     });
     expect(w().posthog).toBe(ph);
@@ -153,7 +155,7 @@ describe("track() before the vendor scripts load", () => {
   });
 
   it("installs no PostHog stub when the token is unset", () => {
-    installAnalyticsStubs({ gaMeasurementId: "G-TEST" });
+    installAnalyticsStubs({});
     track("page_view", { page_path: "/", page_type: "home" });
     expect(w().posthog).toBeUndefined();
     expect(dataLayerCalls().filter((c) => c[0] === "event")).toHaveLength(1);
@@ -199,6 +201,7 @@ describe("PageViewTracker landing events at hydrate", () => {
       channel: "telegram",
       page_type: "home",
       page_path: "/",
+      send_to: GA_MEASUREMENT_ID,
     });
   });
 });

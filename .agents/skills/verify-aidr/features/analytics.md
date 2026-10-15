@@ -24,6 +24,7 @@ Preconditions:
 - Runtime event assertions require a real browser or the focused unit suites; HTTP alone cannot observe client-side `gtag` calls.
 
 - **Campaign HTTP proof.** Run `.agents/skills/verify-aidr/bin/verify-aidr drive analytics`. The saved HTML must be 200 for Telegram, email, and `/subscribe` entry points, and the report must show all three channel links.
+- **GA4 destination (#703).** Run `.agents/skills/verify-aidr/bin/verify-aidr drive ga4-tid` after a deploy. It loads a campaign URL in headless Chrome and reads every GA4 hit's `tid`. `ok` needs `channel_landing` on the configured id (`DEFAULT_GA_MEASUREMENT_ID`, or `VERIFY_AIDR_GA_ID`) and no app event on any other id. `searchTermHits` and `enhancedMeasurement` list Enhanced Measurement hits, which only GA4 Admin can turn off. Set `CHROME_BIN` when no system Chrome is installed.
 - **Focused web tests.** Run `pnpm --filter @aidr/web exec vitest run src/lib/analytics src/components/PageViewTracker.test.tsx` (registry, `track()`, landing attribution, URL privacy, web vitals, generated doc).
 - **Extension proof.** Run `pnpm --filter @aidr/extension test` (`js/track.test.js` covers the GET tagging) and `pnpm --filter @aidr/extension verify`.
 - **Browser proof.** In the web and extension pages, inspect the browser analytics queue after load and after a channel click; expect `page_view`, the matching landing event, and `channel_click` with the channel name.

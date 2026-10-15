@@ -75,7 +75,7 @@ describe("GA4 never sees subscribe tokens or search text", () => {
         if (gateway === "before") gatewaySnippet();
         runBootScript();
         if (gateway === "after") gatewaySnippet();
-        installAnalyticsStubs({ gaMeasurementId: "G-HXJPPQVYQN" });
+        installAnalyticsStubs({});
         track("page_view", { page_path: location.pathname, page_type: "home" });
 
         const hits = gaHits();
