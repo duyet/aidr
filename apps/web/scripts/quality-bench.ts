@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { capSourceShare } from "../src/lib/feed-queries";
+import { editionFamilyCeiling, selectEdition } from "../worker/digest/select";
 import {
   familyCapFor,
   pickDiverse,
@@ -300,10 +301,17 @@ function diversityMetric(snap: Snapshot): MetricResult {
   const values: Record<string, number> = {};
   const failures: Failure[] = [];
   const parts: number[] = [];
-  for (const limit of [16, 50]) {
-    const picked = pickDiverse(pool, { limit });
+  // The lists as production picks them: the TL;DR edition's 16 through
+  // `selectEdition` (cap plus one top-tier lift), and a 50 through
+  // `pickDiverse`.
+  const lists = [
+    { limit: 16, pick: selectEdition, maxPerFamily: editionFamilyCeiling(16) },
+    { limit: 50, pick: pickDiverse, maxPerFamily: familyCapFor(50) },
+  ];
+  for (const { limit, pick, maxPerFamily } of lists) {
+    const picked = pick(pool, { limit });
     const top = topFamilyShare(picked);
-    const cap = familyCapFor(limit) / limit;
+    const cap = maxPerFamily / limit;
     const capScore = top.share <= cap ? 1 : cap / top.share;
     const coverage = ratio(top.families, Math.min(limit, raw.families));
     values[`top${limit}_family_share`] = top.share;
