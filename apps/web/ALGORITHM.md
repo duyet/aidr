@@ -823,6 +823,11 @@ candidates. HTML entities in media URLs (including double-escaped `&amp;`
 in query strings) are decoded before storage, so thumbs are real article
 images rather than a broken-src fallback.
 
+- **The trigger is a missing picture, not missing media.** A new item is
+  fetched when its summary is empty or cut off, or when it has no thumbnail:
+  no image asset and no video poster. Posterless videos alone (the-decoder's
+  feed gives `.mp4` files and no image) still fetch the page, whose
+  `og:image` and video posters give the picture (#805).
 - **arXiv has no og:image.** When an item is an `arxiv.org/abs/<id>` page
   and the merged manifest still has no image, enrich fetches
   `arxiv.org/html/<id>` (same safe fetch, timeout, and a 400 KB read cap)
@@ -1333,6 +1338,13 @@ bounded JSON manifest; `image_url` remains the compatibility field.
 Up to 15 older published items missing summary or
 score/tags, and up to 45 missing Vietnamese titles, get
 re-fetched/scored/translated per run until the backlog drains.
+The media part takes up to 15 published rows whose manifest is still the
+0024 column default (`'[]'`, `UNCHECKED_MEDIA_SQL`), newest first. Every
+fetch stores a versioned manifest, even an empty one when the page refused
+the bot (openai.com 403, reuters.com 401) or offered only a logo, so each row
+is fetched once and the queue moves on. A row ingest stored with a manifest
+is not selected; ingest's enrich had its one fetch, except items past that
+run's 20-fetch cap (`MAX_ENRICH_FETCHES`), which are never fetched.
 Translate skips LLM only when explicit `source_lang='vi'` metadata marks a
 native source, retries leftover items one-at-a-time after a batch fail, and
 the VI UI hides the EN badge when the painted title is Vietnamese or

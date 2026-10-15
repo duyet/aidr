@@ -5,6 +5,7 @@ import {
   buildMissingSummaryQuery,
   huggingNewsDetailUrl,
   planBackfillUpdate,
+  UNCHECKED_MEDIA_SQL,
 } from "../backfill.js";
 import { chunk } from "../chunk.js";
 import {
@@ -13,7 +14,7 @@ import {
   prepareTranslationQaInvalidation,
 } from "../d1-bind.js";
 import { fetchOgData } from "../enrich.js";
-import { serializeMediaManifest } from "../media.js";
+import { parseMediaManifest, serializeMediaManifest } from "../media.js";
 import { isMediaManifestSchemaError } from "../media-schema.js";
 import { recordStep } from "../run-stats.js";
 import { fetchStoryDetailByUrl } from "../sources/huggingnews.js";
@@ -109,7 +110,22 @@ async function backfillContentRow(
     },
     fetched
   );
-  if (!plan) return;
+  if (!plan) {
+    // Nothing usable came back (a 401/403, a logo-only page). Store the row's
+    // own manifest so it leaves the media queue instead of being fetched
+    // again every run ahead of the rows behind it.
+    await env.DB.prepare(
+      `UPDATE items SET media_manifest = ? WHERE id = ? AND ${UNCHECKED_MEDIA_SQL}`
+    )
+      .bind(
+        serializeMediaManifest(
+          parseMediaManifest(row.media_manifest, row.image_url, row.url)
+        ),
+        nn(row.id)
+      )
+      .run();
+    return;
+  }
   onPlanned();
 
   await env.DB.prepare(

@@ -452,10 +452,6 @@ function normalizeExistingMedia(item: FetchedItem): void {
     primaryThumbnailUrl(existing, legacyImageUrl, item.url) ?? undefined;
 }
 
-function hasMedia(item: FetchedItem): boolean {
-  return Boolean(item.imageUrl) || (item.mediaManifest?.assets.length ?? 0) > 0;
-}
-
 /**
  * Mutates `items` in place, filling in summary/media fields from the article
  * and its original source page. Legacy `imageUrl` is retained as the primary
@@ -467,11 +463,13 @@ export async function enrichMissingContent(
   items: FetchedItem[]
 ): Promise<void> {
   for (const item of items) normalizeExistingMedia(item);
-  // A finished summary with media needs nothing. A blurb ending in … or
-  // ... still needs the article, or it is scored and translated as-is.
+  // A finished summary with a picture needs nothing. `imageUrl` is the
+  // thumbnail normalizeExistingMedia derived (an image or a video poster), so
+  // posterless videos alone still fetch the page. A blurb ending in … or ...
+  // still needs the article, or it is scored and translated as-is.
   const candidates = items.filter(
     (item) =>
-      !item.summary || summaryLooksCutOff(item.summary) || !hasMedia(item)
+      !item.summary || summaryLooksCutOff(item.summary) || !item.imageUrl
   );
   const toEnrich = candidates.slice(0, MAX_ENRICH_FETCHES);
 

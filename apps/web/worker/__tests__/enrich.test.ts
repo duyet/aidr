@@ -321,11 +321,13 @@ describe("enrichMissingContent", () => {
   // the-decoder 7b847b25 (#805): the feed gave four posterless .mp4 videos
   // and no image, the page was never fetched, and Telegram had no photo.
   it("fetches the page for a picture when the item has only posterless videos", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      htmlResponse(
-        `<meta property="og:image" content="https://example.com/hero.jpg">`
-      )
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        htmlResponse(
+          `<meta property="og:image" content="https://example.com/hero.jpg">`
+        )
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     const item = makeItem({

@@ -37,6 +37,11 @@ export function buildMissingSummaryQuery(limit = BACKFILL_CONTENT_CAP): string {
           LIMIT ${limit}`;
 }
 
+/** The 0024 column default: no enrich or backfill has stored this row's
+ * media yet. Any written manifest, even an empty one, ends the state. */
+export const UNCHECKED_MEDIA_SQL =
+  "(media_manifest IS NULL OR media_manifest = '' OR media_manifest = '[]')";
+
 export function buildMissingMediaQuery(limit = BACKFILL_CONTENT_CAP): string {
   // A row is a candidate when it has no media_manifest yet. The legacy
   // `image_url` column must NOT gate this query: requiring it to be empty
@@ -46,7 +51,7 @@ export function buildMissingMediaQuery(limit = BACKFILL_CONTENT_CAP): string {
   // it. See issue #207.
   return `SELECT id, url, source_id, summary, image_url, media_manifest FROM items
           WHERE status = 'published' AND summary IS NOT NULL AND summary != ''
-            AND (media_manifest IS NULL OR media_manifest = '' OR media_manifest = '[]')
+            AND ${UNCHECKED_MEDIA_SQL}
           ORDER BY published_at DESC
           LIMIT ${limit}`;
 }
@@ -119,8 +124,8 @@ export interface BackfillPlan {
 
 /**
  * Decides what to persist for a backfill candidate. Returns null when
- * nothing usable was fetched (leave the item as-is; it stays in the
- * backlog for a future run). Existing non-empty image/media values win over
+ * nothing usable was fetched: the summary stays as-is for a future run, and
+ * the caller only records the row's media as checked. Existing non-empty image/media values win over
  * freshly-fetched ones; this is the "never overwrite an existing value" rule,
  * expressed here without a database.
  */
