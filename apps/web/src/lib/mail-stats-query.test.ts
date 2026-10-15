@@ -5,7 +5,7 @@ import type { DbReader } from "./db";
 import { loadSystemMailStats } from "./mail-stats-query";
 
 const MIGRATION = readFileSync(
-  new URL("../../migrations/0067_mail_daily_stats.sql", import.meta.url),
+  new URL("../../migrations/0069_mail_daily_stats.sql", import.meta.url),
   "utf8"
 );
 
@@ -45,7 +45,7 @@ describe("loadSystemMailStats", () => {
     });
   });
 
-  it("answers empty before migration 0067", async () => {
+  it("answers empty before migration 0069", async () => {
     expect(await loadSystemMailStats(d1(new DatabaseSync(":memory:")))).toEqual(
       { window_days: 28, by_lang: [] }
     );

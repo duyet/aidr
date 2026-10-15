@@ -35,7 +35,7 @@ export async function loadSystemMailStats(
       })),
     };
   } catch (e) {
-    // Before migration 0067 the card shows its empty state, not a 500.
+    // Before migration 0069 the card shows its empty state, not a 500.
     if (String(e).includes("no such table")) {
       return { window_days: MAIL_STATS_WINDOW_DAYS, by_lang: [] };
     }

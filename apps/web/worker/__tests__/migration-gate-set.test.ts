@@ -10,6 +10,7 @@ import {
 } from "../media-schema.js";
 import {
   assertMigrationFileOrder,
+  assertMigrationLedgerOrder,
   assertNoObsoleteMigrations,
   formatMigrationRange,
   requiredMigrationsForFiles,
@@ -57,6 +58,23 @@ describe("migration gate expected set", () => {
       expected.map((name) => name.slice(0, 4)).join(" -> ")
     );
     expect(() => assertMigrationFileOrder(repositoryMigrations)).not.toThrow();
+  });
+
+  it("allows the mail-stat migration after an existing 0068 ledger", () => {
+    const mailStatsMigration = "0069_mail_daily_stats.sql";
+    const priorMigrations = repositoryMigrations.filter(
+      (name) => migrationNumber(name) < 69
+    );
+    expect(priorMigrations.at(-1)).toBe("0068_ext_events.sql");
+    expect(repositoryMigrations).toContain(mailStatsMigration);
+
+    const rows = priorMigrations.map((name, index) => ({
+      id: index + 1,
+      name,
+    }));
+    expect(() =>
+      assertMigrationLedgerOrder(rows, repositoryMigrations)
+    ).not.toThrow();
   });
 
   it("hard-fails if the obsolete 0025 filename is reintroduced", () => {

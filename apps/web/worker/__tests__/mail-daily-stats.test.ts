@@ -24,7 +24,7 @@ vi.mock("../digest/edition.js", async (original) => ({
 }));
 
 const MIGRATION = readFileSync(
-  new URL("../../migrations/0067_mail_daily_stats.sql", import.meta.url),
+  new URL("../../migrations/0069_mail_daily_stats.sql", import.meta.url),
   "utf8"
 );
 
@@ -162,7 +162,7 @@ describe("mail_daily_stats", () => {
     expect(rowsNow[0]).toMatchObject({ lang: "en", unsubscribed: 1 });
   });
 
-  it("still sends and stamps before migration 0067 (defect: missing table aborts the lane)", async () => {
+  it("still sends and stamps before migration 0069 (defect: missing table aborts the lane)", async () => {
     const { sqlite, env, rows } = setup({ withStats: false });
     const result = await sendEmailLane(env, "en", rows(), NOW, new Map());
     expect(result.sent).toBe(2);

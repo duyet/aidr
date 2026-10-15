@@ -16,7 +16,7 @@ export function isMissingTable(error: unknown): boolean {
 
 /** Adds one to today's (UTC) counter for `lang`. Counting must never stop a
  *  send or an unsubscribe, so a failed write is logged and dropped; before
- *  migration 0067 the table is missing and that is silent. Callers count only
+ *  migration 0069 the table is missing and that is silent. Callers count only
  *  on a state transition (see ALGORITHM.md section 11), so a retry of the
  *  same send does not reach this twice. */
 export async function recordMailStat(
