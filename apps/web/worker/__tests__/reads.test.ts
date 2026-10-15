@@ -2,6 +2,15 @@ import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import {
+  RANK_SIGNAL_COLUMNS,
+  RANK_SIGNAL_JOIN,
+  type RankSignalRow,
+  READER_READ_CAP,
+  rankScore,
+  readFactor,
+  rowRankSignals,
+} from "../ranking.js";
+import {
   decideRead,
   isBotUserAgent,
   parseReadBeacon,
@@ -207,4 +216,58 @@ describe("isBotUserAgent", () => {
       expect(isBotUserAgent(ua)).toBe(true);
     }
   );
+});
+
+describe("readFactor", () => {
+  it("is exactly 1 with no reads (defect: a new story is penalised or boosted)", () => {
+    expect(readFactor(0)).toBe(1);
+    expect(readFactor(undefined)).toBe(1);
+    expect(readFactor(Number.NaN)).toBe(1);
+  });
+
+  it("saturates at the cap, so a read storm cannot outrank a far more important story", () => {
+    expect(readFactor(1e6)).toBe(READER_READ_CAP);
+    const now = Date.UTC(2026, 9, 16, 12);
+    const story = {
+      quality: 7,
+      points: 50,
+      comments: 10,
+      sourceCount: 2,
+      publishedAt: now - 2 * 3600 * 1000,
+      now,
+    };
+    expect(rankScore({ ...story, importance: 5, readCount: 1e9 })).toBeLessThan(
+      rankScore({ ...story, importance: 8, readCount: 0 })
+    );
+  });
+});
+
+describe("RANK_SIGNAL_* read window", () => {
+  it("counts today and yesterday UTC only (defect: old reads keep lifting a story)", () => {
+    const raw = new DatabaseSync(":memory:");
+    raw.exec(`CREATE TABLE items (id TEXT PRIMARY KEY, status TEXT,
+        source_id TEXT, points INTEGER, comments INTEGER, url TEXT,
+        duplicate_of TEXT);
+      CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
+        value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        PRIMARY KEY (item_id, user_id));`);
+    raw.exec(MIGRATION);
+    raw
+      .prepare(
+        "INSERT INTO items VALUES (?, 'published', 'hn', 1, 0, 'https://example.com/a', NULL)"
+      )
+      .run(ITEM);
+    raw.exec(`INSERT INTO item_reads VALUES
+        ('${ITEM}', date('now'), 'web', 'open', 7),
+        ('${ITEM}', date('now'), 'telegram', 'outbound', 2),
+        ('${ITEM}', date('now', '-1 day'), 'web', 'open', 5),
+        ('${ITEM}', date('now', '-3 days'), 'web', 'open', 1000)`);
+    const row = raw
+      .prepare(
+        `SELECT ${RANK_SIGNAL_COLUMNS} FROM items ${RANK_SIGNAL_JOIN} WHERE id = ?`
+      )
+      .get(ITEM) as unknown as RankSignalRow;
+    expect(row.read_count).toBe(14);
+    expect(rowRankSignals(row).readCount).toBe(14);
+  });
 });

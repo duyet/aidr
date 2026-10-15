@@ -261,7 +261,10 @@ describe("corroboration counts independent outlets, not tweets", () => {
       url TEXT);
       CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
         value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
-        PRIMARY KEY (item_id, user_id))`);
+        PRIMARY KEY (item_id, user_id));
+      CREATE TABLE item_reads (item_id TEXT NOT NULL, day TEXT NOT NULL,
+        channel TEXT NOT NULL, kind TEXT NOT NULL, count INTEGER NOT NULL,
+        PRIMARY KEY (item_id, day, channel, kind))`);
     const add = db.prepare("INSERT INTO items VALUES (?, ?, ?, ?, ?, ?, ?)");
     const at = (id: string) => `https://example.com/${id}`;
     add.run("canon", "huggingnews", 120, 319, "published", null, at("canon"));
@@ -290,12 +293,14 @@ describe("corroboration counts independent outlets, not tweets", () => {
       comments: 90,
       sourceCount: 2,
       voteNet: 1,
+      readCount: 0,
     });
     expect(read("alone")).toEqual({
       points: 30,
       comments: 5,
       sourceCount: 1,
       voteNet: 0,
+      readCount: 0,
     });
     // The submission is the Cloudflare outlet again, not a third source.
     expect(read("post").sourceCount).toBe(2);
