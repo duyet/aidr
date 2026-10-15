@@ -289,6 +289,20 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0065_item_reads.sql
+
+- Change: new table `item_reads` with index `idx_item_reads_day`. One row
+  per story, UTC day, arrival channel and kind (`open` or `outbound`),
+  holding a count and nothing that identifies a reader. Written by
+  `POST /api/read`; read by `rank_score` (today and yesterday) and
+  `GET /api/system/reads` (28 days).
+- Risk: none for existing rows. `RANK_SIGNAL_JOIN` reads the table, so
+  apply it before deploying the Worker, or the 30-minute re-rank, votes,
+  backfill and admin rate/preview fail with "no such table". The collector
+  and `/api/system/reads` answer as if empty until it exists.
+- Rollback: deploy the previous Worker; `DROP TABLE item_reads;`. Rank
+  scores already written keep the read factor until the next re-rank.
+
 ## 0064_hf_trending_source.sql
 
 - Change: upserts one probation row, `hf-trending` (type `hftrending`,

@@ -32,6 +32,7 @@ import { Route as ApiFeedRouteImport } from './routes/api/feed'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as ApiPublicRouteImport } from './routes/api/public'
+import { Route as ApiReadRouteImport } from './routes/api/read'
 import { Route as ApiSubscribeRouteImport } from './routes/api/subscribe'
 import { Route as ApiSystemRouteImport } from './routes/api/system'
 import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
@@ -176,6 +177,11 @@ const ApiMcpRoute = ApiMcpRouteImport.update({
 const ApiPublicRoute = ApiPublicRouteImport.update({
   id: '/api/public',
   path: '/api/public',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReadRoute = ApiReadRouteImport.update({
+  id: '/api/read',
+  path: '/api/read',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSubscribeRoute = ApiSubscribeRouteImport.update({
@@ -353,6 +359,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
+  '/api/read': typeof ApiReadRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
@@ -408,6 +415,7 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
+  '/api/read': typeof ApiReadRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
@@ -464,6 +472,7 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public': typeof ApiPublicRoute
+  '/api/read': typeof ApiReadRoute
   '/api/subscribe': typeof ApiSubscribeRouteWithChildren
   '/api/system': typeof ApiSystemRouteWithChildren
   '/contribute/new': typeof ContributeNewRoute
@@ -521,6 +530,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/public'
+    | '/api/read'
     | '/api/subscribe'
     | '/api/system'
     | '/contribute/new'
@@ -576,6 +586,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/public'
+    | '/api/read'
     | '/api/subscribe'
     | '/api/system'
     | '/contribute/new'
@@ -631,6 +642,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/public'
+    | '/api/read'
     | '/api/subscribe'
     | '/api/system'
     | '/contribute/new'
@@ -687,6 +699,7 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   ApiMcpRoute: typeof ApiMcpRoute
   ApiPublicRoute: typeof ApiPublicRoute
+  ApiReadRoute: typeof ApiReadRoute
   ApiSubscribeRoute: typeof ApiSubscribeRouteWithChildren
   ApiSystemRoute: typeof ApiSystemRouteWithChildren
   ContributeNewRoute: typeof ContributeNewRoute
@@ -866,6 +879,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public'
       fullPath: '/api/public'
       preLoaderRoute: typeof ApiPublicRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/read': {
+      id: '/api/read'
+      path: '/api/read'
+      fullPath: '/api/read'
+      preLoaderRoute: typeof ApiReadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/subscribe': {
@@ -1162,6 +1182,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   ApiMcpRoute: ApiMcpRoute,
   ApiPublicRoute: ApiPublicRoute,
+  ApiReadRoute: ApiReadRoute,
   ApiSubscribeRoute: ApiSubscribeRouteWithChildren,
   ApiSystemRoute: ApiSystemRouteWithChildren,
   ContributeNewRoute: ContributeNewRoute,
