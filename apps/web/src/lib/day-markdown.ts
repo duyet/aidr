@@ -56,7 +56,11 @@ export function inlineText(value: string): string {
     flat.length > DAY_MARKDOWN_MAX_TEXT_CHARS
       ? `${flat.slice(0, DAY_MARKDOWN_MAX_TEXT_CHARS - 1)}…`
       : flat;
-  return bounded.replace(/([\\`*_[\]<>#|!])/g, "\\$1");
+  return bounded
+    .replace(/([\\`*_[\]<>#|!])/g, "\\$1")
+    .replace(/^(?:([-+])|(\d+)([.)]))/, (_, bullet, num, dot) =>
+      bullet ? `\\${bullet}` : `${num}\\${dot}`
+    );
 }
 
 /** Publisher hostname without `www.`, or null for an unusable URL. */

@@ -245,9 +245,25 @@ export const META_DESCRIPTION_MAX = 200;
 export function metaDescription(text: string): string {
   const line = text.replace(/\s+/g, " ").trim();
   if (line.length <= META_DESCRIPTION_MAX) return line;
-  const cut = line.slice(0, META_DESCRIPTION_MAX - 1);
+  const cut = graphemeSafePrefix(line, META_DESCRIPTION_MAX - 1);
   const space = cut.lastIndexOf(" ");
-  return `${(space > META_DESCRIPTION_MAX / 2 ? cut.slice(0, space) : cut).replace(/[\s,;:.]+$/, "")}…`;
+  const clipped =
+    space > META_DESCRIPTION_MAX / 2
+      ? cut.slice(0, space)
+      : cut.replace(/&#?[A-Za-z0-9]*$/, "");
+  return `${clipped.replace(/[\s,;:.]+$/, "")}…`;
+}
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/** Longest prefix of at most `max` UTF-16 units that ends between graphemes. */
+function graphemeSafePrefix(text: string, max: number): string {
+  let end = 0;
+  for (const { index, segment } of graphemes.segment(text)) {
+    if (index + segment.length > max) break;
+    end = index + segment.length;
+  }
+  return text.slice(0, end);
 }
 
 function shareTags(opts: {

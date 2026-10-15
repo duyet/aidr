@@ -46,10 +46,15 @@ function parseAccept(accept: string): MediaRange[] {
     if (!type) return [];
     let q = 1;
     for (const param of params) {
-      const match = /^q=([0-9.]+)$/i.exec(param);
-      if (match) q = Number(match[1]);
+      const match = /^q=(.*)$/i.exec(param);
+      if (match) {
+        const value = /^[0-9.]+$/.test(match[1] ?? "")
+          ? Number(match[1])
+          : Number.NaN;
+        q = Number.isFinite(value) ? value : 0;
+      }
     }
-    return Number.isFinite(q) ? [{ type: type.toLowerCase(), q }] : [];
+    return [{ type: type.toLowerCase(), q }];
   });
 }
 

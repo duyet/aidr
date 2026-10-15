@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { HeadMeta } from "../lib/seo";
 import type { Lang } from "../lib/types";
 import { Route as ContributeRoute } from "./contribute.index";
+import { Route as McpRoute } from "./mcp";
 import { Route as SubscribeRoute } from "./subscribe";
 
 type HeadFn = (ctx: {
@@ -50,4 +51,11 @@ describe("localized page titles", () => {
       expect(vi.description).not.toBe(en.description);
     });
   }
+});
+
+describe("/mcp title", () => {
+  it("is Vietnamese under lang=vi and unchanged in English", () => {
+    expect(snippet(McpRoute, "/mcp", "vi").title).toBe("Máy chủ MCP | AI;DR");
+    expect(snippet(McpRoute, "/mcp", "en").title).toBe("MCP | AI News");
+  });
 });
