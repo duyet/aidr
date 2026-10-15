@@ -78,6 +78,33 @@ describe("importance band content", () => {
     expect(band("4-6")).toMatch(/variant of an existing model/);
     expect(band("4-6")).toMatch(/Lite/);
     expect(band("4-6")).toMatch(/speed or pricing mode/);
+    expect(band("4-6")).toMatch(
+      /whoever ships it and whatever its version number/
+    );
+  });
+
+  // An unscoped "claims state of the art" clause put Mistral's own
+  // "State-of-the-art probabilistic forecasting (5M-209M params)" at 7.6 and
+  // a 4B grounding paper at 7.3; 173 of 1,560 items in a week say SOTA,
+  // outperform or benchmark.
+  it("lets only a frontier-scale model's state-of-the-art claim reach 7-8", () => {
+    expect(band("7-8")).toMatch(
+      /a frontier-scale model that claims overall state of the art on a recognised benchmark/
+    );
+    expect(band("7-8")).toMatch(
+      /a small model's or a paper's state-of-the-art claim stays 4-6, whether it is for its size, for one language or a niche task, or made only by its publisher/
+    );
+  });
+
+  // "Whose AI angle is incidental" let the Surface Laptop Ultra argue its
+  // sell-out was about on-device AI demand and climb to 7.3.
+  it("keeps every consumer gadget at 4-6 whatever its AI angle", () => {
+    const gadgets = band("4-6")
+      .split(". ")
+      .find((sentence) => sentence.includes("Consumer gadgets"));
+    expect(gadgets).toBe(
+      "Consumer gadgets and their sales, preorders or stock, including AI PCs and AI devices, are 4-6"
+    );
   });
 
   // "Any new model from any other lab" put every release at 7, the public
@@ -86,15 +113,21 @@ describe("importance band content", () => {
   // checkpoint read as 7 as well.
   it("puts no publisher-keyed floor under model releases at 7-8", () => {
     expect(band("7-8")).not.toMatch(/\bany\b|leading lab/i);
+    for (const anchor of IMPORTANCE_ANCHORS) {
+      expect(anchor).not.toMatch(/\bany (new )?(model|release)\b/i);
+    }
     expect(band("4-6")).toMatch(
       /variant of an existing model, which stays here whoever ships it/
     );
   });
 
-  it("scores a provider's own price cut at 6-7 and a reseller promo low", () => {
+  it("scores a provider's own price cut at 6-7, a same-price listing at 4-6 and a reseller promo low", () => {
     const deals = IMPORTANCE_ANCHORS.find((a) => a.startsWith("Deals:"));
     expect(deals).toMatch(/announced by the provider itself, is 6-7/);
     expect(deals).toMatch(/reseller's promo.*is 1-3/);
+    expect(deals).toMatch(
+      /reseller listing a model at the same price is not a deal and is 4-6, even on launch day/
+    );
   });
 
   it("separates notable controversy from gossip", () => {

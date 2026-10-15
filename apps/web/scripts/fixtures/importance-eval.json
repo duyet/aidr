@@ -321,7 +321,7 @@
     "summary": "Claude Sonnet 5.5 is now available on Amazon Bedrock and Claude Platform on AWS. It's a smarter, more efficient Sonnet model for focused coding and knowledge work, with a lower cost per task at faster speed. This post covers what's new, when to choose Sonnet, and how to get started.",
     "publishedImportance": 5,
     "scoredOn": "2026-09-28",
-    "expectedBand": [7, 8]
+    "expectedBand": [4, 6]
   },
   {
     "id": "3eda5db8c05960eb16be6155f814cefe501dcadccb785705081734adcab5c79f",
@@ -609,6 +609,24 @@
     "summary": "Venice said users can now reach OpenAI's GPT-6 Astra through its app and API. The company said the service offers anonymized access and costs the same as using the model directly from OpenAI. The announcement included a sample API request using the model name openai-gpt-6-astra. Quoted OpenAI launch",
     "publishedImportance": 8,
     "scoredOn": "2026-09-05",
+    "expectedBand": [4, 6]
+  },
+  {
+    "id": "51edf4c643816e6fc69aba606f22e49e530ea0b14e4cd171d8658ddbb9eb6a75",
+    "source": "mistral",
+    "title": "Introducing Timestral",
+    "summary": "State-of-the-art probabilistic forecasting in four sizes (5M–209M params), CPU-efficient, zero-shot ready.",
+    "publishedImportance": 7.63,
+    "scoredOn": "2026-10-15",
+    "expectedBand": [4, 6]
+  },
+  {
+    "id": "9e816f217a40b2a213c5dc036636cdbd80bb280eb354e94c3071c802f3d770ff",
+    "source": "hf-papers",
+    "title": "GroundingPI: A Grounding Foundation Model towards Physical Intelligence with Visual Primitives",
+    "summary": "Precise grounding matters. It specifies which object is the target and where that object is, even in clutter and for tiny objects, and it has to be fast enough for closed-loop control. Yet vision-language-action (VLA) and world-action models (WAMs) take perception from general-purpose vision-language and video-generation backbones, which still fail in these settings. We introduce GroundingPI, a 4B grounding foundation model that generates points and boxes as quantized coordinates in a shared vocabulary. Training combines multimodal and spatial pretraining, supervised fine-tuning, and reinforcement learning with GRPO, using supervision from public datasets and dedicated data engines. Against 44 baselines across 34 grounding benchmarks spanning 11 perceptual capabilities, GroundingPI establishes a new state of the art, averaging 73.68%, above the larger GPT-6 Astra (71.54%). As a downstream visual backbone, GroundingPI improves performance on robotic manipulation and autonomous driving. On RoboTwin 2.0, it outperforms every mainstream backbone we evaluate in all four out-of-distribution settings, by up to 24.8% relative to the strongest backbone.",
+    "publishedImportance": 7.31,
+    "scoredOn": "2026-10-13",
     "expectedBand": [4, 6]
   }
 ]

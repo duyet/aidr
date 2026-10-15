@@ -2,9 +2,10 @@
  * so both put the same story on the same 1–10 scale. Without anchors Jev
  * clustered at 1–2 and 4 and the chat model at 6–8.
  *
- * Bands say what a story is, never who published it: a lab list would put
- * any repo a listed lab pushes at 9-10. 9+ bypasses the daily trending cap
- * and 8+ gets the breaking boost, so 9-10 stays rare. */
+ * Bands say what a story is, not which company published it: a lab list
+ * would put any repo a listed lab pushes at 9-10. 9+ skips the normal daily
+ * trending cap (up to the burst limits) and 8+ gets the breaking boost, so
+ * 9-10 stays rare. */
 export const IMPORTANCE_BANDS = [
   {
     range: "9-10",
@@ -14,12 +15,12 @@ export const IMPORTANCE_BANDS = [
   {
     range: "7-8",
     meaning:
-      "notable company, product, or research news with broad impact: a new numbered version of a major model line (such as 4.6 to 4.7), a model that claims state of the art on a recognised benchmark, frontier-scale open weights, a notable controversy, or a major regulatory action",
+      "notable company, product, or research news with broad impact: a new numbered version of a major model line (such as 4.6 to 4.7), a frontier-scale model that claims overall state of the art on a recognised benchmark (a small model's or a paper's state-of-the-art claim stays 4-6, whether it is for its size, for one language or a niche task, or made only by its publisher), frontier-scale open weights, a notable controversy, or a major regulatory action",
   },
   {
     range: "4-6",
     meaning:
-      "an incremental update, or niche but solid news: a variant of an existing model, which stays here whoever ships it (a Lite or Mini cut, a speed or pricing mode, a single small checkpoint), a routine model release from a smaller lab, reported results of an unreleased model; also consumer gadgets, stock moves and supplier earnings whose AI angle is incidental",
+      "an incremental update, or niche but solid news: a variant of an existing model, which stays here whoever ships it and whatever its version number (a Lite or Mini cut, a speed or pricing mode, a single small checkpoint), a routine model release from a smaller lab, reported results of an unreleased model, share-price moves and supplier earnings whose AI angle is incidental. Consumer gadgets and their sales, preorders or stock, including AI PCs and AI devices, are 4-6",
   },
   {
     range: "1-3",
@@ -30,7 +31,7 @@ export const IMPORTANCE_BANDS = [
 
 /** Story kinds the bands alone left ambiguous. */
 export const IMPORTANCE_ANCHORS = [
-  "Deals: a real price cut, free tier or big discount on a major model or API, announced by the provider itself, is 6-7. A reseller's promo, an affiliate deal or a free-credit offer is 1-3.",
+  "Deals: a real price cut, free tier or big discount on a major model or API, announced by the provider itself, is 6-7. A cloud platform, app or reseller listing a model at the same price is not a deal and is 4-6, even on launch day. A reseller's promo, an affiliate deal or a free-credit offer is 1-3.",
   "Drama: a notable controversy is 7-8: a leadership fight at a leading lab, a lawsuit between major players, a safety incident, or a leak with real consequences (exposed data, a pulled model, a regulator stepping in). Gossip is 1-3: personal lives, unsourced rumours, social-media spats.",
 ] as const;
 
