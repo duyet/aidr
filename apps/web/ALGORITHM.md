@@ -1803,22 +1803,32 @@ deliberately non-spammy.
   `video:plan_failed:<msg>`, `video:none_sendable`, `sendVideo:<Telegram
   description>`, `sendMediaGroup(video):<description>`, `sendMediaGroup:<d>`,
   `sendPhoto:<d>` (`<d>` is `media guard: <reason>` when the guard refused
-  the URL before the call), `photo:none_sent` (every gallery image was
-  rejected), `photo:no_usable_image` (the story had none). A `photo:` reason
-  on a delivered post also reaches Bugsink (`kind=story_media`). Ambiguous
-  and budget-exhausted sends keep their own error.
+  the URL before the call), `gallery:<guard reason>` (an image left out of
+  the gallery before any call, such as a GIF; the rest still go),
+  `photo:none_sent` (every gallery image was rejected),
+  `photo:no_usable_image` (the story had none), `preview:no_publisher_url` /
+  `preview:unusable_publisher_url` (the text post went out with its preview
+  off). A `photo:` reason, or any `media guard:` refusal, also reaches
+  Bugsink (`kind=story_media`) whether the post was delivered, refused or
+  ambiguous. Ambiguous and budget-exhausted sends keep their own error.
 - **What is checked before a send.** Every Bot API call passes
   `checkTelegramMedia` (`worker/notify/telegram-media-guard.ts`) inside
   `callTelegram`, keyed by post kind (`story`, `digest`, `day_video`). A
-  story call may not carry the first-party share card `/api/og/{id8}.png`
-  as photo, album item, video thumbnail or text preview
-  (`image:first_party_card`); a `sendMessage` must pin
-  `link_preview_options.url` (`text:no_preview`), so no post is bare text;
-  a media call must carry media (`image:missing`, `album:empty`,
-  `video:missing`); an image URL must be https on a public host
-  (`image:unsafe_url`) and not a type Telegram refuses by URL, GIF, SVG,
-  AVIF, BMP, TIFF, HEIC, ICO (`image:unsupported_type:<ext>`). A rejected
-  call posts nothing and answers like a definite `ok: false` with
+  story call may not carry the first-party share card (`/api/og/<id>` on
+  `aidr.today` or `www.aidr.today`, with or without `.png`, http or https;
+  the day card `/api/og/date/<day>` is not it) as photo, album item, video
+  thumbnail, `editMessageMedia` media or text preview
+  (`image:first_party_card`), nor preview any other first-party page, whose
+  `og:image` is the card (`text:first_party_preview`). A `sendMessage` or
+  `editMessageText` must pin `link_preview_options.url` on a public http(s)
+  host (`text:no_preview`, `text:unsafe_url`), so Telegram never picks the
+  preview from the text; only a story may set `is_disabled`, for a publisher
+  URL that cannot be previewed. A media call must carry media
+  (`image:missing`, `album:empty`, `video:missing`); an image URL must be
+  https on a public host (`image:unsafe_url`) and not a type Telegram
+  refuses by URL, GIF, SVG, AVIF, BMP, TIFF, HEIC, ICO, read from the
+  extension or a `format=` query (`image:unsupported_type:<ext>`). A
+  rejected call posts nothing and answers like a definite `ok: false` with
   `media guard: <reason>`, so the sender's own fallback chain runs and the
   reason lands in `last_error`; it is also logged as one
   `telegram_media_guard` JSON warning. The poster is fetched and checked
@@ -1847,7 +1857,10 @@ deliberately non-spammy.
   gallery images Telegram rejects (hotlink-hostile or dead upstream URLs),
   goes out as `sendMessage` with `link_preview_options.url` pinned to the
   publisher page (`storyTextLinkPreview`, large media above the text), so
-  Telegram fetches the publisher's own `og:image`. The first-party OG card
+  Telegram fetches the publisher's own `og:image`. A publisher URL the guard
+  cannot preview (empty after canonicalization, a private host) sends the
+  text with the preview off rather than losing the story; the aidr page is
+  not pinned instead, because its `og:image` is the card. The first-party OG card
   `/api/og/{id8}.png?lang=` is a text graphic and is not a story's media in
   any position: not the lead, not a retry, not the preview (the guard above
   rejects it even when a row's `image_url` is the card). The reason is
@@ -1862,7 +1875,8 @@ deliberately non-spammy.
   later with `pnpm --filter @aidr/web telegram-swap-card` (dry unless
   `--apply`). It edits only when D1 says the card went out and the live
   photo is 1200x630, tests the image in the staging chat first, and logs
-  every edit to `admin_audit` as `telegram.edit_media`.
+  every edit to `admin_audit` as `telegram.edit_media`. Its bot calls pass
+  `checkTelegramMedia` too, so it cannot stage or edit the card onto a post.
 - **Each channel is one language.** `telegram` is `vi` and `telegram-en`
   is `en`. Digest bullets come from that language's edition
   (`worker/digest/edition.ts`) and never from the other column. Trending
