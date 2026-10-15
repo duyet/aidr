@@ -62,6 +62,7 @@ export type SourceType =
   | "githubreleases"
   | "hfpapers"
   | "hfmodels"
+  | "hftrending"
   | "openrouter"
   | "push";
 
@@ -1097,6 +1098,27 @@ export const REGISTRY_0058: readonly SourceSpec[] = [
   },
 ];
 
+/**
+ * Migration 0064 (2026-10-16). The five `hf-models-*` org feeds stored 2
+ * rows in 7 days. That day, 6 of the top 15 trending models were release
+ * repos created in the previous 16 days, none was stored, and 5 came from
+ * organizations no feed names. In the `hf-models` family so it counts once
+ * with the org feeds; a repo an org feed already stored has the same
+ * URL and ingest drops it as already stored.
+ */
+export const REGISTRY_0064: readonly SourceSpec[] = [
+  {
+    id: "hf-trending",
+    name: "Hugging Face trending models",
+    type: "hftrending",
+    family: "hf-models",
+    probation: true,
+    config: { maxItems: PROBATION_MAX_ITEMS },
+    enabled: true,
+    staleAfterRuns: 672,
+  },
+];
+
 export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   REGISTRY_0027,
   [ARXIV_SOURCE],
@@ -1105,7 +1127,8 @@ export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   [HN_SCOPE_SOURCE],
   REGISTRY_0044,
   REGISTRY_0051,
-  REGISTRY_0058
+  REGISTRY_0058,
+  REGISTRY_0064
 );
 
 export function registrySourceIds(): string[] {

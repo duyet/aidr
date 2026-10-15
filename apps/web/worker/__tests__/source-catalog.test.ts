@@ -186,6 +186,7 @@ describe("source refresh 0057", () => {
     ).toEqual(["oss-release", "oss-release", "oss-release", "oss-release"]);
     expect(familyOf("hf-papers")).toBe("hf");
     expect(familyOf("openrouter-models")).toBe("openrouter");
+    expect(familyOf("hf-trending")).toBe("hf-models");
     expect(
       SOURCE_REGISTRY.filter((s) => s.id.startsWith("hf-models-")).map(
         (s) => s.family
@@ -198,9 +199,15 @@ describe("source refresh 0057", () => {
 
   it("gives shared-host rows no feed or homepage, so they claim no foreign link", () => {
     const shared = SOURCE_REGISTRY.filter((s) =>
-      ["githubreleases", "hfpapers", "hfmodels", "openrouter"].includes(s.type)
+      [
+        "githubreleases",
+        "hfpapers",
+        "hfmodels",
+        "hftrending",
+        "openrouter",
+      ].includes(s.type)
     );
-    expect(shared.length).toBe(11);
+    expect(shared.length).toBe(12);
     for (const spec of shared) {
       expect(spec.config.feed, spec.id).toBeUndefined();
       expect(spec.config.homepage, spec.id).toBeUndefined();
@@ -262,7 +269,7 @@ describe("registry / seed SQL / migration agreement", () => {
     );
   });
 
-  it("0027, 0030, 0032, 0036, 0043, 0044, 0051 and 0057 applied in order list exactly the registry rows", () => {
+  it("0027, 0030, 0032, 0036, 0043, 0044, 0051, 0057 and 0064 applied in order list exactly the registry rows", () => {
     const read = (name: string) =>
       readFileSync(resolve(dirname(MIGRATION_PATH), name), "utf8");
     const arxivSql = read("0030_arxiv_source.sql");
@@ -272,6 +279,7 @@ describe("registry / seed SQL / migration agreement", () => {
     const aiSourcesSql = read("0044_ai_sources_and_aggregator_caps.sql");
     const socialSql = read("0051_social_trending_sources.sql");
     const refreshSql = read("0058_source_refresh.sql");
+    const hfTrendingSql = read("0064_hf_trending_source.sql");
     // A later migration replaces the earlier row with the same id; a later
     // `UPDATE sources SET enabled = 0` is a disable, not a row, so it is
     // applied to the merged rows by hand.
@@ -292,7 +300,8 @@ describe("registry / seed SQL / migration agreement", () => {
       parseSourceInsertRows(hnScopeSql),
       parseSourceInsertRows(aiSourcesSql),
       parseSourceInsertRows(socialSql),
-      parseSourceInsertRows(refreshSql)
+      parseSourceInsertRows(refreshSql),
+      parseSourceInsertRows(hfTrendingSql)
     ).map((row) =>
       disabledIds.has(row.id) ? { ...row, enabled: false } : row
     );
@@ -305,6 +314,7 @@ describe("registry / seed SQL / migration agreement", () => {
       aiSourcesSql,
       socialSql,
       refreshSql,
+      hfTrendingSql,
     ]) {
       expect(sql).toContain("ON CONFLICT(id) DO UPDATE SET");
       expect(sql).not.toContain("enabled = excluded.enabled");
