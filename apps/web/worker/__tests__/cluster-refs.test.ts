@@ -175,11 +175,17 @@ describe("requestClusters reference counts", () => {
   });
 
   it("keeps master's clusters over a generated mix of well and badly formed answers", async () => {
+    // mulberry32: every output bit is mixed, so `* n` reaches each shape.
     let seed = 42;
     const rand = (n: number) => {
-      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
-      return seed % n;
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return Math.floor((((t ^ (t >>> 14)) >>> 0) / 4_294_967_296) * n);
     };
+    const live = new Set<unknown>([A, B, C]);
+    const near = new Set<unknown>([B_TYPO, C_CUT, A.toUpperCase(), ` ${A} `]);
+    const seen = { loneLiveId: 0, emptied: 0, nearMiss: 0, notString: 0 };
     const pool: unknown[] = [
       0,
       1,
@@ -214,9 +220,34 @@ describe("requestClusters reference counts", () => {
       expect(result.clusters).toEqual(
         masterNormalize(answer, new Set([0, 1, 2, 3]), new Set([A, B, C]))
       );
-      expect(result.refs.existingKept).toBe(
-        result.clusters.reduce((n, c) => n + c.existing.length, 0)
+      const entries = answer.clusters.filter(
+        (c): c is { new: unknown; existing: unknown[] } => typeof c === "object"
       );
+      const existingEntries = entries.flatMap((c) => c.existing);
+      expect(result.refs).toMatchObject({
+        existingAnswered: existingEntries.length,
+        existingKept: existingEntries.filter((v) => live.has(v)).length,
+        existingNotString: existingEntries.filter((v) => typeof v !== "string")
+          .length,
+        existingNearMiss: existingEntries.filter((v) => near.has(v)).length,
+      });
+      if (
+        entries.some(
+          (c) =>
+            c.existing.filter((v) => live.has(v)).length === 1 &&
+            (!Array.isArray(c.new) ||
+              c.new.every((v) => !(typeof v === "number" && v >= 0 && v <= 3)))
+        )
+      ) {
+        seen.loneLiveId++;
+      }
+      if (result.refs.emptied > 0) seen.emptied++;
+      if (result.refs.existingNearMiss > 0) seen.nearMiss++;
+      if (result.refs.existingNotString > 0) seen.notString++;
+    }
+    // The mix reaches every shape the counts exist for.
+    for (const rounds of Object.values(seen)) {
+      expect(rounds).toBeGreaterThan(5);
     }
   });
 });
