@@ -68,8 +68,8 @@ import {
   parseUnmergePairs,
   planDanglingUnmerge,
   planUnmerge,
-  unknownDecisionIds,
   type UnmergePlan,
+  unknownDecisionIds,
 } from "../unmerge/plan.js";
 import { countUnmerge, type UnmergeCounts } from "../unmerge/report.js";
 import {
