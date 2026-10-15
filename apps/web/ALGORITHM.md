@@ -664,6 +664,7 @@ that refuse Workers egress and adds the probation sources in the table below.
 | `hf-papers` | `hfpapers` | `hf` | probation, 2 per run | Daily papers, top by upvotes; upvotes are not engagement. |
 | `openrouter-models` | `openrouter` | `openrouter` | probation, 2 per run | Models with `created` inside the since-window; `:variant` ids skipped. |
 | `hf-models-qwen`, `-deepseek`, `-moonshotai`, `-zai-org`, `-mistralai` | `hfmodels` | `hf-models` | probation, 2 per run | New release repos of one organization; quantized, adapter, SAE, draft and conversion repos skipped. |
+| `hf-trending` (migration 0064) | `hftrending` | `hf-models` | probation, 2 per run | Release repos on the Hugging Face trending list, created within 14 days, top by `trendingScore`; the score, likes and downloads are not engagement. |
 | `ai2` | `rss` | n/a | probation, official | `allenai.org/rss.xml`. |
 | `genk-ai` | `rss` (`sourceLang: "vi"`, `timezone: "+07:00"`) | `vi-press` | probation, 2 per run | Second Vietnamese row, so the VI→EN path runs again while `vnexpress-tech` is off. |
 
@@ -680,6 +681,18 @@ Decisions behind the table:
   `homepage` or `feed` host serves it. The github, huggingface and openrouter
   rows therefore carry no `feed` or `homepage` (they use `repo`, `author`),
   and none is `official`; an HN link to any github.com page keeps `hn`.
+- **Trending covers the organizations no org feed names.** The five
+  `hf-models-*` feeds stored 2 rows in the 7 days to 2026-10-16. That day,
+  6 of the top 15 trending models were release repos created in the previous
+  16 days, none was stored, and 5 came from organizations no feed names
+  (openbmb, LiquidAI, fishaudio, speridlabs). `hf-trending` keeps a repo created within 14 days, because a
+  model trends days after upload and the 26h since-window would miss it.
+  `published_at` is the upload date, so a trending row older than 24h never
+  enters the edition window on its own; it adds a source to a story when it
+  merges into a live cluster (the existing canonical keeps its date) and
+  otherwise lands on its upload day's archive. The cap is applied before
+  ingest drops already-stored URLs, so the same top 2 are re-sent each run
+  until they leave the list.
 - **OpenRouter keeps no cursor.** Adapters get only `(config, sinceEpochSec)`
   and none persists state, so "new since the last run" is `created` inside the
   26h since-window; a model seen on a previous run has the same URL and

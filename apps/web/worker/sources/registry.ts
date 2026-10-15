@@ -7,6 +7,7 @@ import { anthropicAdapter } from "./anthropic.js";
 import { githubReleasesAdapter } from "./githubreleases.js";
 import { hfModelsAdapter } from "./hfmodels.js";
 import { hfPapersAdapter } from "./hfpapers.js";
+import { hfTrendingAdapter } from "./hftrending.js";
 import { hnAdapter } from "./hn.js";
 import { huggingNewsAdapter } from "./huggingnews.js";
 import { lobstersAdapter } from "./lobsters.js";
@@ -47,8 +48,8 @@ function normalized(adapter: SourceAdapter): SourceAdapter {
 
 /** `rss` applies its own flood gate; the aggregator adapters read no config
  *  for it, so the shared `maxItems` / `keywordFilter` gate wraps them here.
- *  `hfpapers` is not wrapped: it caps by upvotes, and this gate re-sorts by
- *  date. */
+ *  `hfpapers` and `hftrending` are not wrapped: they cap by upvotes and
+ *  trending score, and this gate re-sorts by date. */
 function floodGated(adapter: SourceAdapter): SourceAdapter {
   return {
     type: adapter.type,
@@ -70,5 +71,6 @@ export const adapters: Record<string, SourceAdapter> = {
   githubreleases: normalized(floodGated(githubReleasesAdapter)),
   hfpapers: normalized(hfPapersAdapter),
   hfmodels: normalized(floodGated(hfModelsAdapter)),
+  hftrending: normalized(hfTrendingAdapter),
   openrouter: normalized(floodGated(openRouterAdapter)),
 };

@@ -8,6 +8,7 @@ import {
 } from "../sources/githubreleases.js";
 import { hfModelsAdapter, isReleaseRepo } from "../sources/hfmodels.js";
 import { hfPapersAdapter } from "../sources/hfpapers.js";
+import { hfTrendingAdapter } from "../sources/hftrending.js";
 import { openRouterAdapter } from "../sources/openrouter.js";
 import { adapters } from "../sources/registry.js";
 
@@ -218,6 +219,66 @@ describe("hfmodels", () => {
 
   it("requires an organization name", async () => {
     await expect(hfModelsAdapter.fetchItems({}, 0)).rejects.toThrow("author");
+  });
+});
+
+describe("hftrending", () => {
+  const NOW = Date.parse("2026-10-16T12:00:00Z");
+  const since26h = sec("2026-10-15T10:00:00Z");
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("keeps fresh releases from any organization in trending order, not derivatives or old repos", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    const fetchMock = stubFetch(fixture("hf-trending.json"));
+    const items = await hfTrendingAdapter.fetchItems({}, since26h);
+    expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toBe(
+      "https://huggingface.co/api/models?sort=trendingScore&direction=-1&limit=30"
+    );
+    // Left out: embeddinggemma-2 (top score, created 2026-09-14) and
+    // drama-3 (2026-10-01, 15 days old) by age; the -GGUF and -LoRA repos
+    // as derivatives. Kept although created days before the 26h window.
+    expect(items.map((item) => item.url)).toEqual([
+      "https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo",
+      "https://huggingface.co/openbmb/MiniCPM-V-4.7-35B-A3B",
+      "https://huggingface.co/LiquidAI/LFM2.5-24B-A2B",
+      "https://huggingface.co/speridlabs/iris-3b",
+    ]);
+    const liquid = items[2];
+    expect(liquid.title).toBe(
+      "LFM2.5-24B-A2B by LiquidAI is trending on Hugging Face"
+    );
+    expect(liquid.summary).toBe(
+      "LiquidAI published LiquidAI/LFM2.5-24B-A2B on Hugging Face (task: text-generation, library: transformers, 378 likes, 6286 downloads)."
+    );
+    expect(liquid.publishedAt).toBe(Date.parse("2026-10-12T05:35:46.000Z"));
+  });
+
+  it("caps by trending score, not by date", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    stubFetch(fixture("hf-trending.json"));
+    const items = await adapters.hftrending.fetchItems(
+      { maxItems: 2 },
+      since26h
+    );
+    // A date cap would keep LFM2.5 (10-12) and Qwen-Image-2.1-Turbo (10-09).
+    expect(items.map((item) => item.url)).toEqual([
+      "https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo",
+      "https://huggingface.co/openbmb/MiniCPM-V-4.7-35B-A3B",
+    ]);
+  });
+
+  it("does not report trending score, likes or downloads as engagement", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    stubFetch(fixture("hf-trending.json"));
+    const items = await hfTrendingAdapter.fetchItems({}, since26h);
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) {
+      expect(item.points, item.url).toBeUndefined();
+      expect(item.comments, item.url).toBeUndefined();
+    }
   });
 });
 

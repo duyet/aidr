@@ -289,6 +289,18 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0064_hf_trending_source.sql
+
+- Change: upserts one probation row, `hf-trending` (type `hftrending`,
+  `{"maxItems":2}`), name/type/config only, never `enabled`.
+- Risk: none for existing rows. The runtime seed inserts the same row on the
+  first ingest after deploy, so applying this file before or after the
+  deploy is equivalent. The row adds at most 2 items per run.
+- Rollback: deploy the previous Worker first (its seed does not re-create
+  the row and it has no `hftrending` adapter, so it skips the row), then
+  `DELETE FROM sources WHERE id = 'hf-trending';`. Items already ingested
+  keep their `source_id` and stay readable.
+
 ## 0063_unmerge_checks.sql
 
 - Change: new table `unmerge_checks`, one model same-story verdict per
