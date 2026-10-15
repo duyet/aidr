@@ -1043,13 +1043,14 @@ async function writeRun(
   newRows: NewRow[],
   madeUpId: string | null,
   nowSec: number,
-  relevance: ReadonlyMap<string, number | null> = new Map()
+  relevance: ReadonlyMap<string, number | null> = new Map(),
+  importance = 5
 ) {
   const scored = new Map<string, ItemScore>();
   for (const r of newRows) {
     const value = relevance.has(r.id) ? relevance.get(r.id) : 0.9;
     if (typeof value === "number") {
-      scored.set(r.id, { ...score(5), relevance: value });
+      scored.set(r.id, { ...score(importance), relevance: value });
     }
   }
   const candidates = buildMergeCandidates(newRows, scored, TAGS, nowSec * 1000);
@@ -1118,20 +1119,25 @@ async function writeDangling(target: DatabaseSync) {
     "ghi789",
     OLD + 72_000
   );
-  // Merged two hours ago: inside the send window.
+  // Merged two hours ago, importance 9: restored now, it would trend.
   await writeRun(
     target,
     [
-      story(
-        RECENT_D,
-        "techcrunch-ai",
-        "Amazon responds to data center backlash, says it no longer uses NDAs",
-        NOW_SEC - 2 * 3600,
-        "amazon-ndas"
-      ),
+      row(RECENT_D, "techcrunch-ai", {
+        url: "https://techcrunch.example.test/amazon-ndas",
+        title:
+          "Amazon responds to data center backlash, says it no longer uses NDAs",
+        summary:
+          "Amazon says it stopped asking towns to sign NDAs before it builds data centers, after months of local pushback over secrecy and power use.",
+        publishedAt: NOW_SEC - 2 * 3600,
+        imageUrl: "https://techcrunch.example.test/amazon.jpg",
+        sources: [],
+      }),
     ],
     "abc123",
-    NOW_SEC - 3600
+    NOW_SEC - 3600,
+    new Map(),
+    9
   );
 }
 
@@ -1263,6 +1269,43 @@ describe("unmerge of dangling merges (#791)", () => {
       status: "merged",
       duplicate_of: "abc123",
     });
+
+    const bodies: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        bodies.push(String(init?.body ?? ""));
+        return new Response(
+          JSON.stringify({ ok: true, result: { message_id: bodies.length } }),
+          { headers: { "content-type": "application/json" } }
+        );
+      })
+    );
+    await dispatchStoryNotifications({
+      ...env,
+      TELEGRAM_BOT_TOKEN: "token",
+      TELEGRAM_VI_CHAT_ID: "@vi",
+      TELEGRAM_EN_CHAT_ID: "@en",
+    } as Env);
+    const sent = bodies.join("\n");
+    for (const text of [
+      TRIO_TITLE,
+      "Super Intelligence",
+      "SQLite page",
+      "Amazon responds",
+    ]) {
+      expect(sent).not.toContain(text);
+    }
+    for (const restored of [
+      TRIO_HUG,
+      TRIO_MB,
+      TRIO_VERGE,
+      LONE,
+      UNSCORED,
+      RECENT_D,
+    ]) {
+      expect(sent).not.toContain(restored);
+    }
     expect(db.prepare("SELECT COUNT(*) AS n FROM notifications").get()).toEqual(
       { n: 0 }
     );
