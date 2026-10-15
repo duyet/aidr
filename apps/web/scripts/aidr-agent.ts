@@ -24,6 +24,11 @@
  *     (restores merged rows whose canonical id names no item, #791; same
  *     read-only dry run and undo as unmerge; decisions.json holds
  *     `{ mergedId, sameAs | distinctFrom }` entries for held stories)
+ *   pnpm --filter @aidr/web agent unmerge --dangling [decisions.json]
+ *     --model-check [--confirm-llm] [--max-calls N]
+ *     (#797: prints how many model calls the same-story check needs; with
+ *     --confirm-llm the Worker makes them on the production key and stores
+ *     the verdicts the dry run and the apply read)
  *   pnpm --filter @aidr/web agent unmerge --undo <batchId>
  *     [--canonical <id,...>] [--apply]
  *     (reverses one apply from its admin_audit rows, or only the named
@@ -55,13 +60,24 @@ import type {
   UndoUnmergeResult,
   UnmergeResult,
 } from "../worker/admin/handlers";
+import { clusterPrompt } from "../worker/dedupe";
 import { isPipelineStep, PIPELINE_STEPS } from "../worker/ingest/mode";
 import { loadTagBackfill, planTagBackfill } from "../worker/tag-backfill";
 import {
+  batchPrompt,
+  CHECK_DEFAULT_CALLS,
+  CHECK_EXISTING_WINDOW,
+  CHECK_MAX_CALLS,
+  type CheckRunResult,
+  driveCheck,
+} from "../worker/unmerge/check";
+import {
+  loadCheckPlan,
   loadDanglingSnapshot,
   loadUnmergeSnapshot,
 } from "../worker/unmerge/load";
 import {
+  type DanglingDecision,
   parseDanglingDecisions,
   parseUnmergePairs,
   planDanglingUnmerge,
@@ -363,6 +379,7 @@ async function unmerge(args: Args): Promise<void> {
 async function unmergeDangling({
   file,
   apply,
+  modelCheck,
 }: Extract<UnmergeCommand, { kind: "dangling" }>): Promise<void> {
   const raw: unknown = file
     ? JSON.parse(readFileSync(file, "utf-8"))
@@ -373,6 +390,9 @@ async function unmergeDangling({
       : raw;
   const parsed = parseDanglingDecisions(decisions);
   if ("error" in parsed) fail(parsed.error);
+  if (modelCheck) {
+    return unmergeModelCheck(modelCheck, decisions, parsed.decisions);
+  }
   if (apply) {
     const result = await api<UnmergeResult>("/api/admin/unmerge", {
       method: "POST",
@@ -397,6 +417,76 @@ async function unmergeDangling({
     { dryRun: true, readOnly: wranglerSelectTotals, counts, plan },
     `unmerge --dangling dry run (nothing written; ${wranglerSelectTotals.queries} read-only queries): ${snapshot.dangling.length} rows in ${plan.canonicals.length} stories, ${JSON.stringify(counts.pairs)}`
   );
+}
+
+/**
+ * The model same-story check (#797). Plans locally with SELECTs and prints
+ * the calls it needs. With `--confirm-llm` it posts to the check endpoint,
+ * which calls the production model and stores verdicts, request after
+ * request until no story waits, `--max-calls` (default: the estimate) is
+ * spent, or the chain fails. A 429 stop backs off before the next request.
+ */
+async function unmergeModelCheck(
+  options: NonNullable<
+    Extract<UnmergeCommand, { kind: "dangling" }>["modelCheck"]
+  >,
+  decisions: unknown,
+  parsed: DanglingDecision[]
+): Promise<void> {
+  const select = async (sql: string) => wranglerSelect(sql);
+  const snapshot = await loadDanglingSnapshot(select, parsed);
+  const unknown = unknownDecisionIds(parsed, snapshot);
+  if (unknown.length > 0) fail(`decisions name no item: ${unknown.join(", ")}`);
+  const estimate = await loadCheckPlan(select, snapshot, parsed, Date.now());
+  const noEvidence = estimate.work.filter((w) => w.live.length === 0).length;
+  const promptChars = estimate.batches.reduce((sum, batch) => {
+    const prompt = batchPrompt(batch);
+    return (
+      sum +
+      prompt.calls.reduce(
+        (n, existing) =>
+          n +
+          clusterPrompt(prompt.newItems, existing, CHECK_EXISTING_WINDOW)
+            .length,
+        0
+      )
+    );
+  }, 0);
+  console.error(
+    `unmerge --dangling --model-check (read-only plan, ${wranglerSelectTotals.queries} queries): ${estimate.work.length} stories need a verdict; ${noEvidence} share no evidence with a live row and are stored without a call; the rest need ${estimate.calls} model call(s) in ${estimate.batches.length} batch(es), ${promptChars} prompt characters in all`
+  );
+  if (!options.confirmLlm) {
+    fail(
+      "this calls the production model on its key (#656: never while local evals share it); rerun with --confirm-llm"
+    );
+  }
+  const budget = options.maxCalls ?? Math.max(estimate.calls, 1);
+  const largest = Math.max(
+    CHECK_DEFAULT_CALLS,
+    ...estimate.batches.map((batch) => batch.chunks.length)
+  );
+  if (largest > CHECK_MAX_CALLS) {
+    fail(`a batch needs ${largest} calls, more than one request may make`);
+  }
+  const run = await driveCheck({
+    budget,
+    perRequest: largest,
+    request: (maxCalls) =>
+      api<CheckRunResult>("/api/admin/unmerge/check", {
+        method: "POST",
+        admin: true,
+        body: { confirmLlm: true, decisions, maxCalls },
+      }),
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    report: (line) => console.error(line),
+  });
+  const summary = `unmerge --dangling --model-check: ${run.calls} call(s) in ${run.requests} request(s), stored ${JSON.stringify(run.stored)}`;
+  if (!run.finished) {
+    fail(
+      `${summary}; stopped by ${run.stoppedBy}${run.failure ? ` (${run.failure})` : ""}. Verdicts so far are stored; rerun to resume.`
+    );
+  }
+  print(run, `${summary}. Next: the --dangling dry run shows the holds.`);
 }
 
 /** Plan (default) or apply the undo of one unmerge apply, or of the named
@@ -725,7 +815,7 @@ async function main(): Promise<void> {
       return backfillTags(args);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --undo <batchId> [--canonical <id,...>] [--apply] | backfill-tags [--apply]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --dangling [decisions.json] --model-check [--confirm-llm] [--max-calls N] | unmerge --undo <batchId> [--canonical <id,...>] [--apply] | backfill-tags [--apply]"
       );
   }
 }

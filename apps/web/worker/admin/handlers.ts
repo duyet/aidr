@@ -59,6 +59,12 @@ import { normalizeTopics, type ScoredStoryTags } from "../topics.js";
 import type { Env } from "../types.js";
 import { applyUnmerge, type BatchResult } from "../unmerge/apply.js";
 import {
+  CHECK_DEFAULT_CALLS,
+  CHECK_MAX_CALLS,
+  type CheckRunResult,
+} from "../unmerge/check.js";
+import { runDanglingCheck } from "../unmerge/check-run.js";
+import {
   d1Select,
   loadDanglingSnapshot,
   loadUnmergeSnapshot,
@@ -552,6 +558,57 @@ export async function unmergeItems(
     applied: await applyUnmerge(env.DB, plan),
     plan,
   };
+}
+
+/**
+ * The model same-story check for `unmerge --dangling` (#797). Body
+ * `{ confirmLlm: true, decisions?, maxCalls? }`. Calls the production model
+ * chain for the stories the dangling plan would publish that have no stored
+ * verdict, at most `maxCalls` calls (default 3, at most 10), and writes
+ * only `unmerge_checks`. Attempts are logged under an `unmerge-check-…`
+ * operation id. See ALGORITHM.md, "Dangling merges".
+ */
+export async function checkDanglingUnmerge(
+  env: Env,
+  input: { confirmLlm?: unknown; decisions?: unknown; maxCalls?: unknown }
+): Promise<CheckRunResult | HandlerError> {
+  if (input.confirmLlm !== true) {
+    return {
+      error: "confirmLlm must be true: this calls the production model",
+      status: 400,
+    };
+  }
+  const maxCalls = input.maxCalls ?? CHECK_DEFAULT_CALLS;
+  if (
+    typeof maxCalls !== "number" ||
+    !Number.isInteger(maxCalls) ||
+    maxCalls < 1 ||
+    maxCalls > CHECK_MAX_CALLS
+  ) {
+    return {
+      error: `maxCalls must be an integer from 1 to ${CHECK_MAX_CALLS}`,
+      status: 400,
+    };
+  }
+  const parsed = parseDanglingDecisions(input.decisions);
+  if ("error" in parsed) return { error: parsed.error, status: 400 };
+  const snapshot = await loadDanglingSnapshot(
+    d1Select(env.DB),
+    parsed.decisions
+  );
+  const unknown = unknownDecisionIds(parsed.decisions, snapshot);
+  if (unknown.length > 0) {
+    return {
+      error: `decisions name no item: ${unknown.join(", ")}`,
+      status: 400,
+    };
+  }
+  return runDanglingCheck(env, {
+    snapshot,
+    decisions: parsed.decisions,
+    maxCalls,
+    operationId: operationRunId("unmerge-check"),
+  });
 }
 
 export interface UndoUnmergeResult {

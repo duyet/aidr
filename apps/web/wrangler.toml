@@ -101,9 +101,17 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 #                            writes reasoning prose before JSON: not used.
 #   openai/gpt-5.6-luna      2026-10-10: no longer BYOK-only on this key.
 #                            TL;DR 3 of 3, p50 37s; cluster 3 of 3, p50 4.4s.
+#   anthropic/claude-sonnet-5-5 2026-10-15: no longer BYOK-only on this key.
+#                            1-token probes HTTP 200 for claude-sonnet-5-5,
+#                            -5 and claude-sonnet-latest (served 5-5), no
+#                            streaming json_object probe on a real prompt
+#                            yet. Rejects temperature (llm.ts omits it for
+#                            anthropic/ ids). Paid, $2/$10 per 1M list, so
+#                            last on ANYROUTER_MODEL only.
 #   Not usable on this key 2026-10-10 (404 BYOK-only): gemini-flash-latest
 #   (→ gemini-3.8-flash), gemini-pro-latest (→ gemini-3.1-pro),
-#   qwen-flash-latest, claude-haiku-latest, claude-sonnet-latest.
+#   qwen-flash-latest, claude-haiku-latest. claude-sonnet-latest was too,
+#   until 2026-10-15.
 #   deepseek-flash-latest (→ deepseek-v4-flash) answers small prompts but
 #   sent no token within 20s on the cluster prompt.
 #   google/gemma-4-31b       catalog id; OpenRouter wire google/gemma-4-31b-it:free.
@@ -131,7 +139,13 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # (gold band hit): gemma 0.60, laguna 0.20. Rolling aliases probed here:
 # google/gemma-latest → gemma-4-31b, z-ai/glm-latest → glm-5.2.
 # @preset/aidr now serves gemma-4-31b; anyrouter/auto serves laguna.
-ANYROUTER_MODEL = "google/gemma-latest,z-ai/glm-latest,@preset/aidr,anyrouter/auto"
+# Claude Sonnet 5.5 is the paid last resort (2026-10-15). Over the 7 days
+# before, 100 calls reached anyrouter/auto (cluster 50, score 46, other 4)
+# and it served none; 25 of them were the 10-13 account-wide 429 window.
+# With a 5th id the first two hops keep at least their old slices; the
+# 3rd and 4th each hold back one more fallback floor (up to 20s) for it.
+# Translate, summarize and TL;DR stay off it: see those chains.
+ANYROUTER_MODEL = "google/gemma-latest,z-ai/glm-latest,@preset/aidr,anyrouter/auto,anthropic/claude-sonnet-5-5"
 # Translate tries Laguna first, then gemma-latest. Each extra id still
 # reserves a 20s fallback slice
 # (2026-10-02). Dropped @preset/aidr (11/87 ok over 24h,
@@ -148,7 +162,7 @@ ANYROUTER_MODEL = "google/gemma-latest,z-ai/glm-latest,@preset/aidr,anyrouter/au
 # 502), gemma-4-31b 0/3 and nothing since 10-12. Laguna summarize 772/987
 # over 7d. Gemini is not kept as a tail: a 502 is never skipped, and a
 # third id cuts the head's slice in the 70s batch from 50s to 30s, under
-# Laguna's 32.5s translate p95.
+# Laguna's 32.5s translate p95. Claude Sonnet stays off for the same reason.
 ANYROUTER_TRANSLATE_MODEL = "poolside/laguna-s-2.1,google/gemma-latest"
 # TL;DR keeps two ids: every extra id reserves a 20s fallback slice out of
 # the first hop's budget, and Laguna needs 102-119s on the 26K VI prompt.
@@ -159,11 +173,15 @@ ANYROUTER_TRANSLATE_MODEL = "poolside/laguna-s-2.1,google/gemma-latest"
 # 2026-10-14 (#663): gemini-3-flash served 1 of 6 tldr fallback attempts
 # over 7d, then went dead. Laguna replaces it (tldr 21/32 attempts, p95
 # 105s). After a 20s luna first-token hang, Laguna gets a 135s slice.
+# No Claude Sonnet tail: a third id cuts luna's slice on the EN-only retry
+# from 40s to 20s when the first attempt used its 170s (luna p50 37s).
 ANYROUTER_TLDR_MODEL = "openai/gpt-5.6-luna,poolside/laguna-s-2.1"
 # Explicit generator for the real VI→EN candidate path; source language is
 # persisted as metadata and never inferred by the reviewer. Concrete ids only
 # (router aliases and presets are filtered out of this chain). Same order
 # as ANYROUTER_TRANSLATE_MODEL (#663). The 26B id stays off this chain.
+# resolveEnglishGeneratorChain keeps the first 2 ids, so a third id (such
+# as Claude Sonnet) would be dropped without a warning.
 ANYROUTER_ENGLISH_TRANSLATE_MODEL = "poolside/laguna-s-2.1,google/gemma-latest"
 # Translation semantic review: explicit concrete ids, disjoint from every
 # generator id; missing/overlapping config fails closed. Max 2 ids.

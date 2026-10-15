@@ -235,6 +235,9 @@ export type LlmTask =
   | "summarize"
   | "tldr"
   | "cluster"
+  /** The unmerge's same-story check of restore candidates (#797): the
+   *  cluster prompt, run from an admin request, never from ingest. */
+  | "unmerge-dup-check"
   | "review"
   | "mail"
   | "caption"
@@ -533,6 +536,13 @@ function parseModels(spec: string | undefined): string[] {
     .filter(Boolean);
 }
 
+/** Claude ids reject `temperature` with a 400 (caption-eval judge on
+ * claude-opus-5-5, 2026-10-14), even where the AnyRouter catalog lists the
+ * parameter, so the id prefix decides rather than the catalog. */
+function acceptsTemperature(model: string): boolean {
+  return !model.startsWith("anthropic/");
+}
+
 /**
  * Streams a chat completion from one model. `stream: true` is not an
  * optimization here — it is the only request shape anyrouter answers inline
@@ -571,7 +581,7 @@ async function streamCompletion(
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0,
+      ...(acceptsTemperature(model) ? { temperature: 0 } : {}),
       max_tokens: opts.maxTokens ?? MAX_TOKENS,
       stream: true,
       ...(opts.json ? { response_format: { type: "json_object" } } : {}),

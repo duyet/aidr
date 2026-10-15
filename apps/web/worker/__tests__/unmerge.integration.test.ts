@@ -26,8 +26,15 @@ import {
   UNMERGE_AUDIT_ROW,
   UNMERGE_AUDIT_SOURCES,
 } from "../unmerge/apply.js";
-import { d1Select, loadUnmergeSnapshot } from "../unmerge/load.js";
+import { CHECK_VERSION } from "../unmerge/check.js";
 import {
+  d1Select,
+  loadCheckPlan,
+  loadDanglingSnapshot,
+  loadUnmergeSnapshot,
+} from "../unmerge/load.js";
+import {
+  parseDanglingDecisions,
   parseUnmergePairs,
   planUnmerge,
   UNMERGE_QUIET_SEC,
@@ -1342,6 +1349,42 @@ async function writeOracle(target: DatabaseSync) {
 const statusOf = (target: DatabaseSync, rowId: string) =>
   shape(target, rowId) as { status: string; duplicate_of: string | null };
 
+/** Stores a clear model verdict (#797) for every story the dangling plan
+ * holds only for one, as a check whose model links nothing would, until no
+ * story waits. These tests are about the deterministic rules; the check
+ * itself is tested in unmerge-check.integration.test.ts. */
+async function clearChecks(decisions: unknown): Promise<void> {
+  const parsed = parseDanglingDecisions(decisions);
+  if ("error" in parsed) return;
+  const select = d1Select(env.DB);
+  for (let round = 0; round < 5; round++) {
+    const snapshot = await loadDanglingSnapshot(select, parsed.decisions);
+    const { work } = await loadCheckPlan(
+      select,
+      snapshot,
+      parsed.decisions,
+      Date.now()
+    );
+    if (work.length === 0) return;
+    for (const { candidate } of work) {
+      db.prepare(
+        `INSERT INTO unmerge_checks (story, version, verdict, matches, dropped,
+           sent, model, operation_id, checked_at)
+         VALUES (?, ?, 'clear', '[]', '[]', '[]', NULL, 'test', ?)`
+      ).run(candidate.story, CHECK_VERSION, Date.now());
+    }
+  }
+  throw new Error("checks did not settle");
+}
+
+async function checkedDangling(
+  target: Env,
+  body: Parameters<typeof unmergeItems>[1]
+) {
+  await clearChecks(body.decisions);
+  return unmergeItems(target, body);
+}
+
 describe("unmerge of dangling merges (#791)", () => {
   beforeEach(async () => {
     await writeDangling(db);
@@ -1367,7 +1410,7 @@ describe("unmerge of dangling merges (#791)", () => {
 
   it("a dry run writes nothing and plans each story once", async () => {
     const before = dump(db);
-    const result = await unmergeItems(env, { dangling: true });
+    const result = await checkedDangling(env, { dangling: true });
     if ("error" in result) throw new Error(result.error);
     expect(result.dryRun).toBe(true);
     expect(dump(db)).toEqual(before);
@@ -1403,7 +1446,10 @@ describe("unmerge of dangling merges (#791)", () => {
   });
 
   it("restores each story as ingest writes it with no made-up id", async () => {
-    const result = await unmergeItems(env, { dangling: true, dryRun: false });
+    const result = await checkedDangling(env, {
+      dangling: true,
+      dryRun: false,
+    });
     if ("error" in result) throw new Error(result.error);
     expect(result.applied).toMatchObject({ stale: [], remaining: 0 });
 
@@ -1432,7 +1478,10 @@ describe("unmerge of dangling merges (#791)", () => {
         .all()
         .map((r) => (r as { id: string }).id);
     const before = published();
-    const result = await unmergeItems(env, { dangling: true, dryRun: false });
+    const result = await checkedDangling(env, {
+      dangling: true,
+      dryRun: false,
+    });
     if ("error" in result) throw new Error(result.error);
 
     // The copy whose twin is live joins it, as ingest would have merged it.
@@ -1454,7 +1503,7 @@ describe("unmerge of dangling merges (#791)", () => {
   });
 
   it("posts nothing and leaves the recent merge for later", async () => {
-    await unmergeItems(env, { dangling: true, dryRun: false });
+    await checkedDangling(env, { dangling: true, dryRun: false });
     expect(statusOf(db, RECENT_D)).toMatchObject({
       status: "merged",
       duplicate_of: "abc123",
@@ -1502,9 +1551,9 @@ describe("unmerge of dangling merges (#791)", () => {
   });
 
   it("a rerun writes nothing and plans only the held rows", async () => {
-    await unmergeItems(env, { dangling: true, dryRun: false });
+    await checkedDangling(env, { dangling: true, dryRun: false });
     const after = dump(db);
-    const again = await unmergeItems(env, { dangling: true, dryRun: false });
+    const again = await checkedDangling(env, { dangling: true, dryRun: false });
     if ("error" in again) throw new Error(again.error);
     expect(again.counts.pairs).toEqual({
       "skip:needs-decision": 1,
@@ -1516,7 +1565,10 @@ describe("unmerge of dangling merges (#791)", () => {
 
   it("undo puts every row back, and a second undo is a no-op", async () => {
     const preApply = tables(db);
-    const applied = await unmergeItems(env, { dangling: true, dryRun: false });
+    const applied = await checkedDangling(env, {
+      dangling: true,
+      dryRun: false,
+    });
     if ("error" in applied) throw new Error(applied.error);
     expect(tables(db)).not.toEqual(preApply);
     const batchId = applied.applied?.batchId;
@@ -1535,14 +1587,16 @@ describe("unmerge of dangling merges (#791)", () => {
   });
 
   it("refuses dangling together with pairs", async () => {
-    expect(await unmergeItems(env, { dangling: true, pairs })).toMatchObject({
-      status: 400,
-    });
+    expect(await checkedDangling(env, { dangling: true, pairs })).toMatchObject(
+      {
+        status: 400,
+      }
+    );
   });
 
   it("settles a held story by a decision on any of its rows (#793)", async () => {
     const outcomeOf = async (decisions: unknown[]) => {
-      const result = await unmergeItems(env, { dangling: true, decisions });
+      const result = await checkedDangling(env, { dangling: true, decisions });
       if ("error" in result) throw new Error(result.error);
       return result.plan.canonicals
         .flatMap((c) => c.pairs)
@@ -1558,7 +1612,7 @@ describe("unmerge of dangling merges (#791)", () => {
     });
 
     const before = dump(db);
-    const applied = await unmergeItems(env, {
+    const applied = await checkedDangling(env, {
       dangling: true,
       decisions: [{ mergedId: SIM, distinctFrom: [SIM_LIVE] }],
       dryRun: false,
@@ -1572,7 +1626,7 @@ describe("unmerge of dangling merges (#791)", () => {
     // The rerun of a capped apply posts the same decisions; a spent one is
     // not an error.
     expect(
-      await unmergeItems(env, {
+      await checkedDangling(env, {
         dangling: true,
         decisions: [{ mergedId: SIM, distinctFrom: [SIM_LIVE] }],
       })
@@ -1580,7 +1634,7 @@ describe("unmerge of dangling merges (#791)", () => {
   });
 
   it("still joins a live copy with the story's identity, whatever distinctFrom names", async () => {
-    const result = await unmergeItems(env, {
+    const result = await checkedDangling(env, {
       dangling: true,
       decisions: [{ mergedId: HIDDEN, distinctFrom: [LIVE] }],
     });
@@ -1593,7 +1647,7 @@ describe("unmerge of dangling merges (#791)", () => {
   });
 
   it("holds a story whose rows carry two different decisions", async () => {
-    const result = await unmergeItems(env, {
+    const result = await checkedDangling(env, {
       dangling: true,
       decisions: [
         { mergedId: TRIO_HUG, sameAs: SIM_LIVE },
@@ -1628,7 +1682,7 @@ describe("unmerge of dangling merges (#791)", () => {
       { mergedId: SIM, sameAs: SIM_LIVE },
     ]) {
       expect(
-        await unmergeItems(env, { dangling: true, decisions, dryRun: false })
+        await checkedDangling(env, { dangling: true, decisions, dryRun: false })
       ).toMatchObject({ status: 400 });
     }
     expect(
@@ -1915,15 +1969,15 @@ describe("unmerge of dangling merges: live copies under another form (#794)", ()
   };
 
   it("joins a story whose only live copy is merged into a published row, at that row", async () => {
-    const outcome = outcomesOf(await unmergeItems(env, { dangling: true })).get(
-      COPY_D
-    );
+    const outcome = outcomesOf(
+      await checkedDangling(env, { dangling: true })
+    ).get(COPY_D);
     expect(outcome).toEqual({
       action: "repoint",
       twinId: ROOT,
       rule: "aggregator-slug",
     });
-    await unmergeItems(env, { dangling: true, dryRun: false });
+    await checkedDangling(env, { dangling: true, dryRun: false });
     expect(statusOf(db, COPY_D)).toMatchObject({
       status: "merged",
       duplicate_of: ROOT,
@@ -1931,9 +1985,9 @@ describe("unmerge of dangling merges: live copies under another form (#794)", ()
   });
 
   it("names the published row, not its merged copy, for a near-duplicate of the copy", async () => {
-    const outcome = outcomesOf(await unmergeItems(env, { dangling: true })).get(
-      NEAR_D
-    );
+    const outcome = outcomesOf(
+      await checkedDangling(env, { dangling: true })
+    ).get(NEAR_D);
     expect(outcome).toMatchObject({ action: "skip", reason: "needs-decision" });
     expect(
       outcome?.action === "skip" && outcome.candidates?.map((c) => c.id)
@@ -1941,9 +1995,9 @@ describe("unmerge of dangling merges: live copies under another form (#794)", ()
   });
 
   it("holds a story whose live copy is merged into an unrelated row, instead of hiding it there", async () => {
-    const outcome = outcomesOf(await unmergeItems(env, { dangling: true })).get(
-      STRAY_D
-    );
+    const outcome = outcomesOf(
+      await checkedDangling(env, { dangling: true })
+    ).get(STRAY_D);
     expect(outcome).toMatchObject({ action: "skip", reason: "needs-decision" });
     expect(
       outcome?.action === "skip" && outcome.candidates?.map((c) => c.id)
@@ -1952,7 +2006,7 @@ describe("unmerge of dangling merges: live copies under another form (#794)", ()
 
   it("holds a near-duplicate of a live story published a day past the merge lookback", async () => {
     expect(
-      outcomesOf(await unmergeItems(env, { dangling: true })).get(LATE_D)
+      outcomesOf(await checkedDangling(env, { dangling: true })).get(LATE_D)
     ).toMatchObject({
       action: "skip",
       reason: "needs-decision",
@@ -1962,7 +2016,7 @@ describe("unmerge of dangling merges: live copies under another form (#794)", ()
 
   it("holds a reworded headline that shares four evidence words with a live story", async () => {
     expect(
-      outcomesOf(await unmergeItems(env, { dangling: true })).get(REWORD_D)
+      outcomesOf(await checkedDangling(env, { dangling: true })).get(REWORD_D)
     ).toMatchObject({
       action: "skip",
       reason: "needs-decision",
@@ -1972,13 +2026,13 @@ describe("unmerge of dangling merges: live copies under another form (#794)", ()
 
   it("treats a URL with a trailing slash as the same page", async () => {
     expect(
-      outcomesOf(await unmergeItems(env, { dangling: true })).get(SLASH_D)
+      outcomesOf(await checkedDangling(env, { dangling: true })).get(SLASH_D)
     ).toEqual({ action: "repoint", twinId: SLASH_LIVE, rule: "url" });
   });
 
   it("holds an English story whose live copy is Vietnamese, matched through the stored English title", async () => {
     expect(
-      outcomesOf(await unmergeItems(env, { dangling: true })).get(VI_D)
+      outcomesOf(await checkedDangling(env, { dangling: true })).get(VI_D)
     ).toMatchObject({
       action: "skip",
       reason: "needs-decision",
@@ -1987,11 +2041,11 @@ describe("unmerge of dangling merges: live copies under another form (#794)", ()
   });
 
   it("restores one story under two made-up ids once, with the other row merged into it", async () => {
-    const outcomes = outcomesOf(await unmergeItems(env, { dangling: true }));
+    const outcomes = outcomesOf(await checkedDangling(env, { dangling: true }));
     expect(
       [FOLD_A, FOLD_B].map((rowId) => outcomes.get(rowId)?.action).sort()
     ).toEqual(["regroup", "restore"]);
-    await unmergeItems(env, { dangling: true, dryRun: false });
+    await checkedDangling(env, { dangling: true, dryRun: false });
     const published = [FOLD_A, FOLD_B].filter(
       (rowId) => statusOf(db, rowId).status === "published"
     );
@@ -2072,7 +2126,7 @@ describe("unmerge: rows the request re-points still count as live (#798)", () =>
 
   it("holds the second copy against the first while neither is decided", async () => {
     await writeDsec(db, dsecA(), false);
-    const outcomes = outcomesOf(await unmergeItems(env, { dangling: true }));
+    const outcomes = outcomesOf(await checkedDangling(env, { dangling: true }));
     expect(outcomes.get(DSEC_A)).toMatchObject({
       action: "restore",
       status: "published",
@@ -2091,7 +2145,7 @@ describe("unmerge: rows the request re-points still count as live (#798)", () =>
       const before = tables(db);
       const decisions = [{ mergedId: DSEC_A, sameAs: DSEC_LIVE }];
       const outcomes = outcomesOf(
-        await unmergeItems(env, { dangling: true, decisions })
+        await checkedDangling(env, { dangling: true, decisions })
       );
       expect(outcomes.get(DSEC_A)).toEqual({
         action: "repoint",
@@ -2104,7 +2158,7 @@ describe("unmerge: rows the request re-points still count as live (#798)", () =>
       });
       expect(candidateIds(outcomes.get(DSEC_B))).toEqual([DSEC_LIVE]);
 
-      await unmergeItems(env, { dangling: true, decisions, dryRun: false });
+      await checkedDangling(env, { dangling: true, decisions, dryRun: false });
       expect(tables(db)).not.toEqual(before);
       expect(statusOf(db, DSEC_B)).toMatchObject({
         status: "merged",
@@ -2125,7 +2179,7 @@ describe("unmerge: rows the request re-points still count as live (#798)", () =>
     await writeRun(db, [dsecA()], "abc124", DSEC_T + 4 * HOUR);
     await writeRun(db, [dsecB()], "abc125", DSEC_T + 4 * HOUR + 600);
     const outcomes = outcomesOf(
-      await unmergeItems(env, {
+      await checkedDangling(env, {
         dangling: true,
         decisions: [{ mergedId: DSEC_A, sameAs: DSEC_LIVE }],
       })
@@ -2137,7 +2191,7 @@ describe("unmerge: rows the request re-points still count as live (#798)", () =>
   it("publishes that copy once a distinctFrom names the row it was held against", async () => {
     await writeDsec(db, dsecA(), false);
     const outcomes = outcomesOf(
-      await unmergeItems(env, {
+      await checkedDangling(env, {
         dangling: true,
         decisions: [
           { mergedId: DSEC_A, sameAs: DSEC_LIVE },
@@ -2162,7 +2216,9 @@ describe("unmerge: rows the request re-points still count as live (#798)", () =>
         sources: [],
       });
       await writeDsec(db, sameDoc, heldFirst);
-      const outcomes = outcomesOf(await unmergeItems(env, { dangling: true }));
+      const outcomes = outcomesOf(
+        await checkedDangling(env, { dangling: true })
+      );
       expect(outcomes.get(DSEC_A)).toEqual({
         action: "repoint",
         twinId: DSEC_LIVE,

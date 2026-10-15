@@ -37,17 +37,44 @@ export interface GateHeadline {
   translation?: string | null;
 }
 
+/** What the gate reads of a headline, worked out once per headline object:
+ *  the unmerge check (#797) judges each live row against ~180 stories, and
+ *  `officialSourceFor` alone cost 69 µs a pair. */
+interface HeadlineFacts {
+  /** Normalized names of the organizations it is the official source of. */
+  orgs: string[];
+  evidence: Set<string>;
+  translationEvidence: Set<string> | null;
+}
+
+const factsCache = new WeakMap<GateHeadline, HeadlineFacts>();
+
+function factsOf(item: GateHeadline): HeadlineFacts {
+  let facts = factsCache.get(item);
+  if (!facts) {
+    facts = {
+      orgs: (officialSourceFor(item.sourceId, item.url)?.official ?? [])
+        .map(normalizeTitleForDedupe)
+        .filter((name) => name.length > 0),
+      evidence: evidenceTokens(item.title),
+      translationEvidence: item.translation
+        ? evidenceTokens(item.translation)
+        : null,
+    };
+    factsCache.set(item, facts);
+  }
+  return facts;
+}
+
 /** True when `title` names an organization `item` is the official source
  *  of: "Google DeepMind Debuts…" against a deepmind post, "Cloudflare…"
  *  against an HN link to a Cloudflare post. An official post's headline
  *  often names only the product ("Introducing SynthID Bio"). */
 function namesOfficialOrg(title: string, item: GateHeadline): boolean {
-  const orgs = officialSourceFor(item.sourceId, item.url)?.official ?? [];
+  const { orgs } = factsOf(item);
+  if (orgs.length === 0) return false;
   const text = ` ${normalizeTitleForDedupe(title)} `;
-  return orgs.some((org) => {
-    const name = normalizeTitleForDedupe(org);
-    return name.length > 0 && text.includes(` ${name} `);
-  });
+  return orgs.some((name) => text.includes(` ${name} `));
 }
 
 /** One headline naming an organization the other is the official source
@@ -64,10 +91,11 @@ function sharesStoryEvidence(
   if (namesOfficialOrg(member.title, target)) return true;
   if (namesOfficialOrg(target.title, member)) return true;
   if (isTitleNearDuplicate(member.title, target.title)) return true;
-  const tokens = evidenceTokens(member.title);
-  return [target.title, target.translation].some((headline) => {
+  const tokens = factsOf(member).evidence;
+  const { evidence, translationEvidence } = factsOf(target);
+  return [evidence, translationEvidence].some((headline) => {
     if (!headline) return false;
-    for (const token of evidenceTokens(headline)) {
+    for (const token of headline) {
       if (tokens.has(token)) return true;
     }
     return false;
