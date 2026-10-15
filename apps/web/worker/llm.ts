@@ -235,6 +235,9 @@ export type LlmTask =
   | "summarize"
   | "tldr"
   | "cluster"
+  /** The unmerge's same-story check of restore candidates (#797): the
+   *  cluster prompt, run from an admin request, never from ingest. */
+  | "unmerge-dup-check"
   | "review"
   | "mail"
   | "caption"

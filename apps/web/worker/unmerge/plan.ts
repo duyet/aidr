@@ -60,6 +60,7 @@ import type {
 } from "../sources/types.js";
 import { MAX_MERGED_TOPICS } from "../topics.js";
 import { DIGEST_WINDOW_DAYS } from "../weekly-digest.js";
+import { checkGate, type StoredCheck } from "./check.js";
 import {
   isLikelySameEvent,
   type LiveRef,
@@ -344,6 +345,8 @@ export interface DanglingSnapshot extends UnmergeSnapshot {
   /** Published rows of the dangling rows' days, in `items` with their
    * merged members: their stored scores set the restored rows' scale. */
   calibration: readonly ItemId[];
+  /** Stored model same-story verdicts by story key (`unmerge_checks`). */
+  checks: ReadonlyMap<string, StoredCheck>;
 }
 
 /** A merged row whose `duplicate_of` names no item. `group` is the id of
@@ -391,7 +394,10 @@ export type PairOutcome =
         | "twin-busy"
         /** Another group of this request restores the same story; a rerun
          * after that apply re-points this one to it. */
-        | "twin-restores-first";
+        | "twin-restores-first"
+        /** A dangling story would publish, but no stored model verdict
+         * clears it (`unmerge --dangling --model-check`, #797). */
+        | "needs-model-check";
       detail: string;
       /** For `needs-decision`: the rows a `sameAs` can name, in full. */
       candidates?: StoryRef[];
@@ -910,6 +916,7 @@ export function planDanglingUnmerge(
     restored: [],
     copies: new Map(),
     live: snapshot.live,
+    checks: snapshot.checks,
   };
   const groupOf = new Map<string, string>();
   for (const story of stories) {
@@ -1102,6 +1109,9 @@ interface PlanState {
   copies: Map<string, LiveRef>;
   /** What a group is compared with: the live rows and `copies`. */
   live: readonly LiveRef[];
+  /** Dangling mode: a story publishes only when its stored model verdict
+   * clears it (`check.ts`). Pairs mode has none. */
+  checks?: ReadonlyMap<string, StoredCheck>;
 }
 
 /** One group of the request as routing reads it. */
@@ -1317,7 +1327,36 @@ function routeGroup(state: PlanState, group: GroupInput): GroupRoute {
       candidates: candidatesOf(state, likely),
     };
   }
+  const checked =
+    publishes && state.checks
+      ? checkGate(
+          state.checks,
+          rows.map((row) => row.id),
+          decision?.kind === "distinct" ? decision.from : []
+        )
+      : ({ kind: "clear" } as const);
+  if (checked.kind === "match") {
+    const named = checked.matches
+      .map((m) => `${short(m.id)} [${m.source_id}] "${m.title}"`)
+      .join("; ");
+    return {
+      kind: "skip",
+      reason: "needs-decision",
+      detail: `the model check found the same story as ${named}; set sameAs, or distinctFrom with the ids that are another story`,
+      candidates: checked.matches,
+    };
+  }
+  // An unchecked story still counts as restored here, so a later group
+  // that is its near-duplicate waits on it as it will once it is cleared.
   state.restored.push(...refs.map((ref) => ({ ...ref, root: ref.id })));
+  if (checked.kind === "unchecked") {
+    return {
+      kind: "skip",
+      reason: "needs-model-check",
+      detail:
+        "no stored model verdict clears this story; run agent unmerge --dangling --model-check",
+    };
+  }
   return { kind: "restore" };
 }
 

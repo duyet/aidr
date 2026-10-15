@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
  * decides whether its prompt can hold reader data.
  */
 const CALL_SITES: Record<string, { readerData: boolean; why: string }> = {
-  "dedupe.ts#clusterSimilar": {
+  "dedupe.ts#requestClusters": {
     readerData: false,
     why: "published item titles",
   },

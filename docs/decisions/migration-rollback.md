@@ -289,6 +289,19 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0063_unmerge_checks.sql
+
+- Change: new table `unmerge_checks`, one model same-story verdict per
+  `unmerge --dangling` restore candidate (#797). Written only by
+  `POST /api/admin/unmerge/check`; read by the dangling unmerge planner.
+- Risk: none for existing rows. The Worker and the local
+  `agent unmerge --dangling` dry run read the table, so apply it before
+  deploying; until then the dangling dry run fails with
+  "wrangler d1 execute failed".
+- Rollback: deploy the previous Worker; `DROP TABLE unmerge_checks;`. The
+  verdicts came from model calls, so export the rows first if they may be
+  needed again.
+
 ## 0062_day_video_posts.sql
 
 - Change: new table `day_video_posts` (one row per date and Telegram

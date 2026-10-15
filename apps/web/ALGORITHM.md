@@ -382,6 +382,46 @@ whose `duplicate_of` names no item and needs no pairs file.
   story's batch is independent. They stay behind, inert.
 - One batch per story, keyed by its first row id, with the unmerge's
   guards, audit rows and undo. A rerun finds only the rows still dangling.
+- Model check (#797): the title rules miss reworded headlines and late
+  re-reports, so a story publishes only when a stored model verdict clears
+  it. Without one it waits as `needs-model-check`; an apply writes it
+  later. `POST /api/admin/unmerge/check` with
+  `{ confirmLlm: true, decisions?, maxCalls? }`
+  (`agent unmerge --dangling [decisions.json] --model-check --confirm-llm`)
+  is the only step that calls a model. It judges each waiting story
+  against the published rows within `CHECK_WINDOW_SEC` (7 days) of it,
+  with ingest's cluster prompt on the production chain (task
+  `unmerge-dup-check` in `llm_calls`, run id `unmerge-check-…`), then
+  ingest's cluster gate (`gateLlmClusters`), split per story so only a
+  story's own headlines back its links. Only live rows a story's headlines
+  back are sent, since the gate drops every other link; a story no live row
+  backs is cleared without a call. Stories are batched oldest first within
+  ingest's per-call limits (100 new titles, 300 live rows).
+  - Verdicts go to `unmerge_checks` (migration 0063), one row per story,
+    keyed by its sorted row ids, with the kept matches, the links the gate
+    or the 7-day window dropped, the ids sent, the model and the operation
+    id. A story whose rows change, or a verdict of another
+    `CHECK_VERSION`, reads as no verdict. The live rows are not part of
+    the key: an apply that publishes a restored story does not make other
+    verdicts stale.
+  - A kept match holds the story as `needs-decision` with the matched
+    published story as its candidate. It never re-points: a model match is
+    evidence, not identity. `sameAs` or `distinctFrom` settles it;
+    `distinctFrom` overrules a match only with the stories it names. A
+    failed call, an exhausted chain or an answer with no `clusters` array
+    stores nothing, so it never reads as clear.
+  - A request makes at most `maxCalls` calls (default 3, at most 10),
+    starts no batch after 120 s, and stops after any 429 (#656) or chain
+    failure, storing only whole batches. A rerun skips stories with a
+    current verdict, so a check with nothing new calls no model. The CLI
+    prints the call estimate from SELECTs first and needs `--confirm-llm`;
+    it repeats requests until no story waits or `--max-calls` (default:
+    the estimate) is spent, and after a 429 waits 150 s (past the chain's
+    2-minute skip of that model), doubling up to 15 min, and gives up
+    after three 429 stops in a row.
+  - Replay: `scripts/unmerge-check-eval.ts` runs the planner, prefilter,
+    batching and gate on a cached snapshot with a stub in place of the
+    model, or on verdicts exported from `unmerge_checks`.
 
 ### Tag backfill (admin)
 
