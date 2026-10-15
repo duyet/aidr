@@ -190,6 +190,7 @@ interface RunRow {
     selectedSteps?: string[];
     tldrPreview?: unknown;
     weeklyPreview?: unknown;
+    clusterRefs?: unknown;
     published?: number;
     tokens?: number;
   } | null;
@@ -210,6 +211,7 @@ function compactRun(run: RunRow) {
     tokens: run.stats?.tokens,
     tldrPreview: run.stats?.tldrPreview,
     weeklyPreview: run.stats?.weeklyPreview,
+    clusterRefs: run.stats?.clusterRefs,
     steps: (run.stats?.steps ?? []).map((s) =>
       s.reason
         ? `${s.name}: ${s.action} (${s.reason})`
@@ -480,7 +482,7 @@ async function unmergeModelCheck(
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     report: (line) => console.error(line),
   });
-  const summary = `unmerge --dangling --model-check: ${run.calls} call(s) in ${run.requests} request(s), stored ${JSON.stringify(run.stored)}`;
+  const summary = `unmerge --dangling --model-check: ${run.calls} call(s) in ${run.requests} request(s), stored ${JSON.stringify(run.stored)}, refs ${JSON.stringify(run.refs)}`;
   if (!run.finished) {
     fail(
       `${summary}; stopped by ${run.stoppedBy}${run.failure ? ` (${run.failure})` : ""}. Verdicts so far are stored; rerun to resume.`

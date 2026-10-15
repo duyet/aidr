@@ -193,4 +193,33 @@ describe("planMerges cluster gate (#733)", () => {
       "test/cluster": { proposed: 1, rejected: 1 },
     });
   });
+
+  it("records a mistyped existing id as a near miss and merges nothing on it", async () => {
+    modelAnswers([{ new: [0, 1], existing: ["c696e8b2"] }]);
+
+    const { plan, clusterGate, clusterRefs } = await planMerges(
+      ctx([synthId]),
+      proteinTwins,
+      new Map(),
+      new Map(),
+      NOW
+    );
+
+    // The twins still fold into each other; the typo links no live story.
+    expect(plan.canonicalUpdates.has("c696e8b1")).toBe(false);
+    expect(plan.merged.size).toBe(1);
+    expect(clusterGate).toEqual({});
+    expect(clusterRefs).toEqual({
+      "test/cluster": {
+        calls: 1,
+        newAnswered: 2,
+        newKept: 2,
+        existingAnswered: 1,
+        existingKept: 0,
+        existingNotString: 0,
+        existingNearMiss: 1,
+        emptied: 0,
+      },
+    });
+  });
 });

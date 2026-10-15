@@ -17,10 +17,16 @@ import {
   gateLlmClusters,
 } from "../cluster-gate.js";
 import {
+  addClusterRefs,
+  type ClusterRefCounts,
+  EMPTY_CLUSTER_REFS,
+} from "../cluster-refs.js";
+import {
   type Cluster,
   type ClusterExistingInput,
   type ClusterNewInput,
   MAX_NEW_ITEMS_IN_CLUSTER_PROMPT,
+  type NearMissLink,
 } from "../dedupe.js";
 import { MERGE_CANDIDATE_LIMIT } from "../ingest/context.js";
 import type { StoryRef } from "./twins.js";
@@ -334,11 +340,13 @@ export function batchPrompt(batch: CheckBatch): BatchPrompt {
   };
 }
 
-/** A link the model made that the verdict does not keep. */
+/** A link the model made that the verdict does not keep. A `near-miss` is
+ * an id the prompt did not send that `nearMissOf` resolves to `id`: the
+ * model likely meant this live row and mistyped its id. */
 export interface DroppedLink {
   id: string;
   title: string;
-  reason: "gate" | "outside-window";
+  reason: "gate" | "outside-window" | "near-miss";
 }
 
 /** One story's verdict, as `unmerge_checks` stores it. */
@@ -368,12 +376,14 @@ export function noEvidenceVerdict(work: CheckWork): CheckVerdict {
  * Turns the clusters of every call of a batch into one verdict per story.
  * Each model cluster is split per story, so a story is linked only to the
  * live rows its own headlines back (`gateLlmClusters`), and only within its
- * own window. Links between new items alone are not judged.
+ * own window. Links between new items alone are not judged. `nearMisses`
+ * change no verdict; each is recorded as a dropped link of its stories.
  */
 export function judgeBatch(
   batch: CheckBatch,
   prompt: BatchPrompt,
-  clusters: readonly Cluster[]
+  clusters: readonly Cluster[],
+  nearMisses: readonly NearMissLink[] = []
 ): CheckVerdict[] {
   const perStory: Cluster[] = [];
   for (const cluster of clusters) {
@@ -428,6 +438,12 @@ export function judgeBatch(
   for (const { existingId, newIndices } of gated.rejected) {
     drop(prompt.owner.get(newIndices[0]) as string, existingId, "gate");
   }
+  for (const miss of nearMisses) {
+    for (const i of miss.new) {
+      const story = prompt.owner.get(i);
+      if (story !== undefined) drop(story, miss.existing, "near-miss");
+    }
+  }
   return batch.work.map(({ candidate, live }) => {
     const ids = kept.get(candidate.story) ?? new Set<string>();
     const matches = live.filter((row) => ids.has(row.id)).map(storyRefOf);
@@ -465,6 +481,9 @@ export interface CheckRunResult {
   stoppedBy: CheckStop | null;
   /** The sanitized failure that stopped the request. */
   failure?: string;
+  /** How the served answers referenced the prompts' items, summed over
+   * this request's calls. */
+  refs: ClusterRefCounts;
 }
 
 /** After a request stopped on a 429, the next waits this long, doubling up
@@ -478,6 +497,7 @@ export interface DriveResult {
   requests: number;
   calls: number;
   stored: CheckRunResult["stored"];
+  refs: ClusterRefCounts;
   /** No story waits for a verdict. */
   finished: boolean;
   stoppedBy: CheckStop | "budget" | null;
@@ -501,6 +521,7 @@ export async function driveCheck(options: {
     requests: 0,
     calls: 0,
     stored: { noEvidence: 0, clear: 0, match: 0 },
+    refs: EMPTY_CLUSTER_REFS,
     finished: false,
     stoppedBy: "budget",
   };
@@ -515,8 +536,9 @@ export async function driveCheck(options: {
     out.stored.noEvidence += result.stored.noEvidence;
     out.stored.clear += result.stored.clear;
     out.stored.match += result.stored.match;
+    out.refs = addClusterRefs(out.refs, result.refs);
     options.report(
-      `check ${result.operationId}: ${result.calls} call(s), stored ${JSON.stringify(result.stored)}, ${result.pending} stories were waiting (${result.pendingCalls} calls)${result.stoppedBy ? `, stopped by ${result.stoppedBy}` : ""}; ${out.calls}/${options.budget} calls used`
+      `check ${result.operationId}: ${result.calls} call(s), stored ${JSON.stringify(result.stored)}, refs ${JSON.stringify(result.refs)}, ${result.pending} stories were waiting (${result.pendingCalls} calls)${result.stoppedBy ? `, stopped by ${result.stoppedBy}` : ""}; ${out.calls}/${options.budget} calls used`
     );
     if (result.pending === 0) {
       return { ...out, finished: true, stoppedBy: null };

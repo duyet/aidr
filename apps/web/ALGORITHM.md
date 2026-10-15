@@ -399,8 +399,11 @@ whose `duplicate_of` names no item and needs no pairs file.
   ingest's per-call limits (100 new titles, 300 live rows).
   - Verdicts go to `unmerge_checks` (migration 0063), one row per story,
     keyed by its sorted row ids, with the kept matches, the links the gate
-    or the 7-day window dropped, the ids sent, the model and the operation
-    id. A story whose rows change, or a verdict of another
+    or the 7-day window dropped, the live rows the model nearly named
+    (`near-miss`: an id it did not send that `nearMissOf` resolves to a
+    sent one), the ids sent, the model and the operation id. Each request
+    also returns `refs`, the counts of `worker/cluster-refs.ts` summed over
+    its calls. A story whose rows change, or a verdict of another
     `CHECK_VERSION`, reads as no verdict. The live rows are not part of
     the key: an apply that publishes a restored story does not make other
     verdicts stale.
@@ -1075,6 +1078,14 @@ deterministic pass.
   share the company name. Each rejection logs `cluster gate: <model>
   linked …` and counts in `stats.clusterGate` (per served model: links
   proposed, links rejected).
+- The prompt names new items by index and existing rows by their full
+  64-hex id, and the parser drops any reference the request did not send,
+  so a mistyped id reads as no duplicate. `stats.clusterRefs` counts, per
+  served model, the `new` and `existing` entries answered and kept, the
+  `existing` entries that were not strings, those within 2 edits or an
+  8+ character prefix of a sent id (`existingNearMiss`), and the clusters
+  the drops left with fewer than 2 members. Numbers only: no model text is
+  stored (#752). `agent audit` prints it per run.
 - The prompt merges different outlets' first-day coverage of one
   announcement whatever the headline angle, and keeps later developments
   (market reaction, failed demo, wider rollout, a later benchmark)
