@@ -1,14 +1,25 @@
+import type { ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { pngBytes } from "../lib/__fixtures__/raster";
 import type { DayArchive } from "../lib/feed-queries";
+import { storyOgImageFromBytes } from "../lib/story-og";
+
+const rendered: ReactElement[] = [];
 
 vi.mock("@cf-wasm/og/workerd", () => ({
   cache: { setExecutionContext: () => {} },
   ImageResponse: {
-    async: async (_element: unknown, options: { headers?: HeadersInit }) =>
-      new Response("fake-png", {
+    async: async (
+      element: ReactElement,
+      options: { headers?: HeadersInit }
+    ) => {
+      rendered.push(element);
+      return new Response("fake-png", {
         status: 200,
         headers: { ...options.headers, "content-type": "image/png" },
-      }),
+      });
+    },
   },
 }));
 
@@ -54,6 +65,7 @@ let r2: { get: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn> };
 let edge: { match: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn> };
 
 beforeEach(() => {
+  rendered.length = 0;
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
   r2 = { get: vi.fn(async () => null), put: vi.fn(async () => undefined) };
@@ -153,5 +165,52 @@ describe("api/og/date/$date for a day with stories", () => {
     );
     expect(r2.put).toHaveBeenCalledTimes(1);
     expect(edge.put).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("api/og/date/$date tile photos", () => {
+  function dayWithPhoto(bytes: Uint8Array) {
+    currentArchive = {
+      ...emptyArchive("2026-10-15"),
+      day: {
+        date: "2026-10-15",
+        items: [
+          {
+            id: "a1b2c3d4e5f60718",
+            title: "A story",
+            summary: "Some copy",
+            title_vi: null,
+            summary_vi: null,
+            image_url: "https://cdn.example.com/photo.png",
+            tags: ["ai"],
+            category: "ai",
+          },
+        ],
+      },
+    } as unknown as DayArchive;
+    // The source photo is already in R2, so no publisher fetch runs.
+    r2.get.mockImplementation(async (key: string) =>
+      key.startsWith("src/")
+        ? {
+            customMetadata: { fetchedAt: String(Date.now()) },
+            arrayBuffer: async () => bytes.buffer,
+          }
+        : null
+    );
+    return storyOgImageFromBytes(bytes)?.dataUri ?? "";
+  }
+
+  it("leaves an avatar-sized photo off the day card", async () => {
+    // Live 2026-10-16: a 96x96 author headshot, upscaled into a tile,
+    // stood in for the story's real hero.
+    const avatar = dayWithPhoto(pngBytes(96, 96, [200, 0, 0]));
+    expect((await call("2026-10-15")).status).toBe(200);
+    expect(renderToStaticMarkup(rendered[0])).not.toContain(avatar);
+  });
+
+  it("puts a card-sized photo on the day card", async () => {
+    const photo = dayWithPhoto(pngBytes(400, 250, [0, 0, 200]));
+    expect((await call("2026-10-15")).status).toBe(200);
+    expect(renderToStaticMarkup(rendered[0])).toContain(photo);
   });
 });
