@@ -1,3 +1,4 @@
+import type { SyntheticEvent } from "react";
 import type { CalendarDay } from "../../lib/calendar";
 import type { Lang } from "../../lib/types";
 
@@ -9,6 +10,31 @@ export const WEEKDAYS: Record<Lang, string[]> = {
 export function dayTitle(day: CalendarDay, lang: Lang): string | null {
   return lang === "vi" ? day.title_vi : day.title;
 }
+
+/** 1x1 transparent GIF: the image keeps its box and `bg-muted` fill. */
+const BLANK_IMAGE =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+function blank(img: HTMLImageElement): void {
+  // srcset wins over src, and leaves the publisher URL in place.
+  if (img.srcset !== BLANK_IMAGE) img.srcset = BLANK_IMAGE;
+}
+
+/**
+ * Props for a publisher image that may be dead. A 404 otherwise paints the
+ * broken-image icon; this points srcset at a blank pixel so the slot shows the
+ * muted placeholder and nothing around it moves. A fast 404 lands before
+ * hydration attaches `onError`, so the ref also checks on mount. Key the
+ * image by its URL: a reused element would keep the blank srcset over the
+ * next day's live image.
+ */
+export const BLANK_IF_BROKEN = {
+  ref: (img: HTMLImageElement | null) => {
+    if (img?.complete && img.naturalWidth === 0) blank(img);
+  },
+  onError: (event: SyntheticEvent<HTMLImageElement>) =>
+    blank(event.currentTarget),
+};
 
 export function storiesLabel(n: number, lang: Lang): string {
   if (lang === "vi") return `${n} tin`;
