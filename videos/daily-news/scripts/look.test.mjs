@@ -6,6 +6,7 @@ import { test } from "node:test";
 import { templateScript } from "./auto-script.mjs";
 import { dayNumber, resolveLook, rotate, rotatePair } from "./look.mjs";
 import { AXES } from "./looks/index.mjs";
+import { BED, POOLS as SOUND_POOLS, soundFor } from "./looks/sound.mjs";
 import { applyScreen } from "./visub-screen.mjs";
 import { isoWeekOf } from "./week.mjs";
 
@@ -470,21 +471,42 @@ const DAY_AXES = Object.fromEntries(
 );
 const dayLook = (l) => Object.keys(DAY_AXES).map((axis) => l[axis]);
 
-// Two weeks of CI days from launch: what a regular viewer sees. A rotation bug (an axis frozen by a pin-shaped
-// default, a pool that stopped rotating, a pair that ping-pongs) shows up here as a repeat or a missing variant.
-test("over two weeks of CI days, no day repeats yesterday's intro or look and every variant shows", () => {
+// Two weeks of CI days from launch: what a regular viewer sees, picture and sound. A rotation bug (an axis frozen by a
+// pin-shaped default, a pool that stopped rotating, a pair that ping-pongs) shows up here as a repeat or a missing
+// variant. Story layouts are not here: they follow each story's pictures and facts, not the date (the layout tests).
+test("over two weeks of CI days, no day repeats yesterday's intro, look or sound, and every variant shows", () => {
   const days = datesFrom("2026-10-16", 14);
-  const looks = days.map((date) => lookOn(date));
-  for (let i = 1; i < looks.length; i++) {
-    const [a, b] = [looks[i - 1], looks[i]];
-    for (const [axis, pool] of Object.entries(DAY_AXES))
+  const rows = days.map((date) => {
+    const look = lookOn(date);
+    const { sfx, bedStart } = soundFor(date);
+    return {
+      ...Object.fromEntries(Object.keys(DAY_AXES).map((a) => [a, look[a]])),
+      ...Object.fromEntries(
+        Object.entries(sfx).map(([cue, file]) => [`sfx:${cue}`, file])
+      ),
+      bed: bedStart,
+    };
+  });
+  const pools = {
+    ...DAY_AXES,
+    ...Object.fromEntries(
+      Object.entries(SOUND_POOLS).map(([cue, pool]) => [`sfx:${cue}`, pool])
+    ),
+    bed: BED.starts.daily,
+  };
+  for (let i = 1; i < rows.length; i++) {
+    for (const [axis, pool] of Object.entries(pools))
       if (pool.length > 1)
-        assert.notEqual(b[axis], a[axis], `${days[i]} repeats ${axis}`);
-    assert.notDeepEqual(dayLook(b), dayLook(a), days[i]);
+        assert.notEqual(
+          rows[i][axis],
+          rows[i - 1][axis],
+          `${days[i]} repeats ${axis}`
+        );
+    assert.notDeepEqual(dayLook(rows[i]), dayLook(rows[i - 1]), days[i]);
   }
-  for (const [axis, pool] of Object.entries(DAY_AXES))
+  for (const [axis, pool] of Object.entries(pools))
     assert.deepEqual(
-      [...new Set(looks.map((l) => l[axis]))].sort(),
+      [...new Set(rows.map((r) => r[axis]))].sort(),
       [...pool].sort(),
       `${axis} over ${days[0]}..${days.at(-1)}`
     );
