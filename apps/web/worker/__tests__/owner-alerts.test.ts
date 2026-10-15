@@ -229,6 +229,23 @@ describe("side effects", () => {
     expect(await ownerDmError(res)).toContain("is a bot account");
   });
 
+  // Owner DMs carry subscriber emails. A channel or group id (@name, -100…)
+  // would post them where other people read, so only a user id is accepted.
+  it.each(["@aihomnay", "-1001234567890", "-12345"])(
+    "rejects the channel or group id %s without calling Telegram",
+    async (chatId) => {
+      const calls = mockFetch(() => ({}));
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      expect(
+        await sendOwnerDm(
+          { TELEGRAM_BOT_TOKEN: "t", TELEGRAM_OWNER_CHAT_ID: chatId },
+          "hi"
+        )
+      ).toBe("rejected");
+      expect(calls).toEqual([]);
+    }
+  );
+
   it("rejects a malformed owner chat id without calling Telegram", async () => {
     const calls = mockFetch(() => ({}));
     vi.spyOn(console, "warn").mockImplementation(() => {});

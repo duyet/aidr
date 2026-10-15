@@ -573,6 +573,12 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
   `duyet/aidr`. An open issue with the same fingerprint gets a comment at
   most once per 24h instead; max 3 GitHub writes per run. Errors are logged
   and sent to Sentry, never fail the step.
+- Owner DMs take only a Telegram user id (positive digits): `@name` and
+  negative group or channel ids are refused without a call. The
+  new-subscriber ping (`worker/subscribe/owner-notify.ts`) carries the
+  subscriber's email, so it uses the same `sendOwnerDm` and never a language
+  channel id; with `TELEGRAM_OWNER_CHAT_ID` unset only the
+  `OWNER_NOTIFY_EMAIL` email goes out.
 - Daily video watchdog (`worker/day-video-watchdog.ts`, same step): during
   20–23h local (13:00–16:00 UTC) it confirms the day's video against each
   record: `day_videos.youtube_id`, `short_id` and `youtube_id_vi` (the
