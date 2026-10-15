@@ -4,6 +4,7 @@ import {
   type MediaManifest,
   parseMediaManifest,
   primaryThumbnailUrl,
+  serializeMediaManifest,
 } from "./media.js";
 import { RANK_SIGNAL_COLUMNS, RANK_SIGNAL_JOIN } from "./ranking.js";
 
@@ -24,15 +25,20 @@ export const BACKFILL_BATCH_SIZE = 4;
 
 /** Published items still missing a summary, oldest-content-first isn't the
  * point — most-recently-published first, so the backlog drains starting
- * from what readers are most likely to open. */
-export function buildMissingSummaryQuery(limit = BACKFILL_CONTENT_CAP): string {
+ * from what readers are most likely to open. With `uncheckedOnly`, a row the
+ * leg already fetched (`summary_checked_at`, migration 0066) is not selected
+ * again; pass false only while that column is missing. */
+export function buildMissingSummaryQuery(
+  limit = BACKFILL_CONTENT_CAP,
+  uncheckedOnly = true
+): string {
   return `SELECT id, url, source_id, summary, image_url, media_manifest FROM items
           WHERE status = 'published' AND (
             summary IS NULL OR summary = ''
             OR rtrim(summary) LIKE '%…' OR rtrim(summary) LIKE '%...'
             OR rtrim(summary) LIKE '%[…]' OR rtrim(summary) LIKE '%[...]'
             OR summary LIKE '%Read more%' OR summary LIKE '%Continue reading%'
-          )
+          )${uncheckedOnly ? " AND summary_checked_at IS NULL" : ""}
           ORDER BY published_at DESC
           LIMIT ${limit}`;
 }
@@ -117,6 +123,7 @@ export interface BackfillFetchResult {
 }
 
 export interface BackfillPlan {
+  /** Null keeps the stored summary. */
   summary: string | null;
   imageUrl: string | null;
   mediaManifest: MediaManifest;
@@ -124,8 +131,9 @@ export interface BackfillPlan {
 
 /**
  * Decides what to persist for a backfill candidate. Returns null when
- * nothing usable was fetched: the summary stays as-is for a future run, and
- * the caller only records the row's media as checked. Existing non-empty
+ * nothing usable was fetched, or when the write would store exactly what the
+ * row holds (a page whose only og:image is the one already stored); the
+ * caller then only records the row as checked. Existing non-empty
  * image/media values win over freshly-fetched ones; this is the "never
  * overwrite an existing value" rule, expressed here without a database.
  */
@@ -158,19 +166,26 @@ export function planBackfillUpdate(
     [...existingManifest.assets, ...fetchedManifest.assets],
     { articleUrls: [existing.articleUrl] }
   );
+  const summary =
+    preferCompleteSummary(existingSummary, fetchedSummary) ?? null;
+  const imageUrl =
+    primaryThumbnailUrl(
+      existingManifest,
+      existing.imageUrl,
+      existing.articleUrl
+    ) ??
+    primaryThumbnailUrl(fetchedManifest, fetched.imageUrl, existing.articleUrl);
+  const summaryChanged = summary !== (existingSummary || null);
+  if (
+    !summaryChanged &&
+    imageUrl === (existing.imageUrl ?? null) &&
+    serializeMediaManifest(manifest) === existing.mediaManifest
+  ) {
+    return null;
+  }
   return {
-    summary: preferCompleteSummary(existingSummary, fetchedSummary) ?? null,
-    imageUrl:
-      primaryThumbnailUrl(
-        existingManifest,
-        existing.imageUrl,
-        existing.articleUrl
-      ) ??
-      primaryThumbnailUrl(
-        fetchedManifest,
-        fetched.imageUrl,
-        existing.articleUrl
-      ),
+    summary: summaryChanged ? summary : null,
+    imageUrl,
     mediaManifest: manifest,
   };
 }

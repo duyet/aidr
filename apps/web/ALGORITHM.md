@@ -1518,6 +1518,20 @@ the bot (openai.com 403, reuters.com 401) or offered only a logo, so each row
 is fetched once and the queue moves on. A row ingest stored with a manifest
 is not selected; ingest's enrich had its one fetch, except items past that
 run's 20-fetch cap (`MAX_ENRICH_FETCHES`), which are never fetched.
+The summary part (`buildMissingSummaryQuery`) takes up to 15 published rows
+whose summary is empty or reads as cut off (`…`, `[…]`, "Read more"),
+newest first, and only rows with `items.summary_checked_at` still NULL
+(migration 0066). Each fetch sets that column, guarded on the column still
+being NULL and the summary unchanged since the read, so a row is fetched
+once whatever came back: a page that refuses the bot (reuters.com 401,
+ft.com 403) and a teaser the page never improves (a techmeme permalink gives
+only the og:image already stored) both leave the queue. There is no retry.
+A summary another writer stores during the fetch keeps the row queued for
+one fetch of its own. `planBackfillUpdate` returns null when the write would
+store what the row holds, so nothing is written or counted. Translation QA
+is cleared only when the summary changed, not for a new picture. Until 0066
+is applied the query falls back to the old predicate and logs a warning;
+the summary head is then refetched every run, as before #811.
 Translate skips LLM only when explicit `source_lang='vi'` metadata marks a
 native source, retries leftover items one-at-a-time after a batch fail, and
 the VI UI hides the EN badge when the painted title is Vietnamese or
