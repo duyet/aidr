@@ -55,6 +55,7 @@ import { Route as ApiSystemAudienceRouteImport } from './routes/api/system.audie
 import { Route as ApiSystemLlmRouteImport } from './routes/api/system.llm'
 import { Route as ApiSystemModelsRouteImport } from './routes/api/system.models'
 import { Route as ApiSystemOverviewRouteImport } from './routes/api/system.overview'
+import { Route as ApiSystemReadsRouteImport } from './routes/api/system.reads'
 import { Route as ApiSystemRunAttemptsRouteImport } from './routes/api/system.run-attempts'
 import { Route as ApiSystemRunItemsRouteImport } from './routes/api/system.run-items'
 import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
@@ -294,6 +295,11 @@ const ApiSystemOverviewRoute = ApiSystemOverviewRouteImport.update({
   path: '/overview',
   getParentRoute: () => ApiSystemRoute,
 } as any)
+const ApiSystemReadsRoute = ApiSystemReadsRouteImport.update({
+  id: '/reads',
+  path: '/reads',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
 const ApiSystemRunAttemptsRoute = ApiSystemRunAttemptsRouteImport.update({
   id: '/run-attempts',
   path: '/run-attempts',
@@ -382,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
+  '/api/system/reads': typeof ApiSystemReadsRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
@@ -438,6 +445,7 @@ export interface FileRoutesByTo {
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
+  '/api/system/reads': typeof ApiSystemReadsRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
@@ -495,6 +503,7 @@ export interface FileRoutesById {
   '/api/system/llm': typeof ApiSystemLlmRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
+  '/api/system/reads': typeof ApiSystemReadsRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
@@ -553,6 +562,7 @@ export interface FileRouteTypes {
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
+    | '/api/system/reads'
     | '/api/system/run-attempts'
     | '/api/system/run-items'
     | '/api/system/runs'
@@ -609,6 +619,7 @@ export interface FileRouteTypes {
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
+    | '/api/system/reads'
     | '/api/system/run-attempts'
     | '/api/system/run-items'
     | '/api/system/runs'
@@ -665,6 +676,7 @@ export interface FileRouteTypes {
     | '/api/system/llm'
     | '/api/system/models'
     | '/api/system/overview'
+    | '/api/system/reads'
     | '/api/system/run-attempts'
     | '/api/system/run-items'
     | '/api/system/runs'
@@ -1042,6 +1054,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemOverviewRouteImport
       parentRoute: typeof ApiSystemRoute
     }
+    '/api/system/reads': {
+      id: '/api/system/reads'
+      path: '/reads'
+      fullPath: '/api/system/reads'
+      preLoaderRoute: typeof ApiSystemReadsRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
     '/api/system/run-attempts': {
       id: '/api/system/run-attempts'
       path: '/run-attempts'
@@ -1133,6 +1152,7 @@ interface ApiSystemRouteChildren {
   ApiSystemLlmRoute: typeof ApiSystemLlmRoute
   ApiSystemModelsRoute: typeof ApiSystemModelsRoute
   ApiSystemOverviewRoute: typeof ApiSystemOverviewRoute
+  ApiSystemReadsRoute: typeof ApiSystemReadsRoute
   ApiSystemRunAttemptsRoute: typeof ApiSystemRunAttemptsRoute
   ApiSystemRunItemsRoute: typeof ApiSystemRunItemsRoute
   ApiSystemRunsRoute: typeof ApiSystemRunsRoute
@@ -1147,6 +1167,7 @@ const ApiSystemRouteChildren: ApiSystemRouteChildren = {
   ApiSystemLlmRoute: ApiSystemLlmRoute,
   ApiSystemModelsRoute: ApiSystemModelsRoute,
   ApiSystemOverviewRoute: ApiSystemOverviewRoute,
+  ApiSystemReadsRoute: ApiSystemReadsRoute,
   ApiSystemRunAttemptsRoute: ApiSystemRunAttemptsRoute,
   ApiSystemRunItemsRoute: ApiSystemRunItemsRoute,
   ApiSystemRunsRoute: ApiSystemRunsRoute,

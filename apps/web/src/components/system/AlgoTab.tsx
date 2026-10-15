@@ -11,6 +11,7 @@ import { CardData } from "./CardData";
 import { ChartCard } from "./ChartCard";
 import { API } from "./endpoints";
 import { RankingCard } from "./RankingCard";
+import { ReadsCard } from "./ReadsCard";
 import { TAB_PANEL } from "./tab-spacing";
 
 const SKIP_REASON_TEXT: Record<string, string> = {
@@ -168,6 +169,7 @@ export function AlgoTab() {
     <TabsContent value="algo" className={TAB_PANEL}>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <RankingCard />
+        <ReadsCard />
         <ChartCard title="Pipeline" subtitle="Hourly ingest, end to end">
           <ol className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
             {[

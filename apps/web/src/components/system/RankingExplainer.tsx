@@ -15,7 +15,7 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
     <div className="space-y-2.5 text-sm">
       <p className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-foreground">
         rankScore = importance^1.5 / √10 × qualityFactor × decay ×
-        min(engagement × sources, 3.25) × votes × breaking
+        min(engagement × sources, 3.25) × votes × reads × breaking
       </p>
       <ul className="grid gap-x-4 gap-y-1 text-[11px] leading-relaxed text-muted-foreground sm:grid-cols-2">
         <li>
@@ -38,6 +38,10 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
         <li>
           <span className="font-medium text-foreground">votes</span> = 1 + 0.2 ×
           min(net, 6); a net downvote divides by the same amount
+        </li>
+        <li>
+          <span className="font-medium text-foreground">reads</span> = min(1 +
+          0.25 × log10(1 + opens + clicks), 1.5) over today and yesterday UTC
         </li>
         <li>
           <span className="font-medium text-foreground">breaking</span> = 1 +
