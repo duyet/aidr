@@ -109,16 +109,27 @@ beforeAll(async () => {
   });
 });
 
-/** A fetcher that answers the token exchange and then the four reports. */
+/** A fetcher that answers the token exchange and then the six reports,
+ *  routed by the report's dimension names. */
 function ga4Fetcher(
   options: {
     totalsRows?: unknown[];
     dailyRows?: unknown[];
     pageRows?: unknown[];
-    sourceRows?: unknown[];
+    channelRows?: unknown[];
+    sourceMediumRows?: unknown[];
+    landingRows?: unknown[];
     onReport?: (body: string) => void;
   } = {}
 ) {
+  const rowsByDimensions: Record<string, unknown[] | undefined> = {
+    date: options.dailyRows,
+    pagePath: options.pageRows,
+    sessionDefaultChannelGroup: options.channelRows,
+    "sessionSource,sessionMedium": options.sourceMediumRows,
+    landingPage: options.landingRows,
+    "": options.totalsRows,
+  };
   const calls: string[] = [];
   const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
@@ -129,15 +140,8 @@ function ga4Fetcher(
     const body = String(init?.body ?? "{}");
     options.onReport?.(body);
     const parsed = JSON.parse(body) as { dimensions?: { name: string }[] };
-    const dimension = parsed.dimensions?.[0]?.name;
-    const rows =
-      dimension === "date"
-        ? (options.dailyRows ?? [])
-        : dimension === "pagePath"
-          ? (options.pageRows ?? [])
-          : dimension === "sessionSource"
-            ? (options.sourceRows ?? [])
-            : (options.totalsRows ?? []);
+    const key = (parsed.dimensions ?? []).map((d) => d.name).join(",");
+    const rows = rowsByDimensions[key] ?? [];
     return Response.json({ dimensionHeaders: [], metricHeaders: [], rows });
   }) as unknown as typeof fetch;
   return { fetcher, calls };
@@ -199,10 +203,34 @@ describe("syncGa4Insights", () => {
           metricValues: [{ value: "120" }, { value: "40" }],
         },
       ],
-      sourceRows: [
+      channelRows: [
         {
-          dimensionValues: [{ value: "(direct)" }],
-          metricValues: [{ value: "200" }, { value: "60" }],
+          dimensionValues: [{ value: "Direct" }],
+          metricValues: [{ value: "80" }, { value: "50" }],
+        },
+        {
+          dimensionValues: [{ value: "Organic Social" }],
+          metricValues: [{ value: "120" }, { value: "70" }],
+        },
+      ],
+      sourceMediumRows: [
+        {
+          dimensionValues: [{ value: "telegram" }, { value: "social" }],
+          metricValues: [{ value: "90" }, { value: "40" }],
+        },
+        {
+          dimensionValues: [{ value: "(direct)" }, { value: "(none)" }],
+          metricValues: [{ value: "80" }, { value: "50" }],
+        },
+      ],
+      landingRows: [
+        {
+          dimensionValues: [{ value: "/subscribe?unsubscribe=SECRET" }],
+          metricValues: [{ value: "30" }, { value: "20" }],
+        },
+        {
+          dimensionValues: [{ value: "/" }],
+          metricValues: [{ value: "150" }, { value: "90" }],
         },
       ],
     });
@@ -240,9 +268,28 @@ describe("syncGa4Insights", () => {
       "https://aidr.today/",
       "/news",
     ]);
-    expect(snapshot?.sources).toEqual([
-      { name: "(direct)", views: 200, users: 60 },
+    // Acquisition tables are ranked by sessions, whatever order GA4 used.
+    expect(snapshot?.channels).toEqual([
+      { name: "Organic Social", sessions: 120, users: 70 },
+      { name: "Direct", sessions: 80, users: 50 },
     ]);
+    expect(snapshot?.sourceMedium.map((r) => r.name)).toEqual([
+      "telegram / social",
+      "(direct) / (none)",
+    ]);
+    expect(snapshot?.landingPages).toEqual([
+      { name: "/", sessions: 150, users: 90 },
+      { name: "/subscribe", sessions: 30, users: 20 },
+    ]);
+    // A token in a pre-scrub landing URL must never reach the public row.
+    expect(String(row?.args[3])).not.toContain("SECRET");
+    expect(result.rows).toEqual({
+      daily: 2,
+      topPages: 2,
+      channels: 2,
+      sourceMedium: 2,
+      landingPages: 2,
+    });
   });
 
   it("reports unconfigured — and writes nothing — without a credential", async () => {
@@ -329,10 +376,12 @@ describe("syncGa4Insights", () => {
     expect(written).toHaveLength(0);
   });
 
-  it("asks GA4 for the series, 28-day totals, pages, and sources", async () => {
+  it("asks GA4 for the series, 28-day totals, pages, and acquisition tables", async () => {
     const requests: {
       dimensions: { name: string }[];
       metrics: { name: string }[];
+      orderBys?: { metric?: { metricName: string } }[];
+      dateRanges: { startDate: string }[];
     }[] = [];
     const { db } = fakeDb({});
     const { fetcher, calls } = ga4Fetcher({
@@ -358,7 +407,7 @@ describe("syncGa4Insights", () => {
       { now: NOW_MS, fetcher }
     );
 
-    expect(calls.filter((c) => c.includes("runReport"))).toHaveLength(4);
+    expect(calls.filter((c) => c.includes("runReport"))).toHaveLength(6);
     const totals = requests.find((r) => r.dimensions.length === 0);
     expect(totals?.metrics.map((m) => m.name)).toEqual([
       "screenPageViews",
@@ -369,7 +418,34 @@ describe("syncGa4Insights", () => {
     // MAU has to come from totalUsers over the window, never a sum of daily
     // activeUsers, so the dimension-less totals report is not optional.
     expect(requests.map((r) => r.dimensions[0]?.name ?? "(none)")).toEqual(
-      expect.arrayContaining(["date", "pagePath", "sessionSource"])
+      expect.arrayContaining(["date", "pagePath"])
+    );
+
+    const acquisition = requests
+      .filter((r) => r.metrics[0]?.name === "sessions")
+      .map((r) => ({
+        dimensions: r.dimensions.map((d) => d.name),
+        metrics: r.metrics.map((m) => m.name),
+        rankedBy: r.orderBys?.[0]?.metric?.metricName,
+        startDate: r.dateRanges[0]?.startDate,
+      }));
+    const shape = (dimensions: string[]) => ({
+      dimensions,
+      metrics: ["sessions", "activeUsers"],
+      rankedBy: "sessions",
+      startDate: "27daysAgo",
+    });
+    expect(acquisition).toEqual(
+      expect.arrayContaining([
+        shape(["sessionDefaultChannelGroup"]),
+        shape(["sessionSource", "sessionMedium"]),
+        shape(["landingPage"]),
+      ])
+    );
+    expect(acquisition).toHaveLength(3);
+    // The query-string variant would pull tokens into a public endpoint.
+    expect(JSON.stringify(requests)).not.toContain(
+      "landingPagePlusQueryString"
     );
   });
 });

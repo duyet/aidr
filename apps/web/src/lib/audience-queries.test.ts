@@ -91,7 +91,11 @@ const VALID_PAYLOAD = JSON.stringify({
   totals: { views: 420, users: 90, sessions: 150, newUsers: 12 },
   daily: [{ date: "2026-09-01", views: 20, users: 7, sessions: 9 }],
   topPages: [{ name: "https://aidr.today/", views: 300, users: 80 }],
-  sources: [{ name: "(direct)", views: 200, users: 60 }],
+  channels: [{ name: "Organic Social", sessions: 120, users: 70 }],
+  sourceMedium: [{ name: "telegram / social", sessions: 90, users: 40 }],
+  landingPages: [
+    { name: "/subscribe?unsubscribe=SECRET", sessions: 30, users: 20 },
+  ],
 });
 
 /** Same payload, measured at a different time. Staleness is read from the
@@ -104,7 +108,6 @@ function payloadFetchedAt(fetchedAt: number): string {
     totals: { views: 420, users: 90, sessions: 150, newUsers: 12 },
     daily: [{ date: "2026-09-01", views: 20, users: 7, sessions: 9 }],
     topPages: [],
-    sources: [],
   });
 }
 
@@ -147,7 +150,15 @@ describe("loadAudienceStats", () => {
     expect(stats.ga4.topPages).toEqual([
       { name: "https://aidr.today/", count: 300 },
     ]);
-    expect(stats.ga4.sources).toEqual([{ name: "(direct)", count: 200 }]);
+    expect(stats.ga4.channels).toEqual([
+      { name: "Organic Social", count: 120 },
+    ]);
+    expect(stats.ga4.sourceMedium).toEqual([
+      { name: "telegram / social", count: 90 },
+    ]);
+    expect(stats.ga4.landingPages).toEqual([{ name: "/subscribe", count: 30 }]);
+    // The endpoint is public: a token in a stored landing URL never leaves.
+    expect(JSON.stringify(stats)).not.toContain("SECRET");
 
     expect(stats.subscribers.confirmed).toBe(120);
     expect(stats.subscribers.unconfirmed).toBe(5);

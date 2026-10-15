@@ -62,22 +62,32 @@ the window.
 
 ## Audience metrics (GA4 snapshot)
 
-The `/data` **Audience** tab shows page views, DAU, MAU, and the subscriber
-breakdowns. Traffic comes from GA4; subscribers come from D1. They are never
-mixed.
+The `/data` **Audience** tab shows page views, DAU, MAU, where readers come
+from, and the subscriber breakdowns. Traffic comes from GA4; subscribers come
+from D1. They are never mixed.
 
 - **GA4 is pulled, never read live.** The browser's GA4 events are not
   readable by the Worker, so `worker/ga4/insights.ts` signs a read-only
-  service-account assertion and runs four `properties.runReport` calls: a
-  90-day `date` series, a dimension-less 28-day totals row, top `pagePath`,
-  and top `sessionSource`. The result is stored as one row in `ga4_insights`
-  (migration 0028) and served by `GET /api/system/audience`. A page load
-  never calls Google.
+  service-account assertion and runs six `properties.runReport` calls: a
+  90-day `date` series, a dimension-less 28-day totals row, top `pagePath`
+  by views, and three 28-day acquisition tables ranked by `sessions` (with
+  `activeUsers`): `sessionDefaultChannelGroup` (`channels`),
+  `sessionSource` + `sessionMedium` (`sourceMedium`, named `telegram / social`),
+  and `landingPage` (`landingPages`). The result is stored as one row in
+  `ga4_insights` (migration 0028) and served by `GET /api/system/audience`.
+  A page load never calls Google.
+- **Landing pages are paths only.** The audience endpoint is public and the
+  28-day window can hold hits recorded before URLs were scrubbed, so the sync
+  asks for `landingPage` (never `landingPagePlusQueryString`) and both the
+  sync and `parseGa4Snapshot` strip any `?query` or `#hash`. A snapshot
+  stored before the acquisition tables existed parses with them empty.
 - **The sync rides the ingest alarm.** `NewsIngestScheduler.alarm()` calls
   `maybeSyncGa4Insights` behind a 24-hour gate, because the account cannot
   spend Worker cron slots and GA4 does not resolve finer than a day. It is
   best-effort: a failed audience sync never fails the ingest alarm.
-  `POST /api/admin/ga4-sync` forces one.
+  `POST /api/admin/ga4-sync` forces one; on `status: "ok"` it also returns
+  `rows` (`daily`, `topPages`, `channels`, `sourceMedium`, `landingPages`
+  counts) so an operator can check the snapshot's shape after a deploy.
 - **DAU is `activeUsers` on the latest day in the series; MAU is `totalUsers`
   over the trailing 28 days.** MAU is never a sum of daily `activeUsers` —
   a user active on three days is one monthly user, not three.

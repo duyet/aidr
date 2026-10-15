@@ -8,7 +8,9 @@ const BASE = {
   totals: { views: 420, users: 90, sessions: 150, newUsers: 12 },
   daily: [],
   topPages: [],
-  sources: [],
+  channels: [],
+  sourceMedium: [],
+  landingPages: [],
 };
 
 describe("parseGa4Snapshot", () => {
@@ -65,6 +67,71 @@ describe("parseGa4Snapshot", () => {
       { date: "2026-09-01", views: 10, users: 4, sessions: 6 },
     ]);
     expect(snapshot?.topPages).toEqual([{ name: "/", views: 10, users: 4 }]);
+  });
+
+  it("parses a row stored before the acquisition tables existed", () => {
+    // Without the defaults an old row would fail validation and blank the
+    // whole tab until the next daily sync.
+    const { channels, sourceMedium, landingPages, ...old } = BASE;
+    const snapshot = parseGa4Snapshot({
+      ...old,
+      sources: [{ name: "(direct)", views: 200, users: 60 }],
+    });
+    expect(snapshot?.totals.users).toBe(90);
+    expect(snapshot?.channels).toEqual([]);
+    expect(snapshot?.sourceMedium).toEqual([]);
+    expect(snapshot?.landingPages).toEqual([]);
+    expect(snapshot).not.toHaveProperty("sources");
+  });
+
+  it("drops malformed acquisition rows and ranks the rest by sessions", () => {
+    const snapshot = parseGa4Snapshot({
+      ...BASE,
+      channels: [
+        { name: "Direct", sessions: 5, users: 4 },
+        { name: "Organic Search", sessions: 9, users: 7 },
+        { name: "", sessions: 10, users: 4 },
+        { name: "Referral", sessions: -1, users: 4 },
+        { name: "Email", sessions: Number.NaN, users: 4 },
+        { name: "Paid", sessions: 3 },
+        "Organic Social",
+      ],
+    });
+    expect(snapshot?.channels).toEqual([
+      { name: "Organic Search", sessions: 9, users: 7 },
+      { name: "Direct", sessions: 5, users: 4 },
+    ]);
+  });
+
+  it("keeps landing pages to their path so a token never reaches the public view", () => {
+    const snapshot = parseGa4Snapshot({
+      ...BASE,
+      landingPages: [
+        { name: "/subscribe?unsubscribe=SECRET", sessions: 30, users: 20 },
+        { name: "/news#SECRET", sessions: 10, users: 8 },
+        { name: "/subscribe", sessions: 5, users: 5 },
+        { name: "?SECRET", sessions: 50, users: 50 },
+      ],
+    });
+    // Rows that collapse to one path keep every session, and one table row.
+    expect(snapshot?.landingPages).toEqual([
+      { name: "/subscribe", sessions: 35, users: 20 },
+      { name: "/news", sessions: 10, users: 8 },
+    ]);
+    expect(JSON.stringify(snapshot)).not.toContain("SECRET");
+  });
+
+  it("caps an acquisition table at the top rows", () => {
+    const snapshot = parseGa4Snapshot({
+      ...BASE,
+      sourceMedium: Array.from({ length: 30 }, (_, i) => ({
+        name: `source${i} / referral`,
+        sessions: i,
+        users: i,
+      })),
+    });
+    expect(snapshot?.sourceMedium).toHaveLength(10);
+    expect(snapshot?.sourceMedium[0]?.name).toBe("source29 / referral");
   });
 });
 

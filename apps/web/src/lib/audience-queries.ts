@@ -1,6 +1,7 @@
 import { GA4_SNAPSHOT_ID } from "../../worker/ga4/insights.js";
 import {
   type Ga4Audience,
+  type Ga4SessionRow,
   type Ga4Snapshot,
   ga4Audience,
   parseGa4Snapshot,
@@ -45,9 +46,12 @@ export interface Ga4AudienceView {
   viewsPerDay: DayCount[];
   usersPerDay: DayCount[];
   topPages: NamedCount[];
-  /** GA4 acquisition channels (organic search, direct, …) for the same 28
-   *  days as the totals. Distinct from subscriber signup sources below. */
-  sources: NamedCount[];
+  /** GA4 sessions over the same 28 days as the totals, by default channel
+   *  group, by `source / medium`, and by landing page. Distinct from the
+   *  subscriber signup sources below. */
+  channels: NamedCount[];
+  sourceMedium: NamedCount[];
+  landingPages: NamedCount[];
 }
 
 export interface DigestSizeCount {
@@ -184,8 +188,14 @@ function emptyGa4(status: Ga4AudienceStatus): Ga4AudienceView {
     viewsPerDay: [],
     usersPerDay: [],
     topPages: [],
-    sources: [],
+    channels: [],
+    sourceMedium: [],
+    landingPages: [],
   };
+}
+
+function sessionCounts(rows: Ga4SessionRow[]): NamedCount[] {
+  return rows.map((row) => ({ name: row.name, count: row.sessions }));
 }
 
 function ga4View(snapshot: Ga4Snapshot, nowSec: number): Ga4AudienceView {
@@ -197,7 +207,9 @@ function ga4View(snapshot: Ga4Snapshot, nowSec: number): Ga4AudienceView {
     viewsPerDay: snapshot.daily.map((d) => ({ date: d.date, count: d.views })),
     usersPerDay: snapshot.daily.map((d) => ({ date: d.date, count: d.users })),
     topPages: snapshot.topPages.map((p) => ({ name: p.name, count: p.views })),
-    sources: snapshot.sources.map((s) => ({ name: s.name, count: s.views })),
+    channels: sessionCounts(snapshot.channels),
+    sourceMedium: sessionCounts(snapshot.sourceMedium),
+    landingPages: sessionCounts(snapshot.landingPages),
   };
 }
 
