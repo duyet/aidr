@@ -31,7 +31,15 @@ const COMMAND_FLAGS: Record<string, readonly string[]> = {
   ],
   "day-video-telegram": ["lang", "chat"],
   "day-video-posted": ["channel", "ref"],
-  unmerge: ["apply", "undo", "canonical", "dangling"],
+  unmerge: [
+    "apply",
+    "undo",
+    "canonical",
+    "dangling",
+    "model-check",
+    "confirm-llm",
+    "max-calls",
+  ],
   "backfill-tags": ["apply"],
 };
 
@@ -51,6 +59,7 @@ const VALUE_FLAGS = new Set([
   "date",
   "undo",
   "canonical",
+  "max-calls",
 ]);
 
 /** Splits `argv` into positionals and flags. An unknown command keeps its
@@ -87,7 +96,13 @@ export function parseArgs(argv: readonly string[]): Args | { error: string } {
 
 export type UnmergeCommand =
   | { kind: "pairs"; file: string; apply: boolean }
-  | { kind: "dangling"; file: string | undefined; apply: boolean }
+  | {
+      kind: "dangling";
+      file: string | undefined;
+      apply: boolean;
+      /** `--model-check` (#797): null for the plain dry run or apply. */
+      modelCheck: { confirmLlm: boolean; maxCalls: number | null } | null;
+    }
   | {
       kind: "undo";
       batchId: number;
@@ -97,7 +112,8 @@ export type UnmergeCommand =
     };
 
 /** `unmerge <pairs.json> | --dangling [decisions.json] | --undo <batchId>
- * [--canonical <id,...>]`, each with `[--apply]`. */
+ * [--canonical <id,...>]`, each with `[--apply]`, or `--dangling
+ * [decisions.json] --model-check [--confirm-llm] [--max-calls N]`. */
 export function parseUnmergeCommand(
   args: Args
 ): UnmergeCommand | { error: string } {
@@ -124,7 +140,42 @@ export function parseUnmergeCommand(
   if (args.flags.has("canonical")) {
     return { error: "--canonical scopes --undo only" };
   }
-  if (args.flags.has("dangling")) return { kind: "dangling", file, apply };
+  const modelCheck = args.flags.has("model-check");
+  if (
+    !modelCheck &&
+    (args.flags.has("confirm-llm") || args.flags.has("max-calls"))
+  ) {
+    return { error: "--confirm-llm and --max-calls go with --model-check" };
+  }
+  if (modelCheck) {
+    if (!args.flags.has("dangling")) {
+      return { error: "--model-check checks --dangling stories only" };
+    }
+    if (apply) {
+      return {
+        error:
+          "--model-check stores verdicts only; run the dry run, then --apply on its own",
+      };
+    }
+  }
+  if (args.flags.has("dangling")) {
+    let maxCalls: number | null = null;
+    const raw = args.flags.get("max-calls");
+    if (raw !== undefined) {
+      maxCalls = typeof raw === "string" ? Number(raw) : Number.NaN;
+      if (!Number.isInteger(maxCalls) || maxCalls < 1) {
+        return { error: "--max-calls needs a positive integer" };
+      }
+    }
+    return {
+      kind: "dangling",
+      file,
+      apply,
+      modelCheck: modelCheck
+        ? { confirmLlm: args.flags.has("confirm-llm"), maxCalls }
+        : null,
+    };
+  }
   if (file === undefined) return { error: "unmerge needs a pairs JSON file" };
   return { kind: "pairs", file, apply };
 }

@@ -5,10 +5,23 @@
  * the same statements.
  */
 import {
+  CHECKS_SQL,
+  type CheckBatch,
+  type CheckCandidate,
+  type CheckWork,
+  checkCandidate,
+  checkWindowSql,
+  checkWork,
+  parseChecks,
+  parseLiveRows,
+  planCheckBatches,
+} from "./check.js";
+import {
   type DanglingDecision,
   type DanglingSnapshot,
   type ItemId,
   parseItemId,
+  planDanglingUnmerge,
   type StoredSource,
   type UnmergeItemRow,
   type UnmergePair,
@@ -246,8 +259,8 @@ function publishedIdsSql(from: number, to: number): string {
 
 /** Every dangling merged row, the sources under each dangling id, the live
  * rows a restored story could duplicate, the published rows of the same
- * days with their members, which set the score scale, and the rows the
- * decisions name. */
+ * days with their members, which set the score scale, the rows the
+ * decisions name, and the stored model verdicts (#797). */
 export async function loadDanglingSnapshot(
   select: SelectRows,
   decisions: readonly DanglingDecision[] = []
@@ -293,6 +306,63 @@ export async function loadDanglingSnapshot(
     live,
     dangling,
     calibration,
+    checks: parseChecks(await select(CHECKS_SQL)),
+  };
+}
+
+/** The stories the plan holds only for a verdict. */
+export function pendingCandidates(
+  snapshot: DanglingSnapshot,
+  decisions: readonly DanglingDecision[],
+  nowMs: number
+): CheckCandidate[] {
+  const plan = planDanglingUnmerge(snapshot, nowMs, decisions);
+  return plan.canonicals.flatMap((canonical) => {
+    const outcome = canonical.pairs[0]?.outcome;
+    if (outcome?.action !== "skip" || outcome.reason !== "needs-model-check")
+      return [];
+    return [
+      checkCandidate(
+        canonical.pairs.flatMap(({ pair }) => {
+          const row = snapshot.items.get(pair.mergedId);
+          return row ? [row] : [];
+        })
+      ),
+    ];
+  });
+}
+
+/** Pending stories, the live rows each backs, and the calls they need
+ * (`check.ts`). */
+export interface CheckPlan {
+  work: CheckWork[];
+  batches: CheckBatch[];
+  /** Model calls the batches make. */
+  calls: number;
+}
+
+export async function loadCheckPlan(
+  select: SelectRows,
+  snapshot: DanglingSnapshot,
+  decisions: readonly DanglingDecision[],
+  nowMs: number
+): Promise<CheckPlan> {
+  const candidates = pendingCandidates(snapshot, decisions, nowMs);
+  if (candidates.length === 0) return { work: [], batches: [], calls: 0 };
+  const live = parseLiveRows(
+    await select(
+      checkWindowSql(
+        Math.min(...candidates.map((c) => c.from)),
+        Math.max(...candidates.map((c) => c.to))
+      )
+    )
+  );
+  const work = checkWork(candidates, live);
+  const batches = planCheckBatches(work);
+  return {
+    work,
+    batches,
+    calls: batches.reduce((n, batch) => n + batch.chunks.length, 0),
   };
 }
 

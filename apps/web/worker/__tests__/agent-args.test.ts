@@ -116,12 +116,48 @@ describe("parseUnmergeCommand", () => {
       kind: "dangling",
       file: undefined,
       apply: false,
+      modelCheck: null,
     });
     expect(unmerge(["--dangling", "decisions.json", "--apply"])).toEqual({
       kind: "dangling",
       file: "decisions.json",
       apply: true,
+      modelCheck: null,
     });
     expect(unmerge([])).toEqual({ error: expect.any(String) });
+  });
+
+  it("reads the model check only as its own dangling step (#797)", () => {
+    expect(unmerge(["--dangling", "--model-check"])).toMatchObject({
+      kind: "dangling",
+      apply: false,
+      modelCheck: { confirmLlm: false, maxCalls: null },
+    });
+    expect(
+      unmerge([
+        "--dangling",
+        "d.json",
+        "--model-check",
+        "--confirm-llm",
+        "--max-calls",
+        "5",
+      ])
+    ).toMatchObject({
+      file: "d.json",
+      modelCheck: { confirmLlm: true, maxCalls: 5 },
+    });
+    for (const argv of [
+      // The check calls a model; it never rides along with an apply.
+      ["--dangling", "--model-check", "--apply"],
+      ["--model-check"],
+      ["pairs.json", "--model-check"],
+      // A confirmation without the check it confirms is a typo.
+      ["--dangling", "--confirm-llm"],
+      ["--dangling", "--max-calls", "3"],
+      ["--dangling", "--model-check", "--max-calls", "0"],
+      ["--dangling", "--model-check", "--max-calls", "--confirm-llm"],
+    ]) {
+      expect(unmerge(argv)).toEqual({ error: expect.any(String) });
+    }
   });
 });
