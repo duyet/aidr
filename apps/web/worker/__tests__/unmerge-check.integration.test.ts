@@ -9,6 +9,7 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checkDanglingUnmerge, unmergeItems } from "../admin/handlers.js";
+import { existingAlias } from "../cluster-alias.js";
 import { backsExisting } from "../cluster-gate.js";
 import { resetUnavailableModels } from "../llm.js";
 import type { Env } from "../types.js";
@@ -372,7 +373,10 @@ describe("unmerge model check (#797)", () => {
       TITLES[MERCURY],
     ]);
     // The prompt names them by alias; the stored verdict by id.
-    expect(prompts[0].existing.map((row) => row.id)).toEqual(["E1", "E2"]);
+    expect(prompts[0].existing.map((row) => row.id)).toEqual([
+      existingAlias(0),
+      existingAlias(1),
+    ]);
     expect(prompts[0].existing.map((row) => row.title).sort()).toEqual(
       [TITLES[DSEC_LIVE], TITLES[MERCURY_LIVE]].sort()
     );
@@ -449,7 +453,7 @@ describe("unmerge model check (#797)", () => {
         JSON.stringify({
           clusters: [
             { new: [member?.i], existing: [alias?.id.toLowerCase()] },
-            { new: [member?.i], existing: [`E${existing.length + 1}`] },
+            { new: [member?.i], existing: [existingAlias(existing.length)] },
           ],
         })
       );
@@ -529,6 +533,31 @@ describe("unmerge model check (#797)", () => {
     expect(prompts.slice(1).map((p) => p.newItems.length)).toEqual([1, 1]);
     expect((await check()).calls).toBe(0);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("stores the second call's row for a link answered in the second call", async () => {
+    // Each call names its own rows from the first alias: Note 320 sits at
+    // the same position in the 50-row call as Note 20 in the 300-row call.
+    writeOverflow(db, 350);
+    const { prompts } = model(
+      links({ "Nvidia Rubin": "Nvidia Supplier Note 320" })
+    );
+    await check();
+
+    const calls = prompts.filter((p) =>
+      p.newItems.some((item) => item.title === TITLES[NVIDIA])
+    );
+    expect(calls.map((p) => p.existing.length)).toEqual([300, 50]);
+    const position = calls[1].existing.findIndex(
+      (row) => row.title === "Nvidia Supplier Note 320"
+    );
+    expect(calls[0].existing[position].title).toBe("Nvidia Supplier Note 20");
+
+    const nvidia = stored().find((row) => row.story === NVIDIA);
+    expect(nvidia?.verdict).toBe("match");
+    expect(
+      JSON.parse(String(nvidia?.matches)).map((m: { id: string }) => m.id)
+    ).toEqual([id(0x10000 + 320)]);
   });
 
   it("stops on a 429 and stores nothing the model did not answer", async () => {

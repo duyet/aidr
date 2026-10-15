@@ -1,7 +1,7 @@
 /**
  * How the cluster model's answers referenced the items the prompt sent.
  * The prompt names a new item by its index and an existing row by an alias
- * (`E1` for the first sent), and `normalizeClusters` drops any reference
+ * (`E0013` for the first sent), and `normalizeClusters` drops any reference
  * the request did not send. A mistyped reference is then indistinguishable
  * from "no duplicate". These counts tell the two apart; they hold numbers
  * only, never the model's text (#752). Ingest records them per served
@@ -21,7 +21,7 @@ export interface ClusterRefCounts {
   /** Dropped `existing` entries that were not strings: a position, a null. */
   existingNotString: number;
   /** Dropped `existing` strings shaped like an alias once trimmed and
-   *  uppercased: a slip (`e3`) or one never sent (`E301`). Before the
+   *  uppercased: a slip (`e0013`) or one never sent (`E30014`). Before the
    *  aliases, a 64-hex id within 2 edits or an 8+ character prefix of one. */
   existingNearMiss: number;
   /** Clusters answered with 2+ members that kept fewer than 2. */
