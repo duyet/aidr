@@ -58,9 +58,14 @@ import { captureAndLearnTopics } from "../topic-learning.js";
 import { normalizeTopics, type ScoredStoryTags } from "../topics.js";
 import type { Env } from "../types.js";
 import { applyUnmerge, type BatchResult } from "../unmerge/apply.js";
-import { d1Select, loadUnmergeSnapshot } from "../unmerge/load.js";
+import {
+  d1Select,
+  loadDanglingSnapshot,
+  loadUnmergeSnapshot,
+} from "../unmerge/load.js";
 import {
   parseUnmergePairs,
+  planDanglingUnmerge,
   planUnmerge,
   type UnmergePlan,
 } from "../unmerge/plan.js";
@@ -484,21 +489,34 @@ export interface UnmergeResult {
 
 /**
  * Reverses wrong cluster merges (#733). Body `{ pairs, dryRun? }`, each pair
- * `{ canonicalId, mergedId, group? }`. A dry run (the default) returns the
- * plan and writes nothing. Sends nothing either way. See ALGORITHM.md,
- * "Unmerge".
+ * `{ canonicalId, mergedId, group? }`, or `{ dangling: true, dryRun? }` to
+ * restore every merged row whose canonical id names no item (#791). A dry
+ * run (the default) returns the plan and writes nothing. Sends nothing
+ * either way. See ALGORITHM.md, "Unmerge".
  */
 export async function unmergeItems(
   env: Env,
-  input: { pairs?: unknown; dryRun?: unknown }
+  input: { pairs?: unknown; dangling?: unknown; dryRun?: unknown }
 ): Promise<UnmergeResult | HandlerError> {
-  const parsed = parseUnmergePairs(input.pairs);
-  if ("error" in parsed) return { error: parsed.error, status: 400 };
   if (input.dryRun !== undefined && typeof input.dryRun !== "boolean") {
     return { error: "dryRun must be a boolean", status: 400 };
   }
-  const snapshot = await loadUnmergeSnapshot(d1Select(env.DB), parsed.pairs);
-  const plan = planUnmerge(parsed.pairs, snapshot, Date.now());
+  let plan: UnmergePlan;
+  if (input.dangling !== undefined) {
+    if (input.dangling !== true || input.pairs !== undefined) {
+      return {
+        error: "dangling must be true and comes without pairs",
+        status: 400,
+      };
+    }
+    const snapshot = await loadDanglingSnapshot(d1Select(env.DB));
+    plan = planDanglingUnmerge(snapshot, Date.now());
+  } else {
+    const parsed = parseUnmergePairs(input.pairs);
+    if ("error" in parsed) return { error: parsed.error, status: 400 };
+    const snapshot = await loadUnmergeSnapshot(d1Select(env.DB), parsed.pairs);
+    plan = planUnmerge(parsed.pairs, snapshot, Date.now());
+  }
   const counts = countUnmerge(plan);
   if (input.dryRun !== false) return { dryRun: true, counts, plan };
   return {

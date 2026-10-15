@@ -118,17 +118,14 @@ const sourcesKey = (rows: readonly StoredSource[]) =>
 const translationKey = (text: TranslationText | null | undefined) =>
   text ? JSON.stringify([text.title, text.summary]) : "none";
 
-/** Which side of `set` (`before` = what the apply wrote) each target holds
- * now, as one label per target. */
+/** Whether each target of `set` holds what the apply wrote (`set`'s
+ * `before`) and whether it holds its pre-apply value (`after`). A target
+ * the apply only guarded, such as a live twin that gained merged rows,
+ * holds both. */
 function targetStates(
   set: ChangeSet,
   state: UndoState
-): { label: string; side: "before" | "after" | "neither" }[] {
-  const side = (
-    holdsBefore: boolean,
-    holdsAfter: boolean
-  ): "before" | "after" | "neither" =>
-    holdsBefore ? "before" : holdsAfter ? "after" : "neither";
+): { label: string; applied: boolean; pre: boolean }[] {
   return [
     ...set.rows.map((row) => {
       const current = state.items.get(row.id);
@@ -139,27 +136,24 @@ function targetStates(
         );
       return {
         label: `items ${row.id.slice(0, 8)}`,
-        side: side(holds(row.guard), holds(stateWith(row, "after"))),
+        applied: holds(row.guard),
+        pre: holds(stateWith(row, "after")),
       };
     }),
     ...set.sources.map((target) => {
       const current = sourcesKey(state.sources.get(target.itemId) ?? []);
       return {
         label: `item_sources ${target.itemId.slice(0, 8)}`,
-        side: side(
-          current === sourcesKey(target.before),
-          current === sourcesKey(target.after)
-        ),
+        applied: current === sourcesKey(target.before),
+        pre: current === sourcesKey(target.after),
       };
     }),
     ...set.translations.map((target) => {
       const current = translationKey(state.translations.get(target.itemId));
       return {
         label: `translations ${target.itemId.slice(0, 8)}`,
-        side: side(
-          current === translationKey(target.before),
-          current === translationKey(target.after)
-        ),
+        applied: current === translationKey(target.before),
+        pre: current === translationKey(target.after),
       };
     }),
   ];
@@ -174,15 +168,18 @@ export function planUndo(
     batchId,
     canonicals: inverseChangeSets(records).map((changes) => {
       const states = targetStates(changes, state);
-      const all = (wanted: string) => states.every((s) => s.side === wanted);
       return {
         canonicalId: changes.canonicalId,
-        state: all("before") ? "undo" : all("after") ? "noop" : "conflict",
+        state: states.every((s) => s.applied)
+          ? "undo"
+          : states.every((s) => s.pre)
+            ? "noop"
+            : "conflict",
         conflicts: states
-          .filter((s) => s.side !== "before")
+          .filter((s) => !s.applied)
           .map(
             (s) =>
-              `${s.label} holds ${s.side === "after" ? "its pre-apply value" : "neither value"}`
+              `${s.label} holds ${s.pre ? "its pre-apply value" : "neither value"}`
           ),
         changes,
       };

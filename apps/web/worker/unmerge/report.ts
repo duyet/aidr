@@ -65,13 +65,12 @@ export function countUnmerge(plan: UnmergePlan): UnmergeCounts {
         counts.needsDecision++;
       }
     }
-    const removed = new Set<string>(
+    const removed = new Set<string | null>(
       canonical.pairs
         .filter(({ outcome }) => MOVED_ACTIONS.has(outcome.action))
         .map(({ pair }) => pair.mergedId)
     );
     if (removed.size === 0) continue;
-    counts.canonicalsChanged++;
     for (const row of canonical.rows) {
       for (const { column } of row.changes) {
         const key = `${row.role}.${column}`;
@@ -79,6 +78,8 @@ export function countUnmerge(plan: UnmergePlan): UnmergeCounts {
       }
     }
     const canonicalRow = canonical.rows.find((r) => r.role === "canonical");
+    // A dangling group (#791) has no canonical row to change.
+    if (canonicalRow) counts.canonicalsChanged++;
     const manifest = canonicalRow?.changes.find(
       (c) => c.column === "media_manifest"
     );

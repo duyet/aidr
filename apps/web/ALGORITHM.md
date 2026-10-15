@@ -295,6 +295,42 @@ locally from production D1 through `wrangler d1 execute`, SELECT only, and
   request; the response still carries `batchId` and names the canonical in
   `failed`. If a response is lost, the batch ids are
   `SELECT DISTINCT ts FROM admin_audit WHERE action LIKE 'unmerge.%' ORDER BY ts DESC`.
+  A target the apply only guarded (a live twin that gained merged rows and
+  no new values) holds both values, so it never blocks an `undo` or a
+  `noop`.
+
+#### Dangling merges (#791)
+
+Until `049e36df` (2026-10-03) `normalizeClusters` kept any id the cluster
+call returned, so a made-up id (`abc123`, `ghi789`, `22`) became
+`duplicate_of`. The merge also wrote the cluster's source union under that
+id. Those rows are hidden and no row holds their story.
+`POST /api/admin/unmerge` with `{ dangling: true, dryRun? }` restores them
+(`agent unmerge --dangling [--apply]`, a dry run by default, the same
+SELECT-only local plan). It finds every merged row whose `duplicate_of`
+names no item and needs no pairs file.
+
+- Stories: rows are one story when `sameStoryRule` says so (one URL, one
+  aggregator slug hash, one article id, an exact title from another
+  source). Among rows that one cluster call gave the same made-up id, a
+  near-duplicate title (`isLikelySameEvent`, the title pass's rule) joins
+  two such stories. It joins each story at most once, so similarity never
+  chains unrelated headlines in a 28-row cluster.
+- Each story is routed and written as an unmerge group: the same live-twin
+  check (identity re-points to the live row, a near-duplicate of a live row
+  waits as `needs-decision`), the same relevance bar (`rejected` under
+  0.4), the same quiet window, the same replay through the merge planner
+  and `planNewItemWrite`. The scale for scores is the median `storedScale`
+  over the published rows of the same days. Dangling mode takes no
+  `sameAs`/`distinct` yet, so a held story stays merged.
+- Sources: `attributeSources` with no canonical reads the rows under the
+  made-up id. A leading run belongs to the member whose URL row ends it.
+  The union was capped at 8 rows per made-up id, so most rows sharing a
+  busy id (`abc123`) have no source row left; the plan lists them as
+  lossy. The rows under the made-up id are read, never written, so every
+  story's batch is independent. They stay behind, inert.
+- One batch per story, keyed by its first row id, with the unmerge's
+  guards, audit rows and undo. A rerun finds only the rows still dangling.
 
 ### Tag backfill (admin)
 
