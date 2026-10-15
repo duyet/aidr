@@ -8,9 +8,55 @@ export type ReadKind = (typeof READ_KINDS)[number];
 export const READ_CHANNELS = [...CHANNELS, "web"] as const;
 export type ReadChannel = (typeof READ_CHANNELS)[number];
 
-/** Per (item, day, channel, kind) ceiling. The only abuse control that
- * stores no identifier; `readFactor` saturates well below it anyway. */
+/** Per (item, day, channel, kind) ceiling, a backstop behind the per-IP
+ * limiter (`READ_LIMITER`) for a row nobody should reach. */
 export const READ_ROW_CAP = 2000;
+
+/** Reads only reorder on-site lists (`readFactor`), never the stored
+ * `rank_score`. Every public post (edition, Telegram trending, Facebook)
+ * ranks on `rank_score`, and a read is anonymous: a script on rotating IPs
+ * can fake them. The boost starts flat, so one client's one or two counts
+ * move a story a place or two, and tops out at x1.3 (half of it by 200). */
+export const READER_READ_MAX_BOOST = 0.3;
+export const READER_READ_HALF = 200;
+
+/** Multiplier on `rank_score` for on-site order: 1 with no reads. */
+export function readFactor(readCount = 0): number {
+  if (!Number.isFinite(readCount) || readCount <= 0) return 1;
+  return (
+    1 + (READER_READ_MAX_BOOST * readCount) / (readCount + READER_READ_HALF)
+  );
+}
+
+/** Today's and yesterday's UTC reads per published story, as `read_count`
+ * on `items i`. A read on an id that was later merged counts for its
+ * canonical. */
+export const READ_COUNT_COLUMN =
+  "COALESCE(read_sum.read_count, 0) AS read_count";
+export const READ_COUNT_JOIN_I = `LEFT JOIN (
+    SELECT COALESCE(m.duplicate_of, r.item_id) AS item_id,
+           SUM(r.count) AS read_count
+    FROM item_reads r
+    LEFT JOIN items m ON m.id = r.item_id AND m.status = 'merged'
+    WHERE r.day >= date('now', '-1 day')
+    GROUP BY 1
+  ) AS read_sum ON read_sum.item_id = i.id`;
+
+let readsTableReady: boolean | null = null;
+
+/** Whether `item_reads` exists, so the feed still loads before 0065. */
+export async function itemReadsTableReady(db: {
+  prepare(sql: string): { all(): Promise<unknown> };
+}): Promise<boolean> {
+  if (readsTableReady !== null) return readsTableReady;
+  try {
+    await db.prepare("SELECT item_id FROM item_reads LIMIT 1").all();
+  } catch {
+    return false;
+  }
+  readsTableReady = true;
+  return true;
+}
 
 export interface ReadBeacon {
   itemId: string;
@@ -71,12 +117,22 @@ export async function recordRead(
   return result.meta.changes === 0 ? "capped" : "counted";
 }
 
+/** The key `READ_LIMITER` allows once a minute. It lives only in the
+ * limiter's memory at the Cloudflare location; nothing stores it. */
+function readLimitKey(ip: string, read: ReadBeacon): string {
+  return `${ip}|${read.itemId}|${read.kind}`;
+}
+
 /** The status `POST /api/read` answers with for one beacon. A text/plain
  * POST needs no CORS preflight, so another site could fire beacons here;
- * `Sec-Fetch-Site` drops those without counting. */
+ * `Sec-Fetch-Site` drops those without counting. Both that header and the
+ * user agent are spoofable by a script, so the per-IP limiter is what
+ * bounds one client. */
 export async function decideRead(input: {
   ua: string | null;
   fetchSite: string | null;
+  ip: string | null;
+  limiter: RateLimit | undefined;
   body: string;
   db: D1Database;
   day: string;
@@ -90,6 +146,13 @@ export async function decideRead(input: {
   }
   const read = parseReadBeacon(raw);
   if (!read) return 400;
+  if (input.limiter) {
+    if (!input.ip) return 204;
+    const { success } = await input.limiter.limit({
+      key: readLimitKey(input.ip, read),
+    });
+    if (!success) return 204;
+  }
   const outcome = await recordRead(input.db, read, input.day);
   return outcome === "unknown_item" ? 404 : 204;
 }

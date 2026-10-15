@@ -30,6 +30,8 @@ export interface FeedItem {
   published_at: number;
   points: number;
   comments: number;
+  /** From `getFeed`: stored rank_score × `readFactor` of recent reads, the
+   *  homepage order. Everywhere else: the stored rank_score. */
   rank_score: number;
   source_id: string;
   tags: string[];

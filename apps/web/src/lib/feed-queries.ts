@@ -8,6 +8,12 @@ import {
   primaryThumbnailUrl,
 } from "../../worker/media.js";
 import { VOTE_NET_COLUMN, VOTE_NET_JOIN_I } from "../../worker/ranking.js";
+import {
+  itemReadsTableReady,
+  READ_COUNT_COLUMN,
+  READ_COUNT_JOIN_I,
+  readFactor,
+} from "../../worker/reads.js";
 import { sourceFamily } from "../../worker/source-diversity.js";
 import {
   collectTrendingCandidates,
@@ -53,6 +59,7 @@ interface ItemRow {
   source_id: string;
   tags: string;
   vote_net?: number;
+  read_count?: number;
   llm_tokens?: number;
   image_url?: string | null;
   media_manifest?: string | null;
@@ -62,9 +69,9 @@ const ITEM_SELECT_BASE = `
   SELECT i.id, i.url, i.title, t.title AS title_vi,
          ${enSummarySql("i")} AS summary,
          t.summary AS summary_vi, i.category,
-         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}{media}{votes}
+         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}{media}{votes}{reads}
   FROM items i
-  {vote_join}LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
+  {vote_join}{read_join}LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
   WHERE i.status = 'published'
 `;
 
@@ -72,7 +79,8 @@ function itemSelectSql(
   hasLlmTokens: boolean,
   hasImageUrl: boolean,
   hasMediaManifest: boolean,
-  hasVotes: boolean
+  hasVotes: boolean,
+  hasReads: boolean
 ): string {
   return ITEM_SELECT_BASE.replace(
     "{tokens}",
@@ -81,7 +89,9 @@ function itemSelectSql(
     .replace("{image}", hasImageUrl ? ", i.image_url" : "")
     .replace("{media}", hasMediaManifest ? ", i.media_manifest" : "")
     .replace("{votes}", hasVotes ? `, ${VOTE_NET_COLUMN}` : "")
-    .replace("{vote_join}", hasVotes ? `${VOTE_NET_JOIN_I}\n  ` : "");
+    .replace("{vote_join}", hasVotes ? `${VOTE_NET_JOIN_I}\n  ` : "")
+    .replace("{reads}", hasReads ? `, ${READ_COUNT_COLUMN}` : "")
+    .replace("{read_join}", hasReads ? `${READ_COUNT_JOIN_I}\n  ` : "");
 }
 
 let llmTokensSupported: boolean | null = null;
@@ -129,12 +139,14 @@ function toFeedItem(row: ItemRow): FeedItem {
   } catch {
     // malformed tags JSON from an old pipeline run — treat as untagged
   }
-  const { media_manifest: rawManifest, ...item } = row;
+  const { media_manifest: rawManifest, read_count, ...item } = row;
   const manifest = parseMediaManifest(rawManifest, row.image_url, row.url);
   const exposedManifest = boundedPublicManifest(manifest);
   const articleUrl = canonicalizeMediaUrl(row.url);
   return {
     ...item,
+    // On-site order only; the count itself stays off the public JSON.
+    rank_score: item.rank_score * readFactor(read_count),
     url:
       articleUrl && articleUrl.length <= FEED_URL_MAX_LENGTH ? articleUrl : "",
     tags,
@@ -448,18 +460,20 @@ export async function getFeed(
     : Math.floor(Date.now() / 1000);
   const since = until - days * 86400;
 
-  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes] =
+  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes, hasReads] =
     await Promise.all([
       supportsLlmTokens(db),
       supportsImageUrl(db),
       supportsMediaManifest(db),
       itemVotesTableReady(db),
+      itemReadsTableReady(db),
     ]);
   const itemSelect = itemSelectSql(
     hasLlmTokens,
     hasImageUrl,
     hasMediaManifest,
-    hasVotes
+    hasVotes,
+    hasReads
   );
 
   let sql = `${itemSelect} AND i.published_at >= ? AND i.published_at < ?`;
@@ -590,7 +604,7 @@ export async function getItemsByIds(
     ]);
   const { results } = await db
     .prepare(
-      `${itemSelectSql(hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes)} AND i.id IN (SELECT value FROM json_each(?))`
+      `${itemSelectSql(hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes, false)} AND i.id IN (SELECT value FROM json_each(?))`
     )
     .bind(JSON.stringify(ids))
     .all<ItemRow>();
@@ -673,7 +687,8 @@ export async function getDayArchive(
     hasLlmTokens,
     hasImageUrl,
     hasMediaManifest,
-    hasVotes
+    hasVotes,
+    false
   );
 
   const [itemsRes, tldrRes, prevRes, nextRes] = await db.batch([
@@ -741,7 +756,8 @@ export async function getDayArchive(
     return typeof at === "number" ? archiveDateOfSec(at) : null;
   };
   // One group for the requested audience-zone day. The query window is
-  // already that day. Same in-day order as the feed: rank_score descending.
+  // already that day. Stored rank_score descending, without the feed's
+  // read boost: the Telegram day card is painted from this order.
   const categoryCounts: Record<string, number> = {};
   for (const it of items) {
     if (it.category)

@@ -147,11 +147,11 @@ Three first-class ways: [${SITE_URL}/subscribe](${SITE_URL}/subscribe?lang=en) (
 
 ## Ranking (do not reimplement)
 
-rank_score = importance^1.5/√10 × (0.6 + 0.4·quality/10) × exp(−ageHours/36) (steeper after 24h) × min((1 + log10(1 + points + 0.5·comments)) × (1 + 0.12·(min(sourceCount, 8) − 1)), 3.25) × (1 + 0.2·min(voteNet, 6)) × min(1 + 0.25·log10(1 + reads), 1.5) × a fading boost for importance ≥ 8 in the first hours
+rank_score = importance^1.5/√10 × (0.6 + 0.4·quality/10) × exp(−ageHours/36) (steeper after 24h) × min((1 + log10(1 + points + 0.5·comments)) × (1 + 0.12·(min(sourceCount, 8) − 1)), 3.25) × (1 + 0.2·min(voteNet, 6)) × a fading boost for importance ≥ 8 in the first hours
 
 voteNet is the sum of signed-in reader votes on that story (+1 / −1, one per reader). Each net vote is ×1.2, up to six; a negative net divides by the same amount. Do not add a separate trending boost.
 
-reads is story opens plus outbound clicks on aidr.today today and yesterday UTC, first-party totals with no visitor identifier. It never goes below ×1 and stops at ×1.5.
+The homepage feed (/api/feed) orders each day by rank_score × (1 + 0.3·reads/(reads + 200)), where reads is story opens plus outbound clicks on aidr.today today and yesterday UTC, totals with no visitor identifier. Stored rank_score, the edition and every post ignore reads.
 
 Quality and independent sources beat thin duplicates. Hide rule: relevance < 0.4 is never shown.
 

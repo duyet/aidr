@@ -15,7 +15,6 @@ import { serializeMediaManifest } from "../media.js";
 import {
   buildRerankQuery,
   type RankSignalRow,
-  READ_WINDOW_START,
   rankScore,
   rankSignals,
   rowRankSignals,
@@ -100,9 +99,7 @@ async function existingCanonicalStatements(
   const existingRow = await env.DB.prepare(
     `SELECT tags, url, image_url, media_manifest, source_id,
             published_at, llm_importance, llm_quality,
-            (SELECT COALESCE(SUM(value), 0) FROM item_votes WHERE item_id = items.id) AS vote_net,
-            (SELECT COALESCE(SUM(count), 0) FROM item_reads
-             WHERE item_id = items.id AND day >= ${READ_WINDOW_START}) AS read_count
+            (SELECT COALESCE(SUM(value), 0) FROM item_votes WHERE item_id = items.id) AS vote_net
      FROM items WHERE id = ?`
   )
     .bind(canonicalId)
@@ -113,7 +110,6 @@ async function existingCanonicalStatements(
         llm_importance: number | null;
         llm_quality: number | null;
         vote_net: number | null;
-        read_count: number | null;
       }
     >();
   const media = planExistingCanonicalMedia(existingRow, update);
@@ -178,10 +174,9 @@ async function existingCanonicalStatements(
           })),
           ...(update.members ?? []),
         ]),
-        // The window re-rank reads votes and reads itself. This write skips
-        // that row, so the merge score has to carry them or they vanish.
+        // The window re-rank reads vote_net itself. This write skips that
+        // row, so the merge score has to carry the votes or they vanish.
         voteNet: existingRow.vote_net ?? 0,
-        readCount: existingRow.read_count ?? 0,
       })
     : null;
 

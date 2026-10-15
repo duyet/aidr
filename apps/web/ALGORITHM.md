@@ -1381,7 +1381,6 @@ rank_score = importance^1.5 / √10             # 10 stays 10; 7 → 5.9, 8 → 
            × decay(age)                       # exp(−age/36h); after 24h also × exp(−(age−24h)/24h)
            × min(engagement × sourceBoost, 3.25)
            × (1 + 0.2·min(voteNet, 6))        # reader votes; net < 0: 1 / (1 + 0.2·min(−voteNet, 6))
-           × min(1 + 0.25·log10(1 + reads), 1.5)   # first-party opens + outbound clicks, today and yesterday UTC
            × breaking(age)                    # importance ≥ 8 only: 1 + 0.4·exp(−age/3h)
 
 engagement  = 1 + log10(1 + points + 0.5·comments)   # capped at 1.3 when importance < 4
@@ -1390,8 +1389,7 @@ sourceBoost = 1 + 0.12·(min(sourceCount, 8) − 1)     # extra independent outl
 
 Constants live in `worker/ranking.ts` (`IMPORTANCE_EXPONENT`,
 `DECAY_*`, `ENGAGEMENT_BOOST_CAP`, `LOW_IMPORTANCE_*`, `BREAKING_*`,
-`READER_VOTE_GAIN`, `READER_VOTE_CAP`, `READER_READ_GAIN`,
-`READER_READ_CAP`). Why each rule exists, from the
+`READER_VOTE_GAIN`, `READER_VOTE_CAP`). Why each rule exists, from the
 2026-10-11 audit and `rank-replay` (below):
 
 - **Decay ramp and boost cap.** 5 of the top 30 were older than 36h. After
@@ -1411,19 +1409,6 @@ Constants live in `worker/ranking.ts` (`IMPORTANCE_EXPONENT`,
   (×2.2), whatever the story's HN points. Replay: five votes put a fresh
   top-30 story into the top 5 in 92% of hours; one vote moves a top-10
   neighbour at most 22 places, down from 216.
-- **Reads are a weaker factor than votes.** `item_reads` (migration 0065)
-  counts story opens and publisher clicks per story, UTC day, channel and
-  kind (`POST /api/read`, a sendBeacon from the row; one count per browser
-  tab per day; bot user agents, cross-site beacons and unknown ids dropped;
-  2000 per row cap). Zero reads is ×1, so a new story is not penalised.
-  Reads are position-biased: a top story gets read because it is on top.
-  Recording impressions per position would cost 20+ D1 writes per page
-  view, so instead the window is short (today and yesterday UTC) and the
-  factor saturates at ×1.5 by 100 reads, below the ×2.2 vote cap. The cap
-  cannot lift a story past one whose importance weight is 1.5× its own:
-  importance 5 weighs 3.5 and importance 8 weighs 7.2, so a well-read 5
-  reaches 5.3 at most. Category totals over 28 days show on `/data` (Algo
-  tab, `GET /api/system/reads`); topic weights are not retuned from them.
 
 A story's cluster is the canonical item plus every `merged` item whose
 `duplicate_of` points at it. `rankSignals` reads it one way everywhere
@@ -1448,11 +1433,48 @@ SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
   30-minute re-rank reads the sum through `RANK_SIGNAL_JOIN`. Trending still uses
   `rank_score` only. A vote does not change digest or email selection
   except by moving that score.
-- `readCount` = `SUM(count)` from `item_reads` on that item for days on or
-  after `READ_WINDOW_START` (yesterday UTC), read through
-  `RANK_SIGNAL_JOIN`. A canonical that absorbs a merge carries its reads
-  into the merge score, as it does votes. Reads are not moved when a
-  canonical is demoted, so they stay on the old id.
+
+**Reader reads order the homepage only.** `item_reads` (migration 0065)
+counts story opens and publisher clicks per story, UTC day, arrival channel
+and kind (`POST /api/read`, `worker/reads.ts`). `getFeed` multiplies each
+row's stored `rank_score` by `readFactor` before it sorts a day:
+
+```text
+homepage order = rank_score × (1 + 0.3·reads / (reads + 200))
+reads          = opens + clicks today and yesterday UTC; reads on an id
+                 later merged, or a canonical later demoted, count for
+                 the canonical it now points at
+```
+
+Stored `rank_score` never includes reads, so the edition pool (`tldr.ts`),
+the Telegram trending lane and its bar, the day archive and its Telegram day
+card, Facebook, email and the weekly roundup ignore them. A read is
+anonymous, and a script on rotating IPs can fake one, so it must not be
+able to push a story into a public post. Collection:
+
+- The browser counts a story once per tab, kind and UTC day with a key in
+  `sessionStorage`. That is client-side only; the server cannot enforce it.
+- The server drops bot user agents, `Sec-Fetch-Site: cross-site`, unknown
+  or unpublished ids and malformed bodies. User agent and fetch-site are
+  spoofable, so they only stop honest crawlers and other sites' pages.
+- `READ_LIMITER` (`[[ratelimits]]`, limit 1, period 60) counts one beacon
+  per (IP, story, kind) a minute. The key lives only in the limiter's
+  memory at that Cloudflare location. 60 seconds is the longest period the
+  binding offers, so a burst from one client counts once or twice, while a
+  steady drip still counts 60 an hour. Each row also stops at 2000.
+- The factor is flat at the start and tops out below ×1.3: 2 counts ×1.003,
+  50 ×1.06, 100 ×1.10, 200 ×1.15. Simulated on the 2026-10-16 production
+  top 40: 2 counts move any row at most 2 places, 100 reads move #18 to #12,
+  and a one-IP drip for 24h moves #29 to #12.
+- Bound: reads never lift a story past one whose stored rank is 1.3× its
+  own. All other factors equal, that is an importance ratio of 1.19 (a 5
+  never passes a 6). Across factors it is not an importance bound: in that
+  top 40 an importance-4.0 story at #18 can pass an importance-8.26 one at
+  #11.
+
+Known gaps: the constants are not replay-tuned with `rank-replay`; after
+in-site navigation the channel falls back to `web`. Category totals over 28
+days show on `/data` (Algo tab, `GET /api/system/reads`).
 
 ### 8. Write
 

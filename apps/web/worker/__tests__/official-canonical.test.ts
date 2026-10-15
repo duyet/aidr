@@ -532,9 +532,6 @@ describe("demotion against real SQL (Clef rows from D1)", () => {
       CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
         value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
         PRIMARY KEY (item_id, user_id));
-      CREATE TABLE item_reads (item_id TEXT NOT NULL, day TEXT NOT NULL,
-        channel TEXT NOT NULL, kind TEXT NOT NULL, count INTEGER NOT NULL,
-        PRIMARY KEY (item_id, day, channel, kind));
       CREATE TABLE notifications (channel TEXT NOT NULL, item_id TEXT NOT NULL,
       target TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'sent',
       posted_at INTEGER NOT NULL, PRIMARY KEY (channel, item_id))`);
@@ -752,9 +749,6 @@ describe("Clef takeover from the stored HN copy (prod rows)", () => {
       CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
         value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
         PRIMARY KEY (item_id, user_id));
-      CREATE TABLE item_reads (item_id TEXT NOT NULL, day TEXT NOT NULL,
-        channel TEXT NOT NULL, kind TEXT NOT NULL, count INTEGER NOT NULL,
-        PRIMARY KEY (item_id, day, channel, kind));
       CREATE TABLE notifications (channel TEXT NOT NULL, item_id TEXT NOT NULL,
       target TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'sent',
       posted_at INTEGER NOT NULL, PRIMARY KEY (channel, item_id))`);
@@ -830,7 +824,6 @@ describe("Clef takeover from the stored HN copy (prod rows)", () => {
       comments: 60,
       sourceCount: 3,
       voteNet: 0,
-      readCount: 0,
     });
   });
 });

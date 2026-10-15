@@ -33,6 +33,8 @@ export const Route = createFileRoute("/api/read")({
           const status = await decideRead({
             ua: request.headers.get("User-Agent"),
             fetchSite: request.headers.get("Sec-Fetch-Site"),
+            ip: request.headers.get("CF-Connecting-IP"),
+            limiter: env.READ_LIMITER,
             body: await request.text(),
             db: env.DB,
             day: utcDay(Date.now()),

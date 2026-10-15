@@ -12,9 +12,6 @@ export interface RankScoreInput {
   sourceCount?: number;
   /** Net of signed-in reader votes on this item. 0 when nobody has voted. */
   voteNet?: number;
-  /** Reader opens + outbound clicks over today and yesterday UTC
-   *  (`item_reads`). 0 when nobody has read it. */
-  readCount?: number;
 }
 
 /** Independent-source corroboration in rank_score. */
@@ -63,12 +60,6 @@ export const BREAKING_TIME_CONSTANT_HOURS = 3;
 export const READER_VOTE_GAIN = 0.2;
 export const READER_VOTE_CAP = 6;
 
-/** Reads are position-biased: a story on top is read because it is on top.
- * So the factor saturates below the vote cap (x1.5 by 100 reads) and reads
- * only today and yesterday. 10 reads are about x1.26. */
-export const READER_READ_GAIN = 0.25;
-export const READER_READ_CAP = 1.5;
-
 /** Log-damped source engagement (HN/Lobsters points and comments). */
 export function readerEngagement(points: number, comments: number): number {
   const signal = points + 0.5 * comments;
@@ -82,15 +73,6 @@ export function voteFactor(voteNet = 0): number {
   if (!Number.isFinite(voteNet)) return 1;
   const steps = READER_VOTE_GAIN * Math.min(READER_VOTE_CAP, Math.abs(voteNet));
   return voteNet >= 0 ? 1 + steps : 1 / (1 + steps);
-}
-
-/** Multiplier from first-party reads: 1 with none, never below 1. */
-export function readFactor(readCount = 0): number {
-  if (!Number.isFinite(readCount) || readCount <= 0) return 1;
-  return Math.min(
-    READER_READ_CAP,
-    1 + READER_READ_GAIN * Math.log10(1 + readCount)
-  );
 }
 
 /** LLM scores are 0-10; a stray negative, >10 or NaN must not reach the
@@ -111,7 +93,6 @@ export function rankScoreWithoutBreaking({
   now,
   sourceCount = 0,
   voteNet = 0,
-  readCount = 0,
 }: RankScoreInput): number {
   const ageHours = Math.max(0, (now - publishedAt) / (1000 * 60 * 60));
   importance = clampScore(importance);
@@ -132,13 +113,7 @@ export function rankScoreWithoutBreaking({
   );
   const weight =
     importance ** IMPORTANCE_EXPONENT / 10 ** (IMPORTANCE_EXPONENT - 1);
-  const score =
-    weight *
-    qualityFactor *
-    decay *
-    crowd *
-    voteFactor(voteNet) *
-    readFactor(readCount);
+  const score = weight * qualityFactor * decay * crowd * voteFactor(voteNet);
   return Number.isFinite(score) ? score : 0;
 }
 
@@ -199,31 +174,21 @@ export const VOTE_NET_JOIN_I = `LEFT JOIN (
     FROM item_votes GROUP BY item_id
   ) AS vote_sum ON vote_sum.item_id = i.id`;
 
-/** First `item_reads.day` that counts toward `readCount`: yesterday UTC. */
-export const READ_WINDOW_START = "date('now', '-1 day')";
-const READ_COUNT_COLUMN = "COALESCE(read_sum.read_count, 0) AS read_count";
-const READ_COUNT_JOIN_ITEMS = `LEFT JOIN (
-    SELECT item_id, SUM(count) AS read_count
-    FROM item_reads WHERE day >= ${READ_WINDOW_START} GROUP BY item_id
-  ) AS read_sum ON read_sum.item_id = items.id`;
-
 /** SELECT columns and FROM join for `rowRankSignals`: the item's own
  *  source and engagement plus `[source_id, points, comments]` of every item
- *  merged into it, and the net of `item_votes` and recent `item_reads` on
- *  the canonical. Every query that feeds `rankScore` must read them, or a
- *  re-rank loses the cluster's corroboration or wipes reader votes and
- *  reads. Use them as
+ *  merged into it, and the net of `item_votes` on the canonical. Every query
+ *  that feeds `rankScore` must read them, or a re-rank loses the cluster's
+ *  corroboration or wipes reader votes. Use them as
  *  `SELECT …, ${RANK_SIGNAL_COLUMNS} FROM items ${RANK_SIGNAL_JOIN} WHERE …`
  *  with `items` unaliased. One grouped scan of merged rows, not a subquery
  *  per item (the per-item form read ~1M rows for one 72h re-rank). */
-export const RANK_SIGNAL_COLUMNS = `source_id, points, comments, url AS signal_url, COALESCE(merged.members, '[]') AS merged_members, ${VOTE_NET_COLUMN}, ${READ_COUNT_COLUMN}`;
+export const RANK_SIGNAL_COLUMNS = `source_id, points, comments, url AS signal_url, COALESCE(merged.members, '[]') AS merged_members, ${VOTE_NET_COLUMN}`;
 export const RANK_SIGNAL_JOIN = `LEFT JOIN (
     SELECT duplicate_of AS canonical_id,
            json_group_array(json_array(source_id, points, comments, url)) AS members
     FROM items WHERE status = 'merged' GROUP BY duplicate_of
   ) AS merged ON merged.canonical_id = items.id
-  ${VOTE_NET_JOIN_ITEMS}
-  ${READ_COUNT_JOIN_ITEMS}`;
+  ${VOTE_NET_JOIN_ITEMS}`;
 
 export interface RankSignalRow {
   source_id: string;
@@ -234,8 +199,6 @@ export interface RankSignalRow {
   merged_members: string | null;
   /** Absent on rows read before reader votes joined the signal columns. */
   vote_net?: number | null;
-  /** Absent on rows read before reader reads joined the signal columns. */
-  read_count?: number | null;
 }
 
 /** `rankSignals` for a row read with RANK_SIGNAL_COLUMNS. */
@@ -258,7 +221,6 @@ export function rowRankSignals(row: RankSignalRow) {
       })),
     ]),
     voteNet: row.vote_net ?? 0,
-    readCount: row.read_count ?? 0,
   };
 }
 

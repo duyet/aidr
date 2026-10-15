@@ -44,7 +44,7 @@ describe("writeItems: merge into an existing canonical", () => {
   // The canonical must rank on those merged values this run; the 72h re-rank
   // reads D1 before the batch lands, so letting it write the canonical would
   // put the stale pre-merge score back.
-  it("re-ranks the canonical from its whole cluster and recent reads, and keeps that score", async () => {
+  it("re-ranks the canonical from its whole cluster and keeps that score", async () => {
     const now = Date.UTC(2026, 9, 1, 12);
     const nowSec = now / 1000;
     const db = new DatabaseSync(":memory:");
@@ -57,10 +57,7 @@ describe("writeItems: merge into an existing canonical", () => {
         author TEXT, posted_at INTEGER, quote TEXT, url TEXT);
       CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
         value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
-        PRIMARY KEY (item_id, user_id));
-      CREATE TABLE item_reads (item_id TEXT NOT NULL, day TEXT NOT NULL,
-        channel TEXT NOT NULL, kind TEXT NOT NULL, count INTEGER NOT NULL,
-        PRIMARY KEY (item_id, day, channel, kind));`);
+        PRIMARY KEY (item_id, user_id));`);
     const add = db.prepare(
       `INSERT INTO items VALUES (?, ?, ?, ?, 0, 8, 8, ?, '[]',
          'https://example.com/' || ?, NULL, NULL, ?, ?)`
@@ -99,10 +96,6 @@ describe("writeItems: merge into an existing canonical", () => {
     );
     db.prepare(
       "INSERT INTO item_sources VALUES ('canon', 0, 'source', NULL, NULL, NULL, 'https://a.test')"
-    ).run();
-    // The read window is real UTC days in SQL, not the test clock.
-    db.prepare(
-      "INSERT INTO item_reads VALUES ('canon', date('now'), 'web', 'open', 40)"
     ).run();
 
     const extraSources = ["b", "c", "d"].map((h) => ({
@@ -163,7 +156,6 @@ describe("writeItems: merge into an existing canonical", () => {
       now,
       // hn, theverge-ai, aggregator, techcrunch-ai
       sourceCount: 4,
-      readCount: 40,
     });
     expect(
       rankSignals([
@@ -268,9 +260,6 @@ describe("writeItems: an official post takes the canonical", () => {
       CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
         value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
         PRIMARY KEY (item_id, user_id));
-      CREATE TABLE item_reads (item_id TEXT NOT NULL, day TEXT NOT NULL,
-        channel TEXT NOT NULL, kind TEXT NOT NULL, count INTEGER NOT NULL,
-        PRIMARY KEY (item_id, day, channel, kind));
       CREATE TABLE notifications (channel TEXT NOT NULL, item_id TEXT NOT NULL,
         target TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'sent',
         posted_at INTEGER NOT NULL, PRIMARY KEY (channel, item_id));`);
@@ -370,9 +359,6 @@ describe("writeItems: an official post takes the canonical", () => {
       CREATE TABLE item_votes (item_id TEXT NOT NULL, user_id TEXT NOT NULL,
         value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
         PRIMARY KEY (item_id, user_id));
-      CREATE TABLE item_reads (item_id TEXT NOT NULL, day TEXT NOT NULL,
-        channel TEXT NOT NULL, kind TEXT NOT NULL, count INTEGER NOT NULL,
-        PRIMARY KEY (item_id, day, channel, kind));
       CREATE TABLE notifications (channel TEXT NOT NULL, item_id TEXT NOT NULL,
         target TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'sent',
         posted_at INTEGER NOT NULL, PRIMARY KEY (channel, item_id));

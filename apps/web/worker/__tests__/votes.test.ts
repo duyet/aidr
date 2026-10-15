@@ -51,10 +51,7 @@ function seed() {
       item_id TEXT NOT NULL, user_id TEXT NOT NULL,
       value INTEGER NOT NULL CHECK (value IN (1, -1)),
       updated_at INTEGER NOT NULL,
-      PRIMARY KEY (item_id, user_id));
-    CREATE TABLE item_reads (item_id TEXT NOT NULL, day TEXT NOT NULL,
-      channel TEXT NOT NULL, kind TEXT NOT NULL, count INTEGER NOT NULL,
-      PRIMARY KEY (item_id, day, channel, kind))`);
+      PRIMARY KEY (item_id, user_id))`);
   const add = db.prepare(
     `INSERT INTO items VALUES (?, 'published', ?, 8, 8, 1, 'hn', 10, 0, ?, NULL)`
   );

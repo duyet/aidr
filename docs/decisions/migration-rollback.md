@@ -294,14 +294,15 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
 - Change: new table `item_reads` with index `idx_item_reads_day`. One row
   per story, UTC day, arrival channel and kind (`open` or `outbound`),
   holding a count and nothing that identifies a reader. Written by
-  `POST /api/read`; read by `rank_score` (today and yesterday) and
-  `GET /api/system/reads` (28 days).
-- Risk: none for existing rows. `RANK_SIGNAL_JOIN` reads the table, so
-  apply it before deploying the Worker, or the 30-minute re-rank, votes,
-  backfill and admin rate/preview fail with "no such table". The collector
-  and `/api/system/reads` answer as if empty until it exists.
-- Rollback: deploy the previous Worker; `DROP TABLE item_reads;`. Rank
-  scores already written keep the read factor until the next re-rank.
+  `POST /api/read`; read by the homepage feed order (`getFeed`, today and
+  yesterday) and `GET /api/system/reads` (28 days). Stored `rank_score`
+  never reads it.
+- Risk: none for existing rows. Apply it before the Worker deploys so
+  reads count from the first beacon. Without it the collector answers 204
+  and writes nothing, `getFeed` probes the table and orders by `rank_score`
+  alone, and `/api/system/reads` answers as if empty.
+- Rollback: deploy the previous Worker; `DROP TABLE item_reads;`. Nothing
+  else holds a value derived from it.
 
 ## 0064_hf_trending_source.sql
 

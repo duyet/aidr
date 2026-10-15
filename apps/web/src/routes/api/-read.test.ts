@@ -3,7 +3,7 @@ import { Route } from "./read";
 
 type Post = (args: { request: Request; context: unknown }) => Promise<Response>;
 
-const post = (Route.options?.server as unknown as { handlers: { POST: Post } })
+const post = (Route.options.server as unknown as { handlers: { POST: Post } })
   .handlers.POST;
 
 const BROWSER =
