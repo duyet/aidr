@@ -1,7 +1,8 @@
 /**
- * A broken publisher image must step to the OG card, then to the site mark,
- * and stay there. Remembering only the latest failure sends the two URLs
- * back and forth, so the placeholder is never what remains.
+ * On the story page a broken publisher image must step to the OG card, then
+ * to the site mark, and stay there. Remembering only the latest failure sends
+ * the two URLs back and forth, so the placeholder is never what remains.
+ * A feed row steps straight to the brand tile.
  *
  * @vitest-environment happy-dom
  */
@@ -24,7 +25,7 @@ function srcOf(container: HTMLElement): string {
 describe("StoryThumb image errors", () => {
   it("settles on the placeholder after the publisher image and the OG card both fail", () => {
     const { container } = render(
-      <StoryThumb src={PUBLISHER} itemId={ITEM_ID} lang="en" />
+      <StoryThumb src={PUBLISHER} itemId={ITEM_ID} lang="en" variant="card" />
     );
     const seen: string[] = [];
     const record = () => {
@@ -54,11 +55,24 @@ describe("StoryThumb image errors", () => {
     expect(container.innerHTML).not.toContain(PUBLISHER);
   });
 
-  it("shows the OG card when the publisher image is missing", () => {
+  it("shows the OG card on the story page when the publisher image is missing", () => {
     const { container } = render(
-      <StoryThumb src={null} itemId={ITEM_ID} lang="en" />
+      <StoryThumb src={null} itemId={ITEM_ID} lang="en" variant="card" />
     );
     expect(srcOf(container)).toBe(OG);
     expect(container.innerHTML).not.toContain(STORY_THUMB_PLACEHOLDER);
+  });
+
+  it("swaps a broken feed thumb for the brand tile without requesting the OG card", () => {
+    const { container } = render(
+      <StoryThumb src={PUBLISHER} itemId={ITEM_ID} lang="en" />
+    );
+    expect(srcOf(container)).toBe(PUBLISHER);
+    const img = container.querySelector("img");
+    if (!img) throw new Error("missing thumb");
+    fireEvent.error(img);
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.innerHTML).not.toContain("/api/og/");
+    expect(container.textContent).toBe(";");
   });
 });

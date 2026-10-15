@@ -59,13 +59,8 @@ export function ThumbLightbox({
   return createPortal(overlay, document.body);
 }
 
-/**
- * Compact story thumbnail matching the feed card language: rounded,
- * bordered, object-cover. Sized to two lines of the surrounding
- * `leading-snug` copy (`2lh`) so it fills an AI;DR row.
- */
-/** First-party story card. Used when the publisher thumb is missing or 404s.
- * `lang` picks the headline language on the card. */
+/** First-party story card. The card variant falls back to it when the
+ * publisher image is missing or 404s. `lang` picks the headline language. */
 export function storyOgThumbUrl(
   itemId: string | undefined,
   lang: Lang | undefined
@@ -74,6 +69,28 @@ export function storyOgThumbUrl(
   return withLang(`/api/og/${itemId}.png`, lang === "en" ? "en" : "vi");
 }
 
+/**
+ * Feed thumb for a story with no usable publisher image: the brand semicolon
+ * on the soft yellow ground. A 1200x630 story card cropped into this 2lh
+ * square showed a few unreadable headline fragments instead.
+ */
+function StoryThumbTile(): ReactElement {
+  return (
+    <span
+      aria-hidden
+      className="flex size-[2lh] min-h-[2lh] min-w-[2lh] shrink-0 select-none items-center justify-center self-stretch rounded-xl border border-border/80 bg-brand-soft text-foreground dark:text-brand"
+    >
+      {/* Own span: a font size on the box would rescale its 2lh. */}
+      <span className="font-serif text-3xl leading-none">;</span>
+    </span>
+  );
+}
+
+/**
+ * Compact story thumbnail matching the feed card language: rounded,
+ * bordered, object-cover. Sized to two lines of the surrounding
+ * `leading-snug` copy (`2lh`) so it fills an AI;DR row.
+ */
 export function StoryThumb({
   src,
   alt = "",
@@ -87,7 +104,7 @@ export function StoryThumb({
   /** First-screen thumbs: eager so LCP is not a lazy 800KB og:image. */
   priority?: boolean;
   itemId?: string;
-  /** Card language when we fall back to `/api/og`. */
+  /** Card language when the card variant falls back to `/api/og`. */
   lang?: Lang;
   variant?: "feed" | "card";
 }): ReactElement {
@@ -100,7 +117,7 @@ export function StoryThumb({
   const labelId = useId();
   const url = resizeCdnImageUrl(src, variant === "card" ? "card" : "thumb");
   const remote = url && !failedSrcs.has(url) ? url : null;
-  const og = storyOgThumbUrl(itemId, lang);
+  const og = variant === "card" ? storyOgThumbUrl(itemId, lang) : null;
   const ogSrc = og && !failedSrcs.has(og) ? og : null;
   const showSrc = remote ?? ogSrc ?? STORY_THUMB_PLACEHOLDER;
   const zoomSrc = remote ? (resizeCdnImageUrl(src, "full") ?? remote) : ogSrc;
@@ -120,6 +137,8 @@ export function StoryThumb({
    * preloads from the critical path without changing a pixel.
    */
   const loading = priority ? "eager" : "lazy";
+
+  if (variant === "feed" && !remote) return <StoryThumbTile />;
 
   const imgClass =
     variant === "card"
