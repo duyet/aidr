@@ -19,6 +19,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { ENGAGEMENT_BAIT, gateVideo, lintText, probeStreams } from "./gate.mjs";
+import { siteLink, tagSiteLinks } from "./site-links.mjs";
 import { envVar, fmtCmd } from "./telegram-video.mjs";
 
 // Same default as apps/web/worker/notify/facebook.ts (facebook-reel.test.mjs fails if they drift).
@@ -53,16 +54,21 @@ export function reelConfig(get = envVar) {
   };
 }
 
+const reelTag = (date) => ({
+  source: "facebook",
+  medium: "social",
+  campaign: `digest-${date}`,
+  content: "reel",
+});
+
 /** The day page, attributed to the Reel. */
 export function reelLink(date, lang = "en") {
   const u = new URL(`https://aidr.today/date/${date}`);
   if (lang !== "en") u.searchParams.set("lang", lang);
-  u.searchParams.set("utm_source", "facebook");
-  u.searchParams.set("utm_medium", "reel");
-  return u.toString();
+  return siteLink(u.toString(), reelTag(date));
 }
 
-/** The Reel caption: the posts.md Facebook block of a language, its day link swapped for the attributed one. */
+/** The Reel caption: the posts.md Facebook block of a language, every aidr.today link attributed to the Reel. */
 export function reelCaption(postsMd, date, lang = "en") {
   const block = postsMd.match(
     new RegExp(`<!-- posts:${lang} -->[\\s\\S]*?<!-- /posts:${lang} -->`)
@@ -71,12 +77,7 @@ export function reelCaption(postsMd, date, lang = "en") {
     ?.match(/## Facebook Page[^\n]*\n\n([\s\S]*?)\n## /)?.[1]
     ?.trim();
   if (!fb) throw new Error(`posts.md has no Facebook block for ${lang}`);
-  const day = `https://aidr.today/date/${date}${lang === "en" ? "" : `?lang=${lang}`}`;
-  const link = reelLink(date, lang);
-  return fb
-    .split("\n")
-    .map((l) => (l.trim().endsWith(day) ? l.replace(day, link) : l))
-    .join("\n");
+  return tagSiteLinks(fb, reelTag(date));
 }
 
 /** ffmpeg args for the Reels copy: 1080x1920 H.264 yuv420p, fixed 30 fps, closed 2 s GOP, AAC 48 kHz stereo. */

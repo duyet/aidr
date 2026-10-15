@@ -40,6 +40,7 @@ export const CHANNELS = [
   "email",
   "facebook",
   "youtube",
+  "rss",
   "other",
 ] as const;
 export type Channel = (typeof CHANNELS)[number];

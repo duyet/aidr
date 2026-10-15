@@ -338,7 +338,10 @@ test("visub posts to the Vietnamese channel with Vietnamese copy and the English
     url: "https://youtu.be/EN16x9abcde",
   });
   assert.equal(day.text, "Trang ngày trên aidr.today");
-  assert.match(day.url, /\/date\/2026-10-13\?lang=vi&utm_source=telegram$/);
+  assert.match(
+    day.url,
+    /\/date\/2026-10-13\?lang=vi&utm_source=telegram&utm_medium=social&utm_campaign=digest-2026-10-13&utm_content=button$/
+  );
   assert.equal(
     telegramPost({ date: "2026-10-13", lang: "visub", title: null }).caption,
     "<b>Bản tin AI;DR — 2026-10-13</b>"
@@ -738,7 +741,7 @@ test("yt-meta.py --json gives the uploaders visub's metadata with the Vietnamese
     assert.equal(m.tags, "AI, tin AI hôm nay");
     assert.match(
       m.desc,
-      /\?lang=vi\nTiện ích Chrome: \S+\nTelegram: https:\/\/t\.me\/aihomnay\nFacebook: \S+\n\n#AI #TinAI$/
+      /\?lang=vi&utm_source=youtube&utm_medium=video&utm_campaign=digest-2026-10-13&utm_content=long\nTiện ích Chrome: \S+\nTelegram: https:\/\/t\.me\/aihomnay\nFacebook: \S+\n\n#AI #TinAI$/
     );
   } finally {
     rmSync(tmp, { recursive: true, force: true });

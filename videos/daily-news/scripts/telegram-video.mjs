@@ -7,6 +7,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 
+import { siteLink } from "./site-links.mjs";
+
 const REPO = resolve(import.meta.dirname, "../../..");
 const FFMPEG = process.env.FFMPEG || "ffmpeg";
 const FFPROBE = process.env.FFPROBE || "ffprobe";
@@ -179,12 +181,16 @@ export function makeThumbnail(src, dst) {
   throw new Error(`${basename(dst)} is over 200 kB`);
 }
 
-/** Same links as the Worker's digestDayUrl: /date/<date>?lang=<l>&utm_source=telegram. */
+/** The day page, tagged like the Worker's Telegram day-page button (digestDayUrl). */
 export function dayUrl(date, lang) {
   const u = new URL(`https://aidr.today/date/${date}`);
   u.searchParams.set("lang", lang);
-  u.searchParams.set("utm_source", "telegram");
-  return u.toString();
+  return siteLink(u.toString(), {
+    source: "telegram",
+    medium: "social",
+    campaign: `digest-${date}`,
+    content: "button",
+  });
 }
 
 const escapeHtml = (s) =>
