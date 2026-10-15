@@ -186,7 +186,7 @@
     "summary": "The GPT-6 Sol and Luna models launched today to provide a lower cost alternative to the GPT-6 Astra architecture. API prices for these new tiers are 50% lower than GPT-5.6 promotional pricing, with Sol priced at $2 per million input tokens and $10 per million output tokens. Luna costs $0.10 per mill",
     "publishedImportance": 9,
     "scoredOn": "2026-09-22",
-    "expectedBand": [7, 8]
+    "expectedBand": [9, 10]
   },
   {
     "id": "2e05057e2efb685e21ff7a5a0302c2cb3791d92b21ce79b791df40f9e38d1411",
@@ -321,7 +321,7 @@
     "summary": "Claude Sonnet 5.5 is now available on Amazon Bedrock and Claude Platform on AWS. It's a smarter, more efficient Sonnet model for focused coding and knowledge work, with a lower cost per task at faster speed. This post covers what's new, when to choose Sonnet, and how to get started.",
     "publishedImportance": 5,
     "scoredOn": "2026-09-28",
-    "expectedBand": [4, 6]
+    "expectedBand": [7, 8]
   },
   {
     "id": "3eda5db8c05960eb16be6155f814cefe501dcadccb785705081734adcab5c79f",
@@ -447,186 +447,6 @@
     "summary": "Amazon, Alphabet, Microsoft, Oracle and Meta are currently investing roughly $800 billion in their technological infrastructure this year. Goldman Sachs strategists forecast these outlays will increase by 54% to $1.2 trillion in 2027, exceeding the $1.1 trillion consensus estimated by other Wall Str",
     "publishedImportance": 9,
     "scoredOn": "2026-09-25",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "74c9e10c02543c499970682cdc00d05dd116e332e885e53c72a5b5135c768141",
-    "source": "google-ai",
-    "title": "Gemini 4 Argon: Built to solve your hardest problems",
-    "summary": "Gemini 4 Argon has been released as a latest frontier model for developers, enterprises, scientists, and consumers.",
-    "publishedImportance": 9.72,
-    "scoredOn": "2026-10-13",
-    "expectedBand": [9, 10]
-  },
-  {
-    "id": "04d48b78906706c989ec977de29df83cca2ec4b69acf6bedd24bb82a44d3a812",
-    "source": "marketbrief",
-    "title": "StepFun Opens 600B Parameter Step 5 Preview as Open Weights Flagship",
-    "summary": "StepFun released Step 5 Preview, a 600 billion parameter open-weights AI model using a sparse Mixture of Experts architecture, available on Hugging Face and ModelScope with support from vLLM and SGLang.",
-    "publishedImportance": 9.08,
-    "scoredOn": "2026-10-15",
-    "expectedBand": [8, 10]
-  },
-  {
-    "id": "0820332fc7e5d0ac603904d5c15cc728cfd4e6833c7a62fbeea7e05f7d86a1bf",
-    "source": "marketbrief",
-    "title": "Liquid AI Launches 24B Model as Largest Release to Date",
-    "summary": "Liquid AI launched the LFM2.5-24B-A2B model, a 24B parameter reasoning tool using a Mixture-of-Experts architecture designed for fast, private agentic intelligence on laptops and PCs. The model features a 131K token context window, a 128K token vocabulary, and was trained on 33T tokens, with open ba",
-    "publishedImportance": 7.67,
-    "scoredOn": "2026-10-13",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "f7f8f7edb220e81506f6c32a71921ea53af3519b91bb3e4e7ea71635d238e8be",
-    "source": "huggingnews",
-    "title": "Dolphin Launches DeepSeek V4.1 Flash API at 97% Lower Cost",
-    "summary": "Dolphin launched the Dolphin Inference API using DeepSeek V4.1 Flash, offering performance comparable to Opus 5 models at a cost 97% lower than other frontier models. The first 1,000 users receive $30 in free credits to test agentic and coding capabilities, with the service targeting software builde",
-    "publishedImportance": 7.02,
-    "scoredOn": "2026-10-11",
-    "expectedBand": [1, 3]
-  },
-  {
-    "id": "0957c086c96aeb1a2846ff24c8df46c80d2ed31bd7f3e25eda04a808e073bb18",
-    "source": "marketbrief",
-    "title": "Grok Debuts Video 1.5 Lite Model for Imagine API",
-    "summary": "The Grok Imagine API has introduced the Video 1.5 Lite model for text-to-video and image-to-video generation. The model is automatically used by the Grok bot and is priced based on resolution, ranging from $0.02 to $0.14 per second.",
-    "publishedImportance": 6.49,
-    "scoredOn": "2026-10-08",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "8783480ea19d3d8a8cfba306c6f881ef464c73cf8607c369969a22ac53caa8dd",
-    "source": "marketbrief",
-    "title": "OpenAI Launches 8x Faster GPT-6.1 Sol Ultrafast Mode",
-    "summary": "OpenAI launched an 'Ultrafast' mode for the GPT-6.1 Sol model, offering token generation speeds up to 8x faster than Sol Standard for the API, Codex, and ChatGPT Work. The mode costs $12 per million input tokens and $60 per million output tokens, with access limited to the $500 Pro plan and eligible",
-    "publishedImportance": 6.56,
-    "scoredOn": "2026-10-08",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "880f284ff56836cb3248c1da35c0d724cbb57c30e3a1fec923d2d14e70f2c548",
-    "source": "huggingnews",
-    "title": "Black Forest Labs Opens 5.6B Parameter Image Model for Consumer GPUs",
-    "summary": "Black Forest Labs released FLUX 3 Image Klein, a 5.6B parameter open-weights image generator capable of native 4K output and bounding-box layout control on a single consumer GPU. The model supports multi-reference generation using up to 10 images per prompt and is available in base and distilled 16-",
-    "publishedImportance": 7.87,
-    "scoredOn": "2026-10-15",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "aaf5e944b357cea5f553fc1d7bb7243ac3a108cd2551527e1af01f1f9664bcfe",
-    "source": "marketbrief",
-    "title": "Microsoft 128GB Surface Laptop Ultra Sells Out on Preorder",
-    "summary": "The $5,899 128GB Surface Laptop Ultra has sold out on preorder before its Oct. 16 ship date, with demand for on-device AI exhausting supply of the highest-end model featuring an Nvidia RTX Spark chip. The laptop anchors Microsoft's \"Hybrid Intelligence\" strategy using a model router to delegate task",
-    "publishedImportance": 7.32,
-    "scoredOn": "2026-10-11",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "fe3b0a03344ec69748471370e75c6fddc15cb41d98203dee81e8e86c0a7378bb",
-    "source": "marketbrief",
-    "title": "Lumentum Sells Out AI Optical Parts Through 2029 to Hyperscalers",
-    "summary": "Lumentum's CEO confirmed a capacity shortage for optoelectronic components used in AI data centers, with parts effectively sold out through nearly 2029. Order visibility from hyperscalers extends into 2030 and 2031, leading Sive, Sumitomo Electric, and AAOI to bring new capacity online.",
-    "publishedImportance": 7.16,
-    "scoredOn": "2026-10-09",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "576bba5a95257c7a0ab8c677edf2acbb5d1d35027b940a8d0ec552add2e4e669",
-    "source": "marketbrief",
-    "title": "Germany Funds Nvidia AI Project With Hundreds of Millions of Euros",
-    "summary": "Germany is funding a government-backed project with Nvidia, supported by hundreds of millions of euros, to integrate advanced robotics and AI into factories, with partners including Siemens, Audi, and Deutsche Telekom.",
-    "publishedImportance": 7.94,
-    "scoredOn": "2026-10-15",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "d705decdbdef812a165072577582b3c4e056a4a6f09a7a48d865809237caec6e",
-    "source": "techmeme",
-    "title": "Apple unveils the $149 HomePod mini 2, with an S10 chip, \"Sound Glow\" interactive lighting, and Siri AI via a future update, in five colors, shipping October 30 (Apple)",
-    "summary": "Apple has unveiled the $149 HomePod mini 2 featuring an S10 chip, \"Sound Glow\" interactive lighting, and Siri AI via a future update. Available in five colors, the device ships on October 30.",
-    "publishedImportance": 5.34,
-    "scoredOn": "2026-10-13",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "0d863ae664698ede64d0f10a0338f1d511ddb48300e5a7a2b4494efc6331c93a",
-    "source": "huggingnews",
-    "title": "Gartner Predicts 80% of Neocloud Providers Fail by 2030",
-    "summary": "Gartner predicts that a nearly $5 trillion gap between projected revenue and required investment will force 80% of neocloud providers to cease independent operations by 2030.",
-    "publishedImportance": 7.49,
-    "scoredOn": "2026-10-15",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "651ae2b2ce32d0772e2a3cb6264c4526562d088dc03c62f5c41ee208dad98e2d",
-    "source": "huggingnews",
-    "title": "Microsoft Reclaims $4 Trillion Market Cap",
-    "summary": "Microsoft's market valuation returned above $4 trillion following a share price increase on Oct. 12 driven by 43% Azure cloud revenue growth and annual sales exceeding $100 billion, with the company forecasting 45% Azure growth in the coming quarter.",
-    "publishedImportance": 8.1,
-    "scoredOn": "2026-10-12",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "cac83430057dec59102374c21ac4a4d8403723461bdfffcf2bd9432329c76a50",
-    "source": "hn",
-    "title": "Simons Foundation Launches $15M Effort to Help Mathematicians Navigate AI Era",
-    "summary": "The Simons Foundation launched a $15M effort to help mathematicians navigate the AI era. The initiative aims to fund, conduct, and share transformative science while strengthening connections between science and society.",
-    "publishedImportance": 4,
-    "scoredOn": "2026-10-15",
-    "expectedBand": [3, 5]
-  },
-  {
-    "id": "94ce2d062943b1046eafd9fc41f19e795c4b31f9ad4f28d35102b96e509fdbef",
-    "source": "hf-models-mistralai",
-    "title": "Timestral-28M released by mistralai on Hugging Face",
-    "summary": "mistralai published mistralai/Timestral-28M (time-series-forecasting) on Hugging Face, library: timestral.",
-    "publishedImportance": 4.88,
-    "scoredOn": "2026-10-14",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "dd85bcc13d47a3d00310224fa6042e72a83264d04546c0e30c68ca0041e821ba",
-    "source": "huggingnews",
-    "title": "SpaceXAI Launches Grok Imagine Video 1.5 Lite on fal and Venice",
-    "summary": "SpaceXAI launched Grok Imagine Video 1.5 Lite, a lightweight video model available on the fal and Venice platforms. The model supports text-to-video and image-to-video generation for 1 to 15 second sequences in 480p, 720p, and 1080p resolutions across 7 aspect ratios, with Venice offering anonymous ",
-    "publishedImportance": 6.11,
-    "scoredOn": "2026-10-01",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "648aa77dee164f032816b0f4004c31589425eff5082d239c6bd610a16cb08c1d",
-    "source": "huggingnews",
-    "title": "Google’s Gemini 4 Carbon Matches Opus 5.5 in Coding",
-    "summary": "Internal Google documents and screenshots seen by Business Insider indicate that a Gemini 4 checkpoint codenamed Carbon matches the coding capabilities of Opus 5.5. These trials occur as Google prepares for the public release of a model known as Argon.",
-    "publishedImportance": 6.8,
-    "scoredOn": "2026-10-09",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "19bdb94ef881cf804c222dc23546c06d9792e80074ac01d330325c9162ef2bfb",
-    "source": "huggingnews",
-    "title": "Venice Adds GPT-6 Astra With Anonymized Access at Same Price as OpenAI",
-    "summary": "Venice said users can now reach OpenAI's GPT-6 Astra through its app and API. The company said the service offers anonymized access and costs the same as using the model directly from OpenAI. The announcement included a sample API request using the model name openai-gpt-6-astra. Quoted OpenAI launch",
-    "publishedImportance": 8,
-    "scoredOn": "2026-09-05",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "51edf4c643816e6fc69aba606f22e49e530ea0b14e4cd171d8658ddbb9eb6a75",
-    "source": "mistral",
-    "title": "Introducing Timestral",
-    "summary": "State-of-the-art probabilistic forecasting in four sizes (5M–209M params), CPU-efficient, zero-shot ready.",
-    "publishedImportance": 7.63,
-    "scoredOn": "2026-10-15",
-    "expectedBand": [4, 6]
-  },
-  {
-    "id": "9e816f217a40b2a213c5dc036636cdbd80bb280eb354e94c3071c802f3d770ff",
-    "source": "hf-papers",
-    "title": "GroundingPI: A Grounding Foundation Model towards Physical Intelligence with Visual Primitives",
-    "summary": "Precise grounding matters. It specifies which object is the target and where that object is, even in clutter and for tiny objects, and it has to be fast enough for closed-loop control. Yet vision-language-action (VLA) and world-action models (WAMs) take perception from general-purpose vision-language and video-generation backbones, which still fail in these settings. We introduce GroundingPI, a 4B grounding foundation model that generates points and boxes as quantized coordinates in a shared vocabulary. Training combines multimodal and spatial pretraining, supervised fine-tuning, and reinforcement learning with GRPO, using supervision from public datasets and dedicated data engines. Against 44 baselines across 34 grounding benchmarks spanning 11 perceptual capabilities, GroundingPI establishes a new state of the art, averaging 73.68%, above the larger GPT-6 Astra (71.54%). As a downstream visual backbone, GroundingPI improves performance on robotic manipulation and autonomous driving. On RoboTwin 2.0, it outperforms every mainstream backbone we evaluate in all four out-of-distribution settings, by up to 24.8% relative to the strongest backbone.",
-    "publishedImportance": 7.31,
-    "scoredOn": "2026-10-13",
     "expectedBand": [4, 6]
   }
 ]

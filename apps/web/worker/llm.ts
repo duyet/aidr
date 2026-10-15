@@ -13,7 +13,7 @@ import {
   enSummaryPrompt,
   sanitizeEnSummaryResults,
 } from "./en-summary.js";
-import { IMPORTANCE_ANCHORS, IMPORTANCE_BANDS } from "./importance-rubric.js";
+import { IMPORTANCE_BANDS } from "./importance-rubric.js";
 import { LLM_STEP } from "./ingest/context.js";
 import {
   type JevScoreItem,
@@ -1270,7 +1270,6 @@ ${CATEGORY_RULE}
 
 Importance rubric (use the whole scale; most items are not 7+):
 ${IMPORTANCE_BANDS.map((band) => `- ${band.range}: ${band.meaning}.`).join("\n")}
-${IMPORTANCE_ANCHORS.map((anchor) => `- ${anchor}`).join("\n")}
 
 Quality rubric (this is what ranking multiplies — be strict):
 - 8–10: primary reporting or original research with a named publisher/host, concrete facts, not a rewrite of another headline.
