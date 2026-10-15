@@ -49,6 +49,6 @@ describe("thumb zoom affordance", () => {
     expect(thumb).toContain("Maximize2");
     expect(thumb).toContain("group-hover:bg-black/40");
     expect(thumb).toContain("group-focus-visible:bg-black/40");
-    expect(thumb).toContain("if (!zoomSrc) return img");
+    expect(thumb).toContain("if (!zoomTarget) return visual");
   });
 });
