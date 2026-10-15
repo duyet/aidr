@@ -66,6 +66,7 @@ import {
   type StoryRef,
   sameStoryRule,
   storyUrlKey,
+  TWIN_WINDOW_SEC,
   type TwinMatch,
   type TwinRule,
   twinMatches,
@@ -328,7 +329,7 @@ export interface UnmergeSnapshot {
   /** `item_sources` in position order, for canonicals, paired ids and the
    * published rows a restored story matches. */
   sources: ReadonlyMap<string, readonly StoredSource[]>;
-  /** Published rows within `MERGE_LOOKBACK_SEC` of a paired row, and the
+  /** Published rows within `TWIN_WINDOW_SEC` of a paired row, and the
    * rows there merged into a published root: where a restored story's live
    * twin would be (`twinMatches`). Each root a row matches has its full
    * row, its merged items and its sources above. */
@@ -1081,6 +1082,19 @@ const candidatesOf = (
   ...new Map(matches.map((m) => [m.ref.root, rootRef(state, m.ref)])).values(),
 ];
 
+/** Whether a live ref is its root, or a merged copy whose title or link
+ * still says it is the root's story. */
+function resemblesRoot(state: PlanState, ref: LiveRef): boolean {
+  if (ref.id === ref.root) return true;
+  const row = state.snapshot.items.get(ref.root);
+  if (!row) return false;
+  const root = storyRef(row);
+  return (
+    sameStoryRule(ref, root) !== null ||
+    isLikelySameEvent(ref, root, TWIN_WINDOW_SEC)
+  );
+}
+
 function describeMatch(state: PlanState, ref: LiveRef): string {
   const root = rootRef(state, ref);
   const via =
@@ -1125,6 +1139,18 @@ function routeGroup(
     !judged.has(m.ref.root) || (m.rule !== null && m.ref.root !== canonicalId);
   const matches = twinMatches(refs, state.snapshot.live).filter(unjudged);
   const same = matches.filter((m) => m.rule !== null);
+  // A copy unlike its root is likely a wrong merge itself (#794's
+  // Plugin4Shell under AgentCore): re-pointing there would hide this story
+  // under another one.
+  const stray = same.find((m) => !resemblesRoot(state, m.ref));
+  if (stray) {
+    return {
+      kind: "skip",
+      reason: "needs-decision",
+      detail: `the same story (${stray.rule}) as ${describeMatch(state, stray.ref)}, a merged copy unlike its root; set sameAs, or distinctFrom with the root`,
+      candidates: candidatesOf(state, [stray]),
+    };
+  }
   const sameRoots = [...new Set(same.map((m) => m.ref.root))];
   if (sameRoots.length > 1) {
     return {

@@ -1522,7 +1522,13 @@ const VI_D = id(0xf7);
 const FOLD_A = id(0xf8);
 const FOLD_B = id(0xf9);
 const NEAR_D = id(0xfa);
-const T = OLD + 80_000;
+const STRAY_ROOT = id(0xfb);
+const STRAY_COPY = id(0xfc);
+const STRAY_D = id(0xfd);
+const LATE_LIVE = id(0xfe);
+const LATE_D = id(0xff);
+const T = OLD - 10 * 86_400;
+const HOUR = 3600;
 const MUSE_SLUG =
   "meta-enables-muse-ai-checkout-for-paypal-and-shopify-7814a26b";
 const MUSE_TITLE =
@@ -1541,25 +1547,43 @@ function translateToEnglish(
 }
 
 async function writeMissedCopies(target: DatabaseSync) {
+  // The copy joined its root 80 hours later; the dangling rows sit near the
+  // copy, and NEAR_D is 100 hours from the root.
   const root = story(
     ROOT,
     "theverge-ai",
-    "Meta’s shopping agent can now pay for you",
+    "Meta’s Muse AI checkout comes to PayPal merchants",
     T,
-    "verge-muse-pay"
+    "verge-muse-checkout"
   );
   await writeCanonical(target, root, T + 100);
   await writeCluster(
     target,
-    [aggregatorCopy(ROOT_COPY, "marketbrief", MUSE_SLUG, MUSE_TITLE, T + 200)],
+    [
+      aggregatorCopy(
+        ROOT_COPY,
+        "marketbrief",
+        MUSE_SLUG,
+        MUSE_TITLE,
+        T + 80 * HOUR
+      ),
+    ],
     { id: ROOT, row: root },
-    T + 300
+    T + 80 * HOUR + 100
   );
   await writeRun(
     target,
-    [aggregatorCopy(COPY_D, "huggingnews", MUSE_SLUG, MUSE_TITLE, T + 250)],
+    [
+      aggregatorCopy(
+        COPY_D,
+        "huggingnews",
+        MUSE_SLUG,
+        MUSE_TITLE,
+        T + 81 * HOUR
+      ),
+    ],
     "abc123",
-    T + 400
+    T + 81 * HOUR + 100
   );
   await writeRun(
     target,
@@ -1569,11 +1593,63 @@ async function writeMissedCopies(target: DatabaseSync) {
         "huggingnews",
         "meta-muse-ai-checkout-reaches-paypal-and-shopify-merchants-9a8b7c6d",
         "Meta Muse AI Checkout Reaches PayPal and Shopify Merchants",
-        T + 500
+        T + 100 * HOUR
       ),
     ],
     "pqr678",
-    T + 600
+    T + 100 * HOUR + 100
+  );
+
+  // An aggregator copy the cluster call put into an unrelated story.
+  const agentCore = story(
+    STRAY_ROOT,
+    "aws-ml",
+    "The new AgentCore runtime: Elastic, optimized, and consistent",
+    T + 1500,
+    "agentcore-runtime"
+  );
+  await writeCanonical(target, agentCore, T + 1600);
+  const plugin = "plugin4shell-zero-click-rce-hits-4-ai-agents-3e1f2a7b";
+  const pluginTitle =
+    "Plugin4Shell Zero Click RCE Hits 4 AI Agents in First AI Supply Chain Flaw";
+  await writeCluster(
+    target,
+    [aggregatorCopy(STRAY_COPY, "marketbrief", plugin, pluginTitle, T + 1700)],
+    { id: STRAY_ROOT, row: agentCore },
+    T + 1800
+  );
+  await writeRun(
+    target,
+    [aggregatorCopy(STRAY_D, "huggingnews", plugin, pluginTitle, T + 1750)],
+    "stu901",
+    T + 1900
+  );
+
+  // One launch, reported 77 hours apart: past the 72-hour merge lookback.
+  await writeCanonical(
+    target,
+    aggregatorCopy(
+      LATE_LIVE,
+      "marketbrief",
+      "glm-53-flashx-hits-200-tokens-per-second-at-25x-price-5f8a8265",
+      "GLM 5.3 FlashX Hits 200 Tokens Per Second at 2.5X Price",
+      T + 5000
+    ),
+    T + 5100
+  );
+  await writeRun(
+    target,
+    [
+      aggregatorCopy(
+        LATE_D,
+        "huggingnews",
+        "zhipu-launches-glm-53-flashx-at-200-tokens-per-second-f809ee92",
+        "Zhipu Launches GLM 5.3 FlashX at 200 Tokens Per Second on 100 000 Chinese Chips",
+        T + 5000 + 77 * HOUR
+      ),
+    ],
+    "vwx234",
+    T + 5000 + 77 * HOUR + 100
   );
 
   const page = "https://openai.example.test/index/mentalhealthbench";
@@ -1702,6 +1778,26 @@ describe("unmerge of dangling merges: live copies under another form (#794)", ()
     expect(
       outcome?.action === "skip" && outcome.candidates?.map((c) => c.id)
     ).toEqual([ROOT]);
+  });
+
+  it("holds a story whose live copy is merged into an unrelated row, instead of hiding it there", async () => {
+    const outcome = outcomesOf(await unmergeItems(env, { dangling: true })).get(
+      STRAY_D
+    );
+    expect(outcome).toMatchObject({ action: "skip", reason: "needs-decision" });
+    expect(
+      outcome?.action === "skip" && outcome.candidates?.map((c) => c.id)
+    ).toEqual([STRAY_ROOT]);
+  });
+
+  it("holds a near-duplicate of a live story published a day past the merge lookback", async () => {
+    expect(
+      outcomesOf(await unmergeItems(env, { dangling: true })).get(LATE_D)
+    ).toMatchObject({
+      action: "skip",
+      reason: "needs-decision",
+      candidates: [expect.objectContaining({ id: LATE_LIVE })],
+    });
   });
 
   it("treats a URL with a trailing slash as the same page", async () => {

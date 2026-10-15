@@ -4,7 +4,6 @@
  * binding and a local `wrangler d1 execute --remote` (the CLI dry run) run
  * the same statements.
  */
-import { MERGE_LOOKBACK_SEC } from "../ingest/context.js";
 import {
   type DanglingDecision,
   type DanglingSnapshot,
@@ -15,7 +14,7 @@ import {
   type UnmergePair,
   type UnmergeSnapshot,
 } from "./plan.js";
-import { type LiveRef, twinMatches } from "./twins.js";
+import { type LiveRef, TWIN_WINDOW_SEC, twinMatches } from "./twins.js";
 
 export type SelectRows = (sql: string) => Promise<Record<string, unknown>[]>;
 
@@ -116,7 +115,7 @@ function snapshotReader(select: SelectRows) {
   };
 
   /** Where a restored story could already be live: published rows within
-   * the merge lookback of a `restoring` row, and the merged rows there
+   * `TWIN_WINDOW_SEC` of a `restoring` row, and the merged rows there
    * whose `duplicate_of` chain ends at a published row (their root).
    * `restoring` itself is left out: those rows move. The roots of rows that
    * match, and `twinIds`, load in full, as canonicals (their merged items
@@ -129,8 +128,8 @@ function snapshotReader(select: SelectRows) {
     const times = restoring.map((row) => row.published_at);
     const window = await select(
       liveWindowSql(
-        Math.min(...times) - MERGE_LOOKBACK_SEC,
-        Math.max(...times) + MERGE_LOOKBACK_SEC
+        Math.min(...times) - TWIN_WINDOW_SEC,
+        Math.max(...times) + TWIN_WINDOW_SEC
       )
     );
     const link = new Map<string, { status: string; next: string | null }>();

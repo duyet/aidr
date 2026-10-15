@@ -783,7 +783,7 @@ describe("planUnmerge: a restored story already live as another row", () => {
       40,
       "theverge-ai",
       "https://example.test/verge",
-      "Meta’s shopping agent can now pay for you"
+      "Anthropic backs Australian breach reporting laws for AI agents"
     );
     const copy = item(41, "huggingnews", `https://huggingnews.com/ai/${slug}`, {
       title,

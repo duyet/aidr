@@ -111,8 +111,17 @@ function keysOf(ref: StoryRef): StoryKeys {
   return keys;
 }
 
-const withinLookback = (a: StoryRef, b: StoryRef) =>
-  Math.abs(a.published_at - b.published_at) <= MERGE_LOOKBACK_SEC;
+const withinLookback = (
+  a: StoryRef,
+  b: StoryRef,
+  windowSec = MERGE_LOOKBACK_SEC
+) => Math.abs(a.published_at - b.published_at) <= windowSec;
+
+/** How far apart a restored story and a live copy can be published and
+ * still be held as likely the same event: the merge lookback plus a day. A
+ * copy just past the lookback still shows the story twice on adjacent days
+ * (GLM 5.3 FlashX, 77h apart). Exact-title identity keeps the lookback. */
+export const TWIN_WINDOW_SEC = MERGE_LOOKBACK_SEC + 24 * 60 * 60;
 
 /** Why `a` and `b` are one story, or null. Exact titles count only across
  * sources: one feed reuses a title for a new post ("AINews: not much
@@ -143,8 +152,12 @@ export function sameStoryRule(a: StoryRef, b: StoryRef): TwinRule | null {
  * translation, as the trending guard does (#786): the only tokens their
  * source titles share are Latin names. The translation is model output, so
  * it only ever makes this similarity match, never identity. */
-export function isLikelySameEvent(a: StoryRef, b: StoryRef): boolean {
-  if (!withinLookback(a, b)) return false;
+export function isLikelySameEvent(
+  a: StoryRef,
+  b: StoryRef,
+  windowSec = MERGE_LOOKBACK_SEC
+): boolean {
+  if (!withinLookback(a, b, windowSec)) return false;
   const ka = keysOf(a);
   const kb = keysOf(b);
   const [ta, tb] =
@@ -167,7 +180,8 @@ export interface TwinMatch<T extends StoryRef = StoryRef> {
 }
 
 /** Every candidate that is the same story as any of `rows`, or likely the
- * same event, one entry per candidate. Identity wins over similarity. */
+ * same event within `TWIN_WINDOW_SEC`, one entry per candidate. Identity
+ * wins over similarity. */
 export function twinMatches<T extends StoryRef>(
   rows: readonly StoryRef[],
   candidates: readonly T[]
@@ -179,7 +193,10 @@ export function twinMatches<T extends StoryRef>(
     const rule =
       rows.map((row) => sameStoryRule(row, ref)).find((r) => r !== null) ??
       null;
-    if (rule !== null || rows.some((row) => isLikelySameEvent(row, ref))) {
+    if (
+      rule !== null ||
+      rows.some((row) => isLikelySameEvent(row, ref, TWIN_WINDOW_SEC))
+    ) {
       out.push({ ref, rule });
     }
   }
