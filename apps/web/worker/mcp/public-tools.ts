@@ -1,5 +1,5 @@
 /**
- * D1-backed execution for the four public read tools.
+ * D1-backed execution for the public read tools.
  *
  * This is the ONLY place an anonymous MCP call reaches the database, and
  * it reaches it through the existing public read helpers
@@ -15,8 +15,11 @@
  * therefore never reaches D1.
  */
 
+import { dayArchivePath, parseArchiveDate } from "../../src/lib/day-archive.js";
+import { renderDayMarkdown } from "../../src/lib/day-markdown.js";
 import type { DbReader } from "../../src/lib/db.js";
-import { getFeed } from "../../src/lib/feed-queries.js";
+import { getDayArchive, getFeed } from "../../src/lib/feed-queries.js";
+import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
 import { localizePublicDigest } from "../../src/lib/public-api.js";
 import { getPublicDigest } from "../../src/lib/public-queries.js";
 import {
@@ -27,6 +30,7 @@ import {
 } from "../../src/lib/public-read-results.js";
 import type {
   GetAiDigestArgs,
+  GetDayEditionArgs,
   GetStoryArgs,
   LatestNewsArgs,
   PublicReadToolName,
@@ -78,6 +82,43 @@ async function runGetAiDigest(
 ): Promise<PublicReadResult> {
   const digest = await getPublicDigest(reader);
   return { ok: true, value: projectDigestBullets(digest, args.lang) };
+}
+
+/**
+ * The same read and renderer as `/date/{date}.md`, so the tool and the
+ * URL return identical Markdown for a day.
+ */
+async function runGetDayEdition(
+  reader: DbReader,
+  args: GetDayEditionArgs,
+  nowMs: number = Date.now()
+): Promise<PublicReadResult> {
+  const date = parseArchiveDate(args.date, nowMs);
+  if (!date) {
+    return { ok: false, error: "that date is in the future." };
+  }
+  const archive = await getDayArchive(reader, date);
+  if (!archive.day && !archive.tldr) {
+    return { ok: false, error: "no stories were published on that day." };
+  }
+  const markdown = renderDayMarkdown(archive, args.lang);
+  if (exceedsReadResultBound(markdown)) {
+    return {
+      ok: false,
+      error:
+        "the day edition is larger than the public read bound; read " +
+        `${absoluteSiteUrl(`/date/${date}.md`, args.lang)} instead.`,
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      date,
+      lang: args.lang,
+      markdown,
+      permalink: absoluteSiteUrl(dayArchivePath(date), args.lang),
+    },
+  };
 }
 
 /**
@@ -176,6 +217,8 @@ export async function runPublicReadTool(
       return runGetStory(reader, args as GetStoryArgs);
     case "get_ai_digest":
       return runGetAiDigest(reader, args as GetAiDigestArgs);
+    case "get_day_edition":
+      return runGetDayEdition(reader, args as GetDayEditionArgs);
   }
 }
 

@@ -181,9 +181,9 @@ describe("client-side-only registration", () => {
     expect(webmcpContext()).toBeNull();
   });
 
-  it("registers all four tools with the read-only annotations", () => {
+  it("registers every read tool with the read-only annotations", () => {
     const { doc, registered } = stubDocument(true);
-    expect(registerWebmcpTools(doc)).toBe(4);
+    expect(registerWebmcpTools(doc)).toBe(PUBLIC_READ_TOOL_NAMES.length);
     expect(registered.map((tool) => tool.name)).toEqual([
       ...PUBLIC_READ_TOOL_NAMES,
     ]);
@@ -200,7 +200,7 @@ describe("client-side-only registration", () => {
         },
       },
     } as unknown as WebMcpCapableDocument;
-    expect(registerWebmcpTools(doc)).toBe(3);
+    expect(registerWebmcpTools(doc)).toBe(PUBLIC_READ_TOOL_NAMES.length - 1);
   });
 
   it("never references the Cloudflare bridge script", () => {
@@ -468,7 +468,7 @@ describe("ai-catalog.json", () => {
 
   it("is a valid JSON-serializable document", () => {
     const round = JSON.parse(JSON.stringify(aiCatalogDocument()));
-    expect(round.tools).toHaveLength(4);
+    expect(round.tools).toHaveLength(PUBLIC_READ_TOOL_NAMES.length);
     // No undefined leaking into the wire format.
     expect(JSON.stringify(round)).not.toContain("undefined");
   });

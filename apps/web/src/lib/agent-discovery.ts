@@ -501,7 +501,7 @@ export function openApiDocument(): unknown {
           summary: "MCP over Streamable HTTP (stateless JSON-RPC 2.0)",
           description:
             "One endpoint, two tool registries, resolved per request. Anonymous " +
-            "callers get the four read-only tools " +
+            "callers get the read-only tools " +
             PUBLIC_READ_TOOLS.map((tool) => tool.name).join(", ") +
             " plus resources/read; an admin bearer token additionally unlocks " +
             "the operator tools (push_items, upsert_source, delete_source, " +
@@ -618,7 +618,7 @@ export function a2aAgentCard(): unknown {
         id: "mcp-tools",
         name: "MCP tools",
         description:
-          "POST /api/mcp with no auth returns four read-only tools (" +
+          "POST /api/mcp with no auth returns the read-only tools (" +
           PUBLIC_READ_TOOLS.map((tool) => tool.name).join(", ") +
           ") plus resources/read. Operator tools (push_items, upsert_source, delete_source, trigger_ingest, get_status, list_sources, preview_ranking, preview_tldr, set_day_video, delete_day_video, send_day_video_telegram) require an admin Authorization: Bearer token; an unauthenticated tools/list never returns them and an anonymous call to one fails without naming them.",
       },

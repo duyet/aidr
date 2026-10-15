@@ -181,6 +181,47 @@ describe("renderDayMarkdown story detail", () => {
   });
 });
 
+describe("renderDayMarkdown size", () => {
+  // get_day_edition refuses a day over the 50,000-byte public read bound, so
+  // a busy real day (100 stories, long titles, full summaries and digest)
+  // must render under it in either language.
+  it("keeps a busy day under the public read bound", () => {
+    const long = (seed: string, n: number) =>
+      `${seed} Mô hình AI mới ra mắt với hiệu năng vượt trội `
+        .repeat(10)
+        .slice(0, n);
+    const items = Array.from({ length: DAY_MARKDOWN_MAX_STORIES }, (_, i) =>
+      item(i.toString(16).padStart(8, "0"), {
+        url: `https://www.some-long-publisher-domain-${i}.example.com/a/b`,
+        title: long("Title", 200),
+        title_vi: long("Tiêu đề", 200),
+        summary: long("Summary", 400),
+        summary_vi: long("Tóm tắt", 400),
+        category: "Open Source",
+      })
+    );
+    const bullets = Array.from({ length: 20 }, (_, i) => ({
+      text: long(`Bullet ${i}`, 400),
+      item_ids: [items[i].id],
+    }));
+    const busy = archive({
+      day: { date: "2026-08-01", items, categoryCounts: {} },
+      tldr: { date: "2026-08-01", bullets_en: bullets, bullets_vi: bullets },
+    });
+    for (const lang of ["en", "vi"] as const) {
+      const markdown = renderDayMarkdown(busy, lang);
+      const bytes = new TextEncoder().encode(
+        JSON.stringify({ date: "2026-08-01", lang, markdown })
+      ).length;
+      expect(bytes, lang).toBeLessThan(50_000);
+      // Stories past the ceiling are counted, never dropped silently.
+      expect(markdown).toMatch(
+        /\d+ (more stories on the HTML page|tin khác trên trang HTML)\./
+      );
+    }
+  });
+});
+
 describe("handleDayMarkdownRequest", () => {
   beforeEach(() => {
     getDayArchive.mockReset();

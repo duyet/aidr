@@ -32,6 +32,10 @@ export const DAY_MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8";
 export const DAY_MARKDOWN_MAX_STORIES = 100;
 export const DAY_MARKDOWN_MAX_BULLETS = 20;
 export const DAY_MARKDOWN_MAX_TEXT_CHARS = 400;
+/** Ceiling for the ranked list, so the day fits get_day_edition's 50,000-byte
+ * read bound with room for its JSON envelope. Lower-ranked stories past it
+ * are counted, not listed. */
+export const DAY_MARKDOWN_MAX_BYTES = 44_000;
 /** Top-ranked stories that also get their one-paragraph summary. */
 export const DAY_MARKDOWN_SUMMARIZED_STORIES = 10;
 
@@ -127,27 +131,36 @@ export function renderDayMarkdown(archive: DayArchive, lang: Lang): string {
         : "No stories were published on this day."
     );
   } else {
-    items.slice(0, DAY_MARKDOWN_MAX_STORIES).forEach((item, index) => {
+    const encoder = new TextEncoder();
+    let bytes = encoder.encode(lines.join("\n")).length;
+    let shown = 0;
+    for (const item of items.slice(0, DAY_MARKDOWN_MAX_STORIES)) {
       const title = vi ? (item.title_vi ?? item.title) : item.title;
       const meta = [item.category, publisherHost(item.url)]
         .filter((part): part is string => Boolean(part))
         .map(inlineText)
         .join(" · ");
-      lines.push(
-        `${index + 1}. [${inlineText(title)}](${urlById.get(item.id)})${meta ? ` — ${meta}` : ""}`
-      );
+      const entry = [
+        `${shown + 1}. [${inlineText(title)}](${urlById.get(item.id)})${meta ? ` — ${meta}` : ""}`,
+      ];
       // A language's summary column never stands in for the other's.
       const summary = vi ? item.summary_vi : item.summary;
-      if (index < DAY_MARKDOWN_SUMMARIZED_STORIES && summary) {
-        lines.push(`   ${inlineText(summary)}`);
+      if (shown < DAY_MARKDOWN_SUMMARIZED_STORIES && summary) {
+        entry.push(`   ${inlineText(summary)}`);
       }
-    });
-    if (items.length > DAY_MARKDOWN_MAX_STORIES) {
+      const size = encoder.encode(`\n${entry.join("\n")}`).length;
+      if (bytes + size > DAY_MARKDOWN_MAX_BYTES) break;
+      lines.push(...entry);
+      bytes += size;
+      shown += 1;
+    }
+    const hidden = items.length - shown;
+    if (hidden > 0) {
       lines.push(
         "",
         vi
-          ? `Còn ${items.length - DAY_MARKDOWN_MAX_STORIES} tin khác trên trang HTML.`
-          : `${items.length - DAY_MARKDOWN_MAX_STORIES} more stories on the HTML page.`
+          ? `Còn ${hidden} tin khác trên trang HTML.`
+          : `${hidden} more stories on the HTML page.`
       );
     }
   }
