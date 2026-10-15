@@ -128,3 +128,18 @@ export function parseUnmergeCommand(
   if (file === undefined) return { error: "unmerge needs a pairs JSON file" };
   return { kind: "pairs", file, apply };
 }
+
+/** Why a deployed endpoint's undo dry run does not cover exactly the
+ * canonicals named, or null when it does. A Worker from before #795 ignores
+ * `canonicalIds` and plans the whole batch. */
+export function undoScopeMismatch(
+  planned: readonly string[],
+  requested: readonly string[]
+): string | null {
+  const want = new Set(requested);
+  const got = new Set(planned);
+  const same = got.size === want.size && [...want].every((id) => got.has(id));
+  return same
+    ? null
+    : `the deployed endpoint planned ${got.size} canonical(s), not the ${want.size} named; deploy #795 first`;
+}

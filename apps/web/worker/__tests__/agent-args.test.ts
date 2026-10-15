@@ -9,6 +9,7 @@ import {
   type Args,
   parseArgs,
   parseUnmergeCommand,
+  undoScopeMismatch,
 } from "../../scripts/agent-args.js";
 
 const A = "a".repeat(64);
@@ -94,6 +95,15 @@ describe("parseUnmergeCommand", () => {
     ]) {
       expect(unmerge(argv)).toEqual({ error: expect.any(String) });
     }
+  });
+
+  it("applies a scoped undo only when the deployed endpoint plans exactly the named canonicals", () => {
+    // A Worker from before #795 drops canonicalIds and plans the whole batch.
+    expect(undoScopeMismatch([A, B, "c".repeat(64)], [A])).toContain(
+      "planned 3 canonical(s), not the 1 named"
+    );
+    expect(undoScopeMismatch([], [A])).not.toBeNull();
+    expect(undoScopeMismatch([B, A], [A, B])).toBeNull();
   });
 
   it("reads a pairs file or the dangling mode as before", () => {

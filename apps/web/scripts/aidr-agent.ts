@@ -76,6 +76,7 @@ import {
   parseArgs,
   parseUnmergeCommand,
   type UnmergeCommand,
+  undoScopeMismatch,
 } from "./agent-args";
 import { wranglerSelect, wranglerSelectTotals } from "./cf-d1";
 
@@ -453,12 +454,11 @@ async function assertUndoScoped(
     admin: true,
     body: { batchId, canonicalIds, dryRun: true },
   });
-  const planned = dry.plan.canonicals.map((c) => c.canonicalId).sort();
-  if (JSON.stringify(planned) !== JSON.stringify([...canonicalIds].sort())) {
-    fail(
-      `the deployed endpoint planned ${planned.length} canonical(s), not the ${canonicalIds.length} named; deploy #795 first. Nothing written.`
-    );
-  }
+  const mismatch = undoScopeMismatch(
+    dry.plan.canonicals.map((c) => c.canonicalId),
+    canonicalIds
+  );
+  if (mismatch) fail(`${mismatch}. Nothing written.`);
 }
 
 /** Plan (default) or apply the fallback-tag backfill. The dry run reads
