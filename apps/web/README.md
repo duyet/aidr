@@ -112,6 +112,8 @@ GET https://aidr.today/feed.json?lang=vi     # thin alias of /api/feed
 GET https://aidr.today/sitemap.xml           # <sitemapindex>
 GET https://aidr.today/sitemaps/static.xml   # static + marketing paths
 GET https://aidr.today/sitemaps/sitemap-YYYY-MM.xml
+GET https://aidr.today/sitemaps/days.xml     # /date/YYYY-MM-DD, both locales
+GET https://aidr.today/sitemaps/weeks.xml    # /week/YYYY-Www, each locale with stories
 GET https://aidr.today/news.xml              # Google News sitemap
 ```
 
@@ -135,7 +137,8 @@ serves the identical bytes and `atom:link rel="self"` always advertises
 existing `/api/feed` route handler — same document, same bounds, no new format.
 
 `/sitemap.xml` is a `<sitemapindex>` listing `/sitemaps/static.xml`, one child
-per UTC publication month (split at 1,000 items per part), and `/news.xml`.
+per UTC publication month (split at 1,000 items per part), the day and week
+archive children, and `/news.xml`.
 The old flat document selected the 1,000 newest published items and omitted
 every older story entirely; the index removes that self-imposed cap. Every
 child returns `200 application/xml` and **fails closed** to a valid

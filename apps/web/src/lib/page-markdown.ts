@@ -1,4 +1,6 @@
 import { registrySourceIds } from "../../worker/sources/catalog.js";
+import { isLanguageNeutralSsrPath } from "./locale-routing";
+import { absoluteSiteUrl } from "./locale-url";
 import { SITE_NAME, SITE_URL } from "./site";
 
 /** Public HTML pages that also have a Markdown twin for agents. */
@@ -90,11 +92,17 @@ export function isPageMarkdownPath(path: string): path is PageMarkdownPath {
 export function pageMarkdownResponse(path: string): Response | null {
   const body = pageMarkdown(path);
   if (!body) return null;
+  const htmlPath = path.slice(0, -3);
+  // The twin is English; a localized page's English URL is its `?lang=en`.
+  const canonical = isLanguageNeutralSsrPath(htmlPath)
+    ? `${SITE_URL}${htmlPath}`
+    : absoluteSiteUrl(htmlPath, "en");
   return new Response(body, {
     status: 200,
     headers: {
       "content-type": "text/markdown; charset=utf-8",
       "cache-control": "public, max-age=3600",
+      link: `<${canonical}>; rel="canonical"`,
     },
   });
 }

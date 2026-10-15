@@ -100,3 +100,13 @@ describe("homepage first-paint gate", () => {
     expect(html.slice(section, marker)).toMatch(/<\/section>(<\/div>)*$/);
   });
 });
+
+describe("homepage heading outline", () => {
+  // The homepage shipped with no h1 at all: its only heading was the date h2.
+  it("renders exactly one h1 naming the site", () => {
+    const html = renderHome();
+    const h1s = html.match(/<h1[\s>]/g) ?? [];
+    expect(h1s).toHaveLength(1);
+    expect(html).toMatch(/<h1 class="sr-only">AI;DR: [^<]+<\/h1>/);
+  });
+});

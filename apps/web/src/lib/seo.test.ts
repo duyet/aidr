@@ -9,6 +9,8 @@ import {
   type JsonLdNode,
   jsonLdScriptBody,
   localizedPageHead,
+  META_DESCRIPTION_MAX,
+  metaDescription,
   notFoundHead,
   pageHead,
   routeRobotsMeta,
@@ -25,7 +27,7 @@ import {
   SITE_URL,
   TELEGRAM_HANDLE,
 } from "./site";
-import { SITEMAP_STATIC_PATHS } from "./sitemap";
+import { SITEMAP_STATIC_PAGE_PATHS } from "./sitemap";
 import { storyPath } from "./slug";
 import type { FeedResponse, ItemSource, Lang } from "./types";
 
@@ -949,8 +951,8 @@ describe("static page JSON-LD (WebPage / BreadcrumbList)", () => {
             route: { pathname: path, search: {} },
           });
 
-  it("covers every SITEMAP_STATIC_PATHS entry", () => {
-    for (const path of SITEMAP_STATIC_PATHS) {
+  it("covers every SITEMAP_STATIC_PAGE_PATHS entry", () => {
+    for (const path of SITEMAP_STATIC_PAGE_PATHS) {
       const head = headFor(path);
       const types = head.jsonLd.map((n) => n["@type"]);
       expect(types, path).toContain("WebPage");
@@ -959,7 +961,7 @@ describe("static page JSON-LD (WebPage / BreadcrumbList)", () => {
   });
 
   it("self-canonicals each static page and ends its breadcrumb with itself", () => {
-    for (const path of SITEMAP_STATIC_PATHS) {
+    for (const path of SITEMAP_STATIC_PAGE_PATHS) {
       const head = headFor(path);
       const page = node<JsonLdNode & { url: string; "@id": string }>(
         head,
@@ -1153,4 +1155,112 @@ describe("site_name is one constant (#224 brand resolution)", () => {
     expect(SITE_DESCRIPTION).toContain("AI News (aidr.today)");
     expect(SITE_TITLE).toBe("AI News | ranked AI digest | aidr.today");
   });
+});
+
+describe("meta description length", () => {
+  // Live defect: story pages shipped 400-600 character summaries with raw
+  // paragraph breaks as `name=description`, which search snippets cut mid-word.
+  const longSummaryVi = `${"Nền tảng lập trình tự động đang được tích hợp vào các trung tâm dữ liệu. ".repeat(5)}\n\nTổng thống Jon Gray đã mô tả sự chuyển đổi này.`;
+
+  it("clamps share descriptions to one line at a word boundary", () => {
+    const head = articleHead(
+      {
+        id: "b402593ddeadbeef",
+        title: "Blackstone adopts Factory",
+        title_vi: "Blackstone áp dụng Factory",
+        summary: "short",
+        summary_vi: longSummaryVi,
+        image_url: null,
+        category: "Tools",
+        published_at: 1_700_000_000,
+      },
+      "vi",
+      { route: { pathname: "/b402593d", search: { lang: "vi" } } }
+    );
+    for (const key of [
+      "description",
+      "og:description",
+      "twitter:description",
+    ]) {
+      const value = metaContent(head.meta, key) ?? "";
+      expect(value.length, key).toBeLessThanOrEqual(META_DESCRIPTION_MAX);
+      expect(value, key).not.toMatch(/\n/);
+      expect(value.endsWith("…"), key).toBe(true);
+      expect(longSummaryVi.replace(/\s+/g, " ")).toContain(value.slice(0, -1));
+    }
+    // Structured data keeps the full summary; only the snippet tags are cut.
+    const article = parseGraph(head)["@graph"].find(
+      (n) => n["@type"] === "NewsArticle"
+    ) as JsonLdNode & { description: string };
+    expect(article.description).toBe(longSummaryVi);
+  });
+
+  it("leaves the hand-written site description whole", () => {
+    expect(metaDescription(SITE_DESCRIPTION)).toBe(SITE_DESCRIPTION);
+    expect(metaContent(homepageHead("en").meta, "description")).toBe(
+      SITE_DESCRIPTION
+    );
+  });
+
+  it("cuts a word-less run hard rather than returning it whole", () => {
+    const value = metaDescription("x".repeat(500));
+    expect(value).toHaveLength(META_DESCRIPTION_MAX);
+  });
+});
+
+describe("hreflang reciprocity", () => {
+  // Google drops a hreflang cluster whose pages do not list each other, so
+  // the vi and en documents of one page must advertise the same alternates,
+  // and each must self-canonical to the URL its own alternate names.
+  const alternates = (
+    links: { rel: string; hrefLang?: string; href: string }[]
+  ) =>
+    links
+      .filter((link) => link.rel === "alternate" && link.hrefLang)
+      .map((link) => `${link.hrefLang} ${link.href}`)
+      .sort();
+  const canonical = (links: { rel: string; href: string }[]) =>
+    links.find((link) => link.rel === "canonical")?.href;
+
+  const builders: [
+    string,
+    (lang: Lang) => {
+      links: { rel: string; hrefLang?: string; href: string }[];
+    },
+  ][] = [
+    ["homepage", (lang) => homepageHead(lang)],
+    [
+      "story",
+      (lang) =>
+        articleHead(
+          {
+            id: "abcdef12deadbeef",
+            title: "T",
+            summary: null,
+            image_url: null,
+            category: null,
+          },
+          lang
+        ),
+    ],
+    [
+      "localized page",
+      (lang) => localizedPageHead({ path: "/weeks", title: "Weeks", lang }),
+    ],
+  ];
+
+  for (const [name, build] of builders) {
+    it(`pairs vi, en and x-default on the ${name}`, () => {
+      const vi = build("vi").links;
+      const en = build("en").links;
+      expect(alternates(vi)).toEqual(alternates(en));
+      expect(alternates(vi).map((entry) => entry.split(" ")[0])).toEqual([
+        "en",
+        "vi",
+        "x-default",
+      ]);
+      expect(alternates(vi)).toContain(`vi ${canonical(vi)}`);
+      expect(alternates(en)).toContain(`en ${canonical(en)}`);
+    });
+  }
 });

@@ -27,6 +27,10 @@ type LoaderResult =
   | { kind: "week"; edition: WeekEdition }
   | { kind: "missing"; lang: Lang };
 
+function otherLang(lang: Lang): Lang {
+  return lang === "vi" ? "en" : "vi";
+}
+
 /** og/twitter description: the intro in this language, else a plain line. */
 function weekDescription(edition: WeekEdition, lang: Lang): string {
   const intro = weekIntro(edition, lang);
@@ -102,7 +106,11 @@ export const Route = createFileRoute("/week/$week")({
           )
         : head.meta,
       links: [
-        ...(head.links ?? []),
+        // A week with no stories in the other language 404s there, so it has
+        // no translation to advertise.
+        ...(head.links ?? []).filter(
+          (link) => !link.hrefLang || !isWeekEmptyIn(edition, otherLang(lang))
+        ),
         {
           rel: "alternate",
           type: "text/markdown",

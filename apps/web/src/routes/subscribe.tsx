@@ -41,15 +41,22 @@ export const Route = createFileRoute("/subscribe")({
     if (typeof search.settings === "string") out.settings = search.settings;
     return out;
   },
-  head: ({ match }) =>
-    localizedPageHead({
+  head: ({ match }) => {
+    const lang = match.context.lang;
+    return localizedPageHead({
       path: "/subscribe",
-      title: "Get AI;DR | Chrome, Telegram, Email",
+      title:
+        lang === "vi"
+          ? "Nhận AI;DR | Chrome, Telegram, Email"
+          : "Get AI;DR | Chrome, Telegram, Email",
       description:
-        "Get the ranked AI news digest by email, on Telegram, or in the Chrome new-tab extension.",
-      lang: match.context.lang,
+        lang === "vi"
+          ? "Nhận bản tin AI đã xếp hạng qua email, Telegram hoặc tiện ích tab mới trên Chrome."
+          : "Get the ranked AI news digest by email, on Telegram, or in the Chrome new-tab extension.",
+      lang,
       route: headRouteInput(match),
-    }),
+    });
+  },
   component: SubscribePage,
 });
 

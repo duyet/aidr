@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   PAGE_MARKDOWN_PATHS,
   pageMarkdown,
+  pageMarkdownResponse,
   rankedEditionLine,
 } from "./page-markdown";
 import { SITE_URL } from "./site";
-import { staticSitemapUrls } from "./sitemap";
 
 describe("page markdown", () => {
   it("describes the ranked edition and links the HTML page", () => {
@@ -15,10 +15,19 @@ describe("page markdown", () => {
     expect(pageMarkdown("/nope.md")).toBeNull();
   });
 
-  it("lists every markdown twin in the static sitemap", () => {
-    const locs = new Set(staticSitemapUrls().map((entry) => entry.loc));
+  it("points each twin at its HTML page as the canonical", () => {
+    // The twins used to ship with no canonical, so a search engine could index
+    // /about.md as a second copy of /about.
+    expect(pageMarkdownResponse("/about.md")?.headers.get("link")).toBe(
+      `<${SITE_URL}/about>; rel="canonical"`
+    );
+    expect(pageMarkdownResponse("/subscribe.md")?.headers.get("link")).toBe(
+      `<${SITE_URL}/subscribe?lang=en>; rel="canonical"`
+    );
     for (const path of PAGE_MARKDOWN_PATHS) {
-      expect(locs.has(`${SITE_URL}${path}`)).toBe(true);
+      expect(pageMarkdownResponse(path)?.headers.get("link"), path).toMatch(
+        /^<https:\/\/aidr\.today\/[a-z]+(\?lang=en)?>; rel="canonical"$/
+      );
     }
   });
 });
