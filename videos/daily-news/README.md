@@ -28,6 +28,7 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 | `scripts/lang.mjs` | yes | The cut's language (`--lang vi`) and its file names |
 | `scripts/cast.mjs` | yes | The voice cast: host keys, seeded host order, the "never twice in a row" check |
 | `scripts/look.mjs` | yes | The day's look (intro, transition, background) from the edition's date, and each story's layout from the images on disk, resolved at build time |
+| `scripts/sound-measure.mjs` | yes | Measures every effect's peak and level and the music bed's phrase starts with ffmpeg; prints the tables `scripts/looks/sound.mjs` holds |
 | `scripts/build.mjs` | yes | Timeline, both compositions, audio mix, captions, covers, post copy |
 | `scripts/grid.mjs` | yes | The summary grid's layout per format and story count (1–8): areas, tracks, and the tile type scale, so frame 0 has no empty cell; an odd count gives the lead story a hero tile (with `grid.test.mjs`) |
 | `scripts/render.mjs` | yes | 4K MP4s and cover PNGs |
@@ -176,7 +177,7 @@ Spoken text says "AI DR" and "aidr dot today"; `config.captions.replace` shows t
 
 ## Sound
 
-One mixed track (`out/mix.wav`, 48 kHz stereo, loudness-normalised to about −14 LUFS): voice lines placed at `start + lead`; the music bed under a sidechain duck with a fade in and a 2.5 s fade out; effects placed so each one's peak lands on its visual hit (wipe, rank tile, stat). Change the sound in `scripts/looks/sound.mjs` (which effect plays on each cue, and each file's peak), not in the build.
+One mixed track (`out/mix.wav`, 48 kHz stereo, loudness-normalised to about −14 LUFS): voice lines placed at `start + lead`; the music bed under a sidechain duck with a fade in and a 2.5 s fade out; effects placed so each one's peak lands on its visual hit (wipe, rank tile, stat). The date picks the sound like the look: each cue draws one effect from its pool, trimmed to the level of the pool's first file, and the bed starts on one of its 8 s phrase starts (a cut that would run off the end of the bed fails the build). Change pools and starts in `scripts/looks/sound.mjs`, not in the build; `node scripts/sound-measure.mjs` measures each file's peak and level and the bed's phrase starts.
 
 ## No voice (out of ElevenLabs quota)
 

@@ -1,8 +1,9 @@
 // node --test videos/daily-news/scripts/*.test.mjs
 import assert from "node:assert/strict";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, test } from "node:test";
+import { soundFor } from "./looks/sound.mjs";
 import { ROOT, runBuild, scratchRoot } from "./scratch-root.mjs";
 
 const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
@@ -183,4 +184,31 @@ test("a cover with no story image anywhere shows the thumb story's paper card", 
       `${fmt}: the thumb story's hook with its paper card`
     );
   }
+});
+
+// The vi cut mixes its own audio and visub copies the English mix: a pick read from anything but the date (the
+// language, a vi file) would give one day two soundtracks.
+test("the en and vi cuts of a day record the same sound, the date's", () => {
+  const date = "2026-10-10";
+  const { dn, cleanup } = scratchRoot();
+  cleanups.push(cleanup);
+  const dir = join(dn, "editions", date);
+  mkdirSync(join(dir, "assets"), { recursive: true });
+  for (const f of ["edition.json", "script.json", "script.vi.json"])
+    cpSync(join(ROOT, "editions", date, f), join(dir, f));
+  for (const s of read(join(dir, "edition.json")).stories)
+    for (const im of s.images) writeFileSync(join(dir, im.local), "");
+  for (const lang of ["en", "vi"]) {
+    const run = runBuild(dn, [
+      date,
+      "--lang",
+      lang,
+      "--no-voice",
+      "--no-audio",
+    ]);
+    assert.equal(run.status, 0, run.stderr);
+  }
+  const en = read(join(dir, "timeline.json")).sound;
+  assert.deepEqual(en, soundFor(date));
+  assert.deepEqual(read(join(dir, "timeline.vi.json")).sound, en);
 });
