@@ -121,6 +121,25 @@ describe("recordExtensionEvent", () => {
     ]);
   });
 
+  // Keyed on the raw content, a different `to` slug or a trailing "_" got its
+  // own allowance, so one IP could inflate channel_click without limit.
+  it("keys the limiter on the parsed event, not the raw query", async () => {
+    const { db } = makeDb();
+    const limit = vi.fn().mockResolvedValue({ success: true });
+    const base = {
+      ua: BROWSER,
+      ip: "203.0.113.7",
+      limiter: { limit } as unknown as RateLimit,
+      db,
+      day: "2026-10-16",
+    };
+    await recordExtensionEvent({ ...base, content: "channel_click_telegram_a" });
+    await recordExtensionEvent({ ...base, content: "channel_click_telegram_b" });
+    const keys = limit.mock.calls.map(([arg]) => (arg as { key: string }).key);
+    expect(new Set(keys).size).toBe(1);
+    expect(keys[0]).toBe("ext|203.0.113.7|channel_click|telegram");
+  });
+
   it("does not throw when the table is missing (defect: a 500 before 0068)", async () => {
     const db = {
       prepare: () => ({

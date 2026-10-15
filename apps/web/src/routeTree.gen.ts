@@ -1074,12 +1074,9 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof ApiSystemRoute
     }
     '/api/system/reads': {
-      id: '/api/system/extension'
       id: '/api/system/reads'
       path: '/reads'
-      fullPath: '/api/system/extension'
       fullPath: '/api/system/reads'
-      preLoaderRoute: typeof ApiSystemExtensionRouteImport
       preLoaderRoute: typeof ApiSystemReadsRouteImport
       parentRoute: typeof ApiSystemRoute
     }

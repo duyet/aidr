@@ -82,7 +82,7 @@ export async function recordExtensionEvent(input: {
     if (input.limiter) {
       if (!input.ip) return;
       const { success } = await input.limiter.limit({
-        key: `ext|${input.ip}|${input.content}`,
+        key: `ext|${input.ip}|${parsed.event}|${parsed.key}`,
       });
       if (!success) return;
     }
