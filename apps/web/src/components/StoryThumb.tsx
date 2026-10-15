@@ -138,7 +138,8 @@ export function StoryThumb({
    */
   const loading = priority ? "eager" : "lazy";
 
-  if (variant === "feed" && !remote) return <StoryThumbTile />;
+  const tiled = variant === "feed" && !remote;
+  const zoomTarget = tiled ? storyOgThumbUrl(itemId, lang) : zoomSrc;
 
   const imgClass =
     variant === "card"
@@ -173,7 +174,9 @@ export function StoryThumb({
     />
   );
 
-  if (!zoomSrc) return img;
+  const visual = tiled ? <StoryThumbTile /> : img;
+
+  if (!zoomTarget) return visual;
 
   return (
     <>
@@ -196,7 +199,7 @@ export function StoryThumb({
             : "group relative shrink-0 cursor-zoom-in overflow-hidden rounded-xl p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         }
       >
-        {img}
+        {visual}
         <span
           className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-200 motion-reduce:transition-none group-hover:bg-black/40 group-hover:opacity-100 group-focus-visible:bg-black/40 group-focus-visible:opacity-100"
           aria-hidden
@@ -212,7 +215,7 @@ export function StoryThumb({
       </button>
       {open && (
         <ThumbLightbox
-          src={zoomSrc}
+          src={zoomTarget}
           onClose={() => {
             setOpen(false);
           }}

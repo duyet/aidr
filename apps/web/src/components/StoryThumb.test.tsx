@@ -2,7 +2,7 @@
  * On the story page a broken publisher image must step to the OG card, then
  * to the site mark, and stay there. Remembering only the latest failure sends
  * the two URLs back and forth, so the placeholder is never what remains.
- * A feed row steps straight to the brand tile.
+ * A feed row steps straight to the brand tile, which still zooms into the card.
  *
  * @vitest-environment happy-dom
  */
@@ -74,5 +74,16 @@ describe("StoryThumb image errors", () => {
     expect(container.querySelector("img")).toBeNull();
     expect(container.innerHTML).not.toContain("/api/og/");
     expect(container.textContent).toBe(";");
+  });
+
+  // The tile replaced a cropped story card that zoomed into the full card;
+  // the zoom stays so the tile does not remove a reader action.
+  it("still zooms the brand tile into the full story card", () => {
+    const { getByRole } = render(
+      <StoryThumb src={null} itemId={ITEM_ID} lang="en" />
+    );
+    expect(document.body.innerHTML).not.toContain(OG);
+    fireEvent.click(getByRole("button", { name: "Zoom image" }));
+    expect(document.body.innerHTML).toContain(OG);
   });
 });
