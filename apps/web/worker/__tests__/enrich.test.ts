@@ -318,6 +318,54 @@ describe("enrichMissingContent", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  // the-decoder 7b847b25 (#805): the feed gave four posterless .mp4 videos
+  // and no image, the page was never fetched, and Telegram had no photo.
+  it("fetches the page for a picture when the item has only posterless videos", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        htmlResponse(
+          `<meta property="og:image" content="https://example.com/hero.jpg">`
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const item = makeItem({
+      summary: "A finished summary.",
+      media: [
+        { type: "video", url: "http://example.com/uploads/2030/10/demo.mp4" },
+      ],
+    });
+    await enrichMissingContent([item]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(item.imageUrl).toBe("https://example.com/hero.jpg");
+    expect(item.mediaManifest?.assets).toContainEqual({
+      type: "image",
+      url: "https://example.com/hero.jpg",
+    });
+  });
+
+  it("does not fetch when a video's poster already gives the picture", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const item = makeItem({
+      summary: "A finished summary.",
+      media: [
+        {
+          type: "video",
+          url: "https://example.com/demo.mp4",
+          poster_url: "https://example.com/poster.jpg",
+        },
+      ],
+    });
+    await enrichMissingContent([item]);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(item.imageUrl).toBe("https://example.com/poster.jpg");
+  });
+
   it("does not treat invalid raw media as hasMedia and retries enrichment", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       htmlResponse(
