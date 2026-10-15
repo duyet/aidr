@@ -790,9 +790,12 @@ runtime through `upsert_source` with no deploy — see
   below, so the mirrored aggregators share one 25%). It runs at read time, so historic
   rows are covered.
 - **Top-list family cap.** The short ranked lists — homepage top stories
-  (`PUBLIC_STORY_LIMIT`), the TL;DR's 16 and the trending pick — go
+  (`PUBLIC_STORY_LIMIT`) and the trending pick — go
   through `pickDiverse` (`worker/source-diversity.ts`): at most
-  `ceil(0.3 × list size)` rows per source *family* (8 → 3, 16 → 5). A
+  `ceil(0.3 × list size)` rows per source *family* (8 → 3, 16 → 5). The
+  TL;DR's 16 use the same cap through `selectEdition`, which lets one
+  importance-8+ story per family past it (at most 6 of 16; see "10.
+  TL;DR"). A
   family is `SourceSpec.family` in the catalog, else the source id;
   `huggingnews` and `marketbrief` share `aggregator` because they publish
   the same stories under the same slugs (they held 47 of the 24h top 50 on
@@ -1450,8 +1453,44 @@ Every run (30 minutes).
 - Otherwise refresh a useful bilingual snapshot when the last write is
   older than 3 hours.
 - Content is always the top 16 items of the **rolling last 24h** by
-  rank (not ICT calendar-day-so-far), after the top-list family cap → up to 16 EN bullets + 16
+  rank (not ICT calendar-day-so-far), after `selectEdition`
+  (`worker/digest/select.ts`) → up to 16 EN bullets + 16
   independently-restated VI bullets, each linked to its `item_id`.
+- `selectEdition` is the top-list family cap (5 of 16 per family) with
+  importance deciding what the cap may cut. It reorders only the top 32
+  rows (`CONTENTION_DEPTH` × 16); deeper rows lost on rank (age, quality),
+  not on the cap (on 2026-10-14 an 8.5 sat at #110, a day old). Over the
+  rank-ordered pool, each step taking only what the earlier ones left:
+  1. The top 32, importance ≥ 5, in rank order, 5 per family. An
+     importance-8+ row the cap would cut takes a 6th slot for its family
+     (`EDITION_TOP_TIER_LIFT` = 1). Slots for the 8+ rows are held back
+     before the walk, so each comes off the edition's lowest-ranked other
+     story of any family (an 8+ row can push out its own family's tail
+     pick when that is the lowest), and a lifted 6th slot never costs its
+     family a higher-ranked pick. A held slot
+     its 8+ row could not use (the family reached 6 first) goes to the
+     next importance-5+ row in the top 32.
+  2. The rest of the pool in rank order, 5 per family.
+  3. Anything left, in rank order, so the edition is never short.
+  So a story under importance 5 makes the edition only when the top 32 has
+  nothing stronger within the cap, and one family holds at most 6 of 16
+  unless the pool has too few other families to fill the edition (step 3,
+  as `pickDiverse` backfills). An 8+ row in the top 32 is cut only when its
+  family already holds 6 higher-ranked picks (or the top 32 hold more than
+  16 of them).
+  Why, measured on the editions of 2026-10-09 to 10-16 (replay on the
+  current `rank_score`, SELECT only): the marketbrief/huggingnews pair
+  carries 37% of published stories and most model-release headlines, and
+  held 5 of 16 on 6 of the 8 days; `pickDiverse` then filled the tail with
+  importance-4 HN rows (a $15M maths grant at #14, a Nikon contest
+  disqualification) while importance-8 rows were cut (Gemini 4 Argon's
+  safety report at #26 on 10-15). The replay removes every sub-5 pick
+  (6 → 0 over 8 days) and adds two 8+ stories (Broadcom's $42B loan to
+  Anthropic on 10-13, the Argon report on 10-15). Every swap replaces a
+  sub-5 story. The aggregator family reaches 6 of 16 once (10-15). The
+  same day keeps Black Forest Labs' open 5.6B image model (#10, 7.9): an
+  earlier draft let 8+ rows claim family slots first, and the Argon report
+  cost it its place.
 - Homepage thumbs and the story dialog need those ids. If the model
   pastes `[hex]` into the bullet text instead of (or besides)
   `item_ids`, parse recovers the ids and strips the citation.
