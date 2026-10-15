@@ -37,7 +37,6 @@ import {
 } from "../ingest/write-plan.js";
 import {
   buildMediaManifest,
-  canonicalizeMediaUrl,
   MEDIA_MANIFEST_VERSION,
   type MediaAsset,
   type MediaManifest,
@@ -63,8 +62,10 @@ import { MAX_MERGED_TOPICS } from "../topics.js";
 import { DIGEST_WINDOW_DAYS } from "../weekly-digest.js";
 import {
   isLikelySameEvent,
+  type LiveRef,
   type StoryRef,
   sameStoryRule,
+  storyUrlKey,
   type TwinMatch,
   type TwinRule,
   twinMatches,
@@ -221,6 +222,67 @@ export function parseUnmergePairs(
   return { pairs };
 }
 
+/** A decision on a story `planDanglingUnmerge` holds, keyed by any of its
+ * rows. The story has no canonical, so a bare `distinct` would judge
+ * nothing: it takes `sameAs` or `distinctFrom`. */
+export interface DanglingDecision {
+  mergedId: ItemId;
+  decision: TwinDecision;
+}
+
+export function parseDanglingDecisions(
+  raw: unknown
+): { decisions: DanglingDecision[] } | { error: string } {
+  if (raw === undefined) return { decisions: [] };
+  if (!Array.isArray(raw)) return { error: "decisions must be an array" };
+  if (raw.length > MAX_UNMERGE_PAIRS) {
+    return { error: `at most ${MAX_UNMERGE_PAIRS} decisions per call` };
+  }
+  const decisions: DanglingDecision[] = [];
+  const seen = new Set<string>();
+  for (const [index, entry] of raw.entries()) {
+    const record =
+      entry && typeof entry === "object"
+        ? (entry as Record<string, unknown>)
+        : {};
+    const mergedId = parseItemId(record.mergedId);
+    if (!mergedId) {
+      return {
+        error: `decisions[${index}]: mergedId must be a 64-char hex item id`,
+      };
+    }
+    if (seen.has(mergedId)) {
+      return {
+        error: `decisions[${index}]: mergedId ${mergedId} listed twice`,
+      };
+    }
+    seen.add(mergedId);
+    const decision = parseDecision(record);
+    if (decision && "error" in decision) {
+      return { error: `decisions[${index}]: ${decision.error}` };
+    }
+    if (!decision || (decision.kind === "distinct" && !decision.from.length)) {
+      return {
+        error: `decisions[${index}]: a dangling story has no canonical; set sameAs or distinctFrom`,
+      };
+    }
+    decisions.push({ mergedId, decision });
+  }
+  return { decisions };
+}
+
+/** Decision ids that name no item: a typo, which must not be dropped
+ * quietly. A row that is no longer dangling was restored by an earlier
+ * apply, so a rerun with the same decisions passes. */
+export function unknownDecisionIds(
+  decisions: readonly DanglingDecision[],
+  snapshot: UnmergeSnapshot
+): ItemId[] {
+  return decisions
+    .map((d) => d.mergedId)
+    .filter((id) => !snapshot.items.has(id));
+}
+
 /** The `items` columns the plan reads. */
 export interface UnmergeItemRow {
   id: ItemId;
@@ -242,6 +304,8 @@ export interface UnmergeItemRow {
   llm_quality: number | null;
   rank_score: number | null;
   source_lang: string | null;
+  /** The vi->en title (`translations`, lang `en`), if one is stored. */
+  title_en: string | null;
   /** Net reader votes on this id (`item_votes`). */
   vote_net: number;
   /** `notifications` rows keyed by this id, any channel or status. */
@@ -264,10 +328,11 @@ export interface UnmergeSnapshot {
   /** `item_sources` in position order, for canonicals, paired ids and the
    * published rows a restored story matches. */
   sources: ReadonlyMap<string, readonly StoredSource[]>;
-  /** Published rows within `MERGE_LOOKBACK_SEC` of a paired row: where a
-   * restored story's live twin would be (`twinMatches`). Each one that
-   * matches has its full row, its merged items and its sources above. */
-  published: readonly StoryRef[];
+  /** Published rows within `MERGE_LOOKBACK_SEC` of a paired row, and the
+   * rows there merged into a published root: where a restored story's live
+   * twin would be (`twinMatches`). Each root a row matches has its full
+   * row, its merged items and its sources above. */
+  live: readonly LiveRef[];
 }
 
 /** The rows `planDanglingUnmerge` reads (#791). `sources` also holds the
@@ -448,8 +513,6 @@ export interface UnmergePlan {
 const asNumber = (value: number | null | undefined, fallback = 0) =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback;
 
-const urlKey = (url: string) => canonicalizeMediaUrl(url) ?? url;
-
 /** The 72h re-rank never touches older rows, so a stored score is frozen at
  * the end of that window. Restored and shrunken rows are scored at the same
  * point so they sort among their day as if the merge never happened. */
@@ -486,7 +549,7 @@ function isMemberEntry(row: StoredSource, member: UnmergeItemRow): boolean {
     row.posted_at === null &&
     row.author === member.source_id &&
     row.url !== null &&
-    urlKey(row.url) === urlKey(member.url)
+    storyUrlKey(row.url) === storyUrlKey(member.url)
   );
 }
 
@@ -517,13 +580,13 @@ export function attributeSources(
   groupOf: ReadonlyMap<string, string>
 ): AttributedSource[] {
   const items = canonical ? [canonical, ...members] : [...members];
-  const byUrl = new Map(items.map((item) => [urlKey(item.url), item]));
+  const byUrl = new Map(items.map((item) => [storyUrlKey(item.url), item]));
   const memberById = new Map(members.map((m) => [m.id as string, m]));
   const removed = (id: string | null | undefined) =>
     typeof id === "string" && groupOf.has(id);
 
   const direct = rows.map((row, position): AttributedSource | null => {
-    const byLink = row.url ? byUrl.get(urlKey(row.url)) : undefined;
+    const byLink = row.url ? byUrl.get(storyUrlKey(row.url)) : undefined;
     if (byLink) {
       return {
         position,
@@ -793,12 +856,17 @@ function medianScale(
  * window and score scale (here the median over published rows of the same
  * days), in a batch of its own keyed by its first row. Its sources are the
  * rows the merge wrote under the made-up id that `attributeSources` gives
- * to its rows.
+ * to its rows. A decision on any of a story's rows settles it as a pair's
+ * decision settles its group.
  */
 export function planDanglingUnmerge(
   snapshot: DanglingSnapshot,
-  nowMs: number
+  nowMs: number,
+  decisions: readonly DanglingDecision[] = []
 ): UnmergePlan {
+  const decided = new Map<string, TwinDecision>(
+    decisions.map((d) => [d.mergedId, d.decision])
+  );
   const rows = snapshot.dangling
     .map((id) => snapshot.items.get(id))
     .filter((row): row is UnmergeItemRow => row !== undefined)
@@ -851,6 +919,16 @@ export function planDanglingUnmerge(
     const outcomes = new Map<string, PairOutcome>();
     const ids = story.map((row) => row.id);
     const latest = Math.max(...story.map((row) => row.published_at));
+    const storyDecisions = [
+      ...new Map(
+        story.flatMap((row) => {
+          const decision = decided.get(row.id);
+          return decision
+            ? [[JSON.stringify(decision), decision] as const]
+            : [];
+        })
+      ).values(),
+    ];
     const route: GroupRoute =
       latest > quietSince
         ? {
@@ -858,7 +936,16 @@ export function planDanglingUnmerge(
             reason: "inside-quiet-window",
             detail: `published inside the ${UNMERGE_QUIET_SEC / 86400}-day send window; eligible after ${new Date((latest + UNMERGE_QUIET_SEC) * 1000).toISOString()}`,
           }
-        : routeGroup(state, null, story, undefined);
+        : storyDecisions.length > 1
+          ? {
+              kind: "skip",
+              reason: "needs-decision",
+              detail: `the decisions on its rows disagree (${story
+                .filter((row) => decided.has(row.id))
+                .map((row) => short(row.id))
+                .join(", ")}); keep one`,
+            }
+          : routeGroup(state, null, story, storyDecisions[0]);
     if (route.kind === "skip") {
       for (const id of ids) {
         outcomes.set(id, {
@@ -962,8 +1049,8 @@ interface PlanState {
   canonicalIds: ReadonlySet<string>;
   /** Live twins an earlier group of this request re-points into. */
   claimedTwins: Set<string>;
-  /** Rows of the groups this request publishes so far. */
-  restored: StoryRef[];
+  /** Rows of the groups this request publishes so far, each its own root. */
+  restored: LiveRef[];
 }
 
 const storyRef = (row: UnmergeItemRow): StoryRef => ({
@@ -972,13 +1059,36 @@ const storyRef = (row: UnmergeItemRow): StoryRef => ({
   url: row.url,
   title: row.title,
   published_at: row.published_at,
+  source_lang: row.source_lang,
+  title_en: row.title_en,
 });
 
 const short = (id: string) => id.slice(0, 8);
 
-const uniqueRefs = (matches: readonly { ref: StoryRef }[]): StoryRef[] => [
-  ...new Map(matches.map((m) => [m.ref.id, m.ref])).values(),
+/** The story a live ref stands for: its published root, the row a `sameAs`
+ * can name. */
+function rootRef(state: PlanState, ref: LiveRef): StoryRef {
+  const row = state.snapshot.items.get(ref.root);
+  if (row) return storyRef(row);
+  const { root: _root, ...own } = ref;
+  return own;
+}
+
+const candidatesOf = (
+  state: PlanState,
+  matches: readonly TwinMatch<LiveRef>[]
+): StoryRef[] => [
+  ...new Map(matches.map((m) => [m.ref.root, rootRef(state, m.ref)])).values(),
 ];
+
+function describeMatch(state: PlanState, ref: LiveRef): string {
+  const root = rootRef(state, ref);
+  const via =
+    ref.id === ref.root
+      ? ""
+      : ` (via its merged copy ${short(ref.id)} [${ref.source_id}] "${ref.title}")`;
+  return `${short(root.id)} [${root.source_id}] "${root.title}"${via}`;
+}
 
 type GroupRoute =
   | { kind: "restore" }
@@ -1004,24 +1114,24 @@ function routeGroup(
     return repointRoute(state, canonicalId, rows, decision.twinId, "same-as");
   }
   // `distinct` judges the group against its canonical only (#749 and #790
-  // wrote it on every pair); a live row it does not name is still checked.
+  // wrote it on every pair); a live story it does not name is still checked.
   const judged = new Set<string>(
     decision?.kind === "distinct"
       ? [...(canonicalId ? [canonicalId] : []), ...decision.from]
       : []
   );
-  // Identity with a live row is never overruled, except by the canonical's.
-  const unjudged = (m: TwinMatch) =>
-    !judged.has(m.ref.id) || (m.rule !== null && m.ref.id !== canonicalId);
-  const matches = twinMatches(refs, state.snapshot.published).filter(unjudged);
+  // Identity with a live story is never overruled, except by the canonical's.
+  const unjudged = (m: TwinMatch<LiveRef>) =>
+    !judged.has(m.ref.root) || (m.rule !== null && m.ref.root !== canonicalId);
+  const matches = twinMatches(refs, state.snapshot.live).filter(unjudged);
   const same = matches.filter((m) => m.rule !== null);
-  const sameIds = [...new Set(same.map((m) => m.ref.id))];
-  if (sameIds.length > 1) {
+  const sameRoots = [...new Set(same.map((m) => m.ref.root))];
+  if (sameRoots.length > 1) {
     return {
       kind: "skip",
       reason: "needs-decision",
-      detail: `the same story as several live rows (${sameIds.map(short).join(", ")}); set sameAs`,
-      candidates: uniqueRefs(same),
+      detail: `the same story as several live rows (${sameRoots.map(short).join(", ")}); set sameAs`,
+      candidates: candidatesOf(state, same),
     };
   }
   if (same.length > 0) {
@@ -1029,7 +1139,7 @@ function routeGroup(
       state,
       canonicalId,
       rows,
-      same[0].ref.id as ItemId,
+      same[0].ref.root as ItemId,
       same[0].rule as TwinRule
     );
   }
@@ -1048,21 +1158,21 @@ function routeGroup(
     (row) => asNumber(row.llm_relevance, 0.5) >= RELEVANCE_THRESHOLD
   );
   const likely = [
-    ...matches.filter((m) => m.ref.id !== canonicalId),
+    ...matches.filter((m) => m.ref.root !== canonicalId),
     ...twinMatches(refs, state.restored).filter(unjudged),
   ];
   if (publishes && likely.length > 0) {
-    const named = likely
-      .map((m) => `${short(m.ref.id)} [${m.ref.source_id}] "${m.ref.title}"`)
+    const named = [...new Map(likely.map((m) => [m.ref.root, m])).values()]
+      .map((m) => describeMatch(state, m.ref))
       .join("; ");
     return {
       kind: "skip",
       reason: "needs-decision",
       detail: `likely the same event as ${named}; set sameAs, or distinctFrom with the ids that are another story`,
-      candidates: uniqueRefs(likely),
+      candidates: candidatesOf(state, likely),
     };
   }
-  state.restored.push(...refs);
+  state.restored.push(...refs.map((ref) => ({ ...ref, root: ref.id })));
   return { kind: "restore" };
 }
 
@@ -1371,8 +1481,11 @@ function mergedIntoLiveTwin(
   const decision = pairs.find((p) => p.group === group && p.decision)?.decision;
   if (decision?.kind === "same-as")
     return item.duplicate_of === decision.twinId;
-  const twin = snapshot.published.find((ref) => ref.id === item.duplicate_of);
-  return twin !== undefined && sameStoryRule(storyRef(item), twin) !== null;
+  const ref = storyRef(item);
+  return snapshot.live.some(
+    (live) =>
+      live.root === item.duplicate_of && sameStoryRule(ref, live) !== null
+  );
 }
 
 /** `rankScore` of a row and its merged members at the 72h point. */

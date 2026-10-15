@@ -20,9 +20,10 @@
  *     --channel telegram-en|telegram-vi --ref <chat_id>/<message_id>
  *   pnpm --filter @aidr/web agent unmerge <pairs.json> [--apply]
  *     (dry run reads prod D1 with SELECTs only; --apply writes, sends nothing)
- *   pnpm --filter @aidr/web agent unmerge --dangling [--apply]
+ *   pnpm --filter @aidr/web agent unmerge --dangling [decisions.json] [--apply]
  *     (restores merged rows whose canonical id names no item, #791; same
- *     read-only dry run and undo as unmerge)
+ *     read-only dry run and undo as unmerge; decisions.json holds
+ *     `{ mergedId, sameAs | distinctFrom }` entries for held stories)
  *   pnpm --filter @aidr/web agent unmerge --undo <batchId> [--apply]
  *     (reverses one apply from its admin_audit rows; dry run by default)
  *   pnpm --filter @aidr/web agent backfill-tags [--apply]
@@ -59,10 +60,12 @@ import {
   loadUnmergeSnapshot,
 } from "../worker/unmerge/load";
 import {
+  parseDanglingDecisions,
   parseUnmergePairs,
   planDanglingUnmerge,
   planUnmerge,
   toWirePair,
+  unknownDecisionIds,
 } from "../worker/unmerge/plan";
 import { countUnmerge } from "../worker/unmerge/report";
 import { loadUndo, parseBatchId, planUndo } from "../worker/unmerge/undo";
@@ -389,17 +392,26 @@ async function unmerge(args: Args, file: string | undefined): Promise<void> {
 }
 
 /** Plan (default) or apply the restore of merged rows whose canonical id
- * names no item (#791). Same read and apply paths as `unmerge`. */
+ * names no item (#791). Same read and apply paths as `unmerge`; the apply
+ * posts the same decisions, so it plans what the dry run printed. */
 async function unmergeDangling(
   args: Args,
   file: string | undefined
 ): Promise<void> {
-  if (file) fail("unmerge --dangling takes no pairs file");
+  const raw: unknown = file
+    ? JSON.parse(readFileSync(file, "utf-8"))
+    : undefined;
+  const decisions =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as { decisions?: unknown }).decisions
+      : raw;
+  const parsed = parseDanglingDecisions(decisions);
+  if ("error" in parsed) fail(parsed.error);
   if (args.flags.has("apply")) {
     const result = await api<UnmergeResult>("/api/admin/unmerge", {
       method: "POST",
       admin: true,
-      body: { dangling: true, dryRun: false },
+      body: { dangling: true, decisions, dryRun: false },
     });
     print(
       result,
@@ -407,10 +419,13 @@ async function unmergeDangling(
     );
     return;
   }
-  const snapshot = await loadDanglingSnapshot(async (sql) =>
-    wranglerSelect(sql)
+  const snapshot = await loadDanglingSnapshot(
+    async (sql) => wranglerSelect(sql),
+    parsed.decisions
   );
-  const plan = planDanglingUnmerge(snapshot, Date.now());
+  const unknown = unknownDecisionIds(parsed.decisions, snapshot);
+  if (unknown.length > 0) fail(`decisions name no item: ${unknown.join(", ")}`);
+  const plan = planDanglingUnmerge(snapshot, Date.now(), parsed.decisions);
   const counts = countUnmerge(plan);
   print(
     { dryRun: true, readOnly: wranglerSelectTotals, counts, plan },
@@ -713,7 +728,7 @@ async function main(): Promise<void> {
       return backfillTags(args);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [--apply] | unmerge --undo <batchId> [--apply] | backfill-tags [--apply]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --undo <batchId> [--apply] | backfill-tags [--apply]"
       );
   }
 }

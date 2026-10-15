@@ -64,9 +64,11 @@ import {
   loadUnmergeSnapshot,
 } from "../unmerge/load.js";
 import {
+  parseDanglingDecisions,
   parseUnmergePairs,
   planDanglingUnmerge,
   planUnmerge,
+  unknownDecisionIds,
   type UnmergePlan,
 } from "../unmerge/plan.js";
 import { countUnmerge, type UnmergeCounts } from "../unmerge/report.js";
@@ -489,14 +491,20 @@ export interface UnmergeResult {
 
 /**
  * Reverses wrong cluster merges (#733). Body `{ pairs, dryRun? }`, each pair
- * `{ canonicalId, mergedId, group? }`, or `{ dangling: true, dryRun? }` to
- * restore every merged row whose canonical id names no item (#791). A dry
+ * `{ canonicalId, mergedId, group? }`, or `{ dangling: true, decisions?,
+ * dryRun? }` to restore every merged row whose canonical id names no item
+ * (#791); each decision is `{ mergedId, sameAs | distinctFrom }`. A dry
  * run (the default) returns the plan and writes nothing. Sends nothing
  * either way. See ALGORITHM.md, "Unmerge".
  */
 export async function unmergeItems(
   env: Env,
-  input: { pairs?: unknown; dangling?: unknown; dryRun?: unknown }
+  input: {
+    pairs?: unknown;
+    dangling?: unknown;
+    decisions?: unknown;
+    dryRun?: unknown;
+  }
 ): Promise<UnmergeResult | HandlerError> {
   if (input.dryRun !== undefined && typeof input.dryRun !== "boolean") {
     return { error: "dryRun must be a boolean", status: 400 };
@@ -509,8 +517,25 @@ export async function unmergeItems(
         status: 400,
       };
     }
-    const snapshot = await loadDanglingSnapshot(d1Select(env.DB));
-    plan = planDanglingUnmerge(snapshot, Date.now());
+    const parsed = parseDanglingDecisions(input.decisions);
+    if ("error" in parsed) return { error: parsed.error, status: 400 };
+    const snapshot = await loadDanglingSnapshot(
+      d1Select(env.DB),
+      parsed.decisions
+    );
+    const unknown = unknownDecisionIds(parsed.decisions, snapshot);
+    if (unknown.length > 0) {
+      return {
+        error: `decisions name no item: ${unknown.join(", ")}`,
+        status: 400,
+      };
+    }
+    plan = planDanglingUnmerge(snapshot, Date.now(), parsed.decisions);
+  } else if (input.decisions !== undefined) {
+    return {
+      error: "decisions come with dangling; a pair carries its own",
+      status: 400,
+    };
   } else {
     const parsed = parseUnmergePairs(input.pairs);
     if ("error" in parsed) return { error: parsed.error, status: 400 };

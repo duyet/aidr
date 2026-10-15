@@ -484,7 +484,7 @@ async function handle(
     });
   }
 
-  // Body `{ pairs, dryRun? }` or `{ dangling: true, dryRun? }`; dry unless
+  // Body `{ pairs, dryRun? }` or `{ dangling: true, decisions?, dryRun? }`; dry unless
   // `dryRun: false`. Never sends.
   if (method === "POST" && segments.length === 1 && segments[0] === "unmerge") {
     const { body, error } = await parseOptionalJsonObject(request);

@@ -6,6 +6,7 @@
  */
 import { MERGE_LOOKBACK_SEC } from "../ingest/context.js";
 import {
+  type DanglingDecision,
   type DanglingSnapshot,
   type ItemId,
   parseItemId,
@@ -14,7 +15,7 @@ import {
   type UnmergePair,
   type UnmergeSnapshot,
 } from "./plan.js";
-import { type StoryRef, twinMatches } from "./twins.js";
+import { type LiveRef, twinMatches } from "./twins.js";
 
 export type SelectRows = (sql: string) => Promise<Record<string, unknown>[]>;
 
@@ -34,6 +35,7 @@ function chunks<T>(values: readonly T[], size: number): T[][] {
 const ITEM_COLUMNS = `id, source_id, url, title, summary, status, duplicate_of,
   points, comments, tags, image_url, media_manifest, published_at, fetched_at,
   llm_relevance, llm_importance, llm_quality, rank_score, source_lang,
+  (SELECT t.title FROM translations t WHERE t.item_id = items.id AND t.lang = 'en') AS title_en,
   (SELECT COALESCE(SUM(v.value), 0) FROM item_votes v WHERE v.item_id = items.id) AS vote_net,
   (SELECT COUNT(*) FROM notifications n WHERE n.item_id = items.id) AS notifications,
   EXISTS (SELECT 1 FROM translations t WHERE t.item_id = items.id AND t.lang = 'vi') AS has_vi`;
@@ -55,11 +57,24 @@ export function unmergeSourcesSql(itemIds: readonly ItemId[]): string {
   ORDER BY item_id, position`;
 }
 
-/** Published rows in `[from, to]` (epoch seconds), as story identities. */
-export function publishedWindowSql(from: number, to: number): string {
-  return `SELECT id, source_id, url, title, published_at FROM items
-  WHERE status = 'published' AND published_at BETWEEN ${Math.floor(from)} AND ${Math.floor(to)}`;
+/** Published and merged rows in `[from, to]` (epoch seconds), as story
+ * identities with the link a merged row's root is found by. */
+export function liveWindowSql(from: number, to: number): string {
+  return `SELECT id, source_id, url, title, published_at, source_lang, status, duplicate_of,
+  CASE WHEN source_lang = 'vi' THEN (SELECT t.title FROM translations t
+    WHERE t.item_id = items.id AND t.lang = 'en') END AS title_en
+  FROM items
+  WHERE status IN ('published', 'merged')
+    AND published_at BETWEEN ${Math.floor(from)} AND ${Math.floor(to)}`;
 }
+
+function itemLinksSql(ids: readonly ItemId[]): string {
+  return `SELECT id, status, duplicate_of FROM items WHERE id IN (${idList(ids)})`;
+}
+
+/** Merge chains are short (a canonical later merged into another story);
+ * a longer one is treated as having no published root. */
+const MAX_ROOT_HOPS = 4;
 
 /** Reads rows into one snapshot's maps. */
 function snapshotReader(select: SelectRows) {
@@ -101,40 +116,87 @@ function snapshotReader(select: SelectRows) {
   };
 
   /** Where a restored story could already be live: published rows within
-   * the merge lookback of a paired row. Rows that match, and `twinIds`,
-   * load in full, as canonicals (their merged items and sources too). */
-  const loadPublished = async (
-    paired: readonly UnmergeItemRow[],
+   * the merge lookback of a `restoring` row, and the merged rows there
+   * whose `duplicate_of` chain ends at a published row (their root).
+   * `restoring` itself is left out: those rows move. The roots of rows that
+   * match, and `twinIds`, load in full, as canonicals (their merged items
+   * and sources too). */
+  const loadLive = async (
+    restoring: readonly UnmergeItemRow[],
     twinIds: ReadonlySet<ItemId>
-  ): Promise<StoryRef[]> => {
-    if (paired.length === 0) return [];
-    const times = paired.map((row) => row.published_at);
-    const published = (
-      await select(
-        publishedWindowSql(
-          Math.min(...times) - MERGE_LOOKBACK_SEC,
-          Math.max(...times) + MERGE_LOOKBACK_SEC
-        )
+  ): Promise<LiveRef[]> => {
+    if (restoring.length === 0) return [];
+    const times = restoring.map((row) => row.published_at);
+    const window = await select(
+      liveWindowSql(
+        Math.min(...times) - MERGE_LOOKBACK_SEC,
+        Math.max(...times) + MERGE_LOOKBACK_SEC
       )
-    ).map((row) => ({
-      id: String(row.id),
-      source_id: String(row.source_id),
-      url: String(row.url),
-      title: String(row.title),
-      published_at: Number(row.published_at),
-    }));
+    );
+    const link = new Map<string, { status: string; next: string | null }>();
+    const addLinks = (rows: readonly Record<string, unknown>[]) => {
+      for (const row of rows) {
+        link.set(String(row.id), {
+          status: String(row.status),
+          next: (row.duplicate_of as string | null) ?? null,
+        });
+      }
+    };
+    addLinks(window);
+    for (let hop = 0; hop < MAX_ROOT_HOPS; hop++) {
+      const unknown = [
+        ...new Set(
+          [...link.values()]
+            .filter((l) => l.status === "merged")
+            .map((l) => parseItemId(l.next))
+            .filter((id): id is ItemId => id !== null && !link.has(id))
+        ),
+      ];
+      if (unknown.length === 0) break;
+      for (const ids of chunks(unknown, ID_CHUNK)) {
+        addLinks(await select(itemLinksSql(ids)));
+      }
+    }
+    const rootOf = (id: string): string | null => {
+      let current: string | null = id;
+      for (let hop = 0; hop <= MAX_ROOT_HOPS && current !== null; hop++) {
+        const l = link.get(current);
+        if (!l) return null;
+        if (l.status === "published") return current;
+        if (l.status !== "merged") return null;
+        current = l.next;
+      }
+      return null;
+    };
+    const moving = new Set<string>(restoring.map((row) => row.id));
+    const live: LiveRef[] = [];
+    for (const row of window) {
+      const id = String(row.id);
+      const root = moving.has(id) ? null : rootOf(id);
+      if (root === null) continue;
+      live.push({
+        id,
+        source_id: String(row.source_id),
+        url: String(row.url),
+        title: String(row.title),
+        published_at: Number(row.published_at),
+        source_lang: (row.source_lang as string | null) ?? null,
+        title_en: (row.title_en as string | null) ?? null,
+        root,
+      });
+    }
     const load = new Set<ItemId>(twinIds);
-    for (const row of paired) {
-      for (const { ref } of twinMatches([row], published)) {
-        load.add(ref.id as ItemId);
+    for (const row of restoring) {
+      for (const { ref } of twinMatches([row], live)) {
+        load.add(ref.root as ItemId);
       }
     }
     const missing = [...load].filter((id) => !items.has(id));
     for (const twins of chunks(missing, ID_CHUNK)) await loadRows(twins, []);
-    return published;
+    return live;
   };
 
-  return { items, sources, addItems, addSources, loadRows, loadPublished };
+  return { items, sources, addItems, addSources, loadRows, loadLive };
 }
 
 export async function loadUnmergeSnapshot(
@@ -157,8 +219,8 @@ export async function loadUnmergeSnapshot(
   for (const pair of pairs) {
     if (pair.decision?.kind === "same-as") sameAs.add(pair.decision.twinId);
   }
-  const published = await reader.loadPublished(paired, sameAs);
-  return { items: reader.items, sources: reader.sources, published };
+  const live = await reader.loadLive(paired, sameAs);
+  return { items: reader.items, sources: reader.sources, live };
 }
 
 /** Merged rows whose `duplicate_of` names no item (#791). */
@@ -183,11 +245,13 @@ function publishedIdsSql(from: number, to: number): string {
   WHERE status = 'published' AND published_at BETWEEN ${Math.floor(from)} AND ${Math.floor(to)}`;
 }
 
-/** Every dangling merged row, the sources under each dangling id, the
- * published rows a restored story could duplicate, and the published rows
- * of the same days with their members, which set the score scale. */
+/** Every dangling merged row, the sources under each dangling id, the live
+ * rows a restored story could duplicate, the published rows of the same
+ * days with their members, which set the score scale, and the rows the
+ * decisions name. */
 export async function loadDanglingSnapshot(
-  select: SelectRows
+  select: SelectRows,
+  decisions: readonly DanglingDecision[] = []
 ): Promise<DanglingSnapshot> {
   const reader = snapshotReader(select);
   const dangling = (await select(DANGLING_IDS_SQL))
@@ -200,7 +264,17 @@ export async function loadDanglingSnapshot(
   const rows = dangling
     .map((id) => reader.items.get(id))
     .filter((row): row is UnmergeItemRow => row !== undefined);
-  const published = await reader.loadPublished(rows, new Set());
+  const named = decisions
+    .map((d) => d.mergedId)
+    .filter((id) => !reader.items.has(id));
+  for (const ids of chunks(named, ID_CHUNK)) {
+    reader.addItems(await select(itemsByIdSql(ids)));
+  }
+  const sameAs = new Set<ItemId>();
+  for (const { decision } of decisions) {
+    if (decision.kind === "same-as") sameAs.add(decision.twinId);
+  }
+  const live = await reader.loadLive(rows, sameAs);
   const calibration: ItemId[] = [];
   if (rows.length > 0) {
     const times = rows.map((row) => row.published_at);
@@ -217,7 +291,7 @@ export async function loadDanglingSnapshot(
   return {
     items: reader.items,
     sources: reader.sources,
-    published,
+    live,
     dangling,
     calibration,
   };

@@ -1407,4 +1407,333 @@ describe("unmerge of dangling merges (#791)", () => {
       status: 400,
     });
   });
+
+  it("settles a held story by a decision on any of its rows (#793)", async () => {
+    const outcomeOf = async (decisions: unknown[]) => {
+      const result = await unmergeItems(env, { dangling: true, decisions });
+      if ("error" in result) throw new Error(result.error);
+      return result.plan.canonicals
+        .flatMap((c) => c.pairs)
+        .find(({ pair }) => pair.mergedId === SIM)?.outcome;
+    };
+    expect(
+      await outcomeOf([{ mergedId: SIM, distinctFrom: [SIM_LIVE] }])
+    ).toMatchObject({ action: "restore", status: "published" });
+    expect(await outcomeOf([{ mergedId: SIM, sameAs: SIM_LIVE }])).toEqual({
+      action: "repoint",
+      twinId: SIM_LIVE,
+      rule: "same-as",
+    });
+
+    const before = dump(db);
+    const applied = await unmergeItems(env, {
+      dangling: true,
+      decisions: [{ mergedId: SIM, distinctFrom: [SIM_LIVE] }],
+      dryRun: false,
+    });
+    if ("error" in applied) throw new Error(applied.error);
+    expect(dump(db)).not.toEqual(before);
+    expect(statusOf(db, SIM)).toMatchObject({
+      status: "published",
+      duplicate_of: null,
+    });
+    // The rerun of a capped apply posts the same decisions; a spent one is
+    // not an error.
+    expect(
+      await unmergeItems(env, {
+        dangling: true,
+        decisions: [{ mergedId: SIM, distinctFrom: [SIM_LIVE] }],
+      })
+    ).not.toHaveProperty("error");
+  });
+
+  it("still joins a live copy with the story's identity, whatever distinctFrom names", async () => {
+    const result = await unmergeItems(env, {
+      dangling: true,
+      decisions: [{ mergedId: HIDDEN, distinctFrom: [LIVE] }],
+    });
+    if ("error" in result) throw new Error(result.error);
+    expect(
+      result.plan.canonicals
+        .flatMap((c) => c.pairs)
+        .find(({ pair }) => pair.mergedId === HIDDEN)?.outcome
+    ).toMatchObject({ action: "repoint", twinId: LIVE });
+  });
+
+  it("holds a story whose rows carry two different decisions", async () => {
+    const result = await unmergeItems(env, {
+      dangling: true,
+      decisions: [
+        { mergedId: TRIO_HUG, sameAs: SIM_LIVE },
+        { mergedId: TRIO_MB, distinctFrom: [SIM_LIVE] },
+      ],
+    });
+    if ("error" in result) throw new Error(result.error);
+    const trio = result.plan.canonicals
+      .flatMap((c) => c.pairs)
+      .filter(({ pair }) =>
+        [TRIO_HUG, TRIO_MB, TRIO_VERGE].includes(pair.mergedId)
+      );
+    expect(trio.map(({ outcome }) => outcome)).toEqual(
+      Array(3).fill(
+        expect.objectContaining({ action: "skip", reason: "needs-decision" })
+      )
+    );
+  });
+
+  it("refuses a decision it cannot apply, and writes nothing", async () => {
+    const before = dump(db);
+    for (const decisions of [
+      // No canonical to be distinct from: it would judge nothing.
+      [{ mergedId: SIM, distinct: true }],
+      [{ mergedId: SIM }],
+      // A typo'd id names no item.
+      [{ mergedId: id(0xdead), sameAs: SIM_LIVE }],
+      [
+        { mergedId: SIM, sameAs: SIM_LIVE },
+        { mergedId: SIM, distinctFrom: [SIM_LIVE] },
+      ],
+      { mergedId: SIM, sameAs: SIM_LIVE },
+    ]) {
+      expect(
+        await unmergeItems(env, { dangling: true, decisions, dryRun: false })
+      ).toMatchObject({ status: 400 });
+    }
+    expect(
+      await unmergeItems(env, {
+        pairs,
+        decisions: [{ mergedId: SIM, sameAs: SIM_LIVE }],
+      })
+    ).toMatchObject({ status: 400 });
+    expect(dump(db)).toEqual(before);
+  });
+});
+
+// The live copies the #794 dry run missed: a merged copy of a live story, a
+// URL with a trailing slash, a Vietnamese live row, and one story under two
+// made-up ids.
+const ROOT = id(0xf1);
+const ROOT_COPY = id(0xf2);
+const COPY_D = id(0xf3);
+const SLASH_LIVE = id(0xf4);
+const SLASH_D = id(0xf5);
+const VI_LIVE = id(0xf6);
+const VI_D = id(0xf7);
+const FOLD_A = id(0xf8);
+const FOLD_B = id(0xf9);
+const NEAR_D = id(0xfa);
+const T = OLD + 80_000;
+const MUSE_SLUG =
+  "meta-enables-muse-ai-checkout-for-paypal-and-shopify-7814a26b";
+const MUSE_TITLE =
+  "Meta Enables Muse AI Checkout for All PayPal and Shopify Merchants";
+
+function translateToEnglish(
+  target: DatabaseSync,
+  rowId: string,
+  title: string
+) {
+  target
+    .prepare(
+      "INSERT INTO translations (item_id, lang, title, summary) VALUES (?, 'en', ?, ?)"
+    )
+    .run(rowId, title, "Summary in English.");
+}
+
+async function writeMissedCopies(target: DatabaseSync) {
+  const root = story(
+    ROOT,
+    "theverge-ai",
+    "Meta’s shopping agent can now pay for you",
+    T,
+    "verge-muse-pay"
+  );
+  await writeCanonical(target, root, T + 100);
+  await writeCluster(
+    target,
+    [aggregatorCopy(ROOT_COPY, "marketbrief", MUSE_SLUG, MUSE_TITLE, T + 200)],
+    { id: ROOT, row: root },
+    T + 300
+  );
+  await writeRun(
+    target,
+    [aggregatorCopy(COPY_D, "huggingnews", MUSE_SLUG, MUSE_TITLE, T + 250)],
+    "abc123",
+    T + 400
+  );
+  await writeRun(
+    target,
+    [
+      aggregatorCopy(
+        NEAR_D,
+        "huggingnews",
+        "meta-muse-ai-checkout-reaches-paypal-and-shopify-merchants-9a8b7c6d",
+        "Meta Muse AI Checkout Reaches PayPal and Shopify Merchants",
+        T + 500
+      ),
+    ],
+    "pqr678",
+    T + 600
+  );
+
+  const page = "https://openai.example.test/index/mentalhealthbench";
+  await writeCanonical(
+    target,
+    row(SLASH_LIVE, "hn", {
+      url: page,
+      title: "MentalHealthBench: how models handle mental health conversations",
+      publishedAt: T + 1000,
+      points: 40,
+      sources: [],
+    }),
+    T + 1100
+  );
+  await writeRun(
+    target,
+    [
+      row(SLASH_D, "openai", {
+        url: `${page}/`,
+        title: "Introducing MentalHealthBench",
+        publishedAt: T + 900,
+        sources: [],
+      }),
+    ],
+    "def456",
+    T + 1200
+  );
+
+  const vnexpress = "https://vnexpress.net/openai-giam-gia-api-5130001.html";
+  await writeCanonical(
+    target,
+    row(VI_LIVE, "vnexpress-tech", {
+      url: vnexpress,
+      title: "OpenAI giảm một nửa giá API khi ra mắt GPT-6",
+      publishedAt: T + 2000,
+      sourceLang: "vi",
+      sources: [{ kind: "source", url: vnexpress, postedAt: T + 2000 }],
+    }),
+    T + 2100
+  );
+  translateToEnglish(
+    target,
+    VI_LIVE,
+    "OpenAI Halves API Prices With Launch of GPT-6 Sol and Luna"
+  );
+  await writeRun(
+    target,
+    [
+      aggregatorCopy(
+        VI_D,
+        "huggingnews",
+        "openai-cuts-api-prices-50-in-new-gpt-6-model-launch-5e6f7a8b",
+        "OpenAI Cuts API Prices 50% in New GPT-6 Model Launch",
+        T + 2200
+      ),
+    ],
+    "ghi789",
+    T + 2300
+  );
+
+  const spec = "https://openai.example.test/index/agents-md-v2";
+  await writeRun(
+    target,
+    [
+      row(FOLD_A, "openai", {
+        url: `${spec}/`,
+        title: "Introducing AGENTS.md v2",
+        publishedAt: T + 3000,
+        sources: [],
+      }),
+    ],
+    "jkl012",
+    T + 3100
+  );
+  await writeRun(
+    target,
+    [
+      row(FOLD_B, "hn", {
+        url: spec,
+        title: "A spec file for coding assistants",
+        publishedAt: T + 3500,
+        points: 25,
+        sources: [],
+      }),
+    ],
+    "mno345",
+    T + 3600
+  );
+}
+
+describe("unmerge of dangling merges: live copies under another form (#794)", () => {
+  beforeEach(async () => {
+    await writeMissedCopies(db);
+  });
+
+  const outcomesOf = (result: Awaited<ReturnType<typeof unmergeItems>>) => {
+    if ("error" in result) throw new Error(result.error);
+    return new Map(
+      result.plan.canonicals.flatMap((c) =>
+        c.pairs.map(({ pair, outcome }) => [pair.mergedId as string, outcome])
+      )
+    );
+  };
+
+  it("joins a story whose only live copy is merged into a published row, at that row", async () => {
+    const outcome = outcomesOf(await unmergeItems(env, { dangling: true })).get(
+      COPY_D
+    );
+    expect(outcome).toEqual({
+      action: "repoint",
+      twinId: ROOT,
+      rule: "aggregator-slug",
+    });
+    await unmergeItems(env, { dangling: true, dryRun: false });
+    expect(statusOf(db, COPY_D)).toMatchObject({
+      status: "merged",
+      duplicate_of: ROOT,
+    });
+  });
+
+  it("names the published row, not its merged copy, for a near-duplicate of the copy", async () => {
+    const outcome = outcomesOf(await unmergeItems(env, { dangling: true })).get(
+      NEAR_D
+    );
+    expect(outcome).toMatchObject({ action: "skip", reason: "needs-decision" });
+    expect(
+      outcome?.action === "skip" && outcome.candidates?.map((c) => c.id)
+    ).toEqual([ROOT]);
+  });
+
+  it("treats a URL with a trailing slash as the same page", async () => {
+    expect(
+      outcomesOf(await unmergeItems(env, { dangling: true })).get(SLASH_D)
+    ).toEqual({ action: "repoint", twinId: SLASH_LIVE, rule: "url" });
+  });
+
+  it("holds an English story whose live copy is Vietnamese, matched through the stored English title", async () => {
+    expect(
+      outcomesOf(await unmergeItems(env, { dangling: true })).get(VI_D)
+    ).toMatchObject({
+      action: "skip",
+      reason: "needs-decision",
+      candidates: [expect.objectContaining({ id: VI_LIVE })],
+    });
+  });
+
+  it("restores one story under two made-up ids once, with the other row merged into it", async () => {
+    const outcomes = outcomesOf(await unmergeItems(env, { dangling: true }));
+    expect(
+      [FOLD_A, FOLD_B].map((rowId) => outcomes.get(rowId)?.action).sort()
+    ).toEqual(["regroup", "restore"]);
+    await unmergeItems(env, { dangling: true, dryRun: false });
+    const published = [FOLD_A, FOLD_B].filter(
+      (rowId) => statusOf(db, rowId).status === "published"
+    );
+    expect(published).toHaveLength(1);
+    const other = published[0] === FOLD_A ? FOLD_B : FOLD_A;
+    expect(statusOf(db, other)).toMatchObject({
+      status: "merged",
+      duplicate_of: published[0],
+    });
+  });
 });
