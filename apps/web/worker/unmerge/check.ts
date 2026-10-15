@@ -206,18 +206,22 @@ export function checkWork(
   candidates: readonly CheckCandidate[],
   live: readonly LiveRow[]
 ): CheckWork[] {
+  // One headline object per row, so the gate works each one out once.
+  const headlines = live.map((row) => [row, liveHeadline(row)] as const);
   return candidates.map((candidate) => {
     const members = distinctTitles(candidate.rows).map(headline);
     const own = new Set(candidate.rows.map((row) => row.id));
     return {
       candidate,
-      live: live.filter(
-        (row) =>
-          !own.has(row.id) &&
-          row.published_at >= candidate.from &&
-          row.published_at <= candidate.to &&
-          backsExisting(members, liveHeadline(row))
-      ),
+      live: headlines
+        .filter(
+          ([row, target]) =>
+            !own.has(row.id) &&
+            row.published_at >= candidate.from &&
+            row.published_at <= candidate.to &&
+            backsExisting(members, target)
+        )
+        .map(([row]) => row),
     };
   });
 }

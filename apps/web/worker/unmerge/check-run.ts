@@ -111,7 +111,7 @@ export async function runDanglingCheck(
   }
 
   let rateLimited = false;
-  const d1Logger = createD1LlmCallLogger(env, input.operationId);
+  const d1Logger = createD1LlmCallLogger(env);
   setLlmCallLogger((entry) => {
     if (RATE_LIMITED.test(entry.error ?? "")) rateLimited = true;
     return d1Logger(entry);

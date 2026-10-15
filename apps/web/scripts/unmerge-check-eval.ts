@@ -15,8 +15,9 @@
  *   it and reads as empty.
  * - window.json: published and merged rows (`id, source_id, url, title,
  *   status, published_at, source_lang, title_en`) around the dangling rows.
- * - --verdicts: rows exported from production `unmerge_checks` after a real
- *   check (`SELECT * FROM unmerge_checks`), replayed instead of the stubs.
+ * - --verdicts: the output of `cf d1 query` with
+ *   `SELECT story, version, verdict, matches FROM unmerge_checks` after a
+ *   real check, replayed instead of the stubs.
  *
  * Stubs: `none` links nothing (today's plan, minus the stories it would
  * hold); `oracle` links each labelled duplicate to its labelled live copy
@@ -52,6 +53,7 @@ import {
   planDanglingUnmerge,
   type UnmergePlan,
 } from "../worker/unmerge/plan";
+import { d1ResultRows } from "./cf-d1";
 
 interface Fixture {
   labels: Record<string, Record<string, "dup" | "no">>;
@@ -208,8 +210,9 @@ function replay(stub: Stub): Replay {
 }
 
 function replayStored(file: string): Replay {
+  // `cf d1 query` prints a bare array or one wrapped in `[{ results }]`.
   const checks = parseChecks(
-    JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>[]
+    d1ResultRows(readFileSync(file, "utf8")) as Record<string, unknown>[]
   );
   return {
     plan: planDanglingUnmerge(withChecks(checks), nowMs),

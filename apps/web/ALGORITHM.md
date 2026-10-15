@@ -416,7 +416,9 @@ whose `duplicate_of` names no item and needs no pairs file.
     current verdict, so a check with nothing new calls no model. The CLI
     prints the call estimate from SELECTs first and needs `--confirm-llm`;
     it repeats requests until no story waits or `--max-calls` (default:
-    the estimate) is spent, and backs off from 60 s, doubling, after a 429.
+    the estimate) is spent, and after a 429 waits 150 s (past the chain's
+    2-minute skip of that model), doubling up to 15 min, and gives up
+    after three 429 stops in a row.
   - Replay: `scripts/unmerge-check-eval.ts` runs the planner, prefilter,
     batching and gate on a cached snapshot with a stub in place of the
     model, or on verdicts exported from `unmerge_checks`.
