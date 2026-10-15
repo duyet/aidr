@@ -9,6 +9,7 @@ import {
   type WeeklyDay,
 } from "../../src/lib/mail-frequency.js";
 import { ensureMailSchema } from "../mail/schema.js";
+import { recordMailStat } from "../mail/stats.js";
 import { checkRateLimit, hashIp, ONE_DAY_SEC } from "../rate-limit.js";
 import type { Env } from "../types.js";
 import { notifyOwnerOfNewSubscriber } from "./owner-notify.js";
@@ -384,6 +385,11 @@ export async function unsubscribe(
   if (typeof token !== "string" || token.length === 0) {
     return { error: "token is required", status: 400 };
   }
+  const row = await env.DB.prepare(
+    "SELECT lang FROM subscribers WHERE unsubscribe_token = ?"
+  )
+    .bind(token)
+    .first<{ lang: string }>();
   const byToken = "(SELECT email FROM subscribers WHERE unsubscribe_token = ?)";
   const statements = [
     `DELETE FROM subscriber_sources WHERE email IN ${byToken}`,
@@ -391,7 +397,13 @@ export async function unsubscribe(
     "DELETE FROM email_feedback WHERE subscriber_token = ?",
     "DELETE FROM subscribers WHERE unsubscribe_token = ?",
   ];
-  await env.DB.batch(statements.map((sql) => env.DB.prepare(sql).bind(token)));
+  const results = await env.DB.batch(
+    statements.map((sql) => env.DB.prepare(sql).bind(token))
+  );
+  // Count the row that was actually removed: a repeated click deletes nothing.
+  if (row && results.at(-1)?.meta?.changes) {
+    await recordMailStat(env.DB, "unsubscribed", row.lang);
+  }
   return { ok: true };
 }
 

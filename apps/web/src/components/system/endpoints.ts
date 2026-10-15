@@ -13,4 +13,5 @@ export const API = {
   trends: "/api/system/trends",
   reads: "/api/system/reads",
   extension: "/api/system/extension",
+  mailStats: "/api/system/mail-stats",
 } as const;

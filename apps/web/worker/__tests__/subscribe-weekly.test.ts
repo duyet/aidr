@@ -184,7 +184,7 @@ describe("sendDailyTldr — weekly lane", () => {
     ).toEqual(["2026-W41"]);
     expect(
       updates.find((u) => u.sql.includes("last_weekly_sent"))?.args
-    ).toEqual(["2026-10-11", "w@aidr.today"]);
+    ).toEqual(["2026-10-11", "w@aidr.today", "2026-10-11"]);
   });
 
   it("Wednesday: mails the shared rolling digest of the 7 days before", async () => {
