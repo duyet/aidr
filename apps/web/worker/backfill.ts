@@ -125,9 +125,9 @@ export interface BackfillPlan {
 /**
  * Decides what to persist for a backfill candidate. Returns null when
  * nothing usable was fetched: the summary stays as-is for a future run, and
- * the caller only records the row's media as checked. Existing non-empty image/media values win over
- * freshly-fetched ones; this is the "never overwrite an existing value" rule,
- * expressed here without a database.
+ * the caller only records the row's media as checked. Existing non-empty
+ * image/media values win over freshly-fetched ones; this is the "never
+ * overwrite an existing value" rule, expressed here without a database.
  */
 export function planBackfillUpdate(
   existing: {

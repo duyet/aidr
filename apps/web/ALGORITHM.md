@@ -824,8 +824,9 @@ in query strings) are decoded before storage, so thumbs are real article
 images rather than a broken-src fallback.
 
 - **The trigger is a missing picture, not missing media.** A new item is
-  fetched when its summary is empty or cut off, or when it has no thumbnail:
-  no image asset and no video poster. Posterless videos alone (the-decoder's
+  fetched when its summary is empty or cut off, or when it has no thumbnail
+  (`primaryThumbnailUrl`): no image asset, and no poster on the first-ranked
+  video. Posterless videos alone (the-decoder's
   feed gives `.mp4` files and no image) still fetch the page, whose
   `og:image` and video posters give the picture (#805).
 - **arXiv has no og:image.** When an item is an `arxiv.org/abs/<id>` page

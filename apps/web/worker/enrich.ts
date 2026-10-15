@@ -464,9 +464,10 @@ export async function enrichMissingContent(
 ): Promise<void> {
   for (const item of items) normalizeExistingMedia(item);
   // A finished summary with a picture needs nothing. `imageUrl` is the
-  // thumbnail normalizeExistingMedia derived (an image or a video poster), so
-  // posterless videos alone still fetch the page. A blurb ending in … or ...
-  // still needs the article, or it is scored and translated as-is.
+  // thumbnail normalizeExistingMedia derived (an image, else the first
+  // video's poster), so posterless videos alone still fetch the page. A blurb
+  // ending in … or ... still needs the article, or it is scored and
+  // translated as-is.
   const candidates = items.filter(
     (item) =>
       !item.summary || summaryLooksCutOff(item.summary) || !item.imageUrl

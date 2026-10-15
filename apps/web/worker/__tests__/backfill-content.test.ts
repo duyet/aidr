@@ -92,4 +92,43 @@ describe("backfillContent media queue", () => {
       sqlite.close();
     }
   });
+
+  it("never overwrites a manifest another writer stored during the fetch", async () => {
+    const sqlite = new DatabaseSync(":memory:");
+    try {
+      sqlite.exec(`
+        CREATE TABLE items (
+          id TEXT PRIMARY KEY, url TEXT, source_id TEXT, status TEXT,
+          summary TEXT, image_url TEXT,
+          media_manifest TEXT NOT NULL DEFAULT '[]', published_at INTEGER
+        );
+        INSERT INTO items VALUES
+          ('raced', 'https://blocked.example/story', 'openai', 'published',
+           'A finished summary.', NULL, '[]', 20);
+      `);
+      const written = JSON.stringify({
+        version: 1,
+        assets: [{ type: "image", url: "https://cdn.example/merged.jpg" }],
+      });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          sqlite
+            .prepare("UPDATE items SET media_manifest = ? WHERE id = 'raced'")
+            .run(written);
+          return new Response("Forbidden", { status: 403 });
+        })
+      );
+
+      await backfillContent(context(sqlite));
+
+      expect(
+        sqlite
+          .prepare("SELECT media_manifest FROM items WHERE id = 'raced'")
+          .get()
+      ).toEqual({ media_manifest: written });
+    } finally {
+      sqlite.close();
+    }
+  });
 });
