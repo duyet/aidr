@@ -130,6 +130,19 @@ describe("importance band content", () => {
     );
   });
 
+  // The unqualified gadget sentence put a leading lab's first device at 4-6,
+  // under the trending floor; production scored OpenAI's first hardware push 9.
+  it("lifts only a leading lab's first consumer device above the gadget band", () => {
+    const devices = IMPORTANCE_ANCHORS.find((a) => a.startsWith("Devices:"));
+    expect(devices).toBe(
+      "Devices: a leading AI lab's first consumer device is 7-8 at launch. Other gadgets, and any gadget's sales, preorders or stock, stay 4-6."
+    );
+  });
+
+  it("keeps a new model family out of 9-10 unless it is frontier", () => {
+    expect(band("9-10")).toMatch(/a major new frontier model family/);
+  });
+
   it("separates notable controversy from gossip", () => {
     const drama = IMPORTANCE_ANCHORS.find((a) => a.startsWith("Drama:"));
     expect(drama).toMatch(/notable controversy is 7-8/);

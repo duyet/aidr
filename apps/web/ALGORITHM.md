@@ -940,7 +940,7 @@ Batches of 5.
 - The importance bands say what a story is, not which company published
   it, so a big lab's small repo does not inherit its flagship's score.
   9-10 is rare: a leading lab's new-generation flagship, a major new
-  model family, a law or government action that changes what labs may
+  frontier model family, a law or government action that changes what labs may
   build or sell, or a market-wide event. It excludes point updates,
   cheaper tiers, variants, and one company's deal, funding, price or
   forecast. 7-8 is a new numbered version of a major model line, a
@@ -955,8 +955,9 @@ Batches of 5.
   smaller labs, reported results of unreleased models, and share-price
   moves and supplier earnings whose AI angle is incidental. Consumer
   gadgets and their sales, preorders or stock, including AI PCs and AI
-  devices, are 4-6. Two anchors in `IMPORTANCE_ANCHORS` reach both
-  scorers. A provider's own price cut, free tier or big discount on a
+  devices, are 4-6. Three anchors in `IMPORTANCE_ANCHORS` reach both
+  scorers. A leading AI lab's first consumer device is 7-8 at launch;
+  other gadgets stay 4-6. A provider's own price cut, free tier or big discount on a
   major model is 6-7. A cloud platform, app or reseller listing another
   company's model at that company's price is 4-6, even on launch day,
   and a reseller promo, affiliate deal or free-credit offer is 1-3. A

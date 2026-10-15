@@ -10,7 +10,7 @@ export const IMPORTANCE_BANDS = [
   {
     range: "9-10",
     meaning:
-      "rare, a few a month: a leading lab's new frontier flagship, open or closed (a new generation at the top of its line, not a point update, cheaper tier or variant), a major new model family, a law or government action that changes what AI labs may build or sell, or an event that moves the whole AI market (not one company's deal, funding, price or forecast)",
+      "rare, a few a month: a leading lab's new frontier flagship, open or closed (a new generation at the top of its line, not a point update, cheaper tier or variant), a major new frontier model family, a law or government action that changes what AI labs may build or sell, or an event that moves the whole AI market (not one company's deal, funding, price or forecast)",
   },
   {
     range: "7-8",
@@ -33,6 +33,7 @@ export const IMPORTANCE_BANDS = [
 export const IMPORTANCE_ANCHORS = [
   "Deals: a real price cut, free tier or big discount on a major model or API, announced by the provider itself, is 6-7. A cloud platform, app or reseller listing another company's model at that company's price is not a deal and is 4-6, even on launch day. A reseller's promo, an affiliate deal or a free-credit offer is 1-3.",
   "Drama: a notable controversy is 7-8: a leadership fight at a leading lab, a lawsuit between major players, a safety incident, or a leak with real consequences (exposed data, a pulled model, a regulator stepping in). Gossip is 1-3: personal lives, unsourced rumours, social-media spats.",
+  "Devices: a leading AI lab's first consumer device is 7-8 at launch. Other gadgets, and any gadget's sales, preorders or stock, stay 4-6.",
 ] as const;
 
 /** One-line rubric, highest band first, then the anchors. */
