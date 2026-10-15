@@ -105,6 +105,14 @@ App code cannot change what these send, because they read the browser URL themse
 
 PostHog captures its own `$pageview`, so `page_view` goes to GA4 only.
 
+## GA4 destination
+
+Every app event goes to one measurement id, `GA_MEASUREMENT_ID` (`VITE_MEASUREMENT_ID`, default `G-HXJPPQVYQN`, in `apps/web/src/lib/analytics/measurement-id.ts`). The app configures it with `send_page_view: false` and names it in each event's `send_to`.
+
+The Cloudflare Google tag gateway, when it is on for the zone, puts its own `gtag('config', '<id>')` at the top of `<head>`. That id gets gtag.js's automatic hits (its page_view, `session_start`, `user_engagement`, and the Enhanced Measurement events its stream has on), but none of the app's events. To use one property for everything, point the gateway and `VITE_MEASUREMENT_ID` at the same id, or turn the gateway off. `GA4_PROPERTY_ID`, which the /data Audience sync reads, must be the property that owns this measurement id.
+
+After a deploy, check the `tid` of the app's hits with `.agents/skills/verify-aidr/bin/verify-aidr drive ga4-tid`. It loads a campaign URL in headless Chrome and fails unless `channel_landing` goes to `GA_MEASUREMENT_ID` and no app event goes to another id.
+
 ## Page URLs
 
 The app hands every vendor a sanitized page URL. GA4 `page_location` and `page_referrer`, PostHog URL properties and autocaptured link hrefs, and the Jitsu page event keep only the query params in `SAFE_PARAMS` (`apps/web/src/lib/analytics/url-privacy.ts`). Search text (`q`) and the subscribe tokens are dropped. An inline `<head>` script moves a subscribe token out of the URL before any vendor script runs.

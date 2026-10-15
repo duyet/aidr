@@ -62,6 +62,8 @@ Commands:
   fetch [--path /]                GET a path; save body under evidence
   screenshot [--path /] [--viewport desktop|mobile]
   drive analytics               Campaign landing + channel-link HTTP proof
+  drive ga4-tid                 Headless Chrome: app GA4 hits go to the configured measurement id
+                                (VERIFY_AIDR_GA_ID overrides the source default)
   drive telegram                Public Telegram link proof; delivery is credential-gated
   cleanup                         Stop a local PID this lever started; keep evidence
   --help                          This text
@@ -957,6 +959,134 @@ async function driveAnalytics(ctx) {
   };
 }
 
+const GA4_ID_SOURCE = join(ROOT, "apps/web/src/lib/analytics/measurement-id.ts");
+const GA4_HIT = /\/g\/collect|\/ga\/g\/c\b/;
+const APP_EVENTS = new Set(["channel_landing", "page_view", "web_vitals"]);
+
+/** The id the app sends to: VERIFY_AIDR_GA_ID, else the source default. */
+function expectedGaId() {
+  if (process.env.VERIFY_AIDR_GA_ID) return process.env.VERIFY_AIDR_GA_ID;
+  const m = readFileSync(GA4_ID_SOURCE, "utf8").match(
+    /DEFAULT_GA_MEASUREMENT_ID = "(G-[A-Z0-9]+)"/
+  );
+  return m ? m[1] : "";
+}
+
+/** One GA4 request is one or more hits: query params, plus one line per hit in the body. */
+function gaHitsOf(url, body) {
+  const shared = Object.fromEntries(new URL(url).searchParams);
+  const lines = (body || "").split("\n").filter(Boolean);
+  const rows = lines.length ? lines : [""];
+  return rows.map((line) => {
+    const p = { ...shared, ...Object.fromEntries(new URLSearchParams(line)) };
+    return {
+      tid: p.tid || "",
+      en: p.en || "",
+      app: Boolean(p["ep.page_type"] || p["ep.metric_name"]),
+      search_term: "ep.search_term" in p,
+    };
+  });
+}
+
+/** Loads one page in headless Chrome over CDP and returns every GA4 hit it sent. */
+async function captureGaHits(url, waitMs) {
+  const bin = chromeBin();
+  if (!bin) throw new Error("no chrome (set CHROME_BIN)");
+  const profile = mkdtempSync(join(tmpdir(), "verify-aidr-ga4-"));
+  const child = spawn(
+    bin,
+    [
+      "--headless=new",
+      "--no-sandbox",
+      "--disable-gpu",
+      "--disable-dev-shm-usage",
+      "--no-first-run",
+      "--no-default-browser-check",
+      `--user-data-dir=${profile}`,
+      "--remote-debugging-port=0",
+      `--user-agent=${CHROME_UA}`,
+      "about:blank",
+    ],
+    { stdio: "ignore" }
+  );
+  try {
+    // Chrome writes the port it bound to this file once DevTools is up.
+    const portFile = join(profile, "DevToolsActivePort");
+    let port = "";
+    for (let i = 0; i < 60 && !port; i += 1) {
+      if (existsSync(portFile)) port = readFileSync(portFile, "utf8").split("\n")[0];
+      if (!port) await new Promise((r) => setTimeout(r, 250));
+    }
+    if (!port) throw new Error("chrome did not start");
+    const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+    const page = targets.find((t) => t.type === "page");
+    const ws = new WebSocket(page.webSocketDebuggerUrl);
+    await new Promise((r, reject) => {
+      ws.onopen = r;
+      ws.onerror = reject;
+    });
+    let nextId = 0;
+    const pending = new Map();
+    const requests = [];
+    ws.onmessage = (msg) => {
+      const data = JSON.parse(msg.data);
+      if (data.id && pending.has(data.id)) {
+        pending.get(data.id)(data.result);
+        pending.delete(data.id);
+      }
+      if (data.method === "Network.requestWillBeSent") {
+        const r = data.params.request;
+        if (GA4_HIT.test(r.url)) requests.push({ url: r.url, body: r.postData || "" });
+      }
+    };
+    const send = (method, params = {}) =>
+      new Promise((r) => {
+        nextId += 1;
+        pending.set(nextId, r);
+        ws.send(JSON.stringify({ id: nextId, method, params }));
+      });
+    await send("Network.enable");
+    await send("Page.navigate", { url });
+    await new Promise((r) => setTimeout(r, waitMs));
+    ws.close();
+    return requests.flatMap((r) => gaHitsOf(r.url, r.body));
+  } finally {
+    child.kill("SIGKILL");
+    rmSync(profile, { recursive: true, force: true });
+  }
+}
+
+/**
+ * #703: the app's own events must reach the configured measurement id, not
+ * only the Cloudflare tag gateway's. Enhanced Measurement events on any id
+ * are reported, since they read the raw URL (site search copies `?q=`).
+ */
+async function driveGa4Tid(ctx) {
+  const { base, evidenceDir } = ctx;
+  const expected = expectedGaId();
+  const url = `${base}/?utm_source=telegram&utm_medium=social&utm_campaign=verify&q=verifyprobe`;
+  const hits = await captureGaHits(url, 15_000);
+  save(evidenceDir, "ga4-hits.json", `${JSON.stringify(hits, null, 2)}\n`);
+  const appHits = hits.filter((h) => APP_EVENTS.has(h.en) && h.app);
+  const landing = hits.filter((h) => h.en === "channel_landing");
+  const strays = appHits.filter((h) => h.tid !== expected);
+  return {
+    ok:
+      landing.length > 0 &&
+      landing.every((h) => h.tid === expected) &&
+      strays.length === 0,
+    feature: "ga4-tid",
+    expected,
+    tids: [...new Set(hits.map((h) => h.tid))],
+    landing: landing.map((h) => h.tid),
+    appEventsElsewhere: strays.map((h) => `${h.en}→${h.tid}`),
+    searchTermHits: hits.filter((h) => h.search_term).map((h) => h.tid),
+    enhancedMeasurement: hits
+      .filter((h) => ["view_search_results", "scroll", "click", "form_start", "form_submit"].includes(h.en))
+      .map((h) => `${h.en}→${h.tid}`),
+  };
+}
+
 async function driveTelegram(ctx) {
   const { base, evidenceDir } = ctx;
   const res = await httpGet(`${base}/subscribe`, {
@@ -1046,6 +1176,7 @@ const DRIVERS = {
   about: driveAbout,
   extension: driveExtension,
   analytics: driveAnalytics,
+  "ga4-tid": driveGa4Tid,
   telegram: driveTelegram,
   "api-public": driveApiPublic,
   public: driveApiPublic,
