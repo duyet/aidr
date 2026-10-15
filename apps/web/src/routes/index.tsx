@@ -241,6 +241,11 @@ function IndexPage() {
 
   return (
     <div className={brief ? "flex flex-1 flex-col" : undefined}>
+      <h1 className="sr-only">
+        {lang === "vi"
+          ? "AI;DR: tin AI xếp hạng mỗi 30 phút"
+          : "AI;DR: AI news, ranked every 30 minutes"}
+      </h1>
       {q ? (
         <p className="flex flex-wrap items-baseline justify-between gap-2 py-3 text-sm text-muted-foreground">
           <span>
