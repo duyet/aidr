@@ -83,18 +83,22 @@ test("the built intro tags the grid with its story count and carries that count'
 });
 
 test("a story whose image files are missing shows no picture and loses its full layout", () => {
-  // 2026-10-13 pins story 3 to full; with its files gone it follows two splits, so it takes stat.
+  // 2026-10-13 pins story 3 to full; with its files gone it is an image-less story, so it takes the statement scene.
   const { script, page, stdout, timeline } = build("2026-10-13", undefined, [
     "assets/s3-1.jpg",
     "assets/s3-2.jpg",
   ]);
   assert.match(
     stdout,
-    /! look: story 3: layout "full" needs an image; chose stat/
+    /! look: story 3: layout "full" needs an image; chose statement/
   );
   for (const fmt of FORMATS) {
     const html = page(fmt);
-    assert.match(html, /<section id="story-3" class="clip scene l-stat"/, fmt);
+    assert.match(
+      html,
+      /<section id="story-3" class="clip scene l-statement"/,
+      fmt
+    );
     assert.match(
       html,
       /<div class="tile noimg" data-rank="3">/,
@@ -113,7 +117,12 @@ test("a story whose image files are missing shows no picture and loses its full 
   }
   const { theme, layouts } = timeline();
   assert.deepEqual(theme, script.theme, "theme holds the day axes only");
-  assert.deepEqual(layouts, { 1: "split", 2: "split", 3: "stat", 4: "full" });
+  assert.deepEqual(layouts, {
+    1: "split",
+    2: "split",
+    3: "statement",
+    4: "full",
+  });
 });
 
 const coverHook = (html) =>

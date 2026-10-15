@@ -435,9 +435,9 @@ function storyHtml(seg, i) {
   if (!layout)
     throw new Error(`story ${s.rank}: no layout resolved for this cut's rank`);
   // The layout comes from script.json's images; the vi cut renders script.vi.json's.
-  if (layout === "full" && !s.images.length)
+  if (entry("layout", layout).image && !s.images.length)
     throw new Error(
-      `${cut.script} story ${s.rank}: layout "full" but no image on disk; give it the images script.json lists`
+      `${cut.script} story ${s.rank}: layout "${layout}" but no image on disk; give it the images script.json lists`
     );
   const source = s.source ?? ed.source ?? "";
   let media;

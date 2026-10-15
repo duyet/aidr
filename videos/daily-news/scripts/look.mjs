@@ -20,7 +20,7 @@ const PIN_ONLY = ["accent"];
 const PAIR = ["transition", "background"];
 // Story layouts are chosen per story from what the story has, not rotated by date (looks/layout.mjs).
 const LAYOUTS = Object.fromEntries(
-  LAYOUT_ENTRIES.map(({ id, image, max }) => [id, { image, max }])
+  LAYOUT_ENTRIES.map(({ id, image, max, suits }) => [id, { image, max, suits }])
 );
 /** A dollar figure ("$40B"): a story whose English bullet names one leads with it. auto-script reads its stat with it. */
 export const MONEY = /\$[\d.,]+\s?[KMBT]?\b/;
@@ -99,20 +99,26 @@ export function rotatePair(listA, listB, day, axisA, axisB) {
 
 /**
  * { [rank]: layout id } in script order, plus a note for each request it could not honour.
- * Priority: an eligible `story.layout` pin, then the image requirement, then `max`, then no three of one id in a
- * row, then the defaults. `images` must be the files that exist; `money` reads the English bullet only, because
- * visub rewrites the screen text and both cuts must get the same layouts.
+ * Priority: an eligible `story.layout` pin, then the scene that suits the story best (looks/layout.mjs `suits`)
+ * among those whose image requirement and `max` allow it, never the same id three times in a row while another
+ * fits. `images` must be the files that exist; `money` reads the English bullet only, because visub rewrites the
+ * screen text and both cuts must get the same layouts.
  */
-function chooseLayouts(stories, edition) {
+function chooseLayouts(script, edition) {
   const layouts = {};
   const notes = [];
   const history = [];
-  for (const [index, story] of stories.entries()) {
+  for (const [index, story] of (script.stories ?? []).entries()) {
     const { rank, layout: pin } = story;
     const images = story.images?.length ?? 0;
-    const money = MONEY.test(
-      edition.stories?.find((s) => s.rank === rank)?.text ?? ""
-    );
+    const facts = {
+      index,
+      images,
+      money: MONEY.test(
+        edition.stories?.find((s) => s.rank === rank)?.text ?? ""
+      ),
+      thumb: script.thumb?.story === rank,
+    };
     const fits = (id) => images > 0 || !LAYOUTS[id].image;
     let id;
     if (pin !== undefined) {
@@ -123,17 +129,16 @@ function chooseLayouts(stories, edition) {
       if (fits(pin)) id = pin;
     }
     if (!id) {
-      const alt = index % 2 ? "full" : "split";
-      const other = alt === "full" ? "split" : "full";
-      const prefs =
-        images === 0
-          ? ["split", "stat"]
-          : money
-            ? ["stat", alt, other]
-            : [alt, other];
-      const eligible = prefs.filter(
-        (p) => fits(p) && history.filter((h) => h === p).length < LAYOUTS[p].max
-      );
+      const eligible = Object.entries(LAYOUTS)
+        .map(([p, { suits }]) => [p, suits(facts)])
+        .filter(
+          ([p, score]) =>
+            score > 0 &&
+            fits(p) &&
+            history.filter((h) => h === p).length < LAYOUTS[p].max
+        )
+        .sort((a, b) => b[1] - a[1])
+        .map(([p]) => p);
       id =
         eligible.find((p) => !(history.at(-1) === p && history.at(-2) === p)) ??
         eligible[0];
@@ -184,6 +189,6 @@ export function resolveLook(script, edition) {
   return {
     ...look,
     ...(pin.accent ? { accent: pin.accent } : {}),
-    ...chooseLayouts(script.stories ?? [], edition),
+    ...chooseLayouts(script, edition),
   };
 }

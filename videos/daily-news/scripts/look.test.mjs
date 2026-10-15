@@ -208,23 +208,45 @@ test("a story whose images all failed never gets full, even when its script asks
       `the template wrote a layout for story ${s.rank}`
     );
   assert.equal(
-    resolveLook(script, edition).layouts?.[3],
+    resolveLook(script, edition).layouts?.[4],
     "full",
-    "story 3 with its images follows two splits"
+    "story 4 with its images takes full"
   );
   assert.equal(
-    resolveLook(withStory(script, 3, { images: [] }), edition).layouts?.[3],
-    "stat"
+    resolveLook(withStory(script, 4, { images: [] }), edition).layouts?.[4],
+    "statement"
   );
 
   const pinned = resolveLook(
-    withStory(script, 3, { images: [], layout: "full" }),
+    withStory(script, 4, { images: [], layout: "full" }),
     edition
   );
-  assert.equal(pinned.layouts?.[3], "stat");
+  assert.equal(pinned.layouts?.[4], "statement");
   assert.deepEqual(pinned.notes, [
-    'story 3: layout "full" needs an image; chose stat',
+    'story 4: layout "full" needs an image; chose statement',
   ]);
+});
+
+// The poster panel is the cover story's scene: a chooser that ignored the registry's `suits` (or the thumb) would
+// never show it, and a second poster would make the cover story's look ordinary.
+test("the cover (thumb) story gets the poster panel, with or without an image, and only it", () => {
+  const edition = e13();
+  const script = templateScript(edition, hosts);
+  for (const thumb of [1, 2, 6]) {
+    const ids = layoutIds({ ...script, thumb: { story: thumb } }, edition);
+    assert.deepEqual(
+      script.stories.filter((_, i) => ids[i] === "poster").map((s) => s.rank),
+      [thumb],
+      `thumb ${thumb}: ${ids.join(" ")}`
+    );
+  }
+  const none = layoutIds({ ...script, thumb: undefined }, edition);
+  assert.ok(!none.includes("poster"), "no thumb, no poster");
+  const pin = resolveLook(
+    withStory({ ...script, thumb: { story: 1 } }, 1, { layout: "full" }),
+    edition
+  );
+  assert.equal(pin.layouts[1], "full", "a pinned layout beats the poster");
 });
 
 test("a pinned layout wins over the rules, and an unknown one fails the build", () => {
@@ -262,20 +284,31 @@ test("a pinned layout wins over the rules, and an unknown one fails the build", 
   assert.deepEqual(over.notes, []);
 });
 
-/** Three of one id in a row only when no other id is eligible; stat at most twice. */
+/** Three of one id in a row only when no other id is eligible; stat and statement at most twice, poster once. */
 function assertSpread(ids, script, label) {
-  let stats = 0;
+  const count = (id, upto = ids.length) =>
+    ids.slice(0, upto).filter((x) => x === id).length;
   for (const [i, id] of ids.entries()) {
     if (i >= 2 && id === ids[i - 1] && id === ids[i - 2]) {
       const imageless = !script.stories[i].images?.length;
       assert.ok(
-        id === "split" && imageless && stats >= 2,
+        id === "split" &&
+          imageless &&
+          count("stat", i) >= 2 &&
+          count("statement", i) >= 2,
         `${label}: ${id} three times in a row at story ${script.stories[i].rank} (${ids.join(" ")})`
       );
     }
-    if (id === "stat") stats++;
   }
-  assert.ok(stats <= 2, `${label}: ${stats} stat layouts (${ids.join(" ")})`);
+  for (const [id, max] of [
+    ["stat", 2],
+    ["statement", 2],
+    ["poster", 1],
+  ])
+    assert.ok(
+      count(id) <= max,
+      `${label}: ${count(id)} ${id} layouts (${ids.join(" ")})`
+    );
 }
 
 test("no layout shows three times in a row while another fits, and stat shows at most twice unless pinned", () => {
@@ -315,11 +348,12 @@ test("no layout shows three times in a row while another fits, and stat shows at
     { rank: 1, images: ["assets/a.jpg"], text: "A plain story." },
     { rank: 2, images: [], text: "A paper." },
     { rank: 3, images: [], text: "Another paper." },
+    { rank: 4, images: [], text: "A third paper." },
   ]);
   assert.deepEqual(
     layoutIds(script, edition),
-    ["split", "split", "stat"],
-    "an image-less story after two splits takes the paper card in stat"
+    ["split", "statement", "statement", "split"],
+    "image-less stories take the statement scene twice, then the paper card"
   );
 });
 
