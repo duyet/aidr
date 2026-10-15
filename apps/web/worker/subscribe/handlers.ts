@@ -376,7 +376,7 @@ export async function confirmSubscription(
   return { ok: true, token };
 }
 
-/** Removes a subscriber by their unsubscribe token. */
+/** Removes a subscriber and every row that holds their address or token, in one D1 batch. */
 export async function unsubscribe(
   env: Env,
   token: unknown
@@ -384,9 +384,14 @@ export async function unsubscribe(
   if (typeof token !== "string" || token.length === 0) {
     return { error: "token is required", status: 400 };
   }
-  await env.DB.prepare("DELETE FROM subscribers WHERE unsubscribe_token = ?")
-    .bind(token)
-    .run();
+  const byToken = "(SELECT email FROM subscribers WHERE unsubscribe_token = ?)";
+  const statements = [
+    `DELETE FROM subscriber_sources WHERE email IN ${byToken}`,
+    `DELETE FROM email_sends WHERE email IN ${byToken}`,
+    "DELETE FROM email_feedback WHERE subscriber_token = ?",
+    "DELETE FROM subscribers WHERE unsubscribe_token = ?",
+  ];
+  await env.DB.batch(statements.map((sql) => env.DB.prepare(sql).bind(token)));
   return { ok: true };
 }
 
