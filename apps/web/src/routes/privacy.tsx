@@ -73,7 +73,13 @@ function PrivacyPage() {
             a day on the homepage. Opens only multiply a story's score by at
             most 1.03, which can move it a few places and so in or out of the
             first 30 shown. They never add or remove a story from a day, a feed,
-            the daily edition, or a post. The extension loads no analytics.
+            the daily edition, or a post. The extension loads no analytics. When
+            you open its new tab, switch language, change a section, or click a
+            follow link on it, it sends one anonymous request to aidr.today, and
+            we add one to a per-day count for that event (and the channel or
+            language, for a click or a switch). The count holds no install ID,
+            cookie, or IP address, and Cloudflare's rate limiter keeps a
+            one-minute counter for your IP address, as above.
           </li>
           <li>
             <strong className="text-foreground">

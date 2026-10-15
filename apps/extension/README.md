@@ -58,5 +58,5 @@ Production default is `https://aidr.today`.
 - `optional_host_permissions`: `http://localhost/*` and `http://127.0.0.1/*`
   for a local API (`http://localhost:3014`)
 
-No identity, tabs scrape, webRequest, history, or analytics. See
+No identity, tabs scrape, webRequest, history, or analytics SDK. Anonymous per-day event counts only. See
 [`privacy.html`](./privacy.html).

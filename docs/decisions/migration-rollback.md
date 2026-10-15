@@ -289,6 +289,19 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0068_ext_events.sql
+
+- Change: new table `ext_events`. One row per UTC day, extension event and
+  key (channel for `channel_click`, language for `lang_change`, `''`
+  otherwise), holding a count and nothing that identifies an install.
+  Written by `GET /api/extension`; read by `GET /api/system/extension`
+  (28 days).
+- Risk: none for existing rows. Apply it before the Worker deploys so events
+  count from the first request. Without it the route answers as before and
+  writes nothing, and the /data card shows no events.
+- Rollback: deploy the previous Worker; `DROP TABLE ext_events;`. Nothing
+  else holds a value derived from it.
+
 ## 0066_item_summary_checked.sql
 
 - Change: adds nullable `items.summary_checked_at` (unix seconds). Nothing
