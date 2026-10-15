@@ -1299,6 +1299,31 @@ describe("model fallback chain", () => {
     expect(chatModelsOf(fetchMock)).toEqual(["solo/model"]);
   });
 
+  // Claude ids on AnyRouter answer `temperature` with a 400, and a 400 is
+  // never skipped, so a Claude fallback hop would fail on every call.
+  it("sends no temperature to a Claude hop, and 0 to every other hop", async () => {
+    const chat = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("upstream down", { status: 502 }))
+      .mockResolvedValueOnce(completion(scorePayload));
+    withJevDown(chat);
+
+    const results = await scoreItems(
+      { ...env, ANYROUTER_MODEL: "first/model,anthropic/claude-sonnet-5-5" },
+      scoreInput
+    );
+    const [first, claude] = chat.mock.calls.map((call) =>
+      JSON.parse(call[1].body)
+    );
+    expect(first.model).toBe("first/model");
+    expect(first.temperature).toBe(0);
+    expect(claude.model).toBe("anthropic/claude-sonnet-5-5");
+    expect(claude).not.toHaveProperty("temperature");
+    expect(claude.stream).toBe(true);
+    expect(claude.response_format).toEqual({ type: "json_object" });
+    expect(results[0].category).toBe("Models");
+  });
+
   it("keeps Jev scores and skips chat when systemone succeeds", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (!String(url).includes("/systemone")) {

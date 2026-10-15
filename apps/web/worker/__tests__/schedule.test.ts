@@ -87,18 +87,40 @@ describe("live AnyRouter model chains", () => {
     return match![1].split(",").map((s) => s.trim());
   }
 
-  // Router aliases are the safety net on score: they go last so one bad
-  // pick cannot burn a step's budget. Translate does not use
-  // anyrouter/auto. TL;DR has no alias either: anyrouter/auto served 0 of
-  // 26 tldr calls over 7 days (2026-10-11, 22 timeouts), so it only spent
-  // the fallback slice.
-  it("ends the score chain with the router safety net", () => {
-    const ids = idsOf("ANYROUTER_MODEL");
+  // Claude Sonnet is paid, so it runs only after every free id failed. It
+  // stays off translate and summarize (a third id cuts Laguna's head slice
+  // from 50s to 30s), TL;DR (luna's EN-only retry slice drops from 40s to
+  // 20s), the VI→EN generator (capped at 2 ids, a third is dropped), and
+  // review (must stay disjoint from the generators).
+  const PAID_FALLBACK = "anthropic/claude-sonnet-5-5";
+
+  // Router aliases are the safety net on score: they go after the free
+  // concrete ids so one bad pick cannot burn a step's budget. Translate does
+  // not use anyrouter/auto. TL;DR has no alias either: anyrouter/auto served
+  // 0 of 26 tldr calls over 7 days (2026-10-11, 22 timeouts), so it only
+  // spent the fallback slice.
+  it("puts the router safety net after the free concrete ids on score", () => {
+    const ids = idsOf("ANYROUTER_MODEL").filter((id) => id !== PAID_FALLBACK);
     expect(ids.at(-1)).toMatch(/^anyrouter\//);
     const firstAlias = ids.findIndex((id) => id.startsWith("anyrouter/"));
     expect(
       ids.slice(firstAlias).every((id) => id.startsWith("anyrouter/"))
     ).toBe(true);
+  });
+
+  it("keeps Claude Sonnet as the last score fallback and off every other chain", () => {
+    expect(idsOf("ANYROUTER_MODEL").at(-1)).toBe(PAID_FALLBACK);
+    for (const name of [
+      "ANYROUTER_TRANSLATE_MODEL",
+      "ANYROUTER_TLDR_MODEL",
+      "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
+      "ANYROUTER_REVIEW_MODEL",
+    ]) {
+      expect(
+        idsOf(name).some((id) => id.startsWith("anthropic/")),
+        name
+      ).toBe(false);
+    }
   });
 
   it("keeps anyrouter/auto off the TL;DR chain", () => {
