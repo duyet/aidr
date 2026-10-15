@@ -1,6 +1,6 @@
 ---
 name: aidr-daily-news
-description: Make the AI;DR Daily Brief — today's top AI stories as a two-anchor TV news video in 16:9 (YouTube, Facebook) and 9:16 (TikTok, Reels, Shorts), with a summary-grid opening, real post images, voices, music, sound effects, burned-in captions, cover stills and per-platform post captions, rendered at 4K. Use when the user asks for "today's news video", "daily video", "daily brief", "news video for TikTok / YouTube / Facebook", "generate today's video", or to change the daily template under videos/daily-news/.
+description: Make the AI;DR Daily Brief — today's top AI stories as a two-anchor TV news video in 16:9 (YouTube, Facebook) and 9:16 (TikTok, Reels, Shorts), with a rotating opening (summary grid, cover, chapter and more), real post images, voices, music, sound effects, burned-in captions, cover stills and per-platform post captions, rendered at 4K. Use when the user asks for "today's news video", "daily video", "daily brief", "news video for TikTok / YouTube / Facebook", "generate today's video", or to change the daily template under videos/daily-news/.
 ---
 
 # aidr-daily-news
@@ -71,9 +71,9 @@ Read `assets-sheet.jpg` (tiles row by row in the printed file order). Keep each 
 
 ### Make it look different every day
 
-- The opening is always the **summary grid** (the default intro): frame 0 shows every story's picture, number and headline with the date, so the first frame works as a thumbnail and the viewer sees the whole show at once. Other intros (`date-slam`, `countdown`, `headline-stack`) exist; pin one with `theme.intro` only when the owner asks.
-- The intro line names one or two stories; set `intro.focus` (`[{ "rank", "word" }]`) so those grid tiles lift on the spoken word — the grid otherwise holds still for the whole intro.
-- Leave `theme` out of `script.json`. The build derives `transition` (`wipe` | `ink` | `shutter`) and `background` (`paper` | `soft` | `grid`) from the date (`scripts/look.mjs`), so both change every day. A `theme` key pins that axis on every later rebuild; set one only when the owner asks. An unknown id fails the build.
+- The opening rotates by date over seven intros (`scripts/looks/intro.mjs`), never the same two days running: `grid` (every story's picture, number and headline), `cover` (the cover story's picture and hook, the other stories in a footer band), `date-slam` (the cover picture full bleed beside a yellow panel with the date), `chapter` (the story count as a jumbo numeral over a strip of pictures), `hinge` (two stories either side of a yellow band with the date and the semicolon), `headline-stack` (one numbered row per story) and `countdown` (the masthead over numbered squares). Each is finished on frame 0 with the date and real pictures, so the first frame works as a thumbnail. Pin one with `theme.intro` only when the owner asks.
+- The intro line names one or two stories; set `intro.focus` (`[{ "rank", "word" }]`) so the intro lifts those stories on the spoken word (a grid tile, a band cell, a row, a hinge side) while the others step back.
+- Leave `theme` out of `script.json`. The build derives `intro`, `transition` (`wipe` | `ink` | `shutter`), `background` (`paper` | `soft` | `grid`) and `choreography` (`rise` | `slide` | `mask`, how each story arrives) from the date (`scripts/look.mjs`), so both change every day. A `theme` key pins that axis on every later rebuild; set one only when the owner asks. An unknown id fails the build.
 - Story `layout` is optional: leave it out and the build picks one from the images that are really on disk (`scripts/look.mjs`, scores in `scripts/looks/layout.mjs`): `split` (image + column), `full` (strong photo full-bleed, card over it), `stat` (the number is the story), `poster` (the `thumb` story's copy on a yellow panel, once a day), `statement` (an image-less story's headline centred in large italic, at most twice). `stat` at most twice, never the same layout three times in a row, and `full` only when the story has an image. Set `layout` only to ask for one, e.g. `full` for a photo that holds up large. It wins when it can render; a `full` whose images are all gone falls back to the rules and the build prints `! look:`. An unknown id fails the build. `timeline.json` `layouts` records what shipped.
 - The sound changes by date too (`scripts/looks/sound.mjs`): each cue (open, story wipe, rank tile, stat, intro tick, outro) draws one effect from its pool, and the music bed starts on a different 8 s phrase. Every cut of a day (en, vi, visub) gets the same picks; `timeline.json` `sound` records them. Nothing to set.
 - `thumb` — the story and a 3–7 word hook for the cover still. Pick the biggest or most surprising story, not always #1. The cover's picture and hook always come from one story: when the thumb story has no image, the build uses the first ranked story with one (its kicker as the hook) and prints `! cover:`; when no story has an image, the thumb story keeps its hook with its paper card. Give the thumb to a story with a picture to keep your hook.
@@ -99,7 +99,7 @@ Where it goes: YouTube (16:9, `cover-<date>-16x9.png` as thumbnail, `captions.sr
 
 From the contact sheets and, after render, a few frames of each MP4:
 
-- Frame 0 is the full grid with the date; every tile readable.
+- Frame 0 shows the day's intro finished, with the date and real pictures; every label readable.
 - No text over text; captions clear of the copy card; the chrome bar readable.
 - The stat lands with its word; anchors alternate as written; no dead air longer than a breath.
 - Every fact on screen and in the voice is in `edition.json`.
@@ -117,7 +117,7 @@ From the contact sheets and, after render, a few frames of each MP4:
 
 - [ ] `script.json` has no rank cues or filler, a fresh intro line, and differs from yesterday in transition or background.
 - [ ] Every fact traces to `edition.json`.
-- [ ] Both contact sheets looked at; frame 0 is the grid.
+- [ ] Both contact sheets looked at; frame 0 shows the intro with its date and pictures.
 - [ ] Two 4K MP4s and two covers in `renders/`; `posts.md` and `captions.srt` written.
 - [ ] Sources committed (with `captions.visub.json` / `.srt`, `youtube.visub.json` and `screen.visub.json` when the visub cut ran); renders not. Report: paths, durations, anything skipped.
 
