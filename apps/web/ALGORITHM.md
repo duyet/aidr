@@ -1411,7 +1411,7 @@ Constants live in `worker/ranking.ts` (`IMPORTANCE_EXPONENT`,
   (×2.2), whatever the story's HN points. Replay: five votes put a fresh
   top-30 story into the top 5 in 92% of hours; one vote moves a top-10
   neighbour at most 22 places, down from 216.
-- **Reads are a weaker factor than votes.** `item_reads` (migration 0064)
+- **Reads are a weaker factor than votes.** `item_reads` (migration 0065)
   counts story opens and publisher clicks per story, UTC day, channel and
   kind (`POST /api/read`, a sendBeacon from the row; one count per browser
   tab per day; bot user agents, cross-site beacons and unknown ids dropped;

@@ -5,7 +5,7 @@ import type { DbReader } from "./db";
 import { loadSystemReads } from "./reads-query";
 
 const MIGRATION = readFileSync(
-  new URL("../../migrations/0064_item_reads.sql", import.meta.url),
+  new URL("../../migrations/0065_item_reads.sql", import.meta.url),
   "utf8"
 );
 
@@ -67,7 +67,7 @@ describe("loadSystemReads", () => {
     });
   });
 
-  it("returns the empty shape before migration 0064 is applied (defect: the Algo tab 500s)", async () => {
+  it("returns the empty shape before migration 0065 is applied (defect: the Algo tab 500s)", async () => {
     expect(await loadSystemReads(d1(itemsOnly()))).toEqual({
       window_days: 28,
       total: 0,

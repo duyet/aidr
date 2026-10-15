@@ -51,7 +51,7 @@ export async function loadSystemReads(db: DbReader): Promise<SystemReads> {
       db.prepare(KIND_SQL).bind(offset),
     ]);
   } catch (e) {
-    // Before migration 0064 the card shows "no reads", not a 500.
+    // Before migration 0065 the card shows "no reads", not a 500.
     if (String(e).includes("no such table")) return empty();
     throw e;
   }
