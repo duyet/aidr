@@ -978,3 +978,896 @@ describe("unmerge", () => {
     expect(read()).toEqual(before);
   });
 });
+
+// Ingest before 049e36df (#791): the cluster call answered a made-up
+// existing id, the merge wrote it as `duplicate_of`, and wrote the
+// cluster's source union under it.
+const TRIO_HUG = id(0xd1);
+const TRIO_MB = id(0xd2);
+const TRIO_VERGE = id(0xd3);
+const LONE = id(0xd4);
+const LOW = id(0xd5);
+const UNSCORED = id(0xd6);
+const SIM = id(0xd7);
+const RECENT_D = id(0xd8);
+const SIM_LIVE = id(0xe1);
+const RUN1 = OLD + 20_000;
+const RUN2 = OLD + 40_000;
+const TRIO_SLUG = "trump-replaces-term-ai-with-super-intelligence-4a261299";
+const TRIO_TITLE =
+  "Trump Replaces Term AI With Super Intelligence in Government Order";
+
+function aggregatorCopy(
+  rowId: string,
+  sourceId: "huggingnews" | "marketbrief",
+  slugPart: string,
+  title: string,
+  publishedAt: number
+): NewRow {
+  const host =
+    sourceId === "huggingnews" ? "huggingnews.com" : "marketbrief.now";
+  const url = `https://${host}/us-politics/${slugPart}`;
+  const card = `https://${host}/og/${slugPart}.png?v=1`;
+  return row(rowId, sourceId, {
+    url,
+    title,
+    publishedAt,
+    points: sourceId === "huggingnews" ? 1 : 3,
+    imageUrl: card,
+    mediaManifest: { version: 1, assets: [{ type: "image", url: card }] },
+    sources:
+      sourceId === "huggingnews"
+        ? [
+            {
+              kind: "source",
+              author: "@whitehouse",
+              postedAt: publishedAt - 600,
+              url: `https://x.com/WhiteHouse/status/${slugPart.length}`,
+            },
+          ]
+        : [{ kind: "source", url, postedAt: publishedAt }],
+  });
+}
+
+function story(
+  rowId: string,
+  sourceId: string,
+  title: string,
+  publishedAt: number,
+  path: string
+): NewRow {
+  return row(rowId, sourceId, {
+    url: `https://example.test/${path}`,
+    title,
+    publishedAt,
+    points: 12,
+    comments: 3,
+    sources:
+      sourceId === "hn"
+        ? [
+            {
+              kind: "discussion",
+              author: "pg",
+              postedAt: publishedAt,
+              url: `https://news.ycombinator.com/item?id=${path}`,
+            },
+          ]
+        : [],
+  });
+}
+
+const trio = (): NewRow[] => [
+  aggregatorCopy(TRIO_HUG, "huggingnews", TRIO_SLUG, TRIO_TITLE, RUN1 - 900),
+  aggregatorCopy(TRIO_MB, "marketbrief", TRIO_SLUG, TRIO_TITLE, RUN1 - 900),
+  story(
+    TRIO_VERGE,
+    "theverge-ai",
+    "Trump orders US government to call AI ‘Super Intelligence’",
+    RUN1 - 600,
+    "trump-ai-superintelligence-executive-order"
+  ),
+];
+const lone = () =>
+  story(
+    LONE,
+    "hn",
+    "Show HN: A tiny SQLite page inspector",
+    RUN1 - 800,
+    "49722276"
+  );
+const low = () =>
+  story(
+    LOW,
+    "marketbrief",
+    "Spreadsheet Startup Raises Seed Round for Formula Assistant",
+    RUN2 - 900,
+    "seed-round"
+  );
+const unscored = () =>
+  story(
+    UNSCORED,
+    "aws-ml",
+    "Build a document pipeline with Amazon Bedrock Data Automation",
+    RUN2 - 700,
+    "bedrock-pipeline"
+  );
+
+/** Ingest's write of one cluster: into `madeUpId` as the old cluster call
+ * answered it, or with no existing id (what ingest writes without it).
+ * Relevance is 0.9 unless `relevance` says otherwise; null leaves the row
+ * unscored. */
+async function writeRun(
+  target: DatabaseSync,
+  newRows: NewRow[],
+  madeUpId: string | null,
+  nowSec: number,
+  relevance: ReadonlyMap<string, number | null> = new Map(),
+  importance = 5
+) {
+  const scored = new Map<string, ItemScore>();
+  for (const r of newRows) {
+    const value = relevance.has(r.id) ? relevance.get(r.id) : 0.9;
+    if (typeof value === "number") {
+      scored.set(r.id, { ...score(importance), relevance: value });
+    }
+  }
+  const candidates = buildMergeCandidates(newRows, scored, TAGS, nowSec * 1000);
+  const mergePlan =
+    newRows.length > 1 || madeUpId
+      ? buildMergePlan(
+          [
+            {
+              new: candidates.map((c) => c.i),
+              existing: madeUpId ? [madeUpId] : [],
+            },
+          ],
+          candidates,
+          new Map(),
+          MAX_SOURCES_PER_ITEM,
+          MAX_MERGED_TOPICS
+        )
+      : EMPTY_MERGE_PLAN;
+  await writeItems(ingest(target), {
+    newRows,
+    scored,
+    translated: new Map(),
+    mergePlan,
+    canonicalTagsByItem: TAGS,
+    now: nowSec * 1000,
+  });
+}
+
+const LOW_RELEVANCE = new Map([
+  [LOW, 0.3],
+  [UNSCORED, null],
+]);
+
+/** The September shape: one cluster call lumped the trio and an unrelated
+ * story under `abc123`, a later run reused `abc123` for two more stories,
+ * and another gave `22` to a copy whose twin then published on its own. */
+async function writeDangling(target: DatabaseSync) {
+  await writeRun(target, [...trio(), lone()], "abc123", RUN1);
+  await writeRun(target, [low(), unscored()], "abc123", RUN2, LOW_RELEVANCE);
+  const { hidden, live } = australiaCopies(OLD + 60_000);
+  await writeRun(target, [hidden], "22", OLD + 61_000);
+  await writeCanonical(target, live, OLD + 61_500);
+  // A live story with a near-duplicate headline under another URL.
+  await writeCanonical(
+    target,
+    story(
+      SIM_LIVE,
+      "hn",
+      "OpenAI Halves API Prices With Launch of GPT-6 Sol and Luna",
+      OLD + 70_000,
+      "gpt6-prices"
+    ),
+    OLD + 70_100
+  );
+  await writeRun(
+    target,
+    [
+      aggregatorCopy(
+        SIM,
+        "huggingnews",
+        "openai-cuts-api-prices-50-in-new-gpt-6-model-launch-0be1c2d3",
+        "OpenAI Cuts API Prices 50% in New GPT-6 Model Launch",
+        OLD + 71_000
+      ),
+    ],
+    "ghi789",
+    OLD + 72_000
+  );
+  // Merged two hours ago, importance 9: restored now, it would trend.
+  await writeRun(
+    target,
+    [
+      row(RECENT_D, "techcrunch-ai", {
+        url: "https://techcrunch.example.test/amazon-ndas",
+        title:
+          "Amazon responds to data center backlash, says it no longer uses NDAs",
+        summary:
+          "Amazon says it stopped asking towns to sign NDAs before it builds data centers, after months of local pushback over secrecy and power use.",
+        publishedAt: NOW_SEC - 2 * 3600,
+        imageUrl: "https://techcrunch.example.test/amazon.jpg",
+        sources: [],
+      }),
+    ],
+    "abc123",
+    NOW_SEC - 3600,
+    new Map(),
+    9
+  );
+}
+
+/** What ingest writes for the same rows when no made-up id exists. */
+async function writeOracle(target: DatabaseSync) {
+  await writeRun(target, trio(), null, RUN1);
+  await writeRun(target, [lone()], null, RUN1);
+  await writeRun(target, [low()], null, RUN2, LOW_RELEVANCE);
+  await writeRun(target, [unscored()], null, RUN2, LOW_RELEVANCE);
+}
+
+const statusOf = (target: DatabaseSync, rowId: string) =>
+  shape(target, rowId) as { status: string; duplicate_of: string | null };
+
+describe("unmerge of dangling merges (#791)", () => {
+  beforeEach(async () => {
+    await writeDangling(db);
+  });
+
+  it("the fixture has the production shape: rows merged into ids no item has, sources under those ids", () => {
+    for (const rowId of [TRIO_HUG, TRIO_MB, TRIO_VERGE, LONE, LOW, UNSCORED]) {
+      expect(shape(db, rowId)).toMatchObject({
+        status: "merged",
+        duplicate_of: "abc123",
+      });
+    }
+    expect(statusOf(db, HIDDEN).duplicate_of).toBe("22");
+    expect(
+      db
+        .prepare(
+          "SELECT COUNT(*) AS n FROM items WHERE id IN ('abc123', '22', 'ghi789')"
+        )
+        .get()
+    ).toEqual({ n: 0 });
+    expect(sources(db, "abc123").length).toBeGreaterThan(0);
+  });
+
+  it("a dry run writes nothing and plans each story once", async () => {
+    const before = dump(db);
+    const result = await unmergeItems(env, { dangling: true });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.dryRun).toBe(true);
+    expect(dump(db)).toEqual(before);
+    const outcomes = Object.fromEntries(
+      result.plan.canonicals.flatMap((c) =>
+        c.pairs.map(({ pair, outcome }) => [
+          pair.mergedId,
+          outcome.action === "skip" ? outcome.reason : outcome.action,
+        ])
+      )
+    );
+    // The trio is one story: a slug pair and a near-duplicate headline the
+    // same cluster call put with them. The rest are stories of their own.
+    expect(outcomes).toEqual({
+      [TRIO_HUG]: expect.stringMatching(/^(restore|regroup)$/),
+      [TRIO_MB]: expect.stringMatching(/^(restore|regroup)$/),
+      [TRIO_VERGE]: expect.stringMatching(/^(restore|regroup)$/),
+      [LONE]: "restore",
+      [LOW]: "restore",
+      [UNSCORED]: "restore",
+      [HIDDEN]: "repoint",
+      [SIM]: "needs-decision",
+      [RECENT_D]: "inside-quiet-window",
+    });
+    expect(result.counts).toMatchObject({
+      pairs: expect.objectContaining({ restore: 4, regroup: 2 }),
+      restoredPublished: 3,
+      restoredRejected: 1,
+      repointed: 1,
+      needsDecision: 1,
+      canonicalsChanged: 0,
+    });
+  });
+
+  it("restores each story as ingest writes it with no made-up id", async () => {
+    const result = await unmergeItems(env, { dangling: true, dryRun: false });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.applied).toMatchObject({ stale: [], remaining: 0 });
+
+    const oracle = migratedDb();
+    await writeOracle(oracle);
+    for (const rowId of [TRIO_HUG, TRIO_MB, TRIO_VERGE, LONE, LOW, UNSCORED]) {
+      expect(shape(db, rowId)).toEqual(shape(oracle, rowId));
+    }
+    // The first run's sources fit under the 8-row cap, so each row gets its
+    // own back.
+    for (const rowId of [TRIO_HUG, TRIO_MB, TRIO_VERGE, LONE]) {
+      expect(sources(db, rowId)).toEqual(sources(oracle, rowId));
+    }
+    expect(statusOf(db, LOW).status).toBe("rejected");
+    expect(statusOf(db, UNSCORED).status).toBe("published");
+    oracle.close();
+
+    // A merge into a real canonical is not this mode's to touch.
+    expect(shape(db, HUG)).toMatchObject({ status: "merged", duplicate_of: C });
+  });
+
+  it("never publishes a story that is already live under another id", async () => {
+    const published = () =>
+      db
+        .prepare("SELECT id FROM items WHERE status = 'published' ORDER BY id")
+        .all()
+        .map((r) => (r as { id: string }).id);
+    const before = published();
+    const result = await unmergeItems(env, { dangling: true, dryRun: false });
+    if ("error" in result) throw new Error(result.error);
+
+    // The copy whose twin is live joins it, as ingest would have merged it.
+    expect(statusOf(db, HIDDEN)).toMatchObject({
+      status: "merged",
+      duplicate_of: LIVE,
+    });
+    // A near-duplicate of a live story waits for a human; nothing is written.
+    expect(statusOf(db, SIM)).toMatchObject({
+      status: "merged",
+      duplicate_of: "ghi789",
+    });
+    const lead = [TRIO_HUG, TRIO_MB, TRIO_VERGE].find(
+      (rowId) => statusOf(db, rowId).status === "published"
+    );
+    expect(published().filter((rowId) => !before.includes(rowId))).toEqual(
+      [lead, LONE, UNSCORED].sort()
+    );
+  });
+
+  it("posts nothing and leaves the recent merge for later", async () => {
+    await unmergeItems(env, { dangling: true, dryRun: false });
+    expect(statusOf(db, RECENT_D)).toMatchObject({
+      status: "merged",
+      duplicate_of: "abc123",
+    });
+
+    const bodies: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        bodies.push(String(init?.body ?? ""));
+        return new Response(
+          JSON.stringify({ ok: true, result: { message_id: bodies.length } }),
+          { headers: { "content-type": "application/json" } }
+        );
+      })
+    );
+    await dispatchStoryNotifications({
+      ...env,
+      TELEGRAM_BOT_TOKEN: "token",
+      TELEGRAM_VI_CHAT_ID: "@vi",
+      TELEGRAM_EN_CHAT_ID: "@en",
+    } as Env);
+    const sent = bodies.join("\n");
+    for (const text of [
+      TRIO_TITLE,
+      "Super Intelligence",
+      "SQLite page",
+      "Amazon responds",
+    ]) {
+      expect(sent).not.toContain(text);
+    }
+    for (const restored of [
+      TRIO_HUG,
+      TRIO_MB,
+      TRIO_VERGE,
+      LONE,
+      UNSCORED,
+      RECENT_D,
+    ]) {
+      expect(sent).not.toContain(restored);
+    }
+    expect(db.prepare("SELECT COUNT(*) AS n FROM notifications").get()).toEqual(
+      { n: 0 }
+    );
+  });
+
+  it("a rerun writes nothing and plans only the held rows", async () => {
+    await unmergeItems(env, { dangling: true, dryRun: false });
+    const after = dump(db);
+    const again = await unmergeItems(env, { dangling: true, dryRun: false });
+    if ("error" in again) throw new Error(again.error);
+    expect(again.counts.pairs).toEqual({
+      "skip:needs-decision": 1,
+      "skip:inside-quiet-window": 1,
+    });
+    expect(again.applied).toMatchObject({ canonicals: 0, statements: 0 });
+    expect(dump(db)).toEqual(after);
+  });
+
+  it("undo puts every row back, and a second undo is a no-op", async () => {
+    const preApply = tables(db);
+    const applied = await unmergeItems(env, { dangling: true, dryRun: false });
+    if ("error" in applied) throw new Error(applied.error);
+    expect(tables(db)).not.toEqual(preApply);
+    const batchId = applied.applied?.batchId;
+    const undone = await undoUnmerge(env, { batchId, dryRun: false });
+    if ("error" in undone) throw new Error(undone.error);
+    expect(undone.plan.canonicals.map((c) => c.state)).not.toContain(
+      "conflict"
+    );
+    expect(tables(db)).toEqual(preApply);
+    const again = await undoUnmerge(env, { batchId, dryRun: false });
+    if ("error" in again) throw new Error(again.error);
+    expect(new Set(again.plan.canonicals.map((c) => c.state))).toEqual(
+      new Set(["noop"])
+    );
+    expect(tables(db)).toEqual(preApply);
+  });
+
+  it("refuses dangling together with pairs", async () => {
+    expect(await unmergeItems(env, { dangling: true, pairs })).toMatchObject({
+      status: 400,
+    });
+  });
+
+  it("settles a held story by a decision on any of its rows (#793)", async () => {
+    const outcomeOf = async (decisions: unknown[]) => {
+      const result = await unmergeItems(env, { dangling: true, decisions });
+      if ("error" in result) throw new Error(result.error);
+      return result.plan.canonicals
+        .flatMap((c) => c.pairs)
+        .find(({ pair }) => pair.mergedId === SIM)?.outcome;
+    };
+    expect(
+      await outcomeOf([{ mergedId: SIM, distinctFrom: [SIM_LIVE] }])
+    ).toMatchObject({ action: "restore", status: "published" });
+    expect(await outcomeOf([{ mergedId: SIM, sameAs: SIM_LIVE }])).toEqual({
+      action: "repoint",
+      twinId: SIM_LIVE,
+      rule: "same-as",
+    });
+
+    const before = dump(db);
+    const applied = await unmergeItems(env, {
+      dangling: true,
+      decisions: [{ mergedId: SIM, distinctFrom: [SIM_LIVE] }],
+      dryRun: false,
+    });
+    if ("error" in applied) throw new Error(applied.error);
+    expect(dump(db)).not.toEqual(before);
+    expect(statusOf(db, SIM)).toMatchObject({
+      status: "published",
+      duplicate_of: null,
+    });
+    // The rerun of a capped apply posts the same decisions; a spent one is
+    // not an error.
+    expect(
+      await unmergeItems(env, {
+        dangling: true,
+        decisions: [{ mergedId: SIM, distinctFrom: [SIM_LIVE] }],
+      })
+    ).not.toHaveProperty("error");
+  });
+
+  it("still joins a live copy with the story's identity, whatever distinctFrom names", async () => {
+    const result = await unmergeItems(env, {
+      dangling: true,
+      decisions: [{ mergedId: HIDDEN, distinctFrom: [LIVE] }],
+    });
+    if ("error" in result) throw new Error(result.error);
+    expect(
+      result.plan.canonicals
+        .flatMap((c) => c.pairs)
+        .find(({ pair }) => pair.mergedId === HIDDEN)?.outcome
+    ).toMatchObject({ action: "repoint", twinId: LIVE });
+  });
+
+  it("holds a story whose rows carry two different decisions", async () => {
+    const result = await unmergeItems(env, {
+      dangling: true,
+      decisions: [
+        { mergedId: TRIO_HUG, sameAs: SIM_LIVE },
+        { mergedId: TRIO_MB, distinctFrom: [SIM_LIVE] },
+      ],
+    });
+    if ("error" in result) throw new Error(result.error);
+    const trio = result.plan.canonicals
+      .flatMap((c) => c.pairs)
+      .filter(({ pair }) =>
+        [TRIO_HUG, TRIO_MB, TRIO_VERGE].includes(pair.mergedId)
+      );
+    expect(trio.map(({ outcome }) => outcome)).toEqual(
+      Array(3).fill(
+        expect.objectContaining({ action: "skip", reason: "needs-decision" })
+      )
+    );
+  });
+
+  it("refuses a decision it cannot apply, and writes nothing", async () => {
+    const before = dump(db);
+    for (const decisions of [
+      // No canonical to be distinct from: it would judge nothing.
+      [{ mergedId: SIM, distinct: true }],
+      [{ mergedId: SIM }],
+      // A typo'd id names no item.
+      [{ mergedId: id(0xdead), sameAs: SIM_LIVE }],
+      [
+        { mergedId: SIM, sameAs: SIM_LIVE },
+        { mergedId: SIM, distinctFrom: [SIM_LIVE] },
+      ],
+      { mergedId: SIM, sameAs: SIM_LIVE },
+    ]) {
+      expect(
+        await unmergeItems(env, { dangling: true, decisions, dryRun: false })
+      ).toMatchObject({ status: 400 });
+    }
+    expect(
+      await unmergeItems(env, {
+        pairs,
+        decisions: [{ mergedId: SIM, sameAs: SIM_LIVE }],
+      })
+    ).toMatchObject({ status: 400 });
+    expect(dump(db)).toEqual(before);
+  });
+});
+
+// The live copies the #794 dry run missed: a merged copy of a live story, a
+// URL with a trailing slash, a Vietnamese live row, and one story under two
+// made-up ids.
+const ROOT = id(0xf1);
+const ROOT_COPY = id(0xf2);
+const COPY_D = id(0xf3);
+const SLASH_LIVE = id(0xf4);
+const SLASH_D = id(0xf5);
+const VI_LIVE = id(0xf6);
+const VI_D = id(0xf7);
+const FOLD_A = id(0xf8);
+const FOLD_B = id(0xf9);
+const NEAR_D = id(0xfa);
+const STRAY_ROOT = id(0xfb);
+const STRAY_COPY = id(0xfc);
+const STRAY_D = id(0xfd);
+const LATE_LIVE = id(0xfe);
+const LATE_D = id(0xff);
+const REWORD_LIVE = id(0xe2);
+const REWORD_D = id(0xe3);
+const T = OLD - 10 * 86_400;
+const HOUR = 3600;
+const MUSE_SLUG =
+  "meta-enables-muse-ai-checkout-for-paypal-and-shopify-7814a26b";
+const MUSE_TITLE =
+  "Meta Enables Muse AI Checkout for All PayPal and Shopify Merchants";
+
+function translateToEnglish(
+  target: DatabaseSync,
+  rowId: string,
+  title: string
+) {
+  target
+    .prepare(
+      "INSERT INTO translations (item_id, lang, title, summary) VALUES (?, 'en', ?, ?)"
+    )
+    .run(rowId, title, "Summary in English.");
+}
+
+async function writeMissedCopies(target: DatabaseSync) {
+  // The copy joined its root 80 hours later; the dangling rows sit near the
+  // copy, and NEAR_D is 100 hours from the root.
+  const root = story(
+    ROOT,
+    "theverge-ai",
+    "Meta’s Muse AI checkout comes to PayPal merchants",
+    T,
+    "verge-muse-checkout"
+  );
+  await writeCanonical(target, root, T + 100);
+  await writeCluster(
+    target,
+    [
+      aggregatorCopy(
+        ROOT_COPY,
+        "marketbrief",
+        MUSE_SLUG,
+        MUSE_TITLE,
+        T + 80 * HOUR
+      ),
+    ],
+    { id: ROOT, row: root },
+    T + 80 * HOUR + 100
+  );
+  await writeRun(
+    target,
+    [
+      aggregatorCopy(
+        COPY_D,
+        "huggingnews",
+        MUSE_SLUG,
+        MUSE_TITLE,
+        T + 81 * HOUR
+      ),
+    ],
+    "abc123",
+    T + 81 * HOUR + 100
+  );
+  await writeRun(
+    target,
+    [
+      aggregatorCopy(
+        NEAR_D,
+        "huggingnews",
+        "meta-muse-ai-checkout-reaches-paypal-and-shopify-merchants-9a8b7c6d",
+        "Meta Muse AI Checkout Reaches PayPal and Shopify Merchants",
+        T + 100 * HOUR
+      ),
+    ],
+    "pqr678",
+    T + 100 * HOUR + 100
+  );
+
+  // An aggregator copy the cluster call put into an unrelated story.
+  const agentCore = story(
+    STRAY_ROOT,
+    "aws-ml",
+    "The new AgentCore runtime: Elastic, optimized, and consistent",
+    T + 1500,
+    "agentcore-runtime"
+  );
+  await writeCanonical(target, agentCore, T + 1600);
+  const plugin = "plugin4shell-zero-click-rce-hits-4-ai-agents-3e1f2a7b";
+  const pluginTitle =
+    "Plugin4Shell Zero Click RCE Hits 4 AI Agents in First AI Supply Chain Flaw";
+  await writeCluster(
+    target,
+    [aggregatorCopy(STRAY_COPY, "marketbrief", plugin, pluginTitle, T + 1700)],
+    { id: STRAY_ROOT, row: agentCore },
+    T + 1800
+  );
+  await writeRun(
+    target,
+    [aggregatorCopy(STRAY_D, "huggingnews", plugin, pluginTitle, T + 1750)],
+    "stu901",
+    T + 1900
+  );
+
+  // One launch, reported 77 hours apart: past the 72-hour merge lookback.
+  await writeCanonical(
+    target,
+    aggregatorCopy(
+      LATE_LIVE,
+      "marketbrief",
+      "glm-53-flashx-hits-200-tokens-per-second-at-25x-price-5f8a8265",
+      "GLM 5.3 FlashX Hits 200 Tokens Per Second at 2.5X Price",
+      T + 5000
+    ),
+    T + 5100
+  );
+  await writeRun(
+    target,
+    [
+      aggregatorCopy(
+        LATE_D,
+        "huggingnews",
+        "zhipu-launches-glm-53-flashx-at-200-tokens-per-second-f809ee92",
+        "Zhipu Launches GLM 5.3 FlashX at 200 Tokens Per Second on 100 000 Chinese Chips",
+        T + 5000 + 77 * HOUR
+      ),
+    ],
+    "vwx234",
+    T + 5000 + 77 * HOUR + 100
+  );
+
+  await writeCanonical(
+    target,
+    story(
+      REWORD_LIVE,
+      "the-decoder",
+      "Google Deepmind's Dream-RSI helps AI agents improve by “dreaming” about past attempts",
+      T + 6000,
+      "deepmind-dream-rsi"
+    ),
+    T + 6100
+  );
+  await writeRun(
+    target,
+    [
+      aggregatorCopy(
+        REWORD_D,
+        "marketbrief",
+        "google-deepmind-dream-rsi-boosts-ai-performance-209x-6415fdd4",
+        "Google DeepMind Dream-RSI Boosts AI Performance 2.09x Without Changing Model Weights",
+        T + 6000 + 70 * HOUR
+      ),
+    ],
+    "yz123",
+    T + 6000 + 70 * HOUR + 100
+  );
+
+  const page = "https://openai.example.test/index/mentalhealthbench";
+  await writeCanonical(
+    target,
+    row(SLASH_LIVE, "hn", {
+      url: page,
+      title: "MentalHealthBench: how models handle mental health conversations",
+      publishedAt: T + 1000,
+      points: 40,
+      sources: [],
+    }),
+    T + 1100
+  );
+  await writeRun(
+    target,
+    [
+      row(SLASH_D, "openai", {
+        url: `${page}/`,
+        title: "Introducing MentalHealthBench",
+        publishedAt: T + 900,
+        sources: [],
+      }),
+    ],
+    "def456",
+    T + 1200
+  );
+
+  const vnexpress = "https://vnexpress.net/openai-giam-gia-api-5130001.html";
+  await writeCanonical(
+    target,
+    row(VI_LIVE, "vnexpress-tech", {
+      url: vnexpress,
+      title: "OpenAI giảm một nửa giá API khi ra mắt GPT-6",
+      publishedAt: T + 2000,
+      sourceLang: "vi",
+      sources: [{ kind: "source", url: vnexpress, postedAt: T + 2000 }],
+    }),
+    T + 2100
+  );
+  translateToEnglish(
+    target,
+    VI_LIVE,
+    "OpenAI Halves API Prices With Launch of GPT-6 Sol and Luna"
+  );
+  await writeRun(
+    target,
+    [
+      aggregatorCopy(
+        VI_D,
+        "huggingnews",
+        "openai-cuts-api-prices-50-in-new-gpt-6-model-launch-5e6f7a8b",
+        "OpenAI Cuts API Prices 50% in New GPT-6 Model Launch",
+        T + 2200
+      ),
+    ],
+    "ghi789",
+    T + 2300
+  );
+
+  const spec = "https://openai.example.test/index/agents-md-v2";
+  await writeRun(
+    target,
+    [
+      row(FOLD_A, "openai", {
+        url: `${spec}/`,
+        title: "Introducing AGENTS.md v2",
+        publishedAt: T + 3000,
+        sources: [],
+      }),
+    ],
+    "jkl012",
+    T + 3100
+  );
+  await writeRun(
+    target,
+    [
+      row(FOLD_B, "hn", {
+        url: spec,
+        title: "A spec file for coding assistants",
+        publishedAt: T + 3500,
+        points: 25,
+        sources: [],
+      }),
+    ],
+    "mno345",
+    T + 3600
+  );
+}
+
+describe("unmerge of dangling merges: live copies under another form (#794)", () => {
+  beforeEach(async () => {
+    await writeMissedCopies(db);
+  });
+
+  const outcomesOf = (result: Awaited<ReturnType<typeof unmergeItems>>) => {
+    if ("error" in result) throw new Error(result.error);
+    return new Map(
+      result.plan.canonicals.flatMap((c) =>
+        c.pairs.map(({ pair, outcome }) => [pair.mergedId as string, outcome])
+      )
+    );
+  };
+
+  it("joins a story whose only live copy is merged into a published row, at that row", async () => {
+    const outcome = outcomesOf(await unmergeItems(env, { dangling: true })).get(
+      COPY_D
+    );
+    expect(outcome).toEqual({
+      action: "repoint",
+      twinId: ROOT,
+      rule: "aggregator-slug",
+    });
+    await unmergeItems(env, { dangling: true, dryRun: false });
+    expect(statusOf(db, COPY_D)).toMatchObject({
+      status: "merged",
+      duplicate_of: ROOT,
+    });
+  });
+
+  it("names the published row, not its merged copy, for a near-duplicate of the copy", async () => {
+    const outcome = outcomesOf(await unmergeItems(env, { dangling: true })).get(
+      NEAR_D
+    );
+    expect(outcome).toMatchObject({ action: "skip", reason: "needs-decision" });
+    expect(
+      outcome?.action === "skip" && outcome.candidates?.map((c) => c.id)
+    ).toEqual([ROOT]);
+  });
+
+  it("holds a story whose live copy is merged into an unrelated row, instead of hiding it there", async () => {
+    const outcome = outcomesOf(await unmergeItems(env, { dangling: true })).get(
+      STRAY_D
+    );
+    expect(outcome).toMatchObject({ action: "skip", reason: "needs-decision" });
+    expect(
+      outcome?.action === "skip" && outcome.candidates?.map((c) => c.id)
+    ).toEqual([STRAY_ROOT]);
+  });
+
+  it("holds a near-duplicate of a live story published a day past the merge lookback", async () => {
+    expect(
+      outcomesOf(await unmergeItems(env, { dangling: true })).get(LATE_D)
+    ).toMatchObject({
+      action: "skip",
+      reason: "needs-decision",
+      candidates: [expect.objectContaining({ id: LATE_LIVE })],
+    });
+  });
+
+  it("holds a reworded headline that shares four evidence words with a live story", async () => {
+    expect(
+      outcomesOf(await unmergeItems(env, { dangling: true })).get(REWORD_D)
+    ).toMatchObject({
+      action: "skip",
+      reason: "needs-decision",
+      candidates: [expect.objectContaining({ id: REWORD_LIVE })],
+    });
+  });
+
+  it("treats a URL with a trailing slash as the same page", async () => {
+    expect(
+      outcomesOf(await unmergeItems(env, { dangling: true })).get(SLASH_D)
+    ).toEqual({ action: "repoint", twinId: SLASH_LIVE, rule: "url" });
+  });
+
+  it("holds an English story whose live copy is Vietnamese, matched through the stored English title", async () => {
+    expect(
+      outcomesOf(await unmergeItems(env, { dangling: true })).get(VI_D)
+    ).toMatchObject({
+      action: "skip",
+      reason: "needs-decision",
+      candidates: [expect.objectContaining({ id: VI_LIVE })],
+    });
+  });
+
+  it("restores one story under two made-up ids once, with the other row merged into it", async () => {
+    const outcomes = outcomesOf(await unmergeItems(env, { dangling: true }));
+    expect(
+      [FOLD_A, FOLD_B].map((rowId) => outcomes.get(rowId)?.action).sort()
+    ).toEqual(["regroup", "restore"]);
+    await unmergeItems(env, { dangling: true, dryRun: false });
+    const published = [FOLD_A, FOLD_B].filter(
+      (rowId) => statusOf(db, rowId).status === "published"
+    );
+    expect(published).toHaveLength(1);
+    const other = published[0] === FOLD_A ? FOLD_B : FOLD_A;
+    expect(statusOf(db, other)).toMatchObject({
+      status: "merged",
+      duplicate_of: published[0],
+    });
+  });
+});

@@ -9,6 +9,7 @@ import {
   UNMERGE_QUIET_SEC,
   type UnmergeItemRow,
 } from "../unmerge/plan.js";
+import { sameStoryRule } from "../unmerge/twins.js";
 
 const NOW_MS = Date.UTC(2026, 9, 14, 3);
 const OLD = NOW_MS / 1000 - 10 * 86_400;
@@ -40,6 +41,7 @@ function item(
     llm_quality: 5,
     rank_score: 1,
     source_lang: "en",
+    title_en: null,
     vote_net: 0,
     notifications: 0,
     has_vi: 0,
@@ -53,7 +55,10 @@ const storyRef = (row: UnmergeItemRow) => ({
   url: row.url,
   title: row.title,
   published_at: row.published_at,
+  source_lang: row.source_lang,
+  title_en: row.title_en,
 });
+const liveRef = (row: UnmergeItemRow) => ({ ...storyRef(row), root: row.id });
 
 const tweet = (handle: string): StoredSource => ({
   kind: "support",
@@ -321,7 +326,7 @@ describe("planUnmerge", () => {
   const snapshot = (rows: UnmergeItemRow[], sources: StoredSource[] = []) => ({
     items: new Map(rows.map((r) => [r.id as string, r])),
     sources: new Map([[canonical.id as string, sources]]),
-    published: rows.filter((r) => r.status === "published").map(storyRef),
+    live: rows.filter((r) => r.status === "published").map(liveRef),
   });
 
   it("restores a VI-source row with the native translations row ingest writes", () => {
@@ -595,7 +600,7 @@ describe("planUnmerge: a restored story already live as another row", () => {
       {
         items: new Map(rows.map((r) => [r.id as string, r])),
         sources: new Map([[canonical.id as string, sources]]),
-        published: rows.filter((r) => r.status === "published").map(storyRef),
+        live: rows.filter((r) => r.status === "published").map(liveRef),
       },
       NOW_MS
     );
@@ -771,6 +776,87 @@ describe("planUnmerge: a restored story already live as another row", () => {
       [pair(today)]
     );
     expect(result.canonicals[0].pairs[0].outcome.action).not.toBe("repoint");
+  });
+
+  it("re-points to the published row whose merged copy is the story's twin", () => {
+    const root = live(
+      40,
+      "theverge-ai",
+      "https://example.test/verge",
+      "Anthropic backs Australian breach reporting laws for AI agents"
+    );
+    const copy = item(41, "huggingnews", `https://huggingnews.com/ai/${slug}`, {
+      title,
+      duplicate_of: root.id,
+    });
+    const parsed = parseUnmergePairs([pair(hidden)]);
+    if ("error" in parsed) throw new Error(parsed.error);
+    const result = planUnmerge(
+      parsed.pairs,
+      {
+        items: new Map(
+          [canonical, hidden, root, copy].map((r) => [r.id as string, r])
+        ),
+        sources: new Map(),
+        live: [
+          liveRef(canonical),
+          liveRef(root),
+          { ...storyRef(copy), root: root.id },
+        ],
+      },
+      NOW_MS
+    );
+    expect(result.canonicals[0].pairs[0].outcome).toEqual({
+      action: "repoint",
+      twinId: root.id,
+      rule: "aggregator-slug",
+    });
+  });
+
+  it("holds a Vietnamese row whose English title is a live headline, never re-points it", () => {
+    const vi = item(
+      42,
+      "vnexpress-tech",
+      "https://vnexpress.net/a-5130002.html",
+      {
+        title: "Anthropic ủng hộ luật báo cáo sự cố tác tử AI tại Australia",
+        source_lang: "vi",
+        title_en: title,
+      }
+    );
+    const english = live(
+      43,
+      "the-decoder",
+      "https://example.test/decoder",
+      title
+    );
+    const result = plan([canonical, vi, english], [pair(vi)]);
+    expect(result.canonicals[0].pairs[0].outcome).toMatchObject({
+      action: "skip",
+      reason: "needs-decision",
+      candidates: [storyRef(english)],
+    });
+  });
+
+  it("reads one page behind a trailing slash, www. or a fragment, but not another query", () => {
+    const at = (n: number, url: string) => ({
+      ...storyRef(item(n, "hn", url)),
+      title: `t${n}`,
+    });
+    const page = at(50, "https://openai.com/index/mentalhealthbench/");
+    for (const url of [
+      "https://openai.com/index/mentalhealthbench",
+      "https://www.openai.com/index/mentalhealthbench#results",
+      "http://openai.com/index/mentalhealthbench/?utm_source=rss",
+    ]) {
+      expect(sameStoryRule(page, at(51, url))).toBe("url");
+    }
+    expect(
+      sameStoryRule(
+        at(52, "https://news.ycombinator.com/item?id=1"),
+        at(53, "https://news.ycombinator.com/item?id=2")
+      )
+    ).toBeNull();
   });
 
   it("defers the second of two restored copies of one story until the first is live", () => {
