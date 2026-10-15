@@ -31,12 +31,13 @@ export function editionFamilyCeiling(limit: number): number {
  * `pickDiverse` alone cut by source family only: in the week of 2026-10-09
  * it dropped importance-8 stories ranked in the top 30 (Gemini 4 Argon's
  * safety report at 8.1) while HN rows at importance 4 (a $15M maths grant)
- * made the edition on points. Within the contention depth, a top-tier story
- * the family cap would cut takes one extra slot for its family, and the
- * slot comes off the lowest-ranked story of any family, never a
- * higher-ranked one from its own (on 2026-10-15 the lifted Gemini 4 Argon
- * report at #26 must not cost Black Forest Labs' open model at #10). A weak
- * story is the last resort. The result is in rank order.
+ * made the edition on points. Within the contention depth, every top-tier
+ * story holds a slot, which comes off the edition's lowest-ranked other
+ * story of any family. One the family cap would cut takes one extra slot
+ * for its family, so a lift never costs its family a higher-ranked pick (on
+ * 2026-10-15 the lifted Gemini 4 Argon report at #26 must not cost Black
+ * Forest Labs' open model at #10). A weak story is the last resort. The
+ * result is in rank order.
  */
 export function selectEdition<T extends EditionCandidate>(
   candidates: readonly T[],

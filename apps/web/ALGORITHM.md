@@ -1441,8 +1441,10 @@ Every run (30 minutes).
   1. The top 32, importance ≥ 5, in rank order, 5 per family. An
      importance-8+ row the cap would cut takes a 6th slot for its family
      (`EDITION_TOP_TIER_LIFT` = 1). Slots for the 8+ rows are held back
-     before the walk, so the extra slot comes off the lowest-ranked other
-     story, never a higher-ranked story of the same family. A held slot
+     before the walk, so each comes off the edition's lowest-ranked other
+     story of any family (an 8+ row can push out its own family's tail
+     pick when that is the lowest), and a lifted 6th slot never costs its
+     family a higher-ranked pick. A held slot
      its 8+ row could not use (the family reached 6 first) goes to the
      next importance-5+ row in the top 32.
   2. The rest of the pool in rank order, 5 per family.
