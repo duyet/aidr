@@ -91,6 +91,13 @@ function PrivacyPage() {
             comment is cleared after 90 days. Mail from an address with no
             account keeps no content, only a reason and a hash.
           </li>
+          <li>
+            <strong className="text-foreground">Email digest.</strong> If you
+            subscribe, we keep your address, language, delivery settings, the
+            page you signed up from, a log of which mails we sent you, and your
+            "was this useful" votes under your unsubscribe token. Unsubscribing
+            deletes all of it at once. Nothing about you stays behind.
+          </li>
         </ul>
         <p>
           No account, no ads, and no sale of data. We use the data only to show

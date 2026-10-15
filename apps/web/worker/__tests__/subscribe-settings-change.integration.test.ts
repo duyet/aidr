@@ -362,3 +362,83 @@ describe("signing up again while pending (#723)", () => {
     ).resolves.toEqual({ ok: true, token: first });
   });
 });
+
+describe("unsubscribe erases the reader everywhere (#833)", () => {
+  const TOKEN = "tok-confirmed";
+  const OTHER = "other@aidr-test.dev";
+
+  function tablesHolding(needle: string): string[] {
+    const tables = sqlite
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+      )
+      .all() as { name: string }[];
+    return tables
+      .filter(({ name }) => {
+        const columns = sqlite
+          .prepare(`SELECT name FROM pragma_table_info('${name}')`)
+          .all() as { name: string }[];
+        if (columns.length === 0) return false;
+        const hit = columns
+          .map(({ name: col }) => `instr(CAST("${col}" AS TEXT), ?) > 0`)
+          .join(" OR ");
+        return (
+          sqlite
+            .prepare(`SELECT 1 FROM "${name}" WHERE ${hit} LIMIT 1`)
+            .get(...columns.map(() => needle)) !== undefined
+        );
+      })
+      .map(({ name }) => name);
+  }
+
+  it("leaves no table holding the address or the token, and keeps other readers", async () => {
+    sqlite
+      .prepare(
+        `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size, mail_format)
+         VALUES (?, 'en', 'UTC', 0, 1, 'tok-other', 5, 'design')`
+      )
+      .run(OTHER);
+    for (const email of [EMAIL, OTHER]) {
+      sqlite
+        .prepare(
+          "INSERT INTO subscriber_sources (email, source, updated_at) VALUES (?, 'home', 1)"
+        )
+        .run(email);
+      sqlite
+        .prepare(
+          "INSERT INTO email_sends (campaign_id, email, sent_at) VALUES ('c1', ?, 1)"
+        )
+        .run(email);
+    }
+    for (const token of [TOKEN, "tok-other"]) {
+      sqlite
+        .prepare(
+          "INSERT INTO email_feedback (date, subscriber_token, lang, vote, created_at, updated_at) VALUES ('2026-10-16', ?, 'en', 1, 1, 1)"
+        )
+        .run(token);
+    }
+    expect(tablesHolding(EMAIL).sort()).toEqual([
+      "email_sends",
+      "subscriber_sources",
+      "subscribers",
+    ]);
+    expect(tablesHolding(TOKEN).sort()).toEqual([
+      "email_feedback",
+      "subscribers",
+    ]);
+
+    expect(await unsubscribe(env, TOKEN)).toEqual({ ok: true });
+
+    expect(tablesHolding(EMAIL)).toEqual([]);
+    expect(tablesHolding(TOKEN)).toEqual([]);
+    expect(tablesHolding(OTHER).sort()).toEqual([
+      "email_sends",
+      "subscriber_sources",
+      "subscribers",
+    ]);
+    expect(tablesHolding("tok-other").sort()).toEqual([
+      "email_feedback",
+      "subscribers",
+    ]);
+  });
+});
