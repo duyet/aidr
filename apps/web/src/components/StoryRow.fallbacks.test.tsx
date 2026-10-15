@@ -122,16 +122,27 @@ describe("content history", () => {
 });
 
 describe("story image", () => {
-  it("falls back to the first-party card, never an empty src", () => {
+  it("gives an image-less feed row the brand tile, not a cropped story card", () => {
+    // The 1200x630 card shrunk into the 2lh square showed only fragments
+    // of its headline, and cost a card render per row.
     const html = renderToStaticMarkup(
       <StoryThumb src={null} itemId={item.id} lang="en" />
+    );
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("/api/og/");
+    expect(html).toContain(">;</span></span>");
+  });
+
+  it("falls back to the first-party card on the story page, never an empty src", () => {
+    const html = renderToStaticMarkup(
+      <StoryThumb src={null} itemId={item.id} lang="en" variant="card" />
     );
     expect(html).toContain("/api/og/abcdef12deadbeef.png?lang=en");
     expect(html).not.toContain('src=""');
   });
 
-  it("uses the branded mark when there is neither image nor id", () => {
-    const html = renderToStaticMarkup(<StoryThumb src={null} />);
+  it("uses the branded mark on the story page when there is neither image nor id", () => {
+    const html = renderToStaticMarkup(<StoryThumb src={null} variant="card" />);
     expect(html).toContain(`src="${STORY_THUMB_PLACEHOLDER}"`);
   });
 });

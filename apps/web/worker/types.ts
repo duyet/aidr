@@ -10,6 +10,9 @@ export interface Env {
   /** Singleton DO that arms a 30-minute alarm and coalesces ingest triggers.
    *  Optional so node tests can omit it; production wrangler always binds it. */
   NEWS_INGEST_SCHEDULER?: DurableObjectNamespace;
+  /** One `POST /api/read` count per IP, story and kind a minute
+   *  (`[[ratelimits]]`). Optional so node tests can omit it. */
+  READ_LIMITER?: RateLimit;
   ANYROUTER_BASE_URL: string;
   /** One model id, or a comma-separated fallback chain tried in order. */
   ANYROUTER_MODEL: string;

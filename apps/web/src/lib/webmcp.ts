@@ -1,6 +1,5 @@
 /**
- * WebMCP (`document.modelContext`) transport for the four public read
- * tools.
+ * WebMCP (`document.modelContext`) transport for the public read tools.
  *
  * The whole point of #226 is that an agent sees ONE surface. The
  * definitions here are not written — they are the SAME objects
@@ -34,12 +33,14 @@ import type { PublicDigest } from "./public-queries";
 import {
   boundSearchResult,
   exceedsReadResultBound,
+  PUBLIC_READ_RESULT_MAX_BYTES,
   projectDigestBullets,
   projectSearchResult,
 } from "./public-read-results";
 import {
   coerceToolArguments,
   GET_AI_DIGEST,
+  GET_DAY_EDITION,
   GET_STORY,
   LATEST_AI_NEWS,
   PUBLIC_READ_TOOLS,
@@ -47,6 +48,7 @@ import {
   SEARCH_NEWS,
   type Validated,
   validateGetAiDigest,
+  validateGetDayEdition,
   validateGetStory,
   validateLatestAiNews,
   validateSearchNews,
@@ -54,7 +56,7 @@ import {
 import { STORY_MARKDOWN_MAX_RESPONSE_BYTES } from "./story-markdown";
 import type { FeedResponse } from "./types";
 
-/** The same four tools, by the same object, in the same order. */
+/** The same tools, by the same object, in the same order. */
 export const WEBMCP_TOOLS = PUBLIC_READ_TOOLS;
 
 const VALIDATORS = {
@@ -62,6 +64,7 @@ const VALIDATORS = {
   [SEARCH_NEWS]: validateSearchNews,
   [GET_STORY]: validateGetStory,
   [GET_AI_DIGEST]: validateGetAiDigest,
+  [GET_DAY_EDITION]: validateGetDayEdition,
 } as const satisfies Record<
   PublicReadToolName,
   (args: Record<string, unknown>) => Validated<unknown>
@@ -150,7 +153,10 @@ async function fetchJson(path: string): Promise<ToolOutcome> {
   }
 }
 
-async function fetchText(path: string): Promise<ToolOutcome> {
+async function fetchText(
+  path: string,
+  maxBytes: number = STORY_MARKDOWN_MAX_RESPONSE_BYTES
+): Promise<ToolOutcome> {
   let response: Response;
   try {
     response = await fetch(path, {
@@ -176,13 +182,10 @@ async function fetchText(path: string): Promise<ToolOutcome> {
     };
   }
   const text = await response.text();
-  if (
-    new TextEncoder().encode(text).byteLength >
-    STORY_MARKDOWN_MAX_RESPONSE_BYTES
-  ) {
+  if (new TextEncoder().encode(text).byteLength > maxBytes) {
     return {
       ok: false,
-      error: "the story representation exceeded the Markdown read bound.",
+      error: "the Markdown representation exceeded the read bound.",
     };
   }
   return { ok: true, value: text };
@@ -247,6 +250,18 @@ export async function runWebMcpTool(
       );
       if (!markdown.ok) return markdown;
       return { ok: true, value: { id, lang, markdown: markdown.value } };
+    }
+    case GET_DAY_EDITION: {
+      const { date, lang } = validated.value as {
+        date: string;
+        lang: "en" | "vi";
+      };
+      const markdown = await fetchText(
+        withLang(`/date/${date}.md`, lang),
+        PUBLIC_READ_RESULT_MAX_BYTES
+      );
+      if (!markdown.ok) return markdown;
+      return { ok: true, value: { date, lang, markdown: markdown.value } };
     }
   }
 }

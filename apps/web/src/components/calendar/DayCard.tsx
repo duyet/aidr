@@ -2,7 +2,13 @@ import type { CalendarDay } from "../../lib/calendar";
 import { dayArchivePath } from "../../lib/day-archive";
 import { categoryLabel } from "../../lib/lang";
 import type { Lang } from "../../lib/types";
-import { dayTitle, formatDay, runnerTitles, storiesLabel } from "./shared";
+import {
+  BLANK_IF_BROKEN,
+  dayTitle,
+  formatDay,
+  runnerTitles,
+  storiesLabel,
+} from "./shared";
 
 /**
  * Desktop preview of one edition day: lead image, mono eyebrow, serif
@@ -17,10 +23,14 @@ export function DayCard({ day, lang }: { day: CalendarDay; lang: Lang }) {
     <article className="overflow-hidden rounded-2xl border border-border bg-background">
       {day.image_url ? (
         <img
+          key={day.image_url}
           src={day.image_url}
           alt=""
+          width={640}
+          height={360}
           loading="lazy"
           referrerPolicy="no-referrer"
+          {...BLANK_IF_BROKEN}
           className="aspect-video w-full bg-muted object-cover"
         />
       ) : null}

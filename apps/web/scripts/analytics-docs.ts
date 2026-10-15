@@ -187,17 +187,19 @@ ${dims.join("\n")}
 
 ## Outgoing link tags
 
-\`channel_landing\` reads the UTM params below from the landing URL. Every aidr.today link we post carries all four, built by \`apps/web/worker/utm.ts\`. Third-party URLs, URLs that already have \`utm_*\`, and links with a subscriber token (settings, unsubscribe, feedback) are never tagged. \`lang\` is kept as its own param.
+\`channel_landing\` reads the UTM params below from the landing URL. Every aidr.today link we post carries all four, built by \`apps/web/worker/utm.ts\` (the video scripts use \`videos/daily-news/scripts/site-links.mjs\`, and YouTube descriptions get theirs in \`yt-meta.py\`). \`apps/web/worker/__tests__/outbound-links.test.ts\` renders each surface and fails on an untagged aidr.today link. Third-party URLs, URLs that already have \`utm_*\`, and links with a subscriber token (settings, unsubscribe, feedback) are never tagged. \`lang\` is kept as its own param.
 
 | Channel | \`utm_source\` | \`utm_medium\` | \`utm_campaign\` | \`utm_content\` |
 | --- | --- | --- | --- | --- |
 | Email digest | \`email\` | \`digest\` | \`digest-YYYY-MM-DD\`, \`weekly-YYYY-Www\` | \`lead\`, \`s2\`..., \`cta\`, \`header\`, \`view-in-browser\`, \`lang-switch\`, \`video\`, \`channel-*\`, \`footer-data\`, \`footer-subscribe\` |
 | Email welcome, notes | \`email\` | \`welcome\`, \`notes\` | same as medium | \`cta\`, \`header\`, \`body\`, \`footer-*\` |
-| Telegram | \`telegram\` | \`social\` | \`digest-YYYY-MM-DD\` or \`story\` | \`button\`, \`link\`, \`preview\` |
-| Facebook | \`facebook\` | \`social\` | \`digest-YYYY-MM-DD\` or \`story\` | \`post\` |
+| Telegram (posts, day videos, release videos) | \`telegram\` | \`social\` | \`digest-YYYY-MM-DD\`, \`story\`, \`release-vX.Y.Z\` | \`button\`, \`link\`, \`preview\` |
+| Facebook (posts, Reels) | \`facebook\` | \`social\` | \`digest-YYYY-MM-DD\` or \`story\` | \`post\`, \`reel\` |
+| YouTube descriptions | \`youtube\` | \`video\` | \`digest-YYYY-MM-DD\`, \`weekly-YYYY-Www\`, \`release-vX.Y.Z\` | \`long\`, \`short\` |
+| RSS feed | \`rss\` | \`feed\` | \`story\` | \`item\`, \`channel\` |
 | Extension | \`extension\` | \`newtab\` | \`aidr_ext\` | placement (\`brand\`, \`tldr\`, ...) |
 
-\`social\` is GA4's default-channel-group medium for Organic Social. Email keeps the mail kind as medium, and the edition is the campaign.
+\`social\` is GA4's default-channel-group medium for Organic Social, and \`video\` with source \`youtube\` is Organic Video. Email keeps the mail kind as medium, and the edition is the campaign. The RSS \`<guid>\` stays the untagged permalink, so readers do not re-show items. Public API, MCP and \`llms.txt\` permalinks stay untagged: they are canonical ids that agents cite, not links a reader clicks in a channel.
 
 ## GA4 Enhanced Measurement
 
@@ -211,6 +213,14 @@ Turn these off in GA4 Admin > Data streams > Enhanced measurement:
 App code cannot change what these send, because they read the browser URL themselves.
 
 PostHog captures its own \`$pageview\`, so \`page_view\` goes to GA4 only.
+
+## GA4 destination
+
+Every app event goes to one measurement id, \`GA_MEASUREMENT_ID\` (\`VITE_MEASUREMENT_ID\`, default \`G-HXJPPQVYQN\`, in \`apps/web/src/lib/analytics/measurement-id.ts\`). The app configures it with \`send_page_view: false\` and names it in each event's \`send_to\`.
+
+The Cloudflare Google tag gateway, when it is on for the zone, puts its own \`gtag('config', '<id>')\` at the top of \`<head>\`. That id gets gtag.js's automatic hits (its page_view, \`session_start\`, \`user_engagement\`, and the Enhanced Measurement events its stream has on), but none of the app's events. To use one property for everything, point the gateway and \`VITE_MEASUREMENT_ID\` at the same id, or turn the gateway off. \`GA4_PROPERTY_ID\`, which the /data Audience sync reads, must be the property that owns this measurement id.
+
+After a deploy, check the \`tid\` of the app's hits with \`.agents/skills/verify-aidr/bin/verify-aidr drive ga4-tid\`. It loads a campaign URL in headless Chrome and fails unless \`channel_landing\` goes to \`GA_MEASUREMENT_ID\` and no app event goes to another id.
 
 ## Page URLs
 

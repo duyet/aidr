@@ -303,7 +303,9 @@ test("the caption is the posts.md Facebook block with the reel-attributed day li
   assert.ok(cap.includes(reelLink("2026-10-10")));
   assert.equal(
     reelLink("2026-10-10"),
-    "https://aidr.today/date/2026-10-10?utm_source=facebook&utm_medium=reel"
+    "https://aidr.today/date/2026-10-10?utm_source=facebook&utm_medium=social&utm_campaign=digest-2026-10-10&utm_content=reel"
   );
+  // The home link too: an untagged one lands as Direct in GA4.
+  assert.doesNotMatch(cap, /https:\/\/aidr\.today\/?(\s|$)/);
   assert.doesNotMatch(cap, /## X/);
 });

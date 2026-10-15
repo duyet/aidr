@@ -10,13 +10,14 @@ import {
 } from "./day-video";
 import type { DbReader } from "./db";
 import { DEFAULT_LANG } from "./lang";
-import { isLocalizedSsrPath } from "./locale-routing";
+import { isLanguageNeutralSsrPath } from "./locale-routing";
 import { absoluteSiteUrl, withLang } from "./locale-url";
-import { PAGE_MARKDOWN_PATHS } from "./page-markdown";
 import { RELEASES, releasePath } from "./releases/index";
 import { NEWS_SITEMAP_PATH, SITE_URL } from "./site";
 import { storyPath } from "./slug";
 import type { Lang } from "./types";
+import { parseWeek, weekPath } from "./week";
+import { parseJsonArray, parseStoryLines } from "./week-model";
 
 export const SITEMAP_STATIC_PATHS = [
   "/",
@@ -32,6 +33,16 @@ export const SITEMAP_STATIC_PATHS = [
   "/weeks",
   "/calendar",
 ] as const;
+
+/**
+ * Every static HTML page the sitemap lists, release notes included. The route
+ * indexability gate reads this same list, so a listed page cannot render
+ * `noindex`.
+ */
+export const SITEMAP_STATIC_PAGE_PATHS: readonly string[] = [
+  ...SITEMAP_STATIC_PATHS,
+  ...RELEASES.map(releasePath),
+];
 
 export interface SitemapUrl {
   loc: string;
@@ -136,34 +147,26 @@ export function sitemapLastmod(
  */
 export function staticSitemapUrls(now: number = Date.now()): SitemapUrl[] {
   const lastmod = sitemapLastmod(now);
-  const paths = [...SITEMAP_STATIC_PATHS, ...RELEASES.map(releasePath)];
-  return paths
-    .flatMap((path) => {
-      if (isLocalizedSsrPath(path)) {
-        return (["vi", "en"] as const).map((lang) => ({
-          loc: absoluteSiteUrl(path, lang),
-          ...(lastmod ? { lastmod } : {}),
-          changefreq: path === "/" ? "hourly" : "weekly",
-          priority: path === "/" ? "1.0" : "0.4",
-        }));
-      }
-      return [
-        {
-          loc: `${SITE_URL}${path}`,
-          ...(lastmod ? { lastmod } : {}),
-          changefreq: "weekly",
-          priority: "0.4",
-        },
-      ];
-    })
-    .concat(
-      PAGE_MARKDOWN_PATHS.map((path) => ({
+  return SITEMAP_STATIC_PAGE_PATHS.flatMap((path) => {
+    // A page that is not language-neutral canonicalizes to `?lang=`, so the
+    // bare path would be a non-canonical URL.
+    if (!isLanguageNeutralSsrPath(path)) {
+      return (["vi", "en"] as const).map((lang) => ({
+        loc: absoluteSiteUrl(path, lang),
+        ...(lastmod ? { lastmod } : {}),
+        changefreq: path === "/" ? "hourly" : "weekly",
+        priority: path === "/" ? "1.0" : "0.4",
+      }));
+    }
+    return [
+      {
         loc: `${SITE_URL}${path}`,
         ...(lastmod ? { lastmod } : {}),
-        changefreq: "weekly" as const,
-        priority: "0.3",
-      }))
-    );
+        changefreq: "weekly",
+        priority: "0.4",
+      },
+    ];
+  });
 }
 
 /** The generated, always-200 story card used as the sitemap image. */
@@ -266,6 +269,7 @@ export const SITEMAP_SHARD_ITEM_LIMIT = 1000;
 export const SITEMAP_CHILD_DIR = "/sitemaps";
 export const SITEMAP_STATIC_CHILD_PATH = `${SITEMAP_CHILD_DIR}/static.xml`;
 export const SITEMAP_DAYS_CHILD_PATH = `${SITEMAP_CHILD_DIR}/days.xml`;
+export const SITEMAP_WEEKS_CHILD_PATH = `${SITEMAP_CHILD_DIR}/weeks.xml`;
 const SHARD_MONTH_RE = /^(\d{4}-\d{2})(?:-(\d+))?$/;
 
 export interface SitemapIndexEntry {
@@ -355,6 +359,10 @@ export function sitemapIndexEntries(
   }
   entries.push({
     loc: `${SITE_URL}${SITEMAP_DAYS_CHILD_PATH}`,
+    ...(generated ? { lastmod: generated } : {}),
+  });
+  entries.push({
+    loc: `${SITE_URL}${SITEMAP_WEEKS_CHILD_PATH}`,
     ...(generated ? { lastmod: generated } : {}),
   });
   entries.push({
@@ -566,4 +574,57 @@ export async function loadDaySitemapUrls(
     // day_videos not migrated yet — days are listed without thumbnails
   }
   return daySitemapUrls(results ?? [], videos, now);
+}
+
+// ---------------------------------------------------------------------------
+// Weekly edition child (`/sitemaps/weeks.xml`)
+//
+// One `/week/YYYY-Www` URL per language that has stories. The week page 404s
+// in a language with no story lines (`isWeekEmptyIn`), so that language is not
+// listed.
+// ---------------------------------------------------------------------------
+
+const WEEK_ROWS_SQL =
+  "SELECT week, item_ids, stories_en, stories_vi, updated_at FROM weekly_snapshots ORDER BY week DESC";
+
+export interface SitemapWeekRow {
+  week: string | null;
+  item_ids: string | null;
+  stories_en: string | null;
+  stories_vi: string | null;
+  /** Epoch milliseconds. */
+  updated_at: number | null;
+}
+
+export function weekSitemapUrls(
+  rows: SitemapWeekRow[],
+  now: number = Date.now()
+): SitemapUrl[] {
+  return rows.flatMap((row) => {
+    const week = parseWeek(row.week, now);
+    if (!week) return [];
+    const ids = parseJsonArray(row.item_ids);
+    const lastmod = sitemapLastmod(row.updated_at);
+    return (["vi", "en"] as const)
+      .filter((lang) => {
+        const lines = parseStoryLines(
+          lang === "vi" ? row.stories_vi : row.stories_en
+        );
+        return ids.some((id) => typeof id === "string" && lines.has(id));
+      })
+      .map((lang) => ({
+        loc: absoluteSiteUrl(weekPath(week), lang),
+        ...(lastmod ? { lastmod } : {}),
+        changefreq: "monthly",
+        priority: "0.6",
+      }));
+  });
+}
+
+export async function loadWeekSitemapUrls(
+  db: DbReader,
+  now: number = Date.now()
+): Promise<SitemapUrl[]> {
+  const { results } = await db.prepare(WEEK_ROWS_SQL).all<SitemapWeekRow>();
+  return weekSitemapUrls(results ?? [], now);
 }

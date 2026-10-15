@@ -51,7 +51,7 @@ describe("GA4 app events never carry subscribe tokens or search text", () => {
   for (const path of CASES) {
     it(path, () => {
       history.replaceState(null, "", path);
-      installAnalyticsStubs({ gaMeasurementId: "G-HXJPPQVYQN" });
+      installAnalyticsStubs({});
       track("page_view", { page_path: location.pathname, page_type: "home" });
       track("search", { query_len: 11 });
 
@@ -70,7 +70,6 @@ describe("PostHog never sees subscribe tokens or search text", () => {
     it(path, () => {
       const href = new URL(path, location.href).href;
       installAnalyticsStubs({
-        gaMeasurementId: "",
         posthog: { token: "phc_test", host: "https://us.i.posthog.com" },
       });
       const config = w.posthog?._i[0]?.[1] as {
@@ -102,7 +101,6 @@ describe("PostHog never sees subscribe tokens or search text", () => {
 describe("the PostHog scrub rewrites only URLs of this site", () => {
   function beforeSend(): (event: object) => object {
     installAnalyticsStubs({
-      gaMeasurementId: "",
       posthog: { token: "phc_test", host: "https://us.i.posthog.com" },
     });
     const config = w.posthog?._i[0]?.[1] as {
@@ -245,7 +243,6 @@ describe("the PostHog scrub rewrites only URLs of this site", () => {
 describe("the PostHog network recording never carries tokens", () => {
   function config() {
     installAnalyticsStubs({
-      gaMeasurementId: "",
       posthog: { token: "phc_test", host: "https://us.i.posthog.com" },
     });
     return w.posthog?._i[0]?.[1] as {

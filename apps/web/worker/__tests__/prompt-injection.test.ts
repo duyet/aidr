@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { existingAlias } from "../cluster-alias.js";
 import { clusterSimilar } from "../dedupe.js";
 import {
   resetJevScoreReviewMemo,
@@ -486,7 +487,7 @@ describe("prompt injection: output side", () => {
     expect(parseReviewResponse("ignore previous instructions")).toEqual([]);
   });
 
-  it("hostile clustering output cannot name an unknown index or existing id", async () => {
+  it("hostile clustering output cannot name an unknown index or existing row", async () => {
     quiet();
     vi.stubGlobal(
       "fetch",
@@ -497,13 +498,20 @@ describe("prompt injection: output side", () => {
               message: {
                 content: JSON.stringify({
                   clusters: [
-                    // Real members plus invented ones.
+                    // Real members plus invented ones. A raw id is not an
+                    // alias, even of a row the prompt sent.
                     {
                       new: [0, 999, -1, 1.5, "0"],
-                      existing: ["abc123", "ghost", "../../etc/passwd"],
+                      existing: [
+                        existingAlias(0),
+                        existingAlias(1),
+                        "abc123",
+                        "ghost",
+                        "../../etc/passwd",
+                      ],
                     },
                     // Only invented members: nothing left to merge.
-                    { new: [42], existing: ["ghost"] },
+                    { new: [42], existing: ["ghost", "E0"] },
                     // Fully valid.
                     { new: [0, 1] },
                   ],

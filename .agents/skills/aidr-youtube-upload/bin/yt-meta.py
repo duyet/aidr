@@ -15,6 +15,7 @@ import argparse
 import json
 import re
 import sys
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 def release(path, lang, kind):
@@ -87,6 +88,31 @@ def given(path, lang, kind):
     return {"title": m["title"], "desc": with_links(m["desc"], lang, kind), "tags": m["tags"]}
 
 
+SITE_LINK = re.compile(r"https://aidr\.today(?:/[^\s<>\"')\]]*)?")
+CAMPAIGN_PREFIX = {"date": "digest-", "week": "weekly-", "release": "release-"}
+
+
+def campaign_of(desc):
+    m = re.search(r"https://aidr\.today/(date|week|release)/([\w.-]+)", desc)
+    return CAMPAIGN_PREFIX[m.group(1)] + m.group(2) if m else "video"
+
+
+def tag_site_links(desc, kind):
+    campaign = campaign_of(desc)
+
+    def tag(m):
+        link, tail = re.match(r"(.*?)([.,;:!?]*)$", m.group(0)).groups()
+        u = urlsplit(link)
+        query = parse_qsl(u.query, keep_blank_values=True)
+        if any(k.startswith("utm_") for k, _ in query):
+            return m.group(0)
+        query += [("utm_source", "youtube"), ("utm_medium", "video"),
+                  ("utm_campaign", campaign), ("utm_content", kind)]
+        return urlunsplit((u.scheme, u.netloc, u.path or "/", urlencode(query), u.fragment)) + tail
+
+    return SITE_LINK.sub(tag, desc)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     src = ap.add_mutually_exclusive_group(required=True)
@@ -103,6 +129,7 @@ def main():
             m = release(a.release, a.lang, a.kind) if a.release else daily(a.daily, a.lang, a.kind)
     except (AttributeError, IndexError, TypeError, KeyError, ValueError, OSError) as e:
         sys.exit("yt-meta: cannot parse %s (%s: %s)" % (a.release or a.daily or a.json, type(e).__name__, e))
+    m["desc"] = tag_site_links(m["desc"], a.kind)
     if not (m["title"] and m["desc"] and m["tags"]):
         sys.exit("yt-meta: empty title, description or tags")
     print(json.dumps(m, ensure_ascii=False))

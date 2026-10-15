@@ -8,6 +8,7 @@ bilingual feed.
 - [Audience metrics (GA4 snapshot)](#audience-metrics-ga4-snapshot)
 - [Ingest HTTP / D1 contract](#ingest-http--d1-contract)
 - [Dry runs, reruns and previews (admin / MCP)](#dry-runs-reruns-and-previews-admin--mcp)
+- [Agent read surfaces](#agent-read-surfaces)
 - [Ops pitfalls](#ops-pitfalls)
 - [Pipeline (per ingest run)](#pipeline-per-ingest-run)
   - [1. Fetch](#1-fetch)
@@ -62,22 +63,32 @@ the window.
 
 ## Audience metrics (GA4 snapshot)
 
-The `/data` **Audience** tab shows page views, DAU, MAU, and the subscriber
-breakdowns. Traffic comes from GA4; subscribers come from D1. They are never
-mixed.
+The `/data` **Audience** tab shows page views, DAU, MAU, where readers come
+from, and the subscriber breakdowns. Traffic comes from GA4; subscribers come
+from D1. They are never mixed.
 
 - **GA4 is pulled, never read live.** The browser's GA4 events are not
   readable by the Worker, so `worker/ga4/insights.ts` signs a read-only
-  service-account assertion and runs four `properties.runReport` calls: a
-  90-day `date` series, a dimension-less 28-day totals row, top `pagePath`,
-  and top `sessionSource`. The result is stored as one row in `ga4_insights`
-  (migration 0028) and served by `GET /api/system/audience`. A page load
-  never calls Google.
+  service-account assertion and runs six `properties.runReport` calls: a
+  90-day `date` series, a dimension-less 28-day totals row, top `pagePath`
+  by views, and three 28-day acquisition tables ranked by `sessions` (with
+  `activeUsers`): `sessionDefaultChannelGroup` (`channels`),
+  `sessionSource` + `sessionMedium` (`sourceMedium`, named `telegram / social`),
+  and `landingPage` (`landingPages`). The result is stored as one row in
+  `ga4_insights` (migration 0028) and served by `GET /api/system/audience`.
+  A page load never calls Google.
+- **Landing pages are paths only.** The audience endpoint is public and the
+  28-day window can hold hits recorded before URLs were scrubbed, so the sync
+  asks for `landingPage` (never `landingPagePlusQueryString`) and both the
+  sync and `parseGa4Snapshot` strip any `?query` or `#hash`. A snapshot
+  stored before the acquisition tables existed parses with them empty.
 - **The sync rides the ingest alarm.** `NewsIngestScheduler.alarm()` calls
   `maybeSyncGa4Insights` behind a 24-hour gate, because the account cannot
   spend Worker cron slots and GA4 does not resolve finer than a day. It is
   best-effort: a failed audience sync never fails the ingest alarm.
-  `POST /api/admin/ga4-sync` forces one.
+  `POST /api/admin/ga4-sync` forces one; on `status: "ok"` it also returns
+  `rows` (`daily`, `topPages`, `channels`, `sourceMedium`, `landingPages`
+  counts) so an operator can check the snapshot's shape after a deploy.
 - **DAU is `activeUsers` on the latest day in the series; MAU is `totalUsers`
   over the trailing 28 days.** MAU is never a sum of daily `activeUsers` —
   a user active on three days is one monthly user, not three.
@@ -400,13 +411,17 @@ whose `duplicate_of` names no item and needs no pairs file.
   - Verdicts go to `unmerge_checks` (migration 0063), one row per story,
     keyed by its sorted row ids, with the kept matches, the links the gate
     or the 7-day window dropped, the live rows the model nearly named
-    (`near-miss`: an id it did not send that `nearMissOf` resolves to a
-    sent one), the ids sent, the model and the operation id. Each request
-    also returns `refs`, the counts of `worker/cluster-refs.ts` summed over
-    its calls. A story whose rows change, or a verdict of another
-    `CHECK_VERSION`, reads as no verdict. The live rows are not part of
-    the key: an apply that publishes a restored story does not make other
-    verdicts stale.
+    (`near-miss`: an answer that is a sent alias only once trimmed and
+    uppercased, such as `e13`), the ids sent, the model and the operation
+    id. Each request also returns `refs`, the counts of
+    `worker/cluster-refs.ts` summed over its calls. A story whose rows
+    change, or a verdict of another `CHECK_VERSION`, reads as no verdict.
+    `CHECK_VERSION` is a hash of the cluster prompt and
+    `CLUSTER_GATE_VERSION`, so a prompt change re-checks every story with
+    no hand bump; a test pins the gate's decisions on the #728 labels, so
+    a gate change fails it until `CLUSTER_GATE_VERSION` is bumped (#802).
+    The live rows are not part of the key: an apply that publishes a
+    restored story does not make other verdicts stale.
   - A kept match holds the story as `needs-decision` with the matched
     published story as its candidate. It never re-points: a model match is
     evidence, not identity. `sameAs` or `distinctFrom` settles it;
@@ -505,6 +520,28 @@ not a `chat_id` override) also edits the sent digest with
 button; `DELETE` does not touch it. "message is not modified" counts as done,
 and a failed edit never fails the admin call: the response says what happened
 in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
+
+## Agent read surfaces
+
+Agents read the published edition. They never trigger a run. Every surface
+renders from the same D1 reads as the pages, one language per response, with
+no fill-in from the other language.
+
+- Markdown twins: `/index.md` (the homepage, from `getPublicDigest`),
+  `/date/YYYY-MM-DD.md` (TL;DR, video, up to 100 ranked stories with host and
+  a summary for the top ten, capped at 44,000 bytes and the rest counted),
+  `/week/YYYY-Www.md`, and `/api/story/{id}.md` (alias `/{id}.md`).
+- `Accept: text/markdown` on `/`, `/date/…`, `/week/…` or `/{id}` returns the
+  twin when Markdown ranks at least as high as HTML (`src/lib/markdown-negotiation.ts`).
+  Both variants of those paths carry `Vary: Accept`, because Workers Cache
+  keys on Vary and serves hits before the Worker runs.
+- Anonymous MCP read tools (`POST /api/mcp`, also WebMCP): `latest_ai_news`,
+  `search_news`, `get_story`, `get_ai_digest`, `get_day_edition`. The
+  contract is `src/lib/public-read-tools.ts`; arguments are validated before
+  any D1 read. `get_day_edition` returns the same Markdown as
+  `/date/{date}.md`.
+- `/llms.txt` lists the entry points; `/llms-full.txt` appends today's
+  homepage Markdown.
 
 ## Ops pitfalls
 
@@ -664,6 +701,7 @@ that refuse Workers egress and adds the probation sources in the table below.
 | `hf-papers` | `hfpapers` | `hf` | probation, 2 per run | Daily papers, top by upvotes; upvotes are not engagement. |
 | `openrouter-models` | `openrouter` | `openrouter` | probation, 2 per run | Models with `created` inside the since-window; `:variant` ids skipped. |
 | `hf-models-qwen`, `-deepseek`, `-moonshotai`, `-zai-org`, `-mistralai` | `hfmodels` | `hf-models` | probation, 2 per run | New release repos of one organization; quantized, adapter, SAE, draft and conversion repos skipped. |
+| `hf-trending` (migration 0064) | `hftrending` | `hf-models` | probation, 2 per run | Release repos on the Hugging Face trending list, created within 14 days, ranked by `trendingScore` and sent 2 per run in a rotating window; the score, likes and downloads are not engagement. |
 | `ai2` | `rss` | n/a | probation, official | `allenai.org/rss.xml`. |
 | `genk-ai` | `rss` (`sourceLang: "vi"`, `timezone: "+07:00"`) | `vi-press` | probation, 2 per run | Second Vietnamese row, so the VI→EN path runs again while `vnexpress-tech` is off. |
 
@@ -680,6 +718,24 @@ Decisions behind the table:
   `homepage` or `feed` host serves it. The github, huggingface and openrouter
   rows therefore carry no `feed` or `homepage` (they use `repo`, `author`),
   and none is `official`; an HN link to any github.com page keeps `hn`.
+- **Trending covers the organizations no org feed names.** The five
+  `hf-models-*` feeds stored 2 rows in the 7 days to 2026-10-16. That day, 6
+  of the top 15 trending models were release repos created in the previous 16
+  days, none was stored, and 5 came from organizations no feed names
+  (openbmb, LiquidAI, fishaudio, speridlabs). `hf-trending` keeps a repo
+  created within 14 days, because a model trends days after upload and the
+  26h since-window would miss it. `published_at` is the upload date, so a
+  trending row older than 24h never enters the edition window on its own; it
+  adds a source to a story when it merges into a live cluster (the existing
+  canonical keeps its date) and otherwise lands on its upload day's archive.
+  The 14-day gate is a cut-off, not a guarantee: drama-3, uploaded
+  2026-10-01, was already past it on 2026-10-16. The cap is applied before
+  ingest drops already-stored URLs, and the adapter keeps no state, so a
+  head-only cap would re-send the same top 2 every run. Instead the 2-item
+  window starts at `(slot * 2) mod n`, one slot per 30-minute ingest
+  interval, and wraps: every candidate is sent within `ceil(n / 2)` runs and
+  a repeat is dropped as already stored. Ties are ordered by id so the window
+  does not shift when the API returns them in another order.
 - **OpenRouter keeps no cursor.** Adapters get only `(config, sinceEpochSec)`
   and none persists state, so "new since the last run" is `created` inside the
   26h since-window; a model seen on a previous run has the same URL and
@@ -734,9 +790,12 @@ runtime through `upsert_source` with no deploy — see
   below, so the mirrored aggregators share one 25%). It runs at read time, so historic
   rows are covered.
 - **Top-list family cap.** The short ranked lists — homepage top stories
-  (`PUBLIC_STORY_LIMIT`), the TL;DR's 16 and the trending pick — go
+  (`PUBLIC_STORY_LIMIT`) and the trending pick — go
   through `pickDiverse` (`worker/source-diversity.ts`): at most
-  `ceil(0.3 × list size)` rows per source *family* (8 → 3, 16 → 5). A
+  `ceil(0.3 × list size)` rows per source *family* (8 → 3, 16 → 5). The
+  TL;DR's 16 use the same cap through `selectEdition`, which lets one
+  importance-8+ story per family past it (at most 6 of 16; see "10.
+  TL;DR"). A
   family is `SourceSpec.family` in the catalog, else the source id;
   `huggingnews` and `marketbrief` share `aggregator` because they publish
   the same stories under the same slugs (they held 47 of the 24h top 50 on
@@ -823,6 +882,12 @@ candidates. HTML entities in media URLs (including double-escaped `&amp;`
 in query strings) are decoded before storage, so thumbs are real article
 images rather than a broken-src fallback.
 
+- **The trigger is a missing picture, not missing media.** A new item is
+  fetched when its summary is empty or cut off, or when it has no thumbnail
+  (`primaryThumbnailUrl`): no image asset, and no poster on the first-ranked
+  video. Posterless videos alone (the-decoder's
+  feed gives `.mp4` files and no image) still fetch the page, whose
+  `og:image` and video posters give the picture (#805).
 - **arXiv has no og:image.** When an item is an `arxiv.org/abs/<id>` page
   and the merged manifest still has no image, enrich fetches
   `arxiv.org/html/<id>` (same safe fetch, timeout, and a 400 KB read cap)
@@ -898,6 +963,40 @@ Batches of 5.
   category is one choice from the fixed 10-value enum (legal stories use
   Regulation), plus one entity tag and one theme tag from fixed 10-value
   enums (`none` is dropped).
+- The importance bands say what a story is, not which company published
+  it, so a big lab's small repo does not inherit its flagship's score.
+  9-10 is rare: a leading lab's new-generation flagship, a major new
+  frontier model family, a law or government action that changes what labs may
+  build or sell, or a market-wide event. It excludes point updates,
+  cheaper tiers, variants, and one company's deal, funding, price or
+  forecast. 7-8 is a new numbered version of a major model line, a
+  frontier-scale model that claims overall state of the art on a
+  recognised benchmark, frontier-scale open weights, a notable
+  controversy or a major regulatory action. A small model's or a paper's
+  state-of-the-art claim stays 4-6, whether it is for its size, for one
+  language or a niche task, or made only by its publisher. There is no
+  floor for "any model release". 4-6 holds variants whoever ships them
+  and whatever their version number (a Lite or Mini cut, a speed or
+  pricing mode, a single small checkpoint), routine releases from
+  smaller labs, reported results of unreleased models, and share-price
+  moves and supplier earnings whose AI angle is incidental. Consumer
+  gadgets and their sales, preorders or stock, including AI PCs and AI
+  devices, are 4-6. Three anchors in `IMPORTANCE_ANCHORS` reach both
+  scorers. A leading AI lab's first consumer device is 7-8 at launch;
+  other gadgets stay 4-6. A provider's own price cut, free tier or big discount on a
+  major model is 6-7. A cloud platform, app or reseller listing another
+  company's model at that company's price is 4-6, even on launch day,
+  and a reseller promo, affiliate deal or free-credit offer is 1-3. A
+  notable controversy (a leadership fight at a leading lab, a lawsuit
+  between major players, a safety incident, a leak with real
+  consequences) is 7-8, and gossip is 1-3. 9-10 stays rare because 8+
+  gets `BREAKING_BOOST`, and 9+ (`TRENDING_BURST_MIN_IMPORTANCE`) skips
+  the normal trending cap of 3 posts a day with a 3h gap. It still stays
+  within the burst limits of 6 a day per channel with a 1h gap.
+  `scripts/fixtures/importance-eval.json` labels each named case, and
+  `scripts/importance-eval.ts --compare` checks a change against it.
+  The 2026-10-16 change was not run through it, because no
+  non-production key was available (#656).
 - Neither System One hop emits a free-form tag list.
 - Categories: chat picks one of 14 — ten core (Models, Regulation,
   Products, Agents, Research, Industry, Infra, Releases, Chips, Funding)
@@ -1084,14 +1183,27 @@ deterministic pass.
   share the company name. Each rejection logs `cluster gate: <model>
   linked …` and counts in `stats.clusterGate` (per served model: links
   proposed, links rejected).
-- The prompt names new items by index and existing rows by their full
-  64-hex id, and the parser drops any reference the request did not send,
-  so a mistyped id reads as no duplicate. `stats.clusterRefs` counts, per
-  served model, the `new` and `existing` entries answered and kept, the
-  `existing` entries that were not strings, those within 2 edits or an
-  8+ character prefix of a sent id (`existingNearMiss`), and the clusters
-  the drops left with fewer than 2 members. Numbers only: no model text is
-  stored (#752). `agent audit` prints it per run.
+- The prompt names new items by index and existing rows by an alias in the
+  order sent: `E`, the position padded to 3 digits and a Damm check digit
+  (row 17 is `E0174`; `worker/cluster-alias.ts`). The parser maps each alias
+  back to its row id with an exact lookup. Anything that is not exactly a
+  sent alias is dropped, so a mistyped reference reads as no duplicate.
+  With full 64-hex ids the model lost 22 of 66 links to existing stories
+  (22 runs on `google/gemma-latest`, 2026-10-16). Every one-digit slip and
+  every swap of two adjacent digits (`E0714` for `E0174`) spells no sent
+  alias, and the fixed width means a dropped or added digit does not
+  either (unpadded, `E174` minus its last digit was row 1's `E17`). Each
+  is dropped and counted in `existingNearMiss`, never linked (#817).
+  Residual risk: a model that names the wrong row with a valid alias. That
+  is a wrong link only the cluster gate stops, and only when the two
+  stories share no evidence.
+  `stats.clusterRefs` counts, per served model, the `new` and `existing`
+  entries answered and kept, the `existing` entries that were not
+  strings, those shaped like an alias once trimmed and uppercased but not
+  sent as written (`existingNearMiss`: `e0013`, `E30014`, a digit
+  slip; before the aliases, ids within 2 edits or an 8+ character prefix of a sent id), and the
+  clusters the drops left with fewer than 2 members. Numbers only: no
+  model text is stored (#752). `agent audit` prints it per run.
 - The prompt merges different outlets' first-day coverage of one
   announcement whatever the headline angle, and keeps later developments
   (market reaction, failed demo, wider rollout, a later benchmark)
@@ -1322,6 +1434,72 @@ SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
   `rank_score` only. A vote does not change digest or email selection
   except by moving that score.
 
+**Reader reads: homepage order within a day only.** `item_reads`
+(migration 0065) counts story opens and publisher clicks per story, UTC
+day, arrival channel and kind (`POST /api/read`, `worker/reads.ts`). Only
+the homepage asks for read order: its SSR loader (`feed-fn.ts`) and its own
+`/api/feed?order=reads` calls (refresh, Load more, Older days). For those,
+`getFeed`'s `readOrder` sorts each day by:
+
+```text
+homepage in-day order = rank_score × (1 + 0.15·opens / (opens + 800))
+opens = story opens (never outbound clicks) today and yesterday UTC,
+        each UTC day capped at 100 per story; opens on an id later
+        merged count for its canonical, inside that canonical's cap
+```
+
+The most any story gets is ×1.03 (200 counted opens). Nothing else sees
+reads. Every row keeps its stored `rank_score`, and without `readOrder`
+`getFeed` does not join `item_reads` at all, so the per-source cap
+(`capSourceShare`), the homepage TL;DR fallback, `/api/feed` membership and
+its `rank_score` field, plain `/api/feed` order (the extension, webmcp),
+RSS, the news sitemap, MCP `search_news`, the day archive and its Telegram
+day card, the edition pool (`tldr.ts`), Telegram trending, Facebook, email
+and the weekly roundup ignore them. A read is anonymous and a script can
+fake one, so it must never add a story to, or drop one from, a day, a feed,
+RSS, the API, the archive or a post. It can only move a story a few places
+inside its day, and so across the homepage's 30-story first view (from #33
+at most on the day simulated below).
+`worker/__tests__/feed-reads.integration.test.ts` holds a test per surface.
+Collection:
+
+- The browser counts a story once per tab, kind and UTC day with a key in
+  `sessionStorage`. That is client-side only; the server cannot enforce it.
+- The server drops bot user agents, `Sec-Fetch-Site: cross-site`, unknown
+  or unpublished ids and malformed bodies. User agent and fetch-site are
+  spoofable, so they only stop honest crawlers and other sites' pages.
+- `READ_LIMITER` (`[[ratelimits]]`, limit 1, period 60) counts one beacon
+  per (IP, story, kind) a minute. aidr stores nothing; Cloudflare keeps the
+  counter at that location, eventually consistent, so a parallel burst
+  can slip a few extra through. 60 seconds is the longest period the
+  binding offers, so one IP dripping a beacon a minute still counts 1440
+  opens a day. If the limiter throws, the beacon counts nothing. Each
+  stored row stops at 2000 (`READ_ROW_CAP`); that only bounds `/data`.
+- One IP can reach the day cap, and any number of IPs get no more, so the
+  cap sets the worst case, not the curve. Simulated on the 15 Oct 2026 ICT
+  production day (159 stories; the homepage first view is the top 30):
+
+  | Counted opens | Factor | Max climb | Deepest entrant into top 30 |
+  |---|---|---|---|
+  | 200: one IP, 1/min for 24h across UTC midnight | ×1.030 | 10 (#62 to #53) | #33 |
+  | 100: the same drip inside one UTC day | ×1.017 | 6 | #31 |
+  | 50: 50 readers, one open each | ×1.009 | 4 | #31 |
+  | 10: 10 readers | ×1.002 | 2 | none |
+
+  The previous ×1.3 / 200 curve with clicks counted let the 24h drip lift
+  #62 to #30.
+- Bound: reads never lift a story past one whose stored rank is 1.03× its
+  own. All other factors equal, that is an importance ratio of 1.02 (a 7.0
+  never passes a 7.2).
+
+Known gaps: the constants are not replay-tuned with `rank-replay`. Below
+the cap the order cannot tell a one-IP drip from genuine readers (an hour
+of drip is 60 opens, about 60 readers). Above 100 opens a day genuine
+popularity stops separating stories. After in-site navigation the channel
+falls back to `web`; readers sharing one IP (carrier NAT, an office) count
+at most once a minute per story and kind. Category totals over 28 days
+show on `/data` (Algo tab, `GET /api/system/reads`).
+
 ### 8. Write
 
 D1 upserts (`worker/d1-bind.ts` guards every bind). D1 is
@@ -1333,6 +1511,13 @@ bounded JSON manifest; `image_url` remains the compatibility field.
 Up to 15 older published items missing summary or
 score/tags, and up to 45 missing Vietnamese titles, get
 re-fetched/scored/translated per run until the backlog drains.
+The media part takes up to 15 published rows whose manifest is still the
+0024 column default (`'[]'`, `UNCHECKED_MEDIA_SQL`), newest first. Every
+fetch stores a versioned manifest, even an empty one when the page refused
+the bot (openai.com 403, reuters.com 401) or offered only a logo, so each row
+is fetched once and the queue moves on. A row ingest stored with a manifest
+is not selected; ingest's enrich had its one fetch, except items past that
+run's 20-fetch cap (`MAX_ENRICH_FETCHES`), which are never fetched.
 Translate skips LLM only when explicit `source_lang='vi'` metadata marks a
 native source, retries leftover items one-at-a-time after a batch fail, and
 the VI UI hides the EN badge when the painted title is Vietnamese or
@@ -1374,8 +1559,44 @@ Every run (30 minutes).
 - Otherwise refresh a useful bilingual snapshot when the last write is
   older than 3 hours.
 - Content is always the top 16 items of the **rolling last 24h** by
-  rank (not ICT calendar-day-so-far), after the top-list family cap → up to 16 EN bullets + 16
+  rank (not ICT calendar-day-so-far), after `selectEdition`
+  (`worker/digest/select.ts`) → up to 16 EN bullets + 16
   independently-restated VI bullets, each linked to its `item_id`.
+- `selectEdition` is the top-list family cap (5 of 16 per family) with
+  importance deciding what the cap may cut. It reorders only the top 32
+  rows (`CONTENTION_DEPTH` × 16); deeper rows lost on rank (age, quality),
+  not on the cap (on 2026-10-14 an 8.5 sat at #110, a day old). Over the
+  rank-ordered pool, each step taking only what the earlier ones left:
+  1. The top 32, importance ≥ 5, in rank order, 5 per family. An
+     importance-8+ row the cap would cut takes a 6th slot for its family
+     (`EDITION_TOP_TIER_LIFT` = 1). Slots for the 8+ rows are held back
+     before the walk, so each comes off the edition's lowest-ranked other
+     story of any family (an 8+ row can push out its own family's tail
+     pick when that is the lowest), and a lifted 6th slot never costs its
+     family a higher-ranked pick. A held slot
+     its 8+ row could not use (the family reached 6 first) goes to the
+     next importance-5+ row in the top 32.
+  2. The rest of the pool in rank order, 5 per family.
+  3. Anything left, in rank order, so the edition is never short.
+  So a story under importance 5 makes the edition only when the top 32 has
+  nothing stronger within the cap, and one family holds at most 6 of 16
+  unless the pool has too few other families to fill the edition (step 3,
+  as `pickDiverse` backfills). An 8+ row in the top 32 is cut only when its
+  family already holds 6 higher-ranked picks (or the top 32 hold more than
+  16 of them).
+  Why, measured on the editions of 2026-10-09 to 10-16 (replay on the
+  current `rank_score`, SELECT only): the marketbrief/huggingnews pair
+  carries 37% of published stories and most model-release headlines, and
+  held 5 of 16 on 6 of the 8 days; `pickDiverse` then filled the tail with
+  importance-4 HN rows (a $15M maths grant at #14, a Nikon contest
+  disqualification) while importance-8 rows were cut (Gemini 4 Argon's
+  safety report at #26 on 10-15). The replay removes every sub-5 pick
+  (6 → 0 over 8 days) and adds two 8+ stories (Broadcom's $42B loan to
+  Anthropic on 10-13, the Argon report on 10-15). Every swap replaces a
+  sub-5 story. The aggregator family reaches 6 of 16 once (10-15). The
+  same day keeps Black Forest Labs' open 5.6B image model (#10, 7.9): an
+  earlier draft let 8+ rows claim family slots first, and the Argon report
+  cost it its place.
 - Homepage thumbs and the story dialog need those ids. If the model
   pastes `[hex]` into the bullet text instead of (or besides)
   `item_ids`, parse recovers the ids and strips the citation.

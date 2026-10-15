@@ -115,22 +115,25 @@ let env: Env;
 function insertStory(
   story: { id: string; title: string; titleVi: string },
   rank: number,
-  publishedSec: number
+  publishedSec: number,
+  { sourceId = "hn", importance = null as number | null } = {}
 ): void {
   sqlite
     .prepare(
       `INSERT INTO items (id, source_id, url, title, summary, published_at,
-                          fetched_at, rank_score, status)
-       VALUES (?, 'hn', ?, ?, ?, ?, ?, ?, 'published')`
+                          fetched_at, rank_score, llm_importance, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published')`
     )
     .run(
       story.id,
+      sourceId,
       `https://example.test/${story.id}`,
       story.title,
       `${story.title}, according to the release notes.`,
       publishedSec,
       publishedSec,
-      rank
+      rank,
+      importance
     );
   sqlite
     .prepare(
@@ -309,6 +312,46 @@ describe("TL;DR refresh that degrades to headlines", () => {
     expect(storedDigest().bullets_en.map((b) => b.text)).toEqual(
       STORIES.map((story) => story.title)
     );
+  });
+});
+
+describe("TL;DR edition selection", () => {
+  it("cites a top-tier story from a family already at its cap", async () => {
+    sqlite.exec("DELETE FROM translations; DELETE FROM items");
+    const publishedSec = Math.floor(FIRST_WRITE.getTime() / 1000) - 3600;
+    const story = (n: number, title: string) => ({
+      id: `a${n.toString(16).padStart(15, "0")}`,
+      title,
+      titleVi: title,
+    });
+    // Five aggregator rows fill the family cap, eleven other sources fill
+    // the rest of the 16, and the importance-8.5 aggregator story ranks
+    // 17th: rank order with a flat family cap never reaches it.
+    let rank = 100;
+    for (let i = 0; i < 5; i++) {
+      insertStory(story(i, `Aggregator story ${i}`), rank--, publishedSec, {
+        sourceId: "marketbrief",
+        importance: 7,
+      });
+    }
+    for (let i = 5; i < 16; i++) {
+      insertStory(story(i, `Other source story ${i}`), rank--, publishedSec, {
+        sourceId: `src-${i}`,
+        importance: 6,
+      });
+    }
+    const frontier = story(16, "A frontier lab ships its next flagship model");
+    insertStory(frontier, rank--, publishedSec, {
+      sourceId: "huggingnews",
+      importance: 8.5,
+    });
+    tldrResult.next = FAILED;
+
+    await ensureDailyTldr(env);
+
+    const cited = storedDigest().bullets_en.flatMap((b) => b.item_ids ?? []);
+    expect(cited).toHaveLength(16);
+    expect(cited).toContain(frontier.id);
   });
 });
 

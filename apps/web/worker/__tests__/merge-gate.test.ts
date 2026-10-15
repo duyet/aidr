@@ -1,5 +1,6 @@
 import type { WorkflowStep } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { existingAlias } from "../cluster-alias.js";
 import type { IngestContext, NewRow } from "../ingest/context.js";
 import { planMerges, type RecentClusterRow } from "../ingest/merge.js";
 import { LIVE_FULL_RUN } from "../ingest/mode.js";
@@ -124,8 +125,8 @@ describe("planMerges cluster gate (#733)", () => {
   it("keeps the model's unrelated link out of the plan and the related one in", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     modelAnswers([
-      { new: [0, 1], existing: ["6cdf64e4"] },
-      { new: [2, 3], existing: ["c696e8b1"] },
+      { new: [0, 1], existing: [existingAlias(0)] },
+      { new: [2, 3], existing: [existingAlias(1)] },
     ]);
 
     const { plan, clusterGate } = await planMerges(
@@ -178,7 +179,7 @@ describe("planMerges cluster gate (#733)", () => {
       "https://huggingnews.com/ai/anthropic-plans-mega-ipo-before-thanksgiving-holiday-0a1b2c3d",
       "Anthropic Plans Mega IPO Before Thanksgiving Holiday"
     );
-    modelAnswers([{ new: [0], existing: ["6cdf64e4"] }]);
+    modelAnswers([{ new: [0], existing: [existingAlias(0)] }]);
 
     const { plan, clusterGate } = await planMerges(
       ctx([shopping]),
@@ -194,8 +195,40 @@ describe("planMerges cluster gate (#733)", () => {
     });
   });
 
-  it("records a mistyped existing id as a near miss and merges nothing on it", async () => {
-    modelAnswers([{ new: [0, 1], existing: ["c696e8b2"] }]);
+  it("rejects a sent alias that names another row the twins share nothing with", async () => {
+    // The protein twins belong to the second row (synthId); the model named
+    // the first, the unrelated shopping story. The check digit stops a
+    // one-digit slip, not a wrong pick: parsing keeps it, so only the gate
+    // stands between it and a wrong merge.
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    modelAnswers([{ new: [0, 1], existing: [existingAlias(0)] }]);
+
+    const { plan, clusterGate, clusterRefs } = await planMerges(
+      ctx([shopping, synthId]),
+      proteinTwins,
+      new Map(),
+      new Map(),
+      NOW
+    );
+
+    expect(clusterRefs["test/cluster"]).toMatchObject({
+      existingAnswered: 1,
+      existingKept: 1,
+      existingNearMiss: 0,
+    });
+    expect(clusterGate).toEqual({
+      "test/cluster": { proposed: 1, rejected: 1 },
+    });
+    expect(plan.canonicalUpdates.has("6cdf64e4")).toBe(false);
+    expect(plan.merged.get("bio-hn")?.duplicateOf).not.toBe("6cdf64e4");
+    expect(plan.merged.get("bio-mb")?.duplicateOf).not.toBe("6cdf64e4");
+    // The twins still fold into each other.
+    expect(plan.merged.size).toBe(1);
+  });
+
+  it("records an alias the prompt never sent as a near miss and merges nothing on it", async () => {
+    // Only the first row was sent.
+    modelAnswers([{ new: [0, 1], existing: [existingAlias(1)] }]);
 
     const { plan, clusterGate, clusterRefs } = await planMerges(
       ctx([synthId]),

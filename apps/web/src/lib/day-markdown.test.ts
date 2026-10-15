@@ -16,6 +16,7 @@ vi.mock("./feed-queries", () => ({
 const {
   DAY_MARKDOWN_MAX_STORIES,
   handleDayMarkdownRequest,
+  inlineText,
   isDayMarkdownPath,
   renderDayMarkdown,
 } = await import("./day-markdown");
@@ -146,6 +147,95 @@ describe("renderDayMarkdown", () => {
     expect(md).toContain(`${DAY_MARKDOWN_MAX_STORIES}. [`);
     expect(md).not.toContain(`${DAY_MARKDOWN_MAX_STORIES + 1}. [`);
     expect(md).toContain("5 more stories on the HTML page.");
+  });
+});
+
+describe("inlineText list markers", () => {
+  it.each([
+    ["- a", "\\- a"],
+    ["+ a", "\\+ a"],
+    ["1. a", "1\\. a"],
+    ["12) a", "12\\) a"],
+  ])("escapes a leading marker in %j", (input, expected) => {
+    expect(inlineText(input)).toBe(expected);
+  });
+
+  it("leaves markers that are not at the start alone", () => {
+    expect(inlineText("a - b + 1. c")).toBe("a - b + 1. c");
+    expect(inlineText("2026-10 recap")).toBe("2026-10 recap");
+  });
+});
+
+describe("renderDayMarkdown story detail", () => {
+  const ranked = Array.from({ length: 12 }, (_, i) =>
+    item(`${String(i).padStart(2, "0")}aaaaaa`, {
+      url: `https://www.publisher${i}.com/post`,
+      summary: `EN summary ${i}`,
+      summary_vi: i === 0 ? null : `VI tóm tắt ${i}`,
+    })
+  );
+  const day = archive({
+    day: { date: "2026-08-01", items: ranked, categoryCounts: {} },
+  });
+
+  // An agent answering "what happened that day" from one fetch needs the
+  // gist and the publisher, not only a title.
+  it("gives each story its publisher host and the top ten their summary", () => {
+    const md = renderDayMarkdown(day, "en");
+    expect(md).toContain(
+      "1. [Story 00aaaaaa](https://aidr.today/00aaaaaa?lang=en) — Models · publisher0.com\n   EN summary 0\n"
+    );
+    expect(md).toContain("   EN summary 9\n");
+    expect(md).not.toContain("EN summary 10");
+    expect(md).toContain("— Models · publisher11.com");
+  });
+
+  it("never prints the English summary in the Vietnamese edition", () => {
+    const md = renderDayMarkdown(day, "vi");
+    expect(md).not.toContain("EN summary");
+    expect(md).toContain("   VI tóm tắt 1\n");
+    expect(md).toMatch(/publisher0\.com\n2\. /);
+  });
+});
+
+describe("renderDayMarkdown size", () => {
+  // get_day_edition refuses a day over the 50,000-byte public read bound, so
+  // a busy real day (100 stories, long titles, full summaries and digest)
+  // must render under it in either language.
+  it("keeps a busy day under the public read bound", () => {
+    const long = (seed: string, n: number) =>
+      `${seed} Mô hình AI mới ra mắt với hiệu năng vượt trội `
+        .repeat(10)
+        .slice(0, n);
+    const items = Array.from({ length: DAY_MARKDOWN_MAX_STORIES }, (_, i) =>
+      item(i.toString(16).padStart(8, "0"), {
+        url: `https://www.some-long-publisher-domain-${i}.example.com/a/b`,
+        title: long("Title", 200),
+        title_vi: long("Tiêu đề", 200),
+        summary: long("Summary", 400),
+        summary_vi: long("Tóm tắt", 400),
+        category: "Open Source",
+      })
+    );
+    const bullets = Array.from({ length: 20 }, (_, i) => ({
+      text: long(`Bullet ${i}`, 400),
+      item_ids: [items[i].id],
+    }));
+    const busy = archive({
+      day: { date: "2026-08-01", items, categoryCounts: {} },
+      tldr: { date: "2026-08-01", bullets_en: bullets, bullets_vi: bullets },
+    });
+    for (const lang of ["en", "vi"] as const) {
+      const markdown = renderDayMarkdown(busy, lang);
+      const bytes = new TextEncoder().encode(
+        JSON.stringify({ date: "2026-08-01", lang, markdown })
+      ).length;
+      expect(bytes, lang).toBeLessThan(50_000);
+      // Stories past the ceiling are counted, never dropped silently.
+      expect(markdown).toMatch(
+        /\d+ (more stories on the HTML page|tin khác trên trang HTML)\./
+      );
+    }
   });
 });
 

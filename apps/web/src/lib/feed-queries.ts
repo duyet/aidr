@@ -8,6 +8,12 @@ import {
   primaryThumbnailUrl,
 } from "../../worker/media.js";
 import { VOTE_NET_COLUMN, VOTE_NET_JOIN_I } from "../../worker/ranking.js";
+import {
+  itemReadsTableReady,
+  READ_COUNT_COLUMN,
+  READ_COUNT_JOIN_I,
+  readFactor,
+} from "../../worker/reads.js";
 import { sourceFamily } from "../../worker/source-diversity.js";
 import {
   collectTrendingCandidates,
@@ -53,6 +59,7 @@ interface ItemRow {
   source_id: string;
   tags: string;
   vote_net?: number;
+  read_count?: number;
   llm_tokens?: number;
   image_url?: string | null;
   media_manifest?: string | null;
@@ -62,9 +69,9 @@ const ITEM_SELECT_BASE = `
   SELECT i.id, i.url, i.title, t.title AS title_vi,
          ${enSummarySql("i")} AS summary,
          t.summary AS summary_vi, i.category,
-         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}{media}{votes}
+         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}{media}{votes}{reads}
   FROM items i
-  {vote_join}LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
+  {vote_join}{read_join}LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
   WHERE i.status = 'published'
 `;
 
@@ -72,7 +79,8 @@ function itemSelectSql(
   hasLlmTokens: boolean,
   hasImageUrl: boolean,
   hasMediaManifest: boolean,
-  hasVotes: boolean
+  hasVotes: boolean,
+  hasReads: boolean
 ): string {
   return ITEM_SELECT_BASE.replace(
     "{tokens}",
@@ -81,7 +89,9 @@ function itemSelectSql(
     .replace("{image}", hasImageUrl ? ", i.image_url" : "")
     .replace("{media}", hasMediaManifest ? ", i.media_manifest" : "")
     .replace("{votes}", hasVotes ? `, ${VOTE_NET_COLUMN}` : "")
-    .replace("{vote_join}", hasVotes ? `${VOTE_NET_JOIN_I}\n  ` : "");
+    .replace("{vote_join}", hasVotes ? `${VOTE_NET_JOIN_I}\n  ` : "")
+    .replace("{reads}", hasReads ? `, ${READ_COUNT_COLUMN}` : "")
+    .replace("{read_join}", hasReads ? `${READ_COUNT_JOIN_I}\n  ` : "");
 }
 
 let llmTokensSupported: boolean | null = null;
@@ -129,7 +139,7 @@ function toFeedItem(row: ItemRow): FeedItem {
   } catch {
     // malformed tags JSON from an old pipeline run — treat as untagged
   }
-  const { media_manifest: rawManifest, ...item } = row;
+  const { media_manifest: rawManifest, read_count: _reads, ...item } = row;
   const manifest = parseMediaManifest(rawManifest, row.image_url, row.url);
   const exposedManifest = boundedPublicManifest(manifest);
   const articleUrl = canonicalizeMediaUrl(row.url);
@@ -230,7 +240,14 @@ async function attachSourcesAndTopics(
   return { yesterdayCounts, learnedKeywords };
 }
 
-function groupByDay(items: FeedItem[]): DayGroup[] {
+/** `readCounts` (homepage only) multiplies each story's stored rank_score by
+ * `readFactor` for the in-day sort. Nothing else sees the product. */
+function groupByDay(
+  items: FeedItem[],
+  readCounts?: ReadonlyMap<string, number>
+): DayGroup[] {
+  const order = (it: FeedItem) =>
+    it.rank_score * readFactor(readCounts?.get(it.id));
   const map = new Map<string, FeedItem[]>();
   for (const item of items) {
     // Audience-zone day, the same key `/date/YYYY-MM-DD` uses. A UTC date
@@ -245,7 +262,7 @@ function groupByDay(items: FeedItem[]): DayGroup[] {
   return [...map.entries()]
     .sort((a, b) => (a[0] < b[0] ? 1 : -1))
     .map(([date, dayItems]) => {
-      dayItems.sort((a, b) => b.rank_score - a.rank_score);
+      dayItems.sort((a, b) => order(b) - order(a));
       const categoryCounts: Record<string, number> = {};
       for (const it of dayItems) {
         if (it.category)
@@ -438,7 +455,15 @@ export function capSourceShare<
 
 export async function getFeed(
   db: DbReader,
-  opts: { category?: string; q?: string; days?: number; before?: string } = {}
+  opts: {
+    category?: string;
+    q?: string;
+    days?: number;
+    before?: string;
+    /** Homepage only: order each day by rank_score x `readFactor`. Rows,
+     * membership, the TL;DR fallback and rank_score itself stay stored. */
+    readOrder?: boolean;
+  } = {}
 ): Promise<FeedResponse> {
   const days = opts.days ?? (opts.q ? 30 : 3);
   // `before` is the audience-zone day `groupByDay` emits. Cut at that day's
@@ -448,18 +473,20 @@ export async function getFeed(
     : Math.floor(Date.now() / 1000);
   const since = until - days * 86400;
 
-  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes] =
+  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes, hasReads] =
     await Promise.all([
       supportsLlmTokens(db),
       supportsImageUrl(db),
       supportsMediaManifest(db),
       itemVotesTableReady(db),
+      opts.readOrder ? itemReadsTableReady(db) : false,
     ]);
   const itemSelect = itemSelectSql(
     hasLlmTokens,
     hasImageUrl,
     hasMediaManifest,
-    hasVotes
+    hasVotes,
+    hasReads
   );
 
   let sql = `${itemSelect} AND i.published_at >= ? AND i.published_at < ?`;
@@ -508,9 +535,11 @@ export async function getFeed(
   ]);
   const [itemsRes, catsRes, tldrRes, fetchedRes, olderRes] = mainResults;
 
-  const items = capSourceShare(
-    ((itemsRes.results ?? []) as ItemRow[]).map(toFeedItem)
-  );
+  const rows = (itemsRes.results ?? []) as ItemRow[];
+  const items = capSourceShare(rows.map(toFeedItem));
+  const readCounts = hasReads
+    ? new Map(rows.map((row) => [row.id, row.read_count ?? 0]))
+    : undefined;
   // Sources chunks + learned keywords + yesterday's counts: one round-trip.
   const { yesterdayCounts, learnedKeywords } = await attachSourcesAndTopics(
     db,
@@ -561,7 +590,7 @@ export async function getFeed(
       resolveTldrForDisplay(tldr, items),
       imageUrlByItemId(items)
     ),
-    days: groupByDay(items),
+    days: groupByDay(items, readCounts),
     categories: (catsRes.results ?? []) as { name: string; count: number }[],
     trending,
     learnedKeywords,
@@ -590,7 +619,7 @@ export async function getItemsByIds(
     ]);
   const { results } = await db
     .prepare(
-      `${itemSelectSql(hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes)} AND i.id IN (SELECT value FROM json_each(?))`
+      `${itemSelectSql(hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes, false)} AND i.id IN (SELECT value FROM json_each(?))`
     )
     .bind(JSON.stringify(ids))
     .all<ItemRow>();
@@ -673,7 +702,8 @@ export async function getDayArchive(
     hasLlmTokens,
     hasImageUrl,
     hasMediaManifest,
-    hasVotes
+    hasVotes,
+    false
   );
 
   const [itemsRes, tldrRes, prevRes, nextRes] = await db.batch([
@@ -741,7 +771,8 @@ export async function getDayArchive(
     return typeof at === "number" ? archiveDateOfSec(at) : null;
   };
   // One group for the requested audience-zone day. The query window is
-  // already that day. Same in-day order as the feed: rank_score descending.
+  // already that day. Stored rank_score descending, without the feed's
+  // read boost: the Telegram day card is painted from this order.
   const categoryCounts: Record<string, number> = {};
   for (const it of items) {
     if (it.category)

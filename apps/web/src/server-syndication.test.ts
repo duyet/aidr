@@ -241,20 +241,25 @@ describe("/feed.xml locale contract", () => {
     expect(stable(await alias.text())).toBe(stable(await canonical.text()));
   });
 
-  it("emits only canonical explicit-locale item links", async () => {
+  it("guids are canonical explicit-locale permalinks; links are those, RSS-tagged", async () => {
     const response = await fetchPath("/feed.xml?lang=vi");
     const xml = await response.text();
+    const tag = (content: string) =>
+      `utm_source=rss&amp;utm_medium=feed&amp;utm_campaign=story&amp;utm_content=${content}`;
     const links = [...xml.matchAll(/<link>([^<]*)<\/link>/g)].map((m) => m[1]);
-    expect(links[0]).toBe("https://aidr.today/?lang=vi");
-    for (const link of links.slice(1)) {
-      expect(link, link).toMatch(
-        /^https:\/\/aidr\.today\/[0-9a-f]{8}\?lang=(vi|en)$/
-      );
-    }
+    expect(links[0]).toBe(`https://aidr.today/?lang=vi&amp;${tag("channel")}`);
     const guids = [...xml.matchAll(/<guid isPermaLink="true">([^<]*)</g)].map(
       (m) => m[1]
     );
-    expect(guids).toEqual(links.slice(1));
+    expect(guids.length).toBeGreaterThan(0);
+    for (const guid of guids) {
+      expect(guid, guid).toMatch(
+        /^https:\/\/aidr\.today\/[0-9a-f]{8}\?lang=(vi|en)$/
+      );
+    }
+    expect(links.slice(1)).toEqual(
+      guids.map((guid) => `${guid}&amp;${tag("item")}`)
+    );
   });
 
   it("fails with 503 when the D1 binding is missing, like /api/feed does", async () => {

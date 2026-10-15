@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { existingAlias } from "../cluster-alias.js";
 import {
   articleId,
   buildMergePlan,
@@ -59,13 +60,13 @@ describe("clusterSimilar", () => {
   it("parses a well-formed clusters response", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          chatResponse(
-            JSON.stringify({ clusters: [{ new: [0, 2], existing: ["abc"] }] })
-          )
+      vi.fn().mockResolvedValue(
+        chatResponse(
+          JSON.stringify({
+            clusters: [{ new: [0, 2], existing: [existingAlias(0)] }],
+          })
         )
+      )
     );
 
     const { clusters } = await clusterSimilar(
@@ -113,7 +114,7 @@ describe("clusterSimilar", () => {
             clusters: [
               "not an object",
               { new: [0] }, // only 1 member total, not a real dup
-              { new: [0, 1], existing: ["x", 5, null] }, // non-string existing entries dropped
+              { new: [0, 1], existing: [existingAlias(0), 5, null] }, // non-string existing entries dropped
             ],
           })
         )
@@ -773,7 +774,7 @@ describe("clusterSimilar fallback", () => {
           choices: [
             {
               message: {
-                content: '{"clusters":[{"new":[0],"existing":["abc123"]}]}',
+                content: `{"clusters":[{"new":[0],"existing":["${existingAlias(0)}"]}]}`,
               },
             },
           ],
@@ -920,7 +921,9 @@ describe("clusterSimilar chain budget", () => {
             setTimeout(
               () =>
                 resolve(
-                  chatResponse('{"clusters":[{"new":[0],"existing":["abc"]}]}')
+                  chatResponse(
+                    `{"clusters":[{"new":[0],"existing":["${existingAlias(0)}"]}]}`
+                  )
                 ),
               glmAnswerMs
             )

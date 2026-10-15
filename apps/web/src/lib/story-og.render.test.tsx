@@ -335,6 +335,51 @@ describe("story OG card rendering", () => {
     expect(bounds.maxX).toBeLessThanOrEqual(STORY_OG_TITLE_COLUMN_RIGHT);
   }, 20_000);
 
+  it("centres each footer dot between its neighbours", async () => {
+    // A fragment around each dot made satori drop the gap after it, so the
+    // dot sat 3px from the date and 22px from the host.
+    const bitmap = decodePng(await renderPng(item(), null, "en"));
+    const inkAt = (x: number, y: number) =>
+      bitmap.data[(y * bitmap.width + x) * 4] < 200;
+    // Ink runs along the footer row, each with its vertical extent.
+    const runs: Array<{ x0: number; x1: number; top: number; bottom: number }> =
+      [];
+    for (let x = 0; x < STORY_OG_TITLE_COLUMN_RIGHT; x += 1) {
+      let top = Number.POSITIVE_INFINITY;
+      let bottom = Number.NEGATIVE_INFINITY;
+      for (let y = 545; y < 595; y += 1) {
+        if (!inkAt(x, y)) continue;
+        top = Math.min(top, y);
+        bottom = Math.max(bottom, y);
+      }
+      if (top > bottom) continue;
+      const last = runs.at(-1);
+      if (last && last.x1 === x) {
+        last.x1 = x + 1;
+        last.top = Math.min(last.top, top);
+        last.bottom = Math.max(last.bottom, bottom);
+      } else {
+        runs.push({ x0: x, x1: x + 1, top, bottom });
+      }
+    }
+    // The middle dot: a few pixels square, floating above the baseline
+    // (unlike the period in ".com") and narrower than a hyphen.
+    const baseline = Math.max(...runs.map((run) => run.bottom)) - 8;
+    const dots = runs.flatMap((run, i) =>
+      run.bottom - run.top <= 5 && run.x1 - run.x0 <= 5 && run.bottom < baseline
+        ? [i]
+        : []
+    );
+    expect(dots).toHaveLength(2);
+    for (const i of dots) {
+      const before = runs[i].x0 - runs[i - 1].x1;
+      const after = runs[i + 1].x0 - runs[i].x1;
+      expect(Math.abs(before - after), `dot at x=${runs[i].x0}`).toBeLessThan(
+        6
+      );
+    }
+  }, 20_000);
+
   it("keeps the branded fallback free of image elements", () => {
     const html = renderToStaticMarkup(storyOgCard(item(), null, "en"));
     expect(html).not.toContain("<img");

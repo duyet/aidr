@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { isLanguageNeutralSsrPath } from "./locale-routing";
+import { INDEXABLE_ROBOTS, routeIndexability } from "./route-indexability";
 import { SITE_URL } from "./site";
 import {
   buildSitemapXml,
@@ -66,6 +68,40 @@ describe("staticSitemapUrls", () => {
     expect(locs).toContain(`${SITE_URL}/contribute?lang=en`);
     expect(locs).not.toContain(`${SITE_URL}/mcp`);
     expect(locs).not.toContain(`${SITE_URL}/extension`);
+  });
+});
+
+describe("static sitemap URLs are indexable canonicals", () => {
+  // Live defects this pins: release notes at /release/vX.Y.Z were listed but
+  // served `noindex`; /weeks and /calendar were listed bare although their
+  // canonical carries `?lang=`; and nine `.md` twins were listed as pages.
+  const urls = staticSitemapUrls().map((entry) => new URL(entry.loc));
+
+  it("lists only URLs the route gate indexes", () => {
+    for (const url of urls) {
+      expect(
+        routeIndexability({ pathname: url.pathname, search: url.searchParams })
+          .robots,
+        url.href
+      ).toBe(INDEXABLE_ROBOTS);
+    }
+  });
+
+  it("lists a localized page only at its explicit-locale canonicals", () => {
+    for (const url of urls) {
+      const localized = !isLanguageNeutralSsrPath(url.pathname);
+      expect(url.searchParams.has("lang"), url.href).toBe(localized);
+    }
+    const locs = urls.map((url) => url.href);
+    for (const path of ["/weeks", "/calendar", "/release/v0.1.13"]) {
+      expect(locs).toContain(`${SITE_URL}${path}?lang=vi`);
+      expect(locs).toContain(`${SITE_URL}${path}?lang=en`);
+      expect(locs).not.toContain(`${SITE_URL}${path}`);
+    }
+  });
+
+  it("lists HTML pages, not their Markdown twins", () => {
+    expect(urls.filter((url) => url.pathname.endsWith(".md"))).toEqual([]);
   });
 });
 

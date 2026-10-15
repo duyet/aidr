@@ -14,7 +14,8 @@
 export const GA4_SERIES_DAYS = 90;
 /** Rolling window for the headline totals (and therefore for MAU). */
 export const GA4_TOTALS_DAYS = 28;
-/** Top pages / sources rows kept in the snapshot. */
+/** Rows kept per top-N table (pages, channels, source / medium, landing
+ *  pages). */
 export const GA4_TOP_ROWS = 10;
 
 export interface Ga4DayPoint {
@@ -29,6 +30,14 @@ export interface Ga4DayPoint {
 export interface Ga4NamedRow {
   name: string;
   views: number;
+  users: number;
+}
+
+/** One row of an acquisition table, ranked by sessions. `users` is
+ *  `activeUsers` for that row. */
+export interface Ga4SessionRow {
+  name: string;
+  sessions: number;
   users: number;
 }
 
@@ -50,7 +59,12 @@ export interface Ga4Snapshot {
   daily: Ga4DayPoint[];
   totals: Ga4Totals;
   topPages: Ga4NamedRow[];
-  sources: Ga4NamedRow[];
+  /** `sessionDefaultChannelGroup`, e.g. `Organic Search`. */
+  channels: Ga4SessionRow[];
+  /** `sessionSource` + `sessionMedium`, named like `telegram / social`. */
+  sourceMedium: Ga4SessionRow[];
+  /** `landingPage`, path only (see `landingPagePath`). */
+  landingPages: Ga4SessionRow[];
 }
 
 /** Headline audience numbers, all derived from a validated snapshot. */
@@ -106,6 +120,66 @@ function parseNamedRow(value: unknown): Ga4NamedRow | null {
   return { name, views, users };
 }
 
+/**
+ * The snapshot is served by a public endpoint, and the 28-day window still
+ * holds hits recorded before URLs were scrubbed, so a landing page keeps its
+ * path only: a query or hash can carry a token (`?unsubscribe=…`).
+ */
+export function landingPagePath(name: string): string {
+  return name.replace(/[?#][\s\S]*$/, "").trim();
+}
+
+function parseSessionRow(
+  value: unknown,
+  cleanName: (name: string) => string
+): Ga4SessionRow | null {
+  if (!isRecord(value)) return null;
+  const name = cleanName(shortText(value.name, 300));
+  if (!name) return null;
+  const sessions = count(value.sessions);
+  const users = count(value.users);
+  if (sessions === null || users === null) return null;
+  return { name, sessions, users };
+}
+
+/**
+ * Sessions-descending, one row per name, capped. Stripping a landing page's
+ * query can make two rows share a name. A session has exactly one landing
+ * page, so their sessions add up; their users may overlap, so the larger
+ * count is the honest floor.
+ */
+export function topSessionRows(rows: Ga4SessionRow[]): Ga4SessionRow[] {
+  const byName = new Map<string, Ga4SessionRow>();
+  for (const row of rows) {
+    const prev = byName.get(row.name);
+    byName.set(
+      row.name,
+      prev
+        ? {
+            name: row.name,
+            sessions: prev.sessions + row.sessions,
+            users: Math.max(prev.users, row.users),
+          }
+        : row
+    );
+  }
+  return [...byName.values()]
+    .sort((a, b) => b.sessions - a.sessions)
+    .slice(0, GA4_TOP_ROWS);
+}
+
+function parseSessionRows(
+  value: unknown,
+  cleanName: (name: string) => string = (name) => name
+): Ga4SessionRow[] {
+  // Read past the cap so merging names cannot leave the table short.
+  return topSessionRows(
+    parseArray(value, GA4_TOP_ROWS * 5, (entry) =>
+      parseSessionRow(entry, cleanName)
+    ) as Ga4SessionRow[]
+  );
+}
+
 function parseArray(
   value: unknown,
   cap: number,
@@ -123,7 +197,8 @@ function parseArray(
 /**
  * Validate a stored payload. Returns null unless the core identity and the
  * totals are intact — a snapshot without totals is an upstream failure, not a
- * quiet zero audience.
+ * quiet zero audience. A row written before the acquisition tables existed
+ * parses with those tables empty.
  */
 export function parseGa4Snapshot(raw: unknown): Ga4Snapshot | null {
   const value = typeof raw === "string" ? safeJsonParse(raw) : raw;
@@ -165,11 +240,9 @@ export function parseGa4Snapshot(raw: unknown): Ga4Snapshot | null {
       GA4_TOP_ROWS,
       parseNamedRow
     ) as Ga4NamedRow[],
-    sources: parseArray(
-      value.sources,
-      GA4_TOP_ROWS,
-      parseNamedRow
-    ) as Ga4NamedRow[],
+    channels: parseSessionRows(value.channels),
+    sourceMedium: parseSessionRows(value.sourceMedium),
+    landingPages: parseSessionRows(value.landingPages, landingPagePath),
   };
 }
 

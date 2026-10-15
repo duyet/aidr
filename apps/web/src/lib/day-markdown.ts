@@ -32,6 +32,12 @@ export const DAY_MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8";
 export const DAY_MARKDOWN_MAX_STORIES = 100;
 export const DAY_MARKDOWN_MAX_BULLETS = 20;
 export const DAY_MARKDOWN_MAX_TEXT_CHARS = 400;
+/** Ceiling for the ranked list, so the day fits get_day_edition's 50,000-byte
+ * read bound with room for its JSON envelope. Lower-ranked stories past it
+ * are counted, not listed. */
+export const DAY_MARKDOWN_MAX_BYTES = 44_000;
+/** Top-ranked stories that also get their one-paragraph summary. */
+export const DAY_MARKDOWN_SUMMARIZED_STORIES = 10;
 
 const DAY_MARKDOWN_PATH_RE = /^\/date\/([^/]*)\.md$/;
 
@@ -50,7 +56,21 @@ export function inlineText(value: string): string {
     flat.length > DAY_MARKDOWN_MAX_TEXT_CHARS
       ? `${flat.slice(0, DAY_MARKDOWN_MAX_TEXT_CHARS - 1)}…`
       : flat;
-  return bounded.replace(/([\\`*_[\]<>#|!])/g, "\\$1");
+  return bounded
+    .replace(/([\\`*_[\]<>#|!])/g, "\\$1")
+    .replace(/^(?:([-+])|(\d+)([.)]))/, (_, bullet, num, dot) =>
+      bullet ? `\\${bullet}` : `${num}\\${dot}`
+    );
+}
+
+/** Publisher hostname without `www.`, or null for an unusable URL. */
+export function publisherHost(url: string): string | null {
+  try {
+    const host = new URL(url).hostname;
+    return host ? host.replace(/^www\./, "") : null;
+  } catch {
+    return null;
+  }
 }
 
 export function renderDayMarkdown(archive: DayArchive, lang: Lang): string {
@@ -115,19 +135,36 @@ export function renderDayMarkdown(archive: DayArchive, lang: Lang): string {
         : "No stories were published on this day."
     );
   } else {
-    items.slice(0, DAY_MARKDOWN_MAX_STORIES).forEach((item, index) => {
+    const encoder = new TextEncoder();
+    let bytes = encoder.encode(lines.join("\n")).length;
+    let shown = 0;
+    for (const item of items.slice(0, DAY_MARKDOWN_MAX_STORIES)) {
       const title = vi ? (item.title_vi ?? item.title) : item.title;
-      const category = item.category ? ` — ${inlineText(item.category)}` : "";
-      lines.push(
-        `${index + 1}. [${inlineText(title)}](${urlById.get(item.id)})${category}`
-      );
-    });
-    if (items.length > DAY_MARKDOWN_MAX_STORIES) {
+      const meta = [item.category, publisherHost(item.url)]
+        .filter((part): part is string => Boolean(part))
+        .map(inlineText)
+        .join(" · ");
+      const entry = [
+        `${shown + 1}. [${inlineText(title)}](${urlById.get(item.id)})${meta ? ` — ${meta}` : ""}`,
+      ];
+      // A language's summary column never stands in for the other's.
+      const summary = vi ? item.summary_vi : item.summary;
+      if (shown < DAY_MARKDOWN_SUMMARIZED_STORIES && summary) {
+        entry.push(`   ${inlineText(summary)}`);
+      }
+      const size = encoder.encode(`\n${entry.join("\n")}`).length;
+      if (bytes + size > DAY_MARKDOWN_MAX_BYTES) break;
+      lines.push(...entry);
+      bytes += size;
+      shown += 1;
+    }
+    const hidden = items.length - shown;
+    if (hidden > 0) {
       lines.push(
         "",
         vi
-          ? `Còn ${items.length - DAY_MARKDOWN_MAX_STORIES} tin khác trên trang HTML.`
-          : `${items.length - DAY_MARKDOWN_MAX_STORIES} more stories on the HTML page.`
+          ? `Còn ${hidden} tin khác trên trang HTML.`
+          : `${hidden} more stories on the HTML page.`
       );
     }
   }
@@ -140,7 +177,7 @@ export function renderDayMarkdown(archive: DayArchive, lang: Lang): string {
   return `${lines.join("\n")}\n`;
 }
 
-function textResponse(
+export function markdownTextResponse(
   body: string,
   status: number,
   method: string,
@@ -156,39 +193,36 @@ function textResponse(
   });
 }
 
-function errorResponse(
+export function markdownErrorResponse(
   status: number,
   message: string,
   method: string
 ): Response {
-  return textResponse(`# ${message}\n`, status, method, {
+  return markdownTextResponse(`# ${message}\n`, status, method, {
     "Cache-Control": "private, no-store",
     "Content-Language": "en",
   });
 }
 
-export async function handleDayMarkdownRequest(
-  request: Request,
-  db: D1Database | undefined,
-  nowMs: number = Date.now()
-): Promise<Response> {
+/**
+ * The method and locale gate every Markdown twin shares: GET/HEAD only,
+ * `?lang=` (else cookie, Accept-Language, Vietnamese), and a 307 from the
+ * legacy `locale=` alias. A Response means the request is already answered.
+ */
+export function markdownRequestLang(request: Request): Lang | Response {
   const method = request.method.toUpperCase();
   if (method !== "GET" && method !== "HEAD") {
-    const response = errorResponse(405, "Method not allowed", method);
+    const response = markdownErrorResponse(405, "Method not allowed", method);
     response.headers.set("Allow", "GET, HEAD");
     return response;
   }
   const url = new URL(request.url);
-  const raw = DAY_MARKDOWN_PATH_RE.exec(url.pathname)?.[1];
-  const date = parseArchiveDate(raw, nowMs);
-  if (!date) return errorResponse(404, "Day not found", method);
-
   const locale = resolveLocale({
     search: url.search,
     cookie: request.headers.get("cookie"),
     acceptLanguage: request.headers.get("accept-language"),
   });
-  if (!locale.ok) return errorResponse(400, "Invalid language", method);
+  if (!locale.ok) return markdownErrorResponse(400, "Invalid language", method);
   if (locale.legacy) {
     const target = canonicalLocaleRedirect(
       url.pathname,
@@ -198,7 +232,9 @@ export async function handleDayMarkdownRequest(
     );
     if (target) {
       const location = sameOriginRedirectUrl(target, url);
-      if (!location) return errorResponse(400, "Invalid language", method);
+      if (!location) {
+        return markdownErrorResponse(400, "Invalid language", method);
+      }
       return new Response(null, {
         status: 307,
         headers: {
@@ -208,27 +244,44 @@ export async function handleDayMarkdownRequest(
       });
     }
   }
-  if (!db) return errorResponse(503, "Day archive unavailable", method);
+  return locale.lang;
+}
+
+export async function handleDayMarkdownRequest(
+  request: Request,
+  db: D1Database | undefined,
+  nowMs: number = Date.now()
+): Promise<Response> {
+  const lang = markdownRequestLang(request);
+  if (lang instanceof Response) return lang;
+  const method = request.method.toUpperCase();
+  const url = new URL(request.url);
+  const date = parseArchiveDate(
+    DAY_MARKDOWN_PATH_RE.exec(url.pathname)?.[1],
+    nowMs
+  );
+  if (!date) return markdownErrorResponse(404, "Day not found", method);
+  if (!db) return markdownErrorResponse(503, "Day archive unavailable", method);
 
   let archive: DayArchive;
   try {
     archive = await getDayArchive(readSession(db), date);
   } catch (error) {
     console.error("day markdown failed", error);
-    return errorResponse(500, "Day archive unavailable", method);
+    return markdownErrorResponse(500, "Day archive unavailable", method);
   }
   if (!archive.day && !archive.tldr) {
-    return errorResponse(404, "Day not found", method);
+    return markdownErrorResponse(404, "Day not found", method);
   }
 
   const { cacheControl, vary } = localeCacheControl(
     url.search,
     dayArchiveCacheControl(date, nowMs)
   );
-  return textResponse(renderDayMarkdown(archive, locale.lang), 200, method, {
+  return markdownTextResponse(renderDayMarkdown(archive, lang), 200, method, {
     "Cache-Control": cacheControl,
-    "Content-Language": locale.lang,
-    Link: `<${absoluteSiteUrl(dayArchivePath(date), locale.lang)}>; rel="canonical"`,
+    "Content-Language": lang,
+    Link: `<${absoluteSiteUrl(dayArchivePath(date), lang)}>; rel="canonical"`,
     ...(vary ? { Vary: vary } : {}),
   });
 }

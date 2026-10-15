@@ -1,8 +1,5 @@
-import {
-  type ClusterRefCounts,
-  EMPTY_CLUSTER_REFS,
-  nearMissOf,
-} from "./cluster-refs.js";
+import { existingAlias } from "./cluster-alias.js";
+import { type ClusterRefCounts, EMPTY_CLUSTER_REFS } from "./cluster-refs.js";
 import { completeJsonWithModel, type LlmTask, parseJson } from "./llm.js";
 import {
   buildMediaManifest,
@@ -564,9 +561,15 @@ export function mergeClusters(groups: Cluster[][]): Cluster[] {
   return emitClusters(uf, newItems, recentItems);
 }
 
-/** An `existing` entry the prompt did not send, resolved by `nearMissOf` to
- *  the sent id it most likely meant, with its cluster's kept new indices.
- *  Telemetry only: it never becomes a link. */
+/** An alias with a slip (`e0174`, ` E0174 `, `E0714` for `E0174`) or one
+ *  never sent (`E30014`). The prompt names existing rows by `existingAlias`, never
+ *  by id: copying 64-hex ids back from up to 300 rows, the model lost 22 of
+ *  66 links to existing stories (#806 counts, 22 runs). */
+const ALIAS_SHAPE = /^E\d+$/;
+
+/** An `existing` entry that is a sent alias after trimming and uppercasing,
+ *  with its cluster's kept new indices. Telemetry only: it never becomes a
+ *  link. */
 export interface NearMissLink {
   new: number[];
   existing: string;
@@ -579,14 +582,15 @@ interface NormalizedClusters {
 }
 
 /** Defensive: keeps only well-shaped clusters with at least 2 total members
- * (a cluster of 1 item isn't a duplicate of anything). Indices and ids the
- * model invents, or that were not in the request, are dropped: an unknown
- * existing id would otherwise become a canonical that points at no item.
+ * (a cluster of 1 item isn't a duplicate of anything). Indices the request
+ * did not send, and `existing` entries that are not exactly a sent alias,
+ * are dropped: an unknown existing id would otherwise become a canonical
+ * that points at no item. Kept aliases come back as the ids they stand for.
  * `refs` and `nearMisses` count what was dropped; they change no cluster. */
 function normalizeClusters(
   raw: unknown,
   validNew: ReadonlySet<number>,
-  validExisting: ReadonlySet<string>
+  existingByAlias: ReadonlyMap<string, string>
 ): NormalizedClusters {
   const refs: ClusterRefCounts = { ...EMPTY_CLUSTER_REFS, calls: 1 };
   const nearMisses: NearMissLink[] = [];
@@ -606,24 +610,29 @@ function normalizeClusters(
     const newIdx = answeredNew.filter(
       (v): v is number => typeof v === "number" && validNew.has(v)
     );
-    const existingIds = answeredExisting.filter(
-      (v): v is string => typeof v === "string" && validExisting.has(v)
-    );
+    const existingIds: string[] = [];
     refs.newAnswered += answeredNew.length;
     refs.newKept += newIdx.length;
     refs.existingAnswered += answeredExisting.length;
-    refs.existingKept += existingIds.length;
     for (const v of answeredExisting) {
       if (typeof v !== "string") {
         refs.existingNotString++;
         continue;
       }
-      if (validExisting.has(v)) continue;
-      const meant = nearMissOf(v, validExisting);
-      if (meant === null) continue;
+      const id = existingByAlias.get(v);
+      if (id !== undefined) {
+        existingIds.push(id);
+        continue;
+      }
+      const token = v.trim().toUpperCase();
+      if (!ALIAS_SHAPE.test(token)) continue;
       refs.existingNearMiss++;
-      nearMisses.push({ new: newIdx, existing: meant });
+      const meant = existingByAlias.get(token);
+      if (meant !== undefined) {
+        nearMisses.push({ new: newIdx, existing: meant });
+      }
     }
+    refs.existingKept += existingIds.length;
     const kept = newIdx.length + existingIds.length;
     if (kept < 2) {
       if (answeredNew.length + answeredExisting.length >= 2) refs.emptied++;
@@ -659,7 +668,7 @@ export interface ClusterRequestOptions {
 }
 
 /** The cluster prompt for `newItems` (past `MAX_NEW_ITEMS_IN_CLUSTER_PROMPT`
- *  are cut) against `recentItems`. */
+ *  are cut) against `recentItems`, each named by its `existingAlias`. */
 export function clusterPrompt(
   newItems: readonly ClusterNewInput[],
   recentItems: readonly ClusterExistingInput[],
@@ -684,9 +693,11 @@ New items (i, title, url, source):
 ${JSON.stringify(shown)}
 
 Existing items ${existingWindow} (id, title):
-${JSON.stringify(recentItems)}
+${JSON.stringify(recentItems.map((item, k) => ({ ...item, id: existingAlias(k) })))}
 
-Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["abc123"]}]} — omit "new" or "existing" if empty for a cluster, and omit clusters entirely (empty array) if nothing matches. Prefer merging same-event clusters.`;
+Each existing id is an opaque token: copy it exactly, every character.
+
+Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["${existingAlias(0)}"]}]} — omit "new" or "existing" if empty for a cluster, and omit clusters entirely (empty array) if nothing matches. Prefer merging same-event clusters.`;
 }
 
 /**
@@ -727,7 +738,7 @@ export async function requestClusters(
     ...normalizeClusters(
       raw,
       new Set(shown.map((item) => item.i)),
-      new Set(recentItems.map((item) => item.id))
+      new Map(recentItems.map((item, k) => [existingAlias(k), item.id]))
     ),
     model: served.model,
     wellFormed:

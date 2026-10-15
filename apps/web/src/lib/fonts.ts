@@ -54,3 +54,21 @@ export const NON_CRITICAL_FONT_SUBSETS = [
   "eb-garamond-vietnamese",
   "source-sans-3-latin-ext",
 ] as const;
+
+/**
+ * How wide Source Sans 3 sets real feed copy, as a share of the same copy in
+ * Arial (measured with Liberation Sans, which has Arial's advance widths).
+ * Under `font-display: optional` a first visit keeps the fallback for the
+ * whole page view, so this is what a new reader sees.
+ *
+ * Chromium, 63 live titles and AI;DR bullets from 2026-10-16, weight 400,
+ * total run width, webfont / fallback:
+ *
+ *   at 100 px (unhinted, as on macOS and iOS)   EN 0.925   VI 0.915
+ *   at 16 px (hinted, Linux)                     EN 0.940   VI 0.926
+ *
+ * At size-adjust 100% the fallback set rows 6-9% wider than the webfont,
+ * so cold rows wrapped and truncated earlier and looked a size larger. The
+ * `Source Sans 3 Fallback` face scales Arial by a value inside this band.
+ */
+export const SANS_FALLBACK_WIDTH_RATIO = { min: 0.915, max: 0.94 } as const;

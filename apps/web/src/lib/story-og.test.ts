@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +9,7 @@ import {
   jpegBytes,
   PNG_SIGNATURE,
   pngBytes,
+  pngFromPixels,
   pngHeaderOnly,
   webpBytes,
 } from "./__fixtures__/raster";
@@ -148,9 +150,48 @@ describe("story OG image payload boundary", () => {
         new Response(webpBytes(300, 200), {
           headers: { "content-type": "image/webp" },
         }),
-      transcodeWebp: async () => jpeg,
+      transcode: async () => jpeg,
     });
     expect(fetched?.mimeType).toBe("image/jpeg");
+  });
+
+  it("shrinks a hero over the byte cap through the transcoder instead of dropping it", async () => {
+    // Live 2026-10-16: a 1.1 MB 1920x1080 NVIDIA hero missed the 1 MB cap,
+    // so the card fell through to a 96px author avatar.
+    const noise = randomBytes(800 * 500 * 3);
+    const hero = pngFromPixels(800, 500, (x, y) => {
+      const i = (y * 800 + x) * 3;
+      return [noise[i], noise[i + 1], noise[i + 2]];
+    });
+    expect(hero.byteLength).toBeGreaterThan(MAX_STORY_OG_IMAGE_BYTES);
+    const serve = async () =>
+      new Response(hero, { headers: { "content-type": "image/png" } });
+    const transcode = vi.fn(async () => jpegBytes(1200, 675));
+
+    const shrunk = await fetchStoryOgImage("https://cdn.example.com/h.png", {
+      fetcher: serve,
+      transcode,
+    });
+    expect(transcode).toHaveBeenCalledTimes(1);
+    expect(shrunk?.mimeType).toBe("image/jpeg");
+    expect([shrunk?.width, shrunk?.height]).toEqual([1200, 675]);
+
+    await expect(
+      fetchStoryOgImage("https://cdn.example.com/h.png", { fetcher: serve })
+    ).resolves.toBeNull();
+  });
+
+  it("passes a raster under the byte cap through untouched", async () => {
+    const transcode = vi.fn(async () => jpegBytes(1200, 675));
+    const image = await fetchStoryOgImage("https://cdn.example.com/p.png", {
+      fetcher: async () =>
+        new Response(pngBytes(400, 250), {
+          headers: { "content-type": "image/png" },
+        }),
+      transcode,
+    });
+    expect(transcode).not.toHaveBeenCalled();
+    expect(image?.mimeType).toBe("image/png");
   });
 
   it("treats WebP as a miss: the rasterizer draws it as an empty panel", async () => {
@@ -568,6 +609,20 @@ describe("story OG copy and renderer", () => {
     expect(first).toContain("data:image/png;base64,");
     expect(first).not.toContain("do-not-render");
     expect(first).not.toContain("secret");
+  });
+
+  it("leaves out the engagement counters when a story has none", () => {
+    // "0 points · 0 comments" on a fresh story reads as a dead post.
+    const quiet = renderToStaticMarkup(
+      storyOgCard(item({ points: 0, comments: 0 }), null, "vi")
+    );
+    expect(quiet).not.toContain("điểm");
+    expect(quiet).not.toContain("bình luận");
+    const commented = renderToStaticMarkup(
+      storyOgCard(item({ points: 0, comments: 3 }), null, "en")
+    );
+    expect(commented).toContain("0 points");
+    expect(commented).toContain("3 comments");
   });
 
   it("uses the branded fallback when a payload would have rendered blank", () => {

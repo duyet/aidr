@@ -3,6 +3,7 @@ import { PUBLIC_RESPONSE_MAX_BYTES } from "./public-bounds";
 import {
   coerceToolArguments,
   GET_AI_DIGEST,
+  GET_DAY_EDITION,
   GET_STORY,
   isPublicReadToolName,
   LATEST_AI_NEWS,
@@ -17,6 +18,7 @@ import {
   PUBLIC_READ_TRUST_NOTICE,
   SEARCH_NEWS,
   validateGetAiDigest,
+  validateGetDayEdition,
   validateGetStory,
   validateLatestAiNews,
   validateSearchNews,
@@ -32,12 +34,13 @@ function requireTool(name: (typeof PUBLIC_READ_TOOL_NAMES)[number]) {
 }
 
 describe("the shared read-tool contract", () => {
-  it("names exactly the four canonical capabilities", () => {
+  it("names exactly the canonical capabilities", () => {
     expect([...PUBLIC_READ_TOOL_NAMES]).toEqual([
       LATEST_AI_NEWS,
       SEARCH_NEWS,
       GET_STORY,
       GET_AI_DIGEST,
+      GET_DAY_EDITION,
     ]);
     expect(PUBLIC_READ_TOOLS.map((tool) => tool.name)).toEqual([
       ...PUBLIC_READ_TOOL_NAMES,
@@ -317,6 +320,29 @@ describe("get_story argument validation", () => {
   it("requires the id", () => {
     expect(validateGetStory({}).ok).toBe(false);
     expect(validateGetStory({ id: 1234 as unknown as string }).ok).toBe(false);
+  });
+});
+
+describe("validateGetDayEdition", () => {
+  it("accepts a real date and defaults to English", () => {
+    expect(validateGetDayEdition({ date: "2026-10-15" })).toEqual({
+      ok: true,
+      value: { date: "2026-10-15", lang: "en" },
+    });
+  });
+
+  // Rejected before any D1 read: a malformed date must cost no query.
+  it("rejects a missing, malformed, or impossible date and unknown keys", () => {
+    for (const args of [
+      {},
+      { date: "2026-02-30" },
+      { date: "15-10-2026" },
+      { date: "2026-10-15T00:00" },
+      { date: 20261015 },
+      { date: "2026-10-15", days: 3 },
+    ]) {
+      expect(validateGetDayEdition(args).ok, JSON.stringify(args)).toBe(false);
+    }
   });
 });
 

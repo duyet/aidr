@@ -9,7 +9,7 @@
  *  - `/.well-known/ai-catalog.json` and the published discovery documents
  *    describe both.
  *
- * Four independently reviewable surfaces describing the same four
+ * Four independently reviewable surfaces describing the same
  * capabilities is exactly how the machine-discovery layer came to
  * over-promise: `mcpServerCard()`/`a2aAgentCard()`/SKILL.md advertised an
  * anonymous read path that `checkAuth` 401'd. This module is the single
@@ -78,12 +78,14 @@ export const LATEST_AI_NEWS = "latest_ai_news";
 export const SEARCH_NEWS = "search_news";
 export const GET_STORY = "get_story";
 export const GET_AI_DIGEST = "get_ai_digest";
+export const GET_DAY_EDITION = "get_day_edition";
 
 export const PUBLIC_READ_TOOL_NAMES = [
   LATEST_AI_NEWS,
   SEARCH_NEWS,
   GET_STORY,
   GET_AI_DIGEST,
+  GET_DAY_EDITION,
 ] as const;
 export type PublicReadToolName = (typeof PUBLIC_READ_TOOL_NAMES)[number];
 
@@ -141,7 +143,7 @@ export interface PublicReadToolDefinition {
 }
 
 /**
- * The four capabilities. Order is the advertised order and is stable so
+ * The read capabilities. Order is the advertised order and is stable so
  * the server card, the docs page, and the catalog all list them alike.
  */
 export const PUBLIC_READ_TOOLS: readonly PublicReadToolDefinition[] = [
@@ -260,6 +262,33 @@ export const PUBLIC_READ_TOOLS: readonly PublicReadToolDefinition[] = [
     },
     annotations: PUBLIC_READ_ANNOTATIONS,
     restPath: "/api/public",
+  },
+  {
+    name: GET_DAY_EDITION,
+    description: [
+      "Read one calendar day's ranked AI news edition as Markdown: the",
+      "day's TL;DR bullets, its video links, and up to 100 ranked stories",
+      "with permalink, category, publisher host, and a summary for the top",
+      "ten. Same content as GET /date/{date}.md?lang=en|vi. A day is",
+      "Asia/Ho_Chi_Minh midnight to midnight. Use it for questions like",
+      "'what were the top AI stories on 2026-10-15'.",
+      PUBLIC_READ_TRUST_NOTICE,
+    ].join(" "),
+    inputSchema: {
+      type: "object",
+      properties: {
+        date: {
+          type: "string",
+          pattern: PUBLIC_READ_BEFORE_PATTERN,
+          description: "Calendar day formatted YYYY-MM-DD, not in the future.",
+        },
+        lang: LANG_PROPERTY,
+      },
+      required: ["date"],
+      additionalProperties: false,
+    },
+    annotations: PUBLIC_READ_ANNOTATIONS,
+    restPath: "/date/{date}.md",
   },
 ];
 
@@ -495,6 +524,11 @@ export interface GetAiDigestArgs {
   lang: PublicReadLang;
 }
 
+export interface GetDayEditionArgs {
+  lang: PublicReadLang;
+  date: string;
+}
+
 export function validateLatestAiNews(
   args: Record<string, unknown>
 ): Validated<LatestNewsArgs> {
@@ -556,4 +590,23 @@ export function validateGetAiDigest(
   const lang = readLang(args, "en");
   if (!lang.ok) return lang;
   return { ok: true, value: { lang: lang.value } };
+}
+
+export function validateGetDayEdition(
+  args: Record<string, unknown>
+): Validated<GetDayEditionArgs> {
+  const unknown = rejectUnknownKeys(args, ["date", "lang"], GET_DAY_EDITION);
+  if (unknown) return unknown;
+  const date = own(args, "date");
+  if (
+    typeof date !== "string" ||
+    date.length > MAX_BEFORE_LABEL ||
+    !BEFORE_RE.test(date) ||
+    !isRealCalendarDate(date)
+  ) {
+    return invalid("'date' must be a real calendar date formatted YYYY-MM-DD.");
+  }
+  const lang = readLang(args, "en");
+  if (!lang.ok) return lang;
+  return { ok: true, value: { date, lang: lang.value } };
 }

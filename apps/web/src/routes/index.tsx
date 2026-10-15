@@ -12,10 +12,9 @@ import { showFeedBrowseChrome } from "../lib/empty-feed";
 import { setCachedFeed, setFeedMeta } from "../lib/feed-cache";
 import { fetchFeed } from "../lib/feed-fn";
 import { headRouteInput } from "../lib/head-route";
-import { mergeRefreshedFeed } from "../lib/homepage-feed";
+import { homepageFeedUrl, mergeRefreshedFeed } from "../lib/homepage-feed";
 import { timeAgo } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
-import { withLang } from "../lib/locale-url";
 import { usePrefs } from "../lib/prefs";
 import { homepageHead } from "../lib/seo";
 import { storyPath } from "../lib/slug";
@@ -110,8 +109,7 @@ function IndexPage() {
     if (!loaderFeed) {
       setFeed(null);
       setError(false);
-      const params = q ? `?q=${encodeURIComponent(q)}` : "?days=3";
-      fetch(withLang(`/api/feed${params}`, lang))
+      fetch(homepageFeedUrl(q ? { q } : { days: "3" }, lang))
         .then((res) => (res.ok ? (res.json() as Promise<FeedResponse>) : null))
         .then((res) => {
           if (cancelled) return;
@@ -128,7 +126,7 @@ function IndexPage() {
     }
     const refresh = window.setInterval(() => {
       if (q) return;
-      fetch(withLang("/api/feed?days=3", lang))
+      fetch(homepageFeedUrl({ days: "3" }, lang))
         .then((res) => (res.ok ? (res.json() as Promise<FeedResponse>) : null))
         .then((res) => {
           if (!cancelled && res) {
@@ -241,6 +239,11 @@ function IndexPage() {
 
   return (
     <div className={brief ? "flex flex-1 flex-col" : undefined}>
+      <h1 className="sr-only">
+        {lang === "vi"
+          ? "AI;DR: tin AI xếp hạng mỗi 30 phút"
+          : "AI;DR: AI news, ranked every 30 minutes"}
+      </h1>
       {q ? (
         <p className="flex flex-wrap items-baseline justify-between gap-2 py-3 text-sm text-muted-foreground">
           <span>

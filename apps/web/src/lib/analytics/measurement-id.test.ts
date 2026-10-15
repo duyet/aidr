@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_GA_MEASUREMENT_ID, resolveMeasurementId } from "./vendors";
+import {
+  DEFAULT_GA_MEASUREMENT_ID,
+  resolveMeasurementId,
+} from "./measurement-id";
 
 describe("resolveMeasurementId", () => {
   it("defaults to the public GA4 client id when env is empty", () => {

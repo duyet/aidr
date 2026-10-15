@@ -122,17 +122,19 @@ describe("buildRssXml validity", () => {
 });
 
 describe("buildRssXml item contract", () => {
-  it("uses the canonical explicit-locale permalink for link and guid", () => {
+  it("uses the canonical permalink for guid and tags only the link", () => {
     const story = item();
     for (const lang of ["vi", "en"] as const) {
       const xml = buildRssXml(feed([story]), lang);
       expectWellFormedXml(xml, "rss");
       const permalink = feedItemPermalink(story, lang);
       expect(permalink).toBe(`${SITE_URL}/abcdef12?lang=${lang}`);
-      expect(xml).toContain(`<link>${permalink}</link>`);
+      // The guid is what readers dedupe on: a tag there would re-show every
+      // item once. The link carries the tag so a click lands as `rss`.
       expect(xml).toContain(`<guid isPermaLink="true">${permalink}</guid>`);
-      // No UTM, no fragment, no legacy /{category}/{slug} shape.
-      expect(xml).not.toContain("utm_");
+      expect(xml).toContain(
+        `<link>${permalink}&amp;utm_source=rss&amp;utm_medium=feed&amp;utm_campaign=story&amp;utm_content=item</link>`
+      );
       expect(xml).not.toContain("#");
       expect(xml).not.toContain(`${SITE_URL}/models/`);
     }

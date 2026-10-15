@@ -3,6 +3,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { existingAlias } from "../cluster-alias.js";
 import { clusterSimilar, MAX_NEW_ITEMS_IN_CLUSTER_PROMPT } from "../dedupe.js";
 import {
   JEV_PANEL_MAX_DEBATE_ROUNDS,
@@ -644,7 +645,7 @@ describe("dedupe and topics caps per run", () => {
                 clusters: [
                   { new: [cap - 2, cap - 1] }, // last two shown items
                   { new: [cap, cap + 1] }, // both past the cap
-                  { new: [cap + 2], existing: ["e0"] }, // one past the cap
+                  { new: [cap + 2], existing: [existingAlias(0)] }, // one past the cap
                 ],
               }),
             },

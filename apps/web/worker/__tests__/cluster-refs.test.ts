@@ -1,24 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { existingAlias } from "../cluster-alias.js";
 import {
   addClusterRefs,
   type ClusterRefCounts,
   EMPTY_CLUSTER_REFS,
-  nearMissOf,
   parseClusterRefs,
 } from "../cluster-refs.js";
-import { type Cluster, requestClusters } from "../dedupe.js";
+import { type Cluster, clusterPrompt, requestClusters } from "../dedupe.js";
 import { resetUnavailableModels } from "../llm.js";
 import { buildRunStats, serializeRunStats } from "../run-stats.js";
 import { sanitizeRunStatsJson } from "../telemetry-safe.js";
 import type { Env } from "../types.js";
 
-/** `normalizeClusters` as of 7a47ffc4: the instrumented parser must keep
- *  exactly these clusters. */
-function masterNormalize(
+/** The parser's contract: an `existing` entry links a row only when it is
+ *  exactly the alias the prompt gave that row (`existingAlias`). */
+function referenceNormalize(
   raw: unknown,
   validNew: ReadonlySet<number>,
-  validExisting: ReadonlySet<string>
+  sentIds: readonly string[]
 ): Cluster[] {
+  const byAlias = new Map(sentIds.map((id, k) => [existingAlias(k), id]));
   if (!raw || typeof raw !== "object" || !("clusters" in raw)) return [];
   const clusters = (raw as { clusters?: unknown }).clusters;
   if (!Array.isArray(clusters)) return [];
@@ -33,9 +34,10 @@ function masterNormalize(
         )
       : [];
     const existingIds = Array.isArray(e.existing)
-      ? e.existing.filter(
-          (v): v is string => typeof v === "string" && validExisting.has(v)
-        )
+      ? e.existing.flatMap((v) => {
+          const id = typeof v === "string" ? byAlias.get(v) : undefined;
+          return id === undefined ? [] : [id];
+        })
       : [];
     if (newIdx.length + existingIds.length < 2) continue;
     out.push({ new: newIdx, existing: existingIds });
@@ -50,19 +52,25 @@ const env = {
   ANYROUTER_API_KEY: "test-key",
 } as unknown as Env;
 
-function modelAnswers(content: string) {
+/** Answers every call with `content`; returns the prompts it was sent. */
+function modelAnswers(content: string): string[] {
+  const prompts: string[] = [];
   const frame = (o: unknown) => `data: ${JSON.stringify(o)}\n\n`;
   const body = frame({ choices: [{ delta: { content } }] });
   vi.stubGlobal(
     "fetch",
-    vi.fn(
-      async () =>
-        new Response(`${body}data: [DONE]\n\n`, {
-          status: 200,
-          headers: { "content-type": "text/event-stream" },
-        })
-    )
+    vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as {
+        messages: { content: string }[];
+      };
+      prompts.push(request.messages[0].content);
+      return new Response(`${body}data: [DONE]\n\n`, {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      });
+    })
   );
+  return prompts;
 }
 
 /** A 64-hex id, the shape of a real item id (sha256 of the URL). */
@@ -74,10 +82,9 @@ const hexId = (seed: number) =>
 const A = hexId(1);
 const B = hexId(2);
 const C = hexId(3);
-/** One hex digit of `B` changed. */
-const B_TYPO = `${B.slice(0, 20)}${B[20] === "0" ? "1" : "0"}${B.slice(21)}`;
-/** The first 12 characters of `C`. */
-const C_CUT = C.slice(0, 12);
+const HEX_ID = /[0-9a-f]{64}/;
+/** The aliases of the three rows sent, and of a fourth never sent. */
+const [E1, E2, E3, E4] = [0, 1, 2, 3].map(existingAlias);
 
 const newItems = [0, 1, 2, 3].map((i) => ({ i, title: `new ${i}` }));
 const existing = [A, B, C].map((id) => ({
@@ -86,11 +93,12 @@ const existing = [A, B, C].map((id) => ({
 }));
 
 async function served(answer: unknown) {
-  modelAnswers(JSON.stringify(answer));
-  return requestClusters(env, newItems, existing, {
+  const prompts = modelAnswers(JSON.stringify(answer));
+  const result = await requestClusters(env, newItems, existing, {
     task: "cluster",
     existingWindow: "last 72h",
   });
+  return { ...result, prompts };
 }
 
 afterEach(() => {
@@ -99,34 +107,197 @@ afterEach(() => {
   resetUnavailableModels();
 });
 
+describe("cluster prompt aliases", () => {
+  it("names existing rows by alias in the order sent, with no 64-hex id anywhere", async () => {
+    const { prompts } = await served({ clusters: [] });
+
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).not.toMatch(HEX_ID);
+    expect(prompts[0]).toContain(
+      JSON.stringify(
+        existing.map((row, k) => ({ id: existingAlias(k), title: row.title }))
+      )
+    );
+    // The answer example uses the alias form the parser accepts.
+    expect(prompts[0]).toContain(
+      `{"clusters":[{"new":[0,3],"existing":["${E1}"]}]}`
+    );
+    expect(prompts[0]).toBe(clusterPrompt(newItems, existing, "last 72h"));
+  });
+
+  it("maps each alias answered back to the id sent in that position", async () => {
+    const result = await served({
+      clusters: [
+        { new: [0], existing: [E2] },
+        { new: [1, 2], existing: [E3, E1] },
+      ],
+    });
+
+    expect(result.clusters).toEqual([
+      { new: [0], existing: [B] },
+      { new: [1, 2], existing: [C, A] },
+    ]);
+    expect(result.refs).toMatchObject({
+      existingAnswered: 3,
+      existingKept: 3,
+      existingNearMiss: 0,
+      emptied: 0,
+    });
+  });
+});
+
+describe("alias check digit (#817)", () => {
+  const rows = Array.from({ length: 400 }, (_, k) => ({
+    id: hexId(100 + k),
+    title: `live ${k}`,
+  }));
+
+  /** The aliases the prompt gave `rows`, in the order sent. */
+  const sentAliases = (): string[] => {
+    const list = /Existing items [^\n]*\(id, title\):\n(.*)\n/.exec(
+      clusterPrompt(newItems, rows, "last 72h")
+    )?.[1];
+    return (JSON.parse(list ?? "[]") as { id: string }[]).map((r) => r.id);
+  };
+
+  /** Every one-digit substitution and adjacent transposition of `alias`,
+   *  the check digit included. */
+  const slipsOf = (alias: string): string[] => {
+    const d = alias.slice(1);
+    const out = new Set<string>();
+    for (let p = 0; p < d.length; p++) {
+      for (const c of "0123456789") {
+        if (c !== d[p]) out.add(`E${d.slice(0, p)}${c}${d.slice(p + 1)}`);
+      }
+      if (p + 1 < d.length && d[p] !== d[p + 1]) {
+        out.add(`E${d.slice(0, p)}${d[p + 1]}${d[p]}${d.slice(p + 2)}`);
+      }
+    }
+    return [...out];
+  };
+
+  async function servedOver(answer: unknown) {
+    modelAnswers(JSON.stringify(answer));
+    return requestClusters(env, newItems, rows, {
+      task: "cluster",
+      existingWindow: "last 72h",
+    });
+  }
+
+  it("maps every sent alias back to the row sent in its position", async () => {
+    const aliases = sentAliases();
+    expect(aliases).toHaveLength(rows.length);
+
+    const result = await servedOver({
+      clusters: [{ new: [0], existing: aliases }],
+    });
+
+    expect(result.clusters).toEqual([
+      { new: [0], existing: rows.map((row) => row.id) },
+    ]);
+    expect(result.refs.existingNearMiss).toBe(0);
+  });
+
+  it("links no row on any one-digit slip or adjacent swap of a sent alias, and counts each", async () => {
+    const slips = sentAliases().flatMap(slipsOf);
+    const answered = {
+      existingAnswered: 0,
+      existingKept: 0,
+      existingNearMiss: 0,
+    };
+
+    for (let from = 0; from < slips.length; from += 1000) {
+      const batch = slips.slice(from, from + 1000);
+      const result = await servedOver({
+        clusters: [{ new: [0], existing: batch }],
+      });
+      expect(result.clusters).toEqual([]);
+      expect(result.nearMisses).toEqual([]);
+      answered.existingAnswered += result.refs.existingAnswered;
+      answered.existingKept += result.refs.existingKept;
+      answered.existingNearMiss += result.refs.existingNearMiss;
+    }
+
+    expect(slips.length).toBeGreaterThan(10_000);
+    expect(answered).toEqual({
+      existingAnswered: slips.length,
+      existingKept: 0,
+      existingNearMiss: slips.length,
+    });
+  });
+
+  it("links no row when a digit of a sent alias is dropped or added, and counts each", async () => {
+    const aliases = sentAliases();
+    const variants = new Set<string>();
+    for (const alias of aliases) {
+      const d = alias.slice(1);
+      for (let p = 0; p < d.length; p++)
+        variants.add(`E${d.slice(0, p)}${d.slice(p + 1)}`);
+      for (let p = 0; p <= d.length; p++) {
+        for (const c of "0123456789")
+          variants.add(`E${d.slice(0, p)}${c}${d.slice(p)}`);
+      }
+    }
+    const slips = [...variants];
+    let kept = 0;
+    let nearMiss = 0;
+    for (let from = 0; from < slips.length; from += 1000) {
+      const result = await servedOver({
+        clusters: [{ new: [0], existing: slips.slice(from, from + 1000) }],
+      });
+      expect(result.clusters).toEqual([]);
+      kept += result.refs.existingKept;
+      nearMiss += result.refs.existingNearMiss;
+    }
+    expect(kept).toBe(0);
+    expect(nearMiss).toBe(slips.length);
+  });
+
+  it("drops a transposed alias (E71 for E17) instead of linking the row it now spells", async () => {
+    const aliases = sentAliases();
+    const meant = aliases[16];
+    const swapped = `E${meant[1]}${meant[3]}${meant[2]}${meant.slice(4)}`;
+
+    const result = await servedOver({
+      clusters: [{ new: [0, 1], existing: [swapped] }],
+    });
+
+    expect(result.clusters).toEqual([{ new: [0, 1], existing: [] }]);
+    expect(result.refs).toMatchObject({ existingKept: 0, existingNearMiss: 1 });
+    expect(result.nearMisses).toEqual([]);
+  });
+});
+
 describe("requestClusters reference counts", () => {
-  it("counts a mistyped id, a truncated id and an out-of-range index, and keeps master's links", async () => {
+  it("drops and counts an alias never sent, a case or space slip, and a full id", async () => {
     const answer = {
       clusters: [
-        { new: [0], existing: [A] },
-        { new: [1], existing: [B_TYPO] },
-        { new: [2], existing: [C_CUT] },
-        { new: [3, 9] },
+        { new: [0], existing: [E4] },
+        { new: [1], existing: [E2.toLowerCase()] },
+        { new: [2], existing: [` ${E3} `] },
+        { new: [3], existing: [A, "abc123", "E0", 2] },
+        { new: [0, 1], existing: [E1] },
       ],
     };
 
     const result = await served(answer);
 
-    expect(result.clusters).toEqual([{ new: [0], existing: [A] }]);
+    expect(result.clusters).toEqual([{ new: [0, 1], existing: [A] }]);
     expect(result.clusters).toEqual(
-      masterNormalize(answer, new Set([0, 1, 2, 3]), new Set([A, B, C]))
+      referenceNormalize(answer, new Set([0, 1, 2, 3]), [A, B, C])
     );
     expect(result.refs).toEqual({
       calls: 1,
-      newAnswered: 5,
-      newKept: 4,
-      existingAnswered: 3,
+      newAnswered: 6,
+      newKept: 6,
+      existingAnswered: 8,
       existingKept: 1,
-      existingNotString: 0,
-      existingNearMiss: 2,
-      emptied: 3,
+      existingNotString: 1,
+      existingNearMiss: 4,
+      emptied: 4,
     } satisfies ClusterRefCounts);
-    // A near miss names the id that was sent, never the model's token.
+    // A slip of a sent alias names the row it meant; an alias that was
+    // never sent (E4, E0) names none.
     expect(result.nearMisses).toEqual([
       { new: [1], existing: B },
       { new: [2], existing: C },
@@ -135,7 +306,7 @@ describe("requestClusters reference counts", () => {
 
   it("counts nothing dropped when every reference is one the prompt sent", async () => {
     const result = await served({
-      clusters: [{ new: [0, 1], existing: [A, B] }],
+      clusters: [{ new: [0, 1], existing: [E1, E2] }],
     });
 
     expect(result.clusters).toEqual([{ new: [0, 1], existing: [A, B] }]);
@@ -150,9 +321,9 @@ describe("requestClusters reference counts", () => {
     expect(result.nearMisses).toEqual([]);
   });
 
-  it("counts positions written as existing entries apart from mistyped ids", async () => {
+  it("counts positions written as existing entries apart from unknown aliases", async () => {
     const result = await served({
-      clusters: [{ new: [0], existing: [2, "E2", null] }],
+      clusters: [{ new: [0], existing: [2, "E9", null] }],
     });
 
     expect(result.clusters).toEqual([]);
@@ -160,21 +331,21 @@ describe("requestClusters reference counts", () => {
       existingAnswered: 3,
       existingKept: 0,
       existingNotString: 2,
-      existingNearMiss: 0,
+      existingNearMiss: 1,
       emptied: 1,
     });
   });
 
   it("does not count a cluster the model answered with one member as emptied", async () => {
     const result = await served({
-      clusters: [{ new: [0] }, { existing: [A] }],
+      clusters: [{ new: [0] }, { existing: [E1] }],
     });
 
     expect(result.clusters).toEqual([]);
     expect(result.refs.emptied).toBe(0);
   });
 
-  it("keeps master's clusters over a generated mix of well and badly formed answers", async () => {
+  it("keeps exactly the reference clusters over a generated mix of well and badly formed answers", async () => {
     // mulberry32: every output bit is mixed, so `* n` reaches each shape.
     let seed = 42;
     const rand = (n: number) => {
@@ -183,8 +354,14 @@ describe("requestClusters reference counts", () => {
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
       return Math.floor((((t ^ (t >>> 14)) >>> 0) / 4_294_967_296) * n);
     };
-    const live = new Set<unknown>([A, B, C]);
-    const near = new Set<unknown>([B_TYPO, C_CUT, A.toUpperCase(), ` ${A} `]);
+    const live = new Set<unknown>([E1, E2, E3]);
+    const near = new Set<unknown>([
+      E4,
+      "E0",
+      E1.toLowerCase(),
+      ` ${E2} `,
+      "E300",
+    ]);
     const seen = { loneLiveId: 0, emptied: 0, nearMiss: 0, notString: 0 };
     const pool: unknown[] = [
       0,
@@ -196,13 +373,16 @@ describe("requestClusters reference counts", () => {
       "1",
       null,
       2.5,
+      E1,
+      E2,
+      E3,
+      E4,
+      "E0",
+      E1.toLowerCase(),
+      ` ${E2} `,
+      "E300",
       A,
       B,
-      C,
-      B_TYPO,
-      C_CUT,
-      A.toUpperCase(),
-      ` ${A} `,
       "abc123",
       {},
     ];
@@ -218,7 +398,7 @@ describe("requestClusters reference counts", () => {
       };
       const result = await served(answer);
       expect(result.clusters).toEqual(
-        masterNormalize(answer, new Set([0, 1, 2, 3]), new Set([A, B, C]))
+        referenceNormalize(answer, new Set([0, 1, 2, 3]), [A, B, C])
       );
       const entries = answer.clusters.filter(
         (c): c is Exclude<typeof c, string> => typeof c === "object"
@@ -249,21 +429,6 @@ describe("requestClusters reference counts", () => {
     for (const rounds of Object.values(seen)) {
       expect(rounds).toBeGreaterThan(5);
     }
-  });
-});
-
-describe("nearMissOf", () => {
-  it("resolves a case or whitespace slip, a short prefix, and two edits", () => {
-    expect(nearMissOf(A.toUpperCase(), [B, A])).toBe(A);
-    expect(nearMissOf(` ${A}\n`, [A])).toBe(A);
-    expect(nearMissOf(A.slice(0, 8), [B, A])).toBe(A);
-    expect(nearMissOf(`${A.slice(0, 30)}${A.slice(32)}`, [A])).toBe(A);
-  });
-
-  it("resolves nothing for a 7-character prefix, three edits, or another id", () => {
-    expect(nearMissOf(A.slice(0, 7), [A])).toBeNull();
-    expect(nearMissOf(`${A.slice(0, 30)}${A.slice(33)}`, [A])).toBeNull();
-    expect(nearMissOf(C, [A, B])).toBeNull();
   });
 });
 

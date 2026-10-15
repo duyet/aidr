@@ -1,7 +1,7 @@
 import { dayBoundsSec } from "../src/lib/day-archive.js";
 import { stripTitleMarker } from "../src/lib/plain-text.js";
+import { selectEdition } from "./digest/select.js";
 import { generateTldr, type TldrBullet } from "./llm.js";
-import { pickDiverse } from "./source-diversity.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
 import { AUDIENCE_TIMEZONE, toEpochSeconds } from "./time.js";
 import {
@@ -30,9 +30,10 @@ export interface ItemRow {
   title: string;
   summary: string | null;
   title_vi: string | null;
+  llm_importance: number | null;
 }
 
-const TOP_ITEMS_SQL = `SELECT i.id, i.source_id, i.title, i.summary, tr.title AS title_vi
+const TOP_ITEMS_SQL = `SELECT i.id, i.source_id, i.title, i.summary, i.llm_importance, tr.title AS title_vi
      FROM items i
      LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
      WHERE i.status = 'published' AND i.published_at >= ? AND i.published_at < ?
@@ -68,9 +69,9 @@ export function buildTopItemsQuery(
 }
 
 /** The edition's stories: the top TLDR_MAX_ITEMS of the date's window by
- * rank, with no source family over its share (`pickDiverse`). Shared by the
- * hourly write, the dry-run preview and the admin regenerate so all pick
- * the same items. */
+ * rank, with no source family over its share unless importance says
+ * otherwise (`selectEdition`). Shared by the hourly write, the dry-run
+ * preview and the admin regenerate so all pick the same items. */
 async function loadTopItems(
   env: Env,
   nowMs: number,
@@ -80,7 +81,7 @@ async function loadTopItems(
   const { results } = await env.DB.prepare(sql)
     .bind(since, until)
     .all<ItemRow>();
-  return pickDiverse(results ?? [], { limit: TLDR_MAX_ITEMS });
+  return selectEdition(results ?? [], { limit: TLDR_MAX_ITEMS });
 }
 
 /** Snapshot / digest calendar date: local day in Asia/Ho_Chi_Minh, not UTC. */

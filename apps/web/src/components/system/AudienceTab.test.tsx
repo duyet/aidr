@@ -38,7 +38,9 @@ function statsWith(
       viewsPerDay: [],
       usersPerDay: [],
       topPages: [],
-      sources: [],
+      channels: [],
+      sourceMedium: [],
+      landingPages: [],
       ...ga4,
     },
     subscribers: {
@@ -188,6 +190,46 @@ describe("AudienceTab", () => {
     expect(screen.getByText("Top pages")).toBeTruthy();
     expect(screen.getByText("/news")).toBeTruthy();
     expect(screen.queryByText("https://aidr.today/")).toBeNull();
+  });
+
+  it("shows where readers come from: channels, source / medium, landing pages", () => {
+    respondWith({
+      data: statsWith(
+        {
+          status: "available",
+          audience: AVAILABLE_AUDIENCE,
+          channels: [
+            { name: "Organic Social", count: 120 },
+            { name: "Direct", count: 80 },
+          ],
+          sourceMedium: [{ name: "telegram / social", count: 90 }],
+          landingPages: [{ name: "https://aidr.today/news", count: 30 }],
+        },
+        { bySource: [{ name: "extension", count: 6 }] }
+      ),
+    });
+    render(<AudienceTab lang="en" />);
+
+    expect(screen.getByText("Channels")).toBeTruthy();
+    expect(screen.getByText("Organic Social")).toBeTruthy();
+    expect(screen.getByText("120")).toBeTruthy();
+    expect(screen.getByText("Direct")).toBeTruthy();
+    expect(screen.getByText("Source / medium")).toBeTruthy();
+    expect(screen.getByText("telegram / social")).toBeTruthy();
+    expect(screen.getByText("Landing pages")).toBeTruthy();
+    expect(screen.getByText("/news")).toBeTruthy();
+    // GA4 sessions and subscriber signups stay in separate cards.
+    expect(screen.getByText("Subscribers by signup source")).toBeTruthy();
+  });
+
+  it("states an unconfigured GA4 on the acquisition cards", () => {
+    respondWith({ data: statsWith({ status: "unconfigured" }) });
+    render(<AudienceTab lang="en" />);
+
+    expect(screen.getByText("Channels")).toBeTruthy();
+    expect(screen.queryByText("No sessions recorded yet.")).toBeNull();
+    // Four tiles, top pages, and the three acquisition cards.
+    expect(screen.getAllByText("GA4 sync has not run yet")).toHaveLength(8);
   });
 
   it("claims no numbers while the endpoint is in flight", () => {

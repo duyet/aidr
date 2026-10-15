@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../bugsink.js", () => ({
@@ -9,6 +13,7 @@ import {
   backsExisting,
   CLUSTER_GATE_ALERT_RATE,
   CLUSTER_GATE_MIN_PROPOSED,
+  CLUSTER_GATE_VERSION,
   type ClusterGateTally,
   clusterGateKey,
   evaluateClusterGate,
@@ -708,5 +713,29 @@ describe("cluster gate alert through the health check", () => {
     });
     expect(fired).not.toContain(key);
     expect(dms).toEqual([]);
+  });
+});
+
+describe("cluster gate version (#802)", () => {
+  it("pins the gate's decisions on the #728 hand labels to CLUSTER_GATE_VERSION", () => {
+    const fixture = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../scripts/fixtures/cluster-gate-733.json"
+    );
+    const { pairs } = JSON.parse(readFileSync(fixture, "utf8")) as {
+      pairs: { canonical: GateHeadline; merged: GateHeadline }[];
+    };
+    const decisions = pairs
+      .map((p) => (backsExisting([p.merged], p.canonical) ? "1" : "0"))
+      .join("");
+    const fingerprint = createHash("sha256")
+      .update(decisions)
+      .digest("hex")
+      .slice(0, 16);
+
+    expect(
+      { version: CLUSTER_GATE_VERSION, pairs: pairs.length, fingerprint },
+      "a cluster-gate.ts change moved a labelled decision: bump CLUSTER_GATE_VERSION so stored unmerge verdicts are checked again, then pin the new values"
+    ).toEqual({ version: 1, pairs: 115, fingerprint: "26b81186ae0519d5" });
   });
 });

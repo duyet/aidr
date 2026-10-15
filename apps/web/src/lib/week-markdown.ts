@@ -8,15 +8,14 @@
  * publisher/model data, so it goes through the day Markdown's `inlineText`.
  */
 import { dayArchivePath } from "./day-archive";
-import { DAY_MARKDOWN_CONTENT_TYPE, inlineText } from "./day-markdown";
-import { readSession } from "./db";
-import { resolveLocale } from "./lang";
 import {
-  absoluteSiteUrl,
-  canonicalLocaleRedirect,
-  localeCacheControl,
-  sameOriginRedirectUrl,
-} from "./locale-url";
+  inlineText,
+  markdownErrorResponse,
+  markdownRequestLang,
+  markdownTextResponse,
+} from "./day-markdown";
+import { readSession } from "./db";
+import { absoluteSiteUrl, localeCacheControl } from "./locale-url";
 import { storyPath } from "./slug";
 import type { Lang } from "./types";
 import {
@@ -91,93 +90,38 @@ export function renderWeekMarkdown(edition: WeekEdition, lang: Lang): string {
   return `${lines.join("\n")}\n`;
 }
 
-function textResponse(
-  body: string,
-  status: number,
-  method: string,
-  headers: Record<string, string>
-): Response {
-  return new Response(method === "HEAD" ? null : body, {
-    status,
-    headers: {
-      "Content-Type": DAY_MARKDOWN_CONTENT_TYPE,
-      "X-Content-Type-Options": "nosniff",
-      ...headers,
-    },
-  });
-}
-
-function errorResponse(
-  status: number,
-  message: string,
-  method: string
-): Response {
-  return textResponse(`# ${message}\n`, status, method, {
-    "Cache-Control": "private, no-store",
-    "Content-Language": "en",
-  });
-}
-
 export async function handleWeekMarkdownRequest(
   request: Request,
   db: D1Database | undefined,
   nowMs: number = Date.now()
 ): Promise<Response> {
+  const lang = markdownRequestLang(request);
+  if (lang instanceof Response) return lang;
   const method = request.method.toUpperCase();
-  if (method !== "GET" && method !== "HEAD") {
-    const response = errorResponse(405, "Method not allowed", method);
-    response.headers.set("Allow", "GET, HEAD");
-    return response;
-  }
   const url = new URL(request.url);
   const week = parseWeek(WEEK_MARKDOWN_PATH_RE.exec(url.pathname)?.[1], nowMs);
-  if (!week) return errorResponse(404, "Week not found", method);
-
-  const locale = resolveLocale({
-    search: url.search,
-    cookie: request.headers.get("cookie"),
-    acceptLanguage: request.headers.get("accept-language"),
-  });
-  if (!locale.ok) return errorResponse(400, "Invalid language", method);
-  if (locale.legacy) {
-    const target = canonicalLocaleRedirect(
-      url.pathname,
-      url.search,
-      "",
-      locale.lang
-    );
-    if (target) {
-      const location = sameOriginRedirectUrl(target, url);
-      if (!location) return errorResponse(400, "Invalid language", method);
-      return new Response(null, {
-        status: 307,
-        headers: {
-          Location: location.toString(),
-          "Cache-Control": "private, no-store",
-        },
-      });
-    }
-  }
-  if (!db) return errorResponse(503, "Weekly edition unavailable", method);
+  if (!week) return markdownErrorResponse(404, "Week not found", method);
+  if (!db)
+    return markdownErrorResponse(503, "Weekly edition unavailable", method);
 
   let edition: WeekEdition | null;
   try {
     edition = await getWeekEdition(readSession(db), week);
   } catch (error) {
     console.error("week markdown failed", error);
-    return errorResponse(500, "Weekly edition unavailable", method);
+    return markdownErrorResponse(500, "Weekly edition unavailable", method);
   }
-  if (!edition || isWeekEmptyIn(edition, locale.lang)) {
-    return errorResponse(404, "Week not found", method);
+  if (!edition || isWeekEmptyIn(edition, lang)) {
+    return markdownErrorResponse(404, "Week not found", method);
   }
   const { cacheControl, vary } = localeCacheControl(
     url.search,
     weekCacheControl(week, nowMs)
   );
-  return textResponse(renderWeekMarkdown(edition, locale.lang), 200, method, {
+  return markdownTextResponse(renderWeekMarkdown(edition, lang), 200, method, {
     "Cache-Control": cacheControl,
-    "Content-Language": locale.lang,
-    Link: `<${absoluteSiteUrl(weekPath(week), locale.lang)}>; rel="canonical"`,
+    "Content-Language": lang,
+    Link: `<${absoluteSiteUrl(weekPath(week), lang)}>; rel="canonical"`,
     ...(vary ? { Vary: vary } : {}),
   });
 }

@@ -22,7 +22,9 @@
  *     the response can never exceed it.
  *  4. Every `<item>` is self-consistent and canonical: the permalink carries
  *     an explicit `lang` (the only indexable form — see
- *     `LOCALE_URLS.md`), no UTM, no fragment; `<guid>` repeats it; the title
+ *     `LOCALE_URLS.md`), no UTM, no fragment, and is the `<guid>`; `<link>`
+ *     is that permalink with the RSS UTM tag, so a reader's click lands as
+ *     the `rss` channel while readers keep deduping on the guid; the title
  *     and description are the rendered-locale values with their real stored
  *     fallback (never an invented translation); `<pubDate>` normalizes the
  *     epoch explicitly.
@@ -34,6 +36,7 @@ import {
   MAX_PUBLIC_MEDIA_URL_LENGTH,
 } from "../../worker/media.js";
 import { normalizeTopicName } from "../../worker/topics.js";
+import { type UtmTag, withUtm } from "../../worker/utm.js";
 import { readSession } from "./db";
 import { feedDaysAndBefore, getFeed } from "./feed-queries";
 import { apiErrorResponse, resolveApiRequestLocale } from "./locale-response";
@@ -180,12 +183,16 @@ function mediaContentXml(url: string): string {
   return `    <media:content ${attrs} />`;
 }
 
+function rssTag(content: "item" | "channel"): UtmTag {
+  return { source: "rss", medium: "feed", campaign: "story", content };
+}
+
 function rssItemXml(item: FeedItem, lang: Lang): string {
   const permalink = feedItemPermalink(item, lang);
   const parts: string[] = [
     "  <item>",
     `    <title>${escapeXml(clip(renderedTitle(item, lang), RSS_TITLE_MAX))}</title>`,
-    `    <link>${escapeXml(permalink)}</link>`,
+    `    <link>${escapeXml(withUtm(permalink, rssTag("item")))}</link>`,
     `    <guid isPermaLink="true">${escapeXml(permalink)}</guid>`,
   ];
   const pubDate = rfc822Date(item.published_at);
@@ -235,7 +242,7 @@ function channelMetadataXml(lang: Lang): string {
     `<rss version="2.0" xmlns:atom="${ATOM_NAMESPACE}" xmlns:media="${MEDIA_NAMESPACE}">`,
     "<channel>",
     `    <title>${escapeXml(lang === "vi" ? SITE_NAME : SITE_TITLE)}</title>`,
-    `    <link>${escapeXml(`${SITE_URL}/?lang=${lang}`)}</link>`,
+    `    <link>${escapeXml(withUtm(`${SITE_URL}/?lang=${lang}`, rssTag("channel")))}</link>`,
     `    <description>${escapeXml(SITE_DESCRIPTION)}</description>`,
     `    <language>${lang}</language>`,
     `    <atom:link rel="self" type="${RSS_CONTENT_TYPE}" href="${escapeXml(self)}" />`,

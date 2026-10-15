@@ -13,6 +13,7 @@
  */
 import {
   backsExisting,
+  CLUSTER_GATE_VERSION,
   type GateHeadline,
   gateLlmClusters,
 } from "../cluster-gate.js";
@@ -25,6 +26,7 @@ import {
   type Cluster,
   type ClusterExistingInput,
   type ClusterNewInput,
+  clusterPrompt,
   MAX_NEW_ITEMS_IN_CLUSTER_PROMPT,
   type NearMissLink,
 } from "../dedupe.js";
@@ -43,9 +45,33 @@ export const CHECK_MAX_CALLS = 10;
 /** How the cluster prompt names the live side of a check call. */
 export const CHECK_EXISTING_WINDOW = "within 7 days of the new items";
 
-/** The prompt and gate a stored verdict came from. A verdict of another
- * version reads as no verdict, so changing either means a re-check. */
-export const CHECK_VERSION = 1;
+/** FNV-1a, 32-bit: Workers' `crypto.subtle` digest is async, and a module
+ * constant needs a value at load. */
+function fnv1a(text: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+/** The prompt and gate a stored verdict came from: a hash of the cluster
+ * prompt rendered for one sample row on each side, and the gate's version.
+ * A verdict of another version reads as no verdict, so a change to either
+ * means a re-check with no hand bump (#802). Verdicts stored as the
+ * hand-set version 1 predate the existing-row aliases. Changing the
+ * rendered prompt moves it (the alias form did, #817). Changes that leave
+ * that text alone do not: the response parser, the `batchPrompt` fields,
+ * `MAX_NEW_ITEMS_IN_CLUSTER_PROMPT` and the gate's structure. Bump
+ * `CLUSTER_GATE_VERSION` for a gate change that should force re-checks. */
+export const CHECK_VERSION = fnv1a(
+  `${CLUSTER_GATE_VERSION}\n${clusterPrompt(
+    [{ i: 0, title: "new title", url: "https://new.example", source: "s" }],
+    [{ id: "existing-id", title: "existing title" }],
+    CHECK_EXISTING_WINDOW
+  )}`
+);
 
 /** One story's row ids, sorted: the key a verdict is stored under. A story
  * whose rows change between runs has no verdict until it is checked again. */
@@ -341,8 +367,8 @@ export function batchPrompt(batch: CheckBatch): BatchPrompt {
 }
 
 /** A link the model made that the verdict does not keep. A `near-miss` is
- * an id the prompt did not send that `nearMissOf` resolves to `id`: the
- * model likely meant this live row and mistyped its id. */
+ * an answer that is this live row's alias only once trimmed and
+ * uppercased (`e3` for `E3`): the model likely meant it. */
 export interface DroppedLink {
   id: string;
   title: string;

@@ -1,16 +1,9 @@
 import { useEffect } from "react";
 import { afterLcpPaint } from "./after-lcp-paint";
+import { GA_MEASUREMENT_ID } from "./measurement-id";
 import { installAnalyticsStubs, posthogArrayScriptUrl } from "./stubs";
 import { sanitizedPage } from "./url-privacy";
 import { reportWebVitals } from "./web-vitals";
-
-/** Public GA4 measurement ID (client id, not a secret). */
-export const DEFAULT_GA_MEASUREMENT_ID = "G-HXJPPQVYQN";
-
-export function resolveMeasurementId(envId?: string | null): string {
-  const trimmed = typeof envId === "string" ? envId.trim() : "";
-  return trimmed || DEFAULT_GA_MEASUREMENT_ID;
-}
 
 const importMetaEnv =
   typeof import.meta !== "undefined"
@@ -18,10 +11,6 @@ const importMetaEnv =
         | Record<string, string>
         | undefined)
     : undefined;
-
-const GA_MEASUREMENT_ID = resolveMeasurementId(
-  importMetaEnv?.VITE_MEASUREMENT_ID
-);
 
 /** PostHog loads only when the project token is configured (env, not code). */
 const POSTHOG_PROJECT_TOKEN = importMetaEnv?.VITE_POSTHOG_PROJECT_TOKEN?.trim();
@@ -37,7 +26,6 @@ const SELINE_TOKEN = importMetaEnv?.VITE_SELINE_TOKEN;
  * for the LCP paint below.
  */
 installAnalyticsStubs({
-  gaMeasurementId: GA_MEASUREMENT_ID,
   posthog: POSTHOG_PROJECT_TOKEN
     ? { token: POSTHOG_PROJECT_TOKEN, host: POSTHOG_HOST }
     : undefined,
@@ -94,11 +82,9 @@ function loadJitsu(): void {
  * time after the paint.
  */
 function bootstrapAnalytics(): void {
-  if (GA_MEASUREMENT_ID) {
-    loadScript(
-      `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`
-    );
-  }
+  loadScript(
+    `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`
+  );
 
   if (SELINE_TOKEN) {
     loadScript("https://cdn.seline.so/seline.js", {

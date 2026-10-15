@@ -231,6 +231,41 @@ export function feedDiscoveryLink(lang: Lang): HeadLink {
   };
 }
 
+/**
+ * Same bound as the week page's intro clamp. Snippets show about 160
+ * characters; the extra room keeps the hand-written site blurb (170) whole.
+ */
+export const META_DESCRIPTION_MAX = 200;
+
+/**
+ * One line, at most `META_DESCRIPTION_MAX` characters, cut at a word boundary.
+ * Story summaries run to several hundred characters with paragraph breaks;
+ * JSON-LD keeps the full text.
+ */
+export function metaDescription(text: string): string {
+  const line = text.replace(/\s+/g, " ").trim();
+  if (line.length <= META_DESCRIPTION_MAX) return line;
+  const cut = graphemeSafePrefix(line, META_DESCRIPTION_MAX - 1);
+  const space = cut.lastIndexOf(" ");
+  const clipped =
+    space > META_DESCRIPTION_MAX / 2
+      ? cut.slice(0, space)
+      : cut.replace(/&#?[A-Za-z0-9]*$/, "");
+  return `${clipped.replace(/[\s,;:.]+$/, "")}…`;
+}
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/** Longest prefix of at most `max` UTF-16 units that ends between graphemes. */
+function graphemeSafePrefix(text: string, max: number): string {
+  let end = 0;
+  for (const { index, segment } of graphemes.segment(text)) {
+    if (index + segment.length > max) break;
+    end = index + segment.length;
+  }
+  return text.slice(0, end);
+}
+
 function shareTags(opts: {
   title: string;
   description: string;
@@ -242,17 +277,18 @@ function shareTags(opts: {
   siteOgDimensions?: boolean;
 }): HeadMeta[] {
   const twitterCard = opts.imageUrl ? "summary_large_image" : "summary";
+  const description = metaDescription(opts.description);
   const meta: HeadMeta[] = [
     { title: opts.title },
-    { name: "description", content: opts.description },
+    { name: "description", content: description },
     { property: "og:type", content: opts.type },
     { property: "og:site_name", content: SITE_NAME },
     { property: "og:title", content: opts.title },
-    { property: "og:description", content: opts.description },
+    { property: "og:description", content: description },
     { property: "og:url", content: opts.url },
     { name: "twitter:card", content: twitterCard },
     { name: "twitter:title", content: opts.title },
-    { name: "twitter:description", content: opts.description },
+    { name: "twitter:description", content: description },
   ];
   if (opts.lang) {
     meta.push(

@@ -19,6 +19,7 @@ import { loadOgFontAsset, loadStoryOgFonts } from "../../lib/og-fonts";
 import {
   fetchStoryOgImage,
   imagesBindingTranscoder,
+  isCardSizedPhoto,
   type StoryOgImage,
   storyOgImageFromBytes,
   storyOgLanguage,
@@ -64,13 +65,16 @@ async function fetchTilePhoto(
     const obj = await bucket.get(key).catch(() => null);
     const at = Number(obj?.customMetadata?.fetchedAt ?? 0);
     if (obj && Date.now() - at < SOURCE_PHOTO_MAX_AGE_MS) {
-      return storyOgImageFromBytes(new Uint8Array(await obj.arrayBuffer()));
+      const cached = storyOgImageFromBytes(
+        new Uint8Array(await obj.arrayBuffer())
+      );
+      return cached && isCardSizedPhoto(cached) ? cached : null;
     }
   }
   // The render is cached, so a slow publisher CDN is worth the wait.
   const image = await fetchStoryOgImage(url, {
     timeoutMs: 5000,
-    transcodeWebp: imagesBindingTranscoder(images),
+    transcode: imagesBindingTranscoder(images),
   });
   if (image && bucket) {
     const bytes = Uint8Array.from(
@@ -84,7 +88,7 @@ async function fetchTilePhoto(
       })
       .catch(() => undefined);
   }
-  return image;
+  return image && isCardSizedPhoto(image) ? image : null;
 }
 
 export const Route = createFileRoute("/api/og/date/$date")({

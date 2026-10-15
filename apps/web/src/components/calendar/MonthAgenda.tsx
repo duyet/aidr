@@ -2,7 +2,12 @@ import type { CalendarDay } from "../../lib/calendar";
 import { dayArchivePath } from "../../lib/day-archive";
 import type { Lang } from "../../lib/types";
 import { HighlightedText } from "../HighlightedText";
-import { dayTitle, storiesLabel, weekdayShort } from "./shared";
+import {
+  BLANK_IF_BROKEN,
+  dayTitle,
+  storiesLabel,
+  weekdayShort,
+} from "./shared";
 
 /**
  * The month's editions, newest first: serif day number over a mono weekday,
@@ -61,10 +66,14 @@ export function MonthAgenda({
               </span>
               {day.image_url ? (
                 <img
+                  key={day.image_url}
                   src={day.image_url}
                   alt=""
+                  width={72}
+                  height={54}
                   loading="lazy"
                   referrerPolicy="no-referrer"
+                  {...BLANK_IF_BROKEN}
                   className="aspect-[4/3] w-[72px] rounded-[10px] bg-muted object-cover"
                 />
               ) : (

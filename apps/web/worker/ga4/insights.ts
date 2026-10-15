@@ -31,8 +31,11 @@ import {
   GA4_TOTALS_DAYS,
   type Ga4DayPoint,
   type Ga4NamedRow,
+  type Ga4SessionRow,
   type Ga4Snapshot,
   type Ga4Totals,
+  landingPagePath,
+  topSessionRows,
 } from "./snapshot.js";
 
 /** Minimum gap between two syncs. The alarm fires hourly; GA4 does not need
@@ -64,12 +67,20 @@ export interface Ga4SyncEnv {
 
 export type Ga4SyncStatus = "ok" | "skipped" | "unconfigured" | "error";
 
+/** Rows stored per table, so an operator can smoke-check a sync's shape. */
+export type Ga4RowCounts = Record<
+  "daily" | "topPages" | "channels" | "sourceMedium" | "landingPages",
+  number
+>;
+
 export interface Ga4SyncResult {
   status: Ga4SyncStatus;
   /** Reason for a non-`ok` status; short and non-sensitive. */
   reason?: string;
   /** Only on `ok`: when the snapshot was stored, epoch seconds. */
   fetchedAt?: number;
+  /** Only on `ok`. */
+  rows?: Ga4RowCounts;
 }
 
 /** Accepts `123456` and `properties/123456`; rejects anything else. */
@@ -120,6 +131,29 @@ function namedRows(
     out.push({ name: name.slice(0, 300), views, users: users ?? 0 });
   }
   return out.sort((a, b) => b.views - a.views).slice(0, GA4_TOP_ROWS);
+}
+
+/** Acquisition rows by sessions. `name` joins the row's dimensions; an
+ *  empty name or a non-numeric session count drops the row. */
+function sessionRows(
+  rows: { dimensions: string[]; metrics: (number | null)[] }[],
+  name: (dimensions: string[]) => string
+): Ga4SessionRow[] {
+  const out: Ga4SessionRow[] = [];
+  for (const row of rows) {
+    const rowName = name(row.dimensions).slice(0, 300);
+    const sessions = finite(row.metrics[0]);
+    const users = finite(row.metrics[1] ?? 0);
+    if (!rowName || sessions === null) continue;
+    out.push({ name: rowName, sessions, users: users ?? 0 });
+  }
+  return topSessionRows(out);
+}
+
+function sourceMediumName([source, medium]: string[]): string {
+  const sourceName = (source ?? "").trim();
+  if (!sourceName) return "";
+  return `${sourceName} / ${(medium ?? "").trim() || "(not set)"}`;
 }
 
 /**
@@ -185,6 +219,21 @@ function topByRequest(dimension: string): RunReportRequest {
     dimensions: [{ name: dimension }],
     metrics: [{ name: "screenPageViews" }, { name: "activeUsers" }],
     orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
+    limit: String(GA4_TOP_ROWS * 5),
+    keepEmptyRows: false,
+  };
+}
+
+/** Sessions report over the totals window, ranked by sessions. Over-fetched
+ *  like `topByRequest` so dropped rows cannot leave the table short. */
+function sessionsByRequest(dimensions: string[]): RunReportRequest {
+  return {
+    dateRanges: [
+      { startDate: `${GA4_TOTALS_DAYS - 1}daysAgo`, endDate: "today" },
+    ],
+    dimensions: dimensions.map((name) => ({ name })),
+    metrics: [{ name: "sessions" }, { name: "activeUsers" }],
+    orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
     limit: String(GA4_TOP_ROWS * 5),
     keepEmptyRows: false,
   };
@@ -296,12 +345,18 @@ export async function syncGa4Insights(
       fetcher,
     });
 
-    const [daily, totals, pages, sources] = await Promise.all([
-      runGa4Report(propertyId, token, DAILY_REQUEST, fetcher),
-      runGa4Report(propertyId, token, TOTALS_REQUEST, fetcher),
-      runGa4Report(propertyId, token, topByRequest("pagePath"), fetcher),
-      runGa4Report(propertyId, token, topByRequest("sessionSource"), fetcher),
-    ]);
+    const report = (request: RunReportRequest) =>
+      runGa4Report(propertyId, token, request, fetcher);
+    const [daily, totals, pages, channels, sourceMedium, landingPages] =
+      await Promise.all([
+        report(DAILY_REQUEST),
+        report(TOTALS_REQUEST),
+        report(topByRequest("pagePath")),
+        report(sessionsByRequest(["sessionDefaultChannelGroup"])),
+        report(sessionsByRequest(["sessionSource", "sessionMedium"])),
+        // Never `landingPagePlusQueryString`: queries can carry tokens.
+        report(sessionsByRequest(["landingPage"])),
+      ]);
 
     const totalsRow = totalsFromRows(totals.rows);
     if (!totalsRow) {
@@ -315,11 +370,25 @@ export async function syncGa4Insights(
       daily: dailyPoints(daily.rows),
       totals: totalsRow,
       topPages: namedRows(pages.rows),
-      sources: namedRows(sources.rows),
+      channels: sessionRows(channels.rows, ([group]) => (group ?? "").trim()),
+      sourceMedium: sessionRows(sourceMedium.rows, sourceMediumName),
+      landingPages: sessionRows(landingPages.rows, ([page]) =>
+        landingPagePath(page ?? "")
+      ),
     };
 
     await writeGa4Snapshot(env.DB, snapshot);
-    return { status: "ok", fetchedAt: nowSec };
+    return {
+      status: "ok",
+      fetchedAt: nowSec,
+      rows: {
+        daily: snapshot.daily.length,
+        topPages: snapshot.topPages.length,
+        channels: snapshot.channels.length,
+        sourceMedium: snapshot.sourceMedium.length,
+        landingPages: snapshot.landingPages.length,
+      },
+    };
   } catch (error) {
     console.error("ga4 sync failed:", error);
     return {

@@ -11,6 +11,7 @@ import { idPrefixFromSlug } from "../../lib/slug";
 import {
   fetchStoryOgImage,
   imagesBindingTranscoder,
+  isCardSizedPhoto,
   type StoryImageFetchOptions,
   storyOgCard,
   storyOgImageCandidates,
@@ -20,11 +21,11 @@ import { getStory } from "../../lib/story-queries";
 
 async function firstStoryOgImage(
   item: Parameters<typeof storyOgImageCandidates>[0],
-  transcodeWebp: StoryImageFetchOptions["transcodeWebp"]
+  transcode: StoryImageFetchOptions["transcode"]
 ) {
   for (const url of storyOgImageCandidates(item)) {
-    const image = await fetchStoryOgImage(url, { transcodeWebp });
-    if (image) return image;
+    const image = await fetchStoryOgImage(url, { transcode });
+    if (image && isCardSizedPhoto(image)) return image;
   }
   return null;
 }

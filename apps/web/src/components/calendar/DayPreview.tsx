@@ -1,7 +1,7 @@
 import type { CalendarDay } from "../../lib/calendar";
 import { dayArchivePath } from "../../lib/day-archive";
 import type { Lang } from "../../lib/types";
-import { dayTitle, formatDay } from "./shared";
+import { BLANK_IF_BROKEN, dayTitle, formatDay } from "./shared";
 
 /**
  * Phone sheet preview of the selected day: thumbnail, date and story count,
@@ -17,9 +17,13 @@ export function DayPreview({ day, lang }: { day: CalendarDay; lang: Lang }) {
     >
       {day.image_url ? (
         <img
+          key={day.image_url}
           src={day.image_url}
           alt=""
+          width={64}
+          height={64}
           referrerPolicy="no-referrer"
+          {...BLANK_IF_BROKEN}
           className="size-16 shrink-0 rounded-xl bg-muted object-cover"
         />
       ) : (
