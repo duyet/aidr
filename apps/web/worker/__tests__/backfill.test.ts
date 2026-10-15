@@ -366,7 +366,7 @@ describe("planBackfillUpdate", () => {
       { imageUrl: "https://x.com/i.png" }
     );
     expect(plan).toEqual({
-      summary: "Existing summary",
+      summary: null,
       imageUrl: "https://x.com/i.png",
       mediaManifest: {
         version: 1,
@@ -454,7 +454,29 @@ describe("planBackfillUpdate", () => {
       { summary: "Revenue climbed to $4.59 billion.", imageUrl: null },
       { summary: "An IPO prospectus seen by Reu…" }
     );
-    expect(plan?.summary).toBe("Revenue climbed to $4.59 billion.");
+    expect(plan?.summary).toBeNull();
+  });
+
+  // #811: a techmeme permalink returns only the og:image already stored, and
+  // the same teaser was rewritten on every run.
+  it("returns null when the write would store what the row already holds", () => {
+    const image = "https://cdn.example/story.jpg";
+    expect(
+      planBackfillUpdate(
+        {
+          summary: "Chipmakers tracked Wall Street losses as concerns … ",
+          imageUrl: image,
+          mediaManifest: JSON.stringify({
+            version: 1,
+            assets: [{ type: "image", url: image }],
+          }),
+        },
+        {
+          summary: "Chipmakers tracked Wall Street losses as concerns …",
+          imageUrl: image,
+        }
+      )
+    ).toBeNull();
   });
 
   it("replaces a cut-off summary with a finished fetch", () => {

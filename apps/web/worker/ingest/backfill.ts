@@ -74,11 +74,25 @@ interface ContentBackfillRow {
   media_manifest: string | null;
 }
 
+/** Whether migration 0066 added `items.summary_checked_at`. Probed every
+ * run: a cached false would outlive the migration in a warm isolate. */
+async function summaryCheckedColumnReady(db: D1Database): Promise<boolean> {
+  try {
+    await db.prepare("SELECT summary_checked_at FROM items LIMIT 1").all();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Fetch + apply one row's backfill. `onPlanned` fires once an update is
- * planned, before any write, so the count matches rows we attempted. */
+ * planned, before any write, so the count matches rows we attempted.
+ * `checkSummary` marks a summary-leg row as fetched, so it is not selected
+ * again whatever the fetch returned. */
 async function backfillContentRow(
   env: Env,
   row: ContentBackfillRow,
+  checkSummary: boolean,
   onPlanned: () => void
 ): Promise<void> {
   let fetched: {
@@ -101,6 +115,15 @@ async function backfillContentRow(
     };
   }
 
+  if (checkSummary) {
+    await env.DB.prepare(
+      `UPDATE items SET summary_checked_at = ?
+       WHERE id = ? AND summary_checked_at IS NULL AND summary IS ?`
+    )
+      .bind(Math.floor(Date.now() / 1000), nn(row.id), row.summary)
+      .run();
+  }
+
   const plan = planBackfillUpdate(
     {
       summary: row.summary,
@@ -111,9 +134,10 @@ async function backfillContentRow(
     fetched
   );
   if (!plan) {
-    // Nothing usable came back (a 401/403, a logo-only page). Store the row's
-    // own manifest so it leaves the media queue instead of being fetched
-    // again every run ahead of the rows behind it.
+    // Nothing usable or nothing new came back (a 401/403, a logo-only page,
+    // the og:image already stored). Store the row's own manifest so it leaves
+    // the media queue instead of being fetched again every run ahead of the
+    // rows behind it.
     await env.DB.prepare(
       `UPDATE items SET media_manifest = ? WHERE id = ? AND ${UNCHECKED_MEDIA_SQL}`
     )
@@ -142,7 +166,9 @@ async function backfillContentRow(
       nn(row.id)
     )
     .run();
-  await prepareTranslationQaInvalidation(env.DB, row.id).run();
+  if (plan.summary !== null) {
+    await prepareTranslationQaInvalidation(env.DB, row.id).run();
+  }
 
   if (sources.length === 0) return;
   const { results: existingSources } = await env.DB.prepare(
@@ -171,9 +197,18 @@ export async function backfillContent(ctx: IngestContext): Promise<number> {
     async () => {
       let count = 0;
       try {
+        const checkedColumn = await summaryCheckedColumnReady(env.DB);
+        if (!checkedColumn) {
+          console.warn(
+            "backfill-content: items.summary_checked_at is missing; apply migration 0066. Until then the summary leg refetches its head every run."
+          );
+        }
         const { results } = await env.DB.prepare(
-          buildMissingSummaryQuery(BACKFILL_CONTENT_CAP)
+          buildMissingSummaryQuery(BACKFILL_CONTENT_CAP, checkedColumn)
         ).all<ContentBackfillRow>();
+        const summaryIds = new Set(
+          checkedColumn ? (results ?? []).map((row) => row.id) : []
+        );
         const mediaOnlyRows = await env.DB.prepare(
           buildMissingMediaQuery(BACKFILL_CONTENT_CAP)
         ).all<ContentBackfillRow>();
@@ -185,7 +220,7 @@ export async function backfillContent(ctx: IngestContext): Promise<number> {
         for (const batch of chunk(allRows, BACKFILL_BATCH_SIZE)) {
           await Promise.all(
             batch.map((row) =>
-              backfillContentRow(env, row, () => {
+              backfillContentRow(env, row, summaryIds.has(row.id), () => {
                 count++;
               })
             )

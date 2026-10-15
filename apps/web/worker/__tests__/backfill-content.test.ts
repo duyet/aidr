@@ -297,6 +297,69 @@ describe("backfillContent summary queue", () => {
     }
   });
 
+  it("writes a new picture without clearing translation QA", async () => {
+    const sqlite = new DatabaseSync(":memory:");
+    try {
+      summarySchema(sqlite);
+      sqlite.exec(`
+        INSERT INTO items (id, url, source_id, status, summary, media_manifest, published_at)
+        VALUES ('teaser', 'https://river.example/p1', 'techmeme', 'published',
+                'Chipmakers tracked losses as concerns …', '{"version":1,"assets":[]}', 20);
+        INSERT INTO translations (item_id, lang, title, summary, qa_rating, qa_at)
+        VALUES ('teaser', 'vi', 'Tiêu đề', 'Tóm tắt', 5, 1792000000);
+      `);
+      const image = "https://cdn.example/story.jpg";
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => html({ "og:image": image }))
+      );
+
+      await backfillContent(context(sqlite));
+
+      expect(
+        sqlite.prepare("SELECT image_url FROM items WHERE id = 'teaser'").get()
+      ).toEqual({ image_url: image });
+      expect(
+        sqlite.prepare("SELECT qa_rating, qa_at FROM translations").get()
+      ).toEqual({ qa_rating: 5, qa_at: 1792000000 });
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  // A summary another writer stored while the page was fetched was never
+  // judged by this fetch, so the row stays queued for one of its own.
+  it("leaves a row queued when its summary changed during the fetch", async () => {
+    const sqlite = new DatabaseSync(":memory:");
+    try {
+      summarySchema(sqlite);
+      sqlite.exec(`
+        INSERT INTO items (id, url, source_id, status, summary, media_manifest, published_at)
+        VALUES ('raced', 'https://blocked.example/story', 'hn', 'published',
+                NULL, '{"version":1,"assets":[]}', 20);
+      `);
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          sqlite
+            .prepare("UPDATE items SET summary = ? WHERE id = 'raced'")
+            .run("Another source's teaser …");
+          return new Response("Unauthorized", { status: 401 });
+        })
+      );
+
+      await backfillContent(context(sqlite));
+
+      expect(
+        sqlite
+          .prepare("SELECT summary_checked_at FROM items WHERE id = 'raced'")
+          .get()
+      ).toEqual({ summary_checked_at: null });
+    } finally {
+      sqlite.close();
+    }
+  });
+
   // 0066 is applied by hand after deploy. Until then the summary query must
   // not name the column: a "no such column" error here would also end the
   // media leg in the same try.

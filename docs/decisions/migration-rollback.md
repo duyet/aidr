@@ -289,6 +289,18 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0066_item_summary_checked.sql
+
+- Change: adds nullable `items.summary_checked_at` (unix seconds). Nothing
+  is seeded. backfill-content's summary leg selects only NULL rows and sets
+  it on each fetch, so each row is fetched once (#811).
+- Risk: none for existing rows. The Worker probes the column, so either
+  order works. Until it is applied the summary leg uses the old query, logs
+  a warning, and refetches its 15-row head every run as before.
+- Rollback: roll the Worker back first, then
+  `ALTER TABLE items DROP COLUMN summary_checked_at;`. After a re-apply
+  every row matching the summary query is fetched once more.
+
 ## 0065_item_reads.sql
 
 - Change: new table `item_reads` with index `idx_item_reads_day`. One row
