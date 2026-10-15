@@ -65,9 +65,9 @@ function PrivacyPage() {
             <code>ref</code> or <code>utm_*</code> tag) and no visitor
             identifier, cookie, or IP address. To count a story once per tab and
             day, your browser keeps a key per story in{" "}
-            <code>sessionStorage</code>, which it clears when the tab closes. AI;DR never
-            stores your IP address. To stop one client inflating a count,
-            Cloudflare's rate limiter keeps a one-minute counter for your
+            <code>sessionStorage</code>, which it clears when the tab closes.
+            AI;DR never stores your IP address. To stop one client inflating a
+            count, Cloudflare's rate limiter keeps a one-minute counter for your
             IP address, the story, and the action at the nearest Cloudflare
             location. The extension loads no analytics.
           </li>
