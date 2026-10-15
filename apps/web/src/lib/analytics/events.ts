@@ -293,7 +293,7 @@ export const EVENTS = {
   },
 } as const satisfies Record<string, EventSpec>;
 
-const EXTENSION_CHANNELS = ["chrome", "telegram", "email"] as const;
+export const EXTENSION_CHANNELS = ["chrome", "telegram", "email"] as const;
 
 /**
  * Events the Chrome extension's new tab sends (`apps/extension/js/track.js`).

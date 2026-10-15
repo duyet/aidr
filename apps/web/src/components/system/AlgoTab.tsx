@@ -9,6 +9,7 @@ import { useSystemData } from "../../lib/use-system-stats";
 import { AnyRouterMark } from "./AnyRouterMark";
 import { CardData } from "./CardData";
 import { ChartCard } from "./ChartCard";
+import { ExtensionCard } from "./ExtensionCard";
 import { API } from "./endpoints";
 import { RankingCard } from "./RankingCard";
 import { ReadsCard } from "./ReadsCard";
@@ -170,6 +171,7 @@ export function AlgoTab() {
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <RankingCard />
         <ReadsCard />
+        <ExtensionCard />
         <ChartCard title="Pipeline" subtitle="Hourly ingest, end to end">
           <ol className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
             {[

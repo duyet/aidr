@@ -12,4 +12,5 @@ export const API = {
   sources: "/api/system/sources",
   trends: "/api/system/trends",
   reads: "/api/system/reads",
+  extension: "/api/system/extension",
 } as const;
