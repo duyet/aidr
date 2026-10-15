@@ -24,6 +24,9 @@ describe("prefersMarkdown", () => {
     ["text/html, text/markdown;q=0.5", false],
     ["text/markdown;q=0", false],
     ["text/markdown;q=0.5, */*;q=0.1", true],
+    ["text/markdown;q=abc", false],
+    ["text/markdown;q=abc, text/html;q=0.1", false],
+    ["text/markdown;q=0.5, text/html;q=abc", true],
   ])("%s -> %s", (accept, expected) => {
     expect(prefersMarkdown(accept)).toBe(expected);
   });

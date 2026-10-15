@@ -1206,6 +1206,33 @@ describe("meta description length", () => {
     const value = metaDescription("x".repeat(500));
     expect(value).toHaveLength(META_DESCRIPTION_MAX);
   });
+
+  it("strips newlines from a short description", () => {
+    expect(metaDescription("a\nb")).toBe("a b");
+    expect(metaDescription("a\n\n  b\tc")).toBe("a b c");
+  });
+
+  it("never hard-cuts through a surrogate pair", () => {
+    const value = metaDescription(`${"x".repeat(198)}\u{1F44D}\u{1F44D}`);
+    expect(value).toBe(`${"x".repeat(198)}…`);
+    expect(value).not.toContain("\uFFFD");
+    expect(value.isWellFormed()).toBe(true);
+  });
+
+  it("never hard-cuts between a letter and its combining accent", () => {
+    expect(metaDescription(`${"a".repeat(198)}e\u0301e`)).toBe(
+      `${"a".repeat(198)}…`
+    );
+  });
+
+  it("drops a trailing partial entity left by a hard cut", () => {
+    expect(metaDescription(`${"a".repeat(198)}&amp;b`)).toBe(
+      `${"a".repeat(198)}…`
+    );
+    expect(metaDescription(`${"a".repeat(196)}&#39;b`)).toBe(
+      `${"a".repeat(196)}…`
+    );
+  });
 });
 
 describe("hreflang reciprocity", () => {

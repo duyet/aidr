@@ -16,6 +16,7 @@ vi.mock("./feed-queries", () => ({
 const {
   DAY_MARKDOWN_MAX_STORIES,
   handleDayMarkdownRequest,
+  inlineText,
   isDayMarkdownPath,
   renderDayMarkdown,
 } = await import("./day-markdown");
@@ -146,6 +147,22 @@ describe("renderDayMarkdown", () => {
     expect(md).toContain(`${DAY_MARKDOWN_MAX_STORIES}. [`);
     expect(md).not.toContain(`${DAY_MARKDOWN_MAX_STORIES + 1}. [`);
     expect(md).toContain("5 more stories on the HTML page.");
+  });
+});
+
+describe("inlineText list markers", () => {
+  it.each([
+    ["- a", "\\- a"],
+    ["+ a", "\\+ a"],
+    ["1. a", "1\\. a"],
+    ["12) a", "12\\) a"],
+  ])("escapes a leading marker in %j", (input, expected) => {
+    expect(inlineText(input)).toBe(expected);
+  });
+
+  it("leaves markers that are not at the start alone", () => {
+    expect(inlineText("a - b + 1. c")).toBe("a - b + 1. c");
+    expect(inlineText("2026-10 recap")).toBe("2026-10 recap");
   });
 });
 
