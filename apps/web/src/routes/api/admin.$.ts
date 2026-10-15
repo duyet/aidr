@@ -499,7 +499,8 @@ async function handle(
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   }
 
-  // Body `{ batchId, dryRun? }`; dry unless `dryRun: false`. Never sends.
+  // Body `{ batchId, canonicalIds?, dryRun? }`; dry unless `dryRun: false`.
+  // Never sends.
   if (
     method === "POST" &&
     segments.length === 2 &&

@@ -312,9 +312,16 @@ locally from production D1 through `wrangler d1 execute`, SELECT only, and
   outcomes and lossy notes. A repeat run is a no-op.
 - Every audit row of one request has the same `ts`, returned as
   `applied.batchId`. `POST /api/admin/unmerge/undo` with
-  `{ batchId, dryRun? }` (`agent unmerge --undo <batchId> [--apply]`, a dry
-  run by default) writes each target's before back through the same guarded
-  batch, as `unmerge.undo.*` rows. A canonical is undone only while every
+  `{ batchId, canonicalIds?, dryRun? }` (`agent unmerge --undo <batchId>
+  [--canonical <id,...>] [--apply]`, a dry run by default) writes each
+  target's before back through the same guarded batch, as `unmerge.undo.*`
+  rows. `canonicalIds` (full ids only) limits the undo to those canonicals'
+  change sets. The apply wrote each canonical as its own atomic batch, so one
+  can be undone without the rest. An id the batch did not write is a 400,
+  and the CLI refuses any flag its command does not read, so a typo never
+  undoes the whole batch (#795). With `--canonical`, `--apply` first asks
+  the deployed endpoint for a dry run and stops unless it plans exactly the
+  named canonicals. A canonical is undone only while every
   target still holds what the apply wrote (`undo`); one already back is a
   `noop`, and anything else is a `conflict` that writes nothing. Undo does
   not touch what later jobs wrote, such as `backfill-translate` and
@@ -328,6 +335,12 @@ locally from production D1 through `wrangler d1 execute`, SELECT only, and
   A target the apply only guarded (a live twin that gained merged rows and
   no new values) holds both values, so it never blocks an `undo` or a
   `noop`.
+- A restored row that turns out to be live next to another copy of its
+  story: undo its canonical (`--canonical`), which puts the row back under
+  that canonical as `merged`, then run a pairs entry for it with `sameAs`
+  naming the live copy, which re-points it there as ingest would have. A
+  `sameAs` pair alone does nothing while the row is `published`
+  (`noop:already-unmerged`).
 
 #### Dangling merges (#791)
 

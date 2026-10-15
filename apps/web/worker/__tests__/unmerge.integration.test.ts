@@ -776,6 +776,138 @@ describe("unmerge", () => {
     expect(tables(db)).toEqual(changed);
   });
 
+  // #795: a batch restored many stories, and only a few of them came back
+  // next to a live copy. Undoing the whole batch would hide the rest again.
+  describe("undo of one canonical (#795)", () => {
+    const C2 = id(0xc4);
+    const second = canonicalRow(C2, OLD + 100, "second");
+    const ids = [C, HUG, MB, C2, HIDDEN];
+    const rowsOf = (rowIds: string[]) =>
+      rowIds.map((rowId) => [shape(db, rowId), sources(db, rowId)]);
+
+    /** One apply batch writing two canonicals: C (the anjney pair) and C2
+     * (the Australia story, with no live copy yet). */
+    async function applyTwoCanonicals() {
+      await writeCanonical(db, second, OLD + 700);
+      const { hidden } = australiaCopies(OLD + 7000);
+      await writeCluster(db, [hidden], { id: C2, row: second }, OLD + 9600);
+      const preApply = rowsOf(ids);
+      const applied = await unmergeItems(env, {
+        pairs: [...pairs, { canonicalId: C2, mergedId: HIDDEN }],
+        dryRun: false,
+      });
+      if ("error" in applied) throw new Error(applied.error);
+      expect(applied.applied?.canonicals).toBe(2);
+      expect(shape(db, HIDDEN)).toMatchObject({ status: "published" });
+      vi.setSystemTime(NOW.getTime() + 60_000);
+      return { batchId: applied.applied?.batchId as number, preApply };
+    }
+
+    it("reverts only the named canonical and leaves the batch's other restores live", async () => {
+      const { batchId, preApply } = await applyTwoCanonicals();
+      const afterApply = rowsOf(ids);
+
+      const dry = await undoUnmerge(env, { batchId, canonicalIds: [C2] });
+      if ("error" in dry) throw new Error(dry.error);
+      expect(dry.plan.canonicals.map((c) => [c.canonicalId, c.state])).toEqual([
+        [C2, "undo"],
+      ]);
+      expect(rowsOf(ids)).toEqual(afterApply);
+
+      const undone = await undoUnmerge(env, {
+        batchId,
+        canonicalIds: [C2],
+        dryRun: false,
+      });
+      if ("error" in undone) throw new Error(undone.error);
+      expect(undone.applied).toMatchObject({ canonicals: 1, stale: [] });
+      // C2's rows are back as they were before the apply...
+      expect(rowsOf([C2, HIDDEN])).toEqual(preApply.slice(3));
+      expect(shape(db, HIDDEN)).toMatchObject({
+        status: "merged",
+        duplicate_of: C2,
+      });
+      // ...and C's restore is untouched.
+      expect(rowsOf([C, HUG, MB])).toEqual(afterApply.slice(0, 3));
+      const undoAudit = db
+        .prepare(
+          "SELECT detail FROM admin_audit WHERE action = 'unmerge.undo.canonical'"
+        )
+        .all() as { detail: string }[];
+      expect(undoAudit.map((a) => JSON.parse(a.detail))).toEqual([
+        expect.objectContaining({ canonicalId: C2, undoes: batchId }),
+      ]);
+
+      const again = await undoUnmerge(env, {
+        batchId,
+        canonicalIds: [C2],
+        dryRun: false,
+      });
+      if ("error" in again) throw new Error(again.error);
+      expect(again.plan.canonicals.map((c) => c.state)).toEqual(["noop"]);
+      expect(again.applied).toMatchObject({ canonicals: 0 });
+
+      // The rest of the batch still undoes on its own.
+      const rest = await undoUnmerge(env, { batchId, dryRun: false });
+      if ("error" in rest) throw new Error(rest.error);
+      expect(
+        Object.fromEntries(
+          rest.plan.canonicals.map((c) => [c.canonicalId, c.state])
+        )
+      ).toEqual({ [C]: "undo", [C2]: "noop" });
+      expect(rowsOf(ids)).toEqual(preApply);
+    });
+
+    it("refuses a canonical the batch did not write, a short id, or an empty list, and writes nothing", async () => {
+      const { batchId } = await applyTwoCanonicals();
+      const before = dump(db);
+      for (const canonicalIds of [[C2, id(0xee)], [C2.slice(0, 8)], [], C2]) {
+        expect(
+          await undoUnmerge(env, { batchId, canonicalIds, dryRun: false })
+        ).toMatchObject({ status: 400 });
+      }
+      expect(dump(db)).toEqual(before);
+    });
+
+    it("a scoped undo, then sameAs, merges a restored row into a live copy published since", async () => {
+      const { batchId } = await applyTwoCanonicals();
+      const afterApply = rowsOf([C, HUG, MB]);
+      // The story's other copy went live after the restore: shown twice.
+      // Written now, so its run re-ranks none of the batch's old rows.
+      const { live } = australiaCopies(OLD + 7000);
+      await writeCanonical(db, live, NOW_SEC);
+      const published = () =>
+        (
+          db
+            .prepare(
+              "SELECT id FROM items WHERE status = 'published' AND id IN (?, ?)"
+            )
+            .all(HIDDEN, LIVE) as { id: string }[]
+        ).map((r) => r.id);
+      expect(published().sort()).toEqual([HIDDEN, LIVE].sort());
+
+      const undone = await undoUnmerge(env, {
+        batchId,
+        canonicalIds: [C2],
+        dryRun: false,
+      });
+      if ("error" in undone) throw new Error(undone.error);
+      vi.setSystemTime(NOW.getTime() + 120_000);
+      const repair = await unmergeItems(env, {
+        pairs: [{ canonicalId: C2, mergedId: HIDDEN, sameAs: LIVE }],
+        dryRun: false,
+      });
+      if ("error" in repair) throw new Error(repair.error);
+      expect(repair.counts.pairs).toEqual({ repoint: 1 });
+      expect(published()).toEqual([LIVE]);
+      expect(shape(db, HIDDEN)).toMatchObject({
+        status: "merged",
+        duplicate_of: LIVE,
+      });
+      expect(rowsOf([C, HUG, MB])).toEqual(afterApply);
+    });
+  });
+
   it("posts nothing: restored rows are outside every send window, recent ones wait", async () => {
     // A wrong merge from two hours ago: restoring it now would make an
     // importance-9 story trend.

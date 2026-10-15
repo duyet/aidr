@@ -34,6 +34,41 @@ export function parseBatchId(value: unknown): number | null {
   return typeof n === "number" && Number.isSafeInteger(n) && n > 0 ? n : null;
 }
 
+/** An undo's `canonicalIds`: absent undoes the whole batch; otherwise a
+ * non-empty list of full ids. A short id is refused, never matched as a
+ * prefix. */
+export function parseUndoCanonicalIds(
+  value: unknown
+): { canonicalIds: ItemId[] | null } | { error: string } {
+  if (value === undefined) return { canonicalIds: null };
+  const ids = Array.isArray(value) ? value.map(parseItemId) : [];
+  if (ids.length === 0 || ids.some((id) => id === null)) {
+    return {
+      error: "canonicalIds must be a non-empty array of 64-char hex item ids",
+    };
+  }
+  return { canonicalIds: [...new Set(ids as ItemId[])] };
+}
+
+/** The batch's records for `canonicalIds` (all of them for null). An id the
+ * batch did not write is an error, so a typo cannot fall back to the whole
+ * batch. */
+export function scopeUndoRecords(
+  records: readonly TargetAudit[],
+  canonicalIds: readonly ItemId[] | null
+): { records: TargetAudit[] } | { error: string } {
+  if (canonicalIds === null) return { records: [...records] };
+  const scope = new Set<string>(canonicalIds);
+  const written = new Set<string>(records.map((r) => r.canonicalId));
+  const unknown = canonicalIds.filter((id) => !written.has(id));
+  if (unknown.length > 0) {
+    return {
+      error: `the batch wrote no canonical ${unknown.join(", ")}`,
+    };
+  }
+  return { records: records.filter((r) => scope.has(r.canonicalId)) };
+}
+
 export function undoAuditSql(batchId: number): string {
   return `SELECT id, detail FROM admin_audit
   WHERE ts = ${batchId}

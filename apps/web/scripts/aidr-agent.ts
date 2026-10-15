@@ -24,8 +24,10 @@
  *     (restores merged rows whose canonical id names no item, #791; same
  *     read-only dry run and undo as unmerge; decisions.json holds
  *     `{ mergedId, sameAs | distinctFrom }` entries for held stories)
- *   pnpm --filter @aidr/web agent unmerge --undo <batchId> [--apply]
- *     (reverses one apply from its admin_audit rows; dry run by default)
+ *   pnpm --filter @aidr/web agent unmerge --undo <batchId>
+ *     [--canonical <id,...>] [--apply]
+ *     (reverses one apply from its admin_audit rows, or only the named
+ *     canonicals' writes in it; dry run by default)
  *   pnpm --filter @aidr/web agent backfill-tags [--apply]
  *     (fallback tags for published stories stored with none; the dry run
  *     reads prod D1 with SELECTs only, neither calls a model; undo with
@@ -68,7 +70,14 @@ import {
   unknownDecisionIds,
 } from "../worker/unmerge/plan";
 import { countUnmerge } from "../worker/unmerge/report";
-import { loadUndo, parseBatchId, planUndo } from "../worker/unmerge/undo";
+import { loadUndo, planUndo, scopeUndoRecords } from "../worker/unmerge/undo";
+import {
+  type Args,
+  parseArgs,
+  parseUnmergeCommand,
+  type UnmergeCommand,
+  undoScopeMismatch,
+} from "./agent-args";
 import { wranglerSelect, wranglerSelectTotals } from "./cf-d1";
 
 const DEFAULT_BASE = "https://aidr.today";
@@ -133,50 +142,6 @@ async function api<T>(
     );
   }
   return json as T;
-}
-
-interface Args {
-  positional: string[];
-  flags: Map<string, string | true>;
-}
-
-function parseArgs(argv: string[]): Args {
-  const positional: string[] = [];
-  const flags = new Map<string, string | true>();
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (!arg.startsWith("--")) {
-      positional.push(arg);
-      continue;
-    }
-    const name = arg.slice(2);
-    const next = argv[i + 1];
-    if (next !== undefined && !next.startsWith("--") && takesValue(name)) {
-      flags.set(name, next);
-      i++;
-    } else {
-      flags.set(name, true);
-    }
-  }
-  return { positional, flags };
-}
-
-function takesValue(flag: string): boolean {
-  return [
-    "run",
-    "runs",
-    "limit",
-    "steps",
-    "video",
-    "short",
-    "title",
-    "lang",
-    "chat",
-    "channel",
-    "ref",
-    "date",
-    "undo",
-  ].includes(flag);
 }
 
 function flagNumber(args: Args, name: string, fallback: number): number {
@@ -356,18 +321,19 @@ async function tldrPreview(): Promise<void> {
  * through `wrangler d1 execute` with SELECTs only, so it needs no deploy;
  * `--apply` posts the pairs to the admin endpoint, which re-plans from live
  * rows and writes. */
-async function unmerge(args: Args, file: string | undefined): Promise<void> {
-  if (args.flags.has("undo")) return undoUnmergeBatch(args);
-  if (args.flags.has("dangling")) return unmergeDangling(args, file);
-  if (!file) fail("unmerge needs a pairs JSON file");
-  const raw: unknown = JSON.parse(readFileSync(file, "utf-8"));
+async function unmerge(args: Args): Promise<void> {
+  const command = parseUnmergeCommand(args);
+  if ("error" in command) fail(command.error);
+  if (command.kind === "undo") return undoUnmergeBatch(command);
+  if (command.kind === "dangling") return unmergeDangling(command);
+  const raw: unknown = JSON.parse(readFileSync(command.file, "utf-8"));
   const parsed = parseUnmergePairs(
     raw && typeof raw === "object" && !Array.isArray(raw)
       ? (raw as { pairs?: unknown }).pairs
       : raw
   );
   if ("error" in parsed) fail(parsed.error);
-  if (args.flags.has("apply")) {
+  if (command.apply) {
     const result = await api<UnmergeResult>("/api/admin/unmerge", {
       method: "POST",
       admin: true,
@@ -394,10 +360,10 @@ async function unmerge(args: Args, file: string | undefined): Promise<void> {
 /** Plan (default) or apply the restore of merged rows whose canonical id
  * names no item (#791). Same read and apply paths as `unmerge`; the apply
  * posts the same decisions, so it plans what the dry run printed. */
-async function unmergeDangling(
-  args: Args,
-  file: string | undefined
-): Promise<void> {
+async function unmergeDangling({
+  file,
+  apply,
+}: Extract<UnmergeCommand, { kind: "dangling" }>): Promise<void> {
   const raw: unknown = file
     ? JSON.parse(readFileSync(file, "utf-8"))
     : undefined;
@@ -407,7 +373,7 @@ async function unmergeDangling(
       : raw;
   const parsed = parseDanglingDecisions(decisions);
   if ("error" in parsed) fail(parsed.error);
-  if (args.flags.has("apply")) {
+  if (apply) {
     const result = await api<UnmergeResult>("/api/admin/unmerge", {
       method: "POST",
       admin: true,
@@ -433,21 +399,29 @@ async function unmergeDangling(
   );
 }
 
-/** Plan (default) or apply the undo of one unmerge apply. The dry run reads
- * the batch's `admin_audit` rows and the touched rows through `wrangler d1
- * execute` with SELECTs only. */
-async function undoUnmergeBatch(args: Args): Promise<void> {
-  const batchId = parseBatchId(args.flags.get("undo"));
-  if (batchId === null) fail("--undo needs the apply's batch id");
-  if (args.flags.has("apply")) {
+/** Plan (default) or apply the undo of one unmerge apply, or of the named
+ * canonicals in it. The dry run reads the batch's `admin_audit` rows and the
+ * touched rows through `wrangler d1 execute` with SELECTs only. */
+async function undoUnmergeBatch({
+  batchId,
+  canonicalIds,
+  apply,
+}: Extract<UnmergeCommand, { kind: "undo" }>): Promise<void> {
+  const label = `${batchId}${canonicalIds ? ` (${canonicalIds.length} canonical(s))` : ""}`;
+  if (apply) {
+    if (canonicalIds) await assertUndoScoped(batchId, canonicalIds);
     const result = await api<UndoUnmergeResult>("/api/admin/unmerge/undo", {
       method: "POST",
       admin: true,
-      body: { batchId, dryRun: false },
+      body: {
+        batchId,
+        ...(canonicalIds ? { canonicalIds } : {}),
+        dryRun: false,
+      },
     });
     print(
       result,
-      `unmerge undo of ${batchId}: wrote ${result.applied?.canonicals ?? 0} canonical(s), ${result.applied?.stale.length ?? 0} changed since planning${result.applied?.failed ? `; stopped at ${result.applied.failed.canonicalId}: ${result.applied.failed.error}` : ""}`
+      `unmerge undo of ${label}: wrote ${result.applied?.canonicals ?? 0} canonical(s), ${result.applied?.stale.length ?? 0} changed since planning${result.applied?.failed ? `; stopped at ${result.applied.failed.canonicalId}: ${result.applied.failed.error}` : ""}`
     );
     return;
   }
@@ -456,13 +430,35 @@ async function undoUnmergeBatch(args: Args): Promise<void> {
     batchId
   );
   if (records.length === 0) fail(`no unmerge audit rows for batch ${batchId}`);
-  const plan = planUndo(batchId, records, state);
+  const scoped = scopeUndoRecords(records, canonicalIds);
+  if ("error" in scoped) fail(scoped.error);
+  const plan = planUndo(batchId, scoped.records, state);
   const states: Record<string, number> = {};
   for (const c of plan.canonicals) states[c.state] = (states[c.state] ?? 0) + 1;
   print(
     { dryRun: true, readOnly: wranglerSelectTotals, plan },
-    `unmerge undo dry run of ${batchId} (nothing written; ${wranglerSelectTotals.queries} read-only queries): ${JSON.stringify(states)}`
+    `unmerge undo dry run of ${label} (nothing written; ${wranglerSelectTotals.queries} read-only queries): ${JSON.stringify(states)}`
   );
+}
+
+/** The local dry run runs this checkout's code; `--apply` runs the deployed
+ * Worker's. A Worker from before `canonicalIds` (#795) ignores the field and
+ * would undo the whole batch, so ask it for a dry run first and refuse
+ * unless it plans exactly the named canonicals. */
+async function assertUndoScoped(
+  batchId: number,
+  canonicalIds: readonly string[]
+): Promise<void> {
+  const dry = await api<UndoUnmergeResult>("/api/admin/unmerge/undo", {
+    method: "POST",
+    admin: true,
+    body: { batchId, canonicalIds, dryRun: true },
+  });
+  const mismatch = undoScopeMismatch(
+    dry.plan.canonicals.map((c) => c.canonicalId),
+    canonicalIds
+  );
+  if (mismatch) fail(`${mismatch}. Nothing written.`);
 }
 
 /** Plan (default) or apply the fallback-tag backfill. The dry run reads
@@ -701,6 +697,7 @@ async function trigger(args: Args, steps: string[] | undefined): Promise<void> {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  if ("error" in args) fail(args.error);
   const [command, stepArg] = args.positional;
   switch (command) {
     case "audit":
@@ -723,12 +720,12 @@ async function main(): Promise<void> {
     case "day-video-posted":
       return dayVideoPosted(args, stepArg);
     case "unmerge":
-      return unmerge(args, stepArg);
+      return unmerge(args);
     case "backfill-tags":
       return backfillTags(args);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --undo <batchId> [--apply] | backfill-tags [--apply]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --undo <batchId> [--canonical <id,...>] [--apply] | backfill-tags [--apply]"
       );
   }
 }
