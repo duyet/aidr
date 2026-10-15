@@ -1,10 +1,13 @@
 /**
  * How the cluster prompt names an existing row: `E`, its 1-based position
- * in the call, and a Damm check digit (`E17` → `E174`). Without the check
- * digit, a slip that spelled another sent position (`E71` for `E17`) linked
- * the wrong row (#817). With it, every one-digit slip and every swap of two
- * adjacent digits spells no alias, so the parser's exact lookup drops it
- * and counts it as a near-miss. The lookup is the only decoder.
+ * in the call padded to `ALIAS_POSITION_DIGITS`, and a Damm check digit
+ * (row 17 → `E0174`). Without the check digit, a slip that spelled another
+ * sent position (`E71` for `E17`) linked the wrong row (#817). With it,
+ * every one-digit slip and every swap of two adjacent digits spells no
+ * alias. The fixed width makes a dropped or added digit change the length,
+ * so it spells no alias either (unpadded, `E174` minus its last digit is
+ * `E17`, row 1's alias). The parser's exact lookup drops all of these and
+ * counts them as near-misses. The lookup is the only decoder.
  */
 
 /** Damm's quasigroup of order 10: weakly totally anti-symmetric, so it
@@ -28,8 +31,16 @@ function dammCheckDigit(digits: string): number {
   return interim;
 }
 
+/** Covers MERGE_CANDIDATE_LIMIT and every unmerge chunk (300 rows each). */
+export const ALIAS_POSITION_DIGITS = 3;
+
 /** The alias of the existing row sent at position `k` (0-based). */
 export function existingAlias(k: number): string {
-  const position = String(k + 1);
+  const position = String(k + 1).padStart(ALIAS_POSITION_DIGITS, "0");
+  if (position.length > ALIAS_POSITION_DIGITS) {
+    throw new RangeError(
+      `cluster alias position ${k + 1} exceeds ${ALIAS_POSITION_DIGITS} digits`
+    );
+  }
   return `E${position}${dammCheckDigit(position)}`;
 }

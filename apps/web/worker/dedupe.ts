@@ -561,8 +561,8 @@ export function mergeClusters(groups: Cluster[][]): Cluster[] {
   return emitClusters(uf, newItems, recentItems);
 }
 
-/** An alias with a slip (`e174`, ` E174 `, `E714` for `E174`) or one never
- *  sent (`E3014`). The prompt names existing rows by `existingAlias`, never
+/** An alias with a slip (`e0174`, ` E0174 `, `E0714` for `E0174`) or one
+ *  never sent (`E30014`). The prompt names existing rows by `existingAlias`, never
  *  by id: copying 64-hex ids back from up to 300 rows, the model lost 22 of
  *  66 links to existing stories (#806 counts, 22 runs). */
 const ALIAS_SHAPE = /^E\d+$/;
@@ -694,6 +694,8 @@ ${JSON.stringify(shown)}
 
 Existing items ${existingWindow} (id, title):
 ${JSON.stringify(recentItems.map((item, k) => ({ ...item, id: existingAlias(k) })))}
+
+Each existing id is an opaque token: copy it exactly, every character.
 
 Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["${existingAlias(0)}"]}]} — omit "new" or "existing" if empty for a cluster, and omit clusters entirely (empty array) if nothing matches. Prefer merging same-event clusters.`;
 }

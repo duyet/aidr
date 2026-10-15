@@ -226,10 +226,35 @@ describe("alias check digit (#817)", () => {
     });
   });
 
+  it("links no row when a digit of a sent alias is dropped or added, and counts each", async () => {
+    const aliases = sentAliases();
+    const variants = new Set<string>();
+    for (const alias of aliases) {
+      const d = alias.slice(1);
+      for (let p = 0; p < d.length; p++) variants.add(`E${d.slice(0, p)}${d.slice(p + 1)}`);
+      for (let p = 0; p <= d.length; p++) {
+        for (const c of "0123456789") variants.add(`E${d.slice(0, p)}${c}${d.slice(p)}`);
+      }
+    }
+    const slips = [...variants];
+    let kept = 0;
+    let nearMiss = 0;
+    for (let from = 0; from < slips.length; from += 1000) {
+      const result = await servedOver({
+        clusters: [{ new: [0], existing: slips.slice(from, from + 1000) }],
+      });
+      expect(result.clusters).toEqual([]);
+      kept += result.refs.existingKept;
+      nearMiss += result.refs.existingNearMiss;
+    }
+    expect(kept).toBe(0);
+    expect(nearMiss).toBe(slips.length);
+  });
+
   it("drops a transposed alias (E71 for E17) instead of linking the row it now spells", async () => {
     const aliases = sentAliases();
     const meant = aliases[16];
-    const swapped = `E${meant[2]}${meant[1]}${meant.slice(3)}`;
+    const swapped = `E${meant[1]}${meant[3]}${meant[2]}${meant.slice(4)}`;
 
     const result = await servedOver({
       clusters: [{ new: [0, 1], existing: [swapped] }],
