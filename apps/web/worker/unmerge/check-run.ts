@@ -7,6 +7,7 @@
  * budget, after any 429 (#656), and when the chain is exhausted; a rerun
  * resumes from the stored verdicts.
  */
+import { addClusterRefs, EMPTY_CLUSTER_REFS } from "../cluster-refs.js";
 import { requestClusters } from "../dedupe.js";
 import { setLlmCallLogger, withLlmCallContext } from "../llm.js";
 import { createD1LlmCallLogger, flushLlmCallWrites } from "../llm-call-log.js";
@@ -92,6 +93,7 @@ export async function runDanglingCheck(
     pending: plan.work.length,
     pendingCalls: plan.calls,
     stoppedBy: null,
+    refs: EMPTY_CLUSTER_REFS,
   };
 
   const noEvidence = plan.work.filter((w) => w.live.length === 0);
@@ -129,6 +131,7 @@ export async function runDanglingCheck(
       const prompt = batchPrompt(batch);
       const models = new Set<string>();
       const clusters = [];
+      const nearMisses = [];
       try {
         for (const existing of prompt.calls) {
           result.calls++;
@@ -138,6 +141,7 @@ export async function runDanglingCheck(
               existingWindow: CHECK_EXISTING_WINDOW,
             })
           );
+          result.refs = addClusterRefs(result.refs, served.refs);
           if (!served.wellFormed) {
             result.stoppedBy = "bad-output";
             result.failure = `${served.model} answered without a clusters array`;
@@ -145,13 +149,14 @@ export async function runDanglingCheck(
           }
           models.add(served.model);
           clusters.push(...served.clusters);
+          nearMisses.push(...served.nearMisses);
         }
       } catch (error) {
         result.stoppedBy = stopFor(error);
         result.failure = sanitizeError(error)?.message ?? result.stoppedBy;
       }
       if (result.stoppedBy) break;
-      const verdicts = judgeBatch(batch, prompt, clusters);
+      const verdicts = judgeBatch(batch, prompt, clusters, nearMisses);
       const model = [...models].join(",");
       await env.DB.batch(
         verdicts.map((verdict) =>

@@ -1,4 +1,5 @@
 import type { ClusterGateTally } from "./cluster-gate.js";
+import type { ClusterRefTally } from "./cluster-refs.js";
 import type { SourceRunHealth } from "./source-health.js";
 import { emptySourceHealth } from "./source-health.js";
 import { sanitizeRunStats } from "./telemetry-safe.js";
@@ -53,6 +54,10 @@ export interface RunStats {
    *  how many the cluster gate rejected. The health check sums 24h of these
    *  (see `worker/cluster-gate.ts`). Absent when the model linked none. */
   clusterGate?: ClusterGateTally;
+  /** How the LLM cluster answer referenced the prompt's items, per served
+   *  model: ids kept, dropped and nearly right (see `worker/cluster-refs.ts`).
+   *  Absent when no model answered. */
+  clusterRefs?: ClusterRefTally;
   qaRated: number;
   qaAdjusted: number;
   suggestionsReviewed: number;
@@ -108,6 +113,9 @@ export function buildRunStats(partial: Partial<RunStats> = {}): RunStats {
       : {}),
     ...(partial.clusterGate && Object.keys(partial.clusterGate).length
       ? { clusterGate: partial.clusterGate }
+      : {}),
+    ...(partial.clusterRefs && Object.keys(partial.clusterRefs).length
+      ? { clusterRefs: partial.clusterRefs }
       : {}),
     qaRated: partial.qaRated ?? 0,
     qaAdjusted: partial.qaAdjusted ?? 0,

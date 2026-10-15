@@ -12,6 +12,7 @@ import {
 } from "cloudflare:workers";
 import { bindSentry, reportPipelineException } from "./bugsink.js";
 import type { ClusterGateTally } from "./cluster-gate.js";
+import type { ClusterRefTally } from "./cluster-refs.js";
 import { runHealthCheck } from "./health.js";
 import { backfillContent } from "./ingest/backfill.js";
 import { backfillEnSummaries } from "./ingest/backfill-en-summary.js";
@@ -110,6 +111,8 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     let viEnglish: ViEnglishTally = {};
     /** LLM cluster links to existing items, per model, and the rejected. */
     let clusterGate: ClusterGateTally = {};
+    /** How the LLM cluster answer referenced the prompt's items, per model. */
+    let clusterRefs: ClusterRefTally = {};
     let qaRated = 0;
     let qaAdjusted = 0;
     let qaTokens = 0;
@@ -201,6 +204,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       sourceHealthComplete: boolean;
       viEnglish: ViEnglishTally;
       clusterGate: ClusterGateTally;
+      clusterRefs: ClusterRefTally;
     }> => {
       const result = {
         itemsFetched: 0,
@@ -212,6 +216,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         sourceHealthComplete: false,
         viEnglish: {} as ViEnglishTally,
         clusterGate: {} as ClusterGateTally,
+        clusterRefs: {} as ClusterRefTally,
       };
 
       // 1. Consume sources.
@@ -243,14 +248,13 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         now
       );
       await learnTopics(ctx, newRows, canonicalTagsByItem, now);
-      const { plan: mergePlan, clusterGate: gate } = await planMerges(
-        ctx,
-        newRows,
-        scored,
-        canonicalTagsByItem,
-        now
-      );
+      const {
+        plan: mergePlan,
+        clusterGate: gate,
+        clusterRefs: refs,
+      } = await planMerges(ctx, newRows, scored, canonicalTagsByItem, now);
       result.clusterGate = gate;
+      result.clusterRefs = refs;
       if (!runChainStep(ctx, "translate")) return result;
 
       const publishedRows = selectPublishedRows(newRows, scored, mergePlan);
@@ -306,6 +310,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         scoreAndTranslateTokens += fresh.tokens;
         viEnglish = fresh.viEnglish;
         clusterGate = fresh.clusterGate;
+        clusterRefs = fresh.clusterRefs;
       }
 
       // 4. Drain backlogs and review queues.
@@ -431,6 +436,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         backfilledTranslations,
         viEnglish,
         clusterGate,
+        clusterRefs,
         qaRated,
         qaAdjusted,
         suggestionsReviewed,

@@ -6,6 +6,11 @@ import {
   parseClusterGate,
   tallyClusterGate,
 } from "../cluster-gate.js";
+import {
+  type ClusterRefTally,
+  parseClusterRefs,
+  tallyClusterRefs,
+} from "../cluster-refs.js";
 import { MAX_SOURCES_PER_ITEM } from "../d1-bind.js";
 import {
   buildMergePlan,
@@ -261,8 +266,11 @@ async function readDemotedDetails(
 }
 
 /** The merge-similar step's result: the plan, and this run's cluster-gate
- *  tally (absent on steps recorded before the gate). */
-type MergeStepResult = SerializedMergePlan & { clusterGate?: ClusterGateTally };
+ *  and cluster-reference tallies (absent on steps recorded before them). */
+type MergeStepResult = SerializedMergePlan & {
+  clusterGate?: ClusterGateTally;
+  clusterRefs?: ClusterRefTally;
+};
 
 function logGateRejections(
   model: string | null,
@@ -281,14 +289,19 @@ function logGateRejections(
 /** Clusters new items with each other and with recently published items
  * (LLM + title similarity), then plans which ones fold into a canonical. The
  * LLM's links to existing items pass the cluster gate (`cluster-gate.ts`)
- * first; `clusterGate` counts what it proposed and what the gate rejected. */
+ * first; `clusterGate` counts what it proposed and what the gate rejected,
+ * `clusterRefs` how its answer referenced the prompt's items. */
 export async function planMerges(
   ctx: IngestContext,
   newRows: readonly NewRow[],
   scored: ReadonlyMap<string, ItemScore>,
   canonicalTagsByItem: ReadonlyMap<string, string[]>,
   now: number
-): Promise<{ plan: MergePlan; clusterGate: ClusterGateTally }> {
+): Promise<{
+  plan: MergePlan;
+  clusterGate: ClusterGateTally;
+  clusterRefs: ClusterRefTally;
+}> {
   const { step, env, runId } = ctx;
   const noMerges: MergeStepResult = serializeMergePlan(EMPTY_MERGE_PLAN);
   const result = await llmStep(
@@ -300,9 +313,11 @@ export async function planMerges(
     async () => {
       if (newRows.length === 0) return noMerges;
       let clusterGate: ClusterGateTally = {};
-      const withGate = (plan: MergePlan): MergeStepResult => ({
+      let clusterRefs: ClusterRefTally = {};
+      const withTallies = (plan: MergePlan): MergeStepResult => ({
         ...serializeMergePlan(plan),
         clusterGate,
+        clusterRefs,
       });
       try {
         const { results: recentForClustering } = await env.DB.prepare(
@@ -335,6 +350,7 @@ export async function planMerges(
           newForCluster,
           existingForCluster
         );
+        clusterRefs = tallyClusterRefs(llm.model, llm.refs);
         const newHeadlines = new Map<number, GateHeadline>(
           newRows.map((row, i) => [
             i,
@@ -389,7 +405,7 @@ export async function planMerges(
           titleClusters,
           officialClusters,
         ]);
-        if (clusters.length === 0) return withGate(EMPTY_MERGE_PLAN);
+        if (clusters.length === 0) return withTallies(EMPTY_MERGE_PLAN);
 
         const existing = toExistingCandidates(recent);
         const plan = buildMergePlan(
@@ -399,9 +415,9 @@ export async function planMerges(
           MAX_SOURCES_PER_ITEM,
           MAX_MERGED_TOPICS
         );
-        if (plan.demoted.size === 0) return withGate(plan);
+        if (plan.demoted.size === 0) return withTallies(plan);
         try {
-          return withGate(
+          return withTallies(
             foldDemotedCanonicals(
               plan,
               await readDemotedDetails(env.DB, plan.demoted, existing),
@@ -413,12 +429,12 @@ export async function planMerges(
           // the copied sources and the corroboration in the first rank
           // are lost until the next re-rank.
           console.error("merge-similar demoted read failed:", error);
-          return withGate(plan);
+          return withTallies(plan);
         }
       } catch (error) {
         if (isMediaManifestSchemaError(error)) throw error;
         console.error("merge-similar step failed:", error);
-        return withGate(EMPTY_MERGE_PLAN);
+        return withTallies(EMPTY_MERGE_PLAN);
       }
     },
     { config: LLM_STEP }
@@ -426,5 +442,6 @@ export async function planMerges(
   return {
     plan: restoreMergePlan(result),
     clusterGate: parseClusterGate(result?.clusterGate),
+    clusterRefs: parseClusterRefs(result?.clusterRefs),
   };
 }

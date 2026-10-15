@@ -437,6 +437,34 @@ describe("unmerge model check (#797)", () => {
     expect((await outcomes()).get(DSEC)).toMatchObject({ action: "restore" });
   });
 
+  it("records a mistyped live id as a near miss and still clears the story", async () => {
+    // The model meant DSEC_LIVE and cut its id to 12 characters.
+    model(({ newItems }) => {
+      const member = newItems.find((item) => item.title === TITLES[DSEC]);
+      return sse(
+        JSON.stringify({
+          clusters: [{ new: [member?.i], existing: [DSEC_LIVE.slice(0, 12)] }],
+        })
+      );
+    });
+    const result = await check();
+    expect(result.stored).toEqual({ noEvidence: 0, clear: 2, match: 0 });
+    expect(result.refs).toMatchObject({
+      calls: 1,
+      existingAnswered: 1,
+      existingKept: 0,
+      existingNearMiss: 1,
+      emptied: 1,
+    });
+    const dsec = stored().find((row) => row.story === DSEC);
+    expect(JSON.parse(String(dsec?.matches))).toEqual([]);
+    // The stored link names the live row the model reached for, never its text.
+    expect(JSON.parse(String(dsec?.dropped))).toEqual([
+      { id: DSEC_LIVE, title: TITLES[DSEC_LIVE], reason: "near-miss" },
+    ]);
+    expect((await outcomes()).get(DSEC)).toMatchObject({ action: "restore" });
+  });
+
   it("a second check with nothing new calls no model", async () => {
     const { fetchMock } = model(links({}));
     await check();

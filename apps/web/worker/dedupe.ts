@@ -1,3 +1,8 @@
+import {
+  type ClusterRefCounts,
+  EMPTY_CLUSTER_REFS,
+  nearMissOf,
+} from "./cluster-refs.js";
 import { completeJsonWithModel, type LlmTask, parseJson } from "./llm.js";
 import {
   buildMediaManifest,
@@ -559,53 +564,90 @@ export function mergeClusters(groups: Cluster[][]): Cluster[] {
   return emitClusters(uf, newItems, recentItems);
 }
 
+/** An `existing` entry the prompt did not send, resolved by `nearMissOf` to
+ *  the sent id it most likely meant, with its cluster's kept new indices.
+ *  Telemetry only: it never becomes a link. */
+export interface NearMissLink {
+  new: number[];
+  existing: string;
+}
+
+interface NormalizedClusters {
+  clusters: Cluster[];
+  refs: ClusterRefCounts;
+  nearMisses: NearMissLink[];
+}
+
 /** Defensive: keeps only well-shaped clusters with at least 2 total members
  * (a cluster of 1 item isn't a duplicate of anything). Indices and ids the
  * model invents, or that were not in the request, are dropped: an unknown
- * existing id would otherwise become a canonical that points at no item. */
+ * existing id would otherwise become a canonical that points at no item.
+ * `refs` and `nearMisses` count what was dropped; they change no cluster. */
 function normalizeClusters(
   raw: unknown,
   validNew: ReadonlySet<number>,
   validExisting: ReadonlySet<string>
-): Cluster[] {
-  if (!raw || typeof raw !== "object" || !("clusters" in raw)) return [];
-  const clusters = (raw as { clusters?: unknown }).clusters;
-  if (!Array.isArray(clusters)) return [];
-
+): NormalizedClusters {
+  const refs: ClusterRefCounts = { ...EMPTY_CLUSTER_REFS, calls: 1 };
+  const nearMisses: NearMissLink[] = [];
   const out: Cluster[] = [];
+  const result = { clusters: out, refs, nearMisses };
+  if (!raw || typeof raw !== "object" || !("clusters" in raw)) return result;
+  const clusters = (raw as { clusters?: unknown }).clusters;
+  if (!Array.isArray(clusters)) return result;
+
   for (const entry of clusters) {
     if (!entry || typeof entry !== "object") continue;
     const e = entry as { new?: unknown; existing?: unknown };
-    const newIdx = Array.isArray(e.new)
-      ? e.new.filter(
-          (v): v is number => typeof v === "number" && validNew.has(v)
-        )
+    const answeredNew: unknown[] = Array.isArray(e.new) ? e.new : [];
+    const answeredExisting: unknown[] = Array.isArray(e.existing)
+      ? e.existing
       : [];
-    const existingIds = Array.isArray(e.existing)
-      ? e.existing.filter(
-          (v): v is string => typeof v === "string" && validExisting.has(v)
-        )
-      : [];
-    if (newIdx.length + existingIds.length < 2) continue;
+    const newIdx = answeredNew.filter(
+      (v): v is number => typeof v === "number" && validNew.has(v)
+    );
+    const existingIds = answeredExisting.filter(
+      (v): v is string => typeof v === "string" && validExisting.has(v)
+    );
+    refs.newAnswered += answeredNew.length;
+    refs.newKept += newIdx.length;
+    refs.existingAnswered += answeredExisting.length;
+    refs.existingKept += existingIds.length;
+    for (const v of answeredExisting) {
+      if (typeof v !== "string") {
+        refs.existingNotString++;
+        continue;
+      }
+      if (validExisting.has(v)) continue;
+      const meant = nearMissOf(v, validExisting);
+      if (meant === null) continue;
+      refs.existingNearMiss++;
+      nearMisses.push({ new: newIdx, existing: meant });
+    }
+    const kept = newIdx.length + existingIds.length;
+    if (kept < 2) {
+      if (answeredNew.length + answeredExisting.length >= 2) refs.emptied++;
+      continue;
+    }
     out.push({ new: newIdx, existing: existingIds });
   }
-  return out;
+  return result;
 }
 
-/** The model's clusters and the chain id that served them (null when no
- *  model answered). */
+/** The model's clusters, the chain id that served them and how its answer
+ *  referenced the prompt's items (null when no model answered). */
 export interface LlmClusters {
   clusters: Cluster[];
   model: string | null;
+  refs: ClusterRefCounts | null;
 }
 
-const NO_LLM_CLUSTERS: LlmClusters = { clusters: [], model: null };
+const NO_LLM_CLUSTERS: LlmClusters = { clusters: [], model: null, refs: null };
 
 /** One served cluster call: `wellFormed` is false when the answer had no
  *  `clusters` array, which normalizes to no clusters like a real "no
  *  match". A caller that stores the answer as a verdict must tell them apart. */
-export interface ServedClusters {
-  clusters: Cluster[];
+export interface ServedClusters extends NormalizedClusters {
   model: string;
   wellFormed: boolean;
 }
@@ -682,7 +724,7 @@ export async function requestClusters(
   );
   const raw = parseJson<unknown>(served.content);
   return {
-    clusters: normalizeClusters(
+    ...normalizeClusters(
       raw,
       new Set(shown.map((item) => item.i)),
       new Set(recentItems.map((item) => item.id))
@@ -708,13 +750,13 @@ export async function clusterSimilar(
 ): Promise<LlmClusters> {
   if (newItems.length === 0) return NO_LLM_CLUSTERS;
   try {
-    const { clusters, model } = await requestClusters(
+    const { clusters, model, refs } = await requestClusters(
       env,
       newItems,
       recentItems,
       { task: "cluster", existingWindow: "last 72h" }
     );
-    return { clusters, model };
+    return { clusters, model, refs };
   } catch (error) {
     console.error("clusterSimilar failed:", error);
     return NO_LLM_CLUSTERS;
