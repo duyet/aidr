@@ -231,9 +231,11 @@ describe("alias check digit (#817)", () => {
     const variants = new Set<string>();
     for (const alias of aliases) {
       const d = alias.slice(1);
-      for (let p = 0; p < d.length; p++) variants.add(`E${d.slice(0, p)}${d.slice(p + 1)}`);
+      for (let p = 0; p < d.length; p++)
+        variants.add(`E${d.slice(0, p)}${d.slice(p + 1)}`);
       for (let p = 0; p <= d.length; p++) {
-        for (const c of "0123456789") variants.add(`E${d.slice(0, p)}${c}${d.slice(p)}`);
+        for (const c of "0123456789")
+          variants.add(`E${d.slice(0, p)}${c}${d.slice(p)}`);
       }
     }
     const slips = [...variants];
