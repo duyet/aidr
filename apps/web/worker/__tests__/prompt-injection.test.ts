@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { existingAlias } from "../cluster-alias.js";
 import { clusterSimilar } from "../dedupe.js";
 import {
   resetJevScoreReviewMemo,
@@ -502,8 +503,8 @@ describe("prompt injection: output side", () => {
                     {
                       new: [0, 999, -1, 1.5, "0"],
                       existing: [
-                        "E1",
-                        "E2",
+                        existingAlias(0),
+                        existingAlias(1),
                         "abc123",
                         "ghost",
                         "../../etc/passwd",

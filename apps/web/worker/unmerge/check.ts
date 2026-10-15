@@ -60,7 +60,11 @@ function fnv1a(text: string): number {
  * prompt rendered for one sample row on each side, and the gate's version.
  * A verdict of another version reads as no verdict, so a change to either
  * means a re-check with no hand bump (#802). Verdicts stored as the
- * hand-set version 1 predate the existing-row aliases. */
+ * hand-set version 1 predate the existing-row aliases. Changing the
+ * rendered prompt moves it (the alias form did, #817). Changes that leave
+ * that text alone do not: the response parser, the `batchPrompt` fields,
+ * `MAX_NEW_ITEMS_IN_CLUSTER_PROMPT` and the gate's structure. Bump
+ * `CLUSTER_GATE_VERSION` for a gate change that should force re-checks. */
 export const CHECK_VERSION = fnv1a(
   `${CLUSTER_GATE_VERSION}\n${clusterPrompt(
     [{ i: 0, title: "new title", url: "https://new.example", source: "s" }],

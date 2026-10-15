@@ -1,5 +1,6 @@
 import type { WorkflowStep } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { existingAlias } from "../cluster-alias.js";
 import type { IngestContext, NewRow } from "../ingest/context.js";
 import { planMerges, type RecentClusterRow } from "../ingest/merge.js";
 import { LIVE_FULL_RUN } from "../ingest/mode.js";
@@ -124,8 +125,8 @@ describe("planMerges cluster gate (#733)", () => {
   it("keeps the model's unrelated link out of the plan and the related one in", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     modelAnswers([
-      { new: [0, 1], existing: ["E1"] },
-      { new: [2, 3], existing: ["E2"] },
+      { new: [0, 1], existing: [existingAlias(0)] },
+      { new: [2, 3], existing: [existingAlias(1)] },
     ]);
 
     const { plan, clusterGate } = await planMerges(
@@ -178,7 +179,7 @@ describe("planMerges cluster gate (#733)", () => {
       "https://huggingnews.com/ai/anthropic-plans-mega-ipo-before-thanksgiving-holiday-0a1b2c3d",
       "Anthropic Plans Mega IPO Before Thanksgiving Holiday"
     );
-    modelAnswers([{ new: [0], existing: ["E1"] }]);
+    modelAnswers([{ new: [0], existing: [existingAlias(0)] }]);
 
     const { plan, clusterGate } = await planMerges(
       ctx([shopping]),
@@ -194,12 +195,13 @@ describe("planMerges cluster gate (#733)", () => {
     });
   });
 
-  it("rejects a mistyped alias that names another sent row the twins share nothing with", async () => {
-    // The protein twins belong to E2 (synthId); the model wrote E1, a valid
-    // alias of the unrelated shopping story. Parsing keeps it, so only the
-    // gate stands between the typo and a wrong merge.
+  it("rejects a sent alias that names another row the twins share nothing with", async () => {
+    // The protein twins belong to the second row (synthId); the model named
+    // the first, the unrelated shopping story. The check digit stops a
+    // one-digit slip, not a wrong pick: parsing keeps it, so only the gate
+    // stands between it and a wrong merge.
     vi.spyOn(console, "warn").mockImplementation(() => {});
-    modelAnswers([{ new: [0, 1], existing: ["E1"] }]);
+    modelAnswers([{ new: [0, 1], existing: [existingAlias(0)] }]);
 
     const { plan, clusterGate, clusterRefs } = await planMerges(
       ctx([shopping, synthId]),
@@ -225,8 +227,8 @@ describe("planMerges cluster gate (#733)", () => {
   });
 
   it("records an alias the prompt never sent as a near miss and merges nothing on it", async () => {
-    // Only E1 was sent.
-    modelAnswers([{ new: [0, 1], existing: ["E2"] }]);
+    // Only the first row was sent.
+    modelAnswers([{ new: [0, 1], existing: [existingAlias(1)] }]);
 
     const { plan, clusterGate, clusterRefs } = await planMerges(
       ctx([synthId]),

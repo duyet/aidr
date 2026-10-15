@@ -1,3 +1,4 @@
+import { existingAlias } from "./cluster-alias.js";
 import { type ClusterRefCounts, EMPTY_CLUSTER_REFS } from "./cluster-refs.js";
 import { completeJsonWithModel, type LlmTask, parseJson } from "./llm.js";
 import {
@@ -560,11 +561,10 @@ export function mergeClusters(groups: Cluster[][]): Cluster[] {
   return emitClusters(uf, newItems, recentItems);
 }
 
-/** The prompt names the existing row sent at position `k` as `E{k+1}`, never
- *  by its id: copying 64-hex ids back from up to 300 rows, the model lost
- *  22 of 66 links to existing stories (#806 counts, 22 runs). */
-const existingAlias = (k: number) => `E${k + 1}`;
-/** An alias with a slip (`e12`, ` E12 `) or one never sent (`E301`). */
+/** An alias with a slip (`e174`, ` E174 `, `E714` for `E174`) or one never
+ *  sent (`E3014`). The prompt names existing rows by `existingAlias`, never
+ *  by id: copying 64-hex ids back from up to 300 rows, the model lost 22 of
+ *  66 links to existing stories (#806 counts, 22 runs). */
 const ALIAS_SHAPE = /^E\d+$/;
 
 /** An `existing` entry that is a sent alias after trimming and uppercasing,
@@ -695,7 +695,7 @@ ${JSON.stringify(shown)}
 Existing items ${existingWindow} (id, title):
 ${JSON.stringify(recentItems.map((item, k) => ({ ...item, id: existingAlias(k) })))}
 
-Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["E1"]}]} — omit "new" or "existing" if empty for a cluster, and omit clusters entirely (empty array) if nothing matches. Prefer merging same-event clusters.`;
+Respond with strict JSON only: {"clusters":[{"new":[0,3],"existing":["${existingAlias(0)}"]}]} — omit "new" or "existing" if empty for a cluster, and omit clusters entirely (empty array) if nothing matches. Prefer merging same-event clusters.`;
 }
 
 /**

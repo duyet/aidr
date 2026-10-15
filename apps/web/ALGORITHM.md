@@ -411,7 +411,7 @@ whose `duplicate_of` names no item and needs no pairs file.
     keyed by its sorted row ids, with the kept matches, the links the gate
     or the 7-day window dropped, the live rows the model nearly named
     (`near-miss`: an answer that is a sent alias only once trimmed and
-    uppercased, such as `e3`), the ids sent, the model and the operation
+    uppercased, such as `e13`), the ids sent, the model and the operation
     id. Each request also returns `refs`, the counts of
     `worker/cluster-refs.ts` summed over its calls. A story whose rows
     change, or a verdict of another `CHECK_VERSION`, reads as no verdict.
@@ -1124,17 +1124,22 @@ deterministic pass.
   linked …` and counts in `stats.clusterGate` (per served model: links
   proposed, links rejected).
 - The prompt names new items by index and existing rows by an alias in the
-  order sent (`E1`…`E300`), and the parser maps each alias back to its
-  row id. Anything that is not exactly a sent alias is dropped, so a
-  mistyped reference reads as no duplicate. With full 64-hex ids the
-  model lost 22 of 66 links to existing stories (22 runs on
-  `google/gemma-latest`, 2026-10-16). A typo that is itself a sent alias
-  (`E71` for `E17`) is a valid wrong link: only the cluster gate stops
-  it, and only when the two stories share no evidence.
+  order sent: `E`, the position and a Damm check digit (`E17` is `E174`;
+  `worker/cluster-alias.ts`). The parser maps each alias
+  back to its row id with an exact lookup. Anything that is not exactly a
+  sent alias is dropped, so a mistyped reference reads as no duplicate.
+  With full 64-hex ids the model lost 22 of 66 links to existing stories
+  (22 runs on `google/gemma-latest`, 2026-10-16). Every one-digit slip and
+  every swap of two adjacent digits (`E71` for `E17`) spells no sent alias,
+  so it is dropped and counted in `existingNearMiss`, never linked (#817).
+  Residual risk: the check digit does not catch a dropped or added digit
+  that happens to spell another sent alias, nor a model that deliberately
+  names the wrong row. Either is a valid wrong link that only the cluster
+  gate stops, and only when the two stories share no evidence.
   `stats.clusterRefs` counts, per served model, the `new` and `existing`
   entries answered and kept, the `existing` entries that were not
   strings, those shaped like an alias once trimmed and uppercased but not
-  sent as written (`existingNearMiss`: `e3`, `E301`; before the aliases,
+  sent as written (`existingNearMiss`: `e13`, `E3014`, a digit slip; before the aliases,
   ids within 2 edits or an 8+ character prefix of a sent id), and the
   clusters the drops left with fewer than 2 members. Numbers only: no
   model text is stored (#752). `agent audit` prints it per run.
