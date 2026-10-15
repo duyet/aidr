@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { templateScript } from "./auto-script.mjs";
 import { dayNumber, resolveLook, rotate, rotatePair } from "./look.mjs";
-import { AXES } from "./looks/index.mjs";
+import { AXES, LAYOUTS } from "./looks/index.mjs";
 import { BED, POOLS as SOUND_POOLS, soundFor } from "./looks/sound.mjs";
 import { applyScreen } from "./visub-screen.mjs";
 import { isoWeekOf } from "./week.mjs";
@@ -473,7 +473,8 @@ const dayLook = (l) => Object.keys(DAY_AXES).map((axis) => l[axis]);
 
 // Two weeks of CI days from launch: what a regular viewer sees, picture and sound. A rotation bug (an axis frozen by a
 // pin-shaped default, a pool that stopped rotating, a pair that ping-pongs) shows up here as a repeat or a missing
-// variant. Story layouts are not here: they follow each story's pictures and facts, not the date (the layout tests).
+// variant. Story scenes follow each story's pictures and facts, not the date, so they may repeat the day before; the
+// committed editions, unpinned and spread over the same days, must still show every scene.
 test("over two weeks of CI days, no day repeats yesterday's intro, look or sound, and every variant shows", () => {
   const days = datesFrom("2026-10-16", 14);
   const rows = days.map((date) => {
@@ -510,6 +511,19 @@ test("over two weeks of CI days, no day repeats yesterday's intro, look or sound
       [...pool].sort(),
       `${axis} over ${days[0]}..${days.at(-1)}`
     );
+  const editions = committed().map(([, script, edition]) => [
+    unpinned(script),
+    edition,
+  ]);
+  const scenes = days.flatMap((date, i) => {
+    const [script, edition] = editions[i % editions.length];
+    return Object.values(resolveLook(script, { ...edition, date }).layouts);
+  });
+  assert.deepEqual(
+    [...new Set(scenes)].sort(),
+    LAYOUTS.map((e) => e.id).sort(),
+    "scenes over the committed editions"
+  );
 });
 
 // "Regularly": each cycle of a rotating axis is a permutation of its pool, so any 2n - 1 days hold a full cycle.
