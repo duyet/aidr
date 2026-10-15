@@ -11,6 +11,17 @@ export const STORY_OG_HEIGHT = 630;
 
 /** Keep a single remote thumbnail small enough for a social-card request. */
 export const MAX_STORY_OG_IMAGE_BYTES = 1_000_000;
+/** Largest source download when a transcoder can shrink it under the cap
+ *  above. Publisher heroes are often 1-3 MB 1920px JPEGs, and a day card
+ *  holds six of these in memory at once. */
+export const MAX_STORY_OG_SOURCE_BYTES = 4_000_000;
+/** Shortest side a photo needs before a card shows it. Smaller ones are
+ *  avatars and icons: a 96px author headshot, upscaled into the panel,
+ *  replaced the real hero on live cards. */
+export const MIN_STORY_OG_PHOTO_SIDE = 200;
+/** Longest side the transcoder writes; the card never draws wider. */
+const STORY_OG_TRANSCODE_SIDE = 1200;
+
 export {
   MAX_STORY_OG_IMAGE_PIXELS,
   MAX_STORY_OG_IMAGE_SIDE,
@@ -72,6 +83,8 @@ export interface StoryOgImage {
   dataUri: string;
   mimeType: StoryOgMime;
   byteLength: number;
+  width: number;
+  height: number;
 }
 
 export interface StoryOgCopy {
@@ -203,10 +216,19 @@ export function storyOgImageFromBytes(bytes: Uint8Array): StoryOgImage | null {
     dataUri: `data:${mimeType};base64,${encodeBase64(bytes)}`,
     mimeType,
     byteLength: bytes.byteLength,
+    width: container.width,
+    height: container.height,
   };
 }
 
-async function readBoundedBody(response: Response): Promise<Uint8Array | null> {
+export function isCardSizedPhoto(image: StoryOgImage): boolean {
+  return Math.min(image.width, image.height) >= MIN_STORY_OG_PHOTO_SIDE;
+}
+
+async function readBoundedBody(
+  response: Response,
+  maxBytes: number
+): Promise<Uint8Array | null> {
   if (!response.body) return null;
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -216,7 +238,7 @@ async function readBoundedBody(response: Response): Promise<Uint8Array | null> {
       const result = await reader.read();
       if (result.done) break;
       total += result.value.byteLength;
-      if (total > MAX_STORY_OG_IMAGE_BYTES) {
+      if (total > maxBytes) {
         await reader.cancel();
         return null;
       }
@@ -262,20 +284,27 @@ export function storyOgImageCandidates(
 export interface StoryImageFetchOptions {
   fetcher?: typeof fetch;
   timeoutMs?: number;
-  /** Re-encode a WebP payload (the renderer cannot draw WebP) to a format it
-   *  can, e.g. via the Cloudflare Images binding. Null means a miss. */
-  transcodeWebp?: (bytes: Uint8Array) => Promise<Uint8Array | null>;
+  /** Re-encode a payload the renderer cannot take as is (WebP, which it
+   *  draws as nothing, or a file over `MAX_STORY_OG_IMAGE_BYTES`) to a
+   *  smaller JPEG, e.g. via the Cloudflare Images binding. Null means a miss. */
+  transcode?: (bytes: Uint8Array) => Promise<Uint8Array | null>;
 }
 
-/** WebP → JPEG through the Cloudflare Images binding. */
+/** WebP or oversized raster → JPEG, at most 1200px, through the Cloudflare
+ *  Images binding. */
 export function imagesBindingTranscoder(
   images: ImagesBinding | undefined
-): StoryImageFetchOptions["transcodeWebp"] {
+): StoryImageFetchOptions["transcode"] {
   if (!images) return undefined;
   return async (bytes) => {
     try {
       const out = await images
         .input(new Blob([new Uint8Array(bytes)]).stream())
+        .transform({
+          width: STORY_OG_TRANSCODE_SIDE,
+          height: STORY_OG_TRANSCODE_SIDE,
+          fit: "scale-down",
+        })
         .output({ format: "image/jpeg", quality: 85 });
       return new Uint8Array(await out.response().arrayBuffer());
     } catch {
@@ -306,6 +335,9 @@ export async function fetchStoryOgImage(
   );
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const fetcher = options.fetcher ?? fetch;
+  const maxBytes = options.transcode
+    ? MAX_STORY_OG_SOURCE_BYTES
+    : MAX_STORY_OG_IMAGE_BYTES;
   try {
     const response = await fetcher(clean, {
       method: "GET",
@@ -344,18 +376,23 @@ export async function fetchStoryOgImage(
     }
     const length = response.headers.get("content-length");
     if (length !== null) {
-      if (!/^\d+$/.test(length) || Number(length) > MAX_STORY_OG_IMAGE_BYTES) {
+      if (!/^\d+$/.test(length) || Number(length) > maxBytes) {
         return null;
       }
     }
-    const bytes = await readBoundedBody(response);
+    const bytes = await readBoundedBody(response, maxBytes);
     if (!bytes) return null;
-    if (
-      options.transcodeWebp &&
-      readRasterContainer(bytes)?.mimeType === "image/webp"
-    ) {
-      const jpeg = await options.transcodeWebp(bytes);
-      return jpeg ? storyOgImageFromBytes(jpeg) : null;
+    if (options.transcode) {
+      // The pixel ceiling applies to the source too: the transcoder decodes it.
+      const source = readRasterContainer(bytes);
+      if (
+        source &&
+        (source.mimeType === "image/webp" ||
+          bytes.byteLength > MAX_STORY_OG_IMAGE_BYTES)
+      ) {
+        const jpeg = await options.transcode(bytes);
+        return jpeg ? storyOgImageFromBytes(jpeg) : null;
+      }
     }
     return storyOgImageFromBytes(bytes);
   } catch {
@@ -544,18 +581,6 @@ function imagePanel(image: StoryOgImage | null, lang: Lang): ReactElement {
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            opacity: 0.86,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: "58px",
-            backgroundColor: INK,
-            opacity: 0.18,
           }}
         />
       </div>
@@ -666,36 +691,48 @@ export function storyOgCard(
             alignItems: "center",
             gap: "16px",
             maxWidth: `${TITLE_COLUMN_WIDTH}px`,
-            overflow: "hidden",
             whiteSpace: "nowrap",
-            // A 90-char host must degrade to an ellipsis instead of being
-            // hard-clipped under the engagement counters.
-            textOverflow: "ellipsis",
           }}
         >
-          <span>{copy.host}</span>
-          {copy.date ? (
-            <>
-              <span>·</span>
-              <span>{copy.date}</span>
-            </>
-          ) : null}
-          {copy.category ? (
-            <>
-              <span>·</span>
-              <span style={{ color: accent }}>{copy.category}</span>
-            </>
-          ) : null}
+          {/* Flat siblings, never fragments: satori drops the flex gap
+              between the children of a fragment, which glued each dot to
+              the text after it. */}
+          {[
+            { key: "host", text: copy.host, color: undefined },
+            ...(copy.date
+              ? [{ key: "date", text: copy.date, color: undefined }]
+              : []),
+            ...(copy.category
+              ? [{ key: "category", text: copy.category, color: accent }]
+              : []),
+          ].flatMap((part, index) => [
+            ...(index > 0 ? [<span key={`${part.key}-dot`}>·</span>] : []),
+            <span
+              key={part.key}
+              style={{
+                color: part.color,
+                // A 90-char host must degrade to an ellipsis instead of
+                // being hard-clipped under the engagement counters.
+                ...(index === 0
+                  ? { overflow: "hidden", textOverflow: "ellipsis" }
+                  : { flexShrink: 0 }),
+              }}
+            >
+              {part.text}
+            </span>,
+          ])}
         </div>
-        <div style={{ display: "flex", gap: "16px", whiteSpace: "nowrap" }}>
-          <span>
-            {copy.points} {copy.pointsLabel}
-          </span>
-          <span>·</span>
-          <span>
-            {copy.comments} {copy.commentsLabel}
-          </span>
-        </div>
+        {copy.points !== "0" || copy.comments !== "0" ? (
+          <div style={{ display: "flex", gap: "16px", whiteSpace: "nowrap" }}>
+            <span>
+              {copy.points} {copy.pointsLabel}
+            </span>
+            <span>·</span>
+            <span>
+              {copy.comments} {copy.commentsLabel}
+            </span>
+          </div>
+        ) : null}
       </div>
       <div style={{ height: `${CARD_RULE}px`, backgroundColor: YELLOW }} />
     </div>

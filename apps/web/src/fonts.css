@@ -175,10 +175,15 @@
  *
  * So the fallback's line box is forced to the same 1024/400 and 1007/298
  * split, which is what removes the 22 px row reflow and the footer-nav grid
- * re-flow the swap caused. size-adjust stays at 100%: the stack below is
- * Arial-metric-compatible (Arial -> Liberation Sans -> Arimo all share the
- * same advance widths), so the horizontal scale already matches and scaling
- * it would mis-size the Latin glyphs instead of helping.
+ * re-flow the swap caused.
+ *
+ * size-adjust scales the overrides too, so each override is the webfont
+ * metric divided by size-adjust. The sans fallback is 92%: Arial sets feed
+ * copy 6-9% wider than Source Sans 3 (SANS_FALLBACK_WIDTH_RATIO in
+ * src/lib/fonts.ts has the measurement). Arial, Liberation Sans and Arimo
+ * share advance widths, so one value fits the whole local() list. The serif
+ * fallbacks stay at 100%: Georgia and Times differ in width, and one value
+ * cannot fit both.
  */
 
 @font-face {
@@ -186,9 +191,9 @@
   src:
     local("Arial"), local("Liberation Sans"), local("Arimo"),
     local("Helvetica Neue"), local("Helvetica");
-  size-adjust: 100%;
-  ascent-override: 102.4%;
-  descent-override: 40%;
+  size-adjust: 92%;
+  ascent-override: 111.3%;
+  descent-override: 43.48%;
   line-gap-override: 0%;
 }
 

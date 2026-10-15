@@ -42,8 +42,8 @@ vi.mock("../lib/story-og", async (importOriginal) => {
     fetchStoryOgImage: vi.fn(async (url: string | null | undefined) => {
       fetchedUrls.push(url);
       if (!url) return null;
-      // Deterministic, bounded, structurally valid image.
-      return actual.storyOgImageFromBytes(pngBytes(8, 8));
+      // Deterministic, bounded, structurally valid, card-sized image.
+      return actual.storyOgImageFromBytes(pngBytes(400, 250));
     }),
   };
 });
@@ -305,6 +305,43 @@ describe("api/og/$id image boundary", () => {
       "https://cdn.example.com/good.png",
     ]);
     expect(markup()).toContain("data:image/png;base64,");
+  });
+
+  it("skips an avatar-sized image for the next candidate", async () => {
+    // Live 2026-10-16: the NVIDIA hero missed and the card showed the
+    // author's 96x96 headshot, upscaled into the panel.
+    const actual =
+      await vi.importActual<typeof import("../lib/story-og")>(
+        "../lib/story-og"
+      );
+    const avatar = actual.storyOgImageFromBytes(pngBytes(96, 96, [200, 0, 0]));
+    const photo = actual.storyOgImageFromBytes(pngBytes(400, 250, [0, 0, 200]));
+    const { fetchStoryOgImage } = await import("../lib/story-og");
+    vi.mocked(fetchStoryOgImage)
+      .mockImplementationOnce(async (url) => {
+        fetchedUrls.push(url);
+        return avatar;
+      })
+      .mockImplementationOnce(async (url) => {
+        fetchedUrls.push(url);
+        return photo;
+      });
+    currentStory = {
+      ...STORY,
+      image_url: "https://cdn.example.com/avatar-96x96.png",
+      media_manifest: {
+        version: 1,
+        assets: [{ type: "image", url: "https://cdn.example.com/hero.png" }],
+      },
+    };
+    await call("/api/og/abcdef12deadbeef.png?lang=en");
+    expect(fetchedUrls).toEqual([
+      "https://cdn.example.com/avatar-96x96.png",
+      "https://cdn.example.com/hero.png",
+    ]);
+    const html = markup();
+    expect(html).toContain(photo?.dataUri);
+    expect(html).not.toContain(avatar?.dataUri);
   });
 
   it("uses the branded fallback when the bounded fetcher misses", async () => {

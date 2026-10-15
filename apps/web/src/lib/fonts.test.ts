@@ -22,7 +22,11 @@ import {
   latinExtUnicodeRange,
   subsetLatinExt,
 } from "../../scripts/subset-fonts";
-import { FONT_PRELOAD_DECISION, NON_CRITICAL_FONT_SUBSETS } from "./fonts";
+import {
+  FONT_PRELOAD_DECISION,
+  NON_CRITICAL_FONT_SUBSETS,
+  SANS_FALLBACK_WIDTH_RATIO,
+} from "./fonts";
 
 // The font CSS lives in src/, this test in src/lib/.
 const srcDir = fileURLToPath(new URL("../", import.meta.url));
@@ -271,34 +275,56 @@ describe("self-hosted font stack (#229)", () => {
     }
   });
 
+  function fallbackBlock(family: string): string {
+    const block = new RegExp(
+      `@font-face\\s*\\{[^}]*font-family:\\s*["']?${family}["']?;[^}]*\\}`,
+      "s"
+    ).exec(fontsCss)?.[0];
+    if (!block) throw new Error(`no @font-face block for ${family}`);
+    return block;
+  }
+
+  function percent(block: string, descriptor: string): number {
+    const value = new RegExp(`${descriptor}:\\s*([\\d.]+)%;`).exec(block)?.[1];
+    if (value === undefined) throw new Error(`no ${descriptor} in ${block}`);
+    return Number(value);
+  }
+
   it("gives the fallback faces the webfont's own vertical metrics", () => {
     // Read by scripts/font-metrics.py out of the shipped woff2/ttf files:
     //   Source Sans 3  unitsPerEm=1000 ascent=1024 descent=400  lineGap=0
     //   EB Garamond    unitsPerEm=1000 ascent=1007 descent=298  lineGap=0
     //   Source Serif 4 unitsPerEm=1000 ascent=1036 descent=335  lineGap=0
-    const expected: Record<string, [string, string]> = {
-      "Source Sans 3 Fallback": ["102.4%", "40%"],
-      "EB Garamond Fallback": ["100.7%", "29.8%"],
-      "Source Serif 4 Fallback": ["103.6%", "33.5%"],
+    // size-adjust scales the overrides as well, so the line box is the
+    // product. An override left unscaled after a size-adjust change makes
+    // every fallback row shorter than the webfont row.
+    const expected: Record<string, [number, number]> = {
+      "Source Sans 3 Fallback": [102.4, 40],
+      "EB Garamond Fallback": [100.7, 29.8],
+      "Source Serif 4 Fallback": [103.6, 33.5],
     };
     for (const [family, [ascent, descent]] of Object.entries(expected)) {
-      const block = new RegExp(
-        `@font-face\\s*\\{[^}]*font-family:\\s*["']?${family.replace(
-          /[.*+?^${}()|[\]\\]/g,
-          "\\$&"
-        )}["']?;[^}]*\\}`,
-        "s"
-      ).exec(fontsCss)?.[0];
-      expect(block, `no @font-face block for ${family}`).toBeDefined();
-      expect(block).toMatch(/size-adjust:/);
-      expect(block).toMatch(
-        new RegExp(`ascent-override:\\s*${ascent.replace("%", "\\%")}\\s*;`)
+      const block = fallbackBlock(family);
+      const scale = percent(block, "size-adjust") / 100;
+      expect(percent(block, "ascent-override") * scale, family).toBeCloseTo(
+        ascent,
+        1
       );
-      expect(block).toMatch(
-        new RegExp(`descent-override:\\s*${descent.replace("%", "\\%")}\\s*;`)
+      expect(percent(block, "descent-override") * scale, family).toBeCloseTo(
+        descent,
+        1
       );
       expect(block).toMatch(/line-gap-override:\s*0%;/);
     }
+  });
+
+  it("scales the sans fallback to Source Sans 3's measured width", () => {
+    // At 100% Arial set feed rows 6-9% wider, so a first visit wrapped and
+    // truncated rows earlier than every later one.
+    const scale =
+      percent(fallbackBlock("Source Sans 3 Fallback"), "size-adjust") / 100;
+    expect(scale).toBeGreaterThanOrEqual(SANS_FALLBACK_WIDTH_RATIO.min);
+    expect(scale).toBeLessThanOrEqual(SANS_FALLBACK_WIDTH_RATIO.max);
   });
 
   it("puts the metric-matched fallback in each font stack", () => {
