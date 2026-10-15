@@ -32,6 +32,9 @@ vi.mock("../lib/vote-fn", () => ({
   fetchMyVotes: () => Promise.resolve({ votes: {}, nets: {} }),
 }));
 
+// A read beacon would go out through happy-dom's real network stack.
+vi.mock("../lib/analytics/reads", () => ({ recordRead: vi.fn() }));
+
 const lean: FeedItem = {
   id: "abcdef12deadbeef",
   url: "https://www.example.com/post",
