@@ -244,7 +244,7 @@ export const LAYOUTS = [
 }
 .f-16x9 .l-statement .copy {
   left: 220px;
-  top: 300px;
+  top: 264px;
   width: 1480px;
 }
 .f-9x16 .l-statement .copy {
@@ -258,7 +258,7 @@ export const LAYOUTS = [
 }
 .f-16x9 .l-statement .rank {
   left: 900px;
-  top: 150px;
+  top: 130px;
   width: 120px;
   height: 120px;
   font-size: 120px;
@@ -290,7 +290,9 @@ export const LAYOUTS = [
   justify-content: center;
   align-items: baseline;
   gap: 24px;
-  width: 640px;
+  width: fit-content;
+  min-width: 480px;
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
