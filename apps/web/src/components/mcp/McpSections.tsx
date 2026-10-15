@@ -43,8 +43,8 @@ export function ConnectSection() {
       <CodeBlock code={PUBLIC_CLIENT_CONFIG} />
       <p className="mt-2 text-xs text-muted-foreground">
         {t(
-          "No header, no token, no key. These four read tools are rate limited per IP; operator tools need a bearer token.",
-          "Không header, không token, không key. Bốn công cụ đọc này bị giới hạn theo IP; công cụ vận hành cần bearer token."
+          "No header, no token, no key. These read tools are rate limited per IP; operator tools need a bearer token.",
+          "Không header, không token, không key. Các công cụ đọc này bị giới hạn theo IP; công cụ vận hành cần bearer token."
         )}
       </p>
     </section>

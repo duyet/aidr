@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { archiveDateOfSec } from "../../src/lib/day-archive.js";
+import { handleDayMarkdownRequest } from "../../src/lib/day-markdown.js";
 import { PUBLIC_READ_TOOL_NAMES } from "../../src/lib/public-read-tools.js";
 import { handleMcpRequest } from "../admin/mcp.js";
 import { ADMIN_MCP_TOOL_NAMES } from "../mcp/admin-tools.js";
@@ -105,6 +107,21 @@ class PublicFakeD1 {
     ) {
       const row = this.snapshots[0];
       return { results: row ? [row] : [] };
+    }
+    // getDayArchive: that day's snapshot and the neighbouring days.
+    if (
+      sql.startsWith(
+        "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots WHERE date = ?"
+      )
+    ) {
+      const [date] = args as [string];
+      return { results: this.snapshots.filter((row) => row.date === date) };
+    }
+    if (/^SELECT (MAX|MIN)\(published_at\) AS at FROM items/.test(sql)) {
+      return { results: [{ at: null }] };
+    }
+    if (sql.startsWith("SELECT youtube_id, short_id, title")) {
+      return null;
     }
     // getPublicDigest: top stories.
     if (
@@ -464,6 +481,52 @@ describe("anonymous tools/call", () => {
     expect(payload.permalink).toBe("https://aidr.today/0031a3a8?lang=en");
     expect(payload.markdown).toContain("aidr-story-markdown/v1");
     expect(payload.markdown).toContain("A model shipped something");
+  });
+});
+
+describe("get_day_edition", () => {
+  const today = () =>
+    archiveDateOfSec(Math.floor(Date.now() / 1000) - 3600) as string;
+
+  // Two transports, one answer: the tool must say exactly what the
+  // /date/{date}.md URL says, or an agent gets different news per surface.
+  it("returns the same Markdown as /date/{date}.md", async () => {
+    const date = today();
+    const { json } = await call({
+      method: "tools/call",
+      params: { name: "get_day_edition", arguments: { date, lang: "en" } },
+    });
+    const payload = toolPayload(json);
+    const page = await handleDayMarkdownRequest(
+      new Request(`https://aidr.today/date/${date}.md?lang=en`),
+      db as unknown as D1Database
+    );
+    expect(page.status).toBe(200);
+    expect(payload.markdown).toBe(await page.text());
+    expect(payload.permalink).toBe(`https://aidr.today/date/${date}?lang=en`);
+    expect(payload.markdown).toContain(
+      "[A model shipped something](https://aidr.today/0031a3a8?lang=en)"
+    );
+  });
+
+  it("refuses a future day without reading it", async () => {
+    const { json } = await call({
+      method: "tools/call",
+      params: { name: "get_day_edition", arguments: { date: "2999-01-01" } },
+    });
+    expect(json.result.isError).toBe(true);
+    expect(toolPayload(json).error).toMatch(/future/);
+  });
+
+  it("rejects a malformed date without a query", async () => {
+    db.queryCount = 0;
+    const { json } = await call({
+      method: "tools/call",
+      params: { name: "get_day_edition", arguments: { date: "2026-13-01" } },
+    });
+    expect(json.result.isError).toBe(true);
+    expect(toolPayload(json).error).toMatch(/'date' must be/);
+    expect(db.queryCount).toBe(0);
   });
 });
 

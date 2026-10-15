@@ -1,5 +1,9 @@
 import { SKILL_PATH } from "./agent-discovery";
+import { readSession } from "./db";
+import { HOME_MARKDOWN_PATH, renderHomeMarkdown } from "./home-markdown";
 import { PAGE_MARKDOWN_PATHS, rankedEditionLine } from "./page-markdown";
+import { PUBLIC_CACHE_CONTROL } from "./public-api";
+import { getPublicDigest } from "./public-queries";
 import {
   NEWS_SITEMAP_PATH,
   RSS_ALIAS_PATH,
@@ -8,6 +12,7 @@ import {
   SITE_URL,
 } from "./site";
 import { SITEMAP_DAYS_CHILD_PATH } from "./sitemap";
+import { WEEKS_INDEX_PATH } from "./week";
 
 /**
  * Public guidance for coding agents — consume aidr.today, do not invent a
@@ -38,6 +43,16 @@ Use this site as the ranked AI news source. Do not scrape HN/Lobsters/HuggingNew
 
 ${PAGE_MARKDOWN_PATHS.map((path) => `- [${path.slice(1)}](${SITE_URL}${path})`).join("\n")}
 
+## Common questions, one fetch
+
+- [Today's edition (Markdown)](${SITE_URL}${HOME_MARKDOWN_PATH}?lang=en) — the homepage as Markdown: the TL;DR bullets, then the ranked stories with category, publisher host, and time. Also served for \`Accept: text/markdown\` on \`/\`.
+- [Top AI stories on a date](${SITE_URL}/date/2026-10-15.md?lang=en) — \`/date/YYYY-MM-DD.md\`, or the MCP tool \`get_day_edition\`.
+- [Latest model releases this week](${SITE_URL}/api/feed?lang=en&category=Models&days=7) — \`/api/feed\` takes \`category\` (\`Models\`, \`Releases\`, \`Products\`, \`Agents\`, \`Research\`, …), \`days\` (1–14), \`q\` (title substring), and \`before\` (YYYY-MM-DD). The MCP tool \`search_news\` takes the same arguments.
+- [This week in AI](${SITE_URL}/week/2026-W41.md?lang=en) — \`/week/YYYY-Www.md\`, the weekly edition. Index: [${SITE_URL}${WEEKS_INDEX_PATH}](${SITE_URL}${WEEKS_INDEX_PATH}).
+- [Full context in one file](${SITE_URL}/llms-full.txt) — this file followed by today's edition.
+
+\`Accept: text/markdown\` on \`/\`, \`/date/YYYY-MM-DD\`, \`/week/YYYY-Www\` or a story permalink \`/{id}\` returns that page's Markdown twin; browsers keep HTML. \`/{id}.md\` is an alias of the story Markdown.
+
 ## Consume
 
 - [JSON digest](${SITE_URL}/api/public?lang=en) (no auth) — ranked stories plus the bilingual TL;DR. Use \`?lang=vi\` for Vietnamese permalinks.
@@ -48,7 +63,8 @@ ${PAGE_MARKDOWN_PATHS.map((path) => `- [${path.slice(1)}](${SITE_URL}${path})`).
 - [Story Markdown](${SITE_URL}/api/story/0031a3a8.md?lang=en) — the bounded, versioned \`aidr-story-markdown/v1\` representation.
 - [Story Markdown (Vietnamese)](${SITE_URL}/api/story/0031a3a8.md?lang=vi) — the English fallback is explicit when a translation is missing.
 - [Day archive](${SITE_URL}/date/2026-10-01?lang=en) — \`/date/YYYY-MM-DD\` is one Asia/Ho_Chi_Minh calendar day: its TL;DR, the day's video, and its ranked stories. Same page as \`?lang=vi\`.
-- [Day archive Markdown](${SITE_URL}/date/2026-10-01.md?lang=en) — \`/date/YYYY-MM-DD.md\`: digest bullets, YouTube links, and the ranked story list with permalinks. Every day is listed in [${SITE_URL}${SITEMAP_DAYS_CHILD_PATH}](${SITE_URL}${SITEMAP_DAYS_CHILD_PATH}).
+- [Day archive Markdown](${SITE_URL}/date/2026-10-01.md?lang=en) — \`/date/YYYY-MM-DD.md\`: digest bullets, YouTube links, and the ranked story list with permalinks, category, publisher host, and a summary for the top ten. Every day is listed in [${SITE_URL}${SITEMAP_DAYS_CHILD_PATH}](${SITE_URL}${SITEMAP_DAYS_CHILD_PATH}).
+- [Weekly edition](${SITE_URL}/week/2026-W41?lang=en) — \`/week/YYYY-Www\`, an ISO week. JSON: [${SITE_URL}/api/week/2026-W41?lang=en](${SITE_URL}/api/week/2026-W41?lang=en).
 - [HTML feed](${SITE_URL}/?lang=en) — the same ranked feed as \`?lang=vi\`.
 - [Sitemap](${SITE_URL}/sitemap.xml) — a sitemap index; it points at the \`/sitemaps/*\` children and at \`/news.xml\`, covering every indexable URL in both locales.
 
@@ -68,9 +84,9 @@ ${PAGE_MARKDOWN_PATHS.map((path) => `- [${path.slice(1)}](${SITE_URL}${path})`).
 ## MCP and WebMCP
 
 - [MCP endpoint](${SITE_URL}/api/mcp) — \`POST\`, stateless JSON-RPC 2.0, protocol \`2025-06-18\`.
-  - **Read tools, no auth:** \`latest_ai_news\`, \`search_news\`, \`get_story\`, \`get_ai_digest\`, plus \`resources/read\` for \`aidr://digest\` and \`aidr://story/{id}\`. Rate limited to 60 reads per IP per 60 seconds; over the limit you get HTTP 429, a JSON-RPC \`-32000\` error, and \`Retry-After\`.
+  - **Read tools, no auth:** \`latest_ai_news\`, \`search_news\`, \`get_story\`, \`get_ai_digest\`, \`get_day_edition\`, plus \`resources/read\` for \`aidr://digest\` and \`aidr://story/{id}\`. Rate limited to 60 reads per IP per 60 seconds; over the limit you get HTTP 429, a JSON-RPC \`-32000\` error, and \`Retry-After\`.
   - **Operator tools, admin \`Authorization: Bearer\` only:** the same endpoint additionally returns \`push_items\`, \`upsert_source\`, \`delete_source\`, \`trigger_ingest\`, \`get_status\`, \`list_sources\`, \`preview_ranking\`, \`preview_tldr\`, \`set_day_video\`, \`delete_day_video\`, \`send_day_video_telegram\`. An anonymous \`tools/list\` never returns them, and an anonymous call to one fails without revealing the inventory.
-- **WebMCP (in-page):** the same four read tools are registered in the browser through \`document.modelContext\`. The bridge is Cloudflare-injected; nothing is added to the page's critical path.
+- **WebMCP (in-page):** the same read tools are registered in the browser through \`document.modelContext\`. The bridge is Cloudflare-injected; nothing is added to the page's critical path.
 
 Both surfaces read the same rows and return the same bytes, so an answer does not depend on which one you found.
 
@@ -151,6 +167,30 @@ export function llmsTxtResponse(): Response {
     headers: {
       "content-type": "text/plain; charset=utf-8",
       "cache-control": "public, max-age=3600",
+    },
+  });
+}
+
+/**
+ * `/llms-full.txt`: this file, then today's edition in English, so one fetch
+ * gives an agent both the map and the news. Without D1 it is the map alone.
+ */
+export async function llmsFullTxtResponse(
+  db: D1Database | undefined
+): Promise<Response> {
+  let edition = "";
+  try {
+    if (db) {
+      edition = `\n---\n\n${renderHomeMarkdown(await getPublicDigest(readSession(db)), "en")}`;
+    }
+  } catch (error) {
+    console.error("llms-full.txt edition failed", error);
+  }
+  return new Response(`${llmsTxt()}${edition}`, {
+    status: 200,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": edition ? PUBLIC_CACHE_CONTROL : "public, max-age=60",
     },
   });
 }

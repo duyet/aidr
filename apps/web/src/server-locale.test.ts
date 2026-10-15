@@ -432,9 +432,9 @@ describe("Worker locale redirects", () => {
       expect(bare.headers.get("Cache-Control")).toBe("private, no-store");
       // Field names are case-insensitive; `/` passes through the locale layer
       // twice (withHomepageHeaders + the Worker tail), and the merge
-      // normalizes case.
+      // normalizes case. Both paths also negotiate Markdown, so Accept joins.
       expect(bare.headers.get("Vary")?.toLowerCase()).toBe(
-        "cookie, accept-language"
+        "cookie, accept-language, accept"
       );
     }
 

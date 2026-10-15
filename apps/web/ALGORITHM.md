@@ -8,6 +8,7 @@ bilingual feed.
 - [Audience metrics (GA4 snapshot)](#audience-metrics-ga4-snapshot)
 - [Ingest HTTP / D1 contract](#ingest-http--d1-contract)
 - [Dry runs, reruns and previews (admin / MCP)](#dry-runs-reruns-and-previews-admin--mcp)
+- [Agent read surfaces](#agent-read-surfaces)
 - [Ops pitfalls](#ops-pitfalls)
 - [Pipeline (per ingest run)](#pipeline-per-ingest-run)
   - [1. Fetch](#1-fetch)
@@ -519,6 +520,28 @@ not a `chat_id` override) also edits the sent digest with
 button; `DELETE` does not touch it. "message is not modified" counts as done,
 and a failed edit never fails the admin call: the response says what happened
 in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
+
+## Agent read surfaces
+
+Agents read the published edition. They never trigger a run. Every surface
+renders from the same D1 reads as the pages, one language per response, with
+no fill-in from the other language.
+
+- Markdown twins: `/index.md` (the homepage, from `getPublicDigest`),
+  `/date/YYYY-MM-DD.md` (TL;DR, video, up to 100 ranked stories with host and
+  a summary for the top ten, capped at 44,000 bytes and the rest counted),
+  `/week/YYYY-Www.md`, and `/api/story/{id}.md` (alias `/{id}.md`).
+- `Accept: text/markdown` on `/`, `/date/…`, `/week/…` or `/{id}` returns the
+  twin when Markdown ranks at least as high as HTML (`src/lib/markdown-negotiation.ts`).
+  Both variants of those paths carry `Vary: Accept`, because Workers Cache
+  keys on Vary and serves hits before the Worker runs.
+- Anonymous MCP read tools (`POST /api/mcp`, also WebMCP): `latest_ai_news`,
+  `search_news`, `get_story`, `get_ai_digest`, `get_day_edition`. The
+  contract is `src/lib/public-read-tools.ts`; arguments are validated before
+  any D1 read. `get_day_edition` returns the same Markdown as
+  `/date/{date}.md`.
+- `/llms.txt` lists the entry points; `/llms-full.txt` appends today's
+  homepage Markdown.
 
 ## Ops pitfalls
 

@@ -22,7 +22,11 @@ import {
   cachedLocaleResponse,
   cachedSsrResponse,
 } from "./lib/edge-cache";
-import { llmsTxtResponse } from "./lib/llms-txt";
+import {
+  handleHomeMarkdownRequest,
+  isHomeMarkdownPath,
+} from "./lib/home-markdown";
+import { llmsFullTxtResponse, llmsTxtResponse } from "./lib/llms-txt";
 import {
   apiErrorResponse,
   LOCALE_PRIVATE_CACHE_CONTROL,
@@ -43,6 +47,13 @@ import {
   isPrivateSsrPath,
 } from "./lib/locale-routing";
 import { withLang } from "./lib/locale-url";
+import {
+  markdownAlternateLink,
+  negotiableMarkdownPath,
+  prefersMarkdown,
+  storyMarkdownAliasPath,
+  withAcceptVary,
+} from "./lib/markdown-negotiation";
 import {
   loadNewsSitemapEntries,
   safeNewsSitemapResponse,
@@ -105,6 +116,33 @@ const LEGACY_PAGE_REDIRECTS: Record<string, string | undefined> = {
   "/changelog": "/release",
 };
 
+/** The same request at another path, keeping its query and headers. */
+function atPath(request: Request, pathname: string): Request {
+  const url = new URL(request.url);
+  url.pathname = pathname;
+  return new Request(url.toString(), request);
+}
+
+async function serveMarkdown(
+  request: Request,
+  path: string,
+  env: Env
+): Promise<Response | null> {
+  if (isStoryMarkdownPath(path)) {
+    return handleStoryMarkdownRequest(request, env?.DB);
+  }
+  if (isDayMarkdownPath(path)) {
+    return handleDayMarkdownRequest(request, await resolveDb(env));
+  }
+  if (isWeekMarkdownPath(path)) {
+    return handleWeekMarkdownRequest(request, await resolveDb(env));
+  }
+  if (isHomeMarkdownPath(path)) {
+    return handleHomeMarkdownRequest(request, await resolveDb(env));
+  }
+  return null;
+}
+
 function isHtmlRequest(request: Request): boolean {
   return /(^|,)\s*(\*\/\*|text\/html)/.test(
     request.headers.get("Accept") || "*/*"
@@ -116,19 +154,23 @@ export default {
     const publicFile = await handlePublicAsset(request, env);
     if (publicFile) return publicFile;
     const path = new URL(request.url).pathname;
-    // Keep the bounded, generated story representation ahead of the SPA
-    // catch-all. It never fetches external Markdown; it renders sanitized D1
-    // story data only.
-    if (isStoryMarkdownPath(path)) {
-      return handleStoryMarkdownRequest(request, env?.DB);
+    // Markdown twins are generated from sanitized D1 rows only; they never
+    // fetch external Markdown. They run ahead of the SPA catch-all, and a
+    // negotiated one also ahead of both caches (see markdown-negotiation).
+    const direct = await serveMarkdown(request, path, env);
+    if (direct) return direct;
+    const storyAlias = storyMarkdownAliasPath(path);
+    if (storyAlias) {
+      return handleStoryMarkdownRequest(atPath(request, storyAlias), env?.DB);
     }
-    // Same for the day archive's Markdown twin (`/date/YYYY-MM-DD.md`).
-    if (isDayMarkdownPath(path)) {
-      return handleDayMarkdownRequest(request, await resolveDb(env));
-    }
-    // And the weekly edition's (`/week/YYYY-Www.md`).
-    if (isWeekMarkdownPath(path)) {
-      return handleWeekMarkdownRequest(request, await resolveDb(env));
+    const markdownTwin = negotiableMarkdownPath(path);
+    if (markdownTwin && prefersMarkdown(request.headers.get("Accept"))) {
+      const negotiated = await serveMarkdown(
+        atPath(request, markdownTwin),
+        markdownTwin,
+        env
+      );
+      if (negotiated) return withAcceptVary(negotiated);
     }
     if (path === "/favicon.ico") {
       // public/favicon.ico is a real multi-size ICO and handlePublicAsset
@@ -162,6 +204,9 @@ export default {
     }
     if (path === "/llms.txt") {
       return llmsTxtResponse();
+    }
+    if (path === "/llms-full.txt") {
+      return llmsFullTxtResponse(await resolveDb(env));
     }
     const discovery = await handleAgentDiscovery(request);
     if (discovery) return discovery;
@@ -349,16 +394,23 @@ export default {
     // language from Cookie/Accept-Language, so they stay private to clients;
     // the Worker cache still keys them by the resolved language.
     const bareLocale = bareLocalizedCacheLang(request);
-    if (bareLocale) {
-      return cachedLocaleResponse(
-        request,
-        ctx,
-        bareLocale,
-        SSR_LOCALIZED_CACHE_CONTROL,
-        renderSsr
-      );
-    }
-    return cachedSsrResponse(request, ctx, renderSsr);
+    const html = bareLocale
+      ? await cachedLocaleResponse(
+          request,
+          ctx,
+          bareLocale,
+          SSR_LOCALIZED_CACHE_CONTROL,
+          renderSsr
+        )
+      : await cachedSsrResponse(request, ctx, renderSsr);
+    // After both caches: an inner-cache hit is stored without Vary.
+    if (!markdownTwin) return html;
+    return withAcceptVary(
+      html,
+      html.status === 200
+        ? markdownAlternateLink(markdownTwin, new URL(request.url).search)
+        : undefined
+    );
   },
   async scheduled(_controller: ScheduledController, env: Env) {
     await tickIngest(env);

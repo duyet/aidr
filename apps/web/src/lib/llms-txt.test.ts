@@ -50,6 +50,14 @@ const REACHABLE_AIDR_PATHS = new Set<string>([
   // Day archive example and its Markdown twin.
   "/date/2026-10-01",
   "/date/2026-10-01.md",
+  "/date/2026-10-15.md",
+  // Homepage Markdown twin, weekly edition, and the full-context file.
+  "/index.md",
+  "/week/2026-W41",
+  "/week/2026-W41.md",
+  "/api/week/2026-W41",
+  "/weeks",
+  "/llms-full.txt",
   RSS_FEED_PATH,
   RSS_ALIAS_PATH,
   NEWS_SITEMAP_PATH,
