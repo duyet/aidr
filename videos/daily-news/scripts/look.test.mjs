@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { templateScript } from "./auto-script.mjs";
 import { dayNumber, resolveLook, rotate, rotatePair } from "./look.mjs";
+import { AXES } from "./looks/index.mjs";
 import { applyScreen } from "./visub-screen.mjs";
 import { isoWeekOf } from "./week.mjs";
 
@@ -452,4 +453,46 @@ test("the new axes leave the transition/background schedule of #631 as it was", 
   };
   for (const [date, c] of Object.entries(was))
     assert.equal(combo(resolveLook({}, { date })), c, date);
+});
+
+const DAY_AXES = Object.fromEntries(
+  Object.entries(AXES).map(([axis, list]) => [
+    axis,
+    list.filter((e) => e.auto).map((e) => e.id),
+  ])
+);
+const dayLook = (l) => Object.keys(DAY_AXES).map((axis) => l[axis]);
+
+// Two weeks of CI days from launch: what a regular viewer sees. A rotation bug (an axis frozen by a pin-shaped
+// default, a pool that stopped rotating, a pair that ping-pongs) shows up here as a repeat or a missing variant.
+test("over two weeks of CI days, no day repeats yesterday's intro or look and every variant shows", () => {
+  const days = datesFrom("2026-10-16", 14);
+  const looks = days.map((date) => lookOn(date));
+  for (let i = 1; i < looks.length; i++) {
+    const [a, b] = [looks[i - 1], looks[i]];
+    for (const [axis, pool] of Object.entries(DAY_AXES))
+      if (pool.length > 1)
+        assert.notEqual(b[axis], a[axis], `${days[i]} repeats ${axis}`);
+    assert.notDeepEqual(dayLook(b), dayLook(a), days[i]);
+  }
+  for (const [axis, pool] of Object.entries(DAY_AXES))
+    assert.deepEqual(
+      [...new Set(looks.map((l) => l[axis]))].sort(),
+      [...pool].sort(),
+      `${axis} over ${days[0]}..${days.at(-1)}`
+    );
+});
+
+// "Regularly": each cycle of a rotating axis is a permutation of its pool, so any 2n - 1 days hold a full cycle.
+test("every rotating variant shows within any 2n - 1 days of its axis over two years (n = its pool size)", () => {
+  const looks = TWO_YEARS.map((d) => lookOn(d));
+  for (const [axis, pool] of Object.entries(DAY_AXES)) {
+    const N = Math.max(1, 2 * pool.length - 1);
+    for (let i = 0; i + N <= looks.length; i++)
+      assert.deepEqual(
+        [...new Set(looks.slice(i, i + N).map((l) => l[axis]))].sort(),
+        [...pool].sort(),
+        `${axis}: window of ${N} days from ${TWO_YEARS[i]}`
+      );
+  }
 });
