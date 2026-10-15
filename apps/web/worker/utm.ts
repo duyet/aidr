@@ -1,11 +1,16 @@
+import type { Channel } from "../src/lib/analytics/events.js";
 import { isSiteUrl } from "../src/lib/locale-url.js";
 
 /**
- * One UTM convention for every link we post: email, Telegram, Facebook.
+ * One UTM convention for every link we post: email, Telegram, Facebook, RSS
+ * (the video scripts and yt-meta.py follow it too, see
+ * videos/daily-news/scripts/site-links.mjs).
  *
- * - `utm_source`: the channel (`email`, `telegram`, `facebook`).
+ * - `utm_source`: the channel, one of `CHANNELS` (`events.ts`), so
+ *   `channel_landing` attributes it by name instead of to `other`.
  * - `utm_medium`: the mail kind for email (`digest`, `welcome`, `notes`),
- *   `social` for Telegram and Facebook (GA4 groups it as Organic Social).
+ *   `social` for Telegram and Facebook (GA4 groups it as Organic Social),
+ *   `feed` for RSS.
  * - `utm_campaign`: the edition (`digest-YYYY-MM-DD`, `weekly-…`) or `story`.
  * - `utm_content`: the slot in the post (`lead`, `button`, `link`, …).
  *
@@ -13,7 +18,7 @@ import { isSiteUrl } from "../src/lib/locale-url.js";
  * `src/lib/analytics/landing.ts`), so `channel_landing` records them as sent.
  */
 
-export type UtmSource = "email" | "telegram" | "facebook";
+export type UtmSource = Exclude<Channel, "other">;
 
 export interface UtmTag {
   source: UtmSource;
@@ -39,7 +44,7 @@ const TOKEN_PARAMS = ["token", "t", "unsubscribe", "settings", "confirm"];
 const TOKEN_PATHS = ["/api/", "/feedback"];
 
 /** Links that act for one subscriber. They must stay byte-for-byte as built. */
-function carriesToken(u: URL): boolean {
+export function carriesToken(u: URL): boolean {
   if (TOKEN_PATHS.some((p) => u.pathname.startsWith(p))) return true;
   return TOKEN_PARAMS.some((k) => u.searchParams.has(k));
 }
