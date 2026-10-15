@@ -1,3 +1,4 @@
+import { INGEST_ALARM_INTERVAL_MS } from "../ingest-schedule.js";
 import { isReleaseRepo } from "./hfmodels.js";
 import {
   asArray,
@@ -16,11 +17,35 @@ export const TRENDING_MAX_AGE_DAYS = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * The `maxItems` window of `ranked` for the run at `nowMs`. The cap applies
+ * before ingest drops already-stored URLs, so always taking the head would
+ * re-send the same top repos every run and never reach the rest. The window
+ * starts at `(slot * maxItems) mod n`, one slot per ingest interval, and
+ * wraps, so every candidate is sent within `ceil(n / maxItems)` runs; a
+ * repeat is dropped by ingest as already stored.
+ */
+function rotatingWindow<T>(
+  ranked: readonly T[],
+  maxItems: number,
+  nowMs: number
+): T[] {
+  if (ranked.length <= maxItems) return [...ranked];
+  const slot = Math.floor(nowMs / INGEST_ALARM_INTERVAL_MS);
+  const start = (slot * maxItems) % ranked.length;
+  return Array.from(
+    { length: maxItems },
+    (_, i) => ranked[(start + i) % ranked.length]
+  );
+}
+
+/**
  * Release repos on the Hugging Face trending list, from any organization.
  *
  * The org feeds (`hfmodels`) only see the organizations they name; this sees
  * the ones nobody named. Kept: public, `isReleaseRepo`, created within
- * `TRENDING_MAX_AGE_DAYS`. `trendingScore` only orders the cap, and likes and
+ * `TRENDING_MAX_AGE_DAYS`, ranked by `trendingScore` (then id, so the order
+ * is the same on every run) and sent `maxItems` at a time through
+ * `rotatingWindow`. `trendingScore` only orders the list, and likes and
  * downloads are summary facts: none is emitted as `points`, so `rank_score`
  * does not count them as reader engagement. The date is `createdAt`, the
  * honest upload date, even when it is older than the since-window.
@@ -34,8 +59,10 @@ export const hfTrendingAdapter: SourceAdapter = {
       "https://huggingface.co/api/models?sort=trendingScore&direction=-1&limit=30",
       "hf trending models"
     );
-    const minCreatedMs = Date.now() - TRENDING_MAX_AGE_DAYS * DAY_MS;
-    const ranked: { item: FetchedItem; trendingScore: number }[] = [];
+    const nowMs = Date.now();
+    const minCreatedMs = nowMs - TRENDING_MAX_AGE_DAYS * DAY_MS;
+    const ranked: { id: string; item: FetchedItem; trendingScore: number }[] =
+      [];
     for (const entry of asArray(data)) {
       const model = asRecord(entry);
       const id = asString(model.id);
@@ -60,6 +87,7 @@ export const hfTrendingAdapter: SourceAdapter = {
       ].filter(Boolean);
       const url = `https://huggingface.co/${id}`;
       ranked.push({
+        id,
         trendingScore:
           typeof model.trendingScore === "number" ? model.trendingScore : 0,
         item: {
@@ -74,9 +102,15 @@ export const hfTrendingAdapter: SourceAdapter = {
         },
       });
     }
-    return ranked
-      .sort((a, b) => b.trendingScore - a.trendingScore)
-      .slice(0, configuredMaxItems(config))
-      .map((row) => row.item);
+    ranked.sort(
+      (a, b) =>
+        b.trendingScore - a.trendingScore ||
+        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+    );
+    return rotatingWindow(
+      ranked.map((row) => row.item),
+      configuredMaxItems(config),
+      nowMs
+    );
   },
 };

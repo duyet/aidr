@@ -225,6 +225,16 @@ describe("hfmodels", () => {
 describe("hftrending", () => {
   const NOW = Date.parse("2026-10-16T12:00:00Z");
   const since26h = sec("2026-10-15T10:00:00Z");
+  const hf = (id: string) => `https://huggingface.co/${id}`;
+  const RANKED = [
+    "Qwen/Qwen-Image-2.1-Turbo",
+    "openbmb/MiniCPM-V-4.7-35B-A3B",
+    "LiquidAI/LFM2.5-24B-A2B",
+    "speridlabs/iris-3b",
+    "openbmb/MiniCPM-V-4.7-1B",
+    "LiquidAI/d1-3B",
+    "vllm-sr/d3",
+  ].map(hf);
 
   afterEach(() => {
     vi.useRealTimers();
@@ -240,12 +250,7 @@ describe("hftrending", () => {
     // Left out: embeddinggemma-2 (top score, created 2026-09-14) and
     // drama-3 (2026-10-01, 15 days old) by age; the -GGUF and -LoRA repos
     // as derivatives. Kept although created days before the 26h window.
-    expect(items.map((item) => item.url)).toEqual([
-      "https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo",
-      "https://huggingface.co/openbmb/MiniCPM-V-4.7-35B-A3B",
-      "https://huggingface.co/LiquidAI/LFM2.5-24B-A2B",
-      "https://huggingface.co/speridlabs/iris-3b",
-    ]);
+    expect(items.map((item) => item.url)).toEqual(RANKED);
     const liquid = items[2];
     expect(liquid.title).toBe(
       "LFM2.5-24B-A2B by LiquidAI is trending on Hugging Face"
@@ -256,18 +261,49 @@ describe("hftrending", () => {
     expect(liquid.publishedAt).toBe(Date.parse("2026-10-12T05:35:46.000Z"));
   });
 
-  it("caps by trending score, not by date", async () => {
-    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
-    stubFetch(fixture("hf-trending.json"));
-    const items = await adapters.hftrending.fetchItems(
-      { maxItems: 2 },
-      since26h
-    );
-    // A date cap would keep LFM2.5 (10-12) and Qwen-Image-2.1-Turbo (10-09).
-    expect(items.map((item) => item.url)).toEqual([
-      "https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo",
-      "https://huggingface.co/openbmb/MiniCPM-V-4.7-35B-A3B",
+  it("rotates the capped window so repos below the top two still get sent", async () => {
+    // The cap runs before ingest drops already-stored URLs: a head-only cap
+    // would re-send the top two forever and never reach LFM2.5 or iris-3b.
+    const slotMs = 30 * 60 * 1000;
+    const firstSlot = 7 * Math.ceil(NOW / slotMs / 7);
+    const runs: string[][] = [];
+    for (let run = 0; run < 4; run++) {
+      vi.useFakeTimers({
+        now: (firstSlot + run) * slotMs + 60_000,
+        toFake: ["Date"],
+      });
+      stubFetch(fixture("hf-trending.json"));
+      const items = await adapters.hftrending.fetchItems(
+        { maxItems: 2 },
+        since26h
+      );
+      runs.push(items.map((item) => item.url));
+    }
+    expect(runs).toEqual([
+      [RANKED[0], RANKED[1]],
+      [RANKED[2], RANKED[3]],
+      [RANKED[4], RANKED[5]],
+      [RANKED[6], RANKED[0]],
     ]);
+    expect(new Set(runs.flat())).toEqual(new Set(RANKED));
+  });
+
+  it("orders equal trending scores by id, so the rotation is stable across runs", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    const entry = (id: string) => ({
+      id,
+      createdAt: "2026-10-12T00:00:00.000Z",
+      trendingScore: 100,
+      tags: [],
+    });
+    const urls = async (ids: string[]) => {
+      stubFetch(JSON.stringify(ids.map(entry)));
+      const items = await hfTrendingAdapter.fetchItems({}, since26h);
+      return items.map((item) => item.url);
+    };
+    const expected = [hf("a-lab/model-a"), hf("b-lab/model-b")];
+    expect(await urls(["b-lab/model-b", "a-lab/model-a"])).toEqual(expected);
+    expect(await urls(["a-lab/model-a", "b-lab/model-b"])).toEqual(expected);
   });
 
   it("does not report trending score, likes or downloads as engagement", async () => {
