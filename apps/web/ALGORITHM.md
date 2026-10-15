@@ -268,6 +268,12 @@ locally from production D1 through `wrangler d1 execute`, SELECT only, and
   live twin inside the quiet window, written by another batch of the
   request, or restored by an earlier group of the same request defers the
   group to a rerun.
+- Before any group is planned, the groups of the request that are a live
+  story's copy (a `sameAs`, or identity with a live row or with another
+  such group) join the live rows under the published root they name. A
+  near-duplicate of such a group then waits as `needs-decision` with that
+  root as its candidate, whichever group is planned first (#798). Its rows
+  count even when its own re-point waits for a rerun (`twin-busy`).
 - `"distinct": true` says only that the group is not its canonical's story:
   it overrules an identity match with the canonical (`twin-is-canonical`)
   and nothing else. The live-row check above still runs for every group, so
@@ -351,7 +357,9 @@ whose `duplicate_of` names no item and needs no pairs file.
   A bare `distinct` is refused: there is no canonical to be distinct from.
   An id that names no item is refused, so a typo fails loudly. A row that
   is no longer dangling was restored by an earlier apply, so a rerun with
-  the same file passes. Two different decisions on one story hold it. The
+  the same file passes. Two different decisions on one story hold it. A
+  `sameAs` story counts as a live copy of the row it names, so a
+  near-duplicate story waits for its own decision against that row. The
   apply posts the same decisions, so it plans what the dry run printed.
 - Sources: `attributeSources` with no canonical reads the rows under the
   made-up id. A leading run belongs to the member whose URL row ends it.

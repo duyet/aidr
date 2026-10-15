@@ -826,7 +826,28 @@ export function planUnmerge(
     canonicalIds: new Set(byCanonical.keys()),
     claimedTwins: new Set(),
     restored: [],
+    copies: new Map(),
+    live: snapshot.live,
   };
+  collectCopies(
+    state,
+    [...byCanonical].flatMap(([canonicalId, list]) => {
+      const canonical = snapshot.items.get(canonicalId);
+      if (canonical?.status !== "published") return [];
+      const groups = restorableGroups(
+        canonical,
+        list,
+        snapshot,
+        nowMs,
+        new Map()
+      );
+      return [...groups].map(([group, ids]) => ({
+        canonicalId,
+        rows: ids.map((id) => snapshot.items.get(id) as UnmergeItemRow),
+        decision: groupDecision(list, group),
+      }));
+    })
+  );
   return {
     nowMs,
     restoredScale,
@@ -835,6 +856,12 @@ export function planUnmerge(
     ),
   };
 }
+
+const groupDecision = (
+  pairs: readonly UnmergePair[],
+  group: string
+): TwinDecision | undefined =>
+  pairs.find((p) => p.group === group && p.decision)?.decision;
 
 /** Median `storedScale` over `ids`; 1 when none has a usable score. */
 function medianScale(
@@ -881,6 +908,8 @@ export function planDanglingUnmerge(
     canonicalIds: new Set(),
     claimedTwins: new Set(),
     restored: [],
+    copies: new Map(),
+    live: snapshot.live,
   };
   const groupOf = new Map<string, string>();
   for (const story of stories) {
@@ -905,20 +934,7 @@ export function planDanglingUnmerge(
     attributionOf(danglingOf(row)).filter((a) => a.owner === row.id);
   const quietSince = Math.floor(nowMs / 1000) - UNMERGE_QUIET_SEC;
 
-  const canonicals = stories.map((story): CanonicalPlan => {
-    const key = story[0].id;
-    const plan: CanonicalPlan = {
-      canonicalId: key,
-      pairs: [],
-      rows: [],
-      sources: [],
-      translations: [],
-      attribution: story.flatMap(owned),
-      leads: [],
-      lossy: [],
-    };
-    const outcomes = new Map<string, PairOutcome>();
-    const ids = story.map((row) => row.id);
+  const groups = stories.map((story) => {
     const latest = Math.max(...story.map((row) => row.published_at));
     const storyDecisions = [
       ...new Map(
@@ -930,7 +946,7 @@ export function planDanglingUnmerge(
         })
       ).values(),
     ];
-    const route: GroupRoute =
+    const held: GroupRoute | null =
       latest > quietSince
         ? {
             kind: "skip",
@@ -946,7 +962,35 @@ export function planDanglingUnmerge(
                 .map((row) => short(row.id))
                 .join(", ")}); keep one`,
             }
-          : routeGroup(state, null, story, storyDecisions[0]);
+          : null;
+    return {
+      canonicalId: null,
+      rows: story,
+      decision: storyDecisions[0],
+      held,
+    };
+  });
+  collectCopies(
+    state,
+    groups.filter((group) => group.held === null)
+  );
+
+  const canonicals = groups.map((group): CanonicalPlan => {
+    const story = group.rows;
+    const key = story[0].id;
+    const plan: CanonicalPlan = {
+      canonicalId: key,
+      pairs: [],
+      rows: [],
+      sources: [],
+      translations: [],
+      attribution: story.flatMap(owned),
+      leads: [],
+      lossy: [],
+    };
+    const outcomes = new Map<string, PairOutcome>();
+    const ids = story.map((row) => row.id);
+    const route = group.held ?? routeGroup(state, group);
     if (route.kind === "skip") {
       for (const id of ids) {
         outcomes.set(id, {
@@ -1052,6 +1096,19 @@ interface PlanState {
   claimedTwins: Set<string>;
   /** Rows of the groups this request publishes so far, each its own root. */
   restored: LiveRef[];
+  /** Rows of this request's groups that are a live story's copy, by a
+   * `sameAs` or by identity, under that story's published root
+   * (`collectCopies`). */
+  copies: Map<string, LiveRef>;
+  /** What a group is compared with: the live rows and `copies`. */
+  live: readonly LiveRef[];
+}
+
+/** One group of the request as routing reads it. */
+interface GroupInput {
+  canonicalId: ItemId | null;
+  rows: readonly UnmergeItemRow[];
+  decision: TwinDecision | undefined;
 }
 
 const storyRef = (row: UnmergeItemRow): StoryRef => ({
@@ -1082,10 +1139,11 @@ const candidatesOf = (
   ...new Map(matches.map((m) => [m.ref.root, rootRef(state, m.ref)])).values(),
 ];
 
-/** Whether a live ref is its root, or a merged copy whose title or link
- * still says it is the root's story. */
+/** Whether a live ref is its root, a row of this request recorded as its
+ * copy, or a merged copy whose title or link still says it is the root's
+ * story. */
 function resemblesRoot(state: PlanState, ref: LiveRef): boolean {
-  if (ref.id === ref.root) return true;
+  if (ref.id === ref.root || state.copies.has(ref.id)) return true;
   const row = state.snapshot.items.get(ref.root);
   if (!row) return false;
   const root = storyRef(row);
@@ -1100,7 +1158,9 @@ function describeMatch(state: PlanState, ref: LiveRef): string {
   const via =
     ref.id === ref.root
       ? ""
-      : ` (via its merged copy ${short(ref.id)} [${ref.source_id}] "${ref.title}")`;
+      : state.copies.has(ref.id)
+        ? ` (via ${short(ref.id)} [${ref.source_id}] "${ref.title}", which this request joins to it)`
+        : ` (via its merged copy ${short(ref.id)} [${ref.source_id}] "${ref.title}")`;
   return `${short(root.id)} [${root.source_id}] "${root.title}"${via}`;
 }
 
@@ -1114,30 +1174,41 @@ type GroupRoute =
       candidates?: StoryRef[];
     };
 
-/** Whether a group publishes, joins its live twin, or waits: identity with a
- * published row re-points it, likely the same event holds it for a human,
- * and the same story restored by an earlier group defers it to a rerun. */
-function routeGroup(
-  state: PlanState,
+/** `distinct` judges the group against its canonical only (#749 and #790
+ * wrote it on every pair); a live story it does not name is still checked.
+ * Identity with a live story is never overruled, except by the canonical's. */
+function unjudgedBy(
   canonicalId: ItemId | null,
-  rows: readonly UnmergeItemRow[],
   decision: TwinDecision | undefined
-): GroupRoute {
-  const refs = rows.map(storyRef);
-  if (decision?.kind === "same-as") {
-    return repointRoute(state, canonicalId, rows, decision.twinId, "same-as");
-  }
-  // `distinct` judges the group against its canonical only (#749 and #790
-  // wrote it on every pair); a live story it does not name is still checked.
+): (m: TwinMatch<LiveRef>) => boolean {
   const judged = new Set<string>(
     decision?.kind === "distinct"
       ? [...(canonicalId ? [canonicalId] : []), ...decision.from]
       : []
   );
-  // Identity with a live story is never overruled, except by the canonical's.
-  const unjudged = (m: TwinMatch<LiveRef>) =>
+  return (m) =>
     !judged.has(m.ref.root) || (m.rule !== null && m.ref.root !== canonicalId);
-  const matches = twinMatches(refs, state.snapshot.live).filter(unjudged);
+}
+
+type LiveIdentity =
+  | { kind: "same"; root: ItemId; rule: TwinRule | "same-as" }
+  | Extract<GroupRoute, { kind: "skip" }>
+  | { kind: "none"; likely: TwinMatch<LiveRef>[] };
+
+/** Which story of `live` a group is: its `sameAs`, or the one root it is
+ * identical to. Identity with a merged copy unlike its root, or with
+ * several roots, holds it. `none` carries the near-duplicate matches. */
+function liveIdentity(
+  state: PlanState,
+  { canonicalId, rows, decision }: GroupInput,
+  live: readonly LiveRef[]
+): LiveIdentity {
+  if (decision?.kind === "same-as") {
+    return { kind: "same", root: decision.twinId, rule: "same-as" };
+  }
+  const matches = twinMatches(rows.map(storyRef), live).filter(
+    unjudgedBy(canonicalId, decision)
+  );
   const same = matches.filter((m) => m.rule !== null);
   // A copy unlike its root is likely a wrong merge itself (#794's
   // Plugin4Shell under AgentCore): re-pointing there would hide this story
@@ -1161,13 +1232,59 @@ function routeGroup(
     };
   }
   if (same.length > 0) {
-    return repointRoute(
-      state,
-      canonicalId,
-      rows,
-      same[0].ref.root as ItemId,
-      same[0].rule as TwinRule
-    );
+    return {
+      kind: "same",
+      root: same[0].ref.root as ItemId,
+      rule: same[0].rule as TwinRule,
+    };
+  }
+  return { kind: "none", likely: matches };
+}
+
+/**
+ * Before any group routes, records the rows of every group that is a live
+ * story's copy, by its `sameAs` or by identity with a live row or with an
+ * earlier recorded copy, under that story's published root. Every group
+ * then compares with them as with the live rows, so a near-duplicate of a
+ * re-pointed group waits for a decision at its root whichever group routes
+ * first (#798). A copy whose own route then waits (`twin-busy`, the twin's
+ * quiet window) still counts: its rows are that story.
+ */
+function collectCopies(state: PlanState, groups: readonly GroupInput[]): void {
+  let fresh: readonly LiveRef[] = state.snapshot.live;
+  let pending = groups;
+  // The first pass runs even with no live rows: a `sameAs` needs none.
+  do {
+    const added: LiveRef[] = [];
+    pending = pending.filter((group) => {
+      const identity = liveIdentity(state, group, fresh);
+      if (identity.kind === "none") return true;
+      if (
+        identity.kind === "same" &&
+        state.snapshot.items.get(identity.root)?.status === "published"
+      ) {
+        for (const row of group.rows) {
+          added.push({ ...storyRef(row), root: identity.root });
+        }
+      }
+      return false;
+    });
+    for (const ref of added) state.copies.set(ref.id, ref);
+    fresh = added;
+  } while (fresh.length > 0 && pending.length > 0);
+  state.live = [...state.snapshot.live, ...state.copies.values()];
+}
+
+/** Whether a group publishes, joins its live twin, or waits: identity with a
+ * published row re-points it, likely the same event holds it for a human,
+ * and the same story restored by an earlier group defers it to a rerun. */
+function routeGroup(state: PlanState, group: GroupInput): GroupRoute {
+  const { canonicalId, rows, decision } = group;
+  const refs = rows.map(storyRef);
+  const identity = liveIdentity(state, group, state.live);
+  if (identity.kind === "skip") return identity;
+  if (identity.kind === "same") {
+    return repointRoute(state, canonicalId, rows, identity.root, identity.rule);
   }
   const restoredSame = twinMatches(refs, state.restored).find(
     (m) => m.rule !== null
@@ -1184,8 +1301,10 @@ function routeGroup(
     (row) => asNumber(row.llm_relevance, 0.5) >= RELEVANCE_THRESHOLD
   );
   const likely = [
-    ...matches.filter((m) => m.ref.root !== canonicalId),
-    ...twinMatches(refs, state.restored).filter(unjudged),
+    ...identity.likely.filter((m) => m.ref.root !== canonicalId),
+    ...twinMatches(refs, state.restored).filter(
+      unjudgedBy(canonicalId, decision)
+    ),
   ];
   if (publishes && likely.length > 0) {
     const named = [...new Map(likely.map((m) => [m.ref.root, m])).values()]
@@ -1352,12 +1471,11 @@ function planCanonical(
   const groups = restorableGroups(canonical, pairs, snapshot, nowMs, outcomes);
   const routes = new Map<string, GroupRoute>();
   for (const [group, ids] of groups) {
-    const route = routeGroup(
-      state,
-      canonical.id,
-      ids.map((id) => snapshot.items.get(id) as UnmergeItemRow),
-      pairs.find((p) => p.group === group && p.decision)?.decision
-    );
+    const route = routeGroup(state, {
+      canonicalId: canonical.id,
+      rows: ids.map((id) => snapshot.items.get(id) as UnmergeItemRow),
+      decision: groupDecision(pairs, group),
+    });
     if (route.kind === "skip") {
       for (const id of ids) {
         outcomes.set(id, {
@@ -1504,7 +1622,7 @@ function mergedIntoLiveTwin(
   group: string,
   snapshot: UnmergeSnapshot
 ): boolean {
-  const decision = pairs.find((p) => p.group === group && p.decision)?.decision;
+  const decision = groupDecision(pairs, group);
   if (decision?.kind === "same-as")
     return item.duplicate_of === decision.twinId;
   const ref = storyRef(item);
