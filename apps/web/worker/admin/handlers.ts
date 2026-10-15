@@ -76,7 +76,9 @@ import {
   applyUndo,
   loadUndo,
   parseBatchId,
+  parseUndoCanonicalIds,
   planUndo,
+  scopeUndoRecords,
   type UndoPlan,
 } from "../unmerge/undo.js";
 import { SELECT_RECENT_WORKFLOW_RUNS_SQL } from "../workflow-run.js";
@@ -560,14 +562,15 @@ export interface UndoUnmergeResult {
 
 /**
  * Reverses one unmerge apply from its `admin_audit` rows. Body
- * `{ batchId, dryRun? }`, where `batchId` is the apply's `applied.batchId`.
- * A dry run (the default) returns the plan and writes nothing. A canonical
- * is written back only while every row it touched still holds what the
- * apply wrote. See ALGORITHM.md, "Unmerge".
+ * `{ batchId, canonicalIds?, dryRun? }`, where `batchId` is the apply's
+ * `applied.batchId`; `canonicalIds` limits the undo to those canonicals'
+ * change sets. A dry run (the default) returns the plan and writes nothing.
+ * A canonical is written back only while every row it touched still holds
+ * what the apply wrote. See ALGORITHM.md, "Unmerge".
  */
 export async function undoUnmerge(
   env: Env,
-  input: { batchId?: unknown; dryRun?: unknown }
+  input: { batchId?: unknown; canonicalIds?: unknown; dryRun?: unknown }
 ): Promise<UndoUnmergeResult | HandlerError> {
   const batchId = parseBatchId(input.batchId);
   if (batchId === null) {
@@ -576,11 +579,15 @@ export async function undoUnmerge(
   if (input.dryRun !== undefined && typeof input.dryRun !== "boolean") {
     return { error: "dryRun must be a boolean", status: 400 };
   }
+  const scope = parseUndoCanonicalIds(input.canonicalIds);
+  if ("error" in scope) return { error: scope.error, status: 400 };
   const { records, state } = await loadUndo(d1Select(env.DB), batchId);
   if (records.length === 0) {
     return { error: `no unmerge audit rows for batch ${batchId}`, status: 404 };
   }
-  const plan = planUndo(batchId, records, state);
+  const scoped = scopeUndoRecords(records, scope.canonicalIds);
+  if ("error" in scoped) return { error: scoped.error, status: 400 };
+  const plan = planUndo(batchId, scoped.records, state);
   if (input.dryRun !== false) return { dryRun: true, plan };
   return {
     dryRun: false,
