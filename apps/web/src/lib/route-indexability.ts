@@ -1,7 +1,7 @@
 import { parseDataTab } from "./data-tab";
 import { isLang } from "./lang";
 import { isServerFnRequest } from "./server-fn-request";
-import { SITEMAP_STATIC_PATHS } from "./sitemap";
+import { SITEMAP_STATIC_PAGE_PATHS } from "./sitemap";
 
 export const INDEXABLE_ROBOTS = "index, follow";
 export const NOINDEX_FOLLOW_ROBOTS = "noindex, follow";
@@ -11,7 +11,7 @@ export const PRIVATE_CACHE_CONTROL = "private, no-store";
 const SAFE_REFERRER_POLICY = "strict-origin-when-cross-origin";
 const NO_REFERRER_POLICY = "no-referrer";
 
-const PUBLIC_STATIC_PATHS = new Set<string>(SITEMAP_STATIC_PATHS);
+const PUBLIC_STATIC_PATHS = new Set<string>(SITEMAP_STATIC_PAGE_PATHS);
 const SENSITIVE_QUERY_KEYS = new Set([
   "auth",
   "authorization",

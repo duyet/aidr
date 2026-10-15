@@ -59,10 +59,12 @@ import {
   loadDaySitemapUrls,
   loadSitemapMonthCounts,
   loadSitemapShardUrls,
+  loadWeekSitemapUrls,
   parseSitemapShardPath,
   robotsResponse,
   SITEMAP_DAYS_CHILD_PATH,
   SITEMAP_STATIC_CHILD_PATH,
+  SITEMAP_WEEKS_CHILD_PATH,
   safeSitemapIndexResponse,
   safeSitemapResponse,
   sitemapIndexEntries,
@@ -166,7 +168,7 @@ export default {
 
     // Discovery surfaces are Worker-owned and run before the SPA catch-all.
     // `/sitemap.xml` is a <sitemapindex> now: one static child, one child per
-    // UTC month of publication, the day archive child, and the news sitemap. Every child keeps the
+    // UTC month of publication, the day and week archive children, and the news sitemap. Every child keeps the
     // fail-closed contract — 200 valid XML, static-only on a D1 error.
     if (path === "/sitemap.xml") {
       try {
@@ -188,6 +190,12 @@ export default {
       return safeSitemapResponse(async () => {
         const db = await resolveDb(env);
         return db ? loadDaySitemapUrls(readSession(db)) : [];
+      });
+    }
+    if (path === SITEMAP_WEEKS_CHILD_PATH) {
+      return safeSitemapResponse(async () => {
+        const db = await resolveDb(env);
+        return db ? loadWeekSitemapUrls(readSession(db)) : [];
       });
     }
     const shard = parseSitemapShardPath(path);

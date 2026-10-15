@@ -179,10 +179,12 @@ describe("sitemap index", () => {
     const lastmods = [...xml.matchAll(/<lastmod>([^<]*)<\/lastmod>/g)].map(
       (m) => m[1]
     );
-    // static, the day archive child, and the news sitemap: none read D1.
+    // static, the day and week archive children, and the news sitemap: none
+    // read D1.
     expect(locs).toEqual([
       `${SITE_URL}/sitemaps/static.xml`,
       `${SITE_URL}/sitemaps/days.xml`,
+      `${SITE_URL}/sitemaps/weeks.xml`,
       `${SITE_URL}/news.xml`,
     ]);
     expect(lastmods).toHaveLength(locs.length);
