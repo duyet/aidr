@@ -63,7 +63,7 @@ describe("clusterSimilar", () => {
         .fn()
         .mockResolvedValue(
           chatResponse(
-            JSON.stringify({ clusters: [{ new: [0, 2], existing: ["abc"] }] })
+            JSON.stringify({ clusters: [{ new: [0, 2], existing: ["E1"] }] })
           )
         )
     );
@@ -113,7 +113,7 @@ describe("clusterSimilar", () => {
             clusters: [
               "not an object",
               { new: [0] }, // only 1 member total, not a real dup
-              { new: [0, 1], existing: ["x", 5, null] }, // non-string existing entries dropped
+              { new: [0, 1], existing: ["E1", 5, null] }, // non-string existing entries dropped
             ],
           })
         )
@@ -773,7 +773,7 @@ describe("clusterSimilar fallback", () => {
           choices: [
             {
               message: {
-                content: '{"clusters":[{"new":[0],"existing":["abc123"]}]}',
+                content: '{"clusters":[{"new":[0],"existing":["E1"]}]}',
               },
             },
           ],
@@ -920,7 +920,7 @@ describe("clusterSimilar chain budget", () => {
             setTimeout(
               () =>
                 resolve(
-                  chatResponse('{"clusters":[{"new":[0],"existing":["abc"]}]}')
+                  chatResponse('{"clusters":[{"new":[0],"existing":["E1"]}]}')
                 ),
               glmAnswerMs
             )

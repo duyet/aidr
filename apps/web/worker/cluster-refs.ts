@@ -1,11 +1,12 @@
 /**
  * How the cluster model's answers referenced the items the prompt sent.
- * The prompt names a new item by its index and an existing row by its full
- * 64-hex id, and `normalizeClusters` drops any reference the request did not
- * send. A mistyped id is then indistinguishable from "no duplicate". These
- * counts tell the two apart; they hold numbers only, never the model's text
- * (#752). Ingest records them per served model in `stats.clusterRefs`; the
- * unmerge duplicate check returns them with each request.
+ * The prompt names a new item by its index and an existing row by an alias
+ * (`E1` for the first sent), and `normalizeClusters` drops any reference
+ * the request did not send. A mistyped reference is then indistinguishable
+ * from "no duplicate". These counts tell the two apart; they hold numbers
+ * only, never the model's text (#752). Ingest records them per served
+ * model in `stats.clusterRefs`; the unmerge duplicate check returns them
+ * with each request.
  */
 
 export interface ClusterRefCounts {
@@ -14,12 +15,14 @@ export interface ClusterRefCounts {
   /** `new` entries answered, and those kept (an index the prompt sent). */
   newAnswered: number;
   newKept: number;
-  /** `existing` entries answered, and those kept (an id the prompt sent). */
+  /** `existing` entries answered, and those kept (an alias the prompt sent). */
   existingAnswered: number;
   existingKept: number;
   /** Dropped `existing` entries that were not strings: a position, a null. */
   existingNotString: number;
-  /** Dropped `existing` strings that `nearMissOf` resolves to a sent id. */
+  /** Dropped `existing` strings shaped like an alias once trimmed and
+   *  uppercased: a slip (`e3`) or one never sent (`E301`). Before the
+   *  aliases, a 64-hex id within 2 edits or an 8+ character prefix of one. */
   existingNearMiss: number;
   /** Clusters answered with 2+ members that kept fewer than 2. */
   emptied: number;
@@ -45,54 +48,6 @@ export function addClusterRefs(
   const out = { ...a };
   for (const field of FIELDS) out[field] += b[field];
   return out;
-}
-
-/** Shorter tokens are too likely to prefix an id by chance. */
-const NEAR_MISS_MIN_LENGTH = 8;
-/** Two 64-hex ids differ in about 60 places, so 2 edits never cross ids. */
-const NEAR_MISS_MAX_EDITS = 2;
-
-/** True when `a` and `b` are at most `max` edits apart. Banded: only cells
- *  within `max` of the diagonal can stay under the bound. */
-function withinEdits(a: string, b: string, max: number): boolean {
-  if (Math.abs(a.length - b.length) > max) return false;
-  const far = max + 1;
-  let prev = Array.from({ length: b.length + 1 }, (_, j) =>
-    j <= max ? j : far
-  );
-  for (let i = 1; i <= a.length; i++) {
-    const row = new Array<number>(b.length + 1).fill(far);
-    if (i <= max) row[0] = i;
-    let best = row[0];
-    const from = Math.max(1, i - max);
-    const to = Math.min(b.length, i + max);
-    for (let j = from; j <= to; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      row[j] = Math.min(prev[j - 1] + cost, prev[j] + 1, row[j - 1] + 1, far);
-      if (row[j] < best) best = row[j];
-    }
-    if (best > max) return false;
-    prev = row;
-  }
-  return prev[b.length] <= max;
-}
-
-/**
- * The sent id an unknown `existing` token most likely meant: equal after
- * trimming and lowercasing, a prefix of 8+ characters, or at most 2 edits
- * away. Null when none is that close.
- */
-export function nearMissOf(
-  token: string,
-  sent: Iterable<string>
-): string | null {
-  const t = token.trim().toLowerCase();
-  if (t.length < NEAR_MISS_MIN_LENGTH) return null;
-  for (const id of sent) {
-    const k = id.toLowerCase();
-    if (k.startsWith(t) || withinEdits(t, k, NEAR_MISS_MAX_EDITS)) return id;
-  }
-  return null;
 }
 
 /** Per served model: the counts of every cluster answer it gave. */

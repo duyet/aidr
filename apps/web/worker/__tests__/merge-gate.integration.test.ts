@@ -107,20 +107,33 @@ function fresh(id: string, sourceId: string, url: string, title: string) {
   } satisfies NewRow;
 }
 
-function modelAnswers(clusters: unknown) {
+/** Answers `clusters`, whose `existing` entries name published rows by
+ *  title; each becomes the alias the prompt gave that row. */
+function modelAnswers(clusters: { new: number[]; existing?: string[] }[]) {
   const frame = (o: unknown) => `data: ${JSON.stringify(o)}\n\n`;
-  const body = frame({
-    choices: [{ delta: { content: JSON.stringify({ clusters }) } }],
-  });
   vi.stubGlobal(
     "fetch",
-    vi.fn(
-      async () =>
-        new Response(`${body}data: [DONE]\n\n`, {
-          status: 200,
-          headers: { "content-type": "text/event-stream" },
-        })
-    )
+    vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const prompt = (
+        JSON.parse(String(init?.body)) as { messages: { content: string }[] }
+      ).messages[0].content;
+      const sent = JSON.parse(
+        /Existing items [^\n]*\(id, title\):\n(.*)\n/.exec(prompt)?.[1] ?? "[]"
+      ) as { id: string; title: string }[];
+      const aliasOf = (title: string) =>
+        sent.find((row) => row.title === title)?.id;
+      const answer = clusters.map((c) => ({
+        ...c,
+        existing: (c.existing ?? []).map(aliasOf),
+      }));
+      const body = frame({
+        choices: [{ delta: { content: JSON.stringify({ clusters: answer }) } }],
+      });
+      return new Response(`${body}data: [DONE]\n\n`, {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      });
+    })
   );
 }
 
@@ -162,10 +175,12 @@ describe("planMerges cluster gate across languages (#745)", () => {
       "en",
       { vi: "Các nhà toán học phản ứng sốc khi AI tràn ngập lĩnh vực của họ" }
     );
+    const president = "Tổng thống Mỹ đổi tên AI thành 'siêu trí tuệ'";
+    const math = "Mathematicians react with shock as AI floods their field";
     modelAnswers([
-      { new: [0], existing: ["president"] },
-      { new: [1], existing: ["math"] },
-      { new: [2], existing: ["president"] },
+      { new: [0], existing: [president] },
+      { new: [1], existing: [math] },
+      { new: [2], existing: [president] },
     ]);
 
     const { plan, clusterGate } = await planMerges(

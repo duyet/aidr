@@ -26,6 +26,12 @@ import type { HealthIssue } from "./health.js";
 import { officialSourceFor } from "./sources/catalog.js";
 import { looksVietnamese } from "./tldr-lang.js";
 
+/** Part of the unmerge check's `CHECK_VERSION`: bumping it makes every
+ *  stored verdict read as unchecked. A test pins the gate's decisions on
+ *  the #728 hand labels to this number, so a rule change that moves one
+ *  fails until it is bumped. */
+export const CLUSTER_GATE_VERSION = 1;
+
 /** What the gate reads of one item in a proposed link. */
 export interface GateHeadline {
   title: string;
