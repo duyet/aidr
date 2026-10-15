@@ -30,6 +30,7 @@ describe("cleanTldrRows", () => {
         summary:
           "← Back to live feed · 1 stories across 1 day OpenAI had notified more than 100 organizations.",
         title_vi: null,
+        llm_importance: 7,
       },
     ]);
     expect(row?.summary).toBe(
@@ -47,8 +48,10 @@ describe("buildTopItemsQuery", () => {
     expect(sql).toContain("translations");
     expect(sql).toContain("title_vi");
     expect(sql).toMatch(/ORDER BY i.rank_score DESC/);
-    // The pool is wider than the edition: the source-family cap picks from it.
+    // The pool is wider than the edition: `selectEdition` picks from it by
+    // source family and importance.
     expect(sql).toContain("i.source_id");
+    expect(sql).toContain("i.llm_importance");
     expect(sql).not.toMatch(/LIMIT 16\b/);
   });
 

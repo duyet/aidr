@@ -1427,8 +1427,31 @@ Every run (30 minutes).
 - Otherwise refresh a useful bilingual snapshot when the last write is
   older than 3 hours.
 - Content is always the top 16 items of the **rolling last 24h** by
-  rank (not ICT calendar-day-so-far), after the top-list family cap → up to 16 EN bullets + 16
+  rank (not ICT calendar-day-so-far), after `selectEdition`
+  (`worker/digest/select.ts`) → up to 16 EN bullets + 16
   independently-restated VI bullets, each linked to its `item_id`.
+- `selectEdition` is the top-list family cap (`pickDiverse`, 5 of 16 per
+  family) with importance deciding what the cap may cut. Three passes over
+  the rank-ordered pool, each taking only what the earlier ones left:
+  1. importance ≥ 8 within the top 32 rows (`CONTENTION_DEPTH` × 16), no
+     family cap: a frontier launch or market-moving story is never cut for
+     its source. Deeper rows lost on rank (age, quality), not on the cap,
+     so they stay out; on 2026-10-14 an 8.5 sat at #110 a day old.
+  2. importance ≥ 5 within the family cap, in rank order.
+  3. anything left, in rank order, so the edition is never short.
+  Why, measured on the editions of 2026-10-09 to 10-16 (scratch replay on
+  the current `rank_score`): the marketbrief/huggingnews pair carries 36%
+  of published stories and most model-release headlines, so its cap bound
+  every day; `pickDiverse` then filled the tail with importance-4 HN rows
+  (a $15M maths grant at #14, a Nikon contest disqualification) while
+  importance-8 rows at #23-#25 (Gemini 4 Argon's safety report, "OpenAI and
+  Anthropic tell British lawmakers: regulate us") were cut. The replay
+  removes every sub-5 pick (3 → 0 over 8 days) and lifts one top-tier
+  story on 3 of 8 days. It does not change which family wins: a strong
+  (7-8) story from a full family still loses to a weaker one from an open
+  family (Liquid AI 24B at 7.7 on 10-13, Black Forest Labs at 7.9 on
+  10-15), because letting 7s through the cap put 8 of 16 bullets on the
+  pair in the same replay.
 - Homepage thumbs and the story dialog need those ids. If the model
   pastes `[hex]` into the bullet text instead of (or besides)
   `item_ids`, parse recovers the ids and strips the citation.
