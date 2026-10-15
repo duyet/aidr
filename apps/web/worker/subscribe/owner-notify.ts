@@ -1,6 +1,6 @@
 import { notesFrom } from "../mail/send.js";
 import { escapeHtml } from "../notify/alert.js";
-import { telegramChatId } from "../notify/telegram.js";
+import { sendOwnerDm } from "../owner-alerts.js";
 import type { Env } from "../types.js";
 
 export interface NewSubscriberInfo {
@@ -31,39 +31,6 @@ export function ownerEmailAddress(env: Env): string {
   return env.OWNER_NOTIFY_EMAIL?.trim() ?? "";
 }
 
-async function sendOwnerTelegram(env: Env, text: string): Promise<boolean> {
-  const token = env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
-  const chatId = telegramChatId(env, "vi").id;
-  if (!token || !chatId) return false;
-  try {
-    const res = await fetch(
-      `https://api.telegram.org/bot${token}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text,
-          parse_mode: "HTML",
-          link_preview_options: { is_disabled: true },
-        }),
-        signal: AbortSignal.timeout(15_000),
-      }
-    );
-    if (!res.ok) {
-      console.error(`owner notify telegram failed: HTTP ${res.status}`);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error(
-      "owner notify telegram failed:",
-      error instanceof Error ? error.message : String(error)
-    );
-    return false;
-  }
-}
-
 async function sendOwnerEmail(
   env: Env,
   info: NewSubscriberInfo
@@ -92,10 +59,9 @@ export async function notifyOwnerOfNewSubscriber(
   env: Env,
   info: NewSubscriberInfo
 ): Promise<{ telegram: boolean; email: boolean }> {
-  const text = buildOwnerTelegramMessage(info);
-  const [telegram, email] = await Promise.all([
-    sendOwnerTelegram(env, text),
+  const [dm, email] = await Promise.all([
+    sendOwnerDm(env, buildOwnerTelegramMessage(info)),
     sendOwnerEmail(env, info),
   ]);
-  return { telegram, email };
+  return { telegram: dm === "sent", email };
 }

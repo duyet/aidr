@@ -298,9 +298,13 @@ export async function ownerDmError(res: Response): Promise<string> {
     : head;
 }
 
-/** Chat ids Telegram can take: a numeric id or an @channelusername. */
+/**
+ * A Telegram user id: positive digits. Owner DMs carry subscriber emails, and
+ * the other shapes Telegram takes (`@name`, negative group and channel ids)
+ * post where other people read, so they are refused, never sent.
+ */
 export function isValidOwnerChatId(chatId: string): boolean {
-  return /^-?\d+$/.test(chatId) || /^@\w{4,}$/.test(chatId);
+  return /^\d+$/.test(chatId);
 }
 
 /**
@@ -322,6 +326,12 @@ export function resetOwnerDmRejections(): void {
  */
 export type OwnerDmOutcome = "sent" | "rejected" | "failed";
 
+/**
+ * The only path to the owner's private chat, for health alerts and
+ * new-subscriber pings (which carry the subscriber's email). `env` is narrowed
+ * so this cannot read the public channel ids, and with no owner chat set
+ * nothing is sent.
+ */
 export async function sendOwnerDm(
   env: Pick<Env, "TELEGRAM_BOT_TOKEN" | "TELEGRAM_OWNER_CHAT_ID">,
   text: string
@@ -333,7 +343,7 @@ export async function sendOwnerDm(
     if (!rejectedChatIds.has(chatId)) {
       rejectedChatIds.add(chatId);
       console.warn(
-        "owner DM skipped: TELEGRAM_OWNER_CHAT_ID is not a numeric Telegram user id (get yours from @userinfobot)"
+        "owner DM skipped: TELEGRAM_OWNER_CHAT_ID is not a Telegram user id (a channel, group or malformed id; get yours from @userinfobot)"
       );
     }
     return "rejected";
