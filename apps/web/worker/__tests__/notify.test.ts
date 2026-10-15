@@ -1060,8 +1060,8 @@ describe("telegramNotifier gating", () => {
 
   it("refuses to send the first-party card even when it is the stored image", async () => {
     // A row whose image_url is our own share card (an ingest or hand edit)
-    // must not reach Telegram as the story photo: the guard rejects it before
-    // the call, and the post goes out as text with the publisher preview.
+    // must not reach Telegram as the story photo: the gallery drops it by the
+    // guard's own rule, and the post goes out as text with the publisher preview.
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true, result: { message_id: 32 } }), {
         status: 200,
@@ -1075,7 +1075,7 @@ describe("telegramNotifier gating", () => {
     );
     expect(result).toMatchObject({ ok: true, messageId: "32" });
     expect(result.error).toBe(
-      "fallback ok: sendPhoto:media guard: image:first_party_card; photo:none_sent"
+      "fallback ok: gallery:image:first_party_card; photo:no_usable_image"
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMessage");

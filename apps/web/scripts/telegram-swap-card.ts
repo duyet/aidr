@@ -315,7 +315,7 @@ function requireEnv(name: string): string {
   return value;
 }
 
-async function telegram(
+export async function telegram(
   method: string,
   body: Record<string, unknown>
 ): Promise<TelegramResponse> {
