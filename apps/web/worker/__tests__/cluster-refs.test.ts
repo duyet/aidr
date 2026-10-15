@@ -221,7 +221,7 @@ describe("requestClusters reference counts", () => {
         masterNormalize(answer, new Set([0, 1, 2, 3]), new Set([A, B, C]))
       );
       const entries = answer.clusters.filter(
-        (c): c is { new: unknown; existing: unknown[] } => typeof c === "object"
+        (c): c is Exclude<typeof c, string> => typeof c === "object"
       );
       const existingEntries = entries.flatMap((c) => c.existing);
       expect(result.refs).toMatchObject({
