@@ -111,7 +111,7 @@ Every app event goes to one measurement id, `GA_MEASUREMENT_ID` (`VITE_MEASUREME
 
 The Cloudflare Google tag gateway, when it is on for the zone, puts its own `gtag('config', '<id>')` at the top of `<head>`. That id gets gtag.js's automatic hits (its page_view, `session_start`, `user_engagement`, and the Enhanced Measurement events its stream has on), but none of the app's events. To use one property for everything, point the gateway and `VITE_MEASUREMENT_ID` at the same id, or turn the gateway off. `GA4_PROPERTY_ID`, which the /data Audience sync reads, must be the property that owns this measurement id.
 
-After a deploy, check the `tid` of the app's hits: load `https://aidr.today/?utm_source=telegram` and confirm the `channel_landing` hit to `/g/collect` (or the gateway's `/hello/ga/g/c`) has `tid` equal to `GA_MEASUREMENT_ID`. `.agents/skills/verify-aidr/bin/verify-aidr drive ga4-tid` does this.
+After a deploy, check the `tid` of the app's hits with `.agents/skills/verify-aidr/bin/verify-aidr drive ga4-tid`. It loads a campaign URL in headless Chrome and fails unless `channel_landing` goes to `GA_MEASUREMENT_ID` and no app event goes to another id.
 
 ## Page URLs
 
