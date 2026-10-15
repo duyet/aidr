@@ -1871,3 +1871,214 @@ describe("unmerge of dangling merges: live copies under another form (#794)", ()
     });
   });
 });
+
+// #798: production 82cceca7 and 095c4690 are two dangling copies of
+// DeepSeek's DSec launch, and e21b1a15 is its live row. Only the first
+// copy's headline is close to the second's, so the second was held against
+// the first. Once a sameAs re-pointed the first to e21b1a15, nothing held
+// the second, and it published as a second copy of the story.
+const DSEC_LIVE = id(0xe4);
+const DSEC_A = id(0xe5);
+const DSEC_B = id(0xe6);
+const DSEC_DOCS = `https://api-docs.example.test/news/dsec`;
+const DSEC_T = OLD - 12 * 86_400;
+
+const dsecLive = () =>
+  row(DSEC_LIVE, "lobsters", {
+    url: DSEC_DOCS,
+    title: "DeepSeek Elastic Compute (DSec): Sandbox Infrastructure for Agents",
+    publishedAt: DSEC_T,
+    points: 30,
+    sources: [],
+  });
+const dsecA = () =>
+  aggregatorCopy(
+    DSEC_A,
+    "huggingnews",
+    "deepseeks-dsec-unit-supports-380000-concurrent-sandboxes-for-ai-1d1131cc",
+    "DeepSeek’s DSec Unit Supports 380,000 Concurrent Sandboxes for AI",
+    DSEC_T + 2 * HOUR
+  );
+const dsecB = () =>
+  aggregatorCopy(
+    DSEC_B,
+    "marketbrief",
+    "deepseek-launches-dsec-platform-for-380000-concurrent-agent-sandboxes-5c0ffee1",
+    "DeepSeek Launches DSec Platform for 380,000 Concurrent Agent Sandboxes",
+    DSEC_T + 3 * HOUR
+  );
+
+/** Writes the live row, then each copy under its own made-up id. With
+ * `heldFirst`, B is written first, so it is planned first. */
+async function writeDsec(target: DatabaseSync, a: NewRow, heldFirst: boolean) {
+  await writeCanonical(target, dsecLive(), DSEC_T + 100);
+  const runs: Array<[NewRow, string]> = [
+    [a, "abc124"],
+    [dsecB(), "abc125"],
+  ];
+  if (heldFirst) runs.reverse();
+  for (const [i, [newRow, madeUpId]] of runs.entries()) {
+    await writeRun(target, [newRow], madeUpId, DSEC_T + 4 * HOUR + i * 600);
+  }
+}
+
+describe("unmerge: rows the request re-points still count as live (#798)", () => {
+  const outcomesOf = (result: Awaited<ReturnType<typeof unmergeItems>>) => {
+    if ("error" in result) throw new Error(result.error);
+    return new Map(
+      result.plan.canonicals.flatMap((c) =>
+        c.pairs.map(({ pair, outcome }) => [pair.mergedId as string, outcome])
+      )
+    );
+  };
+  const candidateIds = (outcome: unknown) =>
+    (outcome as { candidates?: { id: string }[] }).candidates?.map((c) => c.id);
+  const orders = [
+    ["the re-pointed story planned first", false],
+    ["the held story planned first", true],
+  ] as const;
+
+  it("holds the second copy against the first while neither is decided", async () => {
+    await writeDsec(db, dsecA(), false);
+    const outcomes = outcomesOf(await unmergeItems(env, { dangling: true }));
+    expect(outcomes.get(DSEC_A)).toMatchObject({
+      action: "restore",
+      status: "published",
+    });
+    expect(outcomes.get(DSEC_B)).toMatchObject({
+      action: "skip",
+      reason: "needs-decision",
+    });
+    expect(candidateIds(outcomes.get(DSEC_B))).toEqual([DSEC_A]);
+  });
+
+  it.each(orders)(
+    "holds a near-duplicate of a story a sameAs re-points, against the row it joins (%s)",
+    async (_, heldFirst) => {
+      await writeDsec(db, dsecA(), heldFirst);
+      const before = tables(db);
+      const decisions = [{ mergedId: DSEC_A, sameAs: DSEC_LIVE }];
+      const outcomes = outcomesOf(
+        await unmergeItems(env, { dangling: true, decisions })
+      );
+      expect(outcomes.get(DSEC_A)).toEqual({
+        action: "repoint",
+        twinId: DSEC_LIVE,
+        rule: "same-as",
+      });
+      expect(outcomes.get(DSEC_B)).toMatchObject({
+        action: "skip",
+        reason: "needs-decision",
+      });
+      expect(candidateIds(outcomes.get(DSEC_B))).toEqual([DSEC_LIVE]);
+
+      await unmergeItems(env, { dangling: true, decisions, dryRun: false });
+      expect(tables(db)).not.toEqual(before);
+      expect(statusOf(db, DSEC_B)).toMatchObject({
+        status: "merged",
+        duplicate_of: "abc125",
+      });
+    }
+  );
+
+  it("holds it too when the row the sameAs names is days away, outside the live window", async () => {
+    await writeCanonical(
+      db,
+      {
+        ...dsecLive(),
+        item: { ...dsecLive().item, publishedAt: DSEC_T - 6 * 86_400 },
+      },
+      DSEC_T - 6 * 86_400 + 100
+    );
+    await writeRun(db, [dsecA()], "abc124", DSEC_T + 4 * HOUR);
+    await writeRun(db, [dsecB()], "abc125", DSEC_T + 4 * HOUR + 600);
+    const outcomes = outcomesOf(
+      await unmergeItems(env, {
+        dangling: true,
+        decisions: [{ mergedId: DSEC_A, sameAs: DSEC_LIVE }],
+      })
+    );
+    expect(outcomes.get(DSEC_A)).toMatchObject({ action: "repoint" });
+    expect(candidateIds(outcomes.get(DSEC_B))).toEqual([DSEC_LIVE]);
+  });
+
+  it("publishes that copy once a distinctFrom names the row it was held against", async () => {
+    await writeDsec(db, dsecA(), false);
+    const outcomes = outcomesOf(
+      await unmergeItems(env, {
+        dangling: true,
+        decisions: [
+          { mergedId: DSEC_A, sameAs: DSEC_LIVE },
+          { mergedId: DSEC_B, distinctFrom: [DSEC_LIVE] },
+        ],
+      })
+    );
+    expect(outcomes.get(DSEC_B)).toMatchObject({
+      action: "restore",
+      status: "published",
+    });
+  });
+
+  it.each(orders)(
+    "holds a near-duplicate of a story that joins its live row by URL (%s)",
+    async (_, heldFirst) => {
+      const sameDoc = row(DSEC_A, "openai", {
+        url: `${DSEC_DOCS}/`,
+        title:
+          "DeepSeek’s DSec Unit Supports 380,000 Concurrent Sandboxes for AI",
+        publishedAt: DSEC_T + 2 * HOUR,
+        sources: [],
+      });
+      await writeDsec(db, sameDoc, heldFirst);
+      const outcomes = outcomesOf(await unmergeItems(env, { dangling: true }));
+      expect(outcomes.get(DSEC_A)).toEqual({
+        action: "repoint",
+        twinId: DSEC_LIVE,
+        rule: "url",
+      });
+      expect(outcomes.get(DSEC_B)).toMatchObject({
+        action: "skip",
+        reason: "needs-decision",
+      });
+      expect(candidateIds(outcomes.get(DSEC_B))).toEqual([DSEC_LIVE]);
+    }
+  );
+
+  it.each(orders)(
+    "holds the same way for a pairs file (%s)",
+    async (_, heldFirst) => {
+      const t = OLD + 5000;
+      await writeCanonical(
+        db,
+        { ...dsecLive(), item: { ...dsecLive().item, publishedAt: t } },
+        t + 100
+      );
+      const at = (newRow: NewRow, publishedAt: number): NewRow => ({
+        ...newRow,
+        item: { ...newRow.item, publishedAt },
+      });
+      await writeCluster(
+        db,
+        [at(dsecA(), t + 2 * HOUR), at(dsecB(), t + 3 * HOUR)],
+        { id: C, row: canonical },
+        OLD + 9600
+      );
+      const list = [
+        { canonicalId: C, mergedId: DSEC_A, group: "a", sameAs: DSEC_LIVE },
+        { canonicalId: C, mergedId: DSEC_B, group: "b" },
+      ];
+      if (heldFirst) list.reverse();
+      const outcomes = outcomesOf(await unmergeItems(env, { pairs: list }));
+      expect(outcomes.get(DSEC_A)).toEqual({
+        action: "repoint",
+        twinId: DSEC_LIVE,
+        rule: "same-as",
+      });
+      expect(outcomes.get(DSEC_B)).toMatchObject({
+        action: "skip",
+        reason: "needs-decision",
+      });
+      expect(candidateIds(outcomes.get(DSEC_B))).toEqual([DSEC_LIVE]);
+    }
+  );
+});
