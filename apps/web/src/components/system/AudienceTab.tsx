@@ -204,6 +204,29 @@ function StatRowSkeleton() {
   );
 }
 
+function SessionsCard({
+  ga4,
+  title,
+  subtitle,
+  rows,
+}: {
+  ga4: Ga4AudienceView;
+  title: string;
+  subtitle: string;
+  rows: Ga4AudienceView["channels"] | undefined;
+}) {
+  return (
+    <ChartCard title={title} subtitle={subtitle}>
+      <BarList
+        data={rows ?? []}
+        emptyLabel={
+          ga4.audience ? "No sessions recorded yet." : ga4UnavailableDetail(ga4)
+        }
+      />
+    </ChartCard>
+  );
+}
+
 function TrafficCards({ ga4 }: { ga4: Ga4AudienceView }) {
   return (
     <div className="grid gap-3 lg:grid-cols-2">
@@ -256,22 +279,27 @@ function TrafficCards({ ga4 }: { ga4: Ga4AudienceView }) {
           }
         />
       </ChartCard>
-      <ChartCard
-        title="Acquisition channels"
-        subtitle="GA4 session sources, last 28 days"
-      >
-        <BarList
-          data={(ga4.sources ?? []).map((s) => ({
-            name: s.name ?? "",
-            count: s.count,
-          }))}
-          emptyLabel={
-            ga4.audience
-              ? "No sessions recorded yet."
-              : ga4UnavailableDetail(ga4)
-          }
-        />
-      </ChartCard>
+      <SessionsCard
+        ga4={ga4}
+        title="Channels"
+        subtitle="GA4 sessions by default channel group, last 28 days"
+        rows={ga4.channels}
+      />
+      <SessionsCard
+        ga4={ga4}
+        title="Source / medium"
+        subtitle="GA4 sessions by source and medium, last 28 days"
+        rows={ga4.sourceMedium}
+      />
+      <SessionsCard
+        ga4={ga4}
+        title="Landing pages"
+        subtitle="GA4 sessions by first page, last 28 days"
+        rows={(ga4.landingPages ?? []).map((p) => ({
+          name: pageLabel(p.name),
+          count: p.count,
+        }))}
+      />
     </div>
   );
 }
