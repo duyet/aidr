@@ -180,13 +180,14 @@ const SHORT_VI =
 const isRetitle = (messages) =>
   /title is \d+ characters/.test(messages.at(-1).content);
 
-test("a Vietnamese title over 100 characters keeps the translation: one shorter-title retry, else a cut at a word", async () => {
+test("a Vietnamese title over 100 characters keeps the translation: one shorter-title retry, else “Bản tin AI;DR” and the edition date", async () => {
   const cues = parseSrt(EN_SRT);
   const run = async (retitle) => {
     const asked = [];
     const out = await translateCues({
       cues,
       title: LONG_EN,
+      date: "2026-10-16",
       models: ["m1", "m2"],
       llm: async (model, messages) => {
         asked.push(`${model}${isRetitle(messages) ? " retitle" : ""}`);
@@ -216,6 +217,10 @@ test("a Vietnamese title over 100 characters keeps the translation: one shorter-
   const fixed = await run(async () => JSON.stringify({ title: SHORT_VI }));
   assert.deepEqual(fixed.asked, ["m1", "m1 retitle"]);
   assert.equal(fixed.title, SHORT_VI);
+  const nfd = await run(async () =>
+    JSON.stringify({ title: SHORT_VI.normalize("NFD") })
+  );
+  assert.equal(nfd.title, SHORT_VI, "a decomposed retry is composed");
 
   for (const retitle of [
     async () => JSON.stringify({ title: `${LONG_VI} ${LONG_VI}` }),
@@ -223,27 +228,17 @@ test("a Vietnamese title over 100 characters keeps the translation: one shorter-
       throw new Error("anyrouter m1: 502 upstream_exhausted");
     },
   ]) {
-    const cut = await run(retitle);
-    assert.deepEqual(cut.asked, ["m1", "m1 retitle"]);
-    assert.ok([...cut.title].length <= 100, cut.title);
-    assert.match(
-      cut.title,
-      / — ngày 16 tháng 10 năm 2026$/,
-      "the date after the last separator is kept"
-    );
-    const head = cut.title.split(" — ")[0].replace(/…$/, "").split(" ");
-    assert.deepEqual(
-      head,
-      LONG_VI.split(" ").slice(0, head.length),
-      "the cut falls between whole Vietnamese syllables"
-    );
+    const out = await run(retitle);
+    assert.deepEqual(out.asked, ["m1", "m1 retitle"]);
+    assert.equal(out.title, "Bản tin AI;DR | 16/10/2026");
   }
 });
 
-test("a decomposed Vietnamese title is counted and cut in composed form", async () => {
+test("a decomposed long Vietnamese title falls back to “Bản tin AI;DR” and the edition date", async () => {
   const out = await translateCues({
     cues: parseSrt(EN_SRT),
     title: LONG_EN,
+    date: "2026-10-16",
     models: ["m1"],
     llm: async (_model, messages) =>
       isRetitle(messages)
@@ -252,9 +247,201 @@ test("a decomposed Vietnamese title is counted and cut in composed form", async 
     style,
     log: () => {},
   });
-  assert.equal(out.title, out.title.normalize("NFC"));
-  assert.ok([...out.title].length <= 100);
-  assert.ok(LONG_VI.startsWith(out.title.split(" — ")[0].replace(/…$/, "")));
+  assert.equal(out.title, "Bản tin AI;DR | 16/10/2026");
+});
+
+// A Vietnamese title translated `vi` for the edition `date`, whose shorter-title retry answers `retitle()`.
+const titled = (en, vi, retitle, { date, log = () => {} }) =>
+  translateCues({
+    cues: parseSrt(EN_SRT),
+    title: en,
+    date,
+    models: ["m1"],
+    llm: async (_model, messages) =>
+      isRetitle(messages)
+        ? retitle()
+        : JSON.stringify({ title: vi, lines: VI.lines }),
+    style,
+    log,
+  });
+
+// Long titles where cutting the model's Vietnamese posted something false. A word cut moved a number onto other words
+// ("…doanh thu, 870…" credits OpenAI with TypeSafe's raise); a clause cut dropped the clause that reverses or limits the
+// one before it, which Vietnamese often joins with a plain comma ("…phạt 2 tỷ USD…, tòa án hủy bỏ án phạt").
+const REPROS = [
+  [
+    "AI News Today: OpenAI revenue revision hits AI stocks, TypeSafe AI's $870M & more | Oct 10, 2026",
+    "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu, TypeSafe AI gọi vốn thành công 870 triệu USD và hơn thế | 10/10/2026",
+    "Bản tin AI;DR | 10/10/2026",
+    "Tin AI: OpenAI điều chỉnh doanh thu, TypeSafe AI gọi vốn 870 triệu USD | 10/10/2026",
+    "2026-10-10",
+  ],
+  [
+    "AI News Today: Microsoft commits $2.4T to AI infrastructure & more | Oct 16, 2026",
+    "Tin AI hôm nay: Microsoft bất ngờ công bố kế hoạch cam kết rót vốn đầu tư tổng cộng lên tới 2,4 nghìn tỷ USD vào hạ tầng AI | 16/10/2026",
+    "Bản tin AI;DR | 16/10/2026",
+    "Tin AI: Microsoft cam kết 2,4 nghìn tỷ USD cho hạ tầng AI | 16/10/2026",
+    "2026-10-16",
+  ],
+  [
+    "AI News Today: Anthropic's Claude 4.5 gets 1M tokens, Meta cuts 10–20% & more | Oct 16, 2026",
+    "Tin AI hôm nay: Claude 4.5 của Anthropic hỗ trợ ngữ cảnh 1 triệu token, Meta cắt giảm 10–20% nhân sự trong mảng AI cùng nhiều tin khác | 16/10/2026",
+    "Bản tin AI;DR | 16/10/2026",
+    "Tin AI: Claude 4.5 có ngữ cảnh 1 triệu token, Meta cắt 10–20% nhân sự | 16/10/2026",
+    "2026-10-16",
+  ],
+  [
+    "AI News Today: Court annuls Apple's $2B EU fine & more | Oct 16, 2026",
+    "Tin AI hôm nay: Apple bị EU phạt 2 tỷ USD vì vi phạm luật cạnh tranh, tòa án hủy bỏ án phạt sau kháng cáo của công ty | 16/10/2026",
+    "Bản tin AI;DR | 16/10/2026",
+    "Tin AI: Tòa án hủy án phạt 2 tỷ USD của EU với Apple | 16/10/2026",
+    "2026-10-16",
+  ],
+  [
+    "AI News Today: Claude 5 launches worldwide except the EU & more | Oct 16, 2026",
+    "Tin AI hôm nay: Anthropic ra mắt Claude 5 cho mọi người dùng trên toàn cầu, trừ người dùng tại EU và Trung Quốc lục địa | 16/10/2026",
+    "Bản tin AI;DR | 16/10/2026",
+    "Tin AI: Claude 5 ra mắt toàn cầu, trừ EU | 16/10/2026",
+    "2026-10-16",
+  ],
+  [
+    "AI News Today: OpenAI's $60B raise falls through & more | Oct 16, 2026",
+    "Tin AI hôm nay: OpenAI huy động thêm 60 tỷ USD từ các quỹ đầu tư lớn, thương vụ đã đổ vỡ vào phút chót | 16/10/2026",
+    "Bản tin AI;DR | 16/10/2026",
+    "Tin AI: Thương vụ gọi vốn 60 tỷ USD của OpenAI đổ vỡ | 16/10/2026",
+    "2026-10-16",
+  ],
+];
+
+test("a long title is never cut: the retry's own title, else “Bản tin AI;DR” and the edition date", async () => {
+  for (const [en, vi, fallback, retry, date] of REPROS) {
+    assert.ok([...vi].length > 100, vi);
+    for (const retitle of [
+      () => JSON.stringify({ title: "" }),
+      () => JSON.stringify({ title: `${vi} ${vi}` }),
+      () => {
+        throw new Error("anyrouter m1: 502 upstream_exhausted");
+      },
+    ])
+      assert.equal((await titled(en, vi, retitle, { date })).title, fallback);
+    assert.equal(
+      (await titled(en, vi, () => JSON.stringify({ title: retry }), { date }))
+        .title,
+      retry
+    );
+  }
+});
+
+// The model's title tail is not a date to trust: it can carry a number, a false date, a "<" or ">" YouTube rejects,
+// or enough repeated years to pass 100 characters. The fallback date comes from the edition only.
+test("the fallback carries the edition date, never a date or text from the model's or the English title", async () => {
+  const none = () => JSON.stringify({ title: "" });
+  const en = "AI News Today: Apple's $2B fine & more";
+  const body =
+    "Tin AI hôm nay: Apple bị EU phạt 2 tỷ USD vì vi phạm luật cạnh tranh của khối này trong năm 2026";
+  const tails = [
+    " | 2026: 60%",
+    " – 2030",
+    " | 2026 > 2025",
+    ` | 2026${" 2026".repeat(20)}`,
+    " | ngày 16 tháng 10, 2026",
+    " — tòa án hủy bỏ án phạt 16/10/2026",
+    " hôm 16/10 | 10–20%",
+    " | 16/10/2026",
+  ];
+  const fallbacks = [];
+  for (const [title, tail] of [
+    ...tails.map((t) => [en, t]),
+    [`${en} | Oct 16, 2026`, " | 16/10/2026"],
+  ]) {
+    const vi = `${body}${tail}`;
+    assert.ok([...vi].length > 100, vi);
+    const out = await titled(title, vi, none, { date: "2026-10-17" });
+    assert.equal(out.title, "Bản tin AI;DR | 17/10/2026", vi);
+    fallbacks.push(out.title);
+  }
+  assert.equal(
+    (await titled(en, `${body} | 16/10/2026`, none, { date: "2026-10-03" }))
+      .title,
+    "Bản tin AI;DR | 3/10/2026",
+    "the day and month are not zero-padded, as the Vietnamese titles write them"
+  );
+  for (const date of [undefined, "week-2026-W41", "2026-02-30", "2026-13-40"])
+    assert.equal(
+      (await titled(en, `${body} | 16/10/2026`, none, { date })).title,
+      "Bản tin AI;DR",
+      String(date)
+    );
+  for (const title of [...fallbacks, "Bản tin AI;DR"]) {
+    const post = await translatePost({
+      en: enPost(POSTS),
+      title,
+      chain: () => ({ models: ["m1"], llm: postModel([]) }),
+      style,
+      log: () => {},
+    });
+    assert.equal(post.title, title);
+  }
+});
+
+test("the fallback title is logged with the title it replaces, and still posts", async () => {
+  const [en, vi, want, , date] = REPROS[3];
+  const logs = [];
+  const out = await titled(en, vi, () => JSON.stringify({ title: "" }), {
+    date,
+    log: (l) => logs.push(l),
+  });
+  assert.equal(out.title, want);
+  assert.ok(
+    logs.some((l) => l.startsWith("!") && l.includes(want) && l.includes(vi)),
+    logs.join("\n")
+  );
+  const post = await translatePost({
+    en: enPost(POSTS),
+    title: out.title,
+    chain: () => ({ models: ["m1"], llm: postModel([]) }),
+    style,
+    log: () => {},
+  });
+  assert.equal(post.title, want);
+});
+
+test("a shorter-title retry that drops a number is not used", async () => {
+  const out = await titled(
+    LONG_EN,
+    LONG_VI,
+    () =>
+      JSON.stringify({
+        title:
+          "FTC gửi trát đòi OpenAI và Anthropic về an toàn AI — ngày 16 tháng 10",
+      }),
+    { date: "2026-10-16" }
+  );
+  assert.equal(out.title, "Bản tin AI;DR | 16/10/2026");
+});
+
+test("a decomposed title within 100 characters is composed, so the YouTube metadata accepts it", async () => {
+  const vi =
+    "Muse Wonder đưa Meta lên tuyến đầu trí tuệ nhân tạo cùng nhiều tin tức nổi bật khác | 2026-10-13";
+  assert.ok(
+    [...vi.normalize("NFD")].length > 100,
+    "the fixture is long in NFD"
+  );
+  const out = await titled(
+    TITLE,
+    vi.normalize("NFD"),
+    () => JSON.stringify({ title: vi }),
+    { date: "2026-10-13" }
+  );
+  assert.equal(out.title, vi);
+  const post = await translatePost({
+    en: enPost(POSTS),
+    title: out.title,
+    chain: () => ({ models: ["m1"], llm: postModel([]) }),
+    style,
+    log: () => {},
+  });
+  assert.equal(post.title, vi);
 });
 
 test("a refused model (403 behind a 502) hands over to the next model in the chain", async () => {

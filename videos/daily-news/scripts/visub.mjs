@@ -4,7 +4,7 @@
 // Cues are 1-4 word fragments, so whole sentences (consecutive cues up to . ! ?) are translated and the
 // Vietnamese is split back over the sentence's cues in proportion to the English text. The YouTube title from
 // script.json is translated in the same call (the Vietnamese Telegram caption); a title over YouTube's 100 characters
-// is asked for once more, shorter, then clipped at a word, and never discards the lines.
+// is asked for once more, shorter, else replaced by "Bản tin AI;DR | <edition date>", and never discards the lines.
 // Model: the auto-script.mjs chain through anyrouter (videoModels: a key from local-llm-key.mjs, ANYROUTER_VIDEO_MODEL); the house style
 // is read from the Worker (VI_STYLE and RULES_OVERVIEW in apps/web/worker/llm.ts), never copied here.
 // An answer is checked (same line count, no empty or untranslated line, every number kept, AI;DR and aidr.today
@@ -211,7 +211,7 @@ const parseAnswer = (text) =>
   JSON.parse(text.replace(/^[\s\S]*?(\{)/, "$1").replace(/\}[^}]*$/, "}"));
 
 /** Parse and check one model answer (`check` judges each line). Returns { title, lines, problems }.
- *  A title over TITLE_MAX is not a problem here: fitTitle shortens it without discarding the lines. */
+ *  A title over TITLE_MAX is not a problem here: fitTitle replaces it without discarding the lines. */
 export function checkAnswer(text, lines, title, check = lineProblems) {
   const json = parseAnswer(text);
   const out = Array.isArray(json.lines)
@@ -225,23 +225,15 @@ export function checkAnswer(text, lines, title, check = lineProblems) {
   return { title: title ? viTitle : null, lines: out, problems };
 }
 
-/** `title` cut to `max` characters between words, with "…" at the cut. The part after its last " | " or " — " (the
- *  date) is kept. Composed (NFC) first, so a tone mark is never counted apart from its letter or cut from it. */
-function clipTitle(title, max = TITLE_MAX) {
-  const t = title.normalize("NFC").trim();
-  if ([...t].length <= max) return t;
-  const m = t.match(/^(.*\S)(\s+[|—–-]\s+.*)$/);
-  const tail = m && [...m[2]].length <= max / 2 ? m[2] : "";
-  const words = (tail ? m[1] : t).split(/\s+/);
-  const room = max - [...tail].length - 1;
-  let head = "";
-  for (const w of words) {
-    const next = head ? `${head} ${w}` : w;
-    if ([...next].length > room) break;
-    head = next;
-  }
-  if (!head) head = [...words[0]].slice(0, room).join("");
-  return `${head.replace(/[\s,;:]+$/, "")}…${tail}`;
+/** The edition date as the Vietnamese titles write it ("3/10/2026", as build.mjs's shortDate); "" unless `date` is a
+ *  real YYYY-MM-DD (a weekly edition's `week-2026-W41` has none). Never read from model text. */
+function viDate(date) {
+  const d = new Date(`${date}T12:00:00Z`);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date ?? "") &&
+    !Number.isNaN(d.getTime()) &&
+    d.toISOString().startsWith(date)
+    ? `${d.getUTCDate()}/${d.getUTCMonth() + 1}/${d.getUTCFullYear()}`
+    : "";
 }
 
 function titlePromptFor(en, vi, style = houseStyle()) {
@@ -258,8 +250,9 @@ function titlePromptFor(en, vi, style = houseStyle()) {
 }
 
 /** A translated title within TITLE_MAX. A longer one goes back to the model that wrote it, once, with the limit and
- *  its length; a retry that fails or is still long is clipped at a word. The lines already passed and are kept. */
-async function fitTitle({ en, vi, model, llm, style, log }) {
+ *  its length. A retry that fails or is still long gives way to "Bản tin AI;DR | <edition date>": model text is never
+ *  cut, since a cut Vietnamese clause can drop the words that reverse or limit it. The lines already passed and are kept. */
+async function fitTitle({ en, vi, date, model, llm, style, log }) {
   if (chars(vi) <= TITLE_MAX) return vi.normalize("NFC");
   log(
     `! ${model}: title is ${chars(vi)} characters, over ${TITLE_MAX}; asking for a shorter one`
@@ -276,9 +269,12 @@ async function fitTitle({ en, vi, model, llm, style, log }) {
   } catch (e) {
     log(`! ${model}: ${e.message}`);
   }
-  const cut = clipTitle(vi);
-  log(`! title clipped at a word: ${cut}`);
-  return cut;
+  const day = viDate(date);
+  const fixed = day ? `Bản tin AI;DR | ${day}` : "Bản tin AI;DR";
+  log(
+    `! posting "${fixed}" for the title over ${TITLE_MAX} characters: ${vi.normalize("NFC")}`
+  );
+  return fixed;
 }
 
 /** The first model whose answer `check(text)` passes ({ problems: [] , ...}); throws with what each model got wrong. */
@@ -299,12 +295,14 @@ async function firstValid({ what, models, llm, messages, check, log }) {
 }
 
 /**
- * Translate English cues. `llm(model, messages)` returns the raw model text (injected for tests).
+ * Translate English cues. `llm(model, messages)` returns the raw model text (injected for tests). `date` is the
+ * edition's YYYY-MM-DD, the only date a fallback title carries.
  * Returns { model, title, cues: [{ start, end, en, vi }] }; throws when no model gives a valid answer.
  */
 export async function translateCues({
   cues,
   title,
+  date,
   models,
   llm,
   style,
@@ -336,6 +334,7 @@ export async function translateCues({
       (await fitTitle({
         en: title,
         vi: a.title,
+        date,
         model: a.model,
         llm,
         style,
@@ -568,6 +567,7 @@ async function main() {
     const out = await translateCues({
       cues,
       title: script.post?.youtubeTitle ?? null,
+      date,
       models,
       llm,
     });
