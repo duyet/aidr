@@ -1,16 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
-import { idPrefixFromSlug } from "../../lib/slug";
 import {
   isSafeStoryImageUrl,
+  readBoundedBody,
   storyOgImageCandidates,
 } from "../../lib/story-og";
-import { getStory } from "../../lib/story-queries";
+import { getStoryMedia } from "../../lib/story-queries";
 import { resizeCdnImageUrl, sanitizeImageUrl } from "../../lib/tldr-images";
 
 /** Pixels on each side. The feed thumb is 48 CSS px (`2lh`), so one square
  *  covers a 3x display without a srcset. */
 export const THUMB_SIDE = 144;
+
+/** Bump to drop every edge copy on the next deploy (encoder or size change). */
+export const THUMB_RENDER_VERSION = "1";
+
+/** Larger sources are a miss. The Worker holds the whole body in memory,
+ *  and the largest homepage thumb source on 2026-10-16 was 1.1 MB. */
+export const MAX_THUMB_SOURCE_BYTES = 8_000_000;
+
+const ITEM_ID = /^[0-9a-f]{64}$/;
 
 const THUMB_CACHE_CONTROL =
   "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400";
@@ -20,9 +29,11 @@ const THUMB_CACHE_CONTROL =
  *  thumb still shows. Short-lived so a transient failure is retried. */
 const FALLBACK_CACHE_CONTROL = "public, max-age=300";
 
-const SOURCE_TIMEOUT_MS = 5000;
+/** Covers the headers and the whole body, so a publisher that trickles
+ *  bytes cannot hold the Worker past it. */
+export const SOURCE_TIMEOUT_MS = 5000;
 
-async function fetchSource(url: string): Promise<Response | null> {
+async function fetchSource(url: string): Promise<Uint8Array | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SOURCE_TIMEOUT_MS);
   try {
@@ -45,15 +56,17 @@ async function fetchSource(url: string): Promise<Response | null> {
       ?.split(";", 1)[0]
       .trim()
       .toLowerCase();
+    const length = response.headers.get("content-length");
     if (
       !response.ok ||
-      !response.body ||
       !type?.startsWith("image/") ||
-      type === "image/svg+xml"
+      type === "image/svg+xml" ||
+      (length !== null &&
+        (!/^\d+$/.test(length) || Number(length) > MAX_THUMB_SOURCE_BYTES))
     ) {
       return null;
     }
-    return response;
+    return await readBoundedBody(response, MAX_THUMB_SOURCE_BYTES);
   } catch {
     return null;
   } finally {
@@ -65,11 +78,11 @@ async function renderThumb(
   images: ImagesBinding,
   source: string
 ): Promise<Response | null> {
-  const upstream = await fetchSource(source);
-  if (!upstream?.body) return null;
+  const bytes = await fetchSource(source);
+  if (!bytes) return null;
   try {
     const out = await images
-      .input(upstream.body)
+      .input(new Blob([new Uint8Array(bytes)]).stream())
       .transform({ width: THUMB_SIDE, height: THUMB_SIDE, fit: "cover" })
       .output({ format: "image/webp", quality: 75 });
     return out.response();
@@ -78,14 +91,23 @@ async function renderThumb(
   }
 }
 
+/** One edge entry per (item, image, render version), whatever else the
+ *  request URL carries, so query noise cannot force a fresh fetch. */
+function thumbCacheKey(origin: string, id: string, wanted: string): Request {
+  const key = new URL(`/api/thumb/v${THUMB_RENDER_VERSION}/${id}`, origin);
+  key.searchParams.set("u", wanted);
+  return new Request(key.toString(), { method: "GET" });
+}
+
 /**
  * Resized feed thumbnail for one of a story's own images.
  *
  * `u` must be an image the story already carries (`image_url` or a manifest
  * image asset), so this is not an open image proxy: an unknown URL is a 404
- * before any fetch. The source is fetched once per edge location and
- * resized through the Images binding to a `THUMB_SIDE` square WebP, which
- * turns a 1 MB publisher hero into a few KB for a 48 px box.
+ * before any fetch. Ownership is read on every request, cached or not, so a
+ * removed image stops serving at once. The source is fetched once per edge
+ * location and resized through the Images binding to a `THUMB_SIDE` square
+ * WebP, which turns a 1 MB publisher hero into a few KB for a 48 px box.
  */
 export const Route = createFileRoute("/api/thumb/$id")({
   server: {
@@ -118,20 +140,17 @@ export const Route = createFileRoute("/api/thumb/$id")({
             { status: 500 }
           );
         }
-        const idPrefix = idPrefixFromSlug(params.id.slice(0, 64));
         const requested = new URL(request.url).searchParams.get("u");
         const wanted = sanitizeImageUrl(requested);
-        if (!idPrefix || !wanted || !isSafeStoryImageUrl(wanted)) {
+        if (
+          !ITEM_ID.test(params.id) ||
+          !wanted ||
+          !isSafeStoryImageUrl(wanted)
+        ) {
           return Response.json({ error: "not found" }, { status: 404 });
         }
 
-        const cache = (globalThis as { caches?: { default?: Cache } }).caches
-          ?.default;
-        const cacheKey = new Request(request.url, { method: "GET" });
-        const hit = await cache?.match(cacheKey).catch(() => undefined);
-        if (hit) return new Response(hit.body, hit);
-
-        const item = await getStory(readSession(db), idPrefix);
+        const item = await getStoryMedia(readSession(db), params.id);
         const owned = item
           ? storyOgImageCandidates(item).some(
               (candidate) => sanitizeImageUrl(candidate) === wanted
@@ -140,6 +159,16 @@ export const Route = createFileRoute("/api/thumb/$id")({
         if (!owned) {
           return Response.json({ error: "not found" }, { status: 404 });
         }
+
+        const cache = (globalThis as { caches?: { default?: Cache } }).caches
+          ?.default;
+        const cacheKey = thumbCacheKey(
+          new URL(request.url).origin,
+          params.id,
+          wanted
+        );
+        const hit = await cache?.match(cacheKey).catch(() => undefined);
+        if (hit) return new Response(hit.body, hit);
 
         // A CDN that already serves a small variant (twimg `name=small`)
         // saves the egress before the resize.

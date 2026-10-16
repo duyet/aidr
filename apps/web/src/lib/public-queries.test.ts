@@ -607,3 +607,87 @@ describe("top stories window", () => {
     expect(digest.stories.map((s) => s.id)).toEqual(["fresh"]);
   });
 });
+
+describe("TL;DR bullet images", () => {
+  // `/api/thumb` vouches only for a published story's media, so an image
+  // borrowed from a merged item made every such thumb 404 before falling
+  // back to the publisher URL.
+  const now = Math.floor(Date.now() / 1000);
+  const schemas = {
+    full: "image_url TEXT, media_manifest TEXT,",
+    "no media_manifest column": "image_url TEXT,",
+    "no image_url column": "media_manifest TEXT,",
+  };
+  for (const [name, mediaColumns] of Object.entries(schemas)) {
+    it(`takes images only from published items (${name})`, async () => {
+      const sqlite = new DatabaseSync(":memory:");
+      sqlite.exec(`CREATE TABLE items (id TEXT, url TEXT, title TEXT,
+          category TEXT, ${mediaColumns}
+          published_at INTEGER, status TEXT, rank_score REAL, source_id TEXT);
+        CREATE TABLE translations (item_id TEXT, lang TEXT, title TEXT);
+        CREATE TABLE tldr_snapshots (date TEXT, bullets_en TEXT, bullets_vi TEXT);`);
+      const add = (id: string, status: string) => {
+        const image = `https://cdn.example.com/${id}.jpg`;
+        const media = JSON.stringify({
+          version: 1,
+          assets: [{ type: "image", url: image }],
+        });
+        const values = {
+          id,
+          url: `https://publisher.example.com/${id}`,
+          title: id,
+          image_url: image,
+          media_manifest: media,
+          published_at: now - 3600,
+          status,
+          rank_score: 1,
+          source_id: "hn",
+        };
+        const columns = Object.keys(values).filter(
+          (column) =>
+            !["image_url", "media_manifest"].includes(column) ||
+            mediaColumns.includes(column)
+        );
+        sqlite
+          .prepare(
+            `INSERT INTO items (${columns.join(",")}) VALUES (${columns.map(() => "?").join(",")})`
+          )
+          .run(
+            ...columns.map(
+              (column) => values[column as keyof typeof values] as never
+            )
+          );
+      };
+      add("live", "published");
+      add("gone", "merged");
+      const bullets = JSON.stringify([
+        { text: "Merged story", item_ids: ["gone"] },
+        { text: "Live story", item_ids: ["live"] },
+      ]);
+      sqlite
+        .prepare("INSERT INTO tldr_snapshots VALUES ('2026-10-16', ?, ?)")
+        .run(bullets, bullets);
+      const db = {
+        prepare(sql: string) {
+          let args: unknown[] = [];
+          const stmt = {
+            bind: (...a: unknown[]) => {
+              args = a;
+              return stmt;
+            },
+            all: async () => ({
+              results: sqlite.prepare(sql).all(...(args as never[])),
+            }),
+          };
+          return stmt;
+        },
+      } as unknown as D1Database;
+      const digest = await getPublicDigest(db);
+      const [merged, live] = digest.tldr?.bullets_en ?? [];
+      expect(live?.image_url).toBe("https://cdn.example.com/live.jpg");
+      expect(live?.image_item_id).toBe("live");
+      expect(merged?.image_url).toBeUndefined();
+      expect(merged?.image_item_id).toBeUndefined();
+    });
+  }
+});

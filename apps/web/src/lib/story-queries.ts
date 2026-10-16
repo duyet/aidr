@@ -302,6 +302,27 @@ export async function getStory(
   return canonical ? attachContentLog(db, canonical) : null;
 }
 
+const STORY_MEDIA_SQL = `SELECT id, url, image_url, media_manifest FROM items
+WHERE id = ? AND status = 'published'`;
+
+/** Images of one published story by full id: one primary-key read with no
+ * joins, cheap enough for `/api/thumb` to run on every request. Null when
+ * the story is gone or unpublished, or the read fails. */
+export async function getStoryMedia(
+  db: DbReader,
+  id: string
+): Promise<Pick<FeedItem, "image_url" | "media_manifest"> | null> {
+  try {
+    const row = await db
+      .prepare(STORY_MEDIA_SQL)
+      .bind(id)
+      .first<Record<string, unknown>>();
+    return row ? mapStoryRow(row, []) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Lookup used by the Markdown route to reject ambiguous id prefixes. */
 export async function getStoryCandidates(
   db: DbReader,
