@@ -5,7 +5,13 @@
  *
  * @vitest-environment happy-dom
  */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { track } from "../lib/analytics/track";
 import type { TldrBullet } from "../lib/types";
@@ -108,7 +114,9 @@ describe("day card fetch", () => {
     vi.useFakeTimers();
     try {
       renderSection();
-      vi.advanceTimersByTime(10_000);
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
       expect(screen.queryByAltText("AI;DR card for 2026-10-09")).toBeNull();
     } finally {
       vi.useRealTimers();
