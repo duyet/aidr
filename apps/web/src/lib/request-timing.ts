@@ -24,9 +24,8 @@ const marks = new AsyncLocalStorage<Marks>();
 let isolateFirstRequestAt: number | undefined;
 let isolateRequests = 0;
 
-/** Run `fn` with a fresh mark list. Nested calls keep the outer list. */
+/** Run `fn` with a fresh mark list. */
 export function withRequestTiming<T>(fn: () => Promise<T>): Promise<T> {
-  if (marks.getStore()) return fn();
   const now = Date.now();
   isolateFirstRequestAt ??= now;
   isolateRequests += 1;
