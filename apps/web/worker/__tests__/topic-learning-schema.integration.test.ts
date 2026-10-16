@@ -83,10 +83,12 @@ describe("topic-learning schema setup after the source seed (ingest order)", () 
       .run(HN_0017_CONFIG);
 
     await ensureVendorBlogSources(db);
+    const seeded = sourceRows();
     await ensureTopicLearningSchema(db);
 
     expect(hnConfig()).toBe(JSON.stringify(HN_SCOPE_SOURCE.config));
     expect(JSON.parse(hnConfig()).popularMinPoints).toBe(40);
+    expect(sourceRows()).toEqual(seeded);
   });
 
   it("never inserts a source row: the catalog seed owns which sources exist", async () => {
