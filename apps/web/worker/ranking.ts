@@ -12,6 +12,54 @@ export interface RankScoreInput {
   sourceCount?: number;
   /** Net of signed-in reader votes on this item. 0 when nobody has voted. */
   voteNet?: number;
+  /** The scorer's category, parsed by `storyCategory`. Required, and
+   *  not nullable, so a caller that drops it fails to type-check instead of
+   *  scoring the story as flat. */
+  category: StoryCategory;
+}
+
+type Category = typeof import("./llm.js")["CATEGORIES"][number];
+
+/** A category the kind table weighs, or "" for an unscored row or a name
+ *  the scorer's list does not have. */
+export type StoryCategory = Category | "";
+
+/** Multiplier per story kind, keyed by the scorer's category. Model and
+ *  tech launches, government action (most breaking news) and agent
+ *  incidents (much of the drama) rise; company and money news falls;
+ *  everything else is flat. Replay over 14 days to 2026-10-16
+ *  (`rank-replay`, `base+K4`, gold set labelled before tuning): gold "rise"
+ *  stories held 54.4% of top-10 slots instead of 49.0% and "fall" stories
+ *  10.1% instead of 15.1%, with every rise kind at or above its old share;
+ *  duplicate slots and median age moved by 0.01 slot and 0.1h. The first
+ *  table (`K1`: Regulation 1.05, Agents 1.1) cut breaking stories' share. */
+export const STORY_KIND_WEIGHTS: Readonly<Record<Category, number>> = {
+  Models: 1.2,
+  Regulation: 1.2,
+  "Open Source": 1.15,
+  Agents: 1.15,
+  Research: 1.1,
+  Chips: 1.1,
+  Tools: 1.1,
+  Frameworks: 1.05,
+  Products: 1,
+  Infra: 1,
+  Releases: 1,
+  Data: 1,
+  Industry: 0.9,
+  Funding: 0.85,
+};
+
+/** Parses `items.category` (or a score result's) at the row boundary. An
+ *  own-key check, so "toString" or "constructor" read as unknown. */
+export function storyCategory(raw: string | null | undefined): StoryCategory {
+  return raw != null && Object.hasOwn(STORY_KIND_WEIGHTS, raw)
+    ? (raw as Category)
+    : "";
+}
+
+export function storyKindWeight(category: StoryCategory): number {
+  return category === "" ? 1 : STORY_KIND_WEIGHTS[category];
 }
 
 /** Independent-source corroboration in rank_score. */
@@ -93,6 +141,7 @@ export function rankScoreWithoutBreaking({
   now,
   sourceCount = 0,
   voteNet = 0,
+  category,
 }: RankScoreInput): number {
   const ageHours = Math.max(0, (now - publishedAt) / (1000 * 60 * 60));
   importance = clampScore(importance);
@@ -113,7 +162,13 @@ export function rankScoreWithoutBreaking({
   );
   const weight =
     importance ** IMPORTANCE_EXPONENT / 10 ** (IMPORTANCE_EXPONENT - 1);
-  const score = weight * qualityFactor * decay * crowd * voteFactor(voteNet);
+  const score =
+    weight *
+    qualityFactor *
+    decay *
+    crowd *
+    voteFactor(voteNet) *
+    storyKindWeight(category);
   return Number.isFinite(score) ? score : 0;
 }
 
@@ -227,7 +282,7 @@ export function rowRankSignals(row: RankSignalRow) {
 /** Published items from a bound epoch-second start, with every `rankScore`
  *  input the hourly re-rank needs. */
 export function buildRerankQuery(): string {
-  return `SELECT id, published_at, llm_importance, llm_quality,
+  return `SELECT id, published_at, llm_importance, llm_quality, category,
                  ${RANK_SIGNAL_COLUMNS}
           FROM items ${RANK_SIGNAL_JOIN}
           WHERE published_at >= ? AND status = 'published'`;

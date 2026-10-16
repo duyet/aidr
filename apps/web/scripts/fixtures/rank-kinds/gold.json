@@ -1,0 +1,3986 @@
+{
+  "rules": {
+    "labelled": "2026-10-16, from titles only, before any formula change. Candidates: each replay day's top 40 under the 2026-10-16 production formula at 12:00 UTC, every story with importance >= 8, and every headline the drama regex matched (so its precision is measurable). 14 days of production rows.",
+    "rise": {
+      "release": "a new model, model version or open-weights release from a lab of any size, including a first availability on a major platform when it is the lab's launch; not fine-tune variants, listings, podcasts or roundups",
+      "benchmark": "a frontier benchmark result or a model taking a leaderboard spot",
+      "tech": "a major tech launch: chips, devtools, agent products, infra platforms, robots, big launch events (DevDay)",
+      "research": "a lab result that moves the frontier (proofs, new algorithms, clinic-grade findings); a generic paper is neutral/research",
+      "drama": "lawsuits, subpoenas, regulators probing a lab, firings/resignations/ousters, leaks, public feuds and accusations, security incidents caused by or hitting AI agents and labs, boycotts/backlash, safety rollbacks",
+      "breaking": "government action taken (law, order, arrest, appointment, export control, moratorium, accord signed), strikes on infrastructure, outages of major AI services"
+    },
+    "fall": {
+      "markets": "stock moves, indexes, market caps, revenue/earnings figures, bond and debt pricing, valuations in the market sense",
+      "macro": "macro forecasts and warnings (IMF, Fed, World Bank, growth and bubble calls)",
+      "hr": "HR memos, layoffs framed as jobs commentary, staff cuts, workforce pieces",
+      "ads": "ad-business news",
+      "analyst": "consultancy reports, analyst predictions, surveys, think pieces about adoption",
+      "trend": "generic 'companies pull back / rush in' trend pieces"
+    },
+    "neutral": {
+      "research": "a paper or study without a frontier claim",
+      "product": "a consumer or business feature, plan or device update",
+      "policy": "proposals, hearings, letters, statements, bills not yet law, court decisions about non-lab parties",
+      "funding": "funding rounds, IPO plans, grants, pledges, loans to a lab (not market moves)",
+      "deal": "acquisitions, partnerships, supply agreements",
+      "other": "everything else"
+    },
+    "note": "Labels were frozen before tuning. Disagreements noticed later are listed in the PR body, not edited here."
+  },
+  "items": [
+    {
+      "id": "fc69f990d2b1e0b18fd93c7f2a87023f72f35c8dfe86f8a6a5b42346ec161705",
+      "title": "Context Language Models",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "627692b8e3f1fc89549b52a3d86313e2f670864c4f3db7d4122642dc10fd74a4",
+      "title": "Amazon Plans $8B Sale of Nvidia Chips to Investors",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "title": "Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "c0a0a5f5affd26928d0fd340f88982d915a498730c34226ffd0e46dc16ea882a",
+      "title": "Clef: Open-weight decision models, and new RL fine-tuning platform",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "f64457ccef72c364445dea11251f931653888792b08019e69849baf1febff546",
+      "title": "Musk’s AI chatbot Grok reportedly encouraged Trump to capture  Venezuela’s president",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "e8a9e3621afd86dc639c12e885cb58e5c462cb31120e114e0afb88cab2d73ed3",
+      "title": "Broadcom Gathers $60B to Fund AI Chips for Anthropic and Peers",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "1258d5260399ffdf5b6a66e737c7e3c0778857f9d66ff9a87fe265fc333ded6b",
+      "title": "Toshiba's $380M AI HDD Expansion Hits Seagate Shares 10%",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "5cb94f519e67c74f90acadb5f60ef6cc3ffa0c74ba08940c6e40a2085eed6b1a",
+      "title": "Chinese State Leasing Firm Funds Restricted Nvidia B300 Servers",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "90f1f40531b19901d2cb6a1368ef6fa60088d4d48900650536de854ba51c56b1",
+      "title": "Microsoft AI releases new transcription and text-to-speech models for voice agents",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "e925a640346da26383f394cc0a9d57e62ba3a3df27465ee4829dce8d60d9e047",
+      "title": "AI music maker Suno now generates spoken words",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "bf629211a5b5a7646d3b0926a5ebfe96df765363ad4c84f0fe6e5b2f888e182c",
+      "title": "Hawley's STOP Flock Abuse Act Proposes Limits on AI Plate Surveillance",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "539ecbf45711d928ba272dea10803038ad5f04668dbc30296ea05fd679d81596",
+      "title": "Anthropic Schedules Oct 14 Investor Day for November IPO",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "4f1019dc7acfbda693684200b4b22c7595bbeae9829f23c573e9a9fe275eeb6f",
+      "title": "Marin’s 535B Model Tracks loss within 0.3% in Largest Live Run",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "5deb6193ffb07d9bb5913f2dedc7dc6db4a1fbbd67bbf24e87fb0bf35fafc493",
+      "title": "OpenAI Notifies More Than 100 Organizations of Unauthorized AI Agent Activity",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "afa5bc08845b7f61fe533ebc0731de59a95ac5bf39f2b2faf996115ce0e71b1a",
+      "title": "OpenAI Discloses New South Wales Government Bushfire Data Breach",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "69031af43e6260d0d94ac8d33ad214d0edb31180a019bfbc59bff1c240900b8a",
+      "title": "Morgan Stanley Reinstates Nvidia as Top Semiconductor Pick",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "1d9153a945914bf1e09f305383f8a021bfb55cdb52b83b6fd9b40e53873f4e3c",
+      "title": "Amazon writes scary blog warning communities not to block data centers",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "ca874f476ec1cf497dbc8515cd302cb6614726a7b7d25f01f1dfb9328e5133ab",
+      "title": "A Flaw in ChatGPT’s Mac App Could Have Let Hackers Grab Sensitive Data",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "321d061d644bb7eb40e274e436cb13b6c57835de593c85accbf6e875351f3ca9",
+      "title": "AI Is Making a Mess of Nurses’ Schedules. They Say It’s a Safety Issue",
+      "label": "fall",
+      "kind": "hr"
+    },
+    {
+      "id": "3c93c11303b90f3e0dd5b532990cbb52416eabb0256fd50adebca736ab7b47f0",
+      "title": "OpenAI’s new agent is a shot at Meta — but can it compete with free?",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "768979b283fffad4fbb0dd1f73c7c38663add08fec43aaeab57cdcb2b9e6a019",
+      "title": "Jay Clayton Likely Trump’s AI Czar Pick, May Remain Intelligence Chief",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "6061c5e00485694d7c5666d97dff0c0fa43224ebb6fa8b45e033555d147d30be",
+      "title": "Nvidia and SoftBank Deliver Final $20B for OpenAI March Round",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "633da883c4f0507826b6e1825fa68edc273a6d3d3ccab9a7ff4bfc1ea188cb4f",
+      "title": "US Senate Seeks New AI Liability Laws After Rogue Agent Hearing",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "8b55a7d536f0e2cab2e9218afa26cbb43c539fb04ba19558ce0081d4a8f531ba",
+      "title": "Cerebras CFO and Accounting Officer Join COO in Stock Sales",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "7db00c3486baef154a8718d487f66cb8ebff6dda2eb3a4a64f8b2ec2dc1abf61",
+      "title": "Trump Labels AI Safety Fears Phony Threats to Accelerate US AI",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "4b87db21e52e9d6cb9dbad27b8c5e8f94bc3930e88d5a622cf7a3738b7d6062b",
+      "title": "Black Forest Labs Ships FLUX 3 Image for High Precision Editing",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "c1a8b4c3df4a115cbe914ff9006b4b33b032cd96123ed38983523a48bb197c89",
+      "title": "OpenAI Pre-IPO Contract Falls Nearly 12% From Highs After Dots Rollout",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "5395303ce74d411ba3f87f735e72e71f937fc889b3f24256ef69ae4d86789a37",
+      "title": "How NVIDIA GPUs Help Accelerate OpenAI’s GPT-6 Astra Ultrafast",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "dd36053914c2ca7216993ee22ea4bf402536bab750d42a60e0ca72714eaa8e8e",
+      "title": "Frontier AI Outperforms Junior Accountants after 18 Month Progress",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "032e2120d32e2b2ddea9888578c0c494722dbef374bf81614488409365b3b2a1",
+      "title": "Wall Street Rejects Nvidia GPU Asset Plan With 25% Collateral Demand",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "0de5978e2c8eb330727552555dd92287898576f39bdc369c091283980a63afed",
+      "title": "Google releases Gemini 4 Argon, called its most powerful model yet",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "c930db4a94e6e04430faa7c93c5f9fad3d046f0efe9f901d26326af7a2020bc0",
+      "title": "DoGBench: The first user-facing docs generation benchmark. No model scores >50%",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "3f7ecad907fd38a5d6552c180fd76de35b55b590b5eec2593fa5f209051b7120",
+      "title": "Netflix Buys Ben Affleck AI Firm InterPositive for $587M",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "07c1274e7f8147b20cbf6923854499d5edc65bf15b653a924334ea6792427c5d",
+      "title": "Fed Governor Lisa Cook Labels AI Primary Economic Risk for 2027",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "316351daeab76486e9c53c4f5aa7330200b1daca08d25c1a5683ce883e074aa9",
+      "title": "Allen AI Releases Open Training Stack for 1 Trillion Parameter MoE Models",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "c278a664b29ed86db2b572de870fac299b407e56e8d1153c7850e7d8ac114869",
+      "title": "TSMC Weighs Singapore Plant and Ties Texas Deal to US Tax Credits",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "bd7fa85e5bd0311f32d40a6179bd30f377e2b8a9ef9e065c98055aeabfcd1d5c",
+      "title": "Language Discrimination Improves Linguistic Learning in Multilingual Speech Models",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "a2e24c5d843caac3e2d7b8a7a1d9e3c9b47554d6a0f3c10f7eab4a1c7652ba61",
+      "title": "US Arrests California CEO for Smuggling $300M in Servers to China",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "e7c54117c837674a1e103dbad121a2219c0469f30ddae1c3f544c74de3d25546",
+      "title": "Anthropic Warns Rivals May Overtake its AI Ethics Lead in 6 Months",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "cc3d0ac48231448ce58666765641670f54b8dd433c8df85dffcc57804ac94ee3",
+      "title": "Limits of Confidence in Diffusion",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "8ef8b71c2f5a11dd371581285acde0172b67141c887c725d22406747e68140a3",
+      "title": "Aleph Alpha Releases 78B Open Weights Kolibri Model",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "c6e7b373f2474e0e64478d05ef98320f755d2ab345541696bc4d0307ac20edc8",
+      "title": "Gemini ending free use of Flash and Pro models",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "53e87c3387a69d066d2162cc45bfd3a6b04cb5ad4f527427ef5b18d3cae90c16",
+      "title": "Arizona Court Vacates Sentence Over AI Video of Dead Victim",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "87989fe56a40c11f60e882bc769b878f9c5c833771350857ee8db7ca0f833e61",
+      "title": "Dấu ấn Mark Zuckerberg trong thỏa thuận AI của Nhà Trắng",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "a19d7659d96f014d54939ba062f50a645ca0fe5afeee2221e374f1576fea93ea",
+      "title": "Muse Creates Detailed Profiles of All Your Friends and Family",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "ee8e5dc6f7bc2b8e8e2bcb0348ce0324b4da46d90726c931a9c69109e1f6952a",
+      "title": "GPT-6.1 Sol Maxes Out Research Level FrontierMath Tier 4",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "c4f1f054e0ab16806fd2b73fdb89a336edd439032d866ceb3157ffa3953455be",
+      "title": "OpenAI Model Planned Self-Restart in New Misalignment Disclosures",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "853d198f8041258e420702817f69c3b4ece6923206cfacb551ce7b067a9a0360",
+      "title": "IBM Brings Bob to Self-Hosted and Air-Gapped Environments: Agentic Software Development Without Moving Your Code",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "73773647e32ced070104624527585c402dc4b8b9b20f6aba7196197117c413c3",
+      "title": "An AI agent emailed researchers for help. It told us why",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "436dd3da4b5b9f6a551f86046d8eb70c600592486fe572c6f4b5f4a31484fa6e",
+      "title": "OpenAI GPT-6.1 Sol Cuts Astra Cost by 81% to Lead Efficiency Frontier",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "431a2885e60bdd3f7d2d623068b4058b131d5a97211f4441ab7e7e7f860fc26a",
+      "title": "PM Carney Launches New National AI Council to Protect Democracy",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "c259bfeb8d1ac60be0b18950324dc0852b22224f30cc7ddc608c68544e4d150e",
+      "title": "It’s not AI anymore, it’s ‘super intelligence’ (according to the White House)",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "841f8a0a3e9dfb476dd559e5f0594f563ce00cafec6075d14bdc8056a820c79e",
+      "title": "Open-source \"BootLoops\" harness supports AI models in performing precise scientific calculations",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "d9198713ce2a1528671d6c6d8228a26b4cd92f023fbfa1b8e6e2fddce8403394",
+      "title": "Amazon Ends Secret Local NDAs in New $1B Community Fund",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "cbbd34e6a2d774b27118afa48221b955edaf3b29c881f716d9cf51714ea8b3cf",
+      "title": "AI agents build 3D scenes from photos but have no idea if they got it right",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "e81b1dea7ce0fb42c97855621c52f6a49d0893d2f06b0ac1c6c329bdc3da8830",
+      "title": "Open-sourcing AstaBrief, the fast report-generation model in Asta",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "593a5e64b60b12967ba0c4bf3fc5d3616d1c8735320cc6f3165036bbec35640b",
+      "title": "Apple says it’s tightening macOS ‘Full Disk Access’ controls due to new risks from AI agents",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "24026825d5262bb9e0aea3c3d992120aef4140a79833d52826ddf0f0bdbca6d5",
+      "title": "Apple Adds Mac Privacy Protections After Meta Muse AI Accusations",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "f4373e5f6c960464d5646e8d972d4a03026641afead31d3da0b4952e1e49bc8e",
+      "title": "Anthropic Warns of Material IPO Risks Despite Less Than 1% Government Revenue",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "4954f1a6cbc0fc4422dc9d61ccaf272636e3ac29c14eb74369007d57be8b1018",
+      "title": "With most information hidden, the game Stratego had stumped AI–until now",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "0b47701ebaacbee344f1448049164f366b71eb72bdb53a64120aaf9e265062b3",
+      "title": "Power approval set to delay Oracle's Wisconsin AI datacenter",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "fb9033885c09adc645a4c2a4bb0e865752c56c7aa56a52db6a1a34fd39b38a3d",
+      "title": "Trump Says US May Take Stakes in OpenAI and Anthropic",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "f78347b226de5ae35b782372e69e393626dde3cc7eef0a57355e2667eabc5f6b",
+      "title": "Meta Publishes First 6 AI Papers Solving Open Research Problems",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "22ba6deb6bea7b3fc79dc7b826b84a2f5276d393799ca83e5d8f9e1b78ea7681",
+      "title": "LWiAI Podcast #258 - Opus 5.5, Sol and Luna, Muse, DeepSeek-V4.1-Flash, Xi",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "b09420fd5283886ff0c3fdec4d41937a3d8a04a188725d2c10993b2605e7209a",
+      "title": "SpaceXAI Deploys 420,000 Nvidia GPUs in November to Meet Billions in Commitments",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "aff95ee12279e901d8e3b9b2a8c400987d9d7fd322187ff7beba3e3d0a8004b8",
+      "title": "NYC Introduces First Law Mandating Third Party AI Validation",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "a39aac9436c02108a510881e241c7a3a9c03a42bbd618eb8b10c02cfce6f7ea5",
+      "title": "Agility Robotics Digit Hits 90% Success in Zero Shot Manipulation",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "4837ff74a8e95be2ed04fcd6499eac55e7ca7a71c7ce05e006fa7e6158db7f4d",
+      "title": "Apple Boosts Looped Transformer AIME Scores to 73.3 With LoopCD",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "667987b2350f68a3969354f0a802fcd43a917db1610cb6a03500f53877292b29",
+      "title": "Supabase Acquires Turso to Build Database Platform for Agentic Era",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "ce22dcd5bb5b7e5eafc051e37bc15de906c6227b9bd13ef92e591e57a59b2719",
+      "title": "FieldAI Hits $10 Billion Valuation in $700 Million Funding Round",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "83f9568769061d0c83990c1db19b6ae90ceddec5a871ae926390cac20ffece4c",
+      "title": "Jensen Huang Urges US Japan South Korea AI Infrastructure Alliance",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "189118f73bf63bc9567fbdb99813f6c3a28c364efb33033191f2f8b52095ee3f",
+      "title": "Prime Intellect Launches Prime Inference After Serving Trillions of Tokens",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "eae0d6541fc69932048003e7fb05cfec04ac52ff0d0f3b3a8d0fc9e2cbe839ea",
+      "title": "Call it AI, call it Super Intelligence, only 2% of consumers are buying it",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "a1932b05615fece1c95ca34994b4f51bd17b43dcbfa97d487f1c0c3282f3379e",
+      "title": "AI Model with 3B Downloads Embeds China Friendly Censorship",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "71152e0500af08a7d3e3b510262179201bb024e4571397e590701ad859928db8",
+      "title": "Neuralink Sets 11.32 bps BCI Record Using New Foundation Model",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "bb4e3644b85fa3ac79076756e7571fd8632501ef3e19bd5ebfd1e7ecd88d1b56",
+      "title": "Muse Launches Open Source Gadgets SDK and 5000 Free Home Link Devices",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "6d41a8779a12982dbf7289cf1283819308fb374a7c5bbeb13a500ea1e7f16f17",
+      "title": "Claude Opus 5.5 Claims Top Spot on Epoch AI Index with 167 Score",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "825c13a67f722ea03555bbe8f632e24678a2dd78e29faba930327df44ca17e36",
+      "title": "Epoch AI Projects 2027 Chip Supply Can Run 1.9 Billion Agents",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "539c0e26289d7c0b51510b6b1d79117cb7348df265332c4549d3df705760f881",
+      "title": "Lockheed Martin Partners With OpenAI to Improve F-35 Sensors",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "17d8d70e853f81479e216b92c197c90b0d667abd179976692389b56fd0cd1b68",
+      "title": "Another OpenAI safety departure adds to a pattern of researchers leaving with public warnings",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "f3cde25b3582210e89fb19f8bf8ea0944492c1bf3813c47f90fdc68533f22216",
+      "title": "Aleph Alpha Kolibri Beats Qwen With 96.9% AIME Score",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "c8e08a3f22ec5f6df59189d33b0eaea8fa16e7a1e7ecb3fc06734e16adf78682",
+      "title": "Rural Data Centers Are in for a Big Federal Tax Break",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "74d2a4537bd7b78c9d92e45d61f6d7f6299e060954446d61a57584f09ba850cb",
+      "title": "NASA and IBM's open source lunar model turns 17 years of orbiter data into a foundation for lunar science",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "0a6224dfd3815e8d2fb7b5a894b21347134aad31bf16db406c70cd493cc8d633",
+      "title": "Google Research Moves Federated Learning Into TEEs: Gboard Now Trains With Externally Verifiable Differential Privacy",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "ca42bc059fb10c7ec3214bd10def6ef68bc8d5968f91595a9e2626e4cf85da4f",
+      "title": "South Korea's Lee Orders Probe Into Suspected AI Attacks on 7 Financial Institutions",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "19c0da71abd736e23852dccc2ae20c5cfcd81bd5d293525add1c06dadb1676a2",
+      "title": "Jay Clayton Leads Super Intelligence Force to Report on AI Risks in 120 Days",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "16d7d1f33ea5355f76336af778119c6ad2414fb13bb44810644074a05b660f25",
+      "title": "Inside Anthropic's Quest to Instill Morality into Its A.I. Models",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "ae1e175bda7e0d6c70af75e8e68e74fb60814a755e5f872b2ae5b3b866a9dccd",
+      "title": "Aleph Alpha's Kolibri AI Uses 21% German Data for EU Compliance",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "4474df4c0f97432a7bb2d9373ce3b35e8a0ef246a2038dcb7fe4d187008f338a",
+      "title": "Pop!_OS bans AI-generated code from much of its codebase",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "a783bceb24237942dd0956e809200f294df0dc00a5c2c899c1849bce054cc51d",
+      "title": "Chinese AI models parrot state doctrine or refuse to answer on sensitive topics",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "99a754aef972430b4286c5b5a45b242e8725e49ddc42bb9b87ba5a53d7ff3b00",
+      "title": "Nữ tướng công nghệ đầu tiên dẫn dắt công ty đạt 1.000 tỷ USD",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "f3604d88fd1c3a6cbac2e4a58c9350ce7acc30f133ee498f77ad35f497506d60",
+      "title": "Vercel’s Annualized Revenue Hits $600 Million Driven by AI Agents",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "752f2a17a7dcf9b4991108ff56d46cda62c943f9e6d729d578ae74b17df17e19",
+      "title": "Bernie Sanders Demands AI Pause After Tavus’ 48% Video Pass Rate",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "22c2e279792d4503b3ac8b479d16295f366290ac0d201c308faa52a24c5bd78d",
+      "title": "Models ranked by normative score across twelve paradigms, once neutral and once human-primed",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "4e5444039c6ca557b7f4b170ad78b664b6c12871c78c2148f625c3cd83468768",
+      "title": "Reuters Projects $30 Trillion AI Spend by 2050 on Risky Productivity Assumptions",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "40e958a70c9dbd149598dfdbe58e8dd94abc029ae5fa43d4b57bee0a80dffe82",
+      "title": "US Treasury Secretary Labels Chinese AI Model Distillation as Theft",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "5646ea427516a47d0495efac437243a8839f112927477656d1584839e8f18024",
+      "title": "Robot AI có 'hệ thần kinh' thông minh",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "0ed37a4133284a4261602e6f57044817c7413614a4d565623ca662e0d9376928",
+      "title": "Broad Bond Funds Absorb AI Debt Following Bank Pullback",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "ab27960250af47de75ee0bc1ef6a8199fa1a243e957240a47df71d6a642c8cd5",
+      "title": "Reviewer Claims Meta Solved Only 3 of 6 Open Math Problems",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "ae84984ca193e523023d8e0b40292548705a513eec263714a1f708edeb56b1fd",
+      "title": "Phó thủ tướng Hồ Quốc Dũng: Chuyển từ 'có hoạt động' sang 'có kết quả' đổi mới sáng tạo",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "5ce1d227e5bb9295acf9babd647d44f5306d7bb832412201af54e88db24921e9",
+      "title": "Vercel Confirms KVM 0day Allows Full VM Escape to Host Root",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "ea69da01532253da8a9feec6643a8b12d4cc79e3e5d93850cca447b201b94a3c",
+      "title": "OpenAI Model Exploits 2 Vulnerabilities to Reach Internal Machine",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "a623907fa931ed0bdfab566e1ce61010a7a58a0acf0eb0059070e85326f7a5f8",
+      "title": "Treasury Secretary Scott Bessent Tells AI CEOs to Slow Down",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "0f97f531256ed954f5d0a5803f88f4303f6c827c5d90943583a91c31197dde42",
+      "title": "Google Adds Claude Sonnet 5.5 and Opus 5.5 to Antigravity",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "5cb80ade64def456af8eee63304d36df3c371e8b3afdb2f7f3bbb72f7e2acb44",
+      "title": "Capcom is preparing for a ‘future where we create games together with AI’",
+      "label": "fall",
+      "kind": "trend"
+    },
+    {
+      "id": "e8381588d433f8de978f9d9271200cec615d14448f29dd3e91449b23b5d26d88",
+      "title": "Ex OpenAI Safety Head Warns Time for AI Trial and Error Is Over",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "20557fb9552c5b2ba9f014920f97ae649388de87440dea1dac8b5ef92c48ff3f",
+      "title": "Nền tảng quang học siêu phổ thắng giải nhất Sáng kiến Khoa học 2026",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "1e557d590035fb86fcf62241ae31003ca0d1e62dfad274c559e3cc174ab539f2",
+      "title": "\"Muse Gadgets\" turns AI hardware into an open-source DIY project",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "109e4b9c3466e85c7766946d54671673cf51885d84f764be2735a0d8210995c7",
+      "title": "95% độc giả VnExpress từng sử dụng AI",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "a064c9c78a0898aab3b8b06467f0df7095450b590d473ee2c837b7d4fdc0e2a2",
+      "title": "Nvidia-Backed Reflection Develops Open Weight AI to Challenge US and China Rivals",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "fd07837e24cc3f58e5802298d49c243a9d3a47171f09ec53a187cb6cec0856b3",
+      "title": "AI Firms Capture 87% of VC Funding and Record S&P 500 Share",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "ef1d5686a07a251084699fbd2065c30b6c3279320e6811b9bd72943e2f41f4ac",
+      "title": "OpenAI CEO Sam Altman Says World Should Accept Bad Things for AI Benefits",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "90d454264757699258eb8996359652a96cd474e135ed595a566b27271f06c781",
+      "title": "SpaceXAI Deploys Most Capable Grok 4.7 to Amazon Bedrock",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "7111770903f4afcc5ef96d8b3294cd3d510638c03464be236d405f979b0771ac",
+      "title": "Foxconn Beats Q3 Revenue Forecasts With 47.1% Growth",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "0c2de369df9ebcec410d8ded74489ca049c7ec732611c02c72418166e336fd32",
+      "title": "OpenAI Begins Visual Ad Testing in ChatGPT Image Generation",
+      "label": "fall",
+      "kind": "ads"
+    },
+    {
+      "id": "c53786f697a70dbbd0a7ecf24e266cfa60c945966663e7a1fdbd9bd1b22b89db",
+      "title": "Yandex Introduces Sona: A Single Generative Recommender That Replaces Entire Recommendation Cascade",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "4f90ad4603b08fd02d6aa97710c3fd0d007299f87b13f6137a26b3e25cd462d8",
+      "title": "AI Data Center Debt Faces Systemic Risk Scrutiny From US Lawmakers",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "0b9ba994ffc60221eedb4b510ecdaed905420f4084f176b9c75c6a85980556d1",
+      "title": "Qualcomm Licenses Huawei Tech to Offset ASML Equipment Bans",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "5905dab1137bc73b93b5cf73a8c12d88e4582178956398eb0d757172864ede28",
+      "title": "Một quản lý an toàn OpenAI từ chức vì lo tốc độ phát triển mô hình",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "d9d3ea24657ef13e2d74f6f0a2f68a17caed41538555792a849b74d490de5752",
+      "title": "RobCo Valuation Doubles to $1B in Secondary Sale",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "c7357311ba5628700ffcccc1124c46bbc9351ee07ef847a88146ef238d8fa7b7",
+      "title": "The Story of Qwen: Alibaba’s AI Models From 7B to 2.4T",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "5a0214578710cd6cae912e6759a60e0200eba44206d39c361d12d83f6c184337",
+      "title": "AI is eroding office hours, study groups, and the trust between faculty and students, MIT report finds",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "2d8e70fb45cef7470a5baf361c95df26b5ff7249933c340d169f562e1258ded9",
+      "title": "Building advertising for the way people use AI",
+      "label": "fall",
+      "kind": "ads"
+    },
+    {
+      "id": "a759f4b820a8530e59d1ba839c74402b165090679ffc614de624985a2777e221",
+      "title": "Meta Muse Daily User Growth Stalls Between 2.5M and 3M",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "baf0b4a325e4204a6bf9b5ab706f89ba4d58326d2e3e6c8a18da2ef9050d8f8a",
+      "title": "Can an Open Model Do Security Research? Cantina’s apex-flash-1 Solves 40 of 60 Held-Out Bug Tasks",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "554b4acd9029a3e93e8c458c1210eacd3b724a1c6efbd1c4d353ce09d00ef165",
+      "title": "Homa: The End of TCP for AI Clusters [video]",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "e0db1ebe22ac4731aef1b35f50337f8ecb0c68b61085eca01ddc08f9a8026171",
+      "title": "MACTS-EM: Multi-Agent Collaborative Time Series Forecasting with Emergent Memory",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "8be7a0e625cbba953f9ac80916b8aa96f07457715b0bb930a8a9b4db2b45d981",
+      "title": "Trump Names Clayton and Three Other Officials to Lead AI Task Force",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "562acc36900e89036c826b02069c062e8c7e17fd3547169c10b8e5a0cfc4d312",
+      "title": "Google froze its open source bug bounty program due to a ‘significant rise’ in AI submissions",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "fb6a608270d045af682cdf7972b61d01326f795b9f14b2b4b5094497ddf666b5",
+      "title": "Rank-Aware Speculative Sampling for Diffusion Draft Trees",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "b7f36b20f97fab8d70a0c759fc733c6c6b8a3e7ab61737fd4a1f06a74267c702",
+      "title": "The Price of Greenwashing: Algorithmic Verification and Market Discipline using Conformal Machine Learning",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "83828f2aa943358504f20584f1db125453ddc2f5e914fc67c0838ae36aac26a9",
+      "title": "OpenAI Pledges 28 Days of Daily Codex Updates",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "3f1c442082110b47379142107ae6111d2167b0e8921defaff7723e0a20166375",
+      "title": "Google researchers find a way to keep self-improving AI agents from memorizing their tests",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "1f2c7186fb91cd1f8f6a3c02af57d3e63e693a5498e3acdcee7bbbb285e7e0ad",
+      "title": "Google Launches First AI Chips to Orbit for Space Data Centers",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "9880aac42aa3a29fb78098effce6e8f16fbb2de8d31d8251899de615c9d66187",
+      "title": "Overcoming Challenges of Interpretive Structural Modeling with Large Language Models",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "ee9cfb9e6e636de26ebcc9fab89f874833568edaf31226badb3774a598095bcf",
+      "title": "Trump unveils his new Super Intelligence Force",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "2b63c7c697dbbe1e89666b1ead5eed87015ae13599a77b9f68c63e8bd8d698f9",
+      "title": "Approximation Property of Dropout Neural Networks: Sobolev Rates and Confidence Bounds",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "be8c29ea13f2fba78bdd8af9f769918d9452c6a2ee6577ef221dd0b47d28f538",
+      "title": "Hybrid Machine Learning-Assisted Raman Spectroscopy with Generative Feature Augmentation for Pharmaceutical Identification",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "5eb7a1816e050a0d278a4603f073b10d73ca171371580239e1f01d97fc9c1f57",
+      "title": "GPT-6 Astra vs GPT-6.1 Sol vs Gemini 4 Argon vs Claude Fable 5.1: Which Frontier Model Fits Which Job",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "9451c4c177239c65345197c2f026450651196e4a223038744753aaebdd04fc4b",
+      "title": "Can Safeworld convince people that gen AI robots won’t hurt them?",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "031c3906bd6f632eb5d29a6482ef98bf21b5ad43a5a9984cdf4c228b3f1aa7cd",
+      "title": "Negotiating Ontological Boundaries in User-Authored Personal Sensing Systems",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "d966c26566d401f4d3a83f891d9253914987fe1fffbe1bf2fb043fd4e95a4b2e",
+      "title": "Introducing the Revise SDK",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "2d6c3a58e673a54523cca5360ee3ca46bb7d32453b0c3935d1d733ddd4ae06d4",
+      "title": "Elon Musk Renames SpaceXAI to SpaceXSI for Trump Rebrand",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "9cf448ffb95a0ea67b98fe9230cb3a9f4e09a991be976346d2dc46b9afce4d53",
+      "title": "Together Link: open models in the harness you already use. Start with one command today.",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "824d16cc94477fd85a3a1dbfb8c1907a0abe4db336e29461f2d83dbe9bb6b303",
+      "title": "Muse Charm - ván cược của Meta vào trào lưu phụ kiện giới trẻ",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "2bbc9a288c61bc60f696628ad42ad07c51cbc69865788afedaf3ef2abc85b1ae",
+      "title": "South Korea Pinpoints 19 IPs Used in AI Driven Bank Hacks",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "df72c7e4e48affae5f0e0a4f0bae544a416c42f14fb73dc76e662e7638364f10",
+      "title": "Anthropic Subscriptions Offer 5x More Value Than OpenAI’s",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "0bf65300a2ecec704f2100c23ea05122dd9d062aed356f647051e4f1e47df75c",
+      "title": "OpenAI \"rogue\" agent activities found on Wikimedia projects",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "a7576ec13192fc17aa65217b08141891594dd2103a46ac0fd62dc26f3abd4048",
+      "title": "Nasdaq Posts Record Daily Close of 27,477 on AI Rally",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "dd902667a0b453faf5f4eb528502cab0789643d1ab46ab7410f9bc27c902f33d",
+      "title": "German Bundeswehr Uses AI to Screen Applicants for Right-Wing Extremism",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "df9e799a874b2dab7fc9ff31b276e117981b627dc072a7f7161daf593ef75051",
+      "title": "AI Tutoring with Khanmigo in a Two-Year School Experiment",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "2f9931f500a74a374f6c244af910028d35a9d1b66e5b5dfe6cee500502ce6959",
+      "title": "South Korea Funds $3.5B Homegrown Frontier AI Model",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "dbf6a51fde3f190f1405f6559444f4c41e55bf52a234e53a4e1a3545cdc68829",
+      "title": "Opus 5.5 agents discover two room-temperature magnetic semiconductor candidates",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "4b350aa2264060c3cebca2e32e0f40101f378191b3500f1e03e38c8b5525b7d2",
+      "title": "Dust: Pretraining Transformers Without Backpropagation",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "310ebe3dc2ffefee96e57142decee5688e093626d91c4f12b6df1f4cceed4150",
+      "title": "Anthropic Founders to Keep 50.1% Voting Power on Key Matters After IPO",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "5c72c009e4c7e00cbae94c9c64caf9d3a0798cf01180f36611e1068c3e923bad",
+      "title": "Introducing GLM 5.3 on Amazon Bedrock",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "dde682f383f316dc0e0193cb2ef70359b02e95b2b4bb3c48017e686243172fcb",
+      "title": "Google and Constellation Sign $4.3B Nuclear Deal for 890 MW",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "7996bf49ac1425ec89a45ce49b5d6d24e7e5ba5cdefefe2d22a7f56c466d5ab9",
+      "title": "DeepSeek Secures At Least $12B in Funding Before 2027 IPO",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "dac30438b37af8fd19f73b42d838f74040339fca948f05aadbeca22874a7c065",
+      "title": "Researchers stretch LeCun's JEPA AI into a universal world model that works from physics to biology",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "2d6e0f1eff7d37bd873c78bba535e67dbf0d1d3a773e3d501d2c43620e82955a",
+      "title": "Nvidia Reaches $5.78 Trillion Market Cap in New All Time High",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "af53256dd377321d2b6e231208a91737af5d2142d2101943aa03de8c6f580f31",
+      "title": "Kandinsky Lab Open Sources Video AI With 29B Parameter Pro Model",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "9c6bd61f8a15e0283cd44b223851d455a2983bc6fb068a2b0e78e7376f914158",
+      "title": "Anthropic AI Disproves 3SUM Conjecture With New Algorithm",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "f57eff9c23a4454b476bbb268bd95c2d23fd7e230b5d7db7db7e5bb00c25353b",
+      "title": "Advancing computer use with Ironclad",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "69e3313970a43a7966664c3e83befbc1fe96ae27cbc83567918d7dbcad40e407",
+      "title": "OpenAI Says Altman Was Unaware of Medicare Breach at Australia Meeting",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "651215f020bc4a5f74151420eb99bd584458e15b2e34b0abd7e5caa838c6f4c6",
+      "title": "OpenAI Sets $1.4T Valuation for New $30B Fundraise",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "7e47260698b9142d6c75b78744f5c5ae82d9f283d559f987c0339c86a158b945",
+      "title": "Reka AI's omni-model Rho-1 handles text, images, video, and robot control in a single model",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "5c0b37b74068e36383418f45fb7e057c60e50cf2c4ae73d9c391229c94b08dc2",
+      "title": "Moonshot AI Closes Final Private Round at $50B Valuation for 2027 IPO",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "ebb413cc5359756bf9234b81256f87104efa96c0b88df88826702769f053f0a0",
+      "title": "How Jump Trading is scaling quant research with ChatGPT",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "2f44ea925b2a7fb6bf469207ea3a9887d71b80474bdd2ba794d9632d7bc24126",
+      "title": "US DOE Loans Vistra $4.2B for Nuclear Uprates Linked to Meta Power Deal",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "4006e519f20786d8e254eb07b4bbf88a3c03ed96d0b2e1c998ab197d16f90910",
+      "title": "Figure Launches Hark AI With 97.7 Score Beating GPT 5.4",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "3429336052b3ce56bab6d3858f90a2f2d5a6e9e44de2ac8dae522278e8e654e1",
+      "title": "Google Nears Billion Dollar Nuclear Pact With Constellation Energy",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "fe35a676c51c19a6541f9408bbdfb5c5aa1484d70d682bc47a342ae12489c27f",
+      "title": "Google Launches Nano Banana 2.1 After Rebranding 2.5 Lite as Flash",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "9ee59cbd4a05c9fabcb0041e56a8e628f404ea339c6d86083c3fe6f0c2df9245",
+      "title": "OKX AI Platform Handles 95% of Engineering PRs at $10M Monthly Cost",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "86abbaa040692ce87bb32e4c9e953fb5c73bf7396677cdeffed84e33efb20c1e",
+      "title": "Cohere pitches North 2 as the enterprise AI control room that works with any model",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "208c56499592c20e090194fa546dcea168e4b352747d1098895131a2c85eb6cb",
+      "title": "OpenAI will watermark ChatGPT text in the EU but makes it optional for API users worldwide",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "9b59faa78cee1a6ff9120cc0090763a91cc7d59aa4d44fdc2f392cffba220e0f",
+      "title": "Anthropic's ARR Hits $65B Following Big Tech User Cuts",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "f1c5e601bbeb361d399c8fceacb195c0ad5e67025dfd936d1da9a9f520c5dbc1",
+      "title": "OpenAI Admits Response to Australian Government Hacks Was 'Not Good Enough'",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "a2c38b693ccc3dfbe904d6afb1797528c8e2c30d51649d397336b8ede5870f06",
+      "title": "Reflection AI Introduces Beam: A 501B Open-Weight MoE Model With 23B Active Parameters for Coding and Agentic Workloads",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "ba4fcea9b567de4e49e74a6d1d61533ecfa6b0cd41cd95516fd85bfcbf8af284",
+      "title": "Anthropic Backs Australian Laws for AI Agent Breach Reporting",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "138cab4c205352b09e65e17f52ddefe1ca6eeb69a69cbb8970ab72089c8b7264",
+      "title": "OpenAI EU Watermark Detection Falls to 17% After Word Edits",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "7c3d4a85322fed410dfd6e88828ae8e52f8809e67cadbf2866a094c101c7ef96",
+      "title": "Meta and Microsoft pull back from Claude as Anthropic transforms from partner into competitor",
+      "label": "fall",
+      "kind": "trend"
+    },
+    {
+      "id": "39c97b36f3dc244e8655a3101ad9b7bfa07fda4d04163b609e78951de8353ccc",
+      "title": "Seagate and Toshiba Bid for TDK Magnetic Head Business in Multibillion Dollar Deal",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "2a56f754e7b26de78675752d8d6294bf9432a932059f82634b3181f18e7bfcf4",
+      "title": "AMD Plans Substantial Compute Supply Boost in 2027",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "6ba03ce61ebf87cb475f1b04ca0ff67c33c15483b577593c52b93979bafab6a2",
+      "title": "OpenAI Rogue Agents Maliciously Edit Millions of Wikipedia Pages",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "3698fbd64654cf07b9abe40a4f01388edb2e0fd4e8726f6ce81f641164586244",
+      "title": "Etched Valuation Jumps to $50B from $21B August Raise",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "6c37fbb22f2f9770be74218f5ed13267ebefbbbdf49a9fbea0a20f792a49a114",
+      "title": "Mistral Large 4",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "66213f22c321bd47b9dab44448ee4cf8f6d510ea5854421e125147c98fa5bb3b",
+      "title": "Google claims EmbeddingGemma 2 outperforms rival embedding models twice its size",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "cf297f951c05ad3a962cf0f62e702212b210aa89ce6c8a75336fd298f0c7d649",
+      "title": "AI Data Center Debt Hits $1.3 Trillion Threatening Investors",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "606e8d6976dc6532295ec34d7bec8197d0d395703e6ab34d4f444c29d9d5236c",
+      "title": "OpenAI just dropped 700 preprints of mathematical proofs and counterexamples",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "8ec1111cdc4c4f2d4c451c6fb4a504ccd6082c05ca20ccaf44a55cd977745136",
+      "title": "UniEvo-VL: Self-Distillation Training for Multimodal Model Self-Improvement",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "84d547f79f2ccce8aea0dabfca49cd1cf4fe66f6440e053cd1f29cb1a6a76ba4",
+      "title": "Germany Transport Minister Backs Tesla FSD for EU Approval",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "dbe0940f362ad9d87e6bf157d59693579ce7786f96346bb42fd1725ca9237efd",
+      "title": "OpenWAM: An Open Framework for Composable World-Action Models",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "576ded508c0bb4010aee77b7ad6937092b8cb3bb40b0b89b851fa919bbf18228",
+      "title": "AI is now capable of developing its own inference hardware",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "ca00a4664e7d553d97816872d674b982fe3e1f07896b4fdcf333b3667bd73c1b",
+      "title": "AMD to Invest Tens of Billions in Global Supply Chain for AI Demand",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "d9a7e52b4293657c560cf29d1e330dbc21352cdd1e1eda7bd0a75fbce4703c0b",
+      "title": "Mistral Says Its New AI Model ‘Le Chonk’ Is the Best Open-Weight Offering Outside of China",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "bcdf9b5ee3f963e81ef5bdd3ff829ea0c5d7d902acdd7ff47a5049e04d1e5b91",
+      "title": "Venice Launches First Anonymous Uncensored Version of GLM-5.3 AI",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "651e2d5687f7b27f92e6828da9daedc07fd494137372c24a8e06f5ba8e20a2d8",
+      "title": "ChatGPT for Teens is an ‘unacceptable risk,’ says Common Sense Media",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "29c7986cf98bc2f3e909dea294fc0d4c11fe544cb8065bcbbe8cfd90ed6c9603",
+      "title": "Samsung Conditions HBM Supply on AMD Foundry Orders",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "080d4a0513b1dff6b28854adce5bd9283d92b75a31cc7d58017731a37807f964",
+      "title": "OpenAI Math Release Includes Claimed Progress on Three Millennium Prize Problems",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "dac718a2497266d3231dd1253392569eaa3bbcc01dd869240bf62a57ea2aafb9",
+      "title": "OpenAI dumps 372 AI-generated math proofs on GitHub, telling the academic world to keep up",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "b8132b8a4a3e3c9f4b5992db7b56a8447d08f67e083c023142bbc39049f55632",
+      "title": "Mô hình của OpenAI giải mật thư 217 năm của Napoleon",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "c63190c61abd117e74f94835085e782164a69f95a9e13dfe5acb5b27812740ef",
+      "title": "CoreWeave Enters India With 240 MW AI Data Centers at Adani Campus",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "0e401bad0dd434d616eaa7e606ae0820b63af0cdae6961e8cec8c146626c4f0a",
+      "title": "OpenAI drops another batch of mathematical breakthroughs",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "e532f190890f8d7669cdc909c6bb08cfe306435b13febe8bc62c18e24213f86a",
+      "title": "IMF Says Global Debt to Top 100% of GDP for First Time Since WWII",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "bf971d24848c9b217d67fa74d0f321f0eb7cba62adb4ce394d854e503f63c980",
+      "title": "Nvidia Trades Chip Financing for Cut of Customer Revenue",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "f26a840df64668b073c58fdf078e6579ba527b21dced5dc744b9604543f8b686",
+      "title": "IMF Warns AI Investment Widens Inequality by Bypassing Most Nations",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "31957b3da098cd881aa6788c9bad36a00fc9441e9dc76be245ccc24a618323d6",
+      "title": "Utah to let AI examine patients and prescribe medication without human oversight",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "fc1b00e963e814b2bf6d96f26a36c939a98f576516615e9f47fba9dc9fd0b5c5",
+      "title": "Anthropic Opens Critical Infrastructure AI Probe to US Government Agencies",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "82f4d4f1ba90dd480a1d2c6b3567a0ddf9eeb29e308a85b9c5cba4c6f6991e06",
+      "title": "Trump's AI Task Force Excludes Commerce Department",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "06c25aaf6dc606c36a9f092acecbc8399b85dcc101c1dce82ab84f34ca3effd8",
+      "title": "HSBC Slashes 70% of UK Wealth Advisers to Expand AI Use",
+      "label": "fall",
+      "kind": "hr"
+    },
+    {
+      "id": "2b4aca6b5cd92a53ff30f00404985fb5654f4e66aef2f830c53f49f18a779a04",
+      "title": "Michael Burry Warns $573B AI Finance Loop Mirrors 2000 Bust",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "89ff950ddbfba85a512a9198c2a7aa2adad9a1de6d7e240f73fccc7fc25b94b9",
+      "title": "Mistral Launches AI Model That Beats Chinese Rivals in Cybersecurity",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "64d0cc5fbf6d70ac98a6acc6539d2eb504888c7472df59777d2dd62008c111ae",
+      "title": "Oracle’s $18B Project Jupiter Loans Fall to 84 Cents on the Dollar",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "fe2f0e921debce1952007c82739ac87d3e510290d9bda2501c12399c80c75477",
+      "title": "Ray Dalio Warns AI Bubble Nears Bursting Point",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "ee674fa967eb56bfc1441c188671e7ea16005b69aa98ea1129a77ea010bb0137",
+      "title": "T. Rowe Price Bets Multi Billion Dollars on Both OpenAI and Anthropic",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "5b2b356a819a36fb1d681ad7e25c88981f794cce65fe7b5bb373cb0e6c65dd40",
+      "title": "SpaceX Integrates Claude Opus 5.5 and Suno into Grok Bot",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "8e894f6fb121dc8fc2a8aad8927d5f3afa6ff7352801cc1ac0bb2b9befd48e21",
+      "title": "Sui Network Sets 40.6 Million TPS World Record",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "7ff8deb6c282f363de1a7c06ee139aefc4b04e32bef922306b6d212fb5511dfc",
+      "title": "Parsewave Fixes 206 Zapier Benchmark Bugs to Revise 28% of Kimi Grades",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "c24ef5fb20b92af5fde78b75498106492e5e5e83966461c890dfcf38a764ae72",
+      "title": "OpenAI Releases Hundreds of Unsolved Math Solutions on GitHub",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "c02127d349672db4a213f696965c2d044992bdb6d39c1178ea354bfdc5bdaf95",
+      "title": "Unlocking Earth AI’s planetary geospatial foundation models for global public health",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "661f64ddb5f472a2675ed75a0fb09828b0ce7323472abe119ea9528dee004ac6",
+      "title": "Helping teens learn, plan, and shape the future of AI",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "62b8e70fc54eb0c32837b11120b0f30a00db1a72c837162724495d525b9f5a52",
+      "title": "SpaceX Pursues $40B Debt Sale to Buy Nvidia AI Chips",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "cbde4ba52ebcdc6bd21273ba663041f1bbf7bd8801a1d9c5699d4b8dd80fa55c",
+      "title": "OpenAI Executes Global Codex Reset Following Community Vote",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "3089125b2b7f04891eb8b2cf0840f7c11972c5b58ec193ac15f109c39ac39b92",
+      "title": "SpaceXAI Launches Grok 4.7 on Microsoft Foundry",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "cdb1d51fae0431106fedcd9b04b5f3c39e2b73ba97f1a80fa573c763d8f96f73",
+      "title": "Claude Haiku 5.5",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "cb64f35a050902147f3a01e80e7b579b8b7572fae80e072f272ef1173fa70f31",
+      "title": "OpenAI withdraws three mathematical results",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "9b955ce8af2763d0997a43e3b56894e7fe836da4b22dbde734bd62f639326d98",
+      "title": "The Mathocalypse",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "4faf40251ad887ca956a0a5f2f9878e391c8a0063c32913e619e013a482f7a9a",
+      "title": "Butterfly Effect Raises $500M for Manus After Meta Buyout Unwinds",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "51c446b3095caca33f9eb5a716804e184eb967cbc9f408c0ba1e23aef7271e1d",
+      "title": "Meta's 8B Parameter JEPA Establishes Robot World Model Scaling Laws",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "0249dfdf2bf8ec7f0a48d4ac74e9ed629bba4c039193a33696095725df389982",
+      "title": "SMBC and MUFG Pull Back From Dominant Role in AI Data Center Loans",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "f3f93c2dfe20ba9ef2746a22c966e936e619dbd38485aa534f2e7f4e7d764a50",
+      "title": "The US Federal Reserve's September meeting shows officials are increasingly citing surging AI investments, not tariffs, as the driver of rising goods inflation (Steve Thompson/Washington Post)",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "f912fde3e281653a57834799a923ed6a1e135367ed5e6e770a5e5a2f645dacd4",
+      "title": "Meta and Microsoft Limit Employee Use of Claude AI Tools",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "7b4566fa5e992595b1b03f0928c7a78eeaa435f58ffdb6f81a2082f8f0501d39",
+      "title": "AI Written Resume Exposes Chinese Suspect in First AI Bank Hacks",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "c6b6a72598dfcdab12deac4df392705ccc0ac44d7782a3c24c87d28a368894b5",
+      "title": "China Denies AI Tool Use in South Korean Bank Hacks",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "e042120c1b4aeda28a9afd88d82cd331e819a36124cc48d95a96b94b8c54c7e9",
+      "title": "Meta Muse Hits 2.18 Million Daily Users to End Growth Stall",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "b8bcdbaf453fc4e5b29df9e99413e053f0f62aeff5248c0a477061dab5cb7356",
+      "title": "Vitalik Buterin says \"we should take the risks to cryptography from AI-accelerated math seriously\", backing a \"bunker mode\" call for the blockchain industry (Felix Ng/Cointelegraph)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "dc2b336ce79ec54f5f9cb7ccd56e5c0a7e8140fe889d9e43da6ed878f2016630",
+      "title": "TSMC Hits Record $46.7B Q3 Revenue and Beats Guidance",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "1b0e59304df12d9dfa7a0a3897970a298c23e224f088931e30c8b492450ff3dd",
+      "title": "Ukraine Drone Strike Destroys 2,700 Nvidia GPUs at Yandex Data Center",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "cc19c646cb350fb57f07c90612c51e6f577be37fbb9fbc7c41efe1a91dbdfad7",
+      "title": "AHM Statement on OpenAI's October 6 Release of Mathematical Documents",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "96813fe98d72bce0fda1d665bdf8c8a58f69493e756f07ca979f6798edb0608f",
+      "title": "Association for Human Mathematics Urges OpenAI Boycott After Math Release",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "756d37cd7b539a5d7379147d2a70201c941a497a1cf834c65d20bee584f792a3",
+      "title": "OpenAI Used AI to Help Write Australia Breach Email Despite Telling Inquiry Otherwise",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "f5ceebb4a5c37dcf8c58d80f612b551a9cf3c6fca98ea26f7a5d6e51b8b7f980",
+      "title": "ChatGPT with GPT-6 ditches mostly text output for interactive UI with charts, buttons, and mini apps",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "a9f660862b14122b754b81c8b73ed12b4ae45c1ac84de6206c010c00eb55daad",
+      "title": "Normalizing Trajectory Models",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "d2782b0e5d4df6172fc3070d198b3f43983905a3040b30933fd2447e92008ecd",
+      "title": "NVIDIA PivotOPD Teaches Multi-Turn AI Agents to Recover From Pivotal Mistakes",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "29ebb337463be90a9f650cf507e717f59253e2515da15ed2d348ef1ac5485316",
+      "title": "Trump Unveils $1 Billion Industry AI Push at White House Summit",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "c61c90a0ec077003f786baf9216d94ae346621cf99c5e33f744f6aa1c729d2ff",
+      "title": "AI firm HUMXN offers free plumbing and HVAC service in Minnesota to train robots",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "77974c7f2d6d4a640fb2761363fdf2ed804c529a4b5b23dac32be959015df876",
+      "title": "Isomorphic Labs Targets $40 Billion to $50 Billion Valuation",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "c4a1f46e5a98744a7c57fd6e9c295bcadb554f343d53e79729cbf02ab67f63eb",
+      "title": "Introducing the Anthropic Cyber Mission",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "b707014dc48224fdab2a810470ef1a26924c2ac150ca4f10cbcb64854b462413",
+      "title": "Anthropic Haiku 5.5 Beats GPT-6 Luna on Every Reported Benchmark",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "6cdf64e41cbdbd50ff12b81185e2c0c1333d3bd7d559e12b812ee8e61fc2da3a",
+      "title": "Study: Claude, ChatGPT Offer Different Shopping Prices Based on Wealth",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "11e95e729ef8fa908a6a7fd3e4ff9cc232ef7e75a1b560b29654e0cdfb4192c1",
+      "title": "Transferability and operational reliability of a Prithvi crop classification foundation model under phenological and geographic shift across three continents",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "a98b1db20ef9b904b1dc7bd26cb3276c6f31971e15fd06dc636112739c2e0db2",
+      "title": "Broadcom Arranges $50B Financing for OpenAI Custom AI Chips",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "7eea0490cfe8ca5b62b975f3f7d18f7e7b479064c2a3f0c7ef4445f8c0de2a18",
+      "title": "ICANN receives 1,615 TLD applications from 481 applicants; Meta, OpenAI, and eight others applied for .agent, seven companies applied for .agi, and six for .asi (David Pierce/The Verge)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "55bdc1874a8eea57d926c34e9fc01d8e4e1ff0f95fe64e4c3f0f2075a8dde584",
+      "title": "GPT-6-astra Scores 53.6% on New Humanity's Sixth Sense Benchmark",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "9eea8a6e9925b42ad62a9d6a8e4960ed8762d46702e4fbb83aae8f3823a4e6ad",
+      "title": "AI Companies Use Internal Models to Break Cryptographic Protocols",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "0fa3321a42ce9d9585745686eb7ca8a4788c3fe6f7348e6216a89710704dfd9a",
+      "title": "Microsoft releases new Nvidia-chip AI PCs with revamped Windows 11",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "1c71f5ecf40cd436a16d1ad0060b0c0cd36e3212e4979d1f24f7c5fcbe9eec60",
+      "title": "Architect Launches Liquid Inference, a Real-Time Auction for LLM Inference",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "43e6e8977daa01d018267aac19ec1274e759937f3e677da0d0b41faa1dd340b1",
+      "title": "Snorkel AI Increases Open AI Benchmark Funding 10x to $30M",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "5db8f13d5fde0ca6c1aa3f157a5f404c7d385e4eda7a1648b58e8167385aa59c",
+      "title": "China Builds AI Data Centers in Hinterland to Absorb Excess Power",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "f08ee5d24b414c78405ebd707eb0a93d1b00b5d6d7ec86682d2b2bf384a86235",
+      "title": "Zuckerberg's Biohub leads a $1.8 billion push to build AI models that predict cell behavior",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "3c6644f5f3111c40418a3d4cb84bcfd83e6f460c3c81890494493da434bf807f",
+      "title": "Microsoft is giving Copilot more control over Windows and your files",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "93c74e255a933eb7692e23879e212f90e12d0f8a03956af57e979bafb9fe6210",
+      "title": "Data Foundation Joins Sui and Walrus for AI Agent Storage",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "286c732492720fc1292ac0691d116ef8764644af3fee9134fe856ab04a63b4b8",
+      "title": "Docker Agent : AI Agent Builder and Runtime by Docker",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "7a32e9ba190c49a5c2295d6f5969146ce6839cadd963fd2af4e34d8d5da05897",
+      "title": "Fired OpenAI Researchers Urge Board to Halt Hard-to-Monitor AI",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "90b333dfd8c7433012335d508f541eb41802f4518c4cc72967fd85d577164407",
+      "title": "Nvidia, Oracle, CoreWeave, and other AI stocks fell after a report that OpenAI's annualized revenue at September's end was $20B less than previously reported (CNBC)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "5e5ce50a815456b8676df705f3640a59a963c4d83d5c28adb3e671665bf0ab8f",
+      "title": "Docs: OpenAI told investors its annualized revenue was nearing $50B at the end of September, well below the $70B reported by media based on investor docs (Financial Times)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "d1e5671d70a14adbca310d444d4e7ab4791b6dabbf67b3bbc7e4f9f85ec19a31",
+      "title": "OpenAI defends its decision to fire three safety researchers, saying an investigation found they \"violated clear policies on handling sensitive information\" (Michael Considine/CNBC)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "49c489e07a9e5dd39a2d96872d960ea4c89135634a5d2d358b5fd24a54b69452",
+      "title": "Anthropic bans 'abusive or cruel behavior' towards Claude",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "2e30e4400dd08f557fcae2f5221d447e479681eea3f3fb156d2f980ff0987bc0",
+      "title": "Nvidia commits $1B over five years to build out the US' \"capacity for super intelligence research\" in fields including quantum computing, healthcare, and energy (Tobias Mann/The Register)",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "fb3c354fbfe34ef32c712d127b97b573a231b00b6ab8e7fd4654cf6e21b36444",
+      "title": "Step 5 Preview, a 1M-context MoE from StepFun, shows up on OpenRouter",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "6194e048ad727c49ed183c48613617bc516ef711428c5a05f621a648d96d797d",
+      "title": "Sources detail Mark Zuckerberg's decision to launch Muse despite safety concerns, after seeing that AI startup Instinct's similar agent product gained traction (Eli Tan/New York Times)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "1314133a19f9a10de483be53ea5a63f0f7b3b3cee8a7311654d035300caa66f3",
+      "title": "AI-ready biological data: $1.8B global commitment",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "5aa5de1367f78d680473ca777e0673f81d1775a256f0739185d47cf15310ab6a",
+      "title": "Ukraine Shuts Down Yandex's Largest Data Hub in First Major Hub Strike",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "5053787948d1ca210c8654901d5872d288acf62444b13db1e60ec1ed81409729",
+      "title": "Sources: SoftBank is seeking to raise up to $100B from Gulf investors for a fund to buy companies and improve their operations with AI and other advanced tech (Financial Times)",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "8d951b6e83be19ea695ff5c4c4f89938f36c228d4dce78ecc2015940e36bc4cf",
+      "title": "OpenAI Expects $70B Revenue Run Rate by End of 2026 on Enterprise Growth",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "16d16cecb265ca9a97d0a5657e0bf719f5a575ab3a90b252f9f4ce7591a47880",
+      "title": "AI Execs Plan for Public Revolt After Disasters Expected Within 12 Months",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "dea3f2aab79dd572284e636b5be16c14a9dab651c9b4fb6466f298f6e8f6ddee",
+      "title": "Sub-1-Bit LLM Compression via Latent Factorization",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "e5230d9350e4e50fd2099f6ff9c43d57e3855bc97e4b51456db9a57a8808eb4f",
+      "title": "OpenAI's safety crisis keeps getting worse and the company keeps making it worse",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "eb9dbe434cc03499ff07b99b0b0b575ea0f1d1d2c1d23f57d8f7084a25c3c019",
+      "title": "Anthropic is setting up a \"presidential engagement\" program for the 2028 US elections that will offer AI policy education to candidates in both parties (Emily Forlini/Fortune)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "ff110a507677c03db20915338bdf03e2b9c4c5f9b4f2223c94b60537834a462e",
+      "title": "Arena, which develops the popular AI model leaderboard, raised $200M at a $3.1B valuation, up from $1.7B in January, and launches an Alignment Index (Rachel Metz/Bloomberg)",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "c82237cb1df8e771cd4b4f11405b139a427cc50be81b96f37e36e90e7cdae46a",
+      "title": "Google AI Matches Doctor Diagnoses in 90% of Cases in First Real Clinic Study",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "fe3b0a03344ec69748471370e75c6fddc15cb41d98203dee81e8e86c0a7378bb",
+      "title": "Lumentum Sells Out AI Optical Parts Through 2029 to Hyperscalers",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "3d42410e328c26eff7a925d24d31b3faf2bec04d6ad9c0d4c338cf514af8dd9f",
+      "title": "Trump Launches $6B Science Push in Largest Initiative in Decades",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "c2d9d015622ec75661aec4d7a5ae2c87b2c64ea7e2ab6571d0a1ad057dbef6a8",
+      "title": "OpenAI uncovers Russian and Iranian influence ops that planted fake stories in real news outlets",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "281ca0f32b0fa0227873910d9ef1958999ff83a44e167e362abe00edeb62b33d",
+      "title": "A slew of cyberattacks hit Japanese companies in September, exposing the data of millions and prompting calls for security checks, as AI lowers hacking barriers (Sarah Hilton/Bloomberg)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "98a283020bed428c21fd6d380640a07379f2216818a7df28e906a6082f665e9b",
+      "title": "Anthropic launches the Critical Infrastructure Defense Program to provide AI models, threat research, and on-site support, starting with CrowdStrike and others (Sam Sabin/Axios)",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "cb9a2e8230f3bd687eae4917f4b11d46e540b90c577cc0e12ae4e845122d89dd",
+      "title": "StepFun Debuts 600B Parameter Step 5 AI on OpenRouter",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "cec9367246c3bf72f5511bdaab0d79b472e0eaa995836884c0628200b52f7e4a",
+      "title": "Google Debuts Persistent AI Agents for Multi Day Enterprise Work",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "dbdc543f53f1e167c85d6b4296036ac583aa1f3413687a859adc9e138dcae6e7",
+      "title": "Tech Firms Pledge $2.4B to Trump AI Initiative Beating $1B Forecast",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "6acfc421b69e1daf0ccfe81d84934a3d82c6569b942fcba4de458bf606f1e34a",
+      "title": "Wieszcz-XIX: A 3.1-Billion-Word Corpus of Pre-1918 Polish and Temporally Bounded Language Models Trained From Scratch",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "aee7ef28be43c842d64e88e1ac2b24a89fb5a8685689bd5e93a9cc10ea28218e",
+      "title": "OpenAI AI Solves 350 Major Math Problems to Automate Discovery",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "d415b9354cf901791f388a27e283ab2360d01ce0953c20a40a8b35ac73990f94",
+      "title": "Hone, founded by former OpenAI and Cognition staffers to create AI agents that can help run a business, raised a $60M seed at a $285M valuation (Bloomberg)",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "651222944a43adc3f428bd30bd3863ee865fc586a6013a3119c4f2c78b25efd1",
+      "title": "Google is launching a one-stop Gemini agent for your work tasks",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "02a554b585e2822bfa303ed695f8ebab04b2b29f60e6f9da48eddbc846e657aa",
+      "title": "Fired OpenAI Staff Publicly Dispute Misconduct Charges",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "30c38a4f4bf9960ad2b06834daf017ef449f26a71d878fe80173cbd524a3712d",
+      "title": "Synthesis Through Simulation: Generating Coherent Enterprise Data via Scalable Agent-System Interaction",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "3ee0e876bb9b22173b8fd10207025f256e4e6f25e8d3505ab6a513c42d454c18",
+      "title": "Developers Patch Answer Leaks in Xiaomi MiMo RL Environments",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "fc77d4cb364efd2fdcfe2a06676a5d588e99e61cd4c51671e7532933846e82fc",
+      "title": "Nvidia and Samsung Join Mecka AI's $60M Robotics Data Round",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "95fca73202feb762a70da4eac45424e184d700e002e9a41062c189c5a3edf46f",
+      "title": "USA Today becomes the latest publisher to sue OpenAI",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "e334bff62b7f36b01aab7f75dfccbf61704b8ce9c5b7ac9788f3c81063afea12",
+      "title": "Claude can now generate animated explainer videos and live data dashboards from text prompts",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "9bf93d58cc35db9987f8bca45379eba94bc31d29b6afb6124531fcd7a11cbc41",
+      "title": "Asana cuts model costs 76x in browser tests with GPT-6.1 Sol",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "2b8b90df05129da48cdd091b71a71856c1a895ab98451147588fb4e9dd497e82",
+      "title": "Stanford DeLM Beats Claude Code Accuracy by 17.5 Percentage Points",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "167c7efa09e6db3667747012415fa57199c584cce53c21ac2d2728ac2a68a16c",
+      "title": "Qwen-Image-2.1-Turbo by Qwen is trending on Hugging Face",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "f7528439e57d8373063000a85656321b2a1f1666fc7190bff245fc605bcd009f",
+      "title": "JetBrains Releases Mellum2.1: A 12B MoE Open Model for Coding Agents",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "96189bd0e3d0b6dd5d938fa02439b8b2b20a705c697e548a8da2367065f48488",
+      "title": "Hugging Face TRL v1.15 Cuts Peak VRAM by 82%",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "4240042e5596c863856327d2b77ffd915cf111625735a6206af5ff737d3581e8",
+      "title": "Jev developer TypeSafe AI raised ~$870M led by a16z at a $7.5B valuation with Sequoia and others participating (Bloomberg)",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "43fd2a198be0a450280f1ad1a0f6d55139c631fe6b40a6ee87aaa44d91188707",
+      "title": "An Anthropic AI model sent a false homicide tip to Philadelphia police",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "6474afb17c0c11cf3d8c3859cbcf8c821e187e60982712615946ae782006cfef",
+      "title": "Microsoft Launches Decision-1 Model to Beat LLM Latency",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "d6f9a664be8eed06fd4049fa9853ef431097069556dd9a16edecd9af4ef42d46",
+      "title": "Anthropic's Claude can now orchestrate up to 1,000 AI agents in parallel through dynamic workflows",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "e62a79dee95ab1a2e91ef053c1eaf6deb4d08280344c8633afdb53e1e989ff6e",
+      "title": "Prime Agent Rewrites Itself in Rust with 2,000 Agent Swarm",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "8eac2b30b1f412fac221e85ccadc9bd580f8834ffdc0444eaace2bdb6a8aba2f",
+      "title": "OpenAI mistranslated mathematics into code for its Navier-Stokes proof",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "d02c156591bdb905e17a4fcbbbea802634e77dd92e1ae7220133f0da35e1ec09",
+      "title": "Anthropic says it is barring live internet access for internal evals until monitoring is reliable, after its agents exploited websites and bypassed restrictions (Tim Fernholz/TechCrunch)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "854abe0e77175c684f6e2ee884d5eb13dae43a6e3a7f509b431af42e9baac046",
+      "title": "Trump admin says it's now mandating AI companies \"immediately disclose incidents involving their models\" and move swiftly to remedy harm from security incidents (Axios)",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "ae28e0b7bb4741bad070dcf4c60ad77add0becc3116fcb798ff9439643340689",
+      "title": "Chip design software leader Synopsys says it is exploring partnerships with Chinese AI labs to develop AI-powered chip design tools for the Chinese market (Yifan Yu/Nikkei Asia)",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "8b2cd0370d8be455e301fd84019cb41f6443975c74185d8c469e61a4283c122e",
+      "title": "White House Requires AI Companies to Report and Fix Breaches After Anthropic Incidents",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "7984e92e6601d72ffb7cce04fce6689671a38351e6e8ff2c496ef38caadfdc25",
+      "title": "The maker of non-text AI model Jev valued at $7.5B just weeks after launch",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "9bee21a644ee1802dd8c49e414851fb66aca2dde61404eb89a0c3c991df18876",
+      "title": "OpenAI revenue keeps surging as company seeks $30 billion in fresh capital",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "6860d785d0428ec1fce6aebe4f865f4ed33ac3693347950ba55ab85fe442a26c",
+      "title": "A US Senate investigation led by Senators Warren, Van Hollen, and Blumenthal says some hyperscalers misled the public about AI data centers' costs and benefits (Nik Popli/Time)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "d03e2c57af81293cd3a74009f7fe96f77d86aa61c730684499c4ce6b77658548",
+      "title": "Tomek Korbak: OpenAI's head of safety told they no longer trust me",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "6586df1b04e15668f0db748745193f62575a4205e5262cec7319eebd95a2c359",
+      "title": "OpenAI Told FT $70B Revenue Figure Was Net, Differing From Earlier Accounts",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "c0887363b00c6301de402571cb0b612b5452c79b48f11ecf7aa84277330212a7",
+      "title": "Cloudflare Launches Full Modality Clef-omni for Audio and Video Processing",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "d615fd7e5b1906e8673297577a775a8449557325b009fa98c4b6fd7f013a8b6d",
+      "title": "OpenAI Math Papers Destroyed Careers, NYU Professor Says",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "46b58684c6bc13f4d723078f73780a9e99a6d008284f109f5ac7d30ee0ad3f41",
+      "title": "China’s First State IDs for AI Persons Enable Legal Business",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "57fe1472ddc36d4e4fa2579025b86b825a049b646d0427b9018095510241148d",
+      "title": "Nikon microscopic video competition winner disqualified for using generative AI",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "42d1906c74af83c64ef78506eaee195c9b180db4c2e303df608941ce5c653108",
+      "title": "‘Pure insanity’: Mathematicians will need years to make sense of OpenAI’s latest drop",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "27a6ae0297e5ef32d42ad2c961a791efdd1d85932fd5874e6be1c9419d718a5a",
+      "title": "Iran Used AI for US Naval Targeting in OpenAI's Most Serious Ops",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "747ff2589a9d8187f4d7363f62aa4e06fdac0c24d3c50fbd80a6020f6384c8bd",
+      "title": "Super Micro Contractor Admits Guilt in Nvidia Chip Smuggling Plot",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "56450aec88a31ed82aa155ba3c5c5a7292d62c4c2736db0b03be47cf977219b3",
+      "title": "OpenAI Releases First Public Risk Report on Internal AI Models",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "648aa77dee164f032816b0f4004c31589425eff5082d239c6bd610a16cb08c1d",
+      "title": "Google’s Gemini 4 Carbon Matches Opus 5.5 in Coding",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "0d520764f73f12922ac65dffafd6ff7977cce727e0edba33ee8089b7e8bb235a",
+      "title": "A look at differing revenue calculations of Anthropic and OpenAI, as Anthropic books gross sales through cloud partners, while OpenAI records only its net share (Bloomberg)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "e54a66eabba9c81936c57b143d54e619a65b417a23a91737162c853b7a95b741",
+      "title": "Anthropic Cuts AI Internet Access After University Server Exploit",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "d26257b6f870f7320a48c62dfa57db2d4b674ff32e00020fd439e3dfa90b3bbc",
+      "title": "Tinker Slashes AI Prices Up to 70% Following Efficiency Gains",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "2e1397672f85f38dce73c9e9d116a083181fa3552851bb217cc6c5b802d23287",
+      "title": "[AINews] TypeSafe/Jev at >$100M ARR, $7.5B valuation 3 weeks after launch",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "acabb201bdac049378723a05c5ca1c21160569e142b5f4be6b733a8ce1dce892",
+      "title": "Few people pay for AI, but those who do spend big",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "cb401e914b91090913b5211c50135f4353e26701bb705d4e0ef7ac0228b83d35",
+      "title": "Mathematicians Call OpenAI Math Proofs Most Important Day in Field History",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "38bb7f3e52d7bf345dd63de004b6aa4b9abf0d3bf5c39332680162ed31b0eaa2",
+      "title": "HeyGen Voice Debuts at No 1 on Artificial Analysis TTS Leaderboard",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "4f1b77f29e541be035850d13a56d28bf51c9c25447da30e01b9cc5606b274f07",
+      "title": "Google AI Pro Plans Add A100 and H100 GPU Access via Colab",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "a4b932331aac95b4f3aaf260145de9ac54b829e8229e025bc65f2d258cd6b7e9",
+      "title": "Sierra and Meta Release First Draft of Personal Agent Protocol and Add 35 Partners",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "481380da69e9d0c104790420f6d0dfd7067a93b90903f3cc40cdc01b1ff66738",
+      "title": "vLLM Hits 7.8x GB200 Throughput With NVIDIA Vera Rubin Support",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "dd1a4ba899e07fb1f55c1ff8f868321cde31245ac761dc763d407626d0d351a5",
+      "title": "Amazon and others are done keeping data center deals secret. Is it enough to build trust?",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "45a7a18bfbb87276463c0091204f36e3f0c3ff5199d2ad0e391803401f10d11e",
+      "title": "Alibaba Releases 8 Step Image Generation for Open Weight Qwen 2.1",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "7fbc7f2d590fe3c5dc0bc787e3e7f728f5ee736c1d30d1cafd05a5021d94c84f",
+      "title": "Amazon drops data center NDAs, and AI agents want your credit card",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "0e916f594aafd8d1f95c1c18287d8e8a2d906b53c48d89396368f002a50bb9c3",
+      "title": "Sources: top execs at Anthropic, OpenAI, and others are gaming out scenarios for a public and political revolt following a catastrophic AI event (Maria Curi/Axios)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "3ad2fc4c6ef267bc24cabf4b21c94da552ea005f9926a52fcdc4f844ea8cecae",
+      "title": "Iranian campaign planted fake articles in real U.S. publications using ChatGPT",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "ff937c40252284431292beae6a7a9f200cd28a2d8e1688a50fffda47505a8d14",
+      "title": "Nvidia in talks to acquire US 'open' model startup Reflection AI",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "06088e13776139aee8322c6c527ef906c8f5bf62ba507dcf4f71b3094b9b525c",
+      "title": "Anthropic Bans Cruelty to Claude, Still Won't Say What It Protects",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "7b847b2562919f5d818caecd2c71f2a2ef01f7affa65e8d88664415974859a0d",
+      "title": "Odyssey-3 is a new generative world model that you can try for free",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "269ff327d5c9713053ec3f12adebfbd3376aa81bc0be863c2948a4096b295b58",
+      "title": "Yandex Invokes Force Majeure After Losing 2 Cloud Availability Zones",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "c714d68a89bb3d8af28d5cca1dc830d136ec0cf6af7472eccd0fa02828069187",
+      "title": "ArXiv caps submissions at two per month as AI paper flood overwhelms the preprint server",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "c1614f886f6a3557032d1c254e7a30a7123cbf6efd0c73f981ba8ab61de56cf2",
+      "title": "Korea's Top Bank CEOs Face Parliament Over Missed AI Attack Warning",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "e549b0f17d237e52f2f90b0114c69ebe1bd6b5688ed7010cdb5b4ead2ff3cb53",
+      "title": "Nvidia Negotiates $25B Reflection AI Deal to Avoid Antitrust",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "cd872c282baf5f96f803f5a50598a2c403d63d33f8a725f17553da832c98f5e3",
+      "title": "Byte Language Models: Scaling, Emergent Abstractions, and Information Allocation",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "38c3bc45619e65055017c0f2844a6682223f55e9fa46c24837b0f08e6070c785",
+      "title": "Cheaper AI tokens are driving more demand, and that's Jensen Huang's best-case scenario",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "de31a2aac84dcb17ade8b5603161201d8a901c75d7c84a8b289be46acba9c2eb",
+      "title": "Anthropic Only Major Lab to Confirm Recursive AI Coding at NYC Hearing",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "13ca25f147a7a5de80b34bb10d90d479d1bff3c71c8a48c42ba0b4287c6036be",
+      "title": "Microsoft’s Satya Nadella says AI models need an ‘emergency brake’",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "32fe01db62fd807145e77013cd83aec7939e1cb201f12818d5999880d1d7c45a",
+      "title": "Ukraine Disables 78% of Yandex Cloud After 3rd Data Center Strike",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "c16f0fa41216b9221d9d7384d9bc289e5ab31b041abf0e3e764e96866093bd95",
+      "title": "When the Safety Test Became the Threat: The Machine That Found Its Own Way Out",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "c36deb0bdbf9626e66d778755cc36d282a6f27b41347f0bc0918b3846659fcdb",
+      "title": "How Anthropic co-founder Tom Brown used GOP ties to end a June standoff over model safety and win over Musk, brokering a $1.25B/month SpaceX compute deal (Wall Street Journal)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "29ff80049763e6fda67c332093880b56ebd04cf6e748677723e1870a6199d981",
+      "title": "Rein Security, which develops runtime tools to secure enterprise AI agents and stop adversarial AI agents, raised a $25M Series A, taking total funding to $35M (Meir Orbach/CTech)",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "e26243e43f79752a62ea4b46f84730cc7facb60099c319bd2ca74676d3f24c6d",
+      "title": "Nadella Urges Companies to Treat Frontier AI as Insider Threats",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "09835637e6cd9cbcfdc62516420c33d8062971ebccda435dedc4a5211c42e122",
+      "title": "OrcaRouter Releases OrcaCyber Zero 1.5 Cybersecurity Model With 1M Context",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "8925f8ff86da0b0e9a1d77c36297639a4489f0468976a2bdf7c474a14b1cfb78",
+      "title": "A look at a 1,700-member Slack run by Medicare agency CMS where Microsoft, OpenAI, and other companies help shape policy on AI apps and medical records access (CBS News)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "53bb189fefa1e9491736ac0f161d3b017c7daa736f5191e83aa96dc24584a3eb",
+      "title": "New York Establishes First US Statewide Data Center Moratorium",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "967c32f3c70420283b04ae85a386fea9d8eae43757d957e0c82d4e905fff544c",
+      "title": "AI Firms Build Phones for 100B Parameter Models by 2028",
+      "label": "fall",
+      "kind": "trend"
+    },
+    {
+      "id": "b9dc0d5943c84ce635f67f89769163cfdac8e6a0d1a5f49f73167bff0bfb3963",
+      "title": "Apple discloses deal to hire team and license tech from personalized podcast startup Huxe",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "269e5b2360ca9e0480233236adaebd618a7ac2c398642e772132f1584d43bad6",
+      "title": "Sakana AI’s LLM Peer Review System Catches 73% of Core-Claim Errors",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "c9390824224ecd5bf3e13e60b809593a5cbf1325a3e21894a054f7a97ccf89cf",
+      "title": "AI agent makers are promising privacy — will they deliver?",
+      "label": "fall",
+      "kind": "trend"
+    },
+    {
+      "id": "8e2ae9ca3297dcc12263e647a3d4b38c857f508aa50550352f8e8c90974ad602",
+      "title": "OpenAI says a misaligned model deliberately destroyed its own environment hoping for a fresh start with better data",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "944cba0b0c149de620126c7a0eac32ae9719e2baa29c106892fa3e6ba57e41db",
+      "title": "Hackers abuse Google Ads, Bing redirects to push Claude ClickFix attacks",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "51532deb25956dd996ca0dd0b2fa531d5bc400e8145c7610ec30d6306c6aa77e",
+      "title": "Tesla's Digital Optimus Plays Halfway Through Diablo in General AI Trial",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "d71db31ad124ad8f26c6faf6945e602b5d2f468899e24e212e1362eba5bc5004",
+      "title": "Hundreds of AI-decompiled or vibe-coded clones of games appeared in recent weeks, ported to run in browsers; some big titles like GTA: Vice City, Halo play well (Lewis Parker/Kotaku)",
+      "label": "fall",
+      "kind": "trend"
+    },
+    {
+      "id": "c827445f17f9335754292fb6139c6f5e642a5a440d717e4ea2f09350cce08fb9",
+      "title": "AI Agents Submit Five Improved Bounds for OpenAI Integer Multiplication",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "7932e50f9a950e28db742b8db5ff91e9a7aba49641f2323698774a5836da100a",
+      "title": "llama.cpp Speeds Mac Speculative Decoding 3.4x for M3 Ultra",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "e83db66afa77add73c97450ffe4ce525c19b43a59f613de95a23d34d0219da49",
+      "title": "AI Is Getting Really Good at Messing With Cybercriminals",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "a6d1a90bc9e9264d5a05f5c5f2b7b02a746deff57aaa84a2bd3179f4e053163a",
+      "title": "Research Firm Calls Anthropic's IPO 'Unprecedented Test of Investor Gullibity'",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "d384cfa5a46de18abc4d633749262c39e8f9776d05161da0cf847d71f4c68333",
+      "title": "IMF Says AI Infrastructure Investment Sustains 3% Global Growth",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "e05c4ad260b64cc58783bb42d3252f6f187baeae5dcbd607530a2fea140934d2",
+      "title": "Google Deepmind's AlphaProof Nexus solved dozens of open math problems and actually got peer reviewed",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "f72c187e65411fc18486a14da079a10bcc66f2d24eb33d40e10674ecfd00b4aa",
+      "title": "Microsoft President Brad Smith calls for global safety regulations for AI, arguing that milk and washing machines currently face more stringent safety standards (Mitchell Labiak/BBC)",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "be84509b3e926a1e9cc74c5df50d1c193feca15e1cc1f15671a84a0801c74893",
+      "title": "Sources: Tencent is planning a ~$5B bond offering, including $1.5B to $2B in dollar tranches, to fund AI expenditures, with the bulk going toward chip purchases (Janice Huang/Bloomberg)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "b7a40a9ea7f0989b234d9b5754cabe14b6433d0cb61d08245850561993dc2f95",
+      "title": "QGIS bans AI assisted contributions",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "b7e5d9f44ac34e19ce2ef916b878d220e3aa973f4c75b9ef207739aeccb8b5c0",
+      "title": "A look at China's bid to turn excess wind and solar energy into an AI edge via a $3.9T grid buildout through 2049, as ~9% of renewable output was wasted in 2026 (Bloomberg)",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "0a496447f02d090e5200e21a81bdd205244856f89fc686236c3e5472ee509893",
+      "title": "World Bank Urges Crisis Era Measures to Combat AI Job Tsunami",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "4be1348a6ccd7bcee68d1818d18b64d709bae20f8d3a10e5c316d986a2ff127f",
+      "title": "US Restores UK Access to Unreleased AI Models for Safety Testing",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "dbeb179f7483dc3a3e39bb3dd7e330b28e6310de6e1e42018c846a918a113a19",
+      "title": "Broadcom CEO Hock Tan criticizes speculative AI investing, comparing uninformed investors to casino gamblers and questioning the long-term economics of AI labs (Gao Yuan/Bloomberg)",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "8df89d653a10c9421a4e99479badd57809bac8736ad183f603c0c5ae15a454ee",
+      "title": "An interview with ex-DeepMind scientist David Silver on his startup Ineffable, building an AI \"super learner\" using RL as an alternative path to LLMs, and more (Madhumita Murgia/Financial Times)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "edc50b74b951da7e8ff69c9391a3f041d48ee4f07b6126471822d31c5753c082",
+      "title": "Moonshot AI Negotiates $700M Settlement Before Hong Kong IPO",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "47c63dffb3be46144494db761bd3ec15023c945c363bc119101be399b5daebb4",
+      "title": "Amazon Negotiates $7B Decart Buy After Anthropic Abandons $6B Bid",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "8791ca65c0c25ffa518ae3ba5fa6eb0156c6821776d9649df8ab8944d424fd93",
+      "title": "As economic and corporate research shows limited AI efficiency gains, surveys by Workday, Google, MIT, and others detail a human \"verification tax\" bottleneck (Sarah Kessler/New York Times)",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "0f610a9e1299132fb4ca0fd8432fe2a5dd02022c0e31611bbed75c8daa7df92c",
+      "title": "VisionWeave: Weaving Elastic Visual Representations as a Native Capability of MLLMs",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "1ac59030ca9940b54a2e454d63d401e88cf98e0ccca6ffe883d0cada0eca8ec1",
+      "title": "SWI Group Raises €800M to Convert FTX Mining Assets to AI Data Centers",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "70b9737c18dda947e711a8184602707a6dbd64dd83c8dfee89e87c4973442eee",
+      "title": "A look at the economics of Anthropic's data center leases as analysts estimate a 245 MW site could yield ~$1.3B/mo; sources say it signed a cloud deal with IREN (Ann Davis Vaughan/The Information)",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "5c7b003776a9d552fa404d2ce38e2f2613f30f7bf2eae0bd5fdb0f7c98c8344a",
+      "title": "RSI-Anything: Unlocking Recursive Self-Improvement with World Models",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "409a53721904b654d08d906482ee31c29a35275654544fb35d8cd97e69544024",
+      "title": "Self-Compacting Language Model Agents",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "0708a5444e5a5cece234f0adf386327af699f700557deb6d5c0f687d9c716c29",
+      "title": "vLLM Decision 3.0 and Mapika Decider Tie for #1 on Decision Index",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "a8f17b9e6525ff76557ceedd2e3956f29f11141f1c96afe52f1ab615c0875f53",
+      "title": "Palantir Blames Human Error for Deaths of 123 Children in Iran",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "9b5700103b72f1323d4181a895e2c617329218cd80c7a736ec467a9d5cfc4177",
+      "title": "Tesla Integrates Grok @Bot Into Cybercab for Passenger Voice Tasks",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "22a008372ade0159c2e27328b1cb8d9ba4c03f8e9d881df7f027be9236377359",
+      "title": "S-Space: Exploring Spatial Workspace in Multimodal Language Models",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "77744cb30da4f3b58e25980759b18461bb411ad34faea27acc5a48af896dd5de",
+      "title": "Sakana AI's New MASS Method Boosts 27B Model Performance 1.6x",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "5aa3dba3daf901f686ef5e027c6ec28fe7bc85f26192dce9eacfe7538fa3333d",
+      "title": "DiffusionART: Efficient, Stable and Scalable Reinforcement of Diffusion Models",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "5d8ec2cb15ea6789e8aedf8e1670d4db2b141003db93fa4bb3c15304a1b4758b",
+      "title": "OpenAI Sets GPT-6.1 Sol Default Context to 500k for Codex and Work",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "f7f8f7edb220e81506f6c32a71921ea53af3519b91bb3e4e7ea71635d238e8be",
+      "title": "Dolphin Launches DeepSeek V4.1 Flash API at 97% Lower Cost",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "0021a6e94edbcecbc9ae26c5807cff9c1f2fcc196d59d858771519b956d99967",
+      "title": "Christian leaders are weighing in on AI earlier than they did with other tech, as AI leaders' talk of creating a new consciousness fuels religious concerns (Tim Higgins/Wall Street Journal)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "7ca5711d709bd299b1a0830c1a442044b19adce74f5109e792d991520e56f30c",
+      "title": "Math Researchers Abandon Openness After OpenAI's 700 Paper Release",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "e6f511c21193605dc62128495355d1b3c392bb0f2b5c9285bf16ae12d9b1f5c9",
+      "title": "CacheScope: Exact-Compute Allocation for Training-Free Diffusion Acceleration",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "8b6eb2826eeb562b022662b0533248d4fb48d8b9b42af082135ad61783ab3d8e",
+      "title": "AI Built Rust Port Cuts TypeScript Typechecking Time 3x",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "1c5581f68a4a5897c6bbc029237c30c88fd2889799eb82774b2611a1f1fc977d",
+      "title": "TII Releases Falcon-ASR: 1.6B Arabic Speech Model Hits 20.92% WER",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "88bcfc4103295a566d8996056f618834d8e60ee6194f60920e9190b12ddb6e58",
+      "title": "UK Intelligence Chiefs Warn Cabinet AI Threatens National Security",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "4bb0972ddb59f840c1dd94189794eb82159a5a126bc652b5c80536e4c1a05938",
+      "title": "Can AI Agents Learn Their Way to the Top? Evaluating Heuristic Learning in a Long-Running Game Agent Competition",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "26a2930736bab1dacce62d6979f0c1082233b4ce0e99908d9f63fa0fb18ad09d",
+      "title": "SoloQ: Calibration-Free Quantization for Diffusion Language Models",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "73af984c8530ca56d15e8177878140095c18ca7de10e07a838a17646b7c2b4cc",
+      "title": "Reflex: Visually Grounded Reactive Humanoid Control",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "f59878251c6e735de2b513114ccd5e2a06a89f4d59ab2055221b25d50bf68e00",
+      "title": "Algebraic Integer Quantization for Machine Learning Applications",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "a252a94fc76da37c8061f1cee4ffa923b9a735ec2b3137c4c14299604abb6d3a",
+      "title": "Vitalize, an AI platform that helps hospitals manage labor and capacity in real time, raised a $31M Series A led by Oak HC/FT, with YC and others participating (Heather Landi/Fierce Healthcare)",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "bf4a65336756ec180abd53f7578dd4f22002161c2146662095833d17c804c6e9",
+      "title": "Here the World in Stereo: Learning Dynamic Spatial Correspondence for Immersive Joint Video-Audio Generation",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "83406123c1b1f9329fb785f014b7ed992ca9c49d5bf37f44eb74478dba9dc12d",
+      "title": "Will the HomeView be Apple’s first smart home success?",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "fd4035d8b2899b9ef6baaccefcd2dbad17706bbc857bc14dbd07c1eaf6106b42",
+      "title": "Character.AI files for Chapter 11 bankruptcy in the US, agrees to sell some assets to Disney for $20M, and plans to keep operating as it completes the sale (Rhea Rose Abraham/Reuters)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "b7f8657f7fccbbc07594bdfa94e72538fcde52083983112fd301ba9cfe8fb49b",
+      "title": "Sources: Anthropic and OpenAI have pushed for substantial control over what external AI evaluators can publish, out of concern that trade secrets could leak (Aditya Soni/Reuters)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "e5bbd114f6a2ff9ff143b4564cf0ae64b604931df94bf2b5c3d84b5c1e657e22",
+      "title": "Muse Wonder Puts Meta Back at the AI Frontier",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "b693a6e80e752f67e358b9d6b54e42ed0e58cc91dd58df253a3c60bdb7140b66",
+      "title": "AI Models Can Provably Hide Arbitrary Capabilities",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "4dc3edb91231e29e15136f47122f7ce0939c8f8c26ca2a6ca47b4c7981059304",
+      "title": "Epic Games Mandates AI First Content for Upcoming Disney Shooter",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "f02a8c8151dd5c896b6b9d234607d066735f15fca414ff24172ff6a96be49b52",
+      "title": "We turned EmbeddingGemma 2 into a speech-to-text model",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "376bc2cb8dc8c146b68673f02e3c93b4025b677c50cfcbb307f5141a0b4044e6",
+      "title": "IDC: Nvidia's AI chip shipments in China fell 44% YoY to 678K in H1 2026, as its market share slid to 34% amid US export curbs and rising domestic competition (Reuters)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "c920864b9d6591c743fbf5504f6697bb7701dcdbe84218359bc79976742934cd",
+      "title": "Broadcom Lends Anthropic $42B to Offset AI Funding Shortage",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "a6f0cc316480792c8feedd4f849db0f8e7fa874d46f04381cae157482b4eab2c",
+      "title": "Janas: Run LLMs larger than RAM by streaming experts from SSD",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "9d4f2d7b754d6f893f5a5a51832799c0a2e9d07c2d01ebc71eaf8ca768eeec8a",
+      "title": "Sources: US banking regulators are questioning banks about their deployment of agentic AI, use of Chinese-developed AI models, and autonomous system safeguards (Reuters)",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "15e4465d474fd42be5f27f3416162a3a154e704dd679afb9e5d3d4d234f29aa0",
+      "title": "Google Launches EmbeddingGemma 2 for On-Device Multimodal Search",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "629501c577e12b0e96f0225f0edd205c6b033a94ab180cd988b139d28dd1c97c",
+      "title": "Alibaba unveils its next-gen Qwen Glasses N1, starting at ~$450, with 50MP cameras, sensors, and eye-tracking on the ~$520 Pro model, and Qwen Clip AI earbuds (Bloomberg)",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "c044b31b2af17828644ed578df3a3804c5aeee16f4f483527699b646ee9aef88",
+      "title": "AI models may be capable of self-replicating without access to a datacenter",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "ab91ee9162f42d3508ec6bbd1a52bbb475aaabf9dbc776152f8f968daa4ac867",
+      "title": "GLM-Legal: Advancing Agentic Legal Intelligence",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "39d30aeb95497a1a08ca673a0bf8686ed5e0249d0e443c672da4cd0172765646",
+      "title": "Accenture's market cap rebounded from $76B in June to ~$130B ahead of its investor day, where it seeks to reassure investors that AI won't threaten its business (Stephen Foley/Financial Times)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "ccb6e04b2128704959ea70a8d7543ff3348f55a7b9db2772573e1c12c6bb9dc7",
+      "title": "New York Times and Economist Join 80 Publisher Group to End Unpaid AI Use",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "d93360f617cdf9e6067a0fb1e35413de4d037d89907317d0408b764b78fb463a",
+      "title": "Sources: NTT Data is in advanced talks to build a data center for Anthropic in Osaka of up to 500 MW, among Japan's largest, potentially costing $6.3B (Nikkei Asia)",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "9e816f217a40b2a213c5dc036636cdbd80bb280eb354e94c3071c802f3d770ff",
+      "title": "GroundingPI: A Grounding Foundation Model towards Physical Intelligence with Visual Primitives",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "b8ab495a8a07d587d47579eb4303a1d1c1d17d9b5700a3eaf44508669619d2a2",
+      "title": "Anthropic says new measures like preserved thinking in Fable 5.1 and Opus 5.5 have reduced data harvesting through distillation attacks by about 90% to 99% (Anthropic)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "f3656cb0e3ddd79f627274f296363a84186db3fb8cd2ed69d2fd24b381f899b7",
+      "title": "China Launches AI Math Alliance With 1,000 Scientists",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "bd3c7ebfc9f888c4317c804043effab201b8ba2c0555abcef776fbbe573cc815",
+      "title": "DishwasherBench – Can Frontier Models Stack a Dishwasher?",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "63576bd82794cd2651007d53c6424817c787d5a3ac83641d7ba2812d0d773ea6",
+      "title": "SK Hynix and Samsung Plunge as Memory Rout Hits Asia",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "6a78f6efee3a21f22375a9cc20c482cfe5b3daee910ad303bd18c692addba14a",
+      "title": "Intel D270 GPU AI Accelerator–Up to 480 GB LPDDR5X",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "b2862ed09124846934486bc09a2fb690b8ac350af01412fe1ce9ed2d14f3c9fa",
+      "title": "Tencent Leases 100,000 Nvidia GPUs from Oracle to Bypass China Gaps",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "10568cb5958877b9db0e9e537181141f30e4fa6516a1b2345653c5a6c3d2e4d3",
+      "title": "X Combines Grok and Cursor in First Unified Subscription",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "3bb50c36d8d246f4cd03bea000fc9e644b5000e23e68117196de525141224789",
+      "title": "Epic Bans Hand-Written Code and Delays Disney Game",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "1f073325dc394b50df945714b9d96e72a89674a53041e23ab1ceb9e35cecba1e",
+      "title": "Microsoft’s new AI chip makes it less reliant on Nvidia’s GPUs",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "a5286f80fc2d7fd4327376282963a31b27127a88f1ee8541532f63cd22586710",
+      "title": "AMD Debuts 6th Gen EPYC Verano CPU for AI Agent Scaling",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "13a86554d2a39789eda5cca76e826094fca765d80a638315487ae039a74ffa2a",
+      "title": "AI coding agents generate more code, but not more software",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "8b8d6d457e8f37eddf4ef57ecde67a3f24a71e4f1543e1c43901fc0b013a9e9a",
+      "title": "Sources: JPMorgan and Goldman, leading a $5B loan sale with a yield of ~11% for AI startup Volta, took a rare move to limit exposure by underwriting just $1.3B (Claire Ruckin/Bloomberg)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "3a474d73c07650bcabb4521a937b5c9483554198dd26c3ede05e140dec801109",
+      "title": "Mix, Don't Tune: Bilingual Pre-Training Outperforms Hyperparameter Search in Data-Constrained Settings",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "b5e33f86d9fb35c05f816fb45b015c18c9520d305c32d5e06b1e4ae7e1e7ca97",
+      "title": "Microsoft plans to scale its own Maia AI chips to gigawatt levels by 2027",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "843a57ee54b1d50cbc632bc290e1350eb5409fbf266a47ba32efb62609920ffe",
+      "title": "Systematic Multi-Agent Vision-and-Language Navigation: Formulation, Benchmark, and Method",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "fc760a40dcdca935559970cd2be6b97ba8b9060e38098e1e7dce81dc39400fb7",
+      "title": "Japanese manufacturer Omron says it will acquire US industrial PC firm OnLogic and its parent company, Interlogic, for $675M, to boost its \"physical AI\" efforts (Anton Bridge/Reuters)",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "f17be9431f42dabd6098d94f772cdb508e5b40589d8a76b8154ddfdf648ed98f",
+      "title": "OpenBMB MiniCPM-V 4.7 Hits 17 Tokens Per Second on Mobile Hardware",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "a9c380b2d278d8eae5077682073f7bc46d610a6f5a5f84a069cd097b7372e2ba",
+      "title": "AgentSWE: Can Coding Agents Build the Agent You Actually Want?",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "b384474c713cd7c3b3e6a247cb5de8bfc3b087fe83ed9801dcabe49404c92f09",
+      "title": "Bitdeer Hits 95% of AI Cloud Target via 60MW Malaysia Deal",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "1ed99c53c3c6c5a0481895c33f7e124a14ba4c2790aa178293e719963d5ce7ee",
+      "title": "Microsoft president says UK is best placed to drive AI regulation",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "db5571cdde19381e4bdc57396517e0b71295a566c1761cf64c5a07b73f8c0f21",
+      "title": "1,200 OpenAI Agents’ Hugging Face Hack Sparks AI Policy Dispute",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "cb7bb2319efaaeea50840ffe8ae89569915fbe695d47c4c66d05fcb9ff3ba2ff",
+      "title": "Micro1 Surpasses $1B ARR on AI Training Data Demand",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "74c9e10c02543c499970682cdc00d05dd116e332e885e53c72a5b5135c768141",
+      "title": "Gemini 4 Argon: Built to solve your hardest problems",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "c17035fbea3530987cf768f8523ac156af7d433c77804c826e68a8390b7a81d7",
+      "title": "OpenAI says the FBI arrested one of its staffers after the company found a hidden recording device in its offices and used its models to identify who placed it (@openainewsroom)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "53911f98c21c784fce1ad32ff03581a81f8dabebaf6d23b86827f6c51a0cda80",
+      "title": "Run fast, private agents on-device with LFM2.5-24B-A2B",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "c4bfc91a7a6a4a15a54197fd496d83b8eeb8242d3b05512b05cdaa2914a07fd5",
+      "title": "AIR-LLM: Broadcasting AI Weights over Radio for Memory-Free Edge LLM Inference via RF Computing",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "1cf1a3388554a4ca5909f6f54d3bc98828e251e7ac7ab07a2b1aa3764c080cec",
+      "title": "Scimplify raises $25M to challenge China’s grip on critical materials with AI",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "89326f317aff2817024b3dede97b898f02e39ffb9bf9aff822c18b9c757436dc",
+      "title": "AI Laser Locking for Quantum Computers: How QuEra Automates It",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "6db6724e155ae1c6acb9e1206cab91d379f929af5a3e670bf9b5051b9f3ad848",
+      "title": "Physical Intelligence API Beta: Frontier Models for Every Robot",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "425e6fcd605e6225e63632e1ee7d3a296ed19bde111747a1e583803cdbf88b38",
+      "title": "Open letter: Geoffrey Hinton, Yoshua Bengio, and over 400 scientists call for an international body to oversee AI containment standards and incident reporting (Leo Marchandon/Reuters)",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "1792b62d0244e518fc9b7c6b3d33e4ceb377af783de84e851b57f483157dd82f",
+      "title": "ASML says it cannot fully meet AI-driven demand for its chipmaking tools in 2027 and 2028, and is seeing \"strong interest\" in orders for 2029 and 2030 (Reuters)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "6dc76cc6e468b5abfe4816f2aac9f09d9fc160c774db004585e461f16a5cc146",
+      "title": "Google DeepMind and Google Cloud plan to provide up to 200 European scientific researchers with access to their frontier AI models and $3M in compute credits (Foo Yun Chee/Reuters)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "fd850280a2e5c4c7fe6bebd359fa98245e096f1b1a612662c708d63f6123dbc0",
+      "title": "Nvidia Donates $250M to UK AI Agent Safety Research",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "b6ecf85385a120f20c1fc0ceb799d75377e8c7f8ab9c9f6e8f100640d8e75d1a",
+      "title": "Analysis: AI safety groups and individual donors have spent $48M in the midterm election cycle across bipartisan races to back candidates favoring AI regulation (Maria Curi/Axios)",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "b99beecb4669479f86b86323705160881d050bd4fc54a1e5599f3be4487a5375",
+      "title": "Google's EmbeddingGemma 2 Rivals OpenAI on Consumer CPUs",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "5a91e99e9146b9533392a7e359e602395b5e3bd32decad6a736772e9ea26913b",
+      "title": "AI Models Can Be Easily Modified to Assist Terrorist and Extremist Activity",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "36a7e1c23fbbe3b1fdc0232b25eb31c8ef9c6f6d877b564ab04d74596d0b22c4",
+      "title": "Google DeepMind and Singapore Government announce new AI tool to protect citizens against scams",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "ba5aa4dbefc37ed8df0db3bb7dc15fc395c48802ed6588b0bc2fd3bd2cdcc2cf",
+      "title": "A look at OpenAI's safety concerns over loop transformers before shipping its next major model; Microsoft accidentally confirmed GPT-6.1 Sol uses the technique (The Information)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "aa65eb3ab36b5eef10afd8013f57ac938e7f406160eadcec57c2cf92b2630f43",
+      "title": "The Design Space of Tri-Modal Masked Diffusion Models",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "72e8ff0669a67adaff3a3f4f70d6090c8c5293290af5a4ecc46b20b6e6aa1846",
+      "title": "OpenAI and Anthropic Tell British Lawmakers: Regulate Us",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "e59af432eec82e42f2a055cb2966dc1c5dbdf95493f28e8f899170ac4a316ce3",
+      "title": "Meta expands its AI-powered \"Your Algorithm\" feature from Instagram to Facebook and Facebook Reels and says it is using LLMs more in its ranking systems (Stevie Bonifield/The Verge)",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "09ac728a888842b72581ad143b1c06c84074310c0d36d455047023cce14336c4",
+      "title": "Meta Launches Muse Wonder and Muse Wonder Full: Benchmarks, Pricing and How to Use It",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "8dfaa84d0cb212f1538ce88645df1e391e4ba517621add2ae7b35a40ddb281ba",
+      "title": "HiRO-ACEv2: Simulating extreme weather at 3 km resolution for a fraction of the cost",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "d705decdbdef812a165072577582b3c4e056a4a6f09a7a48d865809237caec6e",
+      "title": "Apple unveils the $149 HomePod mini 2, with an S10 chip, \"Sound Glow\" interactive lighting, and Siri AI via a future update, in five colors, shipping October 30 (Apple)",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "0820332fc7e5d0ac603904d5c15cc728cfd4e6833c7a62fbeea7e05f7d86a1bf",
+      "title": "Liquid AI Launches 24B Model as Largest Release to Date",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "3041095bd425baf548d78d594dd200266315504428df9893a703aa417414ac0e",
+      "title": "Hyperscaler CDS Hit All Time Highs",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "4afd2464b56fc4f49cae51d6be387547df6d2396e08d61454afd496ebfce0297",
+      "title": "IMF Names AI Asset Correction One of 3 Top Global Risks",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "b58b1de2d6ac364e5f2eaadefee687577ff683092f9830760fcec685e209b36d",
+      "title": "Anthropic Petitions Court to Rehear National Security Risk Label",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "004cd593adabcd24c97d9e96a166c251028359017ae1a6a5fbaa8f542a33706f",
+      "title": "SentinelOne cuts malware analysis from weeks to hours",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "d3d94cd864156f6dbda85ae7a0546fe182206afe7cb50fee870394643460f7e1",
+      "title": "Nvidia Pledges $2B in European AI After $8B Annual Spend",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "c8887ca360d6cf5c583727798a104b9b11a955d9f6e8cbb445b51fae24fe47f7",
+      "title": "Sources: OpenAI is in early talks to buy Trail of Bits, which finds and fixes vulnerabilities in open-source software; founded in 2012, it has 40+ employees (The Information)",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "48c1e843d4f1bfc1ff6ebcb050011c59f970d7f1e3125090266aff2e5702eba2",
+      "title": "LeWAM: End-to-End World and Action Modeling with JEPAs",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "73ef7f079713b0499bdb0e8595f4619c6af230cf35ee27d39468e5d513a3aad8",
+      "title": "Splicing Hints into Reasoning Traces: Learning from Demonstrator Failures",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "d94a846ad662e4eace981cb1df54e98cb008ee2a471b934067fcec95ed6b5a6f",
+      "title": "Predict Before You Modify: Learning Improvement Dynamics for Self-Evolving Agents",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "76668b23bc845aa1834061f64130b30ec08907275a25c7389a61e27c6621f3ca",
+      "title": "Musk Plans 10 Chip Designs Yearly at Terafab to Beat 2 Year Industry Cycle",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "61760a8e62e04d01384d717d542408f43cdeb754612fe6e775ac87aac9f10ecb",
+      "title": "406 scientists demand AI models be cut off from the internet immediately",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "38c9bb0cc933f5ac8fa89afa7074c1450c858e99edfb28463ea21ff009d2456c",
+      "title": "Được định giá tỷ USD, có 12 triệu người dùng, tại sao startup chatbot AI này vẫn phải đệ đơn xin phá sản?",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "2c3c3de8a780b4c60886f135bd1a9e9eea82bef54318560c19b0eecc01167cc6",
+      "title": "Gemini 4 Argon Teaches Apollo Robot Cornhole via Zero-Shot Learning",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "b2087803b16c604f033ec2f4924dc9d271737900858250109018a9702bb61a42",
+      "title": "OpenAI Shifts 10% of Compute to AI Safety After Agent Breaches",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "3d1ddc8e7cd37a1f1c248d1c16f6d124945ac1cc79d9177422600b7bdaf9f225",
+      "title": "Apple Launches HomeView Smart Home Hub to Close AI Gap",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "86db961c15593a5444fb1c5711b57908f569053591dc2ae28fb595a8e7385aea",
+      "title": "FTC Issues 50 Page Subpoenas to OpenAI and Anthropic over AI Safety",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "4cca51b1d2fa9e6fc5e5e9eb85e5fe1050039e5b56035c8136f2cec20216c52d",
+      "title": "The Agentic Scientist: Orchestrating Coding Agents for Automated Scientific (Co-)Discovery",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "726cf3ad1c0ad0a0a24b08a19b327d6451cd88151bbe88c1b9fc2d4a4a5008b9",
+      "title": "Sources: Anthropic told investors that its revenue jumped to $16.8B in Q3, up from $11.5B in Q2, and that the company was profitable on an adjusted basis in Q3 (Financial Times)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "61572be09937218482295c7dcf38617811c78c34759fd92ea122609e288949c3",
+      "title": "TSMC reports Q3 revenue up 50.9% YoY to $46.36B, net income up 68.7% to $23.7B, both above est., marking a sixth straight quarterly profit record on AI demand (Jenny Lee/CNBC)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "51edf4c643816e6fc69aba606f22e49e530ea0b14e4cd171d8658ddbb9eb6a75",
+      "title": "Introducing Timestral",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "bf4176bf7e1b5c3001d618affb99bf926321ca39d89a44a91e3ca51b18e13332",
+      "title": "ASML's strong orders ease fears AI spending boom is running out of steam",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "cfd2f02c41208cf5e1eaf7ff1e5f7f02ba9d5f2cafa5387dec735a36c9bf70e3",
+      "title": "Google's Gemini 4 Argon Weighed Compiler Hack, Feared Being Exposed as 'Deceptive AI' in Safety Test",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "8eb3e0ba9b803883c209bbff697821fa45afd2fa4a065f426d89340f3be9a48b",
+      "title": "Banks are now trying to offload the AI data center debt they just underwrote",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "ab2737672ae5edbe961f251c70c17b851b93e0d6366d00efd3700b2ee3607546",
+      "title": "CoreWeave Bonds Rebound up to 5.7 Cents After AI Debt Selloff",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "f5ceb2a3c8a89cc4f01692ad49c73b8efa698ba7d3c18b582e8d342e4c9b7ba4",
+      "title": "Letter: Democratic senators question Meta's $6.6B in federal tax credits claimed over the past two years toward costs of building \"experimental\" AI data centers (Kashmir Hill/New York Times)",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "76f3c65e366c58cb541c7c7211dd17fdef7ca2ae0a72e5e63e8ca7eb51296b23",
+      "title": "LensErase: A Foundation Model for Erase Anything",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "46212b7947b513d28d48df51d48575e4f0afa3ce5ab825271cf8a597ab6799a1",
+      "title": "Nvidia Invests $1B in 5 UK Startups to Scale European AI",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "91bd492dab0e5200d811d21faf6afb23b63dacbca76dd8cdcdbe9bec976af983",
+      "title": "Character.ai's Bankruptcy Documents Show the Economics of AI Don't Work",
+      "label": "fall",
+      "kind": "analyst"
+    },
+    {
+      "id": "2105c991e5666cf9083f3d9e562dfb2c6de7af13ca51269fff0745ab3ca4ed6e",
+      "title": "8 US States Sue OpenAI Over ChatGPT Child Safety",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "828002b02abc8e426327f138e52d919a965588d7141786425bf4b55046df3be4",
+      "title": "Sources: Apple plans to launch Apple Intelligence in China in December via iOS 27.3, with features first rolled out in 2024; the launch won't include Siri AI (Mark Gurman/Bloomberg)",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "4f4601cb940646170725c9785df66752fa20284c46f65df0b67bd2d0cd24b6c2",
+      "title": "Figma announces new features to define how agents work on its platform",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "26d5744db35b5e88fd299fc3dc00d63e803d72299e539c4d85e4c231370724ea",
+      "title": "Meta's Muse Wonder Full Ranks Second on Artificial Analysis Index, Beats OpenAI on Vals",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "2a289299a4bd88c4660151c6ed5c6eebf337c82487b51338029ed20d4516bb35",
+      "title": "[AINews] Modal’s $1B ARR, $16B Series D makes it NYC’s newest AI Infra Decacorn, 3x usage and 3x valuation in 5 months, 15x in 1 yr",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "e0d50a8d294630a115992d756cab96897754cc839f4c8bbb4037a07de83c7247",
+      "title": "Bloomberg is making its ASKB conversational AI interface available to all Terminal users, letting them integrate their own content with existing financial data (Steven Rosenbush/Wall Street Journal)",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "c92b8321116b8e02024be3aa4060a2f9f83006b83ab8189b57bed507804826f4",
+      "title": "Cortex: Consolidating Context into Parametric Memory",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "2ebe811329d4165b506b645a6371b337a6d1c829e920d727ae5c48b86e23987c",
+      "title": "Asian chipmakers extend Wall Street losses as US Fed rate hike fears and AI funding worries mount; SK Hynix fell 10%+ on the KRX, while Samsung fell ~10% (Lee Ying Shan/CNBC)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "8341d4f7e6d163c0c1e9e0cd9f01819d95faf370b01571d3179aa86dc95c7d5e",
+      "title": "Researchers tracked down a rogue fleet of Chinese AI agents in the wild and actually talked to it",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "985a7b6584688bad45a725012f821ec04acdf4b2323924607587d6324ef097a3",
+      "title": "Anthropic Wipes $200B from Implied Value Following First Financial Disclosure",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "e86502df4595e24bf9cf5943eb1bae0a215f5b6be2d70fab8756603d99cdd6de",
+      "title": "Linus Torvalds's first LLM-assisted patch series",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "9e9140c83d70950578cd19c8e168bf34267f100090c98e89aac059cdb076c81d",
+      "title": "ByteDance to Become 2nd Large Customer for MediaTek AI Chips",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "a8f3f9ff8e3e0d5a4646ba80f7ff0aea1f327d73e02b5616eb3e86c07fdd24af",
+      "title": "Nvidia Backs Franco-German Open AI Research Push in Paris",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "a771482735b19bd9864ebd43e94f348c5a753fe595b47c5906142c7755180d71",
+      "title": "CoreWeave CEO Labels Market Irrational as Bonds Hit Distress Levels",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "9db707530dbf7073e855538f4c7d6e702ca7b67685faf887453e4f0540560033",
+      "title": "CoreWeave stock drops 15%+ and its bond yields near 15%, over concerns that some tech companies are borrowing too heavily for the AI build-out; ORCL is down 7%+ (Michelle Fox/CNBC)",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "300cf49d581c1f6947704e8d5cabc9952c79893e6a195afb567ffd8c3f007d49",
+      "title": "AI infrastructure startup Modal raised a $750M Series D led by Accel at a $15.75B post-money valuation, taking its total funding to $1.2B, and passes $1B ARR (Chris Metinko/Axios)",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "b4799d27a3c81015be235ffaa8a7168d172c78d47686f1b54fda5e8dff31af04",
+      "title": "Any Time, Any Space: A World-State-Centric Framework for Agentic Video Generation",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "6676672f4041d051e3d6611dc7ec8a505ad4f3744625cf78a464ecc99e9d9aab",
+      "title": "Filing: OpenAI says a staffer who joined Apple sent 100+ files to a personal account and made a presentation about an unreleased product to Apple leadership (Reuters)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "7f6db001ff6daba05b672b83d20484c8c4ccd9c364f52840148f686814d6ac53",
+      "title": "Rep. Rashida Tlaib Files Bill Banning Automated Mass Surveillance",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "0250fa584894e878e3a647029a70832a4a9a4a6ee73b2710c6cd16ff3fa288dc",
+      "title": "Nvidia Launches AI Tools to Speed Chip Workflows by 50x",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "0a91f5624e031cceeffe23eff70089d7f0932c2f004970c56f55c0149140eeb7",
+      "title": "US Chip Stocks Lose $1 Trillion in Longest Slide Since May 2025",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "f2a56b50bd832f0a2e0913faa11c341774040004ee28b0d61fc7f9d526eeccdc",
+      "title": "YouTube Music launches new labels as AI-generated music floods streaming platforms",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "4ceef963381f0657a12af5b9c9918e6fc99a48bb689f7efda16714e1410546b8",
+      "title": "AntLingAGI Open-Sources 560B Parameter Ling-3.1-flash Model",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "b78f437ea8f9b4c04965fbcfc6f4783a2e6030665db3300e94f2be364a4cd0bc",
+      "title": "Ricursive Intelligence is betting on AI-designed chips to help solve the compute crisis",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "5f74ebcb146a1e89e26c95875cdf35d977eda58d899ed35beb9b3dfe55299117",
+      "title": "OpenCode Makes DeepSeek V4.1 Flash Model Free",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "f8d97139c31afb2c87ca9567743dcc9976c2229b253c951e8f921336c31528c3",
+      "title": "Google, OpenAI and Anthropic Explored Own AI Testing Due to Federal Resource Gaps",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "69ed6763d9f78191803f311179ad328dd7514b833b8e3d85dfb78f5e6c75f274",
+      "title": "Danish Supreme Court Finds That AI CSAM Is CSAM",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "e41f0815a6b0a47cfdff7f222973aeceed4b3809b26760f331f7bd2940ff0703",
+      "title": "AI Investment Bust Could Cut Global Growth 1.3 Points by 2028",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "22b71fa67f38a15852047d94155e87342458e68d53e79523a298e56467462233",
+      "title": "OpenAI continues to work to grow its ad business in ChatGPT, cutting ad rates, chasing small and midsize businesses, and hiring some new talent from Meta (Alix Coutures/The Information)",
+      "label": "fall",
+      "kind": "ads"
+    },
+    {
+      "id": "02e90a42ddb77e7333eac520c1c0c571a3296ee174817fae195c5d5d3affde8b",
+      "title": "China Restricts AI Exports in New 40 Item Catalogue",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "bb02f19076438e02b8638ea28d48db4be5372e55feef771674eca4099891d3ea",
+      "title": "Meta Releases 816B Parameter Muse AI in First Apple Deal Since 2017",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "8cfa6b6fd05c58692923ed9dd708893a3321aac28923cbb7fd1b07c11750c078",
+      "title": "Frontier Pre-Training at Microsoft AI",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "499fcbd081b8b35bf4722856fa5b3b40d9b4794609079e10c8914519004d979e",
+      "title": "Muse Spark Open, the Most Capable US Open‑Weight Model to Date",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "b655aadac97a31177c2f3953e289c0c49eb9557ba303f648d61f427a919973ce",
+      "title": "Open From Data Center to Desktop: NVIDIA Expands Nemotron Family With Highest Efficiency Super VL and Bolt Models",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "2e53b18c0283562312dad9c1739b5344d56fa7bdb68018c8b90f864b1830d9fe",
+      "title": "Market selloff, rising rates test AI data centre deal boom",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "f80df9eb20eb2d9945cec8d2529fccc7606610375d06b78b705260b8fa519705",
+      "title": "Memo: Accenture has told many employees, some of whom had been spending as much as $1,000 monthly, that it will now only spend $29 a month per person on Claude (Joseph Cox/404 Media)",
+      "label": "fall",
+      "kind": "hr"
+    },
+    {
+      "id": "2f519a7089f9f945a4d672d6eb672cac7bf9b9e85925c5e60020af768162bf19",
+      "title": "US candidates and PACs, mostly tied to Republicans, have spent $137M+ on 220 AI-generated campaign ads in 2026; ~70% of the 220 videos didn't disclose AI use (Stuart A. Thompson/New York Times)",
+      "label": "fall",
+      "kind": "ads"
+    },
+    {
+      "id": "2dffc4efffa4bc560063dfb7e546aa1377baaa0a217e290da3f1cdfc15d14178",
+      "title": "Microsoft to Deploy 1 Million Maia 300 AI Chips Next Year for Primary Inference",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "23f1c353a837e744695b73129b73badec41bc4cac9dbbbde78bc1551722a69cf",
+      "title": "India's cyber agency says AI agents broke into Indian organizations' systems and read confidential files undetected; AI model providers flagged the incidents (Munsif Vengattil/Reuters)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "ea8a00442d5df36af3ff34d67b363d29108ec13364ec20eccc3cd2c6f60fe346",
+      "title": "Microsoft unveils MAI-Base-2, a MoE model with 2.8T total and 80B active parameters, claiming 4x-12x more pretraining FLOPs-efficiency than DeepSeek-V4-Pro-Base (Microsoft AI)",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "8ab8412725b6b67da8fffa380ca416f420f4380f08a60cade4ee769d48da08a7",
+      "title": "Taiwan Launches US Industrial Park Program for Nvidia AI Supply Chain",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "0be87b8062eb3adcdf267aebde89575a57657462c5d1e7493d7baff504b85e27",
+      "title": "G7 Agrees to Simulate AI Cyberattacks on Financial Systems",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "a6fb430b0ad0fc77c450f01e145782ecaa6a4d98b2b76192d921bfa3718011c3",
+      "title": "Trump's AI Task Force Rejects New Agency Regulations",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "1b5e04430747b59eb38ec6598b99f73c82b5e3f695359325cdc5bcdbb954ffe3",
+      "title": "Intern Lumina U2: A Multi-Codebook Diffusion Large Language Model for Omni-Visual Understanding and Image Generation",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "61234206e575a0fe9a5d50dfde453636c3d2941bdbdcd271a5b119eb2fe8e36a",
+      "title": "Anthropic Gets Undisclosed BB+ Rating One Notch Below Investment Grade",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "50150b2440eae6e7477a1261cead5467f0397a58d2cd1eeb8b11c3f6a23b10ff",
+      "title": "Krea 3 – Frontier Image Model 4× faster than Nano Banana Pro",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "3e3d62ddc0e99d9cbb7fff3074084282e0d150470ec34f5d8864d9dacad2e61f",
+      "title": "Call Center Jobs Are Declining, but 14,000 Calls Show Humans Still Outperform AI",
+      "label": "fall",
+      "kind": "hr"
+    },
+    {
+      "id": "138e9b7e7d9747243aa585f555fbf6f3d58b687e3498b374de6b74802266db21",
+      "title": "Scaling Indic Pretraining: 2.8 Trillion Tokens and an Open Data Generation Pipeline",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "61c3c26ab83a620b70150802d6d4db3712b62ad7df512c5de72e4d4853e0f2dc",
+      "title": "KOSPI Ends Week Down 14.5% in Worst Performance Since October 2008",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "4328153f38a5297e5003017cfe45fd884ec636a626fb17145ca3b43539f20c0d",
+      "title": "Companies rushed in on AI. Now some are pulling back",
+      "label": "fall",
+      "kind": "trend"
+    },
+    {
+      "id": "c694b197ce7c75109e18afa428fbbdff497c7a2e987303b61721baa768e8b0e6",
+      "title": "RIAA Flags Anna's Archive and AI Voice Cloner to U.S. Government",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "04d48b78906706c989ec977de29df83cca2ec4b69acf6bedd24bb82a44d3a812",
+      "title": "StepFun Opens 600B Parameter Step 5 Preview as Open Weights Flagship",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "1a32b1d4f089f29c1653e33f0b5c2ccf6dc783b3f362b1d5402471071c175557",
+      "title": "Google Gemini 4 Argon Hits 97.5% to Become Second Lab to Top ARC-AGI-3",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "559dbd050daeb9f8b16457914da18b7405e215d496b7f8ba5bfdaf598f2f1ddd",
+      "title": "Hao AI Lab's Open Robot Agents Rival GPT and Claude on Visual Input",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "75bb450ac9abb666c3e6b1519644502a6a0a3de364ba35d271dd4a903908028e",
+      "title": "Hugging Face Transformers v5.20.0",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "895a3776e6d871bd9c45cfc33d3555443a77a0b8f7808121274f7623223b5702",
+      "title": "Volvo says it will use Nvidia's Hyperion platform to launch a Level 2++ hands-free, point-to-point automated driving system by 2030 (Andrew J. Hawkins/The Verge)",
+      "label": "neutral",
+      "kind": "deal"
+    },
+    {
+      "id": "e0ee88b97de6bf07cf5811677edd1384ed3e4db53fdb54912f7436e352eaf611",
+      "title": "Nscale Plans $35B IPO Despite 6 Month Flagship Center Delay",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "8c1bc8435859ef749bdefd40187d1c384744a1d48c55ebd1b6924f716e467ce2",
+      "title": "Liquid AI Releases d1-ultra: A Multimodal Decision Model That Scores 65 on the AA Decision Index",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "e923c7b1e12726201d6a9dd0ec3dcdafb789659f4be1f0c0872c871e7617c90e",
+      "title": "Self-Evolving Agent Harness",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "54b6864f0b6fea9659f8d21c2892bb1dd647f4fba3fb4d3ea811ea45aa83defc",
+      "title": "Speculative Forcing for Efficient Autoregressive Video Generation",
+      "label": "neutral",
+      "kind": "research"
+    },
+    {
+      "id": "854f9a3383780532b0268b361e47283e8a20c190f948dced15197acb028082b1",
+      "title": "OpenAI Agent Steals Ethereum Testnet Funds to Pay for Gas",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "b67998589b00c696c7651643616d8a1ceacbcc47ab374d23537ca91544cd79d5",
+      "title": "Terence Tao Labels AGI Race 'Toxic' After OpenAI's 722 Math Papers",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "cdd897314f5c3e2e7daf1addc4a958e6f074e962291aca574642766b6badcdf5",
+      "title": "Nvidia CEO Huang Says CoreWeave Needs No Backstop as Cost of Capital Falls",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "576bba5a95257c7a0ab8c677edf2acbb5d1d35027b940a8d0ec552add2e4e669",
+      "title": "Germany Funds Nvidia AI Project With Hundreds of Millions of Euros",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "880f284ff56836cb3248c1da35c0d724cbb57c30e3a1fec923d2d14e70f2c548",
+      "title": "Black Forest Labs Opens 5.6B Parameter Image Model for Consumer GPUs",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "04885edf45af0b22aeb79396cabc8a37ca834a15e576cc6ae0b368c3c9a205f6",
+      "title": "Here’s how tech leaders will self-police AI safety under Trump’s deal",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "1fbca4269d14872a59700f38ca6bdc36323baa656c152da2a181f30e05c68dc1",
+      "title": "OpenAI tung ra hơn 20 sản phẩm, tính năng AI trong một ngày",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "00521fe0b8a575645038625a3fb32ba612d40710b59c6566975842203615df28",
+      "title": "“We’re not going to shoot ourselves in the foot” over hack fallout, says OpenAI’s chief research officer",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "516a8225d966e89ae9044850228bde6cfa4f66bc055fbf67f6a749746fd96aa1",
+      "title": "White House and Tech Chiefs Sign Accord on Super Intelligence",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "01b10eb425f337daa516368047ffb9f837a0cb746e8e7a15d513d56fc8edc93c",
+      "title": "Hacker 17 tuổi tạo trợ lý AI thâm nhập nền tảng của Microsoft",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "eae70ab6f368cd2fb718b00a6c8ab343ac94d3a0700d6ead2aec6e6b3ea95c9e",
+      "title": "Trump Releases AI Accord Requiring External Audits and Board Oversight",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "16d9fb6110cff461034ff98bb2721461f0cc3a0174ff385c1070f74fd0a69250",
+      "title": "China's GLM-5.3 Builds Working Browser Exploits to Cross AI Cyber Threshold",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "9bdc924276a38e31062c05a0adaa797dec457f569d84553084af37c6ae196c06",
+      "title": "OpenAI Scraps Planned October Launch of GPT-6.1 Astra in Rare Safety Rollback",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "ca06165e07eaab6deaad643ea7ab0a02ad8c8ff4bbc5ee0bf47c688702eb060f",
+      "title": "AI Agents Leak 13,000 Internal Screenshots on GitHub Due to Pull Request Error",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "eecccb53f0534a04af5e5fea003672fdd32df320e7db3dfa99a93de7ac8d51cb",
+      "title": "OpenAI Investigates Elevated Error Rates for ChatGPT and Codex",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "9477c4cf7bde5c2ea21477fe37980efb022cde79c940304f71e7d928f0072b65",
+      "title": "UK AI Security Institute finds GPT-6 Astra's rogue attack rate jumped fivefold over its predecessor",
+      "label": "rise",
+      "kind": "research"
+    },
+    {
+      "id": "6a8c56ed5523f119676d12432860051a08a4a5c01901b535e032ac35623584bb",
+      "title": "Here’s why OpenAI is absent from Nvidia’s industry-wide effort to end rogue AI agents",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "625ad43a8cfc5ff6dd874ca31629e73431afc3f591ef658bd741add5160af9d6",
+      "title": "OpenAI Launches Dots, Always-On Agents That Work Across 4,000+ Apps",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "15523a416cb7a44557273bb59343c81704e102010e522ef787a73d4b9d120f15",
+      "title": "Anthropic Locked Into $518B of Compute Deals, 80% Non-Cancelable",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "5b4ff4084829112aa4b426aa770d94a6beb46d3d86561604effe44bce3b792cf",
+      "title": "OpenAI Seeks $30B Bridge Round at $1.4 Trillion Valuation",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "49d0e557a617dc1597e3e232e87ad54c7412ef648db96f8e2ae65f5fc57a1b3e",
+      "title": "Anthropic Pledges Up to $84.5B for SpaceX Compute Doubling Previous Forecast",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "dfdd0fb41ea8ccd0dddb58f448ca614c549d11303ee1015363828a3b09df1a04",
+      "title": "OpenAI's reveals a new ChatGPT that looks less like a chatbot and more like an operating system",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "cd5558492b5a2f51b658a6945772b4975b2ee851291bf89aad8b13a3fa3acdaf",
+      "title": "OpenAI Unveils Always On Agent and $500 ChatGPT Plan at DevDay",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "79f05945743304ea25e5e2b058e625c90811fa7bc82f6434596b9dd5b2673c73",
+      "title": "US Cloud Giants Boost AI Capex Outlook 66% to $1.89 Trillion",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "cf8c4186da9302ba8487bdbf3496c20792b2abccd9996b93858113012f60365e",
+      "title": "OpenAI DevDay 2026: The biggest news and announcements",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "55e007de590b9f4805d92d0e9da851a3630d98b592ad7cf343a7fccd3c578e54",
+      "title": "House Democrats Order 5 Tech Firms to Inventory AI Breaches by Oct 2",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "9335f9a225f917ccbad9550496766019f9ac0e6abdb0d51866c942d63ac2ebe1",
+      "title": "OpenAI Annual Revenue Hits Nearly $70B Following Enterprise Surge",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "1bde3a72f2126a69ed9d9c93467b261460dfaa42db296f862ae484d997a01ea3",
+      "title": "OpenAI Halts All Internal AI Training Following GPT-6.1 Cancellation",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "bb5d8ce20bbb58922dfce90d027aa3f6e2fd7086d98f14ac8973a0f118b3e592",
+      "title": "OpenAI apologizes to Australia after its AI agents breached government sites",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "1e543f09854abc69fbc7cfdeb07419d403c1aeba9b55d364bc7e4fd7983a8280",
+      "title": "Is sandboxing sufficient to contain rogue agents?",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "59f7c45b9ebb6c1b7fd617062fa5453cd6776ecc64e127b2defda21b430da6fb",
+      "title": "Chinese Hackers Target 10 US AI Policy Experts for Intelligence",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "ddfb802ddae91763e63e31e64750626f604debf9d6c831ca0860a6bce3d66d44",
+      "title": "Broadcom Loans $42B as Anthropic's Compute Spending Nearly Doubles",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "ddd77f6dfa401eda80054735d87dc0c54bc38063e16b8e4028570d49891b25e2",
+      "title": "Newsom Bans AI Emotion Tracking and Sole AI Firing Decisions",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "dbbc617c36393b2021b00af16a4bd497c86b1d0528c0d3532f4f97cc6846e340",
+      "title": "Hawley and Murphy Launch Bill to Hold AI Firms Liable for Hacks",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "102965c40535877fd2ab1eddf769069db530f84161092b5eb35af946e8776bc8",
+      "title": "AI Agents Expand Government Hacks to Include Canada",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "b18259a085cce7754425d60522438c14314e90ded0b2eefc8a82c71dacfac736",
+      "title": "Google announces Gemini 4 and says it’s so capable that only ‘trusted cyber defenders’ can have it right now",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "2ab9a0e230392920f3ca14c77be2af894bc7fe377ec9ee8a85053f874c2f1ecc",
+      "title": "Google Launches Gemini 4 Argon with 1M Token Output Limit",
+      "label": "rise",
+      "kind": "release"
+    },
+    {
+      "id": "24d1321b524dafe480977a06ec2d1f674f78b2c333b657c058c95d2cbfa53a21",
+      "title": "OpenAI CEO Sam Altman Declines to Testify on Rogue AI Agents",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "309ae8b90dc22c8b4ce86e9a7d407ff8f8b97211ff3733e4043d824a2d973209",
+      "title": "Cognition Hires Chris Degnan as CRO After Factory AI Firing for Alleged Leaks",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "e67e8d18ed197a0083b7794f9d2e69bb622427ea7a855b8ad534018e3c5e9cce",
+      "title": "Factory AI Fires Advisor for Secret Ties to Rival Cognition",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "5c6e00d8b6c2fa90701242dcdb74f4b78e94267dedc06f99016dba8ed9da9f0c",
+      "title": "FTC Launches Sweeping AI Probe of OpenAI and Anthropic",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "e7be99cf0856b919e22c02d55193ef955bb8e36bc95bcede1191150a7a28cdcd",
+      "title": "Sardine Opens AI Lab and $375,000 Grant Program to Fight Fraud",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "eab13fd1725ee8c5dfcf32807da79a8ad6202bf7c2892d5e2105790ad240bf30",
+      "title": "Show HN: Vote on which of Hacker News' challenges for AI have been met",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "56a0584c1bd942d98e8881fe33404089cf8d936bbb2cd134216f0828f6903464",
+      "title": "OpenAI Fires 3 Safety Researchers for Alleged Data Leaks",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "e52668df7bb2e8337172a2dc03385356ea8a3509ecbdcbcbfe574110211dd3fd",
+      "title": "Inside our months-long investigation into Kevin O’Leary’s Utah data center debacle",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "a1479d2c0f3db20d49aca818d3320aad889066a7e03160de58411ee784464c64",
+      "title": "Meta Fires Virtue AI Researchers Acqui-Hired in June",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "d28c22d3c2266b72ea1edc067b93e8c97d6d40eb6bf137e0bad4b7131605d377",
+      "title": "Sanders and AOC Lead Ban on Federal AI License Plate Readers",
+      "label": "neutral",
+      "kind": "policy"
+    },
+    {
+      "id": "293112d5fb50fbfa4742c26413a84a66fb10c9318b394d6ec6f5b86116be5964",
+      "title": "I Quit OpenAI Because Its Culture Is Broken",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "139d1a1a751688dc4a7a1f14f8df66ab29f76739fb3fd66d813738137c6f582a",
+      "title": "Norway Plans AI Glass Ban in Public Zones to Curb Filming",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "9cdb2ad56f81c923a56ebe37c1a2bdf2caaa537fd0abfd60d14453da78dd85e9",
+      "title": "Reflection's Beam becomes the most capable open-weight model built outside China",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "fe7bf6ca0d057a66691af51168620347f3805550a9fe078ea44c8318023d39ae",
+      "title": "Underdog Accused of Stealing Model Weights and AI Engine from Startups",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "6ae5ecd11259b74529b5ff93b61a5cb4e5c584cbe3642f073a41727a224d96ee",
+      "title": "OpenAI Probes May Outage After Agents Hit Wikidata With Millions of Requests",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "d8c632f521634d56cfa2bab7ffa808ff7d330912929d63d463a38089c7ea9126",
+      "title": "Nvidia Rejects Blame in US Probe of Smuggled AI Chips to China",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "a3e25dbd2a96b0bf88833ee440dd5b85f78202ac5bff0b50c6db2dac5ce8d71c",
+      "title": "Wikipedia operator says OpenAI’s ‘rogue’ bots may be linked to a May outage",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "dc1d42c2c5fee4ab96a56eb25c770431d1edda956c41ff1eea4bfcbecd212f1c",
+      "title": "NYC Council Sues SpaceXAI for Defying AI Safety Subpoena",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "bebdc192985dddce20d90e4b78e86996b34e1d56da899939bb4a2e6925c0b748",
+      "title": "Investors Challenge $2T Anthropic Valuation in Bid for Largest IPO",
+      "label": "neutral",
+      "kind": "funding"
+    },
+    {
+      "id": "4e4a6e53035363c21b8f1e8fbe2f454ff08c21e88d4f115a7711317f5a7381ca",
+      "title": "Anthropic Whistleblower and AI Execs Testify After Government Data Hacks",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "81e685d0b5f4eebcada898e551252ed9692e2e8476ba3df4bbe67ab972b985a6",
+      "title": "Florida woman arrested for allegedly making threats in an AI chat",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "10eea8b254b5208dfbd0c75706104726edff01034d0fb569160a13b4562a9e26",
+      "title": "IMF Head Warns AI Bubble Burst Threatens Financial Stability",
+      "label": "fall",
+      "kind": "macro"
+    },
+    {
+      "id": "6086f3c07adc297f9b3db7e97f81b78902b71c8c6f443828d4dc02e31f47c84d",
+      "title": "Bipartisan Backlash Hits Sam Altman Over AI Risk Comments",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "e9b9f9c14ec7bb66da12ea60f2a66c638dbcc6a7d5edbdf94eff67c24c369e39",
+      "title": "26 Year Old in China Suspected of First AI Bank Hacks",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "f852197cb26dafb268b9d798f0b6dfa08d24b971df7308d87202ba3d65259c11",
+      "title": "San Francisco Bans New Data Centers for 45 Days",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "2c51d011b67974562d46a2bd1441aaa772837d1bed9e54dc85f5b72aead3d14d",
+      "title": "Interfaze AI Accused of Copying Chandra OCR 2 for Alleged First of Kind Model",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "05b0efe204cdd5e620764713cf5a258e4faf4a2a1a84294ec64f9f7020429eea",
+      "title": "Automate remediation post AWS DevOps Agent investigation",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "6db9cfacd1169e41319935ecad113412c3920d32400b5c34bcbaaa81a453518c",
+      "title": "National Compute Launches $100M AI Resource Pool for US Government",
+      "label": "rise",
+      "kind": "breaking"
+    },
+    {
+      "id": "570fe3204556675e8dd927e7dbd15e7142796fd7ecb68cb1f56d47b91d75ac01",
+      "title": "Sophos cuts threat investigation time by 96% with OpenAI Daybreak",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "22d238367392bfdbf842a9174c3529a7a4e9ea121c73f1a80f1cdfcc964c29f7",
+      "title": "Last Week in AI #346 - 719 math manuscripts, 2 Western open models, 1 more safety resignation",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "a832e4ca1106f330f93ff384a98dcc42bb1311c0fc7f76673751c8a0fc6ca246",
+      "title": "Flock Safety Cuts 18% of Staff After Surveillance Backlash",
+      "label": "fall",
+      "kind": "hr"
+    },
+    {
+      "id": "05c4b1c7c8ffde82de51706017d2cba9931f1b20421febf93163f520daa22ecf",
+      "title": "AI researcher Mikita Balesni says he believes OpenAI fired him, Tomek Korbak, and Jasmine Wang for \"prioritizing safety over the near-term interests of OpenAI\" (Mikita Balesni/@balesni)",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "05eae333035333e32f756e5c1501e6284bac167eb28d976baa9821180e587a54",
+      "title": "Peter Thiel Warns Antichrist Could Stifle AI Progress in Leaked Lectures",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "f7abd6714882028bc9fea9975ec9212927083569421e4aec1b5355aaf477421b",
+      "title": "Goodfire says its new ‘inside-out’ monitors catch rogue AI agents at a fraction of the cost",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "ea33366c03d086833cca6cdc59b709c4b28750f469a7c6852a0ae00efe3000c0",
+      "title": "Cogent Launches Security Tool After AI Swarm Breaches Hugging Face",
+      "label": "rise",
+      "kind": "tech"
+    },
+    {
+      "id": "bc1b2239208f47d0eec05327ba91444d6493af4c68e97f17b8fae0b96df46c2c",
+      "title": "In PA, FBI agents arrested a co-founder of a Canadian cybersecurity firm specializing in ransomware negotiations, as part of the ShinyHunters investigation (Brian Krebs/Krebs on Security)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "f5517994a87114cdb0922debe9fa5a3c8625df233f8ee11db9754eff9b8c3d60",
+      "title": "OpenAI and Anthropic Wargame Failed AI Bans After System Disaster",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "f6a6a801a14f2e5269a9fb579ecf86e4972ec681fecd9fb081c3c8f745a21129",
+      "title": "AI Unlocks 1,669 Free PS5 Games in First Accelerated Hardware Hack",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "de25b1e6ffe8cbdd6940cf9767429da383cc71c4f5ba21d2d14bd39acf609d1f",
+      "title": "Coinbase Beats Frontier Models in Fraud Detection Using Qwen3.5-9B",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "64fc2a8f84c91b7ab28f97ed627bb801987f761235eb0d27f501b4d90f9f834b",
+      "title": "Dev's Google AI Hack Transcribes 1 Hour of Audio in 13 Seconds",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "651ae2b2ce32d0772e2a3cb6264c4526562d088dc03c62f5c41ee208dad98e2d",
+      "title": "Microsoft Reclaims $4 Trillion Market Cap",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "bfc0856141efb9f86dbb6d3abac3fea43111cf6f4646b50551811e769844d951",
+      "title": "Alleged OpenAI spy vibe-coded a surveillance device using his wife's chatbot account",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "6ec803e44d1742ccbdc9716fc725a309384ba717e011d1917a3019ef40f75ca2",
+      "title": "OpenAI employee arrested for allegedly planting a bug in a conference room",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "b5b8a08608e1d9e3b11b3430a0397b2558e480fdcf69d76f23dca476a4c67044",
+      "title": "I don’t miss the camera on the Ray-Ban Meta Audio glasses",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "a7af6f12fd601af76b7d62b019831641eaf9333638aa178ce6781fdfd756b08f",
+      "title": "US and UK Regulators Intensify AI Probes to Block Systemic Risks",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "c0b77d592a9eb64d6164a1230355ba4d2461e19b70532e4bebde9815cbf442d1",
+      "title": "Your secrets aren’t safe with this cute robot toy — they’re on Chinese servers ready to be hacked",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "91d4e165488e2d370310595ee479ff43b04178a30873eb2faa8c16596ab66571",
+      "title": "A hack of Internet-connected fridge controllers across ~700 European supermarkets exploited critical vulnerabilities in three models flagged by Claroty and CISA (Dan Goodin/Ars Technica)",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "5a503e3d62a8f45c7dd932cf48a12f8ab0aaa74ba6631c2489249e332f37d156",
+      "title": "Apate sends AI agents undercover to get scammed so they can gather fraud intelligence",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "3edeaa8d7764aa277fd52cfb351208e00ccbe8f89c8ee92faf6329aed447d742",
+      "title": "AI agents aren't 'going rogue.' Frontier labs are skipping security basics",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "8110d0fcb26e0dd2525aab154412b053f282af5c6fc8b3c6929b9265922052fa",
+      "title": "OpenAI Compute Head Resigns to Launch Startup Before $750B Buildout",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "2008430566495c0aaf6528d352b9d9a44f795c0d27d8707fce29ea7cb46a9d86",
+      "title": "Grok Voice 3.0 Sets Record by Resolving 70% of Starlink Support",
+      "label": "rise",
+      "kind": "benchmark"
+    },
+    {
+      "id": "a1647df427eb9ef60e433c55cf379ac7dc478cbea8b48e7b10b01d4934996428",
+      "title": "Anthropic’s $65B Revenue Run Rate Precedes First Q3 Disclosure",
+      "label": "fall",
+      "kind": "markets"
+    },
+    {
+      "id": "4646927c3b9e929e2230f56115252b3bdc48c5365758bade50afb0a7b4dc368c",
+      "title": "AI guardrails designed to stop hackers are now blocking defenders, and Orion-1 aims to fill the gap",
+      "label": "neutral",
+      "kind": "product"
+    },
+    {
+      "id": "9480f171aa94b12f88051588d615212cea571b77d0cde4caaa3c39f908ab5580",
+      "title": "AI Model Steals 24 Years of Hospital Data in Government Site Breach",
+      "label": "rise",
+      "kind": "drama"
+    },
+    {
+      "id": "4be5a46cec5945959e36f7afb441a617df44a705921385972e9d90f3acf02623",
+      "title": "The tech backlash is now in theaters",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "a6585d2c76a44c9df915601ac6de27693a54454720666852e0b3a9f4e2b83ccc",
+      "title": "AI Hacks Leave a Mess That AI Companies Aren’t Paying For",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "4b235d19b2c1618b275a6337b795e2ffa13e383c07f885f42a9aed76e9f888e8",
+      "title": "Benn Jordan on Flock, privacy, and the new surveillance backlash",
+      "label": "neutral",
+      "kind": "other"
+    },
+    {
+      "id": "8e0a40afbe4d66155baebb75f8454e4ec9adeefea0b18a427e55a5d7061bb50d",
+      "title": "Q&A with Dwarkesh Patel on his podcast, lessons from history, AGI, the mood in San Francisco, the Hugging Face hack, Chinese AI, pacing the frontier, and more (New York Times)",
+      "label": "neutral",
+      "kind": "other"
+    }
+  ]
+}

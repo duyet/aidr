@@ -1,6 +1,11 @@
 import { BACKFILL_SCORE_CAP, buildUnscoredItemsQuery } from "../backfill.js";
 import { scoreItems } from "../llm.js";
-import { type RankSignalRow, rankScore, rowRankSignals } from "../ranking.js";
+import {
+  type RankSignalRow,
+  rankScore,
+  rowRankSignals,
+  storyCategory,
+} from "../ranking.js";
 import { recordStep } from "../run-stats.js";
 import { normalizeTopics, type ScoredStoryTags } from "../topics.js";
 import { llmStep } from "../workflow-step.js";
@@ -73,6 +78,7 @@ export async function backfillScores(
             publishedAt: row.published_at * 1000,
             now,
             ...rowRankSignals(row),
+            category: storyCategory(result.category),
           });
           await env.DB.prepare(
             `UPDATE items SET

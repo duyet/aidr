@@ -16,7 +16,7 @@ import {
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../media.js";
-import { rankScore, rankSignals } from "../ranking.js";
+import { rankScore, rankSignals, storyCategory } from "../ranking.js";
 import type { FetchedItem } from "../sources/types.js";
 import { MAX_MERGED_TOPICS, unionTopics } from "../topics.js";
 import { RELEVANCE_THRESHOLD } from "./context.js";
@@ -168,6 +168,7 @@ export function planNewItemWrite(input: {
       ...(absorbs ? (canonicalUpdate.members ?? []) : []),
     ]),
     voteNet,
+    category: storyCategory(score?.category),
   });
 
   return {

@@ -38,7 +38,7 @@ function seed() {
   const db = new DatabaseSync(":memory:");
   db.exec(`CREATE TABLE items (
       id TEXT PRIMARY KEY, status TEXT, published_at INTEGER,
-      llm_importance REAL, llm_quality REAL, rank_score REAL,
+      llm_importance REAL, llm_quality REAL, category TEXT, rank_score REAL,
       source_id TEXT, points INTEGER, comments INTEGER, url TEXT,
       duplicate_of TEXT);
     CREATE TABLE item_votes (
@@ -47,7 +47,7 @@ function seed() {
       updated_at INTEGER NOT NULL,
       PRIMARY KEY (item_id, user_id))`);
   const add = db.prepare(
-    `INSERT INTO items VALUES (?, 'published', ?, 8, 8, 1, 'hn', 10, 0, ?, NULL)`
+    `INSERT INTO items VALUES (?, 'published', ?, 8, 8, 'Models', 1, 'hn', 10, 0, ?, NULL)`
   );
   const published = Math.floor(NOW / 1000) - 3600;
   add.run(ITEM, published, "https://example.com/a");
@@ -71,6 +71,9 @@ function expected(published: number, voteNet: number) {
     sourceCount: 1,
     publishedAt: published * 1000,
     now: NOW,
+    // Seeded as Models: a vote that re-scores without the row's category
+    // would silently drop the story's kind weight.
+    category: "Models",
   });
 }
 

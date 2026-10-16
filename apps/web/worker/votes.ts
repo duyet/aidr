@@ -4,6 +4,7 @@ import {
   type RankSignalRow,
   rankScore,
   rowRankSignals,
+  storyCategory,
 } from "./ranking.js";
 
 /** Story ids are the sha256 hex of the canonical URL. */
@@ -32,9 +33,10 @@ interface RankRow extends RankSignalRow {
   published_at: number;
   llm_importance: number | null;
   llm_quality: number | null;
+  category: string | null;
 }
 
-const RANK_ROW_SQL = `SELECT id, status, published_at, llm_importance, llm_quality,
+const RANK_ROW_SQL = `SELECT id, status, published_at, llm_importance, llm_quality, category,
             ${RANK_SIGNAL_COLUMNS}
      FROM items ${RANK_SIGNAL_JOIN}
      WHERE items.id = ?`;
@@ -53,6 +55,7 @@ function scoreOf(row: RankRow, nowMs: number): number {
     publishedAt: row.published_at * 1000,
     now: nowMs,
     ...rowRankSignals(row),
+    category: storyCategory(row.category),
   });
 }
 

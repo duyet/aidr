@@ -30,6 +30,7 @@ import {
   type RankSignalRow,
   rankScore,
   rowRankSignals,
+  storyCategory,
 } from "../ranking.js";
 import { adapters } from "../sources/registry.js";
 import type { SourceLanguage } from "../sources/types.js";
@@ -428,6 +429,7 @@ interface RankingPreviewRow extends RankSignalRow {
   llm_relevance: number | null;
   llm_importance: number | null;
   llm_quality: number | null;
+  category: string | null;
   rank_score: number | null;
 }
 
@@ -448,7 +450,7 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
   const { since, until } = buildTopItemsQuery(now);
   const { results } = await env.DB.prepare(
     `SELECT id, title, published_at,
-            llm_relevance, llm_importance, llm_quality, rank_score,
+            llm_relevance, llm_importance, llm_quality, category, rank_score,
             ${RANK_SIGNAL_COLUMNS}
      FROM items ${RANK_SIGNAL_JOIN}
      WHERE status = 'published' AND published_at >= ? AND published_at < ?
@@ -475,6 +477,7 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
           publishedAt: row.published_at * 1000,
           now,
           ...signals,
+          category: storyCategory(row.category),
         }),
         inputs: {
           relevance: row.llm_relevance,
@@ -992,6 +995,7 @@ export async function reprocessToday(
           publishedAt: row.published_at * 1000,
           now: Date.now(),
           ...rowRankSignals(row),
+          category: storyCategory(score.category),
         });
         statements.push(
           env.DB.prepare(
@@ -1100,6 +1104,7 @@ interface ItemRow extends RankSignalRow {
   llm_relevance: number | null;
   llm_importance: number | null;
   llm_quality: number | null;
+  category: string | null;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -1123,7 +1128,7 @@ export async function updateItem(
   }
   const row = await env.DB.prepare(
     `SELECT id, published_at,
-            llm_relevance, llm_importance, llm_quality,
+            llm_relevance, llm_importance, llm_quality, category,
             ${RANK_SIGNAL_COLUMNS}
      FROM items ${RANK_SIGNAL_JOIN}
      WHERE id = ?`
@@ -1159,6 +1164,7 @@ export async function updateItem(
       publishedAt: row.published_at * 1000,
       now: Date.now(),
       ...rowRankSignals(row),
+      category: storyCategory(row.category),
     });
 
     await env.DB.prepare(

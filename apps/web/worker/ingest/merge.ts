@@ -27,7 +27,7 @@ import {
 } from "../dedupe.js";
 import { parseMediaManifest } from "../media.js";
 import { isMediaManifestSchemaError } from "../media-schema.js";
-import { rankScore, rankSignals } from "../ranking.js";
+import { rankScore, rankSignals, storyCategory } from "../ranking.js";
 import { sourceFamily } from "../source-diversity.js";
 import { officialSourceFor } from "../sources/catalog.js";
 import type { FetchedItemSource } from "../sources/types.js";
@@ -146,6 +146,7 @@ export function buildMergeCandidates(
           url: row.item.url,
         },
       ]),
+      category: storyCategory(score?.category),
     });
     return {
       i,

@@ -50,7 +50,7 @@ describe("writeItems: merge into an existing canonical", () => {
     const db = new DatabaseSync(":memory:");
     db.exec(`CREATE TABLE items (id TEXT PRIMARY KEY, status TEXT,
         published_at INTEGER, points INTEGER, comments INTEGER,
-        llm_importance REAL, llm_quality REAL, rank_score REAL,
+        llm_importance REAL, llm_quality REAL, category TEXT, rank_score REAL,
         tags TEXT, url TEXT, image_url TEXT, media_manifest TEXT,
         source_id TEXT, duplicate_of TEXT);
       CREATE TABLE item_sources (item_id TEXT, position INTEGER, kind TEXT,
@@ -59,7 +59,7 @@ describe("writeItems: merge into an existing canonical", () => {
         value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
         PRIMARY KEY (item_id, user_id));`);
     const add = db.prepare(
-      `INSERT INTO items VALUES (?, ?, ?, ?, 0, 8, 8, ?, '[]',
+      `INSERT INTO items VALUES (?, ?, ?, ?, 0, 8, 8, NULL, ?, '[]',
          'https://example.com/' || ?, NULL, NULL, ?, ?)`
     );
     // Stored score frozen from when it had 2 points and one source.
@@ -97,6 +97,11 @@ describe("writeItems: merge into an existing canonical", () => {
     db.prepare(
       "INSERT INTO item_sources VALUES ('canon', 0, 'source', NULL, NULL, NULL, 'https://a.test')"
     ).run();
+    // Non-flat kinds on both write paths: the merge re-score and the 72h
+    // re-rank each read category from D1, and either could drop it.
+    db.exec(
+      "UPDATE items SET category = 'Models' WHERE id = 'canon'; UPDATE items SET category = 'Funding' WHERE id = 'other'"
+    );
 
     const extraSources = ["b", "c", "d"].map((h) => ({
       kind: "support" as const,
@@ -154,6 +159,7 @@ describe("writeItems: merge into an existing canonical", () => {
       comments: 20,
       publishedAt: (nowSec - 30 * 3600) * 1000,
       now,
+      category: "Models",
       // hn, theverge-ai, aggregator, techcrunch-ai
       sourceCount: 4,
     });
@@ -169,8 +175,20 @@ describe("writeItems: merge into an existing canonical", () => {
     expect(sources.n).toBe(1 + extraSources.length);
     expect(row("canon").rank_score).toBeCloseTo(expected, 6);
     expect(row("canon").rank_score).toBeGreaterThan(6.7);
-    // The window re-rank still ran for the untouched item.
-    expect(row("other").rank_score).not.toBe(1);
+    // The window re-rank still ran for the untouched item, with its kind.
+    expect(row("other").rank_score).toBeCloseTo(
+      rankScore({
+        importance: 8,
+        quality: 8,
+        points: 0,
+        comments: 0,
+        sourceCount: 1,
+        publishedAt: (nowSec - 10 * 3600) * 1000,
+        now,
+        category: "Funding",
+      }),
+      6
+    );
   });
 
   it("logs a summary change before the item upsert and leaves title unlogged", async () => {
@@ -429,6 +447,7 @@ describe("writeItems: an official post takes the canonical", () => {
       quality: 5,
       publishedAt: (nowSec - 3600) * 1000,
       now,
+      category: "" as const,
       ...rankSignals([
         { sourceId: "official", points: 0, comments: 0, url: OFFICIAL_URL },
       ]),

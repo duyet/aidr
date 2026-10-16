@@ -51,6 +51,7 @@ import {
   type RankMember,
   rankScore,
   rankSignals,
+  storyCategory,
 } from "../ranking.js";
 import { officialSourceFor } from "../sources/catalog.js";
 import type {
@@ -304,6 +305,7 @@ export interface UnmergeItemRow {
   llm_relevance: number | null;
   llm_importance: number | null;
   llm_quality: number | null;
+  category: string | null;
   rank_score: number | null;
   source_lang: string | null;
   /** The vi->en title (`translations`, lang `en`), if one is stored. */
@@ -1695,6 +1697,7 @@ function clusterScore(
     now: freezeNowMs(row.published_at, nowMs),
     ...rankSignals(cluster),
     voteNet: row.vote_net,
+    category: storyCategory(row.category),
   });
 }
 

@@ -46,7 +46,7 @@ function chunks<T>(values: readonly T[], size: number): T[][] {
 
 const ITEM_COLUMNS = `id, source_id, url, title, summary, status, duplicate_of,
   points, comments, tags, image_url, media_manifest, published_at, fetched_at,
-  llm_relevance, llm_importance, llm_quality, rank_score, source_lang,
+  llm_relevance, llm_importance, llm_quality, category, rank_score, source_lang,
   (SELECT t.title FROM translations t WHERE t.item_id = items.id AND t.lang = 'en') AS title_en,
   (SELECT COALESCE(SUM(v.value), 0) FROM item_votes v WHERE v.item_id = items.id) AS vote_net,
   (SELECT COUNT(*) FROM notifications n WHERE n.item_id = items.id) AS notifications,

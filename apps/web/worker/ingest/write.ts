@@ -18,6 +18,7 @@ import {
   rankScore,
   rankSignals,
   rowRankSignals,
+  storyCategory,
 } from "../ranking.js";
 import type { FetchedItemSource } from "../sources/types.js";
 import { toEpochSeconds } from "../time.js";
@@ -98,7 +99,7 @@ async function existingCanonicalStatements(
 ): Promise<D1PreparedStatement[]> {
   const existingRow = await env.DB.prepare(
     `SELECT tags, url, image_url, media_manifest, source_id,
-            published_at, llm_importance, llm_quality,
+            published_at, llm_importance, llm_quality, category,
             (SELECT COALESCE(SUM(value), 0) FROM item_votes WHERE item_id = items.id) AS vote_net
      FROM items WHERE id = ?`
   )
@@ -109,6 +110,7 @@ async function existingCanonicalStatements(
         published_at: number;
         llm_importance: number | null;
         llm_quality: number | null;
+        category: string | null;
         vote_net: number | null;
       }
     >();
@@ -177,6 +179,7 @@ async function existingCanonicalStatements(
         // The window re-rank reads vote_net itself. This write skips that
         // row, so the merge score has to carry the votes or they vanish.
         voteNet: existingRow.vote_net ?? 0,
+        category: storyCategory(existingRow.category),
       })
     : null;
 
@@ -281,6 +284,7 @@ async function rerankRecentStatements(
         published_at: number;
         llm_importance: number | null;
         llm_quality: number | null;
+        category: string | null;
       }
     >();
 
@@ -295,6 +299,7 @@ async function rerankRecentStatements(
         publishedAt: row.published_at * 1000,
         now,
         ...rowRankSignals(row),
+        category: storyCategory(row.category),
       }),
     }));
   if (scores.length === 0) return [];

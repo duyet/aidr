@@ -147,7 +147,9 @@ Three first-class ways: [${SITE_URL}/subscribe](${SITE_URL}/subscribe?lang=en) (
 
 ## Ranking (do not reimplement)
 
-rank_score = importance^1.5/√10 × (0.6 + 0.4·quality/10) × exp(−ageHours/36) (steeper after 24h) × min((1 + log10(1 + points + 0.5·comments)) × (1 + 0.12·(min(sourceCount, 8) − 1)), 3.25) × (1 + 0.2·min(voteNet, 6)) × a fading boost for importance ≥ 8 in the first hours
+rank_score = importance^1.5/√10 × (0.6 + 0.4·quality/10) × exp(−ageHours/36) (steeper after 24h) × min((1 + log10(1 + points + 0.5·comments)) × (1 + 0.12·(min(sourceCount, 8) − 1)), 3.25) × (1 + 0.2·min(voteNet, 6)) × kind(category) × a fading boost for importance ≥ 8 in the first hours
+
+kind(category) weighs the scorer's category: Models and Regulation 1.2, Open Source and Agents 1.15, Research, Chips and Tools 1.1, Frameworks 1.05, Industry 0.9, Funding 0.85, every other category 1.
 
 voteNet is the sum of signed-in reader votes on that story (+1 / −1, one per reader). Each net vote is ×1.2, up to six; a negative net divides by the same amount. Do not add a separate trending boost.
 

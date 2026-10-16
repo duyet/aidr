@@ -232,6 +232,7 @@ describe("buildMergeCandidates", () => {
         comments: 0,
         publishedAt: rows[0].item.publishedAt * 1000,
         now: NOW,
+        category: "",
         sourceCount: 0,
       })
     );
@@ -243,6 +244,7 @@ describe("buildMergeCandidates", () => {
         comments: 0,
         publishedAt: rows[1].item.publishedAt * 1000,
         now: NOW,
+        category: "",
         sourceCount: 0,
       })
     );
@@ -396,6 +398,7 @@ describe("planNewItemWrite", () => {
       mergeEntry: undefined,
       canonicalTags: ["llm"],
       now: NOW,
+      category: "",
     };
     const alone = planNewItemWrite({ ...base, canonicalUpdate: undefined });
     const absorbed = planNewItemWrite({
