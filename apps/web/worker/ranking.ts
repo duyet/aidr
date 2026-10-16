@@ -135,6 +135,28 @@ export function hasReaderEngagement(sourceId: string): boolean {
   return findSourceSpec(sourceId)?.engagement === "reader";
 }
 
+/** Points a story needed before this source fetched it at all (HN's
+ *  `popularMinPoints`, 20 since migration 0069). 0 for a source with no
+ *  floor. Engagement counted above it measures what the crowd added. */
+export function admissionFloor(sourceId: string): number {
+  const floor = findSourceSpec(sourceId)?.config.popularMinPoints;
+  return typeof floor === "number" && Number.isFinite(floor) && floor > 0
+    ? floor
+    : 0;
+}
+
+export type StoryKind = "drama" | "other";
+
+/** Headline words that mark conflict news: legal action, regulators,
+ *  departures, leaks, breaches and backlash. Title only, no LLM. */
+const DRAMA_RE =
+  /\b(lawsuit|sues?|sued|suing|subpoena\w*|antitrust|probes?|investigat(?:es|ed|ion)|fires?d?|fired|ousts?|ousted|resigns?|resignation|steps? down|quits?|leak(?:s|ed)?|feud|backlash|boycott|scandal|whistleblower|fraud|breach(?:es|ed)?|hack(?:s|ed|ers?)?|ban(?:s|ned)?|revok\w+|accus\w+|alleg\w+|rogue|deleted? (?:the |its |a )?(?:production )?database|wiped)\b/i;
+
+/** The kind of story a headline tells, read from the title alone. */
+export function storyKind(title: string): StoryKind {
+  return DRAMA_RE.test(title) ? "drama" : "other";
+}
+
 /** One item of a story's cluster: the canonical or an item merged into it. */
 export interface RankMember {
   sourceId: string;
@@ -148,18 +170,25 @@ export interface RankMember {
  *  families, so tweets on one aggregator story or a mirror pair count once.
  *  Points/comments are the highest reader engagement in the cluster; an
  *  aggregator's author/tweet counts never count. */
-export function rankSignals(
-  members: readonly RankMember[]
-): Required<Pick<RankScoreInput, "points" | "comments" | "sourceCount">> {
+export function rankSignals(members: readonly RankMember[]): Required<
+  Pick<RankScoreInput, "points" | "comments" | "sourceCount">
+> & {
+  /** `admissionFloor` of the reader source whose points were taken. */
+  engagementFloor: number;
+} {
   const families = new Set(members.map((m) => sourceFamily(m.sourceId, m.url)));
   let points = 0;
   let comments = 0;
+  let engagementFloor = 0;
   for (const m of members) {
     if (!hasReaderEngagement(m.sourceId)) continue;
-    points = Math.max(points, m.points ?? 0);
+    if ((m.points ?? 0) >= points) {
+      points = m.points ?? 0;
+      engagementFloor = admissionFloor(m.sourceId);
+    }
     comments = Math.max(comments, m.comments ?? 0);
   }
-  return { points, comments, sourceCount: families.size };
+  return { points, comments, sourceCount: families.size, engagementFloor };
 }
 
 /** Net reader votes, one grouped scan. Ranking queries leave `items`
