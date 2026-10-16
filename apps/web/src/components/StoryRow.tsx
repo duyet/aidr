@@ -142,7 +142,11 @@ export function StoryRow({
     let stale = false;
     detailRequested.current = true;
     fetch(`/api/story${storyPath(item, requestedLang)}`)
-      .then((res) => (res.ok ? (res.json() as Promise<FeedItem>) : null))
+      .then((res) => {
+        if (res.ok) return res.json() as Promise<FeedItem>;
+        if (res.status === 404) return null;
+        throw new Error(`story ${res.status}`);
+      })
       .then((full) => {
         if (stale || langRef.current !== requestedLang) return;
         // Fall back to the lean row so the loading line clears even
@@ -151,8 +155,8 @@ export function StoryRow({
       })
       .catch(() => {
         if (stale || langRef.current !== requestedLang) return;
-        // Show the lean row (meta/topics) and allow a retry on the
-        // next expand.
+        // A 5xx or offline read: show the lean row (meta/topics) and
+        // allow a retry on the next expand.
         detailRequested.current = false;
         setDetail(item);
       });

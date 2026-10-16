@@ -24,7 +24,7 @@ export function DialogHeader({
   onToggleBilingual,
   onClose,
 }: {
-  item: FeedItem | null | undefined;
+  item: FeedItem | undefined;
   title: string | undefined;
   fallbackFromEnglish: boolean;
   hasVi: boolean;

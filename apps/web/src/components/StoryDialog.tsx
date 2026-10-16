@@ -39,7 +39,8 @@ export function StoryDialog({
   const [activeId, setActiveId] = useState(idPrefix);
   const [feed, setFeed] = useState(() => getCachedFeed(lang));
   const { prefs, setPrefs } = usePrefs();
-  const item = useStoryItem(activeId, lang);
+  const { state, retry } = useStoryItem(activeId, lang);
+  const item = state.status === "ready" ? state.item : undefined;
   const hasVi = Boolean(item?.title_vi || item?.summary_vi);
   const bilingual = isBilingualDialog(prefs.bilingualDialog, hasVi);
   const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -102,15 +103,35 @@ export function StoryDialog({
         </div>
 
         <div className={STORY_DIALOG_BODY_CLASS}>
-          {item === undefined && (
+          {state.status === "loading" && (
             <p className="text-sm text-muted-foreground">
               {lang === "vi" ? "Đang tải..." : "Loading..."}
             </p>
           )}
-          {item === null && (
+          {state.status === "missing" && (
             <p className="text-sm text-muted-foreground">
               {lang === "vi" ? "Không tìm thấy tin." : "Story not found."}
             </p>
+          )}
+          {state.status === "failed" && (
+            <div className="text-sm text-muted-foreground">
+              <p>
+                {lang === "vi"
+                  ? "Không tải được tin."
+                  : "The story could not be loaded."}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  // The button unmounts on retry; keep focus inside the dialog.
+                  panelRef.current?.focus();
+                  retry();
+                }}
+                className="mt-2 font-bold text-foreground underline-offset-2 hover:underline"
+              >
+                {lang === "vi" ? "Thử lại" : "Try again"}
+              </button>
+            </div>
           )}
           {item && (
             <StoryDetail
