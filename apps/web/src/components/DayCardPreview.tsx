@@ -1,5 +1,5 @@
 import { AlignLeft, ImageIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { dayArchiveOgPath } from "../lib/day-archive";
 import type { Lang } from "../lib/types";
 
@@ -12,10 +12,13 @@ export function DayCardViewSwitch({
   lang,
   showImage,
   onChange,
+  onIntent,
 }: {
   lang: Lang;
   showImage: boolean;
   onChange: (showImage: boolean) => void;
+  /** Pointer or focus reached the switch: warm the card before the click. */
+  onIntent?: () => void;
 }) {
   const views = [
     {
@@ -33,6 +36,8 @@ export function DayCardViewSwitch({
     <fieldset
       aria-label={lang === "vi" ? "Kiểu hiển thị" : "View"}
       className="m-0 flex min-w-0 gap-1 rounded-full border-0 bg-[#0a0a0a]/10 p-0.5"
+      onPointerEnter={onIntent}
+      onFocus={onIntent}
     >
       {views.map(({ image, Icon, label }) => {
         const active = showImage === image;
@@ -60,26 +65,26 @@ export function DayCardViewSwitch({
 
 /**
  * The day card shown in place of the bullet list while the image view is
- * on, at the full body width (capped so it fits the screen). The image loads
- * shortly after the page settles (or on first switch, if sooner) and then
- * stays mounted, so switching shows it instantly.
+ * on, at the full body width (capped so it fits the screen). The card is a
+ * 600 KB PNG, so it is fetched only once the reader shows intent (pointer or
+ * focus on the switch, `warm`) or opens the view, and then stays mounted so
+ * switching back and forth is instant. A timer used to fetch it 2 s after
+ * every homepage load, which was a third of the page's bytes for a view
+ * most readers never open.
  */
 export function DayCardView({
   date,
   lang,
   open,
+  warm = false,
 }: {
   date: string;
   lang: Lang;
   open: boolean;
+  warm?: boolean;
 }) {
   const [wanted, setWanted] = useState(false);
-  if (open && !wanted) setWanted(true);
-  // Warm the image once the page has settled, so the first hover is instant.
-  useEffect(() => {
-    const timer = setTimeout(() => setWanted(true), 2000);
-    return () => clearTimeout(timer);
-  }, []);
+  if ((open || warm) && !wanted) setWanted(true);
   return (
     <div hidden={!open} className={open ? "flex justify-center" : "hidden"}>
       {wanted ? (
