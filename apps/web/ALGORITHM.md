@@ -569,9 +569,12 @@ wrapper, so feed hits do count. Compare surfaces week over week, not as
 absolute traffic.
 
 The Worker's own cache (`edge-cache.ts`) keeps an SSR entry fresh for the
-page's `s-maxage`, then serves it stale for up to `EDGE_CACHE_STALE_S` (6h)
+page's `s-maxage`, then serves it stale for up to `EDGE_CACHE_STALE_S` (1h)
 while one background render per key per isolate refreshes it, so a colo
-re-renders off the request path instead of on it. `Server-Timing: aidr-cache`
+re-renders off the request path instead of on it. For the homepage policy
+(`s-maxage=300, stale-while-revalidate=600`) a reader without a browser copy
+sees a render at most 80 minutes old: 5m fresh + 1h stale in the Worker, then
+5m + 10m at the CDN. `Server-Timing: aidr-cache`
 reports `HIT`, `STALE` or `MISS`; web-vitals splits by the same value.
 
 There is no read endpoint yet: querying needs an account API token secret that
