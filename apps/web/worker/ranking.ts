@@ -30,8 +30,8 @@ export type StoryCategory = Category | "";
  *  everything else is flat. Replay over 14 days to 2026-10-16
  *  (`rank-replay`, `base+K4`, gold set labelled before tuning): gold "rise"
  *  stories held 54.4% of top-10 slots instead of 49.0% and "fall" stories
- *  10.1% instead of 15.1%, with every rise kind at or above its old share
- *  and staleness, duplicate slots and the vote guards unchanged. The first
+ *  10.1% instead of 15.1%, with every rise kind at or above its old share;
+ *  duplicate slots and median age moved by 0.01 slot and 0.1h. The first
  *  table (`K1`: Regulation 1.05, Agents 1.1) cut breaking stories' share. */
 export const STORY_KIND_WEIGHTS: Readonly<Record<Category, number>> = {
   Models: 1.2,

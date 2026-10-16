@@ -1600,9 +1600,12 @@ and `rank-replay` (below):
   it (29 of 101 drama stories are filed under Industry), and a
   scorer-side kind is #919. Regulation 1.2 carries breaking news (24 of
   37 breaking stories are Regulation), Agents 1.15 the agent incidents
-  in drama. Top-30 staleness (0.18 stories over 36h), duplicate slots
-  (0.20 vs 0.19), median age (8.5h vs 8.4h) and the vote guards did not
-  move; importance-8 stories reaching the top 10 went from 73% to 72%.
+  in drama. Top-30 staleness stayed at 0.18 stories over 36h, duplicate
+  slots went from 0.19 to 0.20 and median age from 8.4h to 8.5h, the vote
+  guards did not move, and importance-8 stories reaching the top 10 went
+  from 73% to 72%. Several tables in the grid passed the same gates; the
+  nearest (Agents 1.1) had 6 more breaking story-hours and 0.19 duplicate
+  slots but less drama, tech and research, so `K4` won on balance.
   Overlap with the stored TL;DR picks fell from 0.484 to 0.460, which the
   replay's bias predicts (those picks were made by the old formula). The
   weights were picked on the same 14 days and gold set they are judged
