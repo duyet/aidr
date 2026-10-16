@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { archiveDateOfSec } from "../../src/lib/day-archive.js";
+import { stripItemDetail } from "../../src/lib/feed-fn.js";
 import { getDayArchive, getFeed } from "../../src/lib/feed-queries.js";
 import { dayFeedParams, homepageFeedUrl } from "../../src/lib/homepage-feed.js";
 import { handleFeedXmlRequest } from "../../src/lib/rss.js";
@@ -244,5 +245,120 @@ describe("reads never reach a published surface or the API's numbers", () => {
     if (!date) throw new Error("no archive date");
     const archive = await getDayArchive(db, date);
     expect(archive.day?.items.map((i) => i.id)).toEqual([lead, wellRead]);
+  });
+});
+
+describe("the collapsed homepage feed computes has_detail in SQL", () => {
+  interface Seed {
+    summary: string | null;
+    summaryEn?: { text: string; current: boolean };
+    summaryVi?: string;
+    sources?: number;
+  }
+
+  const cases: Array<[string, Seed, boolean]> = [
+    [
+      "a NULL summary with nothing else has no detail (defect: NULL counted as text)",
+      { summary: null },
+      false,
+    ],
+    [
+      "an empty summary has no detail (defect: '' counted as text)",
+      { summary: "" },
+      false,
+    ],
+    [
+      "a summary has detail (defect: the summary term dropped)",
+      { summary: "x" },
+      true,
+    ],
+    [
+      "a current summary_en has detail (defect: enSummarySql ignored)",
+      { summary: null, summaryEn: { text: "en", current: true } },
+      true,
+    ],
+    [
+      "a stale summary_en over an empty summary has no detail (defect: stale translation counted)",
+      { summary: "", summaryEn: { text: "en", current: false } },
+      false,
+    ],
+    [
+      "a VI-only summary has detail (defect: the VI summary term dropped)",
+      { summary: null, summaryVi: "vi summary" },
+      true,
+    ],
+    [
+      "an empty VI summary has no detail (defect: '' VI counted as text)",
+      { summary: null, summaryVi: "" },
+      false,
+    ],
+    [
+      "sources alone have detail (defect: the item_sources EXISTS term dropped)",
+      { summary: null, sources: 3 },
+      true,
+    ],
+    [
+      "a whitespace summary has detail, as stripItemDetail treats it (defect: SQL trims where JS does not)",
+      { summary: " " },
+      true,
+    ],
+  ];
+
+  function seedCase(seed: Seed, n: number) {
+    const id = storyId(n);
+    addStory(id, `src-${n}`, 10 - n * 0.01);
+    sqlite
+      .prepare("UPDATE items SET summary = ? WHERE id = ?")
+      .run(seed.summary, id);
+    if (seed.summaryEn) {
+      const { r } = sqlite
+        .prepare("SELECT source_revision AS r FROM items WHERE id = ?")
+        .get(id) as { r: number };
+      sqlite
+        .prepare(
+          "UPDATE items SET summary_en = ?, summary_en_revision = ? WHERE id = ?"
+        )
+        .run(seed.summaryEn.text, seed.summaryEn.current ? r : r + 7, id);
+    }
+    if (seed.summaryVi !== undefined) {
+      sqlite
+        .prepare(
+          "INSERT INTO translations (item_id, lang, title, summary) VALUES (?, 'vi', ?, ?)"
+        )
+        .run(id, `VI ${id.slice(0, 8)}`, seed.summaryVi);
+    }
+    for (let p = 0; p < (seed.sources ?? 0); p++) {
+      sqlite
+        .prepare(
+          "INSERT INTO item_sources (item_id, position, kind, url) VALUES (?, ?, 'support', ?)"
+        )
+        .run(id, p, `https://s.test/${n}/${p}`);
+    }
+    return id;
+  }
+
+  it.each(cases)("%s", async (_name, seed, expected) => {
+    const id = seedCase(seed, 0);
+    const collapsed = await getFeed(db, { readOrder: true, detail: false });
+    const item = collapsed.days
+      .flatMap((d) => d.items)
+      .find((i) => i.id === id);
+    expect(item?.lazyDetail).toBe(expected);
+  });
+
+  it("collapsed output equals the full output stripped, with the same trending (defect: SQL and stripItemDetail disagree)", async () => {
+    for (const [n, [, seed]] of cases.entries()) seedCase(seed, n);
+    const full = await getFeed(db, { readOrder: true });
+    const collapsed = await getFeed(db, { readOrder: true, detail: false });
+    const stripped = full.days.map((d) => ({
+      ...d,
+      items: d.items.map(stripItemDetail),
+    }));
+    expect(collapsed.days).toEqual(stripped);
+    expect(JSON.stringify(collapsed.days)).toBe(JSON.stringify(stripped));
+    expect(collapsed.trending).toEqual(full.trending);
+    expect(
+      collapsed.days.flatMap((d) => d.items).map((i) => i.lazyDetail)
+    ).toEqual(cases.map(([, , expected]) => expected));
   });
 });
