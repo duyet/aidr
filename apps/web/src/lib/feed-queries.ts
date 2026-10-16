@@ -17,7 +17,6 @@ import {
 import { sourceFamily } from "../../worker/source-diversity.js";
 import {
   collectTrendingCandidates,
-  ensureTopicLearningSchema,
   learnedKeywordsStmt,
   learningDayKey,
   rankTrendingWithGrowth,
@@ -214,73 +213,52 @@ interface SourceRow {
   url: string | null;
 }
 
-/**
- * One batch for every read that follows the main query: the item_sources
- * chunks (chunked to stay under D1's bound-parameter limit; none for a
- * collapsed feed) plus the two topic-learning SELECTs. A single D1
- * round-trip for all of them. Any statement failing (e.g. item_sources
- * missing pre-migration) fails the batch — the same empty fallbacks the
- * individual callers had apply.
- */
-async function attachSourcesAndTopics(
-  db: DbReader,
-  items: FeedItem[],
-  yesterday: string,
-  withSources: boolean
-): Promise<{
-  yesterdayCounts: Map<string, number>;
-  learnedKeywords: string[];
-}> {
-  let learnedKeywords: string[] = [];
-  let yesterdayCounts = new Map<string, number>();
+/** Statement order in the feed batch. `sources` is only present for a
+ * full feed (`detail: true`); a collapsed feed never moves sources out of
+ * D1. */
+const FEED_BATCH = {
+  items: 0,
+  categories: 1,
+  tldr: 2,
+  fetchedAt: 3,
+  older: 4,
+  learnedKeywords: 5,
+  topicDaily: 6,
+  sources: 7,
+} as const;
+
+function attachSourcesAndTopics(
+  batched: D1Result[],
+  items: FeedItem[]
+): { yesterdayCounts: Map<string, number>; learnedKeywords: string[] } {
   const byId = new Map(items.map((i) => [i.id, i]));
-  const ids = withSources ? [...byId.keys()] : [];
-  const stmts: D1PreparedStatement[] = [];
-  for (let i = 0; i < ids.length; i += 90) {
-    const chunk = ids.slice(i, i + 90);
-    const placeholders = chunk.map(() => "?").join(",");
-    stmts.push(
-      db
-        .prepare(
-          `SELECT item_id, kind, author, posted_at, quote, url FROM item_sources
-           WHERE item_id IN (${placeholders}) ORDER BY item_id, position`
-        )
-        .bind(...chunk)
-    );
+  for (const row of (batched[FEED_BATCH.sources]?.results ??
+    []) as SourceRow[]) {
+    const sourceUrl = canonicalizeMediaUrl(row.url);
+    byId.get(row.item_id)?.sources.push({
+      kind: row.kind,
+      author: row.author,
+      posted_at: row.posted_at,
+      quote: row.quote,
+      url:
+        sourceUrl && sourceUrl.length <= FEED_SOURCE_URL_MAX_LENGTH
+          ? sourceUrl
+          : null,
+    });
   }
-  const sourceStmtCount = stmts.length;
-  stmts.push(learnedKeywordsStmt(db), topicDailyCountsStmt(db, yesterday));
-  try {
-    const batched = await db.batch(stmts);
-    for (const res of batched.slice(0, sourceStmtCount)) {
-      for (const row of (res.results ?? []) as SourceRow[]) {
-        const sourceUrl = canonicalizeMediaUrl(row.url);
-        byId.get(row.item_id)?.sources.push({
-          kind: row.kind,
-          author: row.author,
-          posted_at: row.posted_at,
-          quote: row.quote,
-          url:
-            sourceUrl && sourceUrl.length <= FEED_SOURCE_URL_MAX_LENGTH
-              ? sourceUrl
-              : null,
-        });
-      }
-    }
-    learnedKeywords = readableLearnedKeywords(
-      (batched[sourceStmtCount]?.results ?? []) as { keyword: string }[]
-    );
-    yesterdayCounts = new Map(
-      (
-        (batched[sourceStmtCount + 1]?.results ?? []) as {
-          topic: string;
-          count: number;
-        }[]
-      ).map((r) => [r.topic, r.count])
-    );
-  } catch {
-    // item_sources table may not exist yet (pre-migration) — feed still works
-  }
+  const learnedKeywords = readableLearnedKeywords(
+    (batched[FEED_BATCH.learnedKeywords]?.results ?? []) as {
+      keyword: string;
+    }[]
+  );
+  const yesterdayCounts = new Map(
+    (
+      (batched[FEED_BATCH.topicDaily]?.results ?? []) as {
+        topic: string;
+        count: number;
+      }[]
+    ).map((r) => [r.topic, r.count])
+  );
   return { yesterdayCounts, learnedKeywords };
 }
 
@@ -553,36 +531,48 @@ export async function getFeed(
   const nowMs = Date.now();
   const yesterday = learningDayKey(nowMs - 24 * 60 * 60 * 1000);
 
-  // One batch, one D1 round-trip — each ~1.5s of latency otherwise. The
-  // topic-learning DDL is module-cached and touches disjoint tables, so a
-  // cold isolate runs it alongside this batch instead of serially.
-  const [mainResults] = await Promise.all([
-    db.batch([
-      db.prepare(sql).bind(...binds),
-      db
-        .prepare(
-          `SELECT category AS name, COUNT(*) AS count FROM items
+  // One batch, one D1 round trip. A far colo pays roughly 300ms per trip to
+  // the primary (measured from HKG), so nothing that follows the item query
+  // may wait for its ids: sources select off the same item query instead.
+  const stmts = [
+    db.prepare(sql).bind(...binds),
+    db
+      .prepare(
+        `SELECT category AS name, COUNT(*) AS count FROM items
          WHERE status = 'published' AND category IS NOT NULL AND published_at >= ? AND published_at < ?
          GROUP BY category ORDER BY count DESC`
-        )
-        .bind(since, until),
-      db.prepare(
-        "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots ORDER BY date DESC LIMIT 1"
-      ),
-      db.prepare(NEWEST_PUBLISHED_FETCHED_AT_SQL),
-      db
-        .prepare(
-          `SELECT 1 AS yes FROM items
+      )
+      .bind(since, until),
+    db.prepare(
+      "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots ORDER BY date DESC LIMIT 1"
+    ),
+    db.prepare(NEWEST_PUBLISHED_FETCHED_AT_SQL),
+    db
+      .prepare(
+        `SELECT 1 AS yes FROM items
          WHERE status = 'published' AND published_at < ?
          LIMIT 1`
+      )
+      .bind(since),
+    learnedKeywordsStmt(db),
+    topicDailyCountsStmt(db, yesterday),
+  ];
+  if (detail) {
+    stmts.push(
+      db
+        .prepare(
+          `SELECT item_id, kind, author, posted_at, quote, url FROM item_sources
+           WHERE item_id IN (SELECT id FROM (${sql})) ORDER BY item_id, position`
         )
-        .bind(since),
-    ]),
-    ensureTopicLearningSchema(db).catch(() => {
-      // DDL is best-effort; the topic reads below fall back to empty.
-    }),
-  ]);
-  const [itemsRes, catsRes, tldrRes, fetchedRes, olderRes] = mainResults;
+        .bind(...binds)
+    );
+  }
+  const batched = await db.batch(stmts);
+  const itemsRes = batched[FEED_BATCH.items];
+  const catsRes = batched[FEED_BATCH.categories];
+  const tldrRes = batched[FEED_BATCH.tldr];
+  const fetchedRes = batched[FEED_BATCH.fetchedAt];
+  const olderRes = batched[FEED_BATCH.older];
 
   const rows = (itemsRes.results ?? []) as ItemRow[];
   const items = capSourceShare(rows.map((row) => toFeedItem(row, detail)));
@@ -592,12 +582,9 @@ export async function getFeed(
   const sourceCounts = detail
     ? undefined
     : new Map(rows.map((row) => [row.id, row.source_count ?? 0]));
-  // Sources chunks + learned keywords + yesterday's counts: one round-trip.
-  const { yesterdayCounts, learnedKeywords } = await attachSourcesAndTopics(
-    db,
-    items,
-    yesterday,
-    detail
+  const { yesterdayCounts, learnedKeywords } = attachSourcesAndTopics(
+    batched,
+    items
   );
   // Trending: prefer versioned models / products extracted from titles
   // (GPT-6 Astra, Fable 5.1) over generic score themes (llm, agent).

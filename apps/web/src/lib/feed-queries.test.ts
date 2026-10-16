@@ -93,8 +93,9 @@ function fakeFeedDb(
 ) {
   const prepared: Prepared[] = [];
   const resultFor = (sql: string) => {
-    if (sql.includes("FROM items i")) return { results: items };
+    // The sources statement embeds the item query, so test it first.
     if (sql.includes("FROM item_sources\n")) return { results: sources };
+    if (sql.includes("FROM items i")) return { results: items };
     return { results: [] };
   };
   const db = {
