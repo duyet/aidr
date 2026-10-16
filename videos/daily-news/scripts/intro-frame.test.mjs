@@ -175,6 +175,7 @@ test("the chapter rail shows its whole dateline inside the frame on the year's l
   const cases = [
     { lang: "en", date: longestDate(2026, "en") },
     { lang: "vi", date: longestDate(2026, "vi") },
+    { lang: "en", date: "2026-09-30" },
     { lang: "vi", date: "2026-12-30" },
     ...["en", "vi"].map((lang) => ({
       lang,

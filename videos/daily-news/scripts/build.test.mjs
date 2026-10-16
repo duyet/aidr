@@ -4,7 +4,7 @@ import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import { AXES } from "./looks/index.mjs";
-import { soundFor } from "./looks/sound.mjs";
+import { BED, soundFor } from "./looks/sound.mjs";
 import { ROOT, runBuild, scratchRoot } from "./scratch-root.mjs";
 
 const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
@@ -306,4 +306,36 @@ test("every intro escapes the script's text, so a headline cannot inject markup"
       }
     }
   }
+});
+
+test("a cut too long for the day's bed start records the earlier phrase start it moved back to", () => {
+  // 2026-09-30 rotates to the 56 s start, which leaves the bed room for 124 s. A longer cut ran off the bed.
+  const date = "2026-09-30";
+  assert.equal(soundFor(date).bedStart, 56);
+  const { dn, cleanup } = scratchRoot();
+  cleanups.push(cleanup);
+  const dir = join(dn, "editions", date);
+  mkdirSync(join(dir, "assets"), { recursive: true });
+  const edition = {
+    ...read(join(ROOT, "editions/2026-10-10/edition.json")),
+    date,
+  };
+  writeFileSync(join(dir, "edition.json"), JSON.stringify(edition));
+  const script = read(join(ROOT, "editions/2026-10-10/script.json"));
+  for (const s of script.stories) s.voice = [...s.voice, { ...s.voice[0] }];
+  writeFileSync(join(dir, "script.json"), JSON.stringify(script));
+  for (const s of edition.stories)
+    for (const im of s.images) writeFileSync(join(dir, im.local), "");
+  const run = runBuild(dn, [date, "--no-voice", "--no-audio"]);
+  assert.equal(run.status, 0, run.stderr);
+  const { total, sound } = read(join(dir, "timeline.json"));
+  assert.ok(total > BED.duration - 56, `the cut runs ${total}s`);
+  assert.ok(
+    BED.starts.daily.includes(sound.bedStart) && sound.bedStart < 56,
+    `starts on an earlier phrase, got ${sound.bedStart}`
+  );
+  assert.ok(
+    sound.bedStart + total <= BED.duration,
+    `${sound.bedStart} + ${total}`
+  );
 });
