@@ -221,6 +221,22 @@ describe("withSsrHead cuts the head at the raw `</head>` bytes", () => {
       ])
     );
   });
+
+  // With no `</head>` every byte is held until the stream ends, so a flush
+  // that drops or reorders the held chunks loses the page.
+  it("flushes every held byte in order when `</head>` never arrives", async () => {
+    const bytes = new Uint8Array([
+      ...enc.encode("<html><body><p>Đọc</p>"),
+      0xff,
+      ...enc.encode("<p>x</p></body></html></hea"),
+    ]);
+    const res = withSsrHead(
+      new Request("https://aidr.today/01234567"),
+      streamed(bytes, [3, 10, 17, 24, bytes.byteLength - 2]),
+      undefined
+    );
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+  });
 });
 
 describe("withSsrHead leaves API responses alone", () => {
