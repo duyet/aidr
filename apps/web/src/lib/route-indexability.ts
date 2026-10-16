@@ -406,6 +406,20 @@ export function routeIndexability(
   return ERROR_POLICY;
 }
 
+/**
+ * A response that sets a cookie belongs to one reader, whatever its route's
+ * policy: Clerk's token refresh can add Set-Cookie to a public GET, and a
+ * shared cache outside Cloudflare would replay it to others. The Worker runs
+ * this last, so paths that skip `withRouteIndexabilityHeaders` (`/feed.json`,
+ * server functions) are covered too.
+ */
+export function withPrivateSetCookie(response: Response): Response {
+  if (!response.headers.has("Set-Cookie")) return response;
+  const out = new Response(response.body, response);
+  out.headers.set("Cache-Control", PRIVATE_CACHE_CONTROL);
+  return out;
+}
+
 /** Apply the same route contract to HTTP responses after route rendering. */
 export async function withRouteIndexabilityHeaders(
   request: Request,
