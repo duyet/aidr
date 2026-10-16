@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   markStage,
+  markStageIfWaited,
   SERVER_TIMING_HEADER,
   withRequestTiming,
   withServerTiming,
@@ -87,6 +88,21 @@ describe("request timing", () => {
     );
     expect(header(response)).toMatch(/^aidr-cache;desc=MISS, total;dur=/);
     expect(await response.text()).toBe("body");
+  });
+
+  // Defect: #896, a catch-all `ssr` stage after pure CPU printed `ssr;dur=0`
+  // on every homepage miss.
+  it("omits a stage that waited on no I/O and keeps one that did", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.UTC(2026, 9, 16));
+    const response = await withRequestTiming(async () => {
+      markStageIfWaited("idle");
+      vi.advanceTimersByTime(30);
+      markStageIfWaited("waited");
+      markStageIfWaited("idle-again");
+      return withServerTiming(new Response("ok"));
+    });
+    expect(header(response)).toMatch(/^waited;dur=30, total;dur=30, iso/);
   });
 
   it("is a no-op outside a request", () => {

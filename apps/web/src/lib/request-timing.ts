@@ -50,6 +50,17 @@ export function markStage(name: string): void {
 }
 
 /**
+ * End the stage `name` now, but report it only when I/O was waited on since
+ * the previous mark. For a catch-all stage that is pure CPU on some routes
+ * (the homepage names its D1 wait itself), where a `dur=0` would mislead.
+ */
+export function markStageIfWaited(name: string): void {
+  const store = marks.getStore();
+  if (!store || Date.now() === store.lastAt) return;
+  markStage(name);
+}
+
+/**
  * Append the stages seen so far to `response`. `iso` carries this isolate's
  * request count in `desc` and the time since its first request in `dur`, so
  * a slow miss can be told apart from a cold isolate.
