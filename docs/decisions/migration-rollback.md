@@ -289,6 +289,19 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0070_hn_popular_without_query.sql
+
+- Change: sets the `hn` row's config to `{"popularMinPoints":20}`,
+  name/type/config only, never `enabled`. The `query` key goes: HN Algolia
+  required every word of it, `OR` included, so it matched nothing (#873).
+- Risk: none for other rows. The runtime seed writes the same config on the
+  first ingest after deploy, so applying this file before or after the
+  deploy is equivalent. HN gains popular AI stories that never reached the
+  front page, at most 14 in 48h as measured on 2026-10-16.
+- Rollback: redeploy the previous Worker. Its seed writes the 0043 config
+  back on its first ingest. To restore it by hand:
+  `UPDATE sources SET config = '{"query":"AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek OR \"language model\" OR \"foundation model\" OR \"open weights\" OR \"AI lab\" OR \"world model\" OR \"video model\"","popularMinPoints":40}' WHERE id = 'hn';`
+
 ## 0068_ext_events.sql
 
 - Change: new table `ext_events`. One row per UTC day, extension event and

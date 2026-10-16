@@ -25,7 +25,7 @@ describe("hnAdapter", () => {
   });
 
   it("filters to AI-keyword titles and dedupes across the two searches", async () => {
-    const items = await hnAdapter.fetchItems({}, 0);
+    const items = await hnAdapter.fetchItems({ popularMinPoints: 40 }, 0);
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(items.map((i) => i.url).sort()).toEqual(
       [
@@ -62,21 +62,17 @@ describe("hnAdapter", () => {
   });
 
   it("adds a points-range search only when popularMinPoints is set", async () => {
-    await hnAdapter.fetchItems({ query: "AI" }, 100);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    await hnAdapter.fetchItems({}, 100);
+    expect(fetch).toHaveBeenCalledTimes(1);
 
     vi.mocked(fetch).mockClear();
-    await hnAdapter.fetchItems({ query: "AI", popularMinPoints: 40 }, 100);
-    expect(fetch).toHaveBeenCalledTimes(3);
+    await hnAdapter.fetchItems({ popularMinPoints: 40 }, 100);
+    expect(fetch).toHaveBeenCalledTimes(2);
     const urls = vi.mocked(fetch).mock.calls.map((c) => new URL(String(c[0])));
-    const popular = urls.find(
-      (u) =>
-        u.pathname.endsWith("/search") && u.searchParams.get("tags") === "story"
-    );
+    const popular = urls.find((u) => u.searchParams.get("tags") === "story");
     expect(popular?.searchParams.get("numericFilters")).toBe(
       "created_at_i>100,points>=40"
     );
-    expect(popular?.searchParams.get("query")).toBe("AI");
   });
 
   it("still applies the AI keyword filter and dedupe to the popular range", async () => {
