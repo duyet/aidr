@@ -1520,10 +1520,16 @@ day, arrival channel and kind (`POST /api/read`, `worker/reads.ts`). Only
 the homepage asks for read order: its SSR loader (`feed-fn.ts`) and its own
 `/api/feed?order=reads` calls (refresh, Load more, Older days). The SSR
 loader also asks `getFeed` for collapsed rows (`detail: false`): the item
-SELECT carries no summaries, no `item_sources` batch runs, and SQL computes
+SELECT carries no summaries, no `item_sources` statement runs, and SQL computes
 `has_detail` (becomes `lazyDetail`, so the row refetches `/api/story` on
 first expand) and `source_count` (the trending weight). `/api/feed`, RSS,
-the news sitemap and the MCP tools keep the full shape. For those,
+the news sitemap and the MCP tools keep the full shape. Every `getFeed`
+read is one D1 batch (items, categories, TL;DR, freshness, older-days
+probe, learned keywords, yesterday's topic counts, and for the full shape
+the `item_sources` rows selected off the same item query): a Worker far
+from the ENAM primary pays about 300ms per round trip, so nothing waits on
+an earlier statement's result, and the read path never issues DDL or any
+other write (`src/lib/feed-queries.roundtrips.test.ts`). For those,
 `getFeed`'s `readOrder` sorts each day by:
 
 ```text
