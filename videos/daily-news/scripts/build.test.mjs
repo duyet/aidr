@@ -259,3 +259,51 @@ test("every intro builds in English and Vietnamese with no undefined or NaN in i
     }
   }
 });
+
+test("every intro escapes the script's text, so a headline cannot inject markup", () => {
+  // A headline, kicker, title or hook is model output; one unescaped field puts raw HTML on frame 0.
+  const date = "2026-10-10";
+  const EVIL = "<img src=x onerror=1>";
+  for (const { id } of AXES.intro) {
+    const { dn, cleanup } = scratchRoot();
+    cleanups.push(cleanup);
+    const dir = join(dn, "editions", date);
+    mkdirSync(join(dir, "assets"), { recursive: true });
+    cpSync(
+      join(ROOT, "editions", date, "edition.json"),
+      join(dir, "edition.json")
+    );
+    for (const f of ["script.json", "script.vi.json"]) {
+      const s = read(join(ROOT, "editions", date, f));
+      for (const st of s.stories) {
+        st.headline = `${EVIL}${st.headline}`;
+        st.kicker = `${EVIL}${st.kicker}`;
+      }
+      s.intro.title = `${EVIL}${s.intro.title}`;
+      s.thumb = { ...s.thumb, hook: `${EVIL}hook` };
+      s.theme = { ...s.theme, intro: id };
+      writeFileSync(join(dir, f), JSON.stringify(s));
+    }
+    for (const s of read(join(dir, "edition.json")).stories)
+      for (const im of s.images) writeFileSync(join(dir, im.local), "");
+    for (const lang of ["en", "vi"]) {
+      const run = runBuild(dn, [
+        date,
+        "--lang",
+        lang,
+        "--no-voice",
+        "--no-audio",
+      ]);
+      assert.equal(run.status, 0, `${id} ${lang}: ${run.stderr}`);
+      const out = lang === "en" ? "out" : `out-${lang}`;
+      for (const fmt of FORMATS) {
+        const html = readFileSync(join(dir, out, fmt, "index.html"), "utf8");
+        assert.ok(
+          html.includes("&lt;img src=x"),
+          `${id} ${lang} ${fmt}: the field reached the page`
+        );
+        assert.doesNotMatch(html, /<img src=x/, `${id} ${lang} ${fmt}`);
+      }
+    }
+  }
+});
