@@ -28,7 +28,7 @@ export function sameOriginReturnPath(returnTo: string): string | null {
   const back = sanitizeUrl(url.href, SAFE_PARAMS).slice(PROBE_ORIGIN.length);
   // Dot segments collapse during parsing, so `/..//host` comes out as
   // `//host`. Check the path a browser will read, not the one written.
-  if (new URL(back, PROBE_ORIGIN).origin !== PROBE_ORIGIN) return null;
+  if (back.startsWith("//") || back.startsWith("/\\")) return null;
   return back;
 }
 

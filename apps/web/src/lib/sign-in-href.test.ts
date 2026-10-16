@@ -43,6 +43,14 @@ describe("signInHref", () => {
     expect(signInHref("en", target)).toBe("/sign-in?lang=en");
   });
 
+  it.each(["/.//", "/..//", "/%2e//", "/.//?x"])(
+    "returns null rather than throwing when %s collapses to a bare //",
+    (target) => {
+      expect(sameOriginReturnPath(target)).toBeNull();
+      expect(signInHref("en", target)).toBe("/sign-in?lang=en");
+    }
+  );
+
   it.each(["/sign-in", "/sign-in/factor-one", "/sign-up?lang=vi"])(
     "never returns to the auth page %s itself",
     (target) => {
