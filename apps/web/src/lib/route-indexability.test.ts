@@ -61,12 +61,14 @@ describe("routeIndexability", () => {
       "/api/feed",
       "/api/feed/freshness",
       "/api/extension",
+      "/api/health",
       "/api/system",
       "/api/system/overview",
       "/api/og/abcdef12",
       "/api/og/date/2026-10-03.png",
       "/api/story/abcdef12",
       "/api/story/abcdef12.md",
+      `/api/thumb/${"ab".repeat(32)}`,
     ]) {
       expect(routeIndexability({ pathname })).toMatchObject({
         kind: "api",
