@@ -1,32 +1,9 @@
 /** @vitest-environment happy-dom */
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ClerkModuleContext } from "../lib/clerk-user";
 import { SuggestTranslation } from "./SuggestTranslation";
-
-const navigate = vi.fn();
-
-vi.mock("@tanstack/react-router", async () => {
-  const React = await import("react");
-  return {
-    useNavigate: () => navigate,
-    Link: ({
-      children,
-      to,
-      params: _params,
-      search: _search,
-      ...rest
-    }: {
-      children?: ReactNode;
-      to: string;
-      params?: unknown;
-      search?: unknown;
-    } & Record<string, unknown>) =>
-      React.createElement("a", { ...rest, href: to }, children),
-  };
-});
 
 // The server fn module imports cloudflare:workers, which vitest cannot load.
 vi.mock("../lib/suggest-fn", () => ({
@@ -35,7 +12,7 @@ vi.mock("../lib/suggest-fn", () => ({
   submitSuggestion: vi.fn(),
 }));
 
-const preloadClerk = vi.fn();
+const assign = vi.fn();
 
 function renderSignedOut(props: {
   initialText?: string;
@@ -43,7 +20,11 @@ function renderSignedOut(props: {
 }) {
   const ui = (
     <ClerkModuleContext.Provider
-      value={{ mod: null, publishableKey: "pk_test_suggest", preloadClerk }}
+      value={{
+        mod: null,
+        publishableKey: "pk_test_suggest",
+        preloadClerk: () => {},
+      }}
     >
       <SuggestTranslation itemId="abcdef12deadbeef" lang="en" {...props} />
     </ClerkModuleContext.Provider>
@@ -56,7 +37,7 @@ function renderSignedOut(props: {
           value={{
             mod: null,
             publishableKey: "pk_test_suggest",
-            preloadClerk,
+            preloadClerk: () => {},
           }}
         >
           <SuggestTranslation itemId="abcdef12deadbeef" lang="en" {...next} />
@@ -66,21 +47,21 @@ function renderSignedOut(props: {
 }
 
 beforeEach(() => {
-  navigate.mockClear();
-  preloadClerk.mockClear();
+  assign.mockClear();
+  vi.stubGlobal("location", { ...window.location, assign });
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("SuggestTranslation signed out without the Clerk SDK", () => {
-  it("renders a sign-in link that preloads the SDK on hover and focus", () => {
+  it("renders a sign-in link and stays put until the reader asks", () => {
     renderSignedOut({});
     const link = screen.getByRole("link", { name: "Sign in to suggest" });
-    expect(link.getAttribute("href")).toBe("/sign-in/$");
-    fireEvent.pointerEnter(link);
-    fireEvent.focus(link);
-    expect(preloadClerk).toHaveBeenCalledTimes(2);
-    expect(navigate).not.toHaveBeenCalled();
+    expect(link.getAttribute("href")).toBe("/sign-in?lang=en");
+    expect(assign).not.toHaveBeenCalled();
   });
 
   it("sends a selection 'Suggest' click to /sign-in instead of dropping it", () => {
@@ -88,19 +69,15 @@ describe("SuggestTranslation signed out without the Clerk SDK", () => {
       initialText: "bản dịch này sai",
       suggestionAttempt: 1,
     });
-    expect(navigate).toHaveBeenCalledTimes(1);
-    expect(navigate).toHaveBeenCalledWith({
-      to: "/sign-in/$",
-      params: { _splat: "" },
-      search: { lang: "en" },
-    });
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(assign).toHaveBeenCalledWith("/sign-in?lang=en");
 
     // A re-render with the same attempt is not a second click.
     rerender({ initialText: "bản dịch này sai", suggestionAttempt: 1 });
-    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(assign).toHaveBeenCalledTimes(1);
 
     // Selecting the same text again is a new click.
     rerender({ initialText: "bản dịch này sai", suggestionAttempt: 2 });
-    expect(navigate).toHaveBeenCalledTimes(2);
+    expect(assign).toHaveBeenCalledTimes(2);
   });
 });

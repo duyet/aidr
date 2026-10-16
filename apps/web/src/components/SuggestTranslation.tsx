@@ -1,7 +1,7 @@
 import { ErrorBoundary } from "@aidr/ui";
-import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useClerkModule } from "../lib/clerk-user";
+import { withLang } from "../lib/locale-url";
 import type { Lang } from "../lib/types";
 import { SignInToSuggest } from "./suggest/SignInToSuggest";
 import { SuggestFormGate } from "./suggest/SuggestForm";
@@ -30,42 +30,33 @@ export function SuggestTranslation(props: {
  * the SDK here would remount the story and drop the pending selection, and
  * the modal's own redirect leaves the page after sign-in anyway. The floating
  * "Suggest" button hands over selected text through `initialText`; that
- * click goes to /sign-in too, so it is never silently dropped.
+ * click goes to /sign-in too, so it is never silently dropped. A plain href,
+ * like the vote dialog's, so this also renders outside the router.
  */
 function SignInFallback({
   lang,
   initialText,
-  suggestionAttempt = 0,
+  suggestionAttempt,
 }: {
   lang: Lang;
   initialText?: string;
   suggestionAttempt?: number;
 }) {
-  const { preloadClerk } = useClerkModule();
-  const navigate = useNavigate();
+  const href = withLang("/sign-in", lang);
 
   // `suggestionAttempt` is in the deps so a repeat of the same text is a
   // new click.
   useEffect(() => {
-    if (!initialText) return;
-    void navigate({
-      to: "/sign-in/$",
-      params: { _splat: "" },
-      search: { lang },
-    });
-  }, [initialText, suggestionAttempt, lang, navigate]);
+    if (initialText) window.location.assign(href);
+  }, [initialText, suggestionAttempt, href]);
 
   return (
-    <Link
-      to="/sign-in/$"
-      params={{ _splat: "" }}
-      search={{ lang }}
-      onPointerEnter={preloadClerk}
-      onFocus={preloadClerk}
+    <a
+      href={href}
       className="text-xs text-accent underline underline-offset-2 hover:no-underline"
     >
       {lang === "vi" ? "Đăng nhập để góp ý" : "Sign in to suggest"}
-    </Link>
+    </a>
   );
 }
 

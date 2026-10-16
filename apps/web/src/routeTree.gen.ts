@@ -52,12 +52,12 @@ import { Route as ApiSubscribePreviewRouteImport } from './routes/api/subscribe.
 import { Route as ApiSystemAccountsRouteImport } from './routes/api/system.accounts'
 import { Route as ApiSystemActivityRouteImport } from './routes/api/system.activity'
 import { Route as ApiSystemAudienceRouteImport } from './routes/api/system.audience'
+import { Route as ApiSystemExtensionRouteImport } from './routes/api/system.extension'
 import { Route as ApiSystemLlmRouteImport } from './routes/api/system.llm'
+import { Route as ApiSystemMailStatsRouteImport } from './routes/api/system.mail-stats'
 import { Route as ApiSystemModelsRouteImport } from './routes/api/system.models'
 import { Route as ApiSystemOverviewRouteImport } from './routes/api/system.overview'
-import { Route as ApiSystemExtensionRouteImport } from './routes/api/system.extension'
 import { Route as ApiSystemReadsRouteImport } from './routes/api/system.reads'
-import { Route as ApiSystemMailStatsRouteImport } from './routes/api/system.mail-stats'
 import { Route as ApiSystemRunAttemptsRouteImport } from './routes/api/system.run-attempts'
 import { Route as ApiSystemRunItemsRouteImport } from './routes/api/system.run-items'
 import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
@@ -282,9 +282,19 @@ const ApiSystemAudienceRoute = ApiSystemAudienceRouteImport.update({
   path: '/audience',
   getParentRoute: () => ApiSystemRoute,
 } as any)
+const ApiSystemExtensionRoute = ApiSystemExtensionRouteImport.update({
+  id: '/extension',
+  path: '/extension',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
 const ApiSystemLlmRoute = ApiSystemLlmRouteImport.update({
   id: '/llm',
   path: '/llm',
+  getParentRoute: () => ApiSystemRoute,
+} as any)
+const ApiSystemMailStatsRoute = ApiSystemMailStatsRouteImport.update({
+  id: '/mail-stats',
+  path: '/mail-stats',
   getParentRoute: () => ApiSystemRoute,
 } as any)
 const ApiSystemModelsRoute = ApiSystemModelsRouteImport.update({
@@ -297,19 +307,9 @@ const ApiSystemOverviewRoute = ApiSystemOverviewRouteImport.update({
   path: '/overview',
   getParentRoute: () => ApiSystemRoute,
 } as any)
-const ApiSystemExtensionRoute = ApiSystemExtensionRouteImport.update({
-  id: '/extension',
-  path: '/extension',
-  getParentRoute: () => ApiSystemRoute,
-} as any)
 const ApiSystemReadsRoute = ApiSystemReadsRouteImport.update({
   id: '/reads',
   path: '/reads',
-  getParentRoute: () => ApiSystemRoute,
-} as any)
-const ApiSystemMailStatsRoute = ApiSystemMailStatsRouteImport.update({
-  id: '/mail-stats',
-  path: '/mail-stats',
   getParentRoute: () => ApiSystemRoute,
 } as any)
 const ApiSystemRunAttemptsRoute = ApiSystemRunAttemptsRouteImport.update({
@@ -397,12 +397,12 @@ export interface FileRoutesByFullPath {
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/audience': typeof ApiSystemAudienceRoute
+  '/api/system/extension': typeof ApiSystemExtensionRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
+  '/api/system/mail-stats': typeof ApiSystemMailStatsRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
-  '/api/system/extension': typeof ApiSystemExtensionRoute
   '/api/system/reads': typeof ApiSystemReadsRoute
-  '/api/system/mail-stats': typeof ApiSystemMailStatsRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
@@ -456,12 +456,12 @@ export interface FileRoutesByTo {
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/audience': typeof ApiSystemAudienceRoute
+  '/api/system/extension': typeof ApiSystemExtensionRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
+  '/api/system/mail-stats': typeof ApiSystemMailStatsRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
-  '/api/system/extension': typeof ApiSystemExtensionRoute
   '/api/system/reads': typeof ApiSystemReadsRoute
-  '/api/system/mail-stats': typeof ApiSystemMailStatsRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
@@ -516,12 +516,12 @@ export interface FileRoutesById {
   '/api/system/accounts': typeof ApiSystemAccountsRoute
   '/api/system/activity': typeof ApiSystemActivityRoute
   '/api/system/audience': typeof ApiSystemAudienceRoute
+  '/api/system/extension': typeof ApiSystemExtensionRoute
   '/api/system/llm': typeof ApiSystemLlmRoute
+  '/api/system/mail-stats': typeof ApiSystemMailStatsRoute
   '/api/system/models': typeof ApiSystemModelsRoute
   '/api/system/overview': typeof ApiSystemOverviewRoute
-  '/api/system/extension': typeof ApiSystemExtensionRoute
   '/api/system/reads': typeof ApiSystemReadsRoute
-  '/api/system/mail-stats': typeof ApiSystemMailStatsRoute
   '/api/system/run-attempts': typeof ApiSystemRunAttemptsRoute
   '/api/system/run-items': typeof ApiSystemRunItemsRoute
   '/api/system/runs': typeof ApiSystemRunsRoute
@@ -577,12 +577,12 @@ export interface FileRouteTypes {
     | '/api/system/accounts'
     | '/api/system/activity'
     | '/api/system/audience'
+    | '/api/system/extension'
     | '/api/system/llm'
+    | '/api/system/mail-stats'
     | '/api/system/models'
     | '/api/system/overview'
-    | '/api/system/extension'
     | '/api/system/reads'
-    | '/api/system/mail-stats'
     | '/api/system/run-attempts'
     | '/api/system/run-items'
     | '/api/system/runs'
@@ -636,12 +636,12 @@ export interface FileRouteTypes {
     | '/api/system/accounts'
     | '/api/system/activity'
     | '/api/system/audience'
+    | '/api/system/extension'
     | '/api/system/llm'
+    | '/api/system/mail-stats'
     | '/api/system/models'
     | '/api/system/overview'
-    | '/api/system/extension'
     | '/api/system/reads'
-    | '/api/system/mail-stats'
     | '/api/system/run-attempts'
     | '/api/system/run-items'
     | '/api/system/runs'
@@ -695,12 +695,12 @@ export interface FileRouteTypes {
     | '/api/system/accounts'
     | '/api/system/activity'
     | '/api/system/audience'
+    | '/api/system/extension'
     | '/api/system/llm'
+    | '/api/system/mail-stats'
     | '/api/system/models'
     | '/api/system/overview'
-    | '/api/system/extension'
     | '/api/system/reads'
-    | '/api/system/mail-stats'
     | '/api/system/run-attempts'
     | '/api/system/run-items'
     | '/api/system/runs'
@@ -1057,11 +1057,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemAudienceRouteImport
       parentRoute: typeof ApiSystemRoute
     }
+    '/api/system/extension': {
+      id: '/api/system/extension'
+      path: '/extension'
+      fullPath: '/api/system/extension'
+      preLoaderRoute: typeof ApiSystemExtensionRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
     '/api/system/llm': {
       id: '/api/system/llm'
       path: '/llm'
       fullPath: '/api/system/llm'
       preLoaderRoute: typeof ApiSystemLlmRouteImport
+      parentRoute: typeof ApiSystemRoute
+    }
+    '/api/system/mail-stats': {
+      id: '/api/system/mail-stats'
+      path: '/mail-stats'
+      fullPath: '/api/system/mail-stats'
+      preLoaderRoute: typeof ApiSystemMailStatsRouteImport
       parentRoute: typeof ApiSystemRoute
     }
     '/api/system/models': {
@@ -1078,25 +1092,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemOverviewRouteImport
       parentRoute: typeof ApiSystemRoute
     }
-    '/api/system/extension': {
-      id: '/api/system/extension'
-      path: '/extension'
-      fullPath: '/api/system/extension'
-      preLoaderRoute: typeof ApiSystemExtensionRouteImport
-      parentRoute: typeof ApiSystemRoute
-    }
     '/api/system/reads': {
       id: '/api/system/reads'
       path: '/reads'
       fullPath: '/api/system/reads'
       preLoaderRoute: typeof ApiSystemReadsRouteImport
-      parentRoute: typeof ApiSystemRoute
-    }
-    '/api/system/mail-stats': {
-      id: '/api/system/mail-stats'
-      path: '/mail-stats'
-      fullPath: '/api/system/mail-stats'
-      preLoaderRoute: typeof ApiSystemMailStatsRouteImport
       parentRoute: typeof ApiSystemRoute
     }
     '/api/system/run-attempts': {
@@ -1187,12 +1187,12 @@ interface ApiSystemRouteChildren {
   ApiSystemAccountsRoute: typeof ApiSystemAccountsRoute
   ApiSystemActivityRoute: typeof ApiSystemActivityRoute
   ApiSystemAudienceRoute: typeof ApiSystemAudienceRoute
+  ApiSystemExtensionRoute: typeof ApiSystemExtensionRoute
   ApiSystemLlmRoute: typeof ApiSystemLlmRoute
+  ApiSystemMailStatsRoute: typeof ApiSystemMailStatsRoute
   ApiSystemModelsRoute: typeof ApiSystemModelsRoute
   ApiSystemOverviewRoute: typeof ApiSystemOverviewRoute
-  ApiSystemExtensionRoute: typeof ApiSystemExtensionRoute
   ApiSystemReadsRoute: typeof ApiSystemReadsRoute
-  ApiSystemMailStatsRoute: typeof ApiSystemMailStatsRoute
   ApiSystemRunAttemptsRoute: typeof ApiSystemRunAttemptsRoute
   ApiSystemRunItemsRoute: typeof ApiSystemRunItemsRoute
   ApiSystemRunsRoute: typeof ApiSystemRunsRoute
@@ -1204,12 +1204,12 @@ const ApiSystemRouteChildren: ApiSystemRouteChildren = {
   ApiSystemAccountsRoute: ApiSystemAccountsRoute,
   ApiSystemActivityRoute: ApiSystemActivityRoute,
   ApiSystemAudienceRoute: ApiSystemAudienceRoute,
+  ApiSystemExtensionRoute: ApiSystemExtensionRoute,
   ApiSystemLlmRoute: ApiSystemLlmRoute,
+  ApiSystemMailStatsRoute: ApiSystemMailStatsRoute,
   ApiSystemModelsRoute: ApiSystemModelsRoute,
   ApiSystemOverviewRoute: ApiSystemOverviewRoute,
-  ApiSystemExtensionRoute: ApiSystemExtensionRoute,
   ApiSystemReadsRoute: ApiSystemReadsRoute,
-  ApiSystemMailStatsRoute: ApiSystemMailStatsRoute,
   ApiSystemRunAttemptsRoute: ApiSystemRunAttemptsRoute,
   ApiSystemRunItemsRoute: ApiSystemRunItemsRoute,
   ApiSystemRunsRoute: ApiSystemRunsRoute,
