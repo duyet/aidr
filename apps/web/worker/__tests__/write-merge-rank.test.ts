@@ -50,7 +50,7 @@ describe("writeItems: merge into an existing canonical", () => {
     const db = new DatabaseSync(":memory:");
     db.exec(`CREATE TABLE items (id TEXT PRIMARY KEY, status TEXT,
         published_at INTEGER, points INTEGER, comments INTEGER,
-        llm_importance REAL, llm_quality REAL, rank_score REAL,
+        llm_importance REAL, llm_quality REAL, category TEXT, rank_score REAL,
         tags TEXT, url TEXT, image_url TEXT, media_manifest TEXT,
         source_id TEXT, duplicate_of TEXT);
       CREATE TABLE item_sources (item_id TEXT, position INTEGER, kind TEXT,
@@ -59,7 +59,7 @@ describe("writeItems: merge into an existing canonical", () => {
         value INTEGER NOT NULL, updated_at INTEGER NOT NULL,
         PRIMARY KEY (item_id, user_id));`);
     const add = db.prepare(
-      `INSERT INTO items VALUES (?, ?, ?, ?, 0, 8, 8, ?, '[]',
+      `INSERT INTO items VALUES (?, ?, ?, ?, 0, 8, 8, NULL, ?, '[]',
          'https://example.com/' || ?, NULL, NULL, ?, ?)`
     );
     // Stored score frozen from when it had 2 points and one source.
@@ -154,6 +154,7 @@ describe("writeItems: merge into an existing canonical", () => {
       comments: 20,
       publishedAt: (nowSec - 30 * 3600) * 1000,
       now,
+      category: null,
       // hn, theverge-ai, aggregator, techcrunch-ai
       sourceCount: 4,
     });
@@ -429,6 +430,7 @@ describe("writeItems: an official post takes the canonical", () => {
       quality: 5,
       publishedAt: (nowSec - 3600) * 1000,
       now,
+      category: null,
       ...rankSignals([
         { sourceId: "official", points: 0, comments: 0, url: OFFICIAL_URL },
       ]),

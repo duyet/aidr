@@ -73,6 +73,7 @@ export async function backfillScores(
             publishedAt: row.published_at * 1000,
             now,
             ...rowRankSignals(row),
+            category: result.category,
           });
           await env.DB.prepare(
             `UPDATE items SET

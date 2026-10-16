@@ -146,6 +146,7 @@ export function buildMergeCandidates(
           url: row.item.url,
         },
       ]),
+      category: score?.category ?? null,
     });
     return {
       i,

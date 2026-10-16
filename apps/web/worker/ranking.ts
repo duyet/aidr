@@ -12,6 +12,41 @@ export interface RankScoreInput {
   sourceCount?: number;
   /** Net of signed-in reader votes on this item. 0 when nobody has voted. */
   voteNet?: number;
+  /** The scorer's category (`items.category`), null before scoring. Every
+   *  caller passes it, so a re-rank cannot silently drop the kind weight. */
+  category: string | null;
+}
+
+type Category = typeof import("./llm.js")["CATEGORIES"][number];
+
+/** Multiplier per story kind, keyed by the scorer's category. Model and
+ *  tech launches rise, company and money news falls, everything else is
+ *  flat. Replay over 14 days (2026-10-16, `rank-replay`, `base+K1`): gold
+ *  "rise" stories in the top 10 went from 49.0% to 55.2% of slots and
+ *  "fall" stories from 15.1% to 10.7%, with staleness, duplicate slots and
+ *  the vote guards unchanged. Stronger weights (Models 1.35, Funding 0.75)
+ *  bought three more points but cut fresh importance-8 stories reaching
+ *  the top 10 from 73% to 67%. */
+export const STORY_KIND_WEIGHTS: Readonly<Record<Category, number>> = {
+  Models: 1.2,
+  "Open Source": 1.15,
+  Research: 1.1,
+  Chips: 1.1,
+  Tools: 1.1,
+  Agents: 1.1,
+  Frameworks: 1.05,
+  Regulation: 1.05,
+  Products: 1,
+  Infra: 1,
+  Releases: 1,
+  Data: 1,
+  Industry: 0.9,
+  Funding: 0.85,
+};
+
+/** 1 for an unscored item or a category the table does not know. */
+export function storyKindWeight(category: string | null): number {
+  return (STORY_KIND_WEIGHTS as Record<string, number>)[category ?? ""] ?? 1;
 }
 
 /** Independent-source corroboration in rank_score. */
@@ -93,6 +128,7 @@ export function rankScoreWithoutBreaking({
   now,
   sourceCount = 0,
   voteNet = 0,
+  category,
 }: RankScoreInput): number {
   const ageHours = Math.max(0, (now - publishedAt) / (1000 * 60 * 60));
   importance = clampScore(importance);
@@ -113,7 +149,13 @@ export function rankScoreWithoutBreaking({
   );
   const weight =
     importance ** IMPORTANCE_EXPONENT / 10 ** (IMPORTANCE_EXPONENT - 1);
-  const score = weight * qualityFactor * decay * crowd * voteFactor(voteNet);
+  const score =
+    weight *
+    qualityFactor *
+    decay *
+    crowd *
+    voteFactor(voteNet) *
+    storyKindWeight(category);
   return Number.isFinite(score) ? score : 0;
 }
 
@@ -135,28 +177,6 @@ export function hasReaderEngagement(sourceId: string): boolean {
   return findSourceSpec(sourceId)?.engagement === "reader";
 }
 
-/** Points a story needed before this source fetched it at all (HN's
- *  `popularMinPoints`, 20 since migration 0069). 0 for a source with no
- *  floor. Engagement counted above it measures what the crowd added. */
-export function admissionFloor(sourceId: string): number {
-  const floor = findSourceSpec(sourceId)?.config.popularMinPoints;
-  return typeof floor === "number" && Number.isFinite(floor) && floor > 0
-    ? floor
-    : 0;
-}
-
-export type StoryKind = "drama" | "other";
-
-/** Headline words that mark conflict news: legal action, regulators,
- *  departures, leaks, breaches and backlash. Title only, no LLM. */
-const DRAMA_RE =
-  /\b(lawsuit|sues?|sued|suing|subpoena\w*|antitrust|probes?|investigat(?:es|ed|ion)|fires?d?|fired|ousts?|ousted|resigns?|resignation|steps? down|quits?|leak(?:s|ed)?|feud|backlash|boycott|scandal|whistleblower|fraud|breach(?:es|ed)?|hack(?:s|ed|ers?)?|ban(?:s|ned)?|revok\w+|accus\w+|alleg\w+|rogue|deleted? (?:the |its |a )?(?:production )?database|wiped)\b/i;
-
-/** The kind of story a headline tells, read from the title alone. */
-export function storyKind(title: string): StoryKind {
-  return DRAMA_RE.test(title) ? "drama" : "other";
-}
-
 /** One item of a story's cluster: the canonical or an item merged into it. */
 export interface RankMember {
   sourceId: string;
@@ -170,25 +190,18 @@ export interface RankMember {
  *  families, so tweets on one aggregator story or a mirror pair count once.
  *  Points/comments are the highest reader engagement in the cluster; an
  *  aggregator's author/tweet counts never count. */
-export function rankSignals(members: readonly RankMember[]): Required<
-  Pick<RankScoreInput, "points" | "comments" | "sourceCount">
-> & {
-  /** `admissionFloor` of the reader source whose points were taken. */
-  engagementFloor: number;
-} {
+export function rankSignals(
+  members: readonly RankMember[]
+): Required<Pick<RankScoreInput, "points" | "comments" | "sourceCount">> {
   const families = new Set(members.map((m) => sourceFamily(m.sourceId, m.url)));
   let points = 0;
   let comments = 0;
-  let engagementFloor = 0;
   for (const m of members) {
     if (!hasReaderEngagement(m.sourceId)) continue;
-    if ((m.points ?? 0) >= points) {
-      points = m.points ?? 0;
-      engagementFloor = admissionFloor(m.sourceId);
-    }
+    points = Math.max(points, m.points ?? 0);
     comments = Math.max(comments, m.comments ?? 0);
   }
-  return { points, comments, sourceCount: families.size, engagementFloor };
+  return { points, comments, sourceCount: families.size };
 }
 
 /** Net reader votes, one grouped scan. Ranking queries leave `items`
@@ -256,7 +269,7 @@ export function rowRankSignals(row: RankSignalRow) {
 /** Published items from a bound epoch-second start, with every `rankScore`
  *  input the hourly re-rank needs. */
 export function buildRerankQuery(): string {
-  return `SELECT id, published_at, llm_importance, llm_quality,
+  return `SELECT id, published_at, llm_importance, llm_quality, category,
                  ${RANK_SIGNAL_COLUMNS}
           FROM items ${RANK_SIGNAL_JOIN}
           WHERE published_at >= ? AND status = 'published'`;

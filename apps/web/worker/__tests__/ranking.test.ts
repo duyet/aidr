@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
+import { CATEGORIES } from "../llm.js";
 import {
   BREAKING_BOOST,
   BREAKING_IMPORTANCE,
@@ -17,7 +18,9 @@ import {
   rankSignals,
   readerEngagement,
   rowRankSignals,
+  STORY_KIND_WEIGHTS,
   sourceBoost,
+  storyKindWeight,
   voteFactor,
 } from "../ranking.js";
 
@@ -32,6 +35,7 @@ describe("rankScore", () => {
       comments: 20,
       publishedAt: NOW,
       now: NOW,
+      category: null,
     });
     const old = rankScore({
       importance: 8,
@@ -40,12 +44,19 @@ describe("rankScore", () => {
       comments: 20,
       publishedAt: NOW - 48 * 60 * 60 * 1000,
       now: NOW,
+      category: null,
     });
     expect(old).toBeLessThan(fresh);
   });
 
   it("is monotonic in engagement (points/comments)", () => {
-    const base = { importance: 5, quality: 5, publishedAt: NOW, now: NOW };
+    const base = {
+      importance: 5,
+      quality: 5,
+      publishedAt: NOW,
+      now: NOW,
+      category: null,
+    };
     const low = rankScore({ ...base, points: 1, comments: 0 });
     const high = rankScore({ ...base, points: 500, comments: 200 });
     expect(high).toBeGreaterThan(low);
@@ -59,6 +70,7 @@ describe("rankScore", () => {
       comments: 10,
       publishedAt: NOW,
       now: NOW,
+      category: null,
     };
     const plain = rankScore(base);
     expect(rankScore({ ...base, voteNet: 5 })).toBeGreaterThan(plain);
@@ -80,6 +92,7 @@ describe("rankScore", () => {
       comments: 5,
       publishedAt: NOW,
       now: NOW,
+      category: null,
     };
     const lowQuality = rankScore({ ...base, quality: 1 });
     const highQuality = rankScore({ ...base, quality: 10 });
@@ -93,6 +106,7 @@ describe("rankScore", () => {
       comments: 5,
       publishedAt: NOW,
       now: NOW,
+      category: null,
     };
     const lowImportance = rankScore({ ...base, importance: 1 });
     const highImportance = rankScore({ ...base, importance: 10 });
@@ -107,6 +121,7 @@ describe("rankScore", () => {
       comments: 0,
       publishedAt: NOW,
       now: NOW,
+      category: null,
     });
     expect(score).toBeGreaterThanOrEqual(0);
   });
@@ -122,6 +137,7 @@ describe("rank reachability", () => {
       comments: 40,
       publishedAt: NOW,
       now: NOW,
+      category: null,
     });
     expect(score).toBeGreaterThanOrEqual(25);
   });
@@ -134,6 +150,7 @@ describe("rank reachability", () => {
       comments: 4,
       publishedAt: NOW,
       now: NOW,
+      category: null,
     };
     const thin = rankScore({ ...base, sourceCount: 1 });
     const backed = rankScore({ ...base, sourceCount: 4 });
@@ -149,6 +166,7 @@ describe("rank reachability", () => {
       comments: 4,
       publishedAt: NOW,
       now: NOW,
+      category: null,
     };
     const eight = rankScore({ ...base, sourceCount: 8 });
     const twenty = rankScore({ ...base, sourceCount: 20 });
@@ -166,6 +184,7 @@ describe("rank reachability", () => {
       comments: 10,
       publishedAt: NOW - 6 * 60 * 60 * 1000,
       now: NOW,
+      category: null,
     });
     expect(score).toBeLessThan(25);
   });
@@ -182,6 +201,7 @@ describe("hourly re-rank keeps the source boost", () => {
     comments: 25,
     publishedAt: 1_790_659_371_000,
     now: 1_790_659_371_000 + 8.09 * 3_600_000,
+    category: null,
   };
 
   it("prices the dropped sourceCount at the full boost", () => {
@@ -247,7 +267,13 @@ describe("corroboration counts independent outlets, not tweets", () => {
       member("hn", 250, 90),
     ]);
     expect(signals).toEqual({ points: 250, comments: 90, sourceCount: 2 });
-    const base = { importance: 7, quality: 6, publishedAt: NOW, now: NOW };
+    const base = {
+      importance: 7,
+      quality: 6,
+      publishedAt: NOW,
+      now: NOW,
+      category: null,
+    };
     expect(rankScore({ ...base, ...signals })).toBeGreaterThan(
       rankScore({ ...base, ...rankSignals([member("huggingnews", 120, 319)]) })
     );
@@ -331,6 +357,7 @@ describe("reader votes", () => {
       quality: 8,
       publishedAt: NOW - 30 * 3_600_000,
       now: NOW,
+      category: null,
       comments: 0,
     };
     // Yandex outage 2026-10-11: with the old weight-10-in-the-log term, one
@@ -353,6 +380,7 @@ describe("ranking rules from the 2026-10-11 replay", () => {
     comments: 20,
     sourceCount: 1,
     now: NOW,
+    category: null,
   };
 
   it("decays faster after 24h than the plain 36h curve", () => {
@@ -439,6 +467,7 @@ describe("ranking rules, literal anchors", () => {
     comments: 20,
     sourceCount: 1,
     now: NOW,
+    category: null,
   };
 
   it("pins the importance curve: 10 stays 10, 7 is about 5.86", () => {
@@ -510,6 +539,7 @@ describe("rankScore on malformed input", () => {
     comments: 2,
     publishedAt: NOW,
     now: NOW,
+    category: null,
   };
 
   it.each([
@@ -550,5 +580,91 @@ describe("rankScore on malformed input", () => {
     expect(
       rankScore({ ...input, voteNet: Number.POSITIVE_INFINITY })
     ).toBeCloseTo(rankScore(input), 10);
+  });
+});
+
+describe("story kind weights (2026-10-16 replay, base+K1)", () => {
+  const sixHoursAgo = NOW - 6 * 3_600_000;
+
+  it("lets a 9.0 model release from a quiet outlet outrank an importance-5 HN story with 40 points", () => {
+    // Without the table the HN story wins at 6h (9.0 vs 9.4): its crowd
+    // factor 2.66 beats the release's fading breaking boost.
+    const release = rankScore({
+      importance: 9,
+      quality: 7,
+      points: 0,
+      comments: 0,
+      sourceCount: 1,
+      publishedAt: sixHoursAgo,
+      now: NOW,
+      category: "Models",
+    });
+    const hnIndustry = rankScore({
+      importance: 5,
+      quality: 7,
+      points: 40,
+      comments: 10,
+      sourceCount: 1,
+      publishedAt: sixHoursAgo,
+      now: NOW,
+      category: "Industry",
+    });
+    expect(release).toBeGreaterThan(hnIndustry);
+  });
+
+  it("gives a markets story no tech lift and a model release the Models weight", () => {
+    const input = {
+      importance: 7,
+      quality: 6,
+      points: 10,
+      comments: 2,
+      publishedAt: NOW,
+      now: NOW,
+    };
+    const flat = rankScore({ ...input, category: null });
+    expect(rankScore({ ...input, category: "Industry" })).toBeLessThan(flat);
+    expect(rankScore({ ...input, category: "Models" }) / flat).toBeCloseTo(
+      STORY_KIND_WEIGHTS.Models,
+      10
+    );
+    // An unscored item or a category the table does not know is flat.
+    expect(storyKindWeight(null)).toBe(1);
+    expect(storyKindWeight("Weather")).toBe(1);
+  });
+
+  it("weighs every scorer category, within a band a typo would leave", () => {
+    expect(Object.keys(STORY_KIND_WEIGHTS).sort()).toEqual(
+      [...CATEGORIES].sort()
+    );
+    for (const weight of Object.values(STORY_KIND_WEIGHTS)) {
+      expect(weight).toBeGreaterThanOrEqual(0.75);
+      expect(weight).toBeLessThanOrEqual(1.5);
+    }
+  });
+
+  it("applies the weight to the weekly score too, with no freshness boost", () => {
+    const input = {
+      importance: 8,
+      quality: 6,
+      points: 10,
+      comments: 2,
+      publishedAt: 0,
+      now: 0,
+    };
+    const models = rankScoreWithoutBreaking({ ...input, category: "Models" });
+    const flat = rankScoreWithoutBreaking({ ...input, category: null });
+    expect(models).toBeGreaterThan(flat);
+    expect(models / flat).toBeCloseTo(STORY_KIND_WEIGHTS.Models, 10);
+    // At age zero rankScore carries the x1.4 breaking boost; the weekly path must not.
+    expect(rankScore({ ...input, category: "Models" }) / models).toBeCloseTo(
+      1 + BREAKING_BOOST,
+      10
+    );
+  });
+
+  it("reads category for every re-ranked row", () => {
+    expect(buildRerankQuery()).toMatch(
+      /SELECT[\s\S]*\bcategory\b[\s\S]*FROM items/
+    );
   });
 });

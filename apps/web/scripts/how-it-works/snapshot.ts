@@ -39,7 +39,7 @@ const end = Math.floor(Date.now() / 1000 / 1800) * 1800;
 const start = end - HOURS * 3600;
 const rows = query(`
   SELECT i.id, i.source_id, s.name AS source, i.title, i.url, i.published_at, i.fetched_at,
-         i.points, i.comments, i.llm_importance AS importance, i.llm_quality AS quality,
+         i.points, i.comments, i.llm_importance AS importance, i.llm_quality AS quality, i.category,
          i.status, i.duplicate_of, i.rank_score,
          (SELECT COALESCE(SUM(v.value), 0) FROM item_votes v WHERE v.item_id = i.id) AS votes
   FROM items i LEFT JOIN sources s ON s.id = i.source_id
@@ -76,6 +76,7 @@ const items = rows.map((r) => {
     quality: Number(r.quality ?? 0),
     voteNet: Number(r.votes ?? 0),
     ...signals,
+    category: r.category == null ? null : String(r.category),
   };
   return {
     ...base,

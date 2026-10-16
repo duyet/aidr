@@ -36,16 +36,40 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  admissionFloor,
   hasReaderEngagement,
   rankScore,
   rankSignals,
+  STORY_KIND_WEIGHTS,
   sourceBoost,
-  storyKind,
 } from "../worker/ranking";
+import { findSourceSpec } from "../worker/sources/catalog";
 import { cf, D1_DATABASE_ID, d1ResultRows, wranglerSelect } from "./cf-d1";
 
 const ACCOUNT_ID = "7df185a18b98382c3240fa7ac4a37075";
+
+/** Points a story needed before its source fetched it at all (HN's
+ *  `popularMinPoints`, 20 since migration 0069); 0 without a floor. The
+ *  `E1` lever counts engagement above it. Rejected 2026-10-16: it moved
+ *  no rise/fall share and raised duplicate slots in the top 30. */
+function admissionFloor(sourceId: string): number {
+  const floor = findSourceSpec(sourceId)?.config.popularMinPoints;
+  return typeof floor === "number" && Number.isFinite(floor) && floor > 0
+    ? floor
+    : 0;
+}
+
+/** Headline words for the `R` drama lever: legal action, regulators,
+ *  departures, leaks, breaches, backlash. Rejected 2026-10-16: 57 of the
+ *  102 headlines it matched in 14 days were drama (gold set), under the
+ *  85% bar. A narrower list (lawsuit, sues, subpoena, antitrust, fired,
+ *  ousted, resigns, steps down, quits, leak, feud, whistleblower, accuses,
+ *  boycott, scandal) was 21 of 24, too few to ship on. */
+const DRAMA_RE =
+  /\b(lawsuit|sues?|sued|suing|subpoena\w*|antitrust|probes?|investigat(?:es|ed|ion)|fires?d?|fired|ousts?|ousted|resigns?|resignation|steps? down|quits?|leak(?:s|ed)?|feud|backlash|boycott|scandal|whistleblower|fraud|breach(?:es|ed)?|hack(?:s|ed|ers?)?|ban(?:s|ned)?|revok\w+|accus\w+|alleg\w+|rogue|deleted? (?:the |its |a )?(?:production )?database|wiped)\b/i;
+
+function storyKind(title: string): "drama" | "other" {
+  return DRAMA_RE.test(title) ? "drama" : "other";
+}
 const RANK_WINDOW_HOURS = 72;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_GOLD = path.join(here, "fixtures/rank-kinds/gold.json");
@@ -223,21 +247,11 @@ const BASE_LEVERS: Levers = {
   breakingRiseImportance: null,
 };
 
-/** Models, Open Source, Research, Chips, Tools, Agents and Frameworks
- *  carry the "new model / more tech" ask; Industry and Funding carry the
- *  markets, HR, ads and analyst pieces the owner wants lower. */
-const KIND_MILD: Record<string, number> = {
-  Models: 1.2,
-  "Open Source": 1.15,
-  Research: 1.1,
-  Chips: 1.1,
-  Tools: 1.1,
-  Agents: 1.1,
-  Frameworks: 1.05,
-  Regulation: 1.05,
-  Industry: 0.9,
-  Funding: 0.85,
-};
+/** The table production ships (`STORY_KIND_WEIGHTS`): Models, Open
+ *  Source, Research, Chips, Tools, Agents and Frameworks carry the "new
+ *  model / more tech" ask; Industry and Funding carry the markets, HR, ads
+ *  and analyst pieces the owner wants lower. */
+const KIND_MILD: Record<string, number> = STORY_KIND_WEIGHTS;
 
 const KIND_STRONG: Record<string, number> = {
   Models: 1.35,
@@ -258,6 +272,7 @@ const LEVER_PATCHES: Record<string, Partial<Levers>> = {
   E3: { crowd: "max" },
   K1: { kindWeights: KIND_MILD },
   K2: { kindWeights: KIND_STRONG },
+  K3: { kindWeights: { ...KIND_MILD, Industry: 0.85, Funding: 0.8 } },
   R: { drama: 1.2 },
   B75: { breakingImportance: 7.5 },
   BK: { breakingRiseImportance: 7 },
@@ -265,7 +280,7 @@ const LEVER_PATCHES: Record<string, Partial<Levers>> = {
 
 /** The lever set `worker/ranking.ts` implements today. Update it in the
  *  same commit as the formula, or the startup check fails. */
-export const PRODUCTION_LEVERS = "base";
+export const PRODUCTION_LEVERS = "base+K1";
 
 function clamp10(value: number): number {
   return Number.isFinite(value) ? Math.min(10, Math.max(0, value)) : 0;
@@ -366,6 +381,7 @@ const productionFormula: Formula = (i) =>
     now: i.now,
     sourceCount: i.sourceCount,
     voteNet: i.voteNet,
+    category: i.category,
   });
 
 // ---- data ---------------------------------------------------------------
@@ -436,6 +452,18 @@ function loadRaw(args: Args): RawData {
   return raw;
 }
 
+/** `admissionFloor` of the reader source whose points `rankSignals` took. */
+function engagementFloorOf(
+  cluster: ReadonlyArray<{ sourceId: string; points: number }>
+): number {
+  let best: { sourceId: string; points: number } | undefined;
+  for (const m of cluster) {
+    if (!hasReaderEngagement(m.sourceId)) continue;
+    if (!best || m.points >= best.points) best = m;
+  }
+  return best ? admissionFloor(best.sourceId) : 0;
+}
+
 function parseTags(raw: unknown): string[] {
   try {
     const parsed = JSON.parse(String(raw ?? "[]")) as unknown;
@@ -480,7 +508,7 @@ function buildItems(raw: RawData): ReplayItem[] {
       sourceCount: signals.sourceCount,
       voteNet: votes.get(id) ?? 0,
       readerSourced: cluster.some((m) => hasReaderEngagement(m.sourceId)),
-      engagementFloor: signals.engagementFloor,
+      engagementFloor: engagementFloorOf(cluster),
     };
   });
 }

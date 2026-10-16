@@ -168,6 +168,7 @@ export function planNewItemWrite(input: {
       ...(absorbs ? (canonicalUpdate.members ?? []) : []),
     ]),
     voteNet,
+    category: score?.category ?? null,
   });
 
   return {

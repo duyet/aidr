@@ -37,6 +37,7 @@ function item(
     published_at: OLD,
     fetched_at: OLD + 600,
     llm_relevance: 0.9,
+    category: null,
     llm_importance: 5,
     llm_quality: 5,
     rank_score: 1,
