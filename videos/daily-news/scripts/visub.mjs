@@ -4,7 +4,7 @@
 // Cues are 1-4 word fragments, so whole sentences (consecutive cues up to . ! ?) are translated and the
 // Vietnamese is split back over the sentence's cues in proportion to the English text. The YouTube title from
 // script.json is translated in the same call (the Vietnamese Telegram caption); a title over YouTube's 100 characters
-// is asked for once more, shorter, else replaced by "Bản tin AI;DR | <date>", and never discards the lines.
+// is asked for once more, shorter, else replaced by "Bản tin AI;DR | <edition date>", and never discards the lines.
 // Model: the auto-script.mjs chain through anyrouter (videoModels: a key from local-llm-key.mjs, ANYROUTER_VIDEO_MODEL); the house style
 // is read from the Worker (VI_STYLE and RULES_OVERVIEW in apps/web/worker/llm.ts), never copied here.
 // An answer is checked (same line count, no empty or untranslated line, every number kept, AI;DR and aidr.today
@@ -225,17 +225,14 @@ export function checkAnswer(text, lines, title, check = lineProblems) {
   return { title: title ? viTitle : null, lines: out, problems };
 }
 
-const DATE_WORD =
-  /^(?:ngày|tháng|thg|năm|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)$/iu;
-
-/** The date part of a title: what follows its last " | " or " — ", if it holds a year and no word but a date
- *  word, so a clause after the separator is never taken for the date. "" when there is none. */
-function datePart(title) {
-  const tail = title.normalize("NFC").match(/^.*\S(\s+[|—–-]\s+.*\S)\s*$/)?.[1];
-  return tail &&
-    /\b20\d\d\b/.test(tail) &&
-    (tail.match(/\p{L}+/gu) ?? []).every((w) => DATE_WORD.test(w))
-    ? tail
+/** The edition date as the Vietnamese titles write it ("3/10/2026", as build.mjs's shortDate); "" unless `date` is a
+ *  real YYYY-MM-DD (a weekly edition's `week-2026-W41` has none). Never read from model text. */
+function viDate(date) {
+  const d = new Date(`${date}T12:00:00Z`);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date ?? "") &&
+    !Number.isNaN(d.getTime()) &&
+    d.toISOString().startsWith(date)
+    ? `${d.getUTCDate()}/${d.getUTCMonth() + 1}/${d.getUTCFullYear()}`
     : "";
 }
 
@@ -253,9 +250,9 @@ function titlePromptFor(en, vi, style = houseStyle()) {
 }
 
 /** A translated title within TITLE_MAX. A longer one goes back to the model that wrote it, once, with the limit and
- *  its length. A retry that fails or is still long gives way to "Bản tin AI;DR" and the date: model text is never
+ *  its length. A retry that fails or is still long gives way to "Bản tin AI;DR | <edition date>": model text is never
  *  cut, since a cut Vietnamese clause can drop the words that reverse or limit it. The lines already passed and are kept. */
-async function fitTitle({ en, vi, model, llm, style, log }) {
+async function fitTitle({ en, vi, date, model, llm, style, log }) {
   if (chars(vi) <= TITLE_MAX) return vi.normalize("NFC");
   log(
     `! ${model}: title is ${chars(vi)} characters, over ${TITLE_MAX}; asking for a shorter one`
@@ -272,7 +269,8 @@ async function fitTitle({ en, vi, model, llm, style, log }) {
   } catch (e) {
     log(`! ${model}: ${e.message}`);
   }
-  const fixed = `Bản tin AI;DR${datePart(vi) || datePart(en)}`;
+  const day = viDate(date);
+  const fixed = day ? `Bản tin AI;DR | ${day}` : "Bản tin AI;DR";
   log(
     `! posting "${fixed}" for the title over ${TITLE_MAX} characters: ${vi.normalize("NFC")}`
   );
@@ -297,12 +295,14 @@ async function firstValid({ what, models, llm, messages, check, log }) {
 }
 
 /**
- * Translate English cues. `llm(model, messages)` returns the raw model text (injected for tests).
+ * Translate English cues. `llm(model, messages)` returns the raw model text (injected for tests). `date` is the
+ * edition's YYYY-MM-DD, the only date a fallback title carries.
  * Returns { model, title, cues: [{ start, end, en, vi }] }; throws when no model gives a valid answer.
  */
 export async function translateCues({
   cues,
   title,
+  date,
   models,
   llm,
   style,
@@ -334,6 +334,7 @@ export async function translateCues({
       (await fitTitle({
         en: title,
         vi: a.title,
+        date,
         model: a.model,
         llm,
         style,
@@ -566,6 +567,7 @@ async function main() {
     const out = await translateCues({
       cues,
       title: script.post?.youtubeTitle ?? null,
+      date,
       models,
       llm,
     });
