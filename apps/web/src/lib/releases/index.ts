@@ -2,6 +2,7 @@ import { release as v0_1_0 } from "../../content/releases/v0.1.0";
 import { release as v0_1_12 } from "../../content/releases/v0.1.12";
 import { release as v0_1_13 } from "../../content/releases/v0.1.13";
 import type { Release } from "./types";
+import { releasePathForVersion } from "./versions";
 
 /** Newest first. */
 export const RELEASES: Release[] = [v0_1_13, v0_1_12, v0_1_0];
@@ -13,5 +14,14 @@ export function findRelease(version: string): Release | undefined {
 }
 
 export function releasePath(release: Release): string {
-  return `/release/v${release.version}`;
+  return releasePathForVersion(release.version);
+}
+
+/** Older and newer neighbours in `RELEASES` (newest first). */
+export function releaseNeighbours(release: Release): {
+  prev?: Release;
+  next?: Release;
+} {
+  const i = RELEASES.findIndex((r) => r.version === release.version);
+  return { prev: RELEASES[i + 1], next: RELEASES[i - 1] };
 }

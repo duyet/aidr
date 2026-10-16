@@ -12,7 +12,7 @@ import type { DbReader } from "./db";
 import { DEFAULT_LANG } from "./lang";
 import { isLanguageNeutralSsrPath } from "./locale-routing";
 import { absoluteSiteUrl, withLang } from "./locale-url";
-import { RELEASES, releasePath } from "./releases/index";
+import { RELEASE_VERSIONS, releasePathForVersion } from "./releases/versions";
 import { NEWS_SITEMAP_PATH, SITE_URL } from "./site";
 import { storyPath } from "./slug";
 import type { Lang } from "./types";
@@ -41,7 +41,7 @@ export const SITEMAP_STATIC_PATHS = [
  */
 export const SITEMAP_STATIC_PAGE_PATHS: readonly string[] = [
   ...SITEMAP_STATIC_PATHS,
-  ...RELEASES.map(releasePath),
+  ...RELEASE_VERSIONS.map(releasePathForVersion),
 ];
 
 export interface SitemapUrl {

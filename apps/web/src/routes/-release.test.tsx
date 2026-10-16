@@ -178,13 +178,15 @@ describe("release page", () => {
     expect(html).not.toContain("Fixture release");
   });
 
-  it("resolves a known version and reports an unknown one", () => {
+  it("resolves a known version and reports an unknown one", async () => {
     const loader = Route.options.loader as (ctx: {
       params: { version: string };
       context: { lang: Lang };
-    }) => Loaded;
+    }) => Promise<Loaded>;
     const ctx = { context: { lang: "en" as Lang } };
-    expect(loader({ ...ctx, params: { version: "v0.0.0-nope" } })).toEqual({
+    expect(
+      await loader({ ...ctx, params: { version: "v0.0.0-nope" } })
+    ).toEqual({
       kind: "missing",
       lang: "en",
     });
