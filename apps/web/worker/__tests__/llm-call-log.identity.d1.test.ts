@@ -2,14 +2,8 @@
  * #189 — the write path, over a real D1 database.
  *
  * The read-side tests cover attribution; these cover the other half of the
- * contract: that the D1 sink persists `run_id`, that an un-migrated DB still
- * gains the identity columns at runtime, and that the runtime column guard
- * neither retries a terminal schema error forever nor latches a transient
- * one (which would permanently disable run identity).
- *
- * Every test starts from the pre-0025 schema (migrations 0013 + 0016) so the
- * runtime guard is exercised exactly as on a DB whose migration has not been
- * applied yet.
+ * contract: that the D1 sink persists `run_id` and the rest of the call
+ * identity into the schema the numbered migrations build.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -31,7 +25,7 @@ import {
 } from "../llm.js";
 import {
   createD1LlmCallLogger,
-  resetLlmCallLogSchemaCache,
+  resetLlmCallLogState,
 } from "../llm-call-log.js";
 import { providerErrorSnippet } from "../telemetry-safe.js";
 import type { Env } from "../types.js";
@@ -51,8 +45,6 @@ let mf: Miniflare;
 let db: Awaited<ReturnType<Miniflare["getD1Database"]>>;
 const env = () => ({ DB: db }) as unknown as Env;
 
-/** Must match TELEMETRY_COLUMNS_SQL in ../llm-call-log.js. */
-const TELEMETRY_COLUMN_COUNT = 11;
 const T0 = 1_790_349_075_000;
 
 const RUN_A = "aaaaaaaa-1111-4111-8111-aaaaaaaa1111";
@@ -63,10 +55,18 @@ const RUN_B = "bbbbbbbb-2222-4222-8222-bbbbbbbb2222";
 // database and rebuild each other's schema mid-run.
 const ISOLATION = { isolatedResourcePersistencePath: "llm-call-log-identity" };
 
-/** 0013 + 0016 only: no run_id / error_code / error_status. */
-function pre0025Schema(): string[] {
+const LLM_CALLS_MIGRATIONS = [
+  "0013_llm_calls.sql",
+  "0016_llm_calls_usage.sql",
+  "0025_llm_call_run_identity.sql",
+  "0033_llm_call_route.sql",
+  "0034_llm_call_id.sql",
+  "0035_llm_call_cost_request.sql",
+];
+
+function llmCallsSchema(): string[] {
   const dir = path.resolve(import.meta.dirname, "../../migrations");
-  return ["0013_llm_calls.sql", "0016_llm_calls_usage.sql"].flatMap((name) =>
+  return LLM_CALLS_MIGRATIONS.flatMap((name) =>
     statements(readFileSync(path.join(dir, name), "utf8"))
   );
 }
@@ -90,9 +90,7 @@ function entry(overrides: Partial<LlmCallLogEntry> = {}): LlmCallLogEntry {
 }
 
 /** `logLlmCall` is fire-and-forget by design, so poll for the expected
- * result rather than sleeping a fixed amount. Reads can legitimately fail
- * while the runtime column guard is still mid-flight (e.g. `run_id` does
- * not exist yet), so a throwing read counts as "not ready yet". */
+ * result rather than sleeping a fixed amount. */
 async function waitFor<T>(
   read: () => Promise<T>,
   ok: (value: T) => boolean,
@@ -131,13 +129,6 @@ async function rows(runId?: string) {
   return res.results;
 }
 
-async function columnNames(): Promise<string[]> {
-  const res = await db
-    .prepare("SELECT name FROM pragma_table_info('llm_calls')")
-    .all<{ name: string }>();
-  return res.results.map((c) => c.name);
-}
-
 beforeAll(async () => {
   mf = new Miniflare({
     ...ISOLATION,
@@ -162,7 +153,7 @@ beforeAll(async () => {
     ],
   });
   db = await mf.getD1Database("DB");
-  for (const stmt of pre0025Schema()) await db.prepare(stmt).run();
+  for (const stmt of llmCallsSchema()) await db.prepare(stmt).run();
 }, 120_000);
 
 afterAll(async () => {
@@ -174,129 +165,49 @@ afterEach(async () => {
   // finished can still be in flight. Let it land *before* the next test
   // rebuilds the table, otherwise it pollutes the next test's rows.
   setLlmCallLogger(null);
-  resetLlmCallLogSchemaCache();
+  resetLlmCallLogState();
   await new Promise((r) => setTimeout(r, 150));
 });
 
 beforeEach(async () => {
-  // Rebuild the un-migrated schema so each test starts from the same place
-  // and the runtime column guard has real work to do.
   await db.prepare("DROP TABLE IF EXISTS llm_calls").run();
-  for (const stmt of pre0025Schema()) await db.prepare(stmt).run();
+  for (const stmt of llmCallsSchema()) await db.prepare(stmt).run();
 });
 
 describe("llm_calls run identity over a real D1 (#189)", () => {
-  it("adds the identity columns at runtime and persists run_id", async () => {
-    expect(await columnNames()).not.toContain("run_id");
-
+  it("persists run_id and the full call identity in one row", async () => {
     setLlmCallLogger(createD1LlmCallLogger(env(), RUN_A));
-    logLlmCall(entry());
-
-    // The guard added the columns even though 0025 was never applied.
-    const names = await waitFor(
-      columnNames,
-      (n) => n.includes("run_id") && n.includes("error_status")
+    logLlmCall(
+      entry({
+        route: ["@preset/aidr", "anyrouter/auto"],
+        provider: "provider-a",
+        callId: "call-1",
+        costUsd: 0.0123,
+        requestId: "request-1",
+      })
     );
-    expect(names).toContain("run_id");
-    expect(names).toContain("error_code");
-    expect(names).toContain("error_status");
 
-    // Identity landed, so the read side can attribute this call to the run.
-    expect(
-      await waitFor(
-        () => rows(RUN_A),
-        (r) => r.length > 0
+    await waitFor(
+      () => rows(RUN_A),
+      (r) => r.length > 0
+    );
+    const res = await db
+      .prepare(
+        "SELECT route, provider, call_id, cost_usd, request_id, prompt_tokens, cached_tokens FROM llm_calls WHERE run_id = ?"
       )
-    ).toEqual([{ run_id: RUN_A, model: "anyrouter/auto", tokens: 1_000 }]);
-  });
-
-  it("retries a transient column-add failure instead of latching it", async () => {
-    // The schema cache must not be marked ready when an ALTER failed, or
-    // run_id is never added again and every later call falls back to the
-    // legacy INSERT that carries no identity.
-    const realPrepare = db.prepare.bind(db);
-    let failedOnce = false;
-    const patched = {
-      prepare: (sql: string) => {
-        if (!failedOnce && sql.includes("ADD COLUMN run_id")) {
-          failedOnce = true;
-          return {
-            bind: () => patched,
-            run: async () => {
-              throw new Error("D1_ERROR: database is locked. Try again later.");
-            },
-          };
-        }
-        return realPrepare(sql);
+      .bind(RUN_A)
+      .all<Record<string, unknown>>();
+    expect(res.results).toEqual([
+      {
+        route: JSON.stringify(["@preset/aidr", "anyrouter/auto"]),
+        provider: "provider-a",
+        call_id: "call-1",
+        cost_usd: 0.0123,
+        request_id: "request-1",
+        prompt_tokens: 800,
+        cached_tokens: 50,
       },
-    } as unknown as D1Database;
-
-    setLlmCallLogger(
-      createD1LlmCallLogger({ DB: patched } as unknown as Env, RUN_B)
-    );
-    logLlmCall(entry({ model: "typesafe/jev" }));
-    // The first pass could not add run_id, so the call went down the legacy
-    // INSERT, which carries no identity.
-    const legacy = await waitFor(
-      async () =>
-        (
-          await db
-            .prepare("SELECT model FROM llm_calls")
-            .all<{ model: string }>()
-        ).results.map((r) => r.model),
-      (models) => models.includes("typesafe/jev")
-    );
-    expect(legacy).toEqual(["typesafe/jev"]);
-    expect(await columnNames()).not.toContain("run_id");
-
-    // The cache was not latched, so the next call retries the ALTER and
-    // identity starts working again.
-    setLlmCallLogger(createD1LlmCallLogger(env(), RUN_B));
-    logLlmCall(entry({ model: "minimax/m3", ts: T0 + 1 }));
-    expect(
-      await waitFor(
-        () => rows(RUN_B),
-        (r) => r.length > 0
-      )
-    ).toEqual([{ run_id: RUN_B, model: "minimax/m3", tokens: 1_000 }]);
-  });
-
-  it("stops retrying a settled schema error instead of looping forever", async () => {
-    // A missing table is terminal for this isolate: re-issuing eight ALTERs on
-    // every logged call would add a failed DDL round-trip per attempt for a
-    // schema that will never appear. The insert ladder still runs.
-    const realPrepare = db.prepare.bind(db);
-    let alterAttempts = 0;
-    const patched = {
-      prepare: (sql: string) => {
-        if (!sql.includes("ADD COLUMN")) return realPrepare(sql);
-        alterAttempts++;
-        return {
-          bind: () => patched,
-          run: async () => {
-            throw new Error("D1_ERROR: no such table: llm_calls");
-          },
-        };
-      },
-    } as unknown as D1Database;
-
-    setLlmCallLogger(
-      createD1LlmCallLogger({ DB: patched } as unknown as Env, RUN_B)
-    );
-    // Log three calls in sequence, letting each fire-and-forget insert
-    // finish. The ALTER list must be walked once, not once per call.
-    const attemptsPerCall: number[] = [];
-    for (let i = 0; i < 3; i++) {
-      const before = alterAttempts;
-      logLlmCall(entry({ ts: T0 + i }));
-      await new Promise((r) => setTimeout(r, 200));
-      attemptsPerCall.push(alterAttempts - before);
-    }
-
-    // First call pays for the one DDL pass; the rest skip it entirely.
-    expect(attemptsPerCall[0]).toBe(TELEMETRY_COLUMN_COUNT);
-    expect(attemptsPerCall.slice(1)).toEqual([0, 0]);
-    setLlmCallLogger(null);
+    ]);
   });
 
   it("keeps identity per operation under AsyncLocalStorage", async () => {
@@ -390,38 +301,5 @@ describe("llm_calls run identity over a real D1 (#189)", () => {
     });
     const served = res.results.find((r) => r.error_code == null)!;
     expect(served.response_snippet).toBeNull();
-  });
-
-  it("keeps identity when a write hits a schema without usage columns", async () => {
-    // Simulate a pre-0016 DB: only run identity columns exist. The insert
-    // ladder must fall back to a reduced INSERT that still carries run_id,
-    // not the legacy shape that drops it.
-    await db
-      .prepare(
-        "CREATE TABLE llm_calls_old AS SELECT id, ts, task, model, ok, tokens, duration_ms, error, prompt_chars, response_snippet FROM llm_calls WHERE 0"
-      )
-      .run();
-    await db.prepare("DROP TABLE llm_calls").run();
-    await db.prepare("ALTER TABLE llm_calls_old RENAME TO llm_calls").run();
-    for (const col of ["run_id", "error_code", "error_status"]) {
-      await db
-        .prepare(
-          `ALTER TABLE llm_calls ADD COLUMN ${col} ${col === "error_status" ? "INTEGER" : "TEXT"}`
-        )
-        .run();
-    }
-    resetLlmCallLogSchemaCache();
-
-    setLlmCallLogger(createD1LlmCallLogger(env(), RUN_A));
-    logLlmCall(entry());
-
-    // prompt_tokens / completion_tokens / cached_tokens are absent, so the
-    // reduced insert runs — but identity survives.
-    expect(
-      await waitFor(
-        () => rows(RUN_A),
-        (r) => r.length > 0
-      )
-    ).toEqual([{ run_id: RUN_A, model: "anyrouter/auto", tokens: 1_000 }]);
   });
 });

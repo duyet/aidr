@@ -12,10 +12,7 @@ import {
   primaryThumbnailUrl,
   serializeMediaManifest,
 } from "./media.js";
-import {
-  assertMediaManifestSchema,
-  isMediaManifestSchemaError,
-} from "./media-schema.js";
+import { isMediaManifestSchemaError } from "./media-schema.js";
 import {
   checkRateLimit,
   hashIp,
@@ -352,7 +349,6 @@ export async function reviewPendingSubmissions(
   env: Env,
   cap = REVIEW_CAP_DEFAULT
 ): Promise<SubmissionsReviewStats> {
-  await assertMediaManifestSchema(env.DB);
   const { results } = await env.DB.prepare(
     `SELECT id, url, title, note FROM submissions
      WHERE status = 'pending'
@@ -491,7 +487,6 @@ export async function acceptSubmissionById(
   env: Env,
   id: string
 ): Promise<{ ok: true; itemId: string } | { ok: false; error: string }> {
-  await assertMediaManifestSchema(env.DB);
   const submission = await env.DB.prepare(
     "SELECT id, url, title, note FROM submissions WHERE id = ? AND status = 'pending'"
   )

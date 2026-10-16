@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { logLlmCall, setLlmCallLogger, withLlmCallContext } from "../llm.js";
 import {
   createD1LlmCallLogger,
-  resetLlmCallLogSchemaCache,
+  resetLlmCallLogState,
 } from "../llm-call-log.js";
 import { providerErrorSnippet } from "../telemetry-safe.js";
 import type { Env } from "../types.js";
@@ -26,7 +26,7 @@ function fakeEnv() {
 
 describe("D1 LLM call telemetry", () => {
   it("writes explicit run identity and sanitized structured errors", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { env, statements } = fakeEnv();
     const logger = createD1LlmCallLogger(env, "reprocess-operation");
 
@@ -64,7 +64,7 @@ describe("D1 LLM call telemetry", () => {
   });
 
   it("writes no snippet for raw text that is not a descriptor", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { env, statements } = fakeEnv();
     const raw = "bad reply from reader@example.com";
     await createD1LlmCallLogger(
@@ -93,7 +93,7 @@ describe("D1 LLM call telemetry", () => {
   });
 
   it("writes no snippet for an ok row", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { env, statements } = fakeEnv();
     await createD1LlmCallLogger(
       env,

@@ -869,9 +869,8 @@ The set of sources is **declarative**: one list in
 `worker/sources/catalog.ts` generates the runtime seed, the migration, and
 the `/api/system/sources` + `/data` surfaces, so a source cannot reach one
 and miss the others. The seed upserts name, type and config (never
-`enabled`) at the start of each ingest. The topic-learning schema setup
-that runs later in the same ingest is DDL only, so it cannot undo the seed
-(#871). An operator can also add or enable an `rss` row at
+`enabled`) at the start of each ingest. Nothing later in the ingest writes
+`sources` rows, so nothing can undo the seed (#871). An operator can also add or enable an `rss` row at
 runtime through `upsert_source` with no deploy — see
 [`worker/README.md`](worker/README.md) → "Add a source without a deploy".
 
@@ -1705,9 +1704,7 @@ only the og:image already stored) both leave the queue. There is no retry.
 A summary another writer stores during the fetch keeps the row queued for
 one fetch of its own. `planBackfillUpdate` returns null when the write would
 store what the row holds, so nothing is written or counted. Translation QA
-is cleared only when the summary changed, not for a new picture. Until 0066
-is applied the query falls back to the old predicate and logs a warning;
-the summary head is then refetched every run, as before #811.
+is cleared only when the summary changed, not for a new picture.
 Translate skips LLM only when explicit `source_lang='vi'` metadata marks a
 native source, retries leftover items one-at-a-time after a batch fail, and
 the VI UI hides the EN badge when the painted title is Vietnamese or

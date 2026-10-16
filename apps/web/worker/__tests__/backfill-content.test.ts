@@ -69,6 +69,7 @@ describe("backfillContent media queue", () => {
            'A finished summary.', NULL, '[]', 20),
           ('legacy', 'https://legacy.example/story', 'hn', 'published',
            'A finished summary.', 'https://cdn.example/legacy.jpg', '[]', 10);
+        ALTER TABLE items ADD COLUMN summary_checked_at INTEGER;
       `);
       const fetchMock = vi.fn(
         async () => new Response("Forbidden", { status: 403 })
@@ -106,6 +107,7 @@ describe("backfillContent media queue", () => {
         INSERT INTO items VALUES
           ('raced', 'https://blocked.example/story', 'openai', 'published',
            'A finished summary.', NULL, '[]', 20);
+        ALTER TABLE items ADD COLUMN summary_checked_at INTEGER;
       `);
       const written = JSON.stringify({
         version: 1,
@@ -355,46 +357,6 @@ describe("backfillContent summary queue", () => {
           .prepare("SELECT summary_checked_at FROM items WHERE id = 'raced'")
           .get()
       ).toEqual({ summary_checked_at: null });
-    } finally {
-      sqlite.close();
-    }
-  });
-
-  // 0066 is applied by hand after deploy. Until then the summary query must
-  // not name the column: a "no such column" error here would also end the
-  // media leg in the same try.
-  it("keeps both legs running before migration 0066 is applied", async () => {
-    const sqlite = new DatabaseSync(":memory:");
-    try {
-      sqlite.exec(`
-        CREATE TABLE items (
-          id TEXT PRIMARY KEY, url TEXT, source_id TEXT, status TEXT,
-          summary TEXT, image_url TEXT,
-          media_manifest TEXT NOT NULL DEFAULT '[]', published_at INTEGER
-        );
-        CREATE TABLE translations (item_id TEXT, lang TEXT, qa_rating INTEGER,
-          qa_at INTEGER, qa_source_hash TEXT, qa_candidate_hash TEXT,
-          qa_source_revision INTEGER, qa_direction TEXT,
-          qa_reviewer_model TEXT, qa_criteria_version TEXT);
-        INSERT INTO items VALUES
-          ('teaser', 'https://news.example/ipo', 'hn', 'published',
-           'An IPO prospectus seen by Reu…', NULL, '{"version":1,"assets":[]}', 20),
-          ('legacy', 'https://legacy.example/story', 'hn', 'published',
-           'A finished summary.', 'https://cdn.example/legacy.jpg', '[]', 10);
-      `);
-      const finished =
-        "An IPO prospectus seen by Reuters put the loss at $41.97 billion.";
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => html({ "og:description": finished }))
-      );
-
-      await backfillContent(context(sqlite));
-
-      expect(
-        sqlite.prepare("SELECT summary FROM items WHERE id = 'teaser'").get()
-      ).toEqual({ summary: finished });
-      expect(queuedIds(sqlite)).toEqual([]);
     } finally {
       sqlite.close();
     }

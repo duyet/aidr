@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { logLlmCall, setLlmCallLogger } from "../../worker/llm.js";
 import {
   createD1LlmCallLogger,
-  resetLlmCallLogSchemaCache,
+  resetLlmCallLogState,
 } from "../../worker/llm-call-log.js";
 import type { Env } from "../../worker/types.js";
 import { llmStep } from "../../worker/workflow-step.js";
@@ -172,7 +172,7 @@ function stepWithoutModuleLogger() {
 
 describe("#189 run-attempt identity persistence", () => {
   it("attributes a run's attempts by run_id after the logger is reinstalled per step", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { db, env } = fakeDb();
     setLlmCallLogger(null);
 
@@ -247,7 +247,7 @@ describe("#189 run-attempt identity persistence", () => {
   });
 
   it("populates the run list models cell from the same rows", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { db, env } = fakeDb([runRow(RUN_ID)]);
     setLlmCallLogger(null);
 
@@ -282,7 +282,7 @@ describe("#189 run-attempt identity persistence", () => {
   });
 
   it("keeps a pre-identity run empty instead of guessing rows by timestamp", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { db, env, calls } = fakeDb();
     setLlmCallLogger(null);
 

@@ -3,7 +3,7 @@ import { logLlmCall, setLlmCallLogger } from "../llm.js";
 import {
   createD1LlmCallLogger,
   flushLlmCallWrites,
-  resetLlmCallLogSchemaCache,
+  resetLlmCallLogState,
   withRunLlmCallLogger,
 } from "../llm-call-log.js";
 import type { Env } from "../types.js";
@@ -80,7 +80,7 @@ function llmInserts(statements: RecordedInsert[]): RecordedInsert[] {
 
 describe("withRunLlmCallLogger", () => {
   it("re-installs the D1 sink and stamps the run id after the module logger is gone", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { env, statements } = fakeEnv();
     // A step callback can run where run()'s install never applied.
     setLlmCallLogger(null);
@@ -109,7 +109,7 @@ describe("withRunLlmCallLogger", () => {
   });
 
   it("drains pending inserts so a step never resolves before its rows land", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { env, statements } = fakeEnv();
     setLlmCallLogger(null);
 
@@ -134,7 +134,7 @@ describe("withRunLlmCallLogger", () => {
 
 describe("llmStep", () => {
   it("persists every attempt of an LLM step with the step's run id", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { env, statements } = fakeEnv();
     setLlmCallLogger(null);
 
@@ -172,7 +172,7 @@ describe("llmStep", () => {
   });
 
   it("keeps the step outcome when logging fails", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { env, statements } = fakeEnv({ failInserts: true });
     setLlmCallLogger(null);
 
@@ -200,7 +200,7 @@ describe("llmStep", () => {
   });
 
   it("returns the fallback when the engine fails the step", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { env } = fakeEnv();
     setLlmCallLogger(null);
     const failingStep = {
@@ -222,7 +222,7 @@ describe("llmStep", () => {
   });
 
   it("leaves non-LLM steps on safeStep: the sink is not installed there", async () => {
-    resetLlmCallLogSchemaCache();
+    resetLlmCallLogState();
     const { env, statements } = fakeEnv();
     setLlmCallLogger(null);
 

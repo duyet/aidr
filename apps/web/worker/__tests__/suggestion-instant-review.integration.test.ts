@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getOwnSuggestion, listContributions } from "../contributions.js";
 import { type LlmCallLogEntry, setLlmCallLogger } from "../llm.js";
-import { resetLlmCallLogSchemaCache } from "../llm-call-log.js";
+import { resetLlmCallLogState } from "../llm-call-log.js";
 import {
   approveSuggestionById,
   REVIEW_CLAIM_STALE_MS,
@@ -149,7 +149,7 @@ function viTitle(db: DatabaseSync): unknown {
 }
 
 beforeEach(() => {
-  resetLlmCallLogSchemaCache();
+  resetLlmCallLogState();
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "log").mockImplementation(() => {});

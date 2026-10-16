@@ -146,20 +146,18 @@ describe("recordExtensionEvent", () => {
     expect(keys[0]).toBe("ext|203.0.113.7|channel_click|telegram");
   });
 
-  it("does not throw when the table is missing (defect: a 500 before 0068)", async () => {
+  it("does not throw when the write fails (defect: a D1 error turned the route into a 500)", async () => {
     const db = {
       prepare: () => ({
-        all: async () => {
-          throw new Error("no such table: ext_events");
-        },
+        bind: () => ({
+          run: async () => {
+            throw new Error("no such table: ext_events");
+          },
+        }),
       }),
     } as unknown as D1Database;
-    vi.resetModules();
-    const fresh = await import("../ext-events");
-    const probe = db as unknown as { prepare: (s: string) => unknown };
-    const spy = vi.spyOn(probe, "prepare");
     await expect(
-      fresh.recordExtensionEvent({
+      recordExtensionEvent({
         ua: BROWSER,
         ip: null,
         limiter: undefined,
@@ -168,7 +166,6 @@ describe("recordExtensionEvent", () => {
         day: "2026-10-16",
       })
     ).resolves.toBeUndefined();
-    expect(spy).toHaveBeenCalledTimes(1);
   });
 });
 

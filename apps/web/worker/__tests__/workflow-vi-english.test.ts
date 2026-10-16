@@ -25,7 +25,6 @@ vi.mock("../llm-call-log.js", () => ({
   withRunLlmCallLogger: (_env: unknown, _id: string, fn: () => unknown) => fn(),
 }));
 vi.mock("../media-schema.js", () => ({
-  assertMediaManifestSchema: vi.fn(async () => {}),
   isMediaManifestSchemaError: () => false,
 }));
 vi.mock("../rate-limit.js", () => ({

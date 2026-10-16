@@ -48,22 +48,6 @@ export function parseExtensionEvent(
   return rest === "" ? { event, key } : null;
 }
 
-let tableReady: boolean | null = null;
-
-/** Whether `ext_events` exists, so the route still answers before 0068. */
-export async function extEventsTableReady(db: {
-  prepare(sql: string): { all(): Promise<unknown> };
-}): Promise<boolean> {
-  if (tableReady !== null) return tableReady;
-  try {
-    await db.prepare("SELECT event FROM ext_events LIMIT 1").all();
-  } catch {
-    return false;
-  }
-  tableReady = true;
-  return true;
-}
-
 /** Counts one extension event. Drops bots, anything that does not parse, and
  * repeats from one IP inside the limiter's period (`READ_LIMITER`, keyed
  * apart from story reads). Never throws: the route answers as before. */
@@ -86,7 +70,6 @@ export async function recordExtensionEvent(input: {
       });
       if (!success) return;
     }
-    if (!(await extEventsTableReady(input.db))) return;
     await input.db
       .prepare(
         `INSERT INTO ext_events (day, event, key, count) VALUES (?, ?, ?, 1)
