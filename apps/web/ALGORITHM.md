@@ -213,12 +213,22 @@ Wrangler (`cf d1 query` currently returns 403), from `apps/web`:
 `pnpm exec wrangler d1 execute DB --remote --command "SELECT date, fallback, created_at FROM tldr_snapshots WHERE date = '2026-10-13'"`.
 
 Ranking replay: `pnpm --filter @aidr/web rank-replay [--days 14] [--cache f]
-[--formulas current,D+I+B,final]` reads the last 14 days of published items,
-merged members, vote nets and TL;DR snapshots from prod D1 (`cf d1 query`,
-SELECT only, no writes) and recomputes rank at hourly `now` for each named
-formula. It prints TL;DR overlap of the hourly top 8, duplicate-event slots
-and age of the top 30, hours-to-top-10 for importance 8+, top-10 overlap with
-the old formula, and how far one vote moves an item. Points and votes are
+[--formulas base,base+K1,production] [--gold f]` reads the last 14 days of
+published items, merged members, vote nets and TL;DR snapshots from prod D1
+(`cf d1 query`, falling back to `wrangler d1 execute --remote`; SELECT only,
+no writes) and recomputes rank at hourly `now` for each named formula.
+`production` is the live `rankScore`; `base` is the 2026-10-16 formula frozen
+with its own constants, and lever patches (`E1` floor-adjusted engagement,
+`K1` the shipped kind table, `K2`/`K3` stronger tables, `R` drama words,
+`B75`/`BK` breaking variants) stack on it with `+`. On startup the script
+asserts that `base` plus `PRODUCTION_LEVERS` equals `rankScore` on every
+live item-hour, so a formula edit the script does not describe fails loudly.
+It prints the gold-set shares (rise and fall stories in the top 10, rise in
+the top 30, mean best position of rise stories; `scripts/fixtures/rank-kinds/
+gold.json` by default), TL;DR overlap of the hourly top 8, duplicate-event
+slots and age of the top 30, hours-to-top-10 for importance 8+, top-10
+overlap with `base`, and how far one vote moves an item.
+`--gold-candidates` lists the stories a new gold set must label. Points and votes are
 their final values, not their values at each hour, and the TL;DR snapshot was
 picked under the formula live then, so treat it as a comparison between
 formulas, not a forecast. Run it before changing `worker/ranking.ts`.
@@ -1533,16 +1543,21 @@ rank_score = importance^1.5 / √10             # 10 stays 10; 7 → 5.9, 8 → 
            × decay(age)                       # exp(−age/36h); after 24h also × exp(−(age−24h)/24h)
            × min(engagement × sourceBoost, 3.25)
            × (1 + 0.2·min(voteNet, 6))        # reader votes; net < 0: 1 / (1 + 0.2·min(−voteNet, 6))
+           × kind(category)                   # STORY_KIND_WEIGHTS; 1 for null or an unknown category
            × breaking(age)                    # importance ≥ 8 only: 1 + 0.4·exp(−age/3h)
 
 engagement  = 1 + log10(1 + points + 0.5·comments)   # capped at 1.3 when importance < 4
 sourceBoost = 1 + 0.12·(min(sourceCount, 8) − 1)     # extra independent outlets
+kind        = Models 1.2 · Open Source 1.15 · Research, Chips, Tools, Agents 1.1
+              · Frameworks, Regulation 1.05 · Products, Infra, Releases, Data 1
+              · Industry 0.9 · Funding 0.85
 ```
 
 Constants live in `worker/ranking.ts` (`IMPORTANCE_EXPONENT`,
 `DECAY_*`, `ENGAGEMENT_BOOST_CAP`, `LOW_IMPORTANCE_*`, `BREAKING_*`,
-`READER_VOTE_GAIN`, `READER_VOTE_CAP`). Why each rule exists, from the
-2026-10-11 audit and `rank-replay` (below):
+`READER_VOTE_GAIN`, `READER_VOTE_CAP`, `STORY_KIND_WEIGHTS`). Why each
+rule exists, from the 2026-10-11 audit, the 2026-10-16 story-kind replay
+and `rank-replay` (below):
 
 - **Decay ramp and boost cap.** 5 of the top 30 were older than 36h. After
   24h the decay steepens, and `engagement × sourceBoost` stops at 3.25 so
@@ -1561,6 +1576,32 @@ Constants live in `worker/ranking.ts` (`IMPORTANCE_EXPONENT`,
   (×2.2), whatever the story's HN points. Replay: five votes put a fresh
   top-30 story into the top 5 in 92% of hours; one vote moves a top-10
   neighbour at most 22 places, down from 216.
+- **Story kind weight.** The owner asked for model releases, tech
+  launches, drama and breaking news above markets, HR and ad-business
+  pieces. The scorer's category is the only kind signal items carry
+  without another LLM call, so one table (`STORY_KIND_WEIGHTS`, every
+  category listed, `storyKindWeight`) multiplies the score. Every
+  `rankScore` caller passes `category` (a required field), and the
+  re-rank, vote, admin and merge queries read the column. Replay over 14
+  days to 2026-10-16 against a 659-story gold set labelled from titles
+  before tuning (`scripts/fixtures/rank-kinds/gold.json`, rules at the
+  top): gold "rise" stories held 55.2% of top-10 slots instead of 49.0%
+  and "fall" stories 10.7% instead of 15.1%; top-30 staleness (0.19 vs
+  0.18 stories over 36h), duplicate slots (0.20 vs 0.19), median age
+  (8.4h) and the vote guards did not move. Overlap with the stored TL;DR
+  picks fell from 0.484 to 0.459, which the replay's bias predicts (those
+  picks were made by the old formula). The replay also scores every hour
+  with final HN points, so it flatters engagement-heavy stories and the
+  live gain may be a little larger. Rejected on the same data: counting
+  HN points above the 20-point admission floor (no rise/fall change,
+  duplicate slots 0.19 to 0.24, TL;DR overlap 0.434); a title-keyword
+  drama factor (56% of its 102 matched headlines were drama; a 15-word
+  list reached 88% on only 24); a 7.5 breaking threshold (no change);
+  stronger weights (Models 1.35, Funding 0.75: rise 57.0%, fall 8.5%, but
+  fresh importance-8 stories reaching the top 10 fell from 73% to 67%).
+  The weight trusts the scorer's category, so a jobs piece filed under
+  Research rises with it. `weeklyScore` carries the weight too (it is not
+  a freshness factor).
 
 A story's cluster is the canonical item plus every `merged` item whose
 `duplicate_of` points at it. `rankSignals` reads it one way everywhere
