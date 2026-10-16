@@ -191,6 +191,8 @@ const flat = (t) =>
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 
+const KEEP = ["AI;DR", "aidr.today"];
+
 /** Problems with one translated line (empty = fine). */
 export function lineProblems(label, en, vi) {
   if (typeof vi !== "string" || !vi.trim()) return [`${label}: empty`];
@@ -198,7 +200,7 @@ export function lineProblems(label, en, vi) {
   const have = new Set(digits(vi));
   for (const n of digits(en))
     if (!have.has(n)) p.push(`${label}: number ${n} is missing`);
-  for (const keep of ["AI;DR", "aidr.today"])
+  for (const keep of KEEP)
     if (en.includes(keep) && !vi.includes(keep))
       p.push(`${label}: "${keep}" is missing`);
   if (en.split(/\s+/).length >= 3 && flat(en) === flat(vi))
@@ -225,23 +227,28 @@ export function checkAnswer(text, lines, title, check = lineProblems) {
   return { title: title ? viTitle : null, lines: out, problems };
 }
 
-/** `title` cut to `max` characters between words, with "…" at the cut. The part after its last " | " or " — " (the
- *  date) is kept. Composed (NFC) first, so a tone mark is never counted apart from its letter or cut from it. */
+/** A translated title's problems, its length included. */
+const titleProblems = (en, vi) => [
+  ...lineProblems("title", en, vi),
+  ...(chars(vi) > TITLE_MAX
+    ? [`title: ${chars(vi)} characters, over ${TITLE_MAX}`]
+    : []),
+];
+
+/** `title` cut to `max` characters by dropping whole words from the end, with "…" at the cut. A word with a digit or
+ *  a KEEP name is never dropped, and the part after its last " | " or " — " (the date) is kept, so the cut may still
+ *  be over `max`. Composed (NFC) first, so a tone mark is never counted apart from its letter or cut from it. */
 function clipTitle(title, max = TITLE_MAX) {
   const t = title.normalize("NFC").trim();
   if ([...t].length <= max) return t;
   const m = t.match(/^(.*\S)(\s+[|—–-]\s+.*)$/);
   const tail = m && [...m[2]].length <= max / 2 ? m[2] : "";
   const words = (tail ? m[1] : t).split(/\s+/);
-  const room = max - [...tail].length - 1;
-  let head = "";
-  for (const w of words) {
-    const next = head ? `${head} ${w}` : w;
-    if ([...next].length > room) break;
-    head = next;
-  }
-  if (!head) head = [...words[0]].slice(0, room).join("");
-  return `${head.replace(/[\s,;:]+$/, "")}…${tail}`;
+  const cut = () => `${words.join(" ").replace(/[\s,;:]+$/, "")}…${tail}`;
+  for (let i = words.length - 1; i >= 0 && [...cut()].length > max; i--)
+    if (!/\d/.test(words[i]) && !KEEP.some((k) => words[i].includes(k)))
+      words.splice(i, 1);
+  return cut();
 }
 
 function titlePromptFor(en, vi, style = houseStyle()) {
@@ -258,7 +265,8 @@ function titlePromptFor(en, vi, style = houseStyle()) {
 }
 
 /** A translated title within TITLE_MAX. A longer one goes back to the model that wrote it, once, with the limit and
- *  its length; a retry that fails or is still long is clipped at a word. The lines already passed and are kept. */
+ *  its length; a retry that fails or is still long is clipped at a word. The lines already passed and are kept.
+ *  Throws when even the clipped title is over TITLE_MAX or lost a number, rather than post it. */
 async function fitTitle({ en, vi, model, llm, style, log }) {
   if (chars(vi) <= TITLE_MAX) return vi.normalize("NFC");
   log(
@@ -268,15 +276,18 @@ async function fitTitle({ en, vi, model, llm, style, log }) {
     const t = String(
       parseAnswer(await llm(model, titlePromptFor(en, vi, style))).title ?? ""
     ).trim();
-    const problems = lineProblems("title", en, t);
-    if (chars(t) > TITLE_MAX)
-      problems.push(`title: ${chars(t)} characters, over ${TITLE_MAX}`);
+    const problems = titleProblems(en, t);
     if (!problems.length) return t.normalize("NFC");
     log(`! ${model}: ${problems.join("; ")}`);
   } catch (e) {
     log(`! ${model}: ${e.message}`);
   }
   const cut = clipTitle(vi);
+  const problems = titleProblems(en, cut);
+  if (problems.length)
+    throw new Error(
+      `the Vietnamese title cannot be cut to ${TITLE_MAX} characters and keep every number: ${problems.join("; ")}: ${cut}`
+    );
   log(`! title clipped at a word: ${cut}`);
   return cut;
 }
