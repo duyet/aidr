@@ -627,6 +627,32 @@ describe("media dedup identity", () => {
     ).toHaveLength(1);
   });
 
+  it("dedupes a mirrored tweet photo against its pbs.twimg.com original", () => {
+    const original =
+      "https://pbs.twimg.com/media/HUr9XldXIAAPeX3?format=webp&name=large";
+    const mirror =
+      "https://static.marketbrief.now/story-media/2110778025629347999/HUr9XldXIAAPeX3-large.jpg";
+    expect(
+      urls([
+        { type: "image", url: mirror },
+        { type: "image", url: original },
+        {
+          type: "image",
+          url: "https://static.huggingnews.com/story-media/2110778025629347999/HUr9XldXIAAPeX3-large.jpg",
+        },
+      ])
+    ).toEqual([mirror]);
+    expect(
+      urls([
+        { type: "image", url: mirror },
+        {
+          type: "image",
+          url: "https://pbs.twimg.com/media/HUr9XldXIAAPeX4?format=jpg&name=large",
+        },
+      ])
+    ).toHaveLength(2);
+  });
+
   it("treats http and https of the same file as one asset", () => {
     expect(
       urls([
