@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { findSourceSpec } from "../sources/catalog.js";
+import { HN_SCOPE_SOURCE } from "../sources/catalog.js";
 import { hnAdapter } from "../sources/hn.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -95,7 +95,8 @@ interface Story {
 
 /** HN Algolia's behavior, enough of it to judge a request: every query word
  *  is required (so `OR` is a word), `numericFilters` bound the window and
- *  points, and a response never holds more than `hitsPerPage` hits. */
+ *  points, `search_by_date` returns newest first, `search` with no query
+ *  ranks by points, and a response never holds more than `hitsPerPage` hits. */
 function algolia(corpus: readonly Story[]) {
   return async (input: RequestInfo | URL) => {
     const url = new URL(String(input));
@@ -125,6 +126,10 @@ function algolia(corpus: readonly Story[]) {
         return v <= n;
       });
     });
+    const byDate = url.pathname.endsWith("/search_by_date");
+    hits.sort((a, b) =>
+      byDate ? b.created_at_i - a.created_at_i : b.points - a.points
+    );
     const perPage = Number(url.searchParams.get("hitsPerPage") ?? 20);
     return new Response(JSON.stringify({ hits: hits.slice(0, perPage) }));
   };
@@ -145,8 +150,8 @@ describe("hnAdapter against Algolia's search semantics (#873)", () => {
     created_at_i: since + 600,
     ...extra,
   });
-  // 120 popular non-AI stories rank ahead of the late risers, as a busy
-  // 26h window does, so a 100-hit page cuts them off.
+  // 120 popular non-AI stories outrank the late risers, as in a busy 26h
+  // window, so a 100-hit page cuts them off.
   const busyDay = Array.from({ length: 120 }, (_, i) =>
     story(`f${i}`, `Show HN: A todo app, take ${i}`, 300)
   );
@@ -156,8 +161,12 @@ describe("hnAdapter against Algolia's search semantics (#873)", () => {
     }),
     story("muse", "Muse Spark Open, the most capable open-weight model", 71),
     ...busyDay,
+    story("riser", "Frontier Pre-Training at Microsoft AI", 45),
     story("revenue", "Anthropic revenue jumps to $16.8B in third quarter", 25),
-    story("hub", "AI Prompt Hub: 150 categories of ready-to-use prompts", 2),
+    // The newest story in the window, so a newest-first search returns it.
+    story("hub", "AI Prompt Hub: 150 categories of ready-to-use prompts", 2, {
+      created_at_i: since + 5000,
+    }),
     story("old", "OpenAI ships a new reasoning model", 500, {
       created_at_i: since - 1,
     }),
@@ -168,30 +177,52 @@ describe("hnAdapter against Algolia's search semantics (#873)", () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation(algolia(corpus)));
   });
 
-  const ids = async () => {
-    const config = findSourceSpec("hn")?.config ?? {};
-    const items = await hnAdapter.fetchItems(config, since);
-    return items.map((i) => i.externalId).sort();
-  };
+  describe.each([
+    {
+      row: "the 0043 row (an `OR` query, floor 40)",
+      config: HN_SCOPE_SOURCE.config,
+      expected: ["front", "muse", "riser"],
+    },
+    {
+      row: "a floor of 20 and no query",
+      config: { popularMinPoints: 20 },
+      expected: ["front", "muse", "revenue", "riser"],
+    },
+  ])("with $row", ({ config, expected }) => {
+    const ids = async () => {
+      const items = await hnAdapter.fetchItems(config, since);
+      return items.map((i) => i.externalId).sort();
+    };
 
-  it("with the catalog config, adds popular AI stories that never reached the front page", async () => {
-    // Defect: an `A OR B` query requires the word `OR`, so the popular
-    // search matched nothing and HN was front page only.
-    expect(await ids()).toContain("muse");
-  });
+    it("adds popular AI stories that never reached the front page", async () => {
+      // Defect: an `A OR B` query requires the word `OR`, so the popular
+      // search matched nothing and HN was front page only.
+      expect(await ids()).toContain("muse");
+    });
 
-  it("keeps a late riser that a 100-hit page would cut off", async () => {
-    // Defect: a busy window holds more than 100 stories over the floor, and
-    // the cut drops the ones that crossed it last.
-    expect(await ids()).toContain("revenue");
-  });
+    it("keeps a late riser that a 100-hit page would cut off", async () => {
+      // Defect: a busy window holds more than 100 stories over the floor,
+      // and the cut drops the ones that crossed it last.
+      expect(await ids()).toContain("riser");
+    });
 
-  it("leaves out low-point AI posts and stories older than the window", async () => {
-    // Defect: an unfloored keyword search sends every 1-2 point AI post to
-    // the scorer, about 250 a day.
-    const got = await ids();
-    expect(got).not.toContain("hub");
-    expect(got).not.toContain("old");
-    expect(got).toEqual(["front", "muse", "revenue"]);
+    it("leaves out low-point AI posts and stories older than the window", async () => {
+      // Defect: an unfloored newest-first search sends every 1-2 point AI
+      // post to the scorer, about 250 a day.
+      const got = await ids();
+      expect(got).not.toContain("hub");
+      expect(got).not.toContain("old");
+      expect(got).toEqual(expected);
+    });
+
+    it("never sends an Algolia query", async () => {
+      // Defect: the row's `query` reaches Algolia and every word, `OR`
+      // included, is required.
+      await ids();
+      const queries = vi
+        .mocked(fetch)
+        .mock.calls.map((c) => new URL(String(c[0])).searchParams.get("query"));
+      expect(queries).toEqual(queries.map(() => null));
+    });
   });
 });
