@@ -102,7 +102,7 @@ describe("StoryVotes signed in", () => {
         value={{
           mod: signedInClerk(),
           publishableKey: "pk_test",
-          requestClerk: () => {},
+          preloadClerk: () => {},
         }}
       >
         {/* biome-ignore lint/a11y/noStaticElementInteractions: stands in for the row header */}

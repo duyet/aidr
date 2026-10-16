@@ -17,15 +17,17 @@ export type ClerkModule = ClerkTanStackMod & {
 export interface ClerkModuleState {
   mod: ClerkModule | null;
   publishableKey: string | undefined;
-  /** Signed-out fallbacks call this on hover/focus/click so the SDK starts
-   * downloading before the reader reaches the Clerk UI that replaces them. */
-  requestClerk: () => void;
+  /** Starts the SDK download and nothing else. It never mounts the provider,
+   * so a signed-out control may call it on hover or focus without the page
+   * remounting under the pointer. The provider mounts only per
+   * `shouldMountClerk`. */
+  preloadClerk: () => void;
 }
 
 const EMPTY_STATE: ClerkModuleState = {
   mod: null,
   publishableKey: undefined,
-  requestClerk: () => {},
+  preloadClerk: () => {},
 };
 
 function withSignedInOutCompat(mod: ClerkTanStackMod): ClerkModule {
@@ -41,11 +43,10 @@ function withSignedInOutCompat(mod: ClerkTanStackMod): ClerkModule {
 let clerkModulePromise: Promise<ClerkModule> | null = null;
 
 /**
- * Dynamic import keeps the ~160KB Clerk SDK off the critical path: it loads
- * after first paint, then ClerkRootProvider inserts the one app-wide
- * <ClerkProvider> and remounts the subtree. Every consumer reads the module
- * via ClerkModuleContext and must tolerate `mod: null` until then — nobody
- * mounts a second provider.
+ * Dynamic import keeps the Clerk SDK off the critical path. ClerkRootProvider
+ * inserts the one app-wide <ClerkProvider> once this resolves, which remounts
+ * the subtree. Every consumer reads the module via ClerkModuleContext and
+ * must tolerate `mod: null` until then; nobody mounts a second provider.
  */
 export function loadClerkModule(): Promise<ClerkModule> {
   clerkModulePromise ??= import("@clerk/tanstack-react-start")
@@ -102,6 +103,18 @@ export function routeNeedsClerk(pathname: string): boolean {
   return CLERK_ROUTE_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
+}
+
+/**
+ * Whether the app-wide <ClerkProvider> belongs in the tree. Inserting it
+ * remounts everything below it, so the answer depends only on page-level
+ * facts (where the reader is, whether they have a session) and never on a
+ * hover or a tap. Both inputs change only at hydration or at a navigation,
+ * which is when a remount costs nothing. Signed-out intent on a reader page
+ * preloads the chunk and navigates to /sign-in, where this returns true.
+ */
+export function shouldMountClerk(pathname: string, cookie: string): boolean {
+  return hasClerkSessionCookie(cookie) || routeNeedsClerk(pathname);
 }
 
 /** Sync env read — lets the root render before the Clerk chunk arrives. */

@@ -6,9 +6,8 @@ import {
   type ClerkModule,
   ClerkModuleContext,
   getClerkPublishableKey,
-  hasClerkSessionCookie,
   loadClerkModule,
-  routeNeedsClerk,
+  shouldMountClerk,
 } from "../lib/clerk-user";
 import { useLang } from "../lib/lang-context";
 import { withLang } from "../lib/locale-url";
@@ -35,18 +34,19 @@ export function clerkProviderLocaleOptions(lang: Lang) {
 }
 
 /**
- * Mounts the ONE app-wide <ClerkProvider>. The Clerk SDK is dynamically
- * imported only once something can need it: a session cookie, a route that
- * mounts Clerk UI, or a signed-out fallback reporting intent via
- * `requestClerk` (hover, focus or click on a sign-in control). A window
- * pointerdown is not a signal: on a phone the first scroll fires it, and
- * most readers never sign in, so they skip the ~330 KB gzip SDK entirely.
- * The SDK stays out of SSR. Children render immediately with `mod: null`;
- * every consumer handles that fallback. When the import resolves the
- * provider is inserted above children, which remounts the subtree;
- * consumers then see the shared module via ClerkModuleContext. A second
- * <ClerkProvider> crashes the app; if Clerk fails, ErrorBoundary degrades
- * to children with no Clerk context.
+ * Mounts the ONE app-wide <ClerkProvider>. The SDK is dynamically imported,
+ * and the provider inserted, only when `shouldMountClerk` says so: a session
+ * cookie or a route that renders Clerk UI, re-checked on every navigation.
+ * Inserting the provider changes the element above `children`, so React
+ * remounts the whole page and drops open dialogs, expanded rows and pending
+ * selections. Tying insertion to page-level facts keeps that remount at
+ * hydration or at a navigation, never after a hover or a tap. Signed-out
+ * controls may only `preloadClerk` (download without inserting) and send
+ * the reader to /sign-in. Most readers never sign in, so they skip the
+ * ~330 KB gzip SDK entirely. The SDK stays out of SSR. Children render
+ * immediately with `mod: null`; every consumer handles that fallback. A
+ * second <ClerkProvider> crashes the app; if Clerk fails, ErrorBoundary
+ * degrades to children with no Clerk context.
  */
 export function ClerkRootProvider({ children }: { children: ReactNode }) {
   const publishableKey = getClerkPublishableKey();
@@ -55,18 +55,14 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
   const proxyUrl = resolveClerkProxyUrl(import.meta.env.CLERK_PROXY_URL);
   const [mod, setMod] = useState<ClerkModule | null>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [wanted, setWanted] = useState(false);
-  const requestClerk = useCallback(() => setWanted(true), []);
+
+  const preloadClerk = useCallback(() => {
+    if (publishableKey) loadClerkModule().catch(() => {});
+  }, [publishableKey]);
 
   useEffect(() => {
-    if (!publishableKey || wanted) return;
-    if (hasClerkSessionCookie(document.cookie) || routeNeedsClerk(pathname)) {
-      setWanted(true);
-    }
-  }, [publishableKey, pathname, wanted]);
-
-  useEffect(() => {
-    if (!publishableKey || !wanted) return;
+    if (!publishableKey || mod) return;
+    if (!shouldMountClerk(pathname, document.cookie)) return;
     let cancelled = false;
     loadClerkModule()
       .then((m) => {
@@ -78,11 +74,11 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [publishableKey, wanted]);
+  }, [publishableKey, pathname, mod]);
 
   const withoutProvider = (
     <ClerkModuleContext.Provider
-      value={{ mod: null, publishableKey, requestClerk }}
+      value={{ mod: null, publishableKey, preloadClerk }}
     >
       {children}
     </ClerkModuleContext.Provider>
@@ -97,7 +93,7 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
   return (
     <ErrorBoundary fallback={withoutProvider}>
       <ClerkModuleContext.Provider
-        value={{ mod, publishableKey, requestClerk }}
+        value={{ mod, publishableKey, preloadClerk }}
       >
         <mod.ClerkProvider
           publishableKey={publishableKey}

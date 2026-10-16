@@ -117,14 +117,12 @@ function Thumb({
   pressed,
   disabled,
   onClick,
-  onIntent,
 }: {
   voteNet: number;
   lang: Lang;
   pressed?: boolean;
   disabled?: boolean;
   onClick: () => void;
-  onIntent?: () => void;
 }) {
   const copy = COPY[lang];
   return (
@@ -141,8 +139,6 @@ function Thumb({
         onClick();
       }}
       onKeyDown={keepRowClosed}
-      onPointerEnter={onIntent}
-      onFocus={onIntent}
     >
       <ThumbsUp className="h-3.5 w-3.5 shrink-0 self-center" aria-hidden />
       <span>
@@ -155,7 +151,6 @@ function Thumb({
 
 function SignInVotes({ voteNet, lang }: { voteNet: number; lang: Lang }) {
   const [open, setOpen] = useState(false);
-  const { requestClerk } = useClerkModule();
   const copy = COPY[lang];
   return (
     <>
@@ -163,11 +158,7 @@ function SignInVotes({ voteNet, lang }: { voteNet: number; lang: Lang }) {
         voteNet={voteNet}
         lang={lang}
         pressed={false}
-        onClick={() => {
-          requestClerk();
-          setOpen(true);
-        }}
-        onIntent={requestClerk}
+        onClick={() => setOpen(true)}
       />
       <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
         <DialogPrimitive.Portal>
