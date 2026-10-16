@@ -2,7 +2,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Metric } from "web-vitals";
 import { track } from "./track";
-import { metricParams, reportWebVitals } from "./web-vitals";
+import {
+  documentCacheStatus,
+  metricParams,
+  reportWebVitals,
+} from "./web-vitals";
 
 vi.mock("./track", () => ({ track: vi.fn() }));
 
@@ -33,6 +37,18 @@ const metric = (
     id: "v5-1",
     navigationType,
   }) as Metric;
+
+describe("documentCacheStatus", () => {
+  it("passes STALE through instead of folding it into none", () => {
+    const spy = vi
+      .spyOn(performance, "getEntriesByType")
+      .mockReturnValue([
+        { serverTiming: [{ name: "aidr-cache", description: "STALE" }] },
+      ] as unknown as PerformanceNavigationTiming[]);
+    expect(documentCacheStatus()).toBe("STALE");
+    spy.mockRestore();
+  });
+});
 
 describe("metricParams", () => {
   it("tags each vital with the edge-cache outcome so HIT vs MISS load times can be compared", () => {

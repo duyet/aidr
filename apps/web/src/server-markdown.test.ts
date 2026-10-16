@@ -147,7 +147,10 @@ describe("Accept: text/markdown on page URLs", () => {
     const cached = new Response("<html>cached</html>", {
       headers: {
         "content-type": "text/html; charset=utf-8",
-        "cache-control": "public, max-age=60, s-maxage=300",
+        "cache-control": "s-maxage=3900",
+        "x-aidr-client-cc": "public, max-age=60, s-maxage=300",
+        "x-aidr-stored-at": String(Math.floor(Date.now() / 1000)),
+        "x-aidr-fresh": "300",
       },
     });
     vi.stubGlobal("caches", {

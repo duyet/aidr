@@ -8,7 +8,7 @@ type EdgeCache = VitalsParams["edge_cache"];
 
 /**
  * Edge-cache outcome of the document request, read from the Worker's
- * `Server-Timing: aidr-cache;desc=HIT|MISS`. "none" when the response was
+ * `Server-Timing: aidr-cache;desc=HIT|STALE|MISS`. "none" when the response was
  * not cache-eligible (or the browser hides server timing).
  */
 export function documentCacheStatus(): EdgeCache {
@@ -20,7 +20,9 @@ export function documentCacheStatus(): EdgeCache {
       | undefined;
     const entry = nav?.serverTiming?.find((t) => t.name === "aidr-cache");
     const desc = entry?.description;
-    return desc === "HIT" || desc === "MISS" ? desc : "none";
+    return desc === "HIT" || desc === "STALE" || desc === "MISS"
+      ? desc
+      : "none";
   } catch {
     return "none";
   }
