@@ -712,21 +712,6 @@ const LLM_SELECT_COLUMNS = `ts, run_id, task, model, ok, tokens, duration_ms,
   prompt_chars, error, prompt_tokens, completion_tokens, cached_tokens,
   error_code, error_status, route, provider, call_id, cost_usd, request_id`;
 
-/** Pre-0035 schema: same columns minus cost_usd/request_id. */
-const LLM_SELECT_COLUMNS_PRE_COST = `ts, run_id, task, model, ok, tokens,
-  duration_ms, prompt_chars, error, prompt_tokens, completion_tokens,
-  cached_tokens, error_code, error_status, route, provider, call_id`;
-
-/** Pre-0034 schema: same columns minus call_id. */
-const LLM_SELECT_COLUMNS_PRE_CALL_ID = `ts, run_id, task, model, ok, tokens,
-  duration_ms, prompt_chars, error, prompt_tokens, completion_tokens,
-  cached_tokens, error_code, error_status, route, provider`;
-
-/** Pre-0033 schema: same columns minus route/provider. */
-const LLM_SELECT_COLUMNS_PRE_ROUTE = `ts, run_id, task, model, ok, tokens,
-  duration_ms, prompt_chars, error, prompt_tokens, completion_tokens,
-  cached_tokens, error_code, error_status`;
-
 /** Hard cap on per-call rows read for a *single* expanded run. The runs list
  * never reads rows (it aggregates in SQL), so this cannot starve another run
  * — and hitting it is reported via `truncated`, never silently hidden. */
@@ -748,79 +733,17 @@ async function queryLlmCallsByRunId(
   where: string,
   binds: string[]
 ): Promise<LlmCallQueryResult> {
-  try {
-    const { results } = await db
-      .prepare(
-        `SELECT ${LLM_SELECT_COLUMNS}
-         FROM llm_calls
-         WHERE ${where}
-         ORDER BY ts ASC
-         LIMIT ${LLM_ATTEMPTS_LIMIT}`
-      )
-      .bind(...binds)
-      .all<LlmCallDbRow>();
-    return finishLlmQuery(results);
-  } catch {
-    // 0035 columns may not exist yet.
-  }
-  try {
-    const { results } = await db
-      .prepare(
-        `SELECT ${LLM_SELECT_COLUMNS_PRE_COST}
-         FROM llm_calls
-         WHERE ${where}
-         ORDER BY ts ASC
-         LIMIT ${LLM_ATTEMPTS_LIMIT}`
-      )
-      .bind(...binds)
-      .all<LlmCallDbRow>();
-    return finishLlmQuery(results);
-  } catch {
-    // call_id may not exist yet.
-  }
-  try {
-    const { results } = await db
-      .prepare(
-        `SELECT ${LLM_SELECT_COLUMNS_PRE_CALL_ID}
-         FROM llm_calls
-         WHERE ${where}
-         ORDER BY ts ASC
-         LIMIT ${LLM_ATTEMPTS_LIMIT}`
-      )
-      .bind(...binds)
-      .all<LlmCallDbRow>();
-    return finishLlmQuery(results);
-  } catch {
-    // Route columns may not exist yet.
-  }
-  try {
-    const { results } = await db
-      .prepare(
-        `SELECT ${LLM_SELECT_COLUMNS_PRE_ROUTE}
-         FROM llm_calls
-         WHERE ${where}
-         ORDER BY ts ASC
-         LIMIT ${LLM_ATTEMPTS_LIMIT}`
-      )
-      .bind(...binds)
-      .all<LlmCallDbRow>();
-    return finishLlmQuery(results);
-  } catch {
-    // Optional usage/error columns may not exist yet; run_id is required
-    // for attribution and remains in this safe fallback query.
-    const { results } = await db
-      .prepare(
-        `SELECT ts, run_id, task, model, ok, tokens, duration_ms,
-                prompt_chars, error
-         FROM llm_calls
-         WHERE ${where}
-         ORDER BY ts ASC
-         LIMIT ${LLM_ATTEMPTS_LIMIT}`
-      )
-      .bind(...binds)
-      .all<LlmCallDbRow>();
-    return finishLlmQuery(results);
-  }
+  const { results } = await db
+    .prepare(
+      `SELECT ${LLM_SELECT_COLUMNS}
+       FROM llm_calls
+       WHERE ${where}
+       ORDER BY ts ASC
+       LIMIT ${LLM_ATTEMPTS_LIMIT}`
+    )
+    .bind(...binds)
+    .all<LlmCallDbRow>();
+  return finishLlmQuery(results);
 }
 
 /**

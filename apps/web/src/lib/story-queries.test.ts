@@ -246,8 +246,8 @@ describe("getStory content log", () => {
     ]);
   });
 
-  it("omits content_log when item_content_log does not exist", async () => {
-    const { db } = contentLogDb(new Error("no such table: item_content_log"));
+  it("omits content_log when the history read fails", async () => {
+    const { db } = contentLogDb(new Error("D1_ERROR: network connection lost"));
     const item = await getStory(db, "abcdef12");
     expect(item?.id).toBe(base.id);
     expect(item?.content_log).toBeUndefined();

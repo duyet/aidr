@@ -185,7 +185,8 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
 - Change: creates `day_videos` (date PK, `youtube_id`, `short_id`, title,
   added_by, timestamps) for the optional video on `/date/YYYY-MM-DD`. No rows
   are seeded.
-- Risk: none. The day page treats a missing table as "no video".
+- Risk: none. The day page and the day sitemap read it in the same batch
+  as the stories, without a fallback (#886); the deploy gate keeps it present.
 - Rollback: redeploy the previous Worker, then `DROP TABLE day_videos;`
 
 ## 0047_item_content_log.sql
@@ -298,7 +299,8 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   (28 days).
 - Risk: none for existing rows. Apply it before the Worker deploys so events
   count from the first request. Without it the route answers as before and
-  writes nothing, and the /data card shows no events.
+  writes nothing. `GET /api/system/extension` reads it without a fallback
+  (#886); the deploy gate keeps it present.
 - Rollback: deploy the previous Worker; `DROP TABLE ext_events;`. Nothing
   else holds a value derived from it.
 
@@ -310,9 +312,10 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   by unsubscribe (`worker/mail/stats.ts`); read by
   `GET /api/system/mail-stats` (28 days).
 - Risk: none for existing rows. Apply it before or after the Worker
-  deploys: until it exists every write is skipped silently, sending and
-  unsubscribing are unaffected, and the card answers as if empty. Days sent
-  before it is applied are never counted.
+  deploys: until it exists every write is skipped silently, and sending and
+  unsubscribing are unaffected. `GET /api/system/mail-stats` reads it
+  without a fallback (#886). Days sent before it is applied are never
+  counted.
 - Rollback: deploy the previous Worker; `DROP TABLE mail_daily_stats;`.
   Nothing else holds a value derived from it.
 

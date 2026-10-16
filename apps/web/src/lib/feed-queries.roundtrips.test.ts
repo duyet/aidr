@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DbReader } from "./db";
-import { getFeed } from "./feed-queries";
+import { getDayArchive, getFeed } from "./feed-queries";
 
 /** Counts D1 round trips the way the Worker pays for them from a far colo:
  * every `all()`/`first()`/`run()`/`batch()` is one network round trip, and
@@ -69,6 +69,14 @@ describe("homepage feed D1 round trips", () => {
   it("the full feed (sources included) still waits on one latency", async () => {
     const { db, stats } = tracingDb();
     await getFeed(db, { days: 3 });
+    expect(stats()).toEqual({ waves: 1, trips: 1, writes: [] });
+  });
+});
+
+describe("day archive D1 round trips", () => {
+  it("reads stories, snapshot, neighbours and the day video in one batch", async () => {
+    const { db, stats } = tracingDb();
+    await getDayArchive(db, "2026-10-02");
     expect(stats()).toEqual({ waves: 1, trips: 1, writes: [] });
   });
 });

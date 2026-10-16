@@ -383,41 +383,6 @@ describe("loadRunAttempts", () => {
     expect(runBind?.sql).not.toContain("ts >=");
     expect(runBind?.sql).not.toContain("ts <=");
   });
-
-  it("falls back to the pre-0016 usage column set when usage columns are missing", async () => {
-    const q = await freshQueries();
-    const { db } = makeDb({
-      // First SELECT (with prompt_tokens etc.) fails on a pre-0016 DB;
-      // the retry without usage columns must still serve attempts.
-      prompt_tokens: {
-        all: () => {
-          throw new Error("no such column: prompt_tokens");
-        },
-      },
-      "run_id = ?": {
-        all: () => ({
-          results: [
-            {
-              ts: 1_700_000_010_000,
-              run_id: RUN_ID,
-              task: "score",
-              model: "anyrouter/auto",
-              ok: 1,
-              tokens: 5,
-              duration_ms: 10,
-              prompt_chars: 3,
-              error: null,
-            },
-          ],
-        }),
-      },
-    });
-
-    const result = await q.loadRunAttempts(db, RUN_ID);
-    expect(result.attempts).toHaveLength(1);
-    expect(result.attempts[0]?.tokens).toBe(5);
-    expect(result.attempts[0]?.promptTokens).toBeNull();
-  });
 });
 
 describe("loadSystemLlm", () => {
@@ -600,14 +565,9 @@ describe("loadSystemSources", () => {
     expect(s.imageCoverage).toEqual([]);
   });
 
-  it("reports lastRunBySource undefined when the stats column is missing", async () => {
+  it("reports lastRunBySource undefined when the last run has no stats", async () => {
     const q = await freshQueries();
     const { db } = makeDb({
-      "stats FROM workflow_runs LIMIT 1": {
-        all: () => {
-          throw new Error("no such column: stats");
-        },
-      },
       "FROM workflow_runs ORDER BY": {
         all: () => ({
           results: [

@@ -75,18 +75,7 @@ describe("loadSystemReads", () => {
     });
   });
 
-  it("returns the empty shape before migration 0065 is applied (defect: the Algo tab 500s)", async () => {
-    expect(await loadSystemReads(d1(itemsOnly()))).toEqual({
-      window_days: 28,
-      total: 0,
-      by_category: [],
-      by_channel: [],
-      by_kind: [],
-      top_stories: [],
-    });
-  });
-
-  it("still fails loud on any other query error", async () => {
+  it("fails loud on a query error", async () => {
     const broken = {
       prepare: () => ({ bind: () => ({}) }),
       batch: async () => {

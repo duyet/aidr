@@ -694,7 +694,7 @@ export async function getDayArchive(
   const { start, end } = dayBoundsSec(date);
   const itemSelect = itemSelectSql({ reads: false, detail: true });
 
-  const [itemsRes, tldrRes, prevRes, nextRes] = await db.batch([
+  const [itemsRes, tldrRes, prevRes, nextRes, videoRes] = await db.batch([
     db
       .prepare(
         `${itemSelect} AND i.published_at >= ? AND i.published_at < ?
@@ -718,21 +718,14 @@ export async function getDayArchive(
          WHERE status = 'published' AND published_at >= ?`
       )
       .bind(end),
-  ]);
-
-  let videos: Record<Lang, DayVideo | null> = { en: null, vi: null };
-  try {
-    const row = await db
+    db
       .prepare(
         `SELECT youtube_id, short_id, title, youtube_id_vi, short_id_vi, title_vi
          FROM day_videos WHERE date = ? LIMIT 1`
       )
-      .bind(date)
-      .first();
-    videos = parseDayVideoRow(row);
-  } catch {
-    // day_videos not migrated yet — the page renders without the TV slot
-  }
+      .bind(date),
+  ]);
+  const videos = parseDayVideoRow(videoRes?.results?.[0]);
 
   const items = ((itemsRes.results ?? []) as ItemRow[]).map((row) =>
     toFeedItem(row)

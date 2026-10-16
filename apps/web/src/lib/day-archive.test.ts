@@ -91,10 +91,11 @@ function fakeDb(rows: {
   prevAt?: number | null;
   nextAt?: number | null;
   video?: Record<string, unknown> | null;
-  videoThrows?: boolean;
 }) {
   const prepared: Prepared[] = [];
   const resultFor = (sql: string) => {
+    if (sql.includes("FROM day_videos"))
+      return { results: rows.video ? [rows.video] : [] };
     if (sql.includes("FROM tldr_snapshots"))
       return { results: rows.tldr ? [rows.tldr] : [] };
     if (sql.includes("MAX(published_at)"))
@@ -117,10 +118,6 @@ function fakeDb(rows: {
           return resultFor(sql);
         },
         async first() {
-          if (sql.includes("FROM day_videos")) {
-            if (rows.videoThrows) throw new Error("no such table: day_videos");
-            return rows.video ?? null;
-          }
           return null;
         },
         async run() {
@@ -223,8 +220,8 @@ describe("getDayArchive", () => {
     }
   });
 
-  it("returns an empty day (the route's 404) and tolerates a missing video table", async () => {
-    const { db } = fakeDb({ items: [], tldr: null, videoThrows: true });
+  it("returns an empty day (the route's 404)", async () => {
+    const { db } = fakeDb({ items: [], tldr: null });
     const archive = await getDayArchive(db, "2026-10-02");
     expect(archive.day).toBeNull();
     expect(archive.tldr).toBeNull();

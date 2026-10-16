@@ -1927,8 +1927,7 @@ without storing who failed. `unsubscribed` is counted when the `DELETE`
 removed a row, so a repeated click adds nothing. A write error is logged
 and dropped, and a missing table (before 0067) is silent, so counting never
 stops a send or an unsubscribe. `GET /api/system/mail-stats` sums the last
-28 days per language for the /data Audience tab ("Digest delivery"); it
-answers empty until 0067 is applied.
+28 days per language for the /data Audience tab ("Digest delivery").
 
 **Weekly frequency.** `subscribers.frequency` is `daily` (default) or
 `weekly`, and `subscribers.weekly_day` (0 = Sunday … 6, default 1 = Monday)

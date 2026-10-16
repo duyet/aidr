@@ -69,11 +69,7 @@ function fakeDb(runRows: Record<string, unknown>[] = []) {
           if (sql.includes("FROM workflow_runs")) {
             return { results: runRows };
           }
-          if (sql.includes("SELECT llm_tokens")) {
-            throw new Error("no such column: llm_tokens");
-          }
           if (sql.includes("FROM llm_calls")) {
-            // Probe vs. attributed read: only a WHERE on run_id is a lookup.
             if (sql.includes("WHERE run_id = ?")) {
               return {
                 results: calls.filter((row) => row.run_id === String(args[0])),

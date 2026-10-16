@@ -231,7 +231,7 @@ async function attachContentLog(
     );
     return { ...story, content_log };
   } catch {
-    // The table arrives in 0047. A story still renders without history.
+    // History is best-effort: a failed read still renders the story.
     return story;
   }
 }
