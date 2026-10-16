@@ -904,6 +904,9 @@ describe("publicStoryMedia", () => {
     expect(b.image_url).toBe("https://img.example/b.jpg");
     // The article URL is never a thumbnail, so it changes the result too.
     expect(
+      publicStoryMedia("", "https://img.example/c.jpg", article).image_url
+    ).toBe("https://img.example/c.jpg");
+    expect(
       publicStoryMedia(
         "",
         "https://img.example/c.jpg",
@@ -919,6 +922,13 @@ describe("publicStoryMedia", () => {
     const second = publicStoryMedia(twoImages, null, article);
     expect(second.image_url).toBe("https://img.example/one.jpg");
     expect(second.media_manifest?.assets).toHaveLength(2);
+    second.media_manifest?.assets.splice(0, 1);
+    if (second.media_manifest) second.media_manifest.assets[0].url = "x";
+    const third = publicStoryMedia(twoImages, null, article);
+    expect(third.media_manifest?.assets.map((a) => a.url)).toEqual([
+      "https://img.example/one.jpg",
+      "https://img.example/two.jpg",
+    ]);
   });
 
   function countUrlParses(fn: () => void): number {
