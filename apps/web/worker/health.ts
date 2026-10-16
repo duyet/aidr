@@ -12,6 +12,11 @@ import {
   dayVideoConfirmedKey,
   shouldCheckDayVideo,
 } from "./day-video-watchdog.js";
+import {
+  evaluateImageCoverage,
+  IMAGE_COVERAGE_SQL,
+  type ImageCoverageRow,
+} from "./image-coverage.js";
 import { NOT_SELECTED_REASON } from "./ingest/mode.js";
 import { flushLlmCallWrites } from "./llm-call-log.js";
 import type { AlertEvent, AlertSeverity } from "./notify/alert.js";
@@ -425,6 +430,26 @@ async function readRateWindow(
   };
 }
 
+/** Per-source image coverage. A failed read only skips that check. */
+async function readImageCoverage(env: Env): Promise<ImageCoverageRow[]> {
+  try {
+    const { results } =
+      await env.DB.prepare(IMAGE_COVERAGE_SQL).all<
+        Record<keyof ImageCoverageRow, unknown>
+      >();
+    return (results ?? []).map((r) => ({
+      source: String(r.source),
+      items24h: Number(r.items24h) || 0,
+      usable24h: Number(r.usable24h) || 0,
+      items7d: Number(r.items7d) || 0,
+      usable7d: Number(r.usable7d) || 0,
+    }));
+  } catch (error) {
+    console.error("health-check image coverage read failed:", error);
+    return [];
+  }
+}
+
 async function readModelStats(
   env: Env,
   where: string,
@@ -539,12 +564,14 @@ export async function runHealthCheck(
   if (input.dryRun) return [];
   try {
     const nowMs = Date.now();
-    const [history, telegramLastPostMs, llm, window] = await Promise.all([
-      readHistory(env, input.runId),
-      readTelegramLastPost(env),
-      readLlmCounts(env, input.runId),
-      readRateWindow(env, input.runId, nowMs),
-    ]);
+    const [history, telegramLastPostMs, llm, window, imageCoverage] =
+      await Promise.all([
+        readHistory(env, input.runId),
+        readTelegramLastPost(env),
+        readLlmCounts(env, input.runId),
+        readRateWindow(env, input.runId, nowMs),
+        readImageCoverage(env),
+      ]);
     const local = getLocalHourAndDate(nowMs, AUDIENCE_TIMEZONE);
     const issues = evaluateHealth({
       nowMs,
@@ -562,7 +589,8 @@ export async function runHealthCheck(
       ...evaluateClusterGate(
         mergeClusterGate(window.clusterGate, input.clusterGate ?? {}),
         window.alerted
-      )
+      ),
+      ...evaluateImageCoverage(imageCoverage, window.alerted)
     );
     const markers: string[] = [];
     if (shouldCheckDayVideo(local.hour, local.date, history, nowMs)) {

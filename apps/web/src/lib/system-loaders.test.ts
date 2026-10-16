@@ -722,7 +722,8 @@ describe("loadSystemSources", () => {
     expect(s.failing).toEqual([]);
     expect(s.healthRunAt).toBe(RUN_ROW.started_at);
     expect(batches).toHaveLength(1);
-    expect(batches[0]).toHaveLength(3);
+    expect(batches[0]).toHaveLength(4);
+    expect(s.imageCoverage).toEqual([]);
   });
 
   it("reports lastRunBySource undefined when the stats column is missing", async () => {

@@ -1,4 +1,8 @@
 import {
+  IMAGE_COVERAGE_SQL,
+  type ImageCoverageRow,
+} from "../../worker/image-coverage.js";
+import {
   FETCH_FAILED_ALERT_RUNS,
   staleAfterRunsFor,
 } from "../../worker/sources/catalog.js";
@@ -1249,6 +1253,8 @@ export interface SystemSources {
   failing: string[];
   /** Epoch seconds of the run `health` came from, or null when unknown. */
   healthRunAt: number | null;
+  /** Published items with a usable image per source, 24h against 7 days. */
+  imageCoverage: ImageCoverageRow[];
 }
 
 /**
@@ -1358,10 +1364,11 @@ export function sourceStaleThreshold(id: string): number {
 
 export async function loadSystemSources(db: DbReader): Promise<SystemSources> {
   const { hasRunStats } = await probeSystemTables(db);
-  const [sourceRows, bySource, lastRunRes] = await db.batch([
+  const [sourceRows, bySource, lastRunRes, coverageRes] = await db.batch([
     db.prepare(SQL.ingestSources),
     db.prepare(SQL.bySource),
     db.prepare(runsSelectSql(hasRunStats, 1)),
+    db.prepare(IMAGE_COVERAGE_SQL),
   ]);
   const lastRun =
     resultRows<RunDbRow>(lastRunRes).map(normalizeRunRow)[0] ?? null;
@@ -1381,6 +1388,7 @@ export async function loadSystemSources(db: DbReader): Promise<SystemSources> {
     stale,
     failing,
     healthRunAt: lastRun?.started_at ?? null,
+    imageCoverage: resultRows<ImageCoverageRow>(coverageRes),
   };
 }
 

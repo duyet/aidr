@@ -61,6 +61,11 @@ import type {
   UnmergeResult,
 } from "../worker/admin/handlers";
 import { clusterPrompt } from "../worker/dedupe";
+import {
+  evaluateImageCoverage,
+  formatCoverage,
+  type ImageCoverageRow,
+} from "../worker/image-coverage";
 import { isPipelineStep, PIPELINE_STEPS } from "../worker/ingest/mode";
 import { loadTagBackfill, planTagBackfill } from "../worker/tag-backfill";
 import {
@@ -246,9 +251,10 @@ interface Attempt {
 
 async function audit(args: Args): Promise<void> {
   const runCount = flagNumber(args, "runs", 5);
-  const [overview, runs] = await Promise.all([
+  const [overview, runs, sources] = await Promise.all([
     api<Record<string, unknown>>("/api/system/overview"),
     loadRuns(),
+    api<{ imageCoverage?: ImageCoverageRow[] }>("/api/system/sources"),
   ]);
   const wanted = args.flags.get("run");
   const target =
@@ -275,8 +281,15 @@ async function audit(args: Args): Promise<void> {
         (r) => r.feedback
       )
     : null;
+  // An older Worker serves no imageCoverage; audit the rest instead of throwing.
+  const coverage = sources.imageCoverage ?? [];
+  const collapsed = evaluateImageCoverage(coverage, new Set());
   const result = {
     mailFeedback,
+    imageCoverage: {
+      collapsed: collapsed.map((issue) => issue.detail),
+      sources: coverage.map(formatCoverage),
+    },
     health: {
       runsToday: overview.runsToday,
       lastRun: lastRun ? compactRun(lastRun) : null,
@@ -305,7 +318,7 @@ async function audit(args: Args): Promise<void> {
   const failed = result.attempts?.calls.filter((c) => !c.ok).length ?? 0;
   print(
     result,
-    `audit: ${runs.length} runs, latest ${target?.id ?? "none"} (${target ? (isFinished(target) ? "finished" : "running") : "-"}), ${result.attempts?.calls.length ?? 0} LLM attempts, ${failed} failed`
+    `audit: ${runs.length} runs, latest ${target?.id ?? "none"} (${target ? (isFinished(target) ? "finished" : "running") : "-"}), ${result.attempts?.calls.length ?? 0} LLM attempts, ${failed} failed, ${collapsed.length} sources with collapsed image coverage`
   );
 }
 
