@@ -149,8 +149,8 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # meta/muse-spark-*, mistralai/*, moonshotai/*,
 # x-ai/*, minimax/m2.*, cohere/*, nex-agi/*, bytedance-seed/*, upstage/*,
 # xiaomi/*, stepfun-ai/*, tencent/*, ibm-granite/*, sakana/*, openrouter/free.
-# Score tries ANYROUTER_DECISION_MODEL, then Jev (ANYROUTER_JEV_MODEL), then
-# ANYROUTER_MODEL.
+# Score tries ANYROUTER_DECISION_MODEL (when set), then Jev
+# (ANYROUTER_JEV_MODEL), then ANYROUTER_MODEL.
 # 2026-10-10: cluster gold eval (scripts/cluster-gold-eval.ts, 96-row 24h
 # pool, 3 reps): laguna-s-2.1 F1 0.51 (17 false merges, missed 8 pairs);
 # gemma-4-31b, glm-5.2, gpt-5.6-luna and @preset/aidr 1.0. Score bench
@@ -245,11 +245,13 @@ TRANSLATION_REVIEW_ENABLED = "false"
 # is the backup. BYOK-only — Dashboard → BYOK → TypeSafe. Never add this id
 # to a /chat/completions chain; Jev is rejected there.
 ANYROUTER_JEV_MODEL = "typesafe/jev"
-# Score calls this System One router before Jev. It routes to Jev when the
-# TypeSafe BYOK key is healthy and to Fastino GLiNER when not; GLiNER answers
-# carry no score distribution and fail validation, so those items fall to Jev
-# and then the chat chain. Empty = score starts at Jev.
-ANYROUTER_DECISION_MODEL = "anyrouter/decision"
+# Optional System One router tried before Jev on score. Empty = score starts
+# at Jev. Off since 2026-10-16 (#854): over 7 days anyrouter/decision served
+# Jev on 66 of 1546 answers; the rest came from experiential-byok jev-latest
+# or hal-x THX-01, were rejected by servedByJev, and each cost a second Jev
+# call. Its outages matched Jev's, so it never covered for Jev. Turn it back
+# on only after the bench shows it serving Jev.
+ANYROUTER_DECISION_MODEL = ""
 # Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix, then
 # overridden to the /__clerk Worker proxy (Cloudflare Error 1000/1014
 # blocks the clerk.aidr.today CNAME onto Clerk's CF-hosted FAPI).
