@@ -693,6 +693,14 @@ async function genMode(): Promise<void> {
         });
     }
     writeFileSync(out, `${JSON.stringify(file, null, 2)}\n`);
+    if (rows.length === 0) {
+      // translateItems retries a dead model up to five times per batch.
+      console.error(
+        `batch ${batch}: no rows; ${model} looks unavailable, stopping`
+      );
+      process.exitCode = 3;
+      break;
+    }
     console.log(
       `batch ${batch}: ${rows.length}/${group.length} rows, ${attempts.length} attempts, ${Date.now() - started}ms, calls ${ledger.calls}/${ledger.cap}`
     );
