@@ -743,14 +743,14 @@ ORDER BY week DESC, hits DESC
 
 Each enabled source row (`sources` table) maps to an adapter
 (`worker/sources/registry.ts`): HN via Algolia: the front page plus every
-story at `popularMinPoints` (20) or more in the window, kept when the title
-passes the AI-keyword pre-filter. No search sends an Algolia `query`: HN
-Algolia requires every query word, so `AI OR LLM` required the word `OR` and
-matched nothing until 0070 (#873). An unfloored keyword search would add
-over 250 AI posts a day, 70% of them under 5 points, so there is none. Over 48h
-on 2026-10-16 the floor added at most 14 stories the front page had missed,
-under one per run, so HN has no `maxItems` (newest-first would cut the late
-risers the floor exists for),
+story at `popularMinPoints` (40) or more in the window, kept when the title
+passes the AI-keyword pre-filter. No search sends an Algolia `query`, and the
+row's `query` key is ignored: HN Algolia requires every query word, so
+`AI OR LLM` required the word `OR` and matched nothing (#873). An unfloored
+keyword search would add over 250 AI posts a day, 70% of them under 5
+points, so there is none. Over 48h on 2026-10-16 the 40 floor added 2
+stories the front page had missed, so HN has no `maxItems` (newest-first
+would cut the late risers the floor exists for),
 HuggingNews via its `__data.json` (+ per-story detail for body/sources),
 Lobsters via `/t/{tag}.json` (`ai` / `ml` / `vibecoding` by default; broad
 `filteredTags` such as `programming` keep only AI-keyword titles),

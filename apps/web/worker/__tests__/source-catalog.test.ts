@@ -269,7 +269,7 @@ describe("registry / seed SQL / migration agreement", () => {
     );
   });
 
-  it("0027, 0030, 0032, 0036, 0043, 0044, 0051, 0057, 0064 and 0070 applied in order list exactly the registry rows", () => {
+  it("0027, 0030, 0032, 0036, 0043, 0044, 0051, 0057 and 0064 applied in order list exactly the registry rows", () => {
     const read = (name: string) =>
       readFileSync(resolve(dirname(MIGRATION_PATH), name), "utf8");
     const arxivSql = read("0030_arxiv_source.sql");
@@ -280,7 +280,6 @@ describe("registry / seed SQL / migration agreement", () => {
     const socialSql = read("0051_social_trending_sources.sql");
     const refreshSql = read("0058_source_refresh.sql");
     const hfTrendingSql = read("0064_hf_trending_source.sql");
-    const hnPopularSql = read("0070_hn_popular_without_query.sql");
     // A later migration replaces the earlier row with the same id; a later
     // `UPDATE sources SET enabled = 0` is a disable, not a row, so it is
     // applied to the merged rows by hand.
@@ -302,8 +301,7 @@ describe("registry / seed SQL / migration agreement", () => {
       parseSourceInsertRows(aiSourcesSql),
       parseSourceInsertRows(socialSql),
       parseSourceInsertRows(refreshSql),
-      parseSourceInsertRows(hfTrendingSql),
-      parseSourceInsertRows(hnPopularSql)
+      parseSourceInsertRows(hfTrendingSql)
     ).map((row) =>
       disabledIds.has(row.id) ? { ...row, enabled: false } : row
     );
@@ -317,7 +315,6 @@ describe("registry / seed SQL / migration agreement", () => {
       socialSql,
       refreshSql,
       hfTrendingSql,
-      hnPopularSql,
     ]) {
       expect(sql).toContain("ON CONFLICT(id) DO UPDATE SET");
       expect(sql).not.toContain("enabled = excluded.enabled");
@@ -336,7 +333,7 @@ describe("registry / seed SQL / migration agreement", () => {
       "security",
     ]);
     expect(hn?.type).toBe("hn");
-    expect(hn?.config).toEqual({ popularMinPoints: 20 });
+    expect(hn?.config.popularMinPoints).toBe(40);
   });
 
   it("the seed SQL is derived from the registry, not hand-copied", () => {

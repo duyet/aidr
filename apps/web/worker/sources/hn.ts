@@ -62,6 +62,7 @@ const POPULAR_HITS_PER_PAGE = 1000;
  * `AI_KEYWORD_RE`. No search sends an Algolia `query`: HN Algolia requires
  * every query word, so `AI OR LLM` required the word `OR` and matched
  * nothing (#873), and a fixed keyword list misses titles the regex accepts.
+ * A `query` key in the row's config is ignored.
  * There is no newest-first search: unfloored, it returns about 250 AI posts
  * a day, most under 5 points.
  */

@@ -3,7 +3,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { HN_POPULAR_SOURCE } from "../sources/catalog.js";
+import { HN_SCOPE_SOURCE } from "../sources/catalog.js";
 import {
   ensureVendorBlogSources,
   resetVendorBlogSeedCache,
@@ -86,8 +86,8 @@ describe("topic-learning schema setup after the source seed (ingest order)", () 
     const seeded = sourceRows();
     await ensureTopicLearningSchema(db);
 
-    expect(hnConfig()).toBe(JSON.stringify(HN_POPULAR_SOURCE.config));
-    expect(JSON.parse(hnConfig()).popularMinPoints).toBe(20);
+    expect(hnConfig()).toBe(JSON.stringify(HN_SCOPE_SOURCE.config));
+    expect(JSON.parse(hnConfig()).popularMinPoints).toBe(40);
     expect(sourceRows()).toEqual(seeded);
   });
 
