@@ -34,41 +34,31 @@ const WEEK_ROW_SQL = `SELECT week, issue, start_date, end_date, item_ids,
   intro_en, intro_vi, stories_en, stories_vi, updated_at
   FROM weekly_snapshots WHERE week = ? LIMIT 1`;
 
-/** One week's edition, or null when there is no row (or the table is not
- * migrated yet). */
+/** One week's edition, or null when there is no row. A failed read throws,
+ * so callers answer 5xx instead of telling crawlers the week is gone. */
 export async function getWeekEdition(
   db: DbReader,
   week: string
 ): Promise<WeekEdition | null> {
-  let row: WeekRow | null = null;
-  let prevWeek: string | null = null;
-  let nextWeek: string | null = null;
-  try {
-    const [rowRes, prevRes, nextRes] = await db.batch([
-      db.prepare(WEEK_ROW_SQL).bind(week),
-      db
-        .prepare(
-          "SELECT week FROM weekly_snapshots WHERE week < ? ORDER BY week DESC LIMIT 1"
-        )
-        .bind(week),
-      db
-        .prepare(
-          "SELECT week FROM weekly_snapshots WHERE week > ? ORDER BY week ASC LIMIT 1"
-        )
-        .bind(week),
-    ]);
-    row = ((rowRes.results ?? [])[0] as WeekRow | undefined) ?? null;
-    prevWeek =
-      ((prevRes.results ?? [])[0] as { week?: string } | undefined)?.week ??
-      null;
-    nextWeek =
-      ((nextRes.results ?? [])[0] as { week?: string } | undefined)?.week ??
-      null;
-  } catch {
-    // weekly_snapshots not migrated yet: no edition
-    return null;
-  }
+  const [rowRes, prevRes, nextRes] = await db.batch([
+    db.prepare(WEEK_ROW_SQL).bind(week),
+    db
+      .prepare(
+        "SELECT week FROM weekly_snapshots WHERE week < ? ORDER BY week DESC LIMIT 1"
+      )
+      .bind(week),
+    db
+      .prepare(
+        "SELECT week FROM weekly_snapshots WHERE week > ? ORDER BY week ASC LIMIT 1"
+      )
+      .bind(week),
+  ]);
+  const row = (rowRes.results ?? [])[0] as WeekRow | undefined;
   if (!row) return null;
+  const prevWeek =
+    ((prevRes.results ?? [])[0] as { week?: string } | undefined)?.week ?? null;
+  const nextWeek =
+    ((nextRes.results ?? [])[0] as { week?: string } | undefined)?.week ?? null;
   const ids = parseJsonArray(row.item_ids).filter(
     (id): id is string => typeof id === "string"
   );

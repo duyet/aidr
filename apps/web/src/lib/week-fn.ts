@@ -13,7 +13,8 @@ async function db(): Promise<D1Database | undefined> {
 /**
  * Server fn for the `/week/$week` loader. Null for a malformed, pre-launch
  * or still-open week, when D1 is unavailable, or when there is no edition;
- * the route turns all of them into a 404. Rows ship collapsed.
+ * the route turns all of them into a 404. A failed read throws
+ * `week_unavailable`, which the route renders as a 500. Rows ship collapsed.
  */
 export const fetchWeekEdition = createServerFn({ method: "GET" })
   .inputValidator((input: { week: string }) => input)
@@ -22,20 +23,23 @@ export const fetchWeekEdition = createServerFn({ method: "GET" })
     if (!week) return null;
     const binding = await db();
     if (!binding) return null;
+    let edition: WeekEdition | null;
     try {
-      const edition = await getWeekEdition(readSession(binding), week);
-      return edition
-        ? {
-            ...edition,
-            stories: edition.stories.map((s) => ({
-              ...s,
-              item: stripItemDetail(s.item),
-            })),
-          }
-        : null;
-    } catch {
-      return null;
+      edition = await getWeekEdition(readSession(binding), week);
+    } catch (error) {
+      console.error("week page failed", error);
+      // Start serializes a loader error into the page; keep D1 text out.
+      throw new Error("week_unavailable");
     }
+    return edition
+      ? {
+          ...edition,
+          stories: edition.stories.map((s) => ({
+            ...s,
+            item: stripItemDetail(s.item),
+          })),
+        }
+      : null;
   });
 
 /** Server fn for `/weeks`: every edition, newest first. */
