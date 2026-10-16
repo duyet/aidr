@@ -1464,7 +1464,11 @@ of drip is 60 opens, about 60 readers). Above 100 opens a day genuine
 popularity stops separating stories. After in-site navigation the channel
 falls back to `web`; readers sharing one IP (carrier NAT, an office) count
 at most once a minute per story and kind. Category totals over 28 days
-show on `/data` (Algo tab, `GET /api/system/reads`).
+show on `/data` (Algo tab, `GET /api/system/reads`). The same response
+carries `top_stories`, the top 5 published stories per channel by opens over
+7 days with their outbound clicks (`TOP_STORIES_*` in `reads-query.ts`).
+Reads on a merged id fold into the canonical, and a story under 3 opens in
+a channel is not listed, so a small count cannot single a reader out.
 
 ### 8. Write
 

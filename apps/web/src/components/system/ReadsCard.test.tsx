@@ -24,6 +24,7 @@ const reads: SystemReads = {
     { name: "open", reads: 29 },
     { name: "outbound", reads: 12 },
   ],
+  top_stories: [],
 };
 
 describe("ReadsCard", () => {
