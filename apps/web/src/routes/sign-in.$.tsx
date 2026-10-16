@@ -2,7 +2,15 @@ import { Card, CardContent } from "@aidr/ui";
 import { createFileRoute } from "@tanstack/react-router";
 import { useClerkModule } from "../lib/clerk-user";
 
+/** Clerk's `<SignIn>` reads `redirect_url` from the address bar itself;
+ * declaring it here only lets typed links carry it. */
 export const Route = createFileRoute("/sign-in/$")({
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { redirect_url?: string } =>
+    typeof search.redirect_url === "string"
+      ? { redirect_url: search.redirect_url }
+      : {},
   component: Page,
 });
 

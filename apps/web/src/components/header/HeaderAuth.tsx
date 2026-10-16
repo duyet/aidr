@@ -1,11 +1,12 @@
 import { Button } from "@aidr/ui";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 import { track } from "../../lib/analytics/track";
 import { type ClerkModule, useClerkModule } from "../../lib/clerk-user";
 import { useLang } from "../../lib/lang-context";
 import { withLang } from "../../lib/locale-url";
+import { sameOriginReturnPath } from "../../lib/sign-in-href";
 
 /**
  * Always-visible sign-in: a plain /sign-in link that renders immediately —
@@ -27,6 +28,12 @@ export function HeaderAuth({
 }) {
   const navigationLang = useLang();
   const { mod, preloadClerk } = useClerkModule();
+  // The router's href, not window.location, so SSR renders the same link.
+  const here = useRouterState({ select: (s) => s.location.href });
+  const back = sameOriginReturnPath(here);
+  const search = back
+    ? { lang: navigationLang, redirect_url: back }
+    : { lang: navigationLang };
   const onClick = () => {
     track("nav_click", {
       to: "/sign-in",
@@ -39,7 +46,7 @@ export function HeaderAuth({
       <Link
         to="/sign-in/$"
         params={{ _splat: "" }}
-        search={{ lang: navigationLang }}
+        search={search}
         onClick={onClick}
         onPointerEnter={preloadClerk}
         onFocus={preloadClerk}
@@ -51,7 +58,7 @@ export function HeaderAuth({
     <Link
       to="/sign-in/$"
       params={{ _splat: "" }}
-      search={{ lang: navigationLang }}
+      search={search}
       onClick={onClick}
       onPointerEnter={preloadClerk}
       onFocus={preloadClerk}

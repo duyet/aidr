@@ -22,7 +22,7 @@ import {
 import { HeaderAuth } from "./header/HeaderAuth";
 import { SubmitForm } from "./submit/SubmitForm";
 
-const routerState = { pathname: "/" };
+const routerState = { pathname: "/", searchStr: "" };
 
 vi.mock("../lib/clerk-user", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/clerk-user")>();
@@ -39,27 +39,38 @@ vi.mock("@tanstack/react-router", async () => {
     useRouterState: ({
       select,
     }: {
-      select: (s: { location: { pathname: string } }) => string;
-    }) => select({ location: { pathname: routerState.pathname } }),
+      select: (s: { location: { pathname: string; href: string } }) => string;
+    }) =>
+      select({
+        location: {
+          pathname: routerState.pathname,
+          href: `${routerState.pathname}${routerState.searchStr}`,
+        },
+      }),
     Link: ({
       children,
       hash,
       to,
       params: _params,
-      search: _search,
+      search,
       ...rest
     }: {
       children?: ReactNode;
       hash?: string;
       to: string;
       params?: unknown;
-      search?: unknown;
-    } & Record<string, unknown>) =>
-      React.createElement(
+      search?: Record<string, string>;
+    } & Record<string, unknown>) => {
+      const query = new URLSearchParams(search).toString();
+      return React.createElement(
         "a",
-        { ...rest, href: `${to}${hash ? `#${hash}` : ""}` },
+        {
+          ...rest,
+          href: `${to}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`,
+        },
         children
-      ),
+      );
+    },
   };
 });
 
@@ -159,6 +170,7 @@ describe("ClerkRootProvider load gate", () => {
     load.mockReset();
     load.mockImplementation(() => new Promise(() => {}));
     routerState.pathname = "/";
+    routerState.searchStr = "";
     setCookie("__client_uat=0");
   });
 
@@ -202,6 +214,30 @@ describe("ClerkRootProvider load gate", () => {
       expect(screen.getByTestId("clerk-provider")).not.toBeNull()
     );
     expect(screen.getByText("reader")).not.toBeNull();
+  });
+
+  // Leaving /sign-in without signing in keeps `__client_uat=0`, so
+  // shouldMountClerk turns false on `/`. Pulling the provider then would
+  // remount the page the reader just returned to and tear down Clerk.
+  it("keeps the provider and the page mounted after navigating from /sign-in back to /", async () => {
+    routerState.pathname = "/sign-in";
+    resolveSdk();
+    const { rerender } = mount();
+    await waitFor(() =>
+      expect(screen.getByTestId("clerk-provider")).not.toBeNull()
+    );
+    const provider = screen.getByTestId("clerk-provider");
+    const page = screen.getByText("reader");
+
+    routerState.pathname = "/";
+    rerender(
+      <ClerkRootProvider>
+        <span>reader</span>
+      </ClerkRootProvider>
+    );
+
+    expect(screen.getByTestId("clerk-provider")).toBe(provider);
+    expect(screen.getByText("reader")).toBe(page);
   });
 
   it("loads when a navigation reaches /sign-in after a signed-out mount", () => {
@@ -256,6 +292,38 @@ describe("ClerkRootProvider load gate", () => {
       expect(screen.queryByTestId("clerk-provider")).toBeNull()
     );
     expect(screen.getByRole("link", { name: "Sign in" })).toBe(link);
+  });
+});
+
+describe("HeaderAuth sign-in link", () => {
+  function headerHref() {
+    render(
+      <LangContext.Provider value="vi">
+        <HeaderAuth />
+      </LangContext.Provider>
+    );
+    const href = screen
+      .getByRole("link", { name: "Sign in" })
+      .getAttribute("href");
+    return new URL(href ?? "", "https://aidr.today").searchParams;
+  }
+
+  beforeEach(() => {
+    routerState.pathname = "/";
+    routerState.searchStr = "";
+  });
+
+  it("returns the reader to the page they signed in from", () => {
+    routerState.pathname = "/abcdef12";
+    routerState.searchStr = "?lang=vi";
+    const params = headerHref();
+    expect(params.get("lang")).toBe("vi");
+    expect(params.get("redirect_url")).toBe("/abcdef12?lang=vi");
+  });
+
+  it("never points sign-in back at the sign-in page", () => {
+    routerState.pathname = "/sign-in/factor-one";
+    expect(headerHref().get("redirect_url")).toBeNull();
   });
 });
 
