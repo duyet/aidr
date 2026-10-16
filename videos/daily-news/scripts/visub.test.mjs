@@ -361,6 +361,24 @@ test("a number and the magnitude it shares with the next clause stay one unit", 
   );
 });
 
+test("a clause that qualifies the one before it is never dropped on its own", async () => {
+  for (const vi of [
+    "Tin AI hôm nay: OpenAI huy động thêm 60 tỷ USD từ các quỹ đầu tư lớn, nhưng thương vụ đã đổ vỡ vào phút chót | 16/10/2026",
+    "Tin AI hôm nay: OpenAI huy động thêm 60 tỷ USD từ các quỹ đầu tư lớn, theo một nguồn tin chưa được xác nhận chính thức | 16/10/2026",
+  ]) {
+    const out = await titled(
+      "AI News Today: OpenAI's $60B raise falls through & more | Oct 16, 2026",
+      vi,
+      ""
+    );
+    assert.equal(
+      out.title,
+      "Bản tin AI;DR | 16/10/2026",
+      "not “…60 tỷ USD từ các quỹ đầu tư lớn…”, which states the hedged raise as done"
+    );
+  }
+});
+
 test("a title with no clause cut that fits is posted as “Bản tin AI;DR” and its date, with a warning", async () => {
   for (const [en, vi, want] of [
     [
@@ -370,7 +388,7 @@ test("a title with no clause cut that fits is posted as “Bản tin AI;DR” an
     ],
     [
       "AI;DR: OpenAI raises $60B | 2026-10-16",
-      "OpenAI huy động thêm 60 tỷ USD với mức định giá kỷ lục chưa từng có, theo bản tin hằng ngày AI;DR | 2026-10-16",
+      "OpenAI huy động thêm 60 tỷ USD với mức định giá kỷ lục chưa từng có, AI;DR tổng hợp các tin tức khác | 2026-10-16",
       "Bản tin AI;DR | 2026-10-16",
     ],
     [

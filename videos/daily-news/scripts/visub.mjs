@@ -236,9 +236,12 @@ const titleProblems = (en, vi) => [
 ];
 
 // A clause starts at a list separator ("…, B", "… và B", "…, cùng B"). Not right after a number or a magnitude word:
-// in "60 tỷ và 852 tỷ USD" the unit after the separator belongs to both.
+// in "60 tỷ và 852 tỷ USD" the unit after the separator belongs to both. Nor before a word that qualifies the clause
+// before it: dropping ", nhưng thương vụ đổ vỡ" would turn a failed deal into a done one.
 const CLAUSE = /[,;] (?:và|cùng) |[,;] | (?:và|cùng|&) /gu;
 const SHARED_UNIT = /\d\S*$|(?:^|\s)(?:tỷ|triệu|nghìn|ngàn)$/u;
+const QUALIFIER =
+  /^(?:nhưng|song|tuy|dù|mặc dù|theo|khi|sau khi|trước khi|trong khi|nếu|bị|do|vì|để|nhờ)(?![\p{L}\p{N}])/u;
 
 /** `title` (NFC) as its clauses and its date part, the part after its last " | " or " — " when that is at most half
  *  of TITLE_MAX: "A, B và C | date" → { clauses: ["A", ", B", " và C"], tail: " | date" }. */
@@ -249,8 +252,12 @@ function titleParts(title) {
   const head = tail ? m[1] : t;
   const clauses = [];
   let from = 0;
-  for (const { index } of head.matchAll(CLAUSE)) {
-    if (SHARED_UNIT.test(head.slice(from, index))) continue;
+  for (const { 0: sep, index } of head.matchAll(CLAUSE)) {
+    if (
+      SHARED_UNIT.test(head.slice(from, index)) ||
+      QUALIFIER.test(head.slice(index + sep.length))
+    )
+      continue;
     clauses.push(head.slice(from, index));
     from = index;
   }
