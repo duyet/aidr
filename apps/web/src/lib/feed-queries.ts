@@ -213,6 +213,33 @@ interface SourceRow {
   url: string | null;
 }
 
+/** One line per feed read for `wrangler tail`: where D1 answered from
+ * (primary vs replica) and the wall time of each round trip, so a far
+ * colo's miss can be read off the logs instead of inferred. */
+function logFeedBatch(
+  itemsRes: D1Result | undefined,
+  timing: { probesMs: number; batchMs: number; detail: boolean }
+): void {
+  const meta = (itemsRes?.meta ?? {}) as {
+    duration?: number;
+    rows_read?: number;
+    served_by_region?: string;
+    served_by_primary?: boolean;
+  };
+  console.log(
+    JSON.stringify({
+      event: "getFeed.batch",
+      probes_ms: timing.probesMs,
+      batch_ms: timing.batchMs,
+      d1_ms: meta.duration,
+      rows_read: meta.rows_read,
+      region: meta.served_by_region,
+      primary: meta.served_by_primary,
+      detail: timing.detail,
+    })
+  );
+}
+
 /** Statement order in the feed batch. `sources` is only present for a
  * full feed (`detail: true`); a collapsed feed never moves sources out of
  * D1. */
@@ -499,6 +526,7 @@ export async function getFeed(
     : Math.floor(Date.now() / 1000);
   const since = until - days * 86400;
 
+  const startedAt = Date.now();
   const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes, hasReads] =
     await Promise.all([
       supportsLlmTokens(db),
@@ -507,6 +535,7 @@ export async function getFeed(
       itemVotesTableReady(db),
       opts.readOrder ? itemReadsTableReady(db) : false,
     ]);
+  const probesMs = Date.now() - startedAt;
   const itemSelect = itemSelectSql({
     hasLlmTokens,
     hasImageUrl,
@@ -567,8 +596,14 @@ export async function getFeed(
         .bind(...binds)
     );
   }
+  const batchStartedAt = Date.now();
   const batched = await db.batch(stmts);
   const itemsRes = batched[FEED_BATCH.items];
+  logFeedBatch(itemsRes, {
+    probesMs,
+    batchMs: Date.now() - batchStartedAt,
+    detail,
+  });
   const catsRes = batched[FEED_BATCH.categories];
   const tldrRes = batched[FEED_BATCH.tldr];
   const fetchedRes = batched[FEED_BATCH.fetchedAt];
