@@ -1119,6 +1119,25 @@ export const REGISTRY_0064: readonly SourceSpec[] = [
   },
 ];
 
+/**
+ * 0069. HN at a floor of 20, without a `query` (#873). HN Algolia requires
+ * every query word, so the 0043 query (`AI OR LLM OR ...`) required the word
+ * `OR` and matched nothing, and the adapter now ignores it. The popular
+ * search takes every story at 20 points or more and leaves the AI filter to
+ * `AI_KEYWORD_RE`.
+ * Measured 2026-10-16 over 48h: 44 such stories passed the title filter and
+ * 30 were already stored through the front page, so the floor adds at most
+ * 14 in 48h, under one per run. A floor of 40 would have added 2.
+ */
+export const HN_POPULAR_SOURCE: SourceSpec = {
+  id: "hn",
+  name: "Hacker News",
+  type: "hn",
+  engagement: "reader",
+  config: { popularMinPoints: 20 },
+  enabled: true,
+};
+
 export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   REGISTRY_0027,
   [ARXIV_SOURCE],
@@ -1128,7 +1147,8 @@ export const SOURCE_REGISTRY: readonly SourceSpec[] = mergeRegistryRows(
   REGISTRY_0044,
   REGISTRY_0051,
   REGISTRY_0058,
-  REGISTRY_0064
+  REGISTRY_0064,
+  [HN_POPULAR_SOURCE]
 );
 
 export function registrySourceIds(): string[] {
