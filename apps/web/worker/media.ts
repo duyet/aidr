@@ -351,9 +351,42 @@ export function withStoryMediaSuffix(url: URL): void {
   if (last && !last.includes(".")) url.pathname += "-large.jpg";
 }
 
+/**
+ * Canonical forms and identity keys are pure functions of their input, and
+ * the feed asks for the same few hundred URLs several times per request and
+ * again on every request, so each is kept once per isolate. The maps evict
+ * their oldest entry past the cap, so a scan of distinct URLs cannot grow
+ * them without bound.
+ */
+const MEMO_MAX_ENTRIES = 4096;
+const MEMO_MAX_KEY_LENGTH = MAX_MEDIA_URL_LENGTH;
+const canonicalMediaUrls = new Map<string, string | null>();
+const mediaIdentityKeys = new Map<string, string | null>();
+
+function memoized(
+  cache: Map<string, string | null>,
+  key: string,
+  compute: () => string | null
+): string | null {
+  if (key.length > MEMO_MAX_KEY_LENGTH) return compute();
+  const hit = cache.get(key);
+  if (hit !== undefined) return hit;
+  const value = compute();
+  if (cache.size >= MEMO_MAX_ENTRIES) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+  cache.set(key, value);
+  return value;
+}
+
 /** Validate and normalize one external media URL for storage/display. */
 export function canonicalizeMediaUrl(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
+  return memoized(canonicalMediaUrls, raw, () => computeCanonicalMediaUrl(raw));
+}
+
+function computeCanonicalMediaUrl(raw: string): string | null {
   const decoded = decodeUrlEntities(raw);
   if (!decoded || decoded.length > MAX_MEDIA_URL_LENGTH) return null;
 
@@ -385,6 +418,15 @@ export function canonicalizeMediaImageUrl(raw: unknown): string | null {
 
 /** A key that ignores common resize variants while retaining content path. */
 export function mediaIdentityKey(
+  type: MediaType,
+  canonicalUrl: string
+): string | null {
+  return memoized(mediaIdentityKeys, `${type} ${canonicalUrl}`, () =>
+    computeMediaIdentityKey(type, canonicalUrl)
+  );
+}
+
+function computeMediaIdentityKey(
   type: MediaType,
   canonicalUrl: string
 ): string | null {
@@ -763,8 +805,6 @@ function mergeLegacyImage(
   legacyImageUrl: unknown,
   options: BuildMediaOptions
 ): MediaManifest {
-  const legacy = legacyImageUrlFor(legacyImageUrl, options);
-  if (!legacy) return manifest;
   // A stored manifest is authoritative once it has a usable thumbnail. Do
   // not let a stale/raw image_url win over a current image or video poster.
   if (
@@ -776,6 +816,8 @@ function mergeLegacyImage(
   ) {
     return manifest;
   }
+  const legacy = legacyImageUrlFor(legacyImageUrl, options);
+  if (!legacy) return manifest;
   return buildMediaManifest(
     [...manifest.assets, { type: "image", url: legacy, priority: -1 }],
     options
