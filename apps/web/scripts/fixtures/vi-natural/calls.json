@@ -1,6 +1,6 @@
 {
   "cap": 200,
-  "calls": 159,
+  "calls": 184,
   "byStep": {
     "gen:A": 15,
     "gen:T": 14,
@@ -18,7 +18,10 @@
     "judge:E-C:openai/gpt-5.6-luna": 6,
     "judge:E-C:deepseek/deepseek-flash-latest": 6,
     "judge:A-E:openai/gpt-5.6-luna": 6,
-    "judge:A-E:deepseek/deepseek-flash-latest": 6
+    "judge:A-E:deepseek/deepseek-flash-latest": 6,
+    "gen:F": 13,
+    "judge:A-F:openai/gpt-5.6-luna": 6,
+    "judge:A-F:deepseek/deepseek-flash-latest": 6
   },
   "stopped": null
 }

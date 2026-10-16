@@ -1518,6 +1518,30 @@ accept rate, term preservation, and a blind back-translation instrument
 (`--candidates` reuses an earlier run's candidates to isolate QA changes).
 These are automated proxies, not a human-labeled quality score.
 
+Prompt × model arms (2026-10-16, `translation-eval.ts gen | metrics | judge
+| verdict`): 36 production stories in five source kinds
+(`scripts/fixtures/vi-natural/items.json`, frozen 3-story batches, the
+active `translation_knowledge` rows), each arm the Worker's own
+`translateItems` call, two blind judges per pair (gpt-5.6-luna and
+deepseek-flash; Sonnet and GLM were out of balance). A free-form card ("not
+sentence by sentence", third-person voice, no length line;
+`cards/natural.patch`) did not read more natural on either model and lost
+more facts, so the card above is unchanged:
+
+| Pair (both judges agree) | Natural wins | Faithful wins | Lost facts / story (luna, deepseek) |
+|---|---|---|---|
+| master vs free-form, Laguna | 7 vs 11 of 36 | 17 vs 4 | 1.27 vs 2.12, 1.00 vs 2.24 |
+| master vs free-form, Gemma | 11 vs 10 | 8 vs 4 | 0.43 vs 1.47, 2.03 vs 2.23 |
+| master + #654 voice line vs master, Laguna | 10 vs 9 | 3 vs 12 | 1.52 vs 1.30, 2.33 vs 1.18 |
+| Gemma vs Laguna, master card | 27 vs 4 | 13 vs 6 | 0.63 vs 1.43, 2.87 vs 3.77 |
+
+Lost facts exclude batches whose first call failed (titles-only
+fallback). The model, not the card, decides how natural the Vietnamese
+reads: gemma-latest wins 75% of stories on the master card. It stays
+second in `ANYROUTER_TRANSLATE_MODEL` because its route failed the first
+call on 2 of 12 batches here and served 62 of 88 production calls in the
+24h before, against Laguna's 1 of 13 and 493 of 527.
+
 ### 7. Rank (pure code, `worker/ranking.ts`)
 
 Recomputed every run for
