@@ -2093,7 +2093,10 @@ deliberately non-spammy.
   `preview:unusable_publisher_url` (the text post went out with its preview
   off). A `photo:` reason, or any `media guard:` refusal, also reaches
   Bugsink (`kind=story_media`) whether the post was delivered, refused or
-  ambiguous. Ambiguous and budget-exhausted sends keep their own error.
+  ambiguous. The one reported at `info` level is a delivered post whose only
+  reason is `photo:no_usable_image` with its publisher preview pinned (a
+  Hugging Face paper with no image of its own, as 76f3c65e); everything else
+  stays `error`. Ambiguous and budget-exhausted sends keep their own error.
 - **What is checked before a send.** Every Bot API call passes
   `checkTelegramMedia` (`worker/notify/telegram-media-guard.ts`) inside
   `callTelegram`, keyed by post kind (`story`, `digest`, `day_video`). A

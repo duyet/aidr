@@ -139,6 +139,14 @@ export function digestLinkPreview(
  *  publisher page: Telegram fetches that page's own og:image. A publisher URL
  *  the guard refuses turns the preview off rather than losing the post; the
  *  aidr permalink is no substitute, since its og:image is the share card. */
+function imagelessButDelivered(fallback: string[], delivered: boolean) {
+  return (
+    delivered &&
+    fallback.length === 1 &&
+    fallback[0] === "photo:no_usable_image"
+  );
+}
+
 export function storyTextLinkPreview(
   story: Pick<StoryPayload, "url">
 ): LinkPreviewOptions {
@@ -862,6 +870,9 @@ function telegramChannel(options: {
       // A story without its own picture, or one a guard rule refused, is a
       // defect to look at (a bad manifest, a host Telegram cannot fetch), not
       // a silent downgrade: it reaches the owner whatever the send's outcome.
+      // The one exception is an imageless story that still went out with its
+      // publisher preview (a Hugging Face paper whose only image is a
+      // generic card): that is #804's intended fallback, so it is info.
       if (
         fallback.some(
           (reason) =>
@@ -876,7 +887,8 @@ function telegramChannel(options: {
         await reportDeliveryFailure(
           env,
           `${options.id} story ${story.id.slice(0, 8)} ${outcome}: ${fallback.join("; ")}`,
-          { channel: options.id, kind: "story_media" }
+          { channel: options.id, kind: "story_media" },
+          imagelessButDelivered(fallback, result.ok) ? "info" : undefined
         );
       }
       // A downgrade (video -> photo -> text) is silent unless the reason lands
