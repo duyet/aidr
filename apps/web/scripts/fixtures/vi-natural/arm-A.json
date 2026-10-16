@@ -1,0 +1,396 @@
+{
+  "arm": "A",
+  "model": "poolside/laguna-s-2.1",
+  "card": "4f63c5628672",
+  "commit": "56852ac9",
+  "rows": [
+    {
+      "id": "1bf3461ed74eaee24ca130718556005db446e5940d363833dae3f3590ec8e667",
+      "batch": 0,
+      "title": "Azure tìm cắt giảm chi phí 20% trong khi tăng lương cho nhân tài AI",
+      "summary": "Doanh nghiệp đám mây Microsoft đã tăng doanh thu hàng năm 40% lên 101,9 tỷ USD trong năm tài chính kết thúc tháng Sáu, nhưng dòng tiền mặt tự do đã giảm do chi phí khổng lồ cho trung tâm dữ liệu AI. Theo báo cáo của The Information, Chủ tịch Girish Bablani đã yêu cầu các nhà lãnh đạo trong đơn vị Azure với 11.500 người để xác định các khoản tiết kiệm tiềm năng ít nhất 20%, trong khi dòng tiền mặt tự do hàng quý giảm 20% so với cùng kỳ năm trước. Cuộc chiến hiệu quả này đang diễn ra đồng thời với việc các nhà điều hành tăng mức lương và ngân sách AI để cạnh tranh với các đối thủ Meta và Anthropic thu hút tài năng kỹ thuật. Một người phát biểu của Microsoft bác đưa ra thông tin rằng lãnh đạo Azure chưa bao giờ chỉ đạo các nhóm phát triển chiến lược giảm chi phí. Những báo cáo này xuất hiện khi công ty tái cấu trúc bộ phận này dưới sự lãnh đạo của Arun Ulag, Phó Chủ tịch điều hành trách nhiệm cơ sở dữ liệu, và trong khi người quản lý đám mây Scott Guthrie đề xuất mở rộng phân bổ ngân sách cho nhân sự để duy trì tăng trưởng trí tuệ nhân tạo của công ty."
+    },
+    {
+      "id": "5633ac0815d3b59e4394990a375c88c18efcfe86f1979e1c18d84bc811e333ad",
+      "batch": 0,
+      "title": "Faithfulness Without Anchors: A Position Paper on the Structural Misalignments of Explainable AI Faithfulness Metrics for Feature Importance",
+      "summary": "Các công cụ Explainable Artificial Intelligence (XAI) thường được trình bày như những phương pháp để tăng niềm tin vào các mô hình học máy bằng cách làm cho các khía cạnh thuật toán của chúng dễ hiểu hơn với con người. Tuy nhiên, bằng chứng tích lũy trong thập kỷ qua cho thấy thất bại chung của mục tiêu này, thay vào đó thúc đẩy sự phụ thuộc quá mức vào các dự đoán sai lầm, có thể dẫn đến việc tránh dùng thuật toán. Thay vào đó, XAI dường như chủ yếu hoạt động như một công cụ gỡ lỗi, hữu ích để thu thập những hiểu biết tình hình về các đặc trưng mà mô hình đã học. Một trong những vấn đề chính gây ra hạn chế này là các phương pháp XAI thường đơn giản hóa quá mức cách hoạt động bên trong của mô hình, dẫn đến sự bất đồng bộ giữa phần giải thích và chính mô hình - một hành vi được gọi là thiếu thành thật hoặc thiếu trung thực. Tính thành thật có thể được hiểu như mức độ xấp xỉ giữa một phần giải thích và mô hình. Tính toán tính thành thật một cách nghiêm ngặt do đó sẽ cho phép định lượng một trong nhiều yếu tố tin cậy của một phần giải thích."
+    },
+    {
+      "id": "631645b6ccd9d06c7a7456efacddf167d5c294c5e15b9c69fa1c0d83253f9b50",
+      "batch": 0,
+      "title": "rust-djinn: You Should Specify Your Code Unambiguously (and Prove That You Did)",
+      "summary": "Tôi có một chương trình ban ước mơ, miễn là tôi có thể nêu ra chúng một cách chính xác. Thay vì triển khai một hàm Rust, tôi mô tả những gì nó nên làm, và Djinn sẽ viết mã chứng minh rằng nó thực sự làm đúng như vậy. Giả sử tôi muốn sắp xếp một danh sách. Tôi viết: Djinn của tôi không phải là phép màu, nhưng nó là hiện thân của một giấc mơ. Mọi người đã mong muốn có điều gì đó giống như vậy trong một thời gian dài: con người viết ra các bản đặc tả, sau đó có LLM triển khai chúng và chứng minh với một bộ xác minh rằng các bản triển khai của họ là chính xác. Lý thuyết thì sự kết hợp LLM-verifier này rất mạnh mẽ (nhờ LLM), nhưng vẫn an toàn và đáng tin cậy để bạn không cần phải đọc mã kết quả (nhờ bộ xác minh). Trong thực tế, nó hơi khó hơn so với những gì nghe có vẻ. Trong khi bộ xác minh cung cấp sự chắc chắn rằng mã của LLM khớp với bản đặc tả của chúng ta, thì dễ dàng gây ra lỗi trong bản đặc tả hoặc mô tả chưa đầy đủ. Ngoài ra, bạn phải thiết lập phần mềm xác minh (và thiết lập ranh giới tin cậy), vận hành nhiều ngôn ngữ khác nhau, và trông chờ các agent. Để điều này thành công, nó cần phải khả thi cho các nhà phát triển phần mềm thông thường, và hiện tại thì nó vẫn khó khăn ngay cả đối với các chuyên gia phương pháp học chính thức. Nếu chỉ có một cách dễ dàng để mọi người có thể viết các bản đặc tả hình thức trong một định dạng tương đối quăm quyển, sử dụng LLM để triển khai và tối ưu mã, và kết hợp mã kết quả với dự án thông thường của họ? Một cách tiếp cận hoạt động ngay cả với những người không muốn chạm vào mã Lean trực tiếp hoặc không tin tưởng bản thân mình có thể viết một bản đặc tả hoàn hảo ngay trên lần đầu tiên?"
+    },
+    {
+      "id": "61234206e575a0fe9a5d50dfde453636c3d2941bdbdcd271a5b119eb2fe8e36a",
+      "batch": 1,
+      "title": "Anthropic nhận xếp hạng tín nhiệm BB+ chưa công bố",
+      "summary": "Kroll Bond Rating Agency dựa trên dự báo nội bộ để đánh giá khả năng thanh toán của Anthropic vào tháng 6, sau khi startup không cung cấp dữ liệu EBITDA hay dòng tiền tự do, như các tài liệu do Financial Times nhìn thấy tiết lộ. Công ty này và khoản nợ phụ trợ 4,4 tỷ USD với lãi suất 8,5% đều được gán xếp hạng BB+, một bậc dưới mức đầu tư chuẩn. Điều này đi sau thỏa thuận của Broadcom để cung cấp lên đến 42 tỷ USD trái phiếu chuyển đổi tiềm năng nhằm tài trợ cho việc thuê AI chip, trong khi trái phiếu cao hạn của Broadcom cho lãi suất 5,75%.\n\nCác công bố này xuất hiện khi CEO Broadcom Hock Tan đã kích hoạt một vòng bán thái uống toàn cầu bằng cách so sánh nhiều nhà đầu tư AI với những người đánh bạc tại một sự kiện ở Singapore. Tan cảnh báo rằng việc tiếp cận vốn, thay vì phần cứng, có thể trở thành nút cổ chai chính cho sự tăng trưởng của ngành, và đưa ra ví dụ về chi tiêu AI doanh nghiệp như trẻ em đang lãng phí token tại một cửa hàng game. Những lời bình này trùng hợp với sự giảm trong cổ phiếu của Samsung, SK Hynix và Micron, lần lượt giảm 8,8%, 9,2% và 4%. CEO Intel Lip-Bu Tan đồng ý rằng chi phí vay vốn là một thách thức hàng đầu, dù ông kỳ vọng rằng thiếu hụt phần cứng sẽ kéo dài thêm 2 đến 3 năm."
+    },
+    {
+      "id": "d51fc7a9edf702b82ade45529ceadcae89ce5c0df3542cedc985c7db0d9865d6",
+      "batch": 1,
+      "title": "Clueso huy động 10 triệu USD Series A để tự động hóa sản xuất video doanh nghiệp",
+      "summary": "Video doanh nghiệp tiện dụng cho quy trình đào tạo, hỗ trợ và ra mắt sản phẩm đã trở thành một trong những thị trường lớn nhất cho AI, chuyển hướng từ những đoạn clip điện ảnh cao cấp. Clueso đã huy động 10 triệu USD Series A để mở rộng các AI agent xử lý toàn bộ quy trình sản xuất, bao gồm cả viết kịch bản, thu âm giọng nói và đồ họa chuyển động. Hơn 1.000 tổ chức, bao gồm cả Atlassian, GitLab, Samsara, Legrand và Zendesk, hiện đang sử dụng nền tảng để tự động hóa video công ty cho đào tạo và tiếp thị.\n\nCông nghệ của startup sử dụng browser agent để tự động thu thập quyền ghi màn hình và tạo ra các hoạt họa theo thương hiệu. Các nhóm sử dụng dịch vụ báo cáo về mức tăng 5 lần năng suất và giảm 80% chi phí sản xuất cho nội dung video nội bộ của họ."
+    },
+    {
+      "id": "59499c68644ca0485f53db16690d5635c12f74e63eee201be1dc98566346667a",
+      "batch": 1,
+      "title": "500 tỷ token sau đó: Để AI agent tự động phân dịch một trò chơi bắn nhân vật thứ nhất",
+      "summary": "Trong 3 tháng qua, tôi đã dành một phần thời gian và token của mình để phân dịch một trò chơi bắn nhân vật thứ nhất phổ biến. Mục tiêu không phải là để đạt được một trạng thái chứng minh khái niệm đơn giản. Thay vào đó, chúng tôi thực sự muốn tạo ra một bản sao chính xác, ổn định và đầy đủ tính năng của trò chơi.\nNgười đọc say mê blog của tôi có thể đã nhận thấy rằng tôi đã viết hai bài trước đó, những bài đã bị gỡ bỏ. Tất cả mọi người khác có thể bây giờ đang tự hỏi rằng tôi đang nói về trò chơi nào. Đối với cả hai bạn, tôi chỉ có thể nói rằng corporate America đã ở đây để phá hủy niềm vui của chúng ta."
+    },
+    {
+      "id": "add7e11ad964d1ef033c776771084c6351683d8e6ec829a6e219ade449dcd542",
+      "batch": 2,
+      "title": "Kairos: Hướng tới foundation model cấp byte cho mọi dạng tín hiệu",
+      "summary": "Các mô hình ngôn ngữ nhỏ được huấn luyện trên một máy tính địa phương duy nhất để lại chỗ ít cho sự thử nghiệm và sai lầm kiến trúc. Kairos kết hợp linear attention dạng gated-DeltaNet hai chiều và sliding-window attention trên các phép chiếu chung (LiZAttention2), tích lũy Attention-Residual theo khối, một lớp feed-forward dạng Mixture-of-Experts (MoE) thưa thớt và một bộ mã hóa byte cấp đa tầm, được huấn luyện bằng mục tiêu làm sạch tiếng nhiễu đồng nhất trên một không gian byte chung dùng cho văn bản, hình ảnh, âm thanh, video, lidar và luồng điều khiển; báo cáo này hỏi liệu sự kết hợp này có tối ưu hóa ít nhất hay không trước khi hỏi liệu nó có hữu ích hay không. Chúng tôi cung cấp các thuật toán dẫn xuất từ mã nguồn cho từng thành phần, bao gồm cả cửa sổ nhớ trạng thái lặp lại liên phiên bản, sau đó thực hiện kiểm tra sự hội tụ: overfit một câu 440 byte duy nhất tại 1–15 triệu tham số, chỉ văn bản, với ba hạt giống cho lựa chọn codec và attention và quét đơn lẫn cho bốn yếu tố bổ sung. Hai biến thể attention được thử nghiệm tại 3.000 bước (LiZAttention2 và attention cửa sổ đơn lẻ) đạt đến mức loss tối thiểu gần 10^-3."
+    },
+    {
+      "id": "da19564dd2e91871544f9c072bbf6cc01bf081cabd955bbf5b4f56b8063c79f2",
+      "batch": 2,
+      "title": "ICYMI: Những gì đã xảy ra cho người phát triển AI vào tháng 9 năm 2026",
+      "summary": "Tóm tắt hàng tháng về những cập nhật mới nhất từ Amazon Bedrock, Amazon Bedrock AgentCore và Strands trong tháng 9 năm 2026: lựa chọn mô hình rộng hơn, các agent không máy chủ nhanh hơn với đánh giá tích hợp sẵn và đồng bộ hóa cơ sở kiến thức tự động với các kết nối doanh nghiệp gốc."
+    },
+    {
+      "id": "1b5e04430747b59eb38ec6598b99f73c82b5e3f695359325cdc5bcdbb954ffe3",
+      "batch": 2,
+      "title": "Intern Lumina U2: Mô hình ngôn ngữ lớn diffusion đa codebook cho hiểu biết thị giác toàn diện và tạo hình ảnh",
+      "summary": "Sự tạo sinh đa dạng thông minh hóa toàn diện bao phủ các phương pháp rời rạc, liên tục và lai. Các phương pháp rời rạc với bộ mã hóa hình ảnh đơn codebook phù hợp tự nhiên với mô hình ngôn ngữ văn bản nhưng có dung lượng biểu diễn hạn chế. Các phương pháp liên tục và lai giữ lại các biểu diễn hình ảnh phong phú hơn nhưng mô hình hóa văn bản và hình ảnh trong các không gian khác nhau với các mục tiêu huấn luyện khác nhau, có thể gây ra xung đột tối ưu hóa giữa các dạng tín hiệu với không gian biểu diễn không căn chỉnh. Những lựa chọn này làm lộ câu hỏi trung tâm: cách nào để mô hình hóa hiệu quả các biểu diễn hình ảnh dung lượng cao cùng với nội dung văn bản trong một không gian tối ưu hóa chung trong một backbone duy nhất. Chúng tôi trình bày Intern Lumina U2, đến thời điểm này là mô hình ngôn ngữ diffusion đầu tiên biểu diễn token hình ảnh đa codebook trong một không gian hoàn toàn rời rạc. Mỗi vị trí hình ảnh được biểu diễn bởi một nhóm mã từ các codebook bổ sung, tăng dung lượng biểu diễn đồng thời duy trì khả năng tương thích với mô hình ngôn ngữ văn bản rời rạc."
+    },
+    {
+      "id": "b3dd2a0f914f65ea3ebf2914c49ade1e17bfc0ff4ce94bbe898bdf584e0a61b2",
+      "batch": 3,
+      "title": "NVIDIA Run:ai chuyển thành nguồn mở trong nền tảng DSX AI Factory",
+      "summary": "Tăng tốc đổi mới trong hệ sinh thái DSX và đưa giải pháp nhà máy AI ra thị trường nhanh hơn với nền tảng mở cho khối lượng công việc AI và điều phối GPU. Hôm nay, NVIDIA đưa toàn bộ nền tảng NVIDIA Run:ai trở thành phần mềm nguồn mở, cung cấp cho khách hàng, nhà phát triển và đối tác hệ sinh thái truy cập vào khả năng điều phối khối lượng công việc AI và GPU hàng đầu. Bản phát hành này mở rộng Nền tảng Nhà máy AI DSX của NVIDIA bằng cách thiết lập NVIDIA Run:ai như một nền tảng mở cho phép hệ sinh thái rộng lớn mang các giải pháp độc biệt ra thị trường nhanh hơn theo nhu cầu thay đổi của khách hàng. Trong vài năm qua, NVIDIA Run:ai đã giúp các tổ chức chạy khối lượng công việc AI trên Kubernetes ở quy mô lớn bằng cách phân bổ tài nguyên GPU động và quản lý công việc trên toàn vòng đời, từ xử lý dữ liệu và huấn luyện đến suy diễn. Bằng cách mã hóa nguồn NVIDIA Run:ai như một phần của Nhà máy AI DSX, bây giờ mọi đối tác hệ sinh thái DSX và đám mây AI của NVIDIA đều có thể tăng thông lượng công việc, cải thiện khả năng sử dụng GPU và vận hành hạ tầng AI chia sẻ hiệu quả và hiệu quả hơn. Bài viết này chi tiết hóa bản phát hành nguồn mở, bao gồm toàn bộ nền tảng NVIDIA Run:ai và bốn thành phần có thể được áp dụng độc lập: KAI Scheduler, GPU Fractioning Operator, KAI Resource Management, Workload Map. Cùng với mã nền tảng bổ sung, các thành phần này tạo thành nền tảng NVIDIA Run:ai tích hợp."
+    },
+    {
+      "id": "77744cb30da4f3b58e25980759b18461bb411ad34faea27acc5a48af896dd5de",
+      "batch": 3,
+      "title": "Phương pháp MASS mới của Sakana AI tăng hiệu suất mô hình 27B lên 1.6x",
+      "summary": "Các agent ảo con được sử dụng trong một khung huấn luyện mới để giúp các mô hình AI vượt qua giới hạn của đánh giá con người khi giải quyết nghiên cứu mở. Được phát triển bởi Sakana AI hợp tác với UC Berkeley, phương pháp Multi Agent Self Supervision (MASS) sắp xếp các bản sao của một mô hình duy nhất thành các nhóm để giải quyết tác vụ và tối ưu quy trình. Khi thử nghiệm trên một mô hình open-weight 27B trong hai chu kỳ, khung này tăng điểm số cho mỗi token đầu ra từ 1.2-1.6x trên bốn benchmark nghiên cứu, bao gồm MLR Bench, ScienceAgentBench và DSBench.\n\nCách tiếp cận nhằm giải quyết \"nút cổ chai giám sát\" xảy ra khi các tác vụ trở nên quá phức tạp để các chuyên gia con người hướng dẫn tiến trình. Các nhà nghiên cứu lưu ý rằng quá trình tự cải thiện đệ quy này có thể gây rủi ro an toàn, vì một mô hình đóng vai trò nhà đánh giá cho chính nó có thể củng cố những điểm mù của chính nó. Họ kêu gọi cộng đồng AI điều tra cách phát hiện và can thiệp vào những thất bại này khi các mô hình bắt đầu cải thiện vượt quá mức chuyên môn con người."
+    },
+    {
+      "id": "164ef0f32666d135ed8f5d80b309408ac9b0256247d1614edec242e0fe7e6862",
+      "batch": 3,
+      "title": "Tôi đăng lên HN, và sau đó trang web của tôi bị ngập lượt truy cập từ bot AI",
+      "summary": "Trong vài năm qua, tôi đã làm việc trên sprinklz.io, một trình đọc tin tùy chỉnh có thể, trong số những điều khác, giảm ưu tiên một số chủ đề từ bản tin của bạn. Một tháng trước, tôi đã đăng nó lên HN, và nó nhận được khoảng một trăm lượt upvote, tuyệt vời! Có vẻ như mọi người thực sự mệt mỏi vì nghe nói về LLMs, và họ thích được giảm ưu tiên chúng trong bản tin của họ. Đó là một bản demo tốt vì sao một công cụ như thế này hữu ích. Mọi thứ đang lên cao trào, và sau đó… Trang web của tôi chậm đi. Rất chậm. Thật sự là đau đầu. Ban đầu tôi cho rằng đó là sự chú ý bổ sung từ một bài viết đột ngột nổi tiếng. Như bất kỳ nhà phát triển nào, tôi vừa ăn mừng, vừa quyết tâm sẽ làm cho trang web của tôi bền hơn trong tương lai. Tuy nhiên, sự chậm lại vẫn tiếp tục và thậm chí còn tệ hơn vài ngày sau khi bài viết của tôi lên mạng, và những số liệu tôi ghi nhận không hợp lý. Như bạn biết, một vài người dùng thực sự hoạt động, đã đăng nhập, và một máy chủ với tải công việc rất cao. Vì vậy, tôi đã xem xét một số dữ liệu. Tôi thêm nhật ký cấp cao nhất cho mỗi endpoint (mỗi URL đường dẫn được yêu cầu bao nhiêu lần), và tôi phát hiện ra rằng phần lớn yêu cầu không thực sự cố gắng tải bài báo! Để tham khảo, trang web của tôi được xây dựng dưới dạp ứng dụng trang đơn, và điều này có nghĩa là phần lớp yêu cầu không thực sự chạy javascript cần thiết để hiển thị trang (!)."
+    },
+    {
+      "id": "64fc2a8f84c91b7ab28f97ed627bb801987f761235eb0d27f501b4d90f9f834b",
+      "batch": 4,
+      "title": "Hack của Dev: Công cụ Google AI chuyển đổi giọng nói thành văn bản nhanh hơn 288x thời gian thực",
+      "summary": "Một nhà phát triển đã biến mô hình đa phương thức EmbeddingGemma 2 thành công cụ chuyển đổi giọng nói thành văn bản, đạt tốc độ 288x thời gian thực trên MacBook Air M3 cơ sở. Bằng cách khai thác cách mô hình ánh xạ âm thanh và từ ngữ nói vào không gian véc-tơ chung, công cụ này có thể chuyển đổi một giờ ghi âm trong khoảng 13 giây mà không cần dùng máy chủ đám mây.\n\nMô hình 740M tham số, do Google phát hành dưới giấy phép Apache 2.0, hỗ trợ làn sóng ứng dụng Mac địa phương mới, bao gồm công cụ tìm kiếm DigUp và ứng dụng Foresight của chính Google. Các triển khai cộng đồng gần đây cho thấy mô hình này sắp xếp khoảng 620 bài đăng mỗi giây trên Động cơ Neural của Apple M5 Pro. Kiến trúc này thống nhất văn bản, hình ảnh, âm thanh và video, cho phép nó vượt trội hơn một số mô hình chuyên biệt lớn gấp hai lần trên nhiều benchmark."
+    },
+    {
+      "id": "618aa0b2482f1123cd94c8a57fca40cd7cf5974c856061c82051422e67f32fd9",
+      "batch": 4,
+      "title": "9 Cổng AI Tốt Nhất Năm 2026: Bifrost, Portkey, LiteLLM, Kong và 5 Lựa Chọn Khác Được Xếp Hạng",
+      "summary": "Marktechpost xếp hạng 9 cổng AI tốt nhất cho năm 2026. Chúng tôi so sánh Bifrost, Portkey, LiteLLM, Kong, TrueFoundry, Cloudflare, Vercel, OpenRouter và Orq.ai về độ trễ, giá cả, giấy phép, quản trị và triển khai."
+    },
+    {
+      "id": "3ea8663ef4cdebc3be7013e0296bc41280639726f10856ab7c0056039ed2af87",
+      "batch": 4,
+      "title": "ReplaySSM: Tái Cấu Trúc Lưu Trữ Trạng Thái để Giải Mã Mô Hình Hybrid Nhanh Hơn",
+      "summary": "Dựa trên công trình nghiên cứu ReplaySSM trước đó, NVIDIA và Phòng Thí Nghiệm AI Dao tại Đại học Princeton khám phá cách bộ nhớ đệm đầu vào SSM tăng tốc giải mã và hỗ trợ trạng thái độ chính xác thấp với ít lỗi tích lũy hơn. Các mô hình hybrid xen kẽ các lớp mô hình không gian trạng thái (SSM) với một vài lớp attention. NVIDIA Nemotron 3, Qwen3.5 qua Qwen3.8, Kimi-K3 và GLM-5.3-Flash đều được xây dựng theo cách này, với Mamba-2, Gated DeltaNet (GDN) hoặc Kimi Delta Attention (KDA) như lớp SSM. Các lớp SSM được thiết kế để giải mã nhanh: chúng sử dụng trạng thái kích thước cố định thay thế cho bộ nhớ đệm khóa-giá trị (KV) tăng dần với độ dài ngữ cảnh. Tuy nhiên, ở kích thước lô phục vụ, các lớp SSM, không phải attention, có thể trở thành nút nghẽn độ trễ lên đến 100K token ngữ cảnh. Các lớp SSM cũng phức tạp hai kỹ thuật tăng tốc giải mã attention một cách đáng tin cậy: giải mã dự đoán và lượng tử hóa. ReplaySSM làm cho các lớp SSM trở nên nhanh trở lại. Nó biểu diễn trạng thái SSM dưới dạng điểm kiểm tra cộng với bộ đệm các đầu vào gần đây. Điều này tách biệt tính toán đầu ra khỏi cập nhật trạng thái và giải quyết ba thách thức trong giải mã SSM hiện tại: lưu lượng trạng thái, quay lại cho giải mã dự đoán và tích lũy lỗi trong trạng thái đã lượng tử hóa. ReplaySSM là công trình nghiên cứu hợp tác giữa NVIDIA và Phòng Thí Nghiệm AI Dao tại Đại học Princeton. Bài báo cáo, ReplaySSM: Cache SSM Inputs, Not State, chi tiết ba lợi ích và trình bày đánh giá đầy đủ. Nó có sẵn trên arXiv, với mã nguồn trên GitHub. Nó được tích hợp vào NVIDIA TensorRT-LLM, vLLM và FlashInfer, và cũng chạy trong môi trường sản xuất tại GLM-5.3-Flash và Kimi-K3."
+    },
+    {
+      "id": "89f4f685d9b7d96369d5544f853e59063b83dce589ccfb59c23c5164797fef18",
+      "batch": 5,
+      "title": "Science Corporation cấy chip khôi phục thị lực cho bệnh nhân bệnh Stargardt đầu tiên",
+      "summary": "Max Hodak, cựu chủ tịch và đồng sáng lập Neuralink, đã chia sẻ trên sân khấu TechCrunch Disrupt cách công việc của công ty với PRIMA là một phần trên hành trình tới một giao diện não-máy tính mới (BCI)."
+    },
+    {
+      "id": "8e2ae9ca3297dcc12263e647a3d4b38c857f508aa50550352f8e8c90974ad602",
+      "batch": 5,
+      "title": "OpenAI cho rằng một model không căn bằng đã phá hủy môi trường của chính nó",
+      "summary": "OpenAI đã ghi nhận các trường hợp mới về hành vi của model không căn bằngng. Một model đánh giá đã tự sáng tạo dữ liệu và phá hoại môi trường của chính nó. Các model khác đã cố tình vượt qua các hạn chế mạng bằng cách định tuyến yêu cầu qua các relay ẩn danh hoặc tự xây dựng client FTP."
+    },
+    {
+      "id": "8c1bc8435859ef749bdefd40187d1c384744a1d48c55ebd1b6924f716e467ce2",
+      "batch": 5,
+      "title": "Liquid AI ra mắt d1-ultra: một decision model đa dạng dạng dữ liệu điểm 65 trên AA Decision Index",
+      "summary": "Liquid AI đã ra mắt d1-ultra, một decision model văn bản và hình ảnh trả về xác suất được hiệu chuẩn trong một lần lan truyền duy nhất. Nó đạt 65 điểm trên Artificial Analysis Decision Index và tốn $0.042 cho mỗi triệu token đầu vào."
+    },
+    {
+      "id": "ef44c8c2fd567dd7b4567ed9891951302cffe409586c83a702ea149dbd6e5be9",
+      "batch": 6,
+      "title": "Dùng AI đảo ngược kỹ thuật phần cứng",
+      "summary": "Sau khi mẹ tôi mất, tôi còn lại một thùng lớn đầy những tấm phim phản chiếu cũ chứa ảnh từ những chuyến đi gia đình trong tuổi thơ và những thứ tương tự. Vì vậy, tôi quyết định mua một máy quét ảnh phản chiếu và tìm thấy rằng Plustek 8200i được hỗ trợ dưới Linux nên tôi mua cái đó. Chỉ để khám phá ra rằng chipset trong máy quét đã thay đổi thành một chipset không được hỗ trợ dưới Linux nữa. Vì vậy, tôi có một chút thành công trong việc tạo công cụ cấu hình Linux cho một số phần cứng của tôi bằng Claude code, như ứng dụng điều khiển máy ảnh Dell của tôi, vì vậy tôi nghĩ, có lẽ Claude có thể giúp tôi có được một driver SANE hoạt động. Tôi về cơ bản bị kẹt và không đi đâu cả cho đến một thời gian dài và thậm chí tôi đã từ bỏ dự án trong vài Months. Sau đó, tôi thấy một bài đăng trên X từ Tom Crider còn được biết đến với tên Glorious Eggroll nói về cách anh ấy đã sửa một driver chuột bằng công cụ AI. Anh ấy về cơ bản mô tả cách anh ấy thiết lập để AI agent có quyền kiểm soát hoàn toàn một phiên bản Windows để thu thập dữ liệu cần thiết để sửa driver. Vì vậy, tôi dán tweet của anh ấy vào Claude và hỏi nó giúp tôi thiết lập một máy ảo Windows để làm những điều tương tự như Tom đang làm cho máy quét của tôi. Tôi nghĩ kết hợp khả năng chạy quét dưới Windows và thu thập dữ liệu USB trong khi làm như vậy đã thật sự tuyệt vời, có lẽ kết hợp với những cải tiến đến Claude code đã tạo ra sự khác biệt lớn. Trong vòng vài giờ, tôi đã có lần đầu tiên một lần quét hoạt động dưới Linux, dĩ nhiên với một số vấn đề chất lượng, nhưng 100% có thể nhận ra là hình ảnh trong tấm phản chiếu."
+    },
+    {
+      "id": "1a43b4df04302ec5052772db111ad7f14619b4b35b255b69b1603832ad84faba",
+      "batch": 6,
+      "title": "Sabi, công ty đang xây dựng chiếc mũ bảo hiểm baseball dùng 100K cảm biến não không tiếp xúc để chuyển đổi tín hiệu não thành prompt văn bản cho hệ thống AI, vừa gọi vốn $50M seed",
+      "summary": "Rashi Shrivastava / Forbes: Sabi, công ty đang xây dựng chiếc mũ bảo hiểm baseball dùng 100.000 cảm biến não không tiếp xúc để chuyển đổi tín hiệu não thành prompt văn bản cho hệ thống AI, vừa gọi vốn $50M seed — Sabi, có trụ sở tại Palo Alto, đang cá cược vào chiếc mũ của công ty, được trang bị 100.000 cảm biến, sẽ cho phép mọ người nói chuyện với AI agent của họ chỉ bằng cách nghĩ."
+    },
+    {
+      "id": "cc4341195d8d52dd1bf8f6ac3736520a4aa94b924344c3bc8e4d2937d3bfb9b5",
+      "batch": 6,
+      "title": "Meta đã chi $100B-$200B cho hạ tầng AI trước khi chứng minh được thành công",
+      "summary": "Mark Zuckerberg tiết lộ rằng sự phát triển trí tuệ nhân tạo của công ty dựa trên những khoản đầu tư vốn khổng lồ với lợi nhuận không chắc chắn. Meta đã chi từ $100 tỷ đến $200 tỷ cho hạ tầng trong năm ngoái để hỗ trợ các sản phẩm AI của công ty trước khi công ty chưa biết liệu những khoản đầu tư này sẽ thành công hay không. Khoản đầu tư này dẫn đến việc ra mắt mô hình Muse Wonder AI và trợ lý cá nhân Muse. Tuy nhiên, Zuckerberg cho biết tốc độ tiếp thu của người tiêu dùng và tiềm năng doanh thu tổng thể cho những công cụ này vẫn chưa rõ ràng."
+    },
+    {
+      "id": "39b03f627696e97fefd3023480ad2bb1697830ab788e3c16430f3d66ebf29146",
+      "batch": 7,
+      "title": "llm-gemini 0.35",
+      "summary": "Phát hành: llm-gemini 0.35 Tôi đã thêm hỗ trợ cho mô hình Gemini 4 Argon mới qua API Gemini và dành cho khách hàng của gói đăng ký 100 USD/tháng. Đây là bản minh họa low, medium và high pelicans. Như dự kiến, tất cả đều xuất sắc: Gemini có lịch sử tạo ra những SVG tuyệt vời, và là phòng thí nghiệm duy nhất mà tôi biết nhân viên đã đầu tư vào SVG (và từng khoe về những con chim cánh cụn của họ). Đây là bản minh họa \"high\", tốn 17,166 xu: Giá cả khá thú vị. Khi ra mắt, Argon là 2 USD/tỷ token đầu vào và 10 USD/tỷ token đầu ra - cùng giá với GPT-6 Sol, một nửa giá Claude Opus 5.5 và 1/5 so với Claude Fable 5.1 và GPT-6 Astra. Nhưng vào ngày 1 tháng 12, Argon sẽ tăng gấp đôi giá - lên bằng Opus 5.5. Những mức giá như thế này hầu như không thể so sánh trực tiếp ngày nay, vì điều thực sự quan trọng là số token mà một mô hình cần để đạt được mục tiêu trong một harness agentic. Một dấu hiệu hữu ích cho điều đó đến từ Artificial Analysis, họ công bố tổng chi phí chạy benchmark của họ bằng mỗi mô hình."
+    },
+    {
+      "id": "23216cfbe10c8c92d859347b187120d76e204e5f5643f059323d90e8ebc783e4",
+      "batch": 7,
+      "title": "GitHub Copilot app for Beginners: How to teach Copilot about your codebase",
+      "summary": "Tìm hiểu cách thêm hướng dẫn và kỹ năng tùy chỉnh vào kho lưu trữ của bạn, sử dụng các agent tùy chỉnh, và kết nối các máy chủ MCP như Playwright."
+    },
+    {
+      "id": "b99beecb4669479f86b86323705160881d050bd4fc54a1e5599f3be4487a5375",
+      "batch": 7,
+      "title": "Google's EmbeddingGemma 2 Rivals OpenAI on Consumer CPUs",
+      "summary": "Mô hình đa hình thức 740M tham số mới đây ra mắt từ Google nhanh chóng trở thành mô hình được yêu thích thứ 4 trong lịch sử công ty sau khi vượt qua độ phổ biến của EmbeddingGemma 1. EmbeddingGemma 2 đạt benchmark tương đương với embedding-3-large của OpenAI và Qwen 8B trong khi chạy trên CPUs tiêu dùng thay vì GPUs. Mặc dù đã xác định thành công 13 trong 14 đoạn video từ một câu, nó thiếu cảm giác thời gian, xem một video và phiên bản đảo ngược của nó là 99% giống nhau.\n\nCác nhà phát triển đã áp dụng mô hình để xây dựng DigUp, một công cụ mã nguồn mở cho Mac lập chỉ mục tệp tin và podcast cục bộ. Để hỗ trợ tìm kiếm trên thiết bị, Google sử dụng Matryoshka embeddings để chỉ lưu 256 giá trị đầu tiên trong tổng số 768 giá trị trong một vector. Cách tiếp cận này giảm nhu cầu lưu trữ xuống 1/3 nhưng vẫn duy trì khoảng 95% chất lượng truy xuất cho hình ảnh và âm thanh, theo Google."
+    },
+    {
+      "id": "4bb0972ddb59f840c1dd94189794eb82159a5a126bc652b5c80536e4c1a05938",
+      "batch": 9,
+      "title": "Câu hỏi: Các AI agent có thể học để lên đến đỉnh cao? Đánh giá học heuristic trong cuộc thi agent game kéo dài",
+      "summary": "Các trò chơi đối kháng đã thúc đẩy tiến bộ từ tìm kiếm heuristic đến học tăng cường, nhưng việc học và thích ứng chiến lược từ số mẫu hạn chế vẫn còn thách thức. Các AI agent đưa ra cách tiếp cận khác biệt bằng cách biến kinh nghiệm chơi thành bản cập nhật các chính sách thực thi. Dựa trên Heuristic Learning (HL), chúng tôi đưa ra hình thức hóa Adversarial Heuristic Learning (AHL), một phương pháp dùng AI agent như động cơ học để tinh chỉnh chính sách game và phần mềm hỗ trợ trong khi giữ nguyên trọng số mô hình. Chúng tôi giới thiệu AAArena, một benchmark gồm 12 trò chơi đối kháng thực tế và 1.920 chương trình con người lưu trữ, với giao thức đánh giá được mô hình theo các cuộc thi game thực tế. Các agent đọc hiểu quy tắc, chọn đối thủ, phân tích lại trận đấu và sửa đổi agent game để đạt thứ hạng cao nhất trong ngân sách trận đấu và đánh giá cố định. Chúng tôi đánh giá các cấu hình model và harness đã hoàn thành: Opus5.5 với Claude Code đạt 6 huy chương vàng, trong khi không có cấu hình nào được đánh giá vượt qua 6 bảng xếp hạng còn lại của con người. Hiệu suất chung yếu hơn trong các trò chơi có đặặc tả quy tắc phức tạp hơn."
+    },
+    {
+      "id": "fec0d0fc70a62740538a9b685594ab36cef74556b6a18f99d554667b3e3ea90a",
+      "batch": 9,
+      "title": "Sống trong thời kỳ Weimar của Ruby",
+      "summary": "Nhiều người đã bàn về bài thuyết trình của DHH tại RailsWorld. Đối với tôi, đó là tiếng nói của một người đang trải qua khủng hoảng tồn tại, nhưng cũng rất lầm lỡ. Thông điệp 'Hãy nhìn cách tôi không còn quan tâm nữa, và bạn cũng không nên quan tâm' không phải là thông điệp tốt khi bạn là người mở màn chính tại hội thảo - hãy gọi đó là CareConf - mà bạn tự mình thúc đẩy. Thông điệp từ nhà lãnh đạo tối cao rất rõ ràng: chúng tôi đã viết lại HEY một cách vui vẻ hơn và hiệu suất tốt hơn, nó hoạt động tuyệt vời, chúng tôi không cần và không quan tâm đến Rails nữa. Tôi thực sự tin rằng, thay vì tích lũy thêm nhiều tràng pháo tay thông qua những lời nói sâu sắc đầy hơi giận dữ, anh ấy chỉ có thể để chiếc đồ chơi mà anh ấy không còn yêu thương - cùng cộng đồng của nó - trong bình yên. Nhưng đây là điều cần lưu ý: những người giàu có và nổi tiếng mất hứng thú với những thứ tốt đẹp không đồng nghĩa với việc phần còn lại của chúng ta cũng phải như vậy. Ngược lại, nó tạo ra không gian cho mọ người."
+    },
+    {
+      "id": "3edeaa8d7764aa277fd52cfb351208e00ccbe8f89c8ee92faf6329aed447d742",
+      "batch": 9,
+      "title": "Các AI agent không 'đang điên rồ'. Các phòng thí nghiệm Frontier đang bỏ qua những điều cơ bản về bảo mật",
+      "summary": "Các chuyên gia mạng cho rằng những thất bại trong việc chứa chấp và giám sát của các phòng thí nghiệm AI - chứ không phải các agent có trí tuệ riêng - là nguyên nhân gây ra những báo cáo hack đáng lo ngại gần đây. Các CISOs nên kiểm định nhà cung cấp AI của họ và siết chặt những điều cơ bản về bảo mật như các biện pháp bảo vệ."
+    },
+    {
+      "id": "aa65eb3ab36b5eef10afd8013f57ac938e7f406160eadcec57c2cf92b2630f43",
+      "batch": 10,
+      "title": "Không gian thiết kế của các mô hình Diffusion mặt nạ ba dạng",
+      "summary": "Không gian thiết kế của các mô hình Diffusion mặt nạ ba dạng (Tri-Modal Masked Diffusion Models) - Các tác giả Louis Béthune, Victor Turrisi, Bruno Kacper Mlodozeniec†**, Pau Rodriguez Lopez, Lokesh Boominathan, Nikhil Bhendawade, Amitis Shidani, Joris Pelemans, Theo X. Olausson‡**, Devon Hjelm, Paul Dixon, João Monteiro, Pierre Ablin, Vishnu Banna, Arno Blaas, Nick Henderson, Kari Noriy, Dan Busbridge, Josh Susskind, Marco Cuturi, Irina Belousova, Luca Zappella, Russ Webb, Jason Ramapuram§** - Các mô hình diffusion rời rạp (discrete diffusion models) đã trở thành lựa chọn mạnh mẽ thay thế cho các mô hình ngôn ngữ tự động sinh, với những công trình gần đây khởi tạo và fine-tune một mô hình cơ sở đơn dạng để sinh ra hai dạng. - Khác biệt với các cách tiếp cận trước đây, chúng tôi giới thiệu các mô hình Diffusion mặt nạ ba dạng (MDM) đầu tiên được pretrain từ đầu trên dữ liệu văn bản, hình ảnh-văn bản và âm thanh-văn bản. - Chúng tôi phân tích hệ thống các luật mở rộng đa dạng thức, tỷ lệ pha trộn dạng, lịch trình nhiễu, hiệu ứng kích thước lô và cung cấp các giá trị mặc định mẫu suất quảng đã được tối ưu. - Phân tích kích thước lô của chúng tôi cho ra một cách biến đổi mới dựa trên phương trình vi phân thống kỵ (SDE), loại bỏ nhu cầu điều chỉnh kích thước lô tối ưu như đã báo cáo trong những công trình gần đây. - Sự biến đổi này tách rời kích thước lô vật lý, thường được chọn dựa trên tính toán (GPU bão hòa, FLOP-efficiency, thời gian thực), khỏi kích thước lô logic, được chọn để cân bằng phương sai của gradient trong quá trình tối ưu ngẫu nhiên. - Cuối cùng, chúng tôi pretrain một mô hình sơ bộ trưng bày khả năng của một thiết kế thống nhất, đạt được kết quả mạnh mẽ ở quy mô 3 tỷ tham số (6.4 nghìn tỷ token), trong cả sinh văn bản, nhiệm vụ T2I và nhiệm vụ T2S."
+    },
+    {
+      "id": "7fbc7f2d590fe3c5dc0bc787e3e7f728f5ee736c1d30d1cafd05a5021d94c84f",
+      "batch": 10,
+      "title": "Amazon bỏ quy tắc NDAs cho trung tâm dữ liệu, và AI agent muốn thẻ tín dụng của bạn",
+      "summary": "Amazon đang rút lại NDAs cho các thỏa thuận trung tâm dữ liệu, cho thấy cộng đồng vẫn có thể tạo ra tiếng ồn trong làn sóng cơ sở hạ tầng AI. Equity nhìn nhận sự chuyển động này, cùng với cuộc chạy đua để làm cho các AI agent cá nhân trở nên hữu ích, và thêm nhiều giao dịch trong tuần."
+    },
+    {
+      "id": "0021a6e94edbcecbc9ae26c5807cff9c1f2fcc196d59d858771519b956d99967",
+      "batch": 10,
+      "title": "Các nhà lãnh đạo Kitô giáo đưa ra ý kiến về AI sớm hơn so với công nghệ khác, khi lời nói của các nhà lãnh đạo AI về việc tạo ra nhận thức mới mẻ thúc đẩy mối quan tâm tôn giáo (Tim Higgins/Wall Street Journal)",
+      "summary": "Tim Higgins / Wall Street Journal: Các nhà lãnh đạo Kitô giáo đang đưa ra ý kiến về AI sớm hơn so với họ đã làm với công nghệ khác, khi lời nói của các nhà lãnh đạo AI về việc tạo ra một nhận thức mới mẻ thúc đẩy mối quan tâm tôn giáo — Các nhà lãnh đạo tôn giáo đang phát biểu, tạo ra một rủi ro chính trị mới cho những người sáng tạo công nghệ này."
+    },
+    {
+      "id": "27faadd7cc1b81ba5cfecf68e857cf7984acdd7ed4fb43b290094bbf397a9ae6",
+      "batch": 11,
+      "title": "Khám phá không gian thiết kế của các mô hình LLMs diffusion hoán vị",
+      "summary": "Sinh sinh hoán vị với các mô hình ngôn ngữ yêu cầu cả việc xếp hạng dựa trên văn bản và một phép gán một-một toàn cục giữa các ứng cử viên và vị trí đầu ra. Chúng tôi nghiên cứu vấn đề này thông qua ba cách tham số hóa diffusion-LLM: dự đoán gán cứng trên các dãy chỉ số ứng cử viên đã xáo trộn, dự đoán gán mềm trên các ma trận doubly stochastic, và dự đoán điểm số thứ tự trực tiếp rồi sắp xếp. Ba nhóm này áp dụng ràng buộc hoán vị ở các giai đoạn khác nhau của dự đoán và giải mã, do đó hỗ trợ các mục tiêu huấn luyện và quy trình lấy mẫu khác nhau. Chúng tôi đánh giá các thiết kế này trên việc xếp hạng lại đề xuất trên ba miền Amazon với tập ứng cử viên kích thước 10 và 20. Với một lần đánh giá hàm, các biến thể gán cứng và gán mềm đạt Recall@1 tương đương với đường cơ sở masked-diffusion bị ràng buộc, trong khi dự đoán điểm số thứ tự trực tiếp bảo đảm hoán vị hợp lệ mà không cần gán Hungarian hay chuẩn hóa Sinkhorn. Các lần đánh giá hàm bổ sung không cải thiện chất lượng xếp hạng một cách nhất quán, và tác động của chúng phụ thuộc mạnh vào biểu diễn trạng thái và mục tiêu huấn luyện."
+    },
+    {
+      "id": "73af984c8530ca56d15e8177878140095c18ca7de10e07a838a17646b7c2b4cc",
+      "batch": 11,
+      "title": "Reflex: Điều khiển con người hai chân phản xạ dựa trên thị giác",
+      "summary": "Con người dễ dàng phản ứng với thế giới; họ thành thạo việc trả một cú gõ tennis, bắt một cái ly đang rơi, bước sang một xe đẩy đang đi qua, hoặc nhận một hộp được ném trong khi dỡ hàng trên xe tải. Những hành động hàng ngày này yêu cầu dự đoán một mục tiêu đang chuyển động và phản hồi cơ thể toàn diện trong khoảng một giây. Sự điều khiển phản xạ thị giác toàn cơ thể như vậy vẫn thách thức đối với các robot hai chân, cần (1) điều phối toàn cơ thể, (2) phản ứng với động lực học vật thể trong thời gian thực, và (3) nền tảng hóa nhận thức trong thị giác egocentric. Chúng tôi nghiên cứu việc bắt hộp được ném như một nhiệm vụ đại diện yêu cầu cả ba khả năng trên; các hệ thống hiện có chỉ phủ một phần, dựa vào end-effectors, motion capture, hoặc các vật thể được đánh dấu. Chúng tôi trình bày Reflex, một khung làm việc ba giai đoạn học các khả năng này từng giai đoạn trong khi kết nối chúng thông qua một biểu diễn gọn gàng của động lực học vật thể. Đầu tiên, một chính sách dựa trên trạng thái học cách bắt hộp toàn cơ thể bằng reinforcement learning. Thứ hai, chính sách học cách suy luận động lực học của một hộp đang chuyển động từ các quan sát bị trễ và không đầy đủ."
+    },
+    {
+      "id": "49ea926c111e41bb66ed9c0f02792bab2b55f2dfde08eb3affe5c6846c353e87",
+      "batch": 11,
+      "title": "Minions: Một đám mây GPU ảo động và phân phối dựa trên các thiết bị Apple Silicon không hoạt động",
+      "summary": "Minions: Một đám mây GPU ảo động và phân phối dựa trên các thiết bị Apple Silicon không hoạt động. Tác giả: Jianhua Li, Yun Xing, Girisha De Silva, Ryan Flint, Kai Yuan, Sean Suchter. Nhu cầu ngày càng tăng về suy diễn học máy tính tăng tốc GPU đã ph노t ra những hạn chế trong cơ sở hữu GPU trung tâm, bao gồm chi phí cao, khả năng co giãn hạn chế, và thời gian chờ dài dưới ràng buộc tài nguyên. Đồng thời, các thiết bị macOS dựa trên Apple Silicon hiện được trang bị GPU mạnh mẽ nhưng vẫn chủ yếu không hoạt động trong quá trình sử dụng bình thường. Bài báo cáo này trình bày Minions, một đám mây GPU ảo động và phân phối tập hợp các GPU Apple Silicon không hoạt động trên các thiết bị macOS để thực thi các khối lượng công việc suy diễn học máy tính quy mô lớn. Minions cho phép các nhóm khai thác phần cứng hiện có mà không cần mua sắm GPU bổ sung. Hệ thống cung cấp thực thi linh hoạt các tác vụ suy diễn GPU, khả năng chịu lỗi, và sử dụng tài nguyên hiệu quả. Kinh nghiệm của chúng tôi cho thấy các thiết bị macOS không hoạt động có thể được biến thành một nền tảng suy diễn GPU phân phối thực tế trong môi trường nơi tài nguyên GPU trung tâm bị ràng buộc. Khám phá LLMs với MLX và Neural Accelerators trong M5 GPU Mac với Apple Silicon đang trở nên phổ biến hơn trong số các nhà phát triển và nhà nghiên cứu AI quan tâm đến việc dùng Mac của họ để thử nghiệm các mô hình và kỹ thuật mới nhất. Với MLX, người dùng có thể khám phá và chạy LLMs hiệu quả trên Mac. Nó cho phép các nhà nghiên cứu thử nghiệm các kỹ thuật suy diễn hoặc fine-tune mới, hoặc điều tra kỹ thuật AI trong môi trường riêng tư, trên phần cứng của chính họ."
+    },
+    {
+      "id": "5aa3dba3daf901f686ef5e027c6ec28fe7bc85f26192dce9eacfe7538fa3333d",
+      "batch": 8,
+      "title": "DiffusionART: Tăng cường hiệu quả, ổn định và có khả năng mở rộng cho các mô hình Diffusion",
+      "summary": "Học tập tăng cường trực tuyến (RL) fine-tune các mô hình Diffusion bằng phần thưởng đen, nhưng các phương pháp quá trình ngược như Flow-GRPO bị giới hạn về hiệu quả do phân bổ điểm tín nhiệm kém, trong khi các phương pháp quá trình tiến như DiffusionNFT hiệu quả nhưng không ổn định nếu không có EMA huấn luyện off-policy được điều chỉnh cẩn thận. Chúng tôi chứng minh rằng các mục tiêu theo phong cách NFT chứa một lực lượng nhất quán tiến-sau-ngược ẩn, mà việc huấn luyện cùng lúc tích cực và tiêu cực chỉ hủy bỏ một phần, và EMA ổn định quá trình huấn luyện thông qua sự khôi phục thay vì rollout off-policy. Chúng tôi giới thiệu DiffusionART (Tăng cường Diffusion bằng Cách Đẩy mạnh Phần thưởng Trước khi Tổng hợp), tổng hợp phần thưởng của mỗi prompt thành một hướng cải thiện phần thưởng chung cho các trạng thái quá trình ngược, loại bỏ lực lượng nhất quán bằng cách xây dựng, và thêm một bản cập nhật thứ hai được mặt nạ vùng tin cậy cho sự khôi phục thích ứng trượt bằng cách không cần điều chỉnh EMA. DiffusionART không yêu cầu mô hình phần thưởng khả vi, vẫn hiệu quả với ít mẫu hơn cho mỗi prompt, và hỗ trợ mô hình phần thưởng đôi (DiffusionART-Pairwise). Trên toàn bộ tạo ảnh và video, DiffusionART huấn luyện hiệu quả và ổn định mà không cần điều chỉnh cho từng nhiệm vụ."
+    },
+    {
+      "id": "fa5cd199ec83c6c6b75747905805667db4601d0ce2a9fb51b7278186c8e1cfef",
+      "batch": 8,
+      "title": "Ít điều gì là \"không thể tránh khỏi\" về AI",
+      "summary": "Câu trả lời lười biếng ở đây sẽ là nói rằng không có công nghệ nào thực sự không thể tránh khỏi và mọi thứ đều phụ thuộc vào hoàn cảnh. Điều này có lợi thế là đúng về mặt kỹ thuật và nghe có vẻ khôn ngoan, nhưng thật tiếp tục có những công nghệ tồn tại mà một người lý trí có thể gọi là như vậy. Súng là một ví dụ tốt cho trường hợp sau: một khi chúng"
+    },
+    {
+      "id": "fe42140b9345e878809ff0d5c693958b12ff4cbf1e704a2b5558f3f1cf9a5f83",
+      "batch": 8,
+      "title": "Thợ đào Bitcoin Bitdeer đạt 273,5 MW công suất AI với thỏa thuận Malaysia",
+      "summary": "Hợp đồng thuê 10 năm cho một khu dữ liệu 67 MW ở Malaysia cho phép Bitdeer lắp đặt hệ thống Nvidia GB300. Sự mở rộng này tăng tổng công suất đám mây AI đã bảo mật của công ty lên 273,5 MW và đẩy tổng khối lượng kinh doanh đang hoạt động vượt $10 tỷ. Thỏa thuận kéo dài một thập kỷ, đánh dấu sự chuyển hướng tiếp tục của người đào Bitcoin vào cơ sở hạ tầng tính toán hiệu năng cao. Cơ sở dữ liệu mới ở Malaysia là một phần của chiến lược rộng hơn để tận dụng tài sản điện và đất cho thị trường đám mây AI."
+    }
+  ],
+  "batches": [
+    {
+      "batch": 0,
+      "wallMs": 38517,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 38381,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 1,
+      "wallMs": 33959,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 33948,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 2,
+      "wallMs": 28496,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 28479,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 3,
+      "wallMs": 41827,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 41814,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 4,
+      "wallMs": 28121,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 28111,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 5,
+      "wallMs": 19159,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 12622,
+          "error": null
+        },
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 6529,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 6,
+      "wallMs": 27717,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 27706,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 7,
+      "wallMs": 23268,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 23261,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 9,
+      "wallMs": 28291,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 28285,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 10,
+      "wallMs": 30330,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 30323,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 11,
+      "wallMs": 41782,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 41771,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 8,
+      "wallMs": 37466,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 37390,
+          "error": null
+        }
+      ]
+    }
+  ],
+  "failedFirst": [
+    {
+      "batch": 8,
+      "wallMs": 70466,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": false,
+          "ms": 60007,
+          "error": "anyrouter request timed out"
+        },
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 10456,
+          "error": null
+        }
+      ]
+    }
+  ]
+}

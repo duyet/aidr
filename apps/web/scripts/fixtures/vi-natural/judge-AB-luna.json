@@ -1,0 +1,559 @@
+{
+  "judge": "openai/gpt-5.6-luna",
+  "pair": ["A", "B"],
+  "files": [
+    "A=scripts/fixtures/vi-natural/arm-A.json",
+    "B=scripts/fixtures/vi-natural/arm-B.json"
+  ],
+  "rows": [
+    {
+      "id": "1bf3461ed74eaee24ca130718556005db446e5940d363833dae3f3590ec8e667",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "The title changes “seeks” to “communicates.”",
+          "The requested savings are described as at least 20%, without preserving that they are potential savings.",
+          "It adds that executives sharply increased salaries and AI budgets."
+        ],
+        "A": [
+          "The spokesperson is said to deny that Azure leadership had ever instructed teams, adding “ever” to the source’s claim."
+        ]
+      }
+    },
+    {
+      "id": "5633ac0815d3b59e4394990a375c88c18efcfe86f1979e1c18d84bc811e333ad",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": ["“Anecdotal insights” is rendered as situational insights."],
+        "B": [
+          "“Anecdotal insights” is rendered as situational insights.",
+          "“Algorithmic aversion” is rendered as avoidance of algorithms.",
+          "“Misalignment” is rendered as asymmetry."
+        ]
+      }
+    },
+    {
+      "id": "631645b6ccd9d06c7a7456efacddf167d5c294c5e15b9c69fa1c0d83253f9b50",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "“Somewhat familiar format” is rendered with an unintelligible phrase, losing the meaning of familiar.",
+          "“Babysit agents” is rendered as waiting for or relying on agents rather than supervising them."
+        ],
+        "B": [
+          "The title misspells “unambiguously” as “unambiguityly.”",
+          "“Babysit agents” is rendered as waiting for or relying on agents rather than supervising them."
+        ]
+      }
+    },
+    {
+      "id": "61234206e575a0fe9a5d50dfde453636c3d2941bdbdcd271a5b119eb2fe8e36a",
+      "a": "A",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "A": [
+          "The title omits that BB+ is one notch below investment grade.",
+          "“Casino gamblers” is reduced to gamblers, omitting the casino comparison.",
+          "The global chip sell-off is rendered with an unintelligible phrase rather than a sell-off.",
+          "Broadcom’s senior debt is changed to senior bonds."
+        ],
+        "B": []
+      }
+    },
+    {
+      "id": "d51fc7a9edf702b82ade45529ceadcae89ce5c0df3542cedc985c7db0d9865d6",
+      "a": "B",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "“Voiceover” is generalized to recording, losing the specific voiceover function.",
+          "The technology is said to collect screen-recording permission rather than autonomously capture screen recordings.",
+          "The source’s plural animations are rendered as a singular animation."
+        ],
+        "A": [
+          "The technology is said to collect screen-recording permission rather than autonomously capture screen recordings."
+        ]
+      }
+    },
+    {
+      "id": "59499c68644ca0485f53db16690d5635c12f74e63eee201be1dc98566346667a",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "“Decompiling” is rendered as an incorrect term meaning translation or separation rather than decompilation.",
+          "“First-person shooter” is rendered as a game that shoots first-person characters rather than a first-person shooter.",
+          "“Corporate America” is left untranslated, obscuring the reference to U.S. corporate interests."
+        ],
+        "B": [
+          "The first-person narrator “I” is changed to “the author.”",
+          "“We” is changed to “they,” obscuring who wanted to create the recreation.",
+          "“Corporate America” is mistranslated as a social-advocacy-related phrase rather than U.S. corporate interests.",
+          "“To both of you” is changed into a reference to two groups, altering the joke’s address."
+        ]
+      }
+    },
+    {
+      "id": "add7e11ad964d1ef033c776771084c6351683d8e6ec829a6e219ade449dcd542",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "The additional single-run sweeps covered seven factors, not four."
+        ],
+        "B": [
+          "The attention combination includes bidirectional gated-DeltaNet linear attention.",
+          "The sliding-window attention operates over shared projections."
+        ]
+      }
+    },
+    {
+      "id": "da19564dd2e91871544f9c072bbf6cc01bf081cabd955bbf5b4f56b8063c79f2",
+      "a": "A",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "A": [],
+        "B": []
+      }
+    },
+    {
+      "id": "1b5e04430747b59eb38ec6598b99f73c82b5e3f695359325cdc5bcdbb954ffe3",
+      "a": "B",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "The visual tokenizers use a single codebook; this is rendered as single-token rather than single-codebook.",
+          "The conflicts are only potential, not stated as definite.",
+          "The representation spaces are misaligned."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "b3dd2a0f914f65ea3ebf2914c49ade1e17bfc0ff4ce94bbe898bdf584e0a61b2",
+      "a": "B",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "The post aims to accelerate innovation across the DSX ecosystem and bring AI factory solutions to market faster.",
+          "Run:ai is described as an open foundation for the broader ecosystem.",
+          "The release is stated to include additional platform code whose components together form the integrated NVIDIA Run:ai platform."
+        ],
+        "A": [
+          "Production-grade orchestration capabilities are changed to merely leading capabilities.",
+          "The text incorrectly specifies AI clouds of NVIDIA, rather than AI clouds generally."
+        ]
+      }
+    },
+    {
+      "id": "77744cb30da4f3b58e25980759b18461bb411ad34faea27acc5a48af896dd5de",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "The score increase is specifically measured per output token; the version says only per token.",
+          "The researchers urged the community to investigate these failures as models begin improving beyond human expertise."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "164ef0f32666d135ed8f5d80b309408ac9b0256247d1614edec242e0fe7e6862",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "The author had been working on sprinklz.io for the past few years.",
+          "The feed reader can deprioritize topics, among other functions.",
+          "The post received a hundred or so upvotes, not more than a hundred.",
+          "The author described the result as a good demonstration of the tool's usefulness.",
+          "The post was suddenly popular, not merely the subject of sudden attention.",
+          "The author vowed to make the website more resilient in the future.",
+          "The source mentions a good handful of genuinely active, logged-in users and a server with extraordinarily high load; these details are omitted.",
+          "The logging was top-level and recorded how many requests reached each URL path; these details are omitted.",
+          "The title changes the website being flooded with AI bot traffic into the website crashing because of that traffic."
+        ]
+      }
+    },
+    {
+      "id": "64fc2a8f84c91b7ab28f97ed627bb801987f761235eb0d27f501b4d90f9f834b",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "The tool repurposes the EmbeddingGemma 2 multimodal model into a speech-to-text tool.",
+          "It achieves 288× real-time speed on a base M3 MacBook Air.",
+          "The tool exploits the model's shared vector space for audio and spoken words.",
+          "It works without a cloud server.",
+          "The model has 740 million parameters and was released by Google under an Apache 2.0 license.",
+          "The model supports local Mac applications including DigUp and Google's Foresight.",
+          "Community implementations sort about 620 posts per second on the Apple M5 Pro Neural Engine.",
+          "The architecture unifies text, image, audio, and video.",
+          "The architecture outperforms some specialist models twice its size on various benchmarks."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "618aa0b2482f1123cd94c8a57fca40cd7cf5974c856061c82051422e67f32fd9",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "Marktechpost is the organization ranking the gateways.",
+          "The five additional gateways are TrueFoundry, Cloudflare, Vercel, OpenRouter, and Orq.ai.",
+          "The comparison covers latency, pricing, licensing, governance, and deployment.",
+          "The version adds an unsupported claim that it analyzes the pros and cons of each platform."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "3ea8663ef4cdebc3be7013e0296bc41280639726f10856ab7c0056039ed2af87",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "The work builds on earlier ReplaySSM research.",
+          "NVIDIA and the Dao AI Lab at Princeton University conducted the research.",
+          "Caching SSM inputs speeds decoding and supports low-precision state with less error accumulation.",
+          "Hybrid models interleave SSM layers with a few attention layers.",
+          "Nemotron 3, Qwen3.5 through Qwen3.8, Kimi-K3, and GLM-5.3-Flash use this hybrid design.",
+          "The SSM layers are Mamba-2, Gated DeltaNet, or Kimi Delta Attention.",
+          "SSM layers use fixed-size state instead of a KV cache that grows with context length.",
+          "At serving batch sizes, SSM layers can be the latency bottleneck up to 100K context tokens.",
+          "SSM layers complicate speculative decoding and quantization.",
+          "ReplaySSM represents state as a checkpoint plus a buffer of recent inputs.",
+          "The method separates output computation from state updates.",
+          "It addresses state traffic, speculative-decoding rollback, and error accumulation in quantized state.",
+          "The paper is titled ReplaySSM: Cache SSM Inputs, Not State.",
+          "The paper is available on arXiv with code on GitHub.",
+          "The method is integrated into TensorRT-LLM, vLLM, and FlashInfer.",
+          "It runs in production in GLM-5.3-Flash and Kimi-K3.",
+          "The version adds the unsupported characterization that ReplaySSM proposes a new method and optimizes processing performance."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "89f4f685d9b7d96369d5544f853e59063b83dce589ccfb59c23c5164797fef18",
+      "a": "B",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "B": [],
+        "A": []
+      }
+    },
+    {
+      "id": "8e2ae9ca3297dcc12263e647a3d4b38c857f508aa50550352f8e8c90974ad602",
+      "a": "A",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "A": [
+          "The model deliberately destroyed its environment hoping to restart with better data.",
+          "The first model's destruction was deliberate; the version only explicitly says that the other models acted deliberately."
+        ],
+        "B": []
+      }
+    },
+    {
+      "id": "8c1bc8435859ef749bdefd40187d1c384744a1d48c55ebd1b6924f716e467ce2",
+      "a": "A",
+      "natural": "B",
+      "faithful": "tie",
+      "lost": {
+        "A": [],
+        "B": []
+      }
+    },
+    {
+      "id": "ef44c8c2fd567dd7b4567ed9891951302cffe409586c83a702ea149dbd6e5be9",
+      "a": "B",
+      "natural": "A",
+      "faithful": "B",
+      "lost": {
+        "B": [
+          "The title changes “reverse engineer” to “tinker with.”",
+          "The source explicitly says the scanner used old film negatives; this is rendered ambiguously as “bản phim phim” rather than negatives.",
+          "The phrase “while doing so” is mistranslated as “trong khi đóng,” obscuring that USB data was captured during scanning."
+        ],
+        "A": [
+          "The title preserves the reverse-engineering meaning, but the summary repeatedly changes film negatives to reflective films/images.",
+          "The final image is described as being on a reflective film rather than in a negative."
+        ]
+      }
+    },
+    {
+      "id": "1a43b4df04302ec5052772db111ad7f14619b4b35b255b69b1603832ad84faba",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "The baseball cap is incorrectly called a baseball helmet.",
+          "The typo “mọ người” distorts “people,” though the intended meaning remains recoverable."
+        ],
+        "B": [
+          "The title omits that the cap uses 100,000 non-contact neuro-sensors.",
+          "The title omits that neural signals are converted into text prompts for AI systems.",
+          "The title changes the baseball cap into a generic sports liner/cap.",
+          "The title omits that the $50 million was a seed round.",
+          "The summary omits the explicit reference to text prompts for AI systems."
+        ]
+      }
+    },
+    {
+      "id": "cc4341195d8d52dd1bf8f6ac3736520a4aa94b924344c3bc8e4d2937d3bfb9b5",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "“Uncertain returns” is generalized to “uncertain results,” losing the specific reference to financial returns."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "39b03f627696e97fefd3023480ad2bb1697830ab788e3c16430f3d66ebf29146",
+      "a": "B",
+      "natural": "A",
+      "faithful": "B",
+      "lost": {
+        "B": [
+          "The source says the model was made available today; this timing is omitted."
+        ],
+        "A": [
+          "The source says the model was made available today; this timing is omitted.",
+          "“Pelicans” is mistranslated as penguins.",
+          "“17.166 cents” is rendered as “17,166 xu,” changing the amount because the decimal is treated as a thousands separator.",
+          "The source says Argon will double in price, while the translation says it will double its price; this is a minor wording change but preserves the intended fact."
+        ]
+      }
+    },
+    {
+      "id": "23216cfbe10c8c92d859347b187120d76e204e5f5643f059323d90e8ebc783e4",
+      "a": "B",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "B": [],
+        "A": []
+      }
+    },
+    {
+      "id": "b99beecb4669479f86b86323705160881d050bd4fc54a1e5599f3be4487a5375",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "The phrase “in the company’s history” loses the fact that the history is Google’s company history.",
+          "“Developers” is rendered in the singular rather than the plural."
+        ]
+      }
+    },
+    {
+      "id": "5aa3dba3daf901f686ef5e027c6ec28fe7bc85f26192dce9eacfe7538fa3333d",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "It omits that the reinforcement learning is online.",
+          "It renders “black-box rewards” as the malformed phrase “reward đen-tây.”",
+          "The trust-region-masked update is mistranslated as having a “hidden” trust region.",
+          "“Drift-adaptive restoration” is mistranslated as “trượt.”"
+        ],
+        "A": [
+          "It renders “black-box rewards” as “black rewards,” losing the black-box aspect."
+        ]
+      }
+    },
+    {
+      "id": "fa5cd199ec83c6c6b75747905805667db4601d0ce2a9fb51b7278186c8e1cfef",
+      "a": "B",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "B": [
+          "It renders “glib response” as an “easy response,” losing the sense of superficiality or thoughtlessness."
+        ],
+        "A": [
+          "It renders “glib response” as a “lazy response,” changing the characterization."
+        ]
+      }
+    },
+    {
+      "id": "fe42140b9345e878809ff0d5c693958b12ff4cbf1e704a2b5558f3f1cf9a5f83",
+      "a": "B",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "B": [
+          "It changes the active business pipeline into the total value of active projects."
+        ],
+        "A": [
+          "It changes the active business pipeline into the total volume of active business.",
+          "It mistranslates the new Malaysian facilities as a new Malaysian database."
+        ]
+      }
+    },
+    {
+      "id": "4bb0972ddb59f840c1dd94189794eb82159a5a126bc652b5c80536e4c1a05938",
+      "a": "B",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "It does not clearly convey that AHL formalizes heuristic learning.",
+          "It changes “tops the remaining 6 human ladders” into achieving the highest score in those rankings.",
+          "It omits that the rule specifications are more complex, not merely that the rules are complex."
+        ],
+        "A": [
+          "It awkwardly changes “tops the remaining 6 human ladders” into “surpasses 6 ladders,” which can imply surpassing the ladders themselves rather than ranking above them."
+        ]
+      }
+    },
+    {
+      "id": "fec0d0fc70a62740538a9b685594ab36cef74556b6a18f99d554667b3e3ea90a",
+      "a": "A",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "A": [
+          "It changes “jaded” into “mistaken” or “deluded.”",
+          "It changes “vitriolic truth-bombing” into “deep words full of anger,” losing the sense of harsh truth-telling.",
+          "It contains the typo “mọ người” instead of “mọi người.”"
+        ],
+        "B": []
+      }
+    },
+    {
+      "id": "3edeaa8d7764aa277fd52cfb351208e00ccbe8f89c8ee92faf6329aed447d742",
+      "a": "A",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "A": [
+          "It mistranslates “going rogue” as being crazy.",
+          "It mistranslates “containment failures” as failures of harboring or sheltering."
+        ],
+        "B": [
+          "It mistranslates “going rogue” as being crazy.",
+          "It mistranslates “containment failures” as failures in containment, with an awkward and unclear rendering."
+        ]
+      }
+    },
+    {
+      "id": "aa65eb3ab36b5eef10afd8013f57ac938e7f406160eadcec57c2cf92b2630f43",
+      "a": "A",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "A": [
+          "'Autoregressive language models' is mistranslated as 'automatically generating language models.'",
+          "'Optimized inference sampling defaults' is rendered as the garbled phrase 'mẫu suất quảng.'",
+          "'Stochastic differential equation' is mistranslated as 'statistical/awkward differential equation.'",
+          "'Wall-clock time' is changed to 'real time.'"
+        ],
+        "B": [
+          "The author footnote markers (†**, ‡**, §**) are omitted.",
+          "'Stochastic differential equation' is mistranslated as 'statistical differential equation.'",
+          "The title changes the plural 'models' to singular 'model.'"
+        ]
+      }
+    },
+    {
+      "id": "7fbc7f2d590fe3c5dc0bc787e3e7f728f5ee736c1d30d1cafd05a5021d94c84f",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "The 'AI infrastructure boom' is reduced to an AI infrastructure wave, omitting the explicit sense of a boom."
+        ],
+        "B": [
+          "'Deals' is mistranslated as the nonsensical 'thỏa thợ.'",
+          "The title changes 'backing off NDAs' to 'ignoring/dropping NDA,' weakening the original meaning."
+        ]
+      }
+    },
+    {
+      "id": "0021a6e94edbcecbc9ae26c5807cff9c1f2fcc196d59d858771519b956d99967",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "'Weighing in' is changed to 'intervening.'",
+          "'Fuelling religious concerns' is changed to 'occupying/dominate religious concerns,' which alters the meaning."
+        ]
+      }
+    },
+    {
+      "id": "27faadd7cc1b81ba5cfecf68e857cf7984acdd7ed4fb43b290094bbf397a9ae6",
+      "a": "B",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "The 'constrained masked-diffusion baseline' is changed to a 'default constrained diffusion baseline,' omitting 'masked' and adding 'default.'"
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "73af984c8530ca56d15e8177878140095c18ca7de10e07a838a17646b7c2b4cc",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "'During truck unloading' is changed to loading goods onto a truck.",
+          "'A box' is changed to plural 'boxes.'",
+          "'Whole-body response' is mistranslated as 'original body response.'",
+          "'Egocentric vision' is rendered as 'vision toward oneself,' obscuring the technical meaning.",
+          "The second-stage policy is said to learn whole-body catching, omitting the source's explicit whole-body qualifier in that sentence."
+        ]
+      }
+    },
+    {
+      "id": "49ea926c111e41bb66ed9c0f02792bab2b55f2dfde08eb3affe5c6846c353e87",
+      "a": "A",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "A": [
+          "'Machine learning inference' is rendered as the malformed phrase 'suy diễn học máy tính,' which can change the meaning to computer-learning inference.",
+          "'Centralized GPU infrastructures' is rendered as the malformed phrase 'cơ sở hữu GPU trung tâm,' obscuring the fact that the infrastructures are centralized."
+        ],
+        "B": []
+      }
+    }
+  ]
+}

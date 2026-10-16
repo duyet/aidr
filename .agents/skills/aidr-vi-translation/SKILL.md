@@ -67,7 +67,18 @@ pnpm exec tsx scripts/translation-eval.ts run --fixture scripts/fixtures/transla
 pnpm exec tsx scripts/translation-eval.ts compare /tmp/base.json /tmp/gemma.json
 ```
 
-The summary reports accept rate, reviewer fidelity and naturalness, term preservation, back-translation recall, the VI/EN length ratio, generator p50/p95, and billed USD. `scripts/fixtures/translation-eval.json` holds 30 item translations; `translation-eval-bullets.json` holds 30 real TL;DR bullets.
+The summary reports accept rate, reviewer fidelity and naturalness, term preservation, back-translation recall, the VI/EN length ratio, generator p50/p95, and billed USD.
+
+To test a card or a model against the current one, use the arms over `scripts/fixtures/vi-natural/items.json` (36 stories, frozen batches):
+
+```bash
+pnpm exec tsx scripts/translation-eval.ts gen --arm X --model <id> --out scripts/fixtures/vi-natural/arm-X.json   # the checked-out card
+pnpm exec tsx scripts/translation-eval.ts metrics --arm P=fixture --arm A=scripts/fixtures/vi-natural/arm-A.json --arm X=...
+pnpm exec tsx scripts/translation-eval.ts judge --pair A=... --pair X=... --judge openai/gpt-5.6-luna --out judge-AX-luna.json
+pnpm exec tsx scripts/translation-eval.ts verdict judge-AX-luna.json judge-AX-<second judge>.json
+```
+
+Every request counts against `fixtures/vi-natural/calls.json` and stops at its cap or the first 429. A card ships only when both judges prefer it on at least 65% of the 36 stories with no more lost facts. On 2026-10-16 a free-form card ("not sentence by sentence") lost facts on Laguna and Gemma and read no better (ALGORITHM.md §6); the model decided naturalness. `scripts/fixtures/translation-eval.json` holds 30 item translations; `translation-eval-bullets.json` holds 30 real TL;DR bullets.
 
 A local failure is not a prod failure. From a bench host outside Google's supported regions, `google/gemini-3-flash` returns 400 (antigravity) and the AI Studio pool returns 400 "User location is not supported", while the Worker on Cloudflare is served (audit: `gemini-3-flash` → `gemini-2.5-flash`). Several `google/*` ids flip between 200 and 404 BYOK by the hour. Check `pnpm --filter @aidr/web agent audit` for the prod route before dropping an id, and report an unreachable model as unavailable with its status, not as a score.
 

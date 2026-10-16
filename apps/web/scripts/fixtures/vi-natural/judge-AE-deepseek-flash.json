@@ -1,0 +1,639 @@
+{
+  "judge": "deepseek/deepseek-flash-latest",
+  "pair": ["A", "E"],
+  "files": [
+    "A=scripts/fixtures/vi-natural/arm-A.json",
+    "E=scripts/fixtures/vi-natural/arm-E.json"
+  ],
+  "rows": [
+    {
+      "id": "1bf3461ed74eaee24ca130718556005db446e5940d363833dae3f3590ec8e667",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "A": [
+          "Microsoft denied that Azure leadership has instructed teams to develop cost-reduction strategies",
+          "The Information reports (version b says 'According to a report of The Information' instead of attribution to the news article) (minor change in hedge)"
+        ]
+      }
+    },
+    {
+      "id": "5633ac0815d3b59e4394990a375c88c18efcfe86f1979e1c18d84bc811e333ad",
+      "a": "A",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "version a drops 'structural misalignments' from the title",
+          "version a adds 'học máy' for machine learning in the summary (not in English)",
+          "version a changes 'anecdotal insights' to 'những hiểu biết tình hình' losing the nuance of anecdotal"
+        ],
+        "E": [
+          "version b adds 'nhìn chung' (generally) for 'overall' (minor addition, not lost)",
+          "version b changes 'càng thúc đẩy' to 'thúc đẩy' (drops linking phrase)",
+          "version b uses 'sự ác cảm' for aversion (acceptable translation)",
+          "version b drops 'subsequently' from 'can subsequently lead to'"
+        ]
+      }
+    },
+    {
+      "id": "631645b6ccd9d06c7a7456efacddf167d5c294c5e15b9c69fa1c0d83253f9b50",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "version a has an English sentence 'Suppose I muốn sắp xếp một danh sách' mixed Vietnamese-English; English had no mixing",
+          "version a adds 'học máy' for machine learning (not in English, but acceptable as translation of 'ML' implied?)"
+        ],
+        "A": [
+          "version b changes title to English (title kept in English, so no loss there)",
+          "version b changes 'grants wishes' to 'ban ước mơ' (grants dreams) - loses precise meaning of 'wishes'",
+          "version b changes 'suppose' to 'Giả sử' (fine), but drops the continuation 'I write:' that was in English",
+          "version b drops 'thanks to...' parenthetical in the verifier sentence",
+          "version b changes 'baby sit agents' to 'trông chờ các agent' (wait for agents) rather than caretaking",
+          "version b changes 'somewhat familiar format' to 'tương đối quăm quyển' (incorrect translation for 'familiar')",
+          "version b adds 'thậm chí' (even) for 'even for those' (minor addition)",
+          "version b changes 'specification errors or underspecify' to 'lỗi trong bản đặc tả hoặc mô tả chưa đầy đủ' (acceptable but shifts nuance)"
+        ]
+      }
+    },
+    {
+      "id": "61234206e575a0fe9a5d50dfde453636c3d2941bdbdcd271a5b119eb2fe8e36a",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "version a drops the rating level 'one notch below investment grade' from the summary entirely",
+          "version a mistranslates 'junior debt' as 'nợ phụ trợ' (auxiliary debt) rather than subordinated/secondary debt",
+          "version a mistranslates 'gamblers' as 'người đánh bạc' (general gambler) vs 'con bạc' (acceptable, but less precise)",
+          "version a mistranslates 'video arcade' as 'cửa hàng game' (game store) instead of arcade",
+          "version a mistranslates 'senior debt' as 'trái phiếu cao hạn' (high-term bonds) instead of senior debt",
+          "version a changes 'triggered a global chip sell-off' to 'kích hoạt một vòng bán thái uống toàn cầu' (typo for sell-off/bán tháo) - missed exact word"
+        ],
+        "E": [
+          "version b adds 'động thái này diễn ra' as a linking phrase not in English",
+          "version b adds 'tiết lộ' for disclosures (fine, faithful overall)"
+        ]
+      }
+    },
+    {
+      "id": "d51fc7a9edf702b82ade45529ceadcae89ce5c0df3542cedc985c7db0d9865d6",
+      "a": "A",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "version a changes 'Utilitarian business video' to 'Video doanh nghiệp tiện dụng' (useful) instead of utilitarian (practical/functional)",
+          "version a changes 'onboarding' to 'quy trình đào tạo' (training process) - narrows the meaning",
+          "version a uses 'thu thập quyền ghi màn hình' (collect screen recording permissions) instead of 'capture screen recordings' - adds 'permissions'"
+        ],
+        "E": [
+          "version b changes '35x gains' number to 'gấp 5 lần' (5 times) - loses multiplier, correct in both? Actually both say 5x, English says 5x - no loss here",
+          "version b adds 'đúng' (correct) to 'đúng nhận diện thương hiệu' (on-brand) - minor addition",
+          "version b drops 'bao gồm cả' before Atlassian etc. - acceptable, not a fact loss",
+          "version b changes 'nội bộ của họ' to just 'nội bộ' - minor"
+        ]
+      }
+    },
+    {
+      "id": "59499c68644ca0485f53db16690d5635c12f74e63eee201be1dc98566346667a",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "version a uses 'phân dịch' for decompile, which is non-standard and unclear (should be 'dịch ngược')",
+          "version a adds 'tự động' (automatically) - not in English",
+          "version a translates 'decompile' inconsistently (phân dịch vs dịch ngược in body) - factually no loss",
+          "version a drops 'only' from 'I can only say' - hedge lost",
+          "version a translates 'corporate America' as 'corporate America' (kept English), but in context it's not a fact loss"
+        ],
+        "E": [
+          "version b changes '1000 tokens' to '500 tỷ token' (500B) - English says '500B' so actually correct. No loss.",
+          "version b changes 'decompile' to 'dịch ngược' (correct)",
+          "version b drops 'Since' from the first sentence title? Title changed from '500B Tokens Later: Letting AI Agents Decompile...' to 'Sau 500 tỷ token: Để AI agent dịch ngược...' - dropped 'letting' nuance but factually fine"
+        ]
+      }
+    },
+    {
+      "id": "add7e11ad964d1ef033c776771084c6351683d8e6ec829a6e219ade449dcd542",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "five further factors changed to four further factors",
+          "cross-session recurrent-state memory gate changed to cửa sổ nhớ trạng thái lặp lại liên phiên bản (mistranslation)",
+          "seven further factors changed to four further factors",
+          "1–15M parameters changed to 1–15 triệu tham số"
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "da19564dd2e91871544f9c072bbf6cc01bf081cabd955bbf5b4f56b8063c79f2",
+      "a": "A",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "E": [
+          "built-in evaluation changed to khả năng evaluation tích hợp (loss of 'built-in')",
+          "native enterprise connectors changed to trình kết nối enterprise bản địa (mistranslation of 'native')"
+        ]
+      }
+    },
+    {
+      "id": "1b5e04430747b59eb38ec6598b99f73c82b5e3f695359325cdc5bcdbb954ffe3",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "Omni-Visual Understanding changed to hiểu biết đa thị giác (loss of completeness of 'omni-visual')",
+          "discrete, continuous, and hybrid paradigms changed to các mô hình rời rạc, liên tục và hỗn hợp (loss of 'paradigms')"
+        ],
+        "A": [
+          "discrete, continuous, and hybrid paradigms changed to các phương pháp rời rạc, liên tục và lai (loss of 'paradigms')",
+          "multi-codebook visual tokens changed to token hình ảnh đa codebook (loss of 'visual' specification)",
+          "Omni-Visual Understanding changed to hiểu biết thị giác toàn diện (incomplete)",
+          "to our knowledge the first diffusion language model changed to đến thời điểm này là mô hình ngôn ngữ diffusion đầu tiên (loss of 'to our knowledge')",
+          "complementary codebooks changed to các codebook bổ sung (loss of 'complementary')"
+        ]
+      }
+    },
+    {
+      "id": "b3dd2a0f914f65ea3ebf2914c49ade1e17bfc0ff4ce94bbe898bdf584e0a61b2",
+      "a": "E",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "E": [
+          "Entire first paragraph of English summary omitted",
+          "Accelerate innovation across the DSX ecosystem omitted",
+          "details about open source release omitted",
+          "four components omitted",
+          "KAI Scheduler, GPU Fractioning Operator, KAI Resource Management, Workload Map omitted"
+        ],
+        "A": [
+          "production-grade changed to hàng đầu (loss of 'production-grade')",
+          "evolving customer needs changed to nhu cầu thay đổi của khách hàng (loss of 'evolving')",
+          "shared AI infrastructure changed to hạ tầng AI chia sẻ (loss of 'shared')",
+          "more efficiently and effectively changed to hiệu quả và hiệu quả hơn (repetitive, loss of distinction)",
+          "details post changed to chi tiết hóa (slightly awkward)"
+        ]
+      }
+    },
+    {
+      "id": "77744cb30da4f3b58e25980759b18461bb411ad34faea27acc5a48af896dd5de",
+      "a": "E",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "E": [
+          "Entire second paragraph of English summary omitted",
+          "Collaboration with UC Berkeley omitted",
+          "Details of benchmarks MLR Bench, ScienceAgentBench, DSBench omitted",
+          "Safety risks and recursive self-improvement discussion omitted"
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "164ef0f32666d135ed8f5d80b309408ac9b0256247d1614edec242e0fe7e6862",
+      "a": "E",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "E": [
+          "Most of the English story details omitted: only first sentence summarized",
+          "All technical details about logging, metrics, endpoints omitted",
+          "The story's narrative of slow website and analysis omitted"
+        ],
+        "A": [
+          "deprioritize certain topics from your news feed changed to giảm ưu tiên một số chủ đề từ bản tin của bạn (loss of 'your' specificity but minor)",
+          "first two paragraphs combined but complete"
+        ]
+      }
+    },
+    {
+      "id": "64fc2a8f84c91b7ab28f97ed627bb801987f761235eb0d27f501b4d90f9f834b",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "E": [
+          "exploit used instead of repurposed",
+          "transcribe translated as chuyển soạn instead of chuyển đổi",
+          "M3 MacBook Air shortened to MacBook Air M3 bản cơ bản; base M3 missing",
+          "a new wave of local Mac applications translated differently"
+        ]
+      }
+    },
+    {
+      "id": "618aa0b2482f1123cd94c8a57fca40cd7cf5974c856061c82051422e67f32fd9",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "E": ["gateway left in English in title, not capitalized consistently"]
+      }
+    },
+    {
+      "id": "3ea8663ef4cdebc3be7013e0296bc41280639726f10856ab7c0056039ed2af87",
+      "a": "E",
+      "natural": "A",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "on a base M3 MacBook Air missing",
+          "up to 100K tokens of context missing context phrase",
+          "vLLM comma missing between TensorRT-LLM, vLLM, and FlashInfer"
+        ],
+        "A": [
+          "Qwen3.5 through Qwen3.8 missing 'through' phrase",
+          "speculative decoding translated as giải mã dự đoán instead of giải mã suy đoán",
+          "quantization translated as lượng tử hóa instead of định lượng; misspelling: bộ nhớ đệm instead of bộ đệm",
+          "the sentence about low-precision state missing 'less error accumulation' detail",
+          "it runs in production missing 'also'"
+        ]
+      }
+    },
+    {
+      "id": "89f4f685d9b7d96369d5544f853e59063b83dce589ccfb59c23c5164797fef18",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "A": [
+          "brain-computer interface (BCI) translated as giao diện não-máy tính mới (BCI) - added word mới"
+        ]
+      }
+    },
+    {
+      "id": "8e2ae9ca3297dcc12263e647a3d4b38c857f508aa50550352f8e8c90974ad602",
+      "a": "E",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "E": [],
+        "A": [
+          "model translated as model instead of mô hình in summary; không căn bằng instead of không căn chỉnh or sai lệch; tự sáng tạo dữ liệu instead of ngụy tạo dữ liệu; client FTP instead of FTP client; heading missing 'hoping for a fresh start with better data'"
+        ]
+      }
+    },
+    {
+      "id": "8c1bc8435859ef749bdefd40187d1c384744a1d48c55ebd1b6924f716e467ce2",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "decision model đa dạng dạng dữ liệu instead of đa phương thức; mỗi thiếu mỗi input token"
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "ef44c8c2fd567dd7b4567ed9891951302cffe409586c83a702ea149dbd6e5be9",
+      "a": "A",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "the chipset had changed to one that wasn't supported under Linux anymore",
+          "I had some success making Linux configuration tools for some of my hardware using Claude code",
+          "I basically got stuck and got nowhere for the longest time and even basically gave up on the project for a few Months",
+          "Then I saw a post on X from Tom Crider aka Glorious Eggroll talking about how he had managed to fix a mouse driver using AI tooling",
+          "He basically described how he set it up so that the AI agent had full control of a Windows instance to capture data needed to fix the driver",
+          "So I pasted his tweet into Claude and asked it to help me set up a windows virtual machine to do the same things Tom as doing for my scanner",
+          "I think the combination of having the ability to run scans under windows and capture the USB data while doing so worked wonders",
+          "probably combined with improvements to Claude code made a huge difference",
+          "Within a few hours I had my first ever working scan under Linux, sure with some quality issues, but 100% recognizable as the image in the negative"
+        ],
+        "E": [
+          "After my mother passed away I ended up with a big box full of old film negatives",
+          "Only to discover that the chipset in the scanner had changed to one that wasn't supported under Linux anymore",
+          "So I had some success making Linux configuration tools for some of my hardware using Claude code, like my Dell Camera controller app",
+          "He basically described how he set it up so that the AI agent had full control of a Windows instance to capture data needed to fix the driver",
+          "So I pasted his tweet into Claude and asked it to help me set up a windows virtual machine to do the same things Tom as doing for my scanner",
+          "I think the combination of having the ability to run scans under windows and capture the USB data while doing so worked wonders",
+          "probably combined with improvements to Claude code made a huge difference",
+          "Within a few hours I had my first ever working scan under Linux, sure with some quality issues, but 100% recognizable as the image in the negative"
+        ]
+      }
+    },
+    {
+      "id": "1a43b4df04302ec5052772db111ad7f14619b4b35b255b69b1603832ad84faba",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "title: 'baseball cap' changed to 'mũ lưỡi trai' (no fact lost)",
+          "'neuro-sensors' changed to 'cảm biến thần kinh' (no fact lost)",
+          "summary: 'Rashi Shrivastava / Forbes' kept",
+          "'Palo Alto-based' changed to 'Alto-based' (minor translation issue)",
+          "'will enable people to talk to their AI agents just by thinking' translated correctly"
+        ],
+        "A": [
+          "title: 'baseball cap' translated as 'mũ bảo hiểm baseball' (incorrect: baseball cap is mũ lưỡi trai, not mũ bảo hiểm which is helmet)",
+          "'non-contact neuro-sensors' translated as 'cảm biến não không tiếp xúc' (changed neuro-sensors to não - brain, not neuro)",
+          "summary: 'mọ người' typo for 'mọi người'",
+          "'by thinking' translated as 'bằng cách nghĩ' (more literal, less natural)"
+        ]
+      }
+    },
+    {
+      "id": "cc4341195d8d52dd1bf8f6ac3736520a4aa94b924344c3bc8e4d2937d3bfb9b5",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "title: '$100B to $200B' changed to '$100B-$200B' (no fact lost)",
+          "summary: 'before the company had any idea whether the investments would eventually succeed' changed to 'trước khi công ty chưa biết liệu những khoản đầu tư này sẽ thành công hay không' (double negative 'trước khi chưa' is awkward but keeps fact)",
+          "'Muse Wonder AI model' changed to 'mô hình Muse Wonder AI' (word order)",
+          "'Muse Personal Assistant' changed to 'trợ lý cá nhân Muse' (no fact lost)",
+          "'consumer adoption rates' translated correctly"
+        ],
+        "E": [
+          "'Proof of Success' in title translated as 'chứng minh thành công' (no fact lost)",
+          "'the company’s pursuit of artificial intelligence' translated correctly",
+          "'Muse Wonder AI model' kept as 'mô hình AI Muse Wonder' (no fact lost)",
+          "'Muse Personal Assistant' kept as 'Muse Personal Assistant' (no fact lost)"
+        ]
+      }
+    },
+    {
+      "id": "39b03f627696e97fefd3023480ad2bb1697830ab788e3c16430f3d66ebf29146",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "'I added support to llm-gemini for the new Gemini 4 Argon model' changed to 'bổ sung hỗ trợ cho mô hình Gemini 4 Argon mới' (no fact lost)",
+          "'made available today via the Gemini API and for customers of their $100/month subscription plan' changed correctly",
+          "'low, medium and high pelicans' translated as 'chim bồ nông ở mức thấp, trung bình và cao' (no fact lost)",
+          "'Gemini has a track record of producing great SVGs, and are the only lab where I know their staff have invested in SVG specifically (and who have boasted about their pelicans before.)' translated correctly",
+          "'Here's the \"high\" illustration, which cost me 17.166 cents' changed to 'Hình minh họa mức \"cao\" tiêu tốn của tôi 17,166 cent' (no fact lost)",
+          "'$2/million input and $10/million output' translated correctly",
+          "'same price as GPT-6 Sol, half the price of Claude Opus 5.5 and 1/5th the price of Claude Fable 5.1 and GPT-6 Astra' translated correctly",
+          "'But on December 1st Argon is set to double in price - so it will be the same price as Opus 5.5' translated correctly",
+          "'Prices like this aren't really comparable these days since what really matters is how many tokens a model takes to achieve a goal within an agentic harness' translated correctly",
+          "'One useful clue for that comes from Artificial Analysis, who publish the total cost to run their benchmark using each model' translated correctly"
+        ],
+        "A": [
+          "'I added support to llm-gemini for the new Gemini 4 Argon model' changed to 'thêm hỗ trợ cho mô hình Gemini 4 Argon mới' (no fact lost)",
+          "'made available today via the Gemini API and for customers of their $100/month subscription plan' changed correctly",
+          "'low, medium and high pelicans' not translated but kept as English (no fact lost)",
+          "'Gemini has a track record of producing great SVGs, and are the only lab where I know their staff have invested in SVG specifically (and who have boasted about their pelicans before.)' translated as 'lịch sử tạo ra những SVG tuyệt vời' - 'track record' translated as 'lịch sử' (changed nuance), 'boasted about their pelicans' translated as 'khoe về những con chim cánh cụn' (pelicans translated as penguins - incorrect: chim cánh cụt is penguin, not pelican which is bồ nông)",
+          "'Here's the \"high\" illustration, which cost me 17.166 cents' kept but 'xu' for cents (no fact lost)",
+          "'$2/million input and $10/million output' translated as '2 USD/tỷ token đầu vào và 10 USD/tỷ token đầu ra' (million incorrectly changed to tỷ/billion; token not specified in original but implied),",
+          "'same price as GPT-6 Sol, half the price of Claude Opus 5.5 and 1/5th the price of Claude Fable 5.1 and GPT-6 Astra' translated correctly",
+          "'But on December 1st Argon is set to double in price - so it will be the same price as Opus 5.5' translated correctly",
+          "'Prices like this aren't really comparable these days since what really matters is how many tokens a model takes to achieve a goal within an agentic harness' translated correctly",
+          "'One useful clue for that comes from Artificial Analysis, who publish the total cost to run their benchmark using each model' translated correctly"
+        ]
+      }
+    },
+    {
+      "id": "23216cfbe10c8c92d859347b187120d76e204e5f5643f059323d90e8ebc783e4",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "title: 'GitHub Copilot app for Beginners: How to teach Copilot about your codebase' kept as English (no fact lost)",
+          "'add custom instructions and skills' translated as 'thêm hướng dẫn và kỹ năng tùy chỉnh' (no fact lost)",
+          "'use custom agents' translated as 'sử dụng các agent tùy chỉnh' (no fact lost)",
+          "'connect MCP servers like Playwright' translated as 'kết nối các máy chủ MCP như Playwright' (no fact lost)"
+        ],
+        "E": [
+          "title: 'GitHub Copilot app for Beginners: How to teach Copilot about your codebase' changed to 'Ứng dụng GitHub Copilot cho Beginners: Cách hướng dẫn Copilot về codebase của bạn' (added 'Ứng dụng' which is implied, no fact lost but less natural)",
+          "'add custom instructions and skills' translated as 'thêm các kỹ năng và hướng dẫn tùy chỉnh' (no fact lost)",
+          "'use custom agents' translated as 'dùng các agent tùy chỉnh' (no fact lost)",
+          "'connect MCP servers like Playwright' translated as 'kết nối các MCP server như Playwright' (no fact lost)"
+        ]
+      }
+    },
+    {
+      "id": "b99beecb4669479f86b86323705160881d050bd4fc54a1e5599f3be4487a5375",
+      "a": "A",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "title: 'Google's EmbeddingGemma 2 Rivals OpenAI on Consumer CPUs' kept as English (no fact lost)",
+          "'multimodal model' translated as 'đa hình thức' (no fact lost)",
+          "'4th most liked' changed to 'được yêu thích thứ 4' (no fact lost)",
+          "'EmbeddingGemma 1' left as English (no fact lost)",
+          "'benchmarks comparably' translated as 'đạt benchmark tương đương' (no fact lost)",
+          "'embedding-3-large' left as English (no fact lost)",
+          "'Qwen 8B' left as English (no fact lost)",
+          "'consumer CPUs' changed to 'CPUs tiêu dùng' (no fact lost)",
+          "'identified 13 of 14 video clips from a single sentence' translated correctly",
+          "'lacks a sense of temporal direction' translated as 'thiếu cảm giác thời gian' (no fact lost)",
+          "'viewing a video and its reversed version as 99% similar' translated correctly",
+          "'DigUp, an open-source tool for Mac that indexes local files and podcasts' translated correctly",
+          "'Matryoshka embeddings' left as English (no fact lost)",
+          "'stor e only the first 256 of 768 values in a vector' translated correctly",
+          "'reduces storage needs to 1/3' translated correctly",
+          "'maintaining about 95% of the retrieval quality for visuals and speech' translated correctly"
+        ],
+        "E": [
+          "title: 'Google's EmbeddingGemma 2 Rivals OpenAI on Consumer CPUs' changed to 'EmbeddingGemma 2 của Google đối đầu OpenAI trên CPUs phổ thông' (no fact lost)",
+          "'multimodal model' translated as 'đa phương thức' (no fact lost)",
+          "'4th most liked' changed to 'được yêu thích thứ 4' (no fact lost)",
+          "'EmbeddingGemma 1' left as English (no fact lost)",
+          "'benchmarks comparably' translated as 'đạt kết quả benchmark tương đương' (no fact lost)",
+          "'embedding-3-large' left as English (no fact lost)",
+          "'Qwen 8B' left as English (no fact lost)",
+          "'consumer CPUs' changed to 'CPUs phổ thông' (no fact lost)",
+          "'identified 13 of 14 video clips from a single sentence' translated correctly",
+          "'lacks a sense of temporal direction' translated as 'thiếu cảm nhận về chiều thời gian' (no fact lost)",
+          "'viewing a video and its reversed version as 99% similar' translated correctly",
+          "'DigUp, an open-source tool for Mac that indexes local files and podcasts' translated correctly",
+          "'Matryoshka embeddings' changed to 'Matryoshka embedding' (no fact lost)",
+          "'stor e only the first 256 of 768 values in a vector' translated correctly",
+          "'reduces storage needs to 1/3' changed to 'giảm nhu cầu lưu trữ xuống còn 1/3' (no fact lost)",
+          "'maintaining about 95% of the retrieval quality for visuals and speech' translated correctly"
+        ]
+      }
+    },
+    {
+      "id": "5aa3dba3daf901f686ef5e027c6ec28fe7bc85f26192dce9eacfe7538fa3333d",
+      "a": "E",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "E": [
+          "Drops entire technical explanation of online RL, reverse-process and forward-process methods, credit assignment, Consistency Force, EMA stabilization mechanism, DiffusionART algorithm details, no differentiable reward model requirement, fewer samples per prompt, Pairwise reward model, image and video generation, no per-task tuning."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "fa5cd199ec83c6c6b75747905805667db4601d0ce2a9fb51b7278186c8e1cfef",
+      "a": "E",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "E": [
+          "Drops the specific argument about firearms and the reasoning about reasonable people labeling them inevitable.",
+          "Drops the phrase 'glib response' and the contingent framing."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "fe42140b9345e878809ff0d5c693958b12ff4cbf1e704a2b5558f3f1cf9a5f83",
+      "a": "E",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "E": [
+          "Drops the 10-year lease duration.",
+          "Drops the specific 67 MW data center size.",
+          "Drops mention of Nvidia GB300 systems.",
+          "Drops the figure for total secured AI cloud capacity (273.5 MW).",
+          "Drops the active business pipeline figure ($10 billion).",
+          "Drops the decade-long agreement detail.",
+          "Drops the pivot to HPC infrastructure.",
+          "Drops the strategy to leverage power and land assets for the AI cloud market."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "4bb0972ddb59f840c1dd94189794eb82159a5a126bc652b5c80536e4c1a05938",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "E": [
+          "Drops 'from heurstic search to reinforcement learning' in the first sentence.",
+          "Drops the specific number of medals (6 gold medals).",
+          "Drops the description 'completedmodels model and harness configurations' (typo in source is kept but dropped in b).",
+          "Drops 'while keeping model weights fixed'."
+        ]
+      }
+    },
+    {
+      "id": "fec0d0fc70a62740538a9b685594ab36cef74556b6a18f99d554667b3e3ea90a",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "A": [
+          "Changes 'jaded' to 'lầm lỡ' (meaning 'mistaken' or 'erring') instead of 'chán nản' or similar.",
+          "Changes 'headline speaker' to 'người mở màn chính' (main opener), losing 'headline' and adding 'mở màn' (opening).",
+          "Changes 'vibe-rewrote' to 'viết lại một cách vui vẻ hơn' (rewrote more happily), losing the specific term 'vibe-rewrote' and adding 'vui vẻ' (happy).",
+          "Changes 'vitriolic truth-bombing' to 'những lời nói sâu sắc đầy hơi giận dữ' (deep words full of angry steam), losing 'vitriolic truth-bombing' and adding 'sâu sắc' (deep) and 'hơi giận dữ' (angry steam).",
+          "Changes 'can just leave the toy' to 'chỉ có thể để chiếc đồ chơi' (can only leave the toy), losing 'could have just left' (conditional).",
+          "Changes 'frees up the room' to 'tạo ra không gian cho mọi người' (creates space for everyone), adding 'mọi người' (everyone) not in original.",
+          "Spelling error: 'mọi người' written as 'mọ người'."
+        ]
+      }
+    },
+    {
+      "id": "3edeaa8d7764aa277fd52cfb351208e00ccbe8f89c8ee92faf6329aed447d742",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "Changes 'containment and monitoring failures' to 'những thất bại trong việc chứa chấp và giám sát' (failures in containing/harboring and monitoring), using 'chứa chấp' (harboring) which has a different nuance than 'containment' in cybersecurity.",
+          "Changes 'agents with minds of their own' to 'agent có trí tuệ riêng' (agent with its own intelligence), losing 'minds of their own' meaning independent will.",
+          "Changes 'tighten security basics' to 'siết chặt những điều cơ bản về bảo mật' (tighten the basics about security), acceptable but loses 'as safeguards' phrase added at end."
+        ],
+        "E": [
+          "In the summary: 'làm rào chắn bảo vệ' is added as a translation of 'as safeguards', which is not present in the English original."
+        ]
+      }
+    },
+    {
+      "id": "aa65eb3ab36b5eef10afd8013f57ac938e7f406160eadcec57c2cf92b2630f43",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": ["no lost facts", "no lost facts"],
+        "E": ["a_lost is empty", "b_lost is empty"]
+      }
+    },
+    {
+      "id": "7fbc7f2d590fe3c5dc0bc787e3e7f728f5ee736c1d30d1cafd05a5021d94c84f",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "\"communities can still make some noise in the AI infrastructure boom\" is changed to \"cộng đồng vẫn có thể tạo ra tiếng ồn trong làn sóng cơ sở hạ tầng AI\" - missing \"some\" nuance",
+          "\"more deals of the week\" is rendered as \"thêm nhiều giao dịch trong tuần\", but English says \"more deals of the week\" which implies additional deals beyond those mentioned"
+        ],
+        "E": ["no lost facts"]
+      }
+    },
+    {
+      "id": "0021a6e94edbcecbc9ae26c5807cff9c1f2fcc196d59d858771519b956d99967",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "the title includes \"(Tim Higgins/Wall Street Journal)\" from the English title but version a omits the parenthesis and provides a cleaner translation"
+        ],
+        "A": ["no lost facts"]
+      }
+    },
+    {
+      "id": "27faadd7cc1b81ba5cfecf68e857cf7984acdd7ed4fb43b290094bbf397a9ae6",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": ["no lost facts"],
+        "A": [
+          "\"Sinh sinh hoán vị\" is a typo (redundant word) for \"Sinh hoán vị\" - not a fact loss but a typo"
+        ]
+      }
+    },
+    {
+      "id": "73af984c8530ca56d15e8177878140095c18ca7de10e07a838a17646b7c2b4cc",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": ["no lost facts"],
+        "A": [
+          "\"humanoid\" is translated as \"con người hai chân\" which is narrower (biped) than the original humanoid",
+          "\"egocentric vision\" is translated as \"thị giác egocentric\" - English term kept, but the original uses \"egocentric vision\" consistently"
+        ]
+      }
+    },
+    {
+      "id": "49ea926c111e41bb66ed9c0f02792bab2b55f2dfde08eb3affe5c6846c353e87",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": ["no lost facts"],
+        "A": [
+          "\"bài báo cáo này\" - extra word \"cáo\" not in original",
+          "\"suy diễn\" used instead of \"suy luận\" for inference - different term but acceptable",
+          "\"GPU accelerated machine learning inference\" is translated as \"suy diễn học máy tính tăng tốc GPU\" which inverts the order (OK) but added \"tính\" which is not in original"
+        ]
+      }
+    }
+  ]
+}

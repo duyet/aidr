@@ -1,0 +1,523 @@
+{
+  "judge": "deepseek/deepseek-flash-latest",
+  "pair": ["A", "F"],
+  "files": [
+    "A=scripts/fixtures/vi-natural/arm-A.json",
+    "F=scripts/fixtures/vi-natural/arm-F.json"
+  ],
+  "rows": [
+    {
+      "id": "1bf3461ed74eaee24ca130718556005db446e5940d363833dae3f3590ec8e667",
+      "a": "F",
+      "natural": "F",
+      "faithful": "F",
+      "lost": {
+        "F": [],
+        "A": [
+          "denied that Azure leadership has instructed teams to develop cost-reduction strategies",
+          "as the company reorganizes the division around Arun Ulag",
+          "advocates for expanded budget allocations for personnel"
+        ]
+      }
+    },
+    {
+      "id": "5633ac0815d3b59e4394990a375c88c18efcfe86f1979e1c18d84bc811e333ad",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "F": [
+          "instead promoting overreliance on incorrect predictions",
+          "useful for obtaining anecdotal insights into",
+          "features learned by the model",
+          "XAI methods often oversimplify the inner workings of the model",
+          "behavior referred to as unfaithfulness or infidelity",
+          "one of the various elements of trustworthiness of an explanation"
+        ]
+      }
+    },
+    {
+      "id": "631645b6ccd9d06c7a7456efacddf167d5c294c5e15b9c69fa1c0d83253f9b50",
+      "a": "F",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "F": [
+          "or underspecify",
+          "and establish trust boundaries",
+          "juggle different languages",
+          "it’s a pain even for formal methods experts",
+          "in a somewhat familiar format",
+          "even for those who don’t want to touch Lean code directly"
+        ],
+        "A": [
+          "and prove to a verifier that their implementations are correct",
+          "(thanks to the LLM)",
+          "on the first attempt"
+        ]
+      }
+    },
+    {
+      "id": "61234206e575a0fe9a5d50dfde453636c3d2941bdbdcd271a5b119eb2fe8e36a",
+      "a": "F",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "F": [
+          "one notch below investment grade",
+          "with Broadcom's senior debt yielding 5.75%",
+          "compared enterprise AI spending to kids wasting tokens at a video arcade",
+          "a global chip sell-off"
+        ],
+        "A": [
+          "as those documents seen by the Financial Times reveal",
+          "one notch below investment grade in the title"
+        ]
+      }
+    },
+    {
+      "id": "d51fc7a9edf702b82ade45529ceadcae89ce5c0df3542cedc985c7db0d9865d6",
+      "a": "F",
+      "natural": "F",
+      "faithful": "F",
+      "lost": {
+        "F": [],
+        "A": [
+          "moving away from high-end cinematic clips",
+          "end to end production process",
+          "currently",
+          "browser agents"
+        ]
+      }
+    },
+    {
+      "id": "59499c68644ca0485f53db16690d5635c12f74e63eee201be1dc98566346667a",
+      "a": "A",
+      "natural": "F",
+      "faithful": "F",
+      "lost": {
+        "A": [
+          "The avid reader of my blog might have noticed that",
+          "To both of you I can only say that",
+          "corporate America was here to ruin our fun"
+        ],
+        "F": [
+          "The avid reader of my blog",
+          "corporate America was here to ruin our fun"
+        ]
+      }
+    },
+    {
+      "id": "add7e11ad964d1ef033c776771084c6351683d8e6ec829a6e219ade449dcd542",
+      "a": "F",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "F": [
+          "the model is trained with a uniform-noise denoising objective",
+          "single-run sweeps for seven further factors",
+          "seven further factors (not four)"
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "da19564dd2e91871544f9c072bbf6cc01bf081cabd955bbf5b4f56b8063c79f2",
+      "a": "F",
+      "natural": "F",
+      "faithful": "tie",
+      "lost": {
+        "F": [
+          "English summary has a colon after 'syncing' before 'with native enterprise connectors'"
+        ],
+        "A": ["English title says 'AI builders'"]
+      }
+    },
+    {
+      "id": "1b5e04430747b59eb38ec6598b99f73c82b5e3f695359325cdc5bcdbb954ffe3",
+      "a": "F",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "F": [
+          "English title says 'Omni-Visual Understanding' (not 'đa hình ảnh')",
+          "English summary says 'multi-codebook visual tokens' (not 'đa codebook')",
+          "English summary says 'fully discrete space' (not 'rời rạp hoàn toàn')",
+          "English summary says 'to our knowledge'"
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "b3dd2a0f914f65ea3ebf2914c49ade1e17bfc0ff4ce94bbe898bdf584e0a61b2",
+      "a": "F",
+      "natural": "F",
+      "faithful": "F",
+      "lost": {
+        "F": [
+          "English summary includes details about GPU orchestration, open source components, and expanded ecosystem"
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "77744cb30da4f3b58e25980759b18461bb411ad34faea27acc5a48af896dd5de",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": ["English summary mentions 'over two cycles' explicitly"],
+        "F": [
+          "Missing entire summary details from English",
+          "Missing mention of UC Berkeley collaboration",
+          "Missing details about benchmarks (MLR Bench, ScienceAgentBench, DSBench)",
+          "Missing mention of supervision bottleneck and safety risks",
+          "Missing mention of recursive self-improvement and blind spots",
+          "Missing call to the AI community"
+        ]
+      }
+    },
+    {
+      "id": "164ef0f32666d135ed8f5d80b309408ac9b0256247d1614edec242e0fe7e6862",
+      "a": "F",
+      "natural": "F",
+      "faithful": "F",
+      "lost": {
+        "F": [
+          "Missing first-person narrative details such as 'a good handful of genuinely active, logged-in users' and 'the metrics I did log did not make sense'"
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "64fc2a8f84c91b7ab28f97ed627bb801987f761235eb0d27f501b4d90f9f834b",
+      "a": "A",
+      "natural": "A",
+      "faithful": "F",
+      "lost": {
+        "A": [
+          "English title: 'Dev's Google AI Hack Transcribes 1 Hour of Audio in 13 Seconds' – version a omits 'Hack' and 'Transcribes 1 Hour of Audio in 13 Seconds' in favor of paraphrasing",
+          "English summary says 'on a base M3 MacBook Air' – version a says 'MacBook Air M3 cơ sở' which is acceptable, but loses 'base' nuance slightly compared to English source",
+          "English summary: 'the 740M parameter model' – version a uses 'Mô hình 740M tham số' which is fine, but no factual loss",
+          "English summary: 'the architecture unifies text, image, audio, and video' – version a includes this, no loss",
+          "Version a adds 'hơn 288x thời gian thực' but English does not say 'hơn' (more than), just 'delivers 288x'"
+        ],
+        "F": [
+          "English title: 'Dev's Google AI Hack Transcribes 1 Hour of Audio in 13 Seconds' – version b says 'Dev khai thác Google AI Hack để chuyển đổi giọng nói thành văn bản trong 13 giây', but loses 'Transcribes 1 Hour of Audio' (instead states 'chuyển đổi giọng nói thành văn bản trong 13 giây')",
+          "English summary: 'the 740M parameter model' – version b uses 'Mô hình với 740M tham số', no loss",
+          "English summary: 'supports a new wave of local Mac applications including the search tool DigUp and Google's own Foresight app' – version b says 'hỗ trợ một làn sóng mới của các ứng dụng Mac địa phương bao gồm công cụ tìm kiếm DigUp và ứng dụng Foresight của chính Google', no loss",
+          "English summary: 'sorting roughly 620 posts per second on the Apple M5 Pro Neural Engine' – version b says 'sắp xếp khoảng 620 bài đăng mỗi giây trên Động cơ Neural của Apple M5 Pro', no loss",
+          "English summary: 'it can outperform some specialist models twice its size on various benchmarks' – version b includes this, no loss"
+        ]
+      }
+    },
+    {
+      "id": "618aa0b2482f1123cd94c8a57fca40cd7cf5974c856061c82051422e67f32fd9",
+      "a": "A",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "A": [],
+        "F": [
+          "Version b uses '5 cái khác' which is less formal than English's '5 More'; 'cái' is informal, but no factual loss"
+        ]
+      }
+    },
+    {
+      "id": "3ea8663ef4cdebc3be7013e0296bc41280639726f10856ab7c0056039ed2af87",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "F": [
+          "English: 'ReplaySSM: Rethinking State Storage for Faster Hybrid-Model Decoding' – version b title: 'ReplaySSM: Tái nghĩ về Lưu trữ Trạng thái để Tăng tốc Giải mã Mô hình Hybrid' – 'Tái nghĩ về' is an unusual calque of 'Rethinking', less natural than 'Tái Cấu Trúc' in version a",
+          "English: 'Building on earlier ReplaySSM work' – version b says 'Dựa trên công việc trước đó của ReplaySSM' which is acceptable, but version a has 'Dựa trên công trình nghiên cứu ReplaySSM trước đó' which is more accurate (work/research)",
+          "English: 'At serving batch sizes, however, the SSM layers, not attention, can be the latency bottleneck up to 100K tokens of context' – version b: 'ở kích thước batch phục vụ' – 'batch' not translated, but accepted; version a uses 'kích thước lô phục vụ' which is more consistent",
+          "English: 'SSM layers also complicate two techniques that reliably speed up attention decoding: speculative decoding and quantization' – version b says 'phức tạp hóa' (complicate) while version a says 'phức tạp' – slight difference, but both acceptable",
+          "English: 'ReplaySSM makes SSM layers the fast part again' – version b: 'ReplaySSM làm cho các lớp SSM trở nên nhanh trở lại' – fine",
+          "English: 'It represents the SSM state as a checkpoint plus a buffer of recent inputs' – version b uses 'một điểm kiểm tra' – 'một' is added, not a fact loss",
+          "English: 'This separates output computation from state updates' – version b: 'tách việc tính toán đầu ra khỏi cập nhật trạng thái' – fine",
+          "English: 'addresses three challenges in current SSM decoding: state traffic, rollback for speculative decoding, and error accumulation in a quantized state' – version b: 'lư lượng trạng thái' – 'lư lượng' is a slightly awkward calque of 'traffic', but not a factual loss",
+          "English: 'The paper, ReplaySSM: Cache SSM Inputs, Not State, details all three benefits and presents the full evaluation' – version b: 'Bài báo, ReplaySSM: Cache SSM Inputs, Not State, chi tiết ba lợi ích và trình bày đánh giá đầy đủ' – missing 'chi tiết' as verb? Actually 'chi tiết' is used as verb meaning 'detail', it's fine",
+          "English: 'It is integrated into NVIDIA TensorRT-LLM, vLLM, and FlashInfer, and also runs in production in GLM-5.3-Flash and Kimi-K3.' – version b: 'Nó được tích hợp vào NVIDIA TensorRT-LLM, vLLM, và FlashInfer, và cũng chạy trong môi trường sản xuất tại GLM-5.3-Flash và Kimi-K3.' – no loss"
+        ]
+      }
+    },
+    {
+      "id": "89f4f685d9b7d96369d5544f853e59063b83dce589ccfb59c23c5164797fef18",
+      "a": "F",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "F": [
+          "English: 'Max Hodak, the former president and co-founder of Neuralink' – version a has 'cự chủ tịch' (missing 'u' in 'cựu') – typo, but factual loss? It says 'cự' instead of 'cựu', which is a typo but does not change meaning; still considered a minor error",
+          "No other factual loss in version a"
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "8e2ae9ca3297dcc12263e647a3d4b38c857f508aa50550352f8e8c90974ad602",
+      "a": "F",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "F": [
+          "English title: 'OpenAI says a misaligned model deliberately destroyed its own environment hoping for a fresh start with better data' – version a includes the full title, no loss",
+          "English summary: 'One evaluation model fabricated data and sabotaged its own environment.' – version a: 'Một evaluation model đã tự sáng tạo dữ liệu và phá hoại môi trường của chính nó.' – 'tự sáng tạo dữ liệu' is a calque of 'fabricated data', but acceptable",
+          "English summary: 'Other models deliberately bypassed network restrictions by routing requests through anonymizing relays or building their own FTP clients.' – version a: 'Các model khác đã cố tình vượt qua hạn chế mạng bằng cách định tuyến yêu cầu qua các relay ẩn danh hoặc tự xây dựng client FTP.' – no loss",
+          "Version a's summary ends with 'để mong được bắt đầu lại với dữ liệu tốt hơn' – this translates 'hoping for a fresh start with better data' which is present in the English title; no loss"
+        ],
+        "A": [
+          "English title contains 'hoping for a fresh start with better data' – version b title omits this part entirely, only has 'OpenAI cho rằng một model không căn bằng đã phá hủy môi trường của chính nó' – factual loss: missing the reason (hoping for a fresh start with better data)"
+        ]
+      }
+    },
+    {
+      "id": "8c1bc8435859ef749bdefd40187d1c384744a1d48c55ebd1b6924f716e467ce2",
+      "a": "F",
+      "natural": "F",
+      "faithful": "F",
+      "lost": {
+        "F": [],
+        "A": [
+          "English title: 'A Multimodal Decision Model That Scores 65 on the AA Decision Index' – version b: 'một decision model đa dạng dạng dữ liệu điểm 65 trên AA Decision Index' – 'dạng dữ liệu' is garbled, should be 'đa dạng dữ liệu' or 'multimodal'; 'đa dạng dạng dữ liệu' is incorrect, adds extra 'dạng', not faithful to English",
+          "English summary: 'returns calibrated probabilities in 1 forward pass' – version b: 'trong một lần lan truyền duy nhất' – adds 'duy nhất' which is not in the English; English says 'in 1 forward pass', not 'in a single forward pass' (though '1 forward pass' implies single, but it's an addition)",
+          "English summary: 'costs $0.042 per million input tokens' – version b: 'tốn $0.042 cho mỗi triệu token đầu vào' – uses '$0.042' which is fine, but version a uses '0,042 USD' – both acceptable, but version b does not add any fact",
+          "No other significant factual loss in version b aside from the title error"
+        ]
+      }
+    },
+    {
+      "id": "ef44c8c2fd567dd7b4567ed9891951302cffe409586c83a702ea149dbd6e5be9",
+      "a": "F",
+      "natural": "F",
+      "faithful": "tie",
+      "lost": {
+        "F": [],
+        "A": [
+          "Dropped the specific fact that Tom Crider is also known as Glorious Eggroll in the post",
+          "Changed 'phiên bản Windows' to 'một phiên bản Windows' missing the nuance of a Windows instance",
+          "Changed 'có lẽ kết hợp với những cải tiến của Claude code' to 'có lẽ kết hợp với những cải tiến đến Claude code' which slightly alters the meaning"
+        ]
+      }
+    },
+    {
+      "id": "1a43b4df04302ec5052772db111ad7f14619b4b35b255b69b1603832ad84faba",
+      "a": "A",
+      "natural": "F",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "F": [
+          "Changed '100K' to '10,000' in the summary",
+          "Changed dùng '100K' to '10,000' in the summary"
+        ]
+      }
+    },
+    {
+      "id": "cc4341195d8d52dd1bf8f6ac3736520a4aa94b924344c3bc8e4d2937d3bfb9b5",
+      "a": "F",
+      "natural": "F",
+      "faithful": "F",
+      "lost": {
+        "F": [],
+        "A": [
+          "Changed 'before the company had any idea whether the investments would eventually succeed' to 'trước khi công ty chưa biết liệu những khoản đầu tư này sẽ thành công hay không' which adds a double negative and slightly changes meaning"
+        ]
+      }
+    },
+    {
+      "id": "39b03f627696e97fefd3023480ad2bb1697830ab788e3c16430f3d66ebf29146",
+      "a": "F",
+      "natural": "F",
+      "faithful": "F",
+      "lost": {
+        "F": [],
+        "A": [
+          "Changed 'nhân viên đã đầu tư vào SVG một cách cụ thể (và từng khoe về những con pelican của họ trước đây)' to 'nhân viên đã đầu tư vào SVG (và từng khoe về những con chim cánh cụn của họ)' - lost 'specifically' and mistranslated 'pelicans' as 'chim cánh cụt' (penguins)"
+        ]
+      }
+    },
+    {
+      "id": "23216cfbe10c8c92d859347b187120d76e204e5f5643f059323d90e8ebc783e4",
+      "a": "F",
+      "natural": "F",
+      "faithful": "F",
+      "lost": {
+        "F": [],
+        "A": ["Kept English title unchanged instead of translating it"]
+      }
+    },
+    {
+      "id": "b99beecb4669479f86b86323705160881d050bd4fc54a1e5599f3be4487a5375",
+      "a": "A",
+      "natural": "F",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "F": ["Changed 'audio' to 'giọng nói' (speech) instead of 'audio'"]
+      }
+    },
+    {
+      "id": "5aa3dba3daf901f686ef5e027c6ec28fe7bc85f26192dce9eacfe7538fa3333d",
+      "a": "A",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "A": [],
+        "F": ["drop 'off-policy training' is paraphrased but acceptable"]
+      }
+    },
+    {
+      "id": "fa5cd199ec83c6c6b75747905805667db4601d0ce2a9fb51b7278186c8e1cfef",
+      "a": "F",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "F": [],
+        "A": []
+      }
+    },
+    {
+      "id": "fe42140b9345e878809ff0d5c693958b12ff4cbf1e704a2b5558f3f1cf9a5f83",
+      "a": "A",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "A": [],
+        "F": []
+      }
+    },
+    {
+      "id": "4bb0972ddb59f840c1dd94189794eb82159a5a126bc652b5c80536e4c1a05938",
+      "a": "A",
+      "natural": "F",
+      "faithful": "A",
+      "lost": {
+        "A": ["drop 'real-world' from competition description"],
+        "F": [
+          "drop 'Evaluating Heuristic Learning' from title",
+          "drop 'more complex rule specifications' from summary"
+        ]
+      }
+    },
+    {
+      "id": "fec0d0fc70a62740538a9b685594ab36cef74556b6a18f99d554667b3e3ea90a",
+      "a": "F",
+      "natural": "F",
+      "faithful": "A",
+      "lost": {
+        "F": [
+          "change 'jaded' to 'chán nản'",
+          "change 'vitriolic truth-bombing' to 'những lời nói sâu sắc đầy thù hận'",
+          "add 'tự thú nhận' instead of 'I honestly believe'"
+        ],
+        "A": [
+          "change 'vibe-rewrote' to 'viết lại một cách vui vẻ hơn'",
+          "add 'và hiệu suất tốt hơn' not in original"
+        ]
+      }
+    },
+    {
+      "id": "3edeaa8d7764aa277fd52cfb351208e00ccbe8f89c8ee92faf6329aed447d742",
+      "a": "F",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "F": ["change 'skipping' to 'đang bỏ qua' scale"],
+        "A": ["change 'skipping' to 'đang bỏ qua' scale"]
+      }
+    },
+    {
+      "id": "aa65eb3ab36b5eef10afd8013f57ac938e7f406160eadcec57c2cf92b2630f43",
+      "a": "F",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "F": [
+          "\"Masked\" in the method name is translated as \"bảo vệ\" which is incorrect",
+          "\"multimodal scaling laws\" mistranslated as \"hệ thức đa dạng\"",
+          "\"optimal inference sampling defaults\" shortened to \"các giá trị mặc định mẫu suy diễn tối ưu\" missing \"sampling\"",
+          "\"3B model scale\" expressed as \"3 tỷ\" without specifying \"model scale\" or \"parameters\"",
+          "\"6.4T tokens\" written as \"6,4 nghìn tỷ token\" using comma as decimal separator (Vietnamese style, but original uses point; not a loss, but note)"
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "7fbc7f2d590fe3c5dc0bc787e3e7f728f5ee736c1d30d1cafd05a5021d94c84f",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "F": [
+          "\"deals\" misspelled as \"thỏa thợa\" in title and summary",
+          "\"data center\" misspelled as \"thỏa thợa\" instead of \"thỏa thuận\"",
+          "\"infrastructure\" shortened to \"hạ tầng\" missing \"cơ sở\"",
+          "\"make some noise\" translated as \"tạo ra tiếng ồn\" (literal) versus a more natural phrase could be used, but not a factual loss"
+        ]
+      }
+    },
+    {
+      "id": "0021a6e94edbcecbc9ae26c5807cff9c1f2fcc196d59d858771519b956d99967",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "F": [
+          "The summary in b omits the clause \"Christian leaders are weighing in earlier than they did with other tech\" from the summary, reordering and merging content incompletely",
+          "In b, the first part of summary uses \"Các nhà lãnh đạo tôn giáo\" but original specifies \"Christian\" in title; the summary drops the distinction between \"Christian\" and \"religious\""
+        ]
+      }
+    },
+    {
+      "id": "27faadd7cc1b81ba5cfecf68e857cf7984acdd7ed4fb43b290094bbf397a9ae6",
+      "a": "F",
+      "natural": "F",
+      "faithful": "F",
+      "lost": {
+        "F": [],
+        "A": [
+          "In b, \"Permutation generation\" translated as \"Sinh sinh hoán vị\" duplicates \"sinh\"",
+          "In b, \"We study\" in first paragraph changed to \"Chúng tôi nghiên cứu\" but later paragraphs change to \"Chúng tôi đánh giá\" correctly; original uses consistent \"We\" throughout; not a factual loss",
+          "In b, \"recommendation reranking\" translated as \"xếp hạng lại đề xuất\" versus a's \"xếp lại đề xuất\" (minor wording difference, not a factual loss)"
+        ]
+      }
+    },
+    {
+      "id": "73af984c8530ca56d15e8177878140095c18ca7de10e07a838a17646b7c2b4cc",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "F": [
+          "\"react\" in title translated as \"phản ứng trực quan\" which is not standard; \"reflexive\" is lost in description",
+          "\"catch a falling cup\" translated as \"bắt được cái chén đang rơi\" adds \"được\" (not a factual loss)",
+          "\"step aside from a passing cart\" translated as \"tránh sang một bánh xe đang đi ngang\" incorrectly changes \"cart\" to \"bánh xe\" (wheel)",
+          "\"pass a box tossed during truck unloading\" translated as \"nhận được một thùng được ném trong khi dỡ hàng trên xe tải\" changes \"pass\" to \"nhận\" (receive)"
+        ]
+      }
+    },
+    {
+      "id": "49ea926c111e41bb66ed9c0f02792bab2b55f2dfde08eb3affe5c6846c353e87",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "F": [
+          "\"inference\" misspelled as \"suy diễn\" is correct but note inconsistent use of \"học máy tính\" instead of \"học máy\" (machine learning) in some places",
+          "\"limited elasticity\" translated as \"khả năng co giảm hạn chế\" in b, versus \"khả năng co giãn hạn chế\" in a (a uses correct word \"co giãn\")",
+          "In b, \"kinh nghiệm của họ\" changes pronoun from \"our\" to \"their\", which is a factual change",
+          "In b, the term \"Bản thảo này\" (this draft) instead of \"Bài báo cáo này\" (this paper) may slightly change tone but not a factual error"
+        ]
+      }
+    }
+  ]
+}

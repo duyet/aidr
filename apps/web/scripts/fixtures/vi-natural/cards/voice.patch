@@ -1,0 +1,23 @@
+diff --git a/apps/web/worker/llm.ts b/apps/web/worker/llm.ts
+index c5ff7926..f1a5b5aa 100644
+--- a/apps/web/worker/llm.ts
++++ b/apps/web/worker/llm.ts
+@@ -1660,7 +1660,8 @@ export const RULES_OVERVIEW = `Keep every fact: names, numbers, dates, who did w
+ Translate every summary sentence. Merging two clauses is allowed only when every fact remains. Cutting a sentence is a failed translation.
+ Write a Vietnamese headline in sentence case: the first word and proper names only. Returning the English title unchanged is a failed translation, unless that title is already Vietnamese.
+ No English gloss in parentheses. Write "RAG", not "RAG (Retrieval-Augmented Generation)". A year, a percent, or a bare label such as "(SEC)" or "(YC S22)" may stay.
+-A vague word is not a number. "Countless" is not "hàng triệu". Do not swap who did what: if A accuses B, do not write B's thing of A.`;
++A vague word is not a number. "Countless" is not "hàng triệu". Do not swap who did what: if A accuses B, do not write B's thing of A.
++Write news in the third person, not the source's own voice. For "we", "our", or "I", name who it is from the title or text; otherwise write "nhóm tác giả" for a paper or study, "tác giả" for a blog post, "hãng" for a company announcement. "You" the reader becomes "người dùng" or is dropped. Keep the first person only inside a direct quote.`;
+ 
+ function translatePrompt(
+   batch: TranslateInput[],
+@@ -1692,6 +1693,8 @@ Bad: "các hệ thống RAG (Retrieval-Augmented Generation)". Good: "các hệ
+ Bad: "Nscale Huy Động 3,36 Tỷ USD Trước Khi Niêm Yết Trên NYSE". Good: "Nscale huy động 3,36 tỷ USD trước khi niêm yết trên NYSE".
+ Bad: "Các quỹ trái phiếu rộng đã hấp thụ khoản nợ AI sau khi các ngân hàng rút lui." Good: "Người vay AI đã bán khoảng 55 tỷ USD trái phiếu high-yield trong năm nay. Các quỹ trái phiếu rộng hấp thụ khoản nợ đó sau khi ngân hàng rút lui."
+ Bad: "Nvidia và SoftBank giao nốt 20 triệu USD". Good: "Nvidia và SoftBank giao nốt 20 tỷ USD".
++Bad: "Claude Haiku 5.5 là mô hình nhỏ nhanh nhất và mạnh nhất của chúng tôi". Good: "Claude Haiku 5.5 là mô hình nhỏ nhanh nhất và mạnh nhất của hãng".
++Bad: "Chúng tôi phát hành các mô hình của mình để hỗ trợ cải thiện các biện pháp phòng thủ." Good: "Nhóm tác giả phát hành các mô hình để hỗ trợ cải thiện các biện pháp phòng thủ."
+ 
+ Items:
+ ${JSON.stringify(items)}
