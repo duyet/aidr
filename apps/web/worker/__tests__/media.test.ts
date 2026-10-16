@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  boundedPublicManifest,
   buildMediaManifest,
+  canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
   decodeUrlEntities,
   firstImageUrl,
@@ -12,6 +14,7 @@ import {
   parseMediaManifest,
   parseMediaMetadata,
   primaryThumbnailUrl,
+  publicStoryMedia,
   serializeMediaManifest,
   withoutFallbackImages,
 } from "../media.js";
@@ -854,5 +857,102 @@ describe("memoized canonical forms", () => {
       expect(countUrlParses(raw)).toBe(2);
       expect(canonicalizeMediaUrl(raw)).toBe(raw);
     });
+  });
+});
+
+describe("publicStoryMedia", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const article = "https://example.com/story";
+  const twoImages = JSON.stringify([
+    { type: "image", url: "https://img.example/one.jpg" },
+    { type: "image", url: "https://img.example/two.jpg" },
+  ]);
+
+  it("matches the uncached derivation", () => {
+    const video = JSON.stringify([
+      {
+        type: "video",
+        url: "https://video.example/clip.mp4",
+        poster_url: "https://img.example/poster.jpg",
+      },
+    ]);
+    for (const raw of [twoImages, video, "", "not json"]) {
+      const manifest = parseMediaManifest(
+        raw,
+        "https://img.example/legacy.jpg",
+        article
+      );
+      const imageUrl = canonicalizeMediaImageUrl(
+        primaryThumbnailUrl(manifest, "https://img.example/legacy.jpg", article)
+      );
+      expect(
+        publicStoryMedia(raw, "https://img.example/legacy.jpg", article)
+      ).toEqual({
+        image_url: imageUrl,
+        ...(boundedPublicManifest(manifest)
+          ? { media_manifest: boundedPublicManifest(manifest) }
+          : {}),
+      });
+    }
+  });
+
+  it("keys on the legacy image and article URL, not the manifest alone", () => {
+    const a = publicStoryMedia("", "https://img.example/a.jpg", article);
+    const b = publicStoryMedia("", "https://img.example/b.jpg", article);
+    expect(a.image_url).toBe("https://img.example/a.jpg");
+    expect(b.image_url).toBe("https://img.example/b.jpg");
+    // The article URL is never a thumbnail, so it changes the result too.
+    expect(
+      publicStoryMedia(
+        "",
+        "https://img.example/c.jpg",
+        "https://img.example/c.jpg"
+      ).image_url
+    ).toBeNull();
+  });
+
+  it("hands out copies, so a caller's edit never reaches the next reader", () => {
+    const first = publicStoryMedia(twoImages, null, article);
+    first.media_manifest?.assets.splice(0, 1);
+    first.image_url = "https://img.example/edited.jpg";
+    const second = publicStoryMedia(twoImages, null, article);
+    expect(second.image_url).toBe("https://img.example/one.jpg");
+    expect(second.media_manifest?.assets).toHaveLength(2);
+  });
+
+  function countUrlParses(fn: () => void): number {
+    const RealURL = URL;
+    let parses = 0;
+    vi.stubGlobal(
+      "URL",
+      class extends RealURL {
+        constructor(...args: ConstructorParameters<typeof URL>) {
+          super(...args);
+          parses++;
+        }
+      }
+    );
+    fn();
+    return parses;
+  }
+
+  it("does not re-derive a row it has seen", () => {
+    const raw = JSON.stringify([
+      { type: "image", url: "https://img.example/memo-control.jpg" },
+    ]);
+    publicStoryMedia(raw, null, article);
+    expect(countUrlParses(() => publicStoryMedia(raw, null, article))).toBe(0);
+  });
+
+  it("answers a row past the key cap without storing it", () => {
+    const raw = JSON.stringify([
+      { type: "image", url: `https://img.example/${"a".repeat(8200)}.jpg` },
+    ]);
+    expect(publicStoryMedia(raw, null, article).image_url).toBeNull();
+    publicStoryMedia(raw, null, article);
+    expect(
+      countUrlParses(() => publicStoryMedia(raw, null, article))
+    ).toBeGreaterThan(0);
   });
 });

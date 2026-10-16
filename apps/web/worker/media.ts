@@ -955,6 +955,82 @@ export function boundedPublicManifest(
   return { version: MEDIA_MANIFEST_VERSION, assets };
 }
 
+/** The media a public story row exposes: its thumbnail and, when it has
+ * more than one picture or a video, the bounded manifest. */
+export interface PublicStoryMedia {
+  image_url: string | null;
+  media_manifest?: MediaManifest;
+}
+
+function computePublicStoryMedia(
+  rawManifest: unknown,
+  legacyImageUrl: unknown,
+  articleUrl: unknown
+): PublicStoryMedia {
+  const manifest = parseMediaManifest(rawManifest, legacyImageUrl, articleUrl);
+  const exposed = boundedPublicManifest(manifest);
+  const imageUrl = canonicalizeMediaImageUrl(
+    primaryThumbnailUrl(manifest, legacyImageUrl, articleUrl)
+  );
+  return {
+    image_url:
+      imageUrl && imageUrl.length <= MAX_PUBLIC_MEDIA_URL_LENGTH
+        ? imageUrl
+        : null,
+    ...(exposed ? { media_manifest: exposed } : {}),
+  };
+}
+
+function copyPublicStoryMedia(media: PublicStoryMedia): PublicStoryMedia {
+  return {
+    image_url: media.image_url,
+    ...(media.media_manifest
+      ? {
+          media_manifest: {
+            version: media.media_manifest.version,
+            assets: media.media_manifest.assets.map((asset) => ({ ...asset })),
+          },
+        }
+      : {}),
+  };
+}
+
+/**
+ * Deriving a row's public media parses its manifest JSON and canonicalizes
+ * every candidate URL, and the same few hundred rows are read on every feed,
+ * day and story render, so each row's result is kept once per isolate. The
+ * key is the stored triple, so a row edit is a new entry. Real manifests run
+ * 25-1,500 characters; the cap bounds what a flood of long rows can pin
+ * (2,048 entries x 8 KB). Callers get a copy, never the stored object.
+ */
+const STORY_MEDIA_MEMO_MAX_ENTRIES = 2048;
+const STORY_MEDIA_MEMO_MAX_KEY_LENGTH = 8192;
+const publicStoryMediaByRow = new Map<string, PublicStoryMedia>();
+
+export function publicStoryMedia(
+  rawManifest: unknown,
+  legacyImageUrl: unknown,
+  articleUrl: unknown
+): PublicStoryMedia {
+  const key = JSON.stringify([rawManifest, legacyImageUrl, articleUrl]);
+  if (key.length > STORY_MEDIA_MEMO_MAX_KEY_LENGTH) {
+    return computePublicStoryMedia(rawManifest, legacyImageUrl, articleUrl);
+  }
+  const hit = publicStoryMediaByRow.get(key);
+  if (hit) return copyPublicStoryMedia(hit);
+  const media = computePublicStoryMedia(
+    rawManifest,
+    legacyImageUrl,
+    articleUrl
+  );
+  if (publicStoryMediaByRow.size >= STORY_MEDIA_MEMO_MAX_ENTRIES) {
+    const oldest = publicStoryMediaByRow.keys().next().value;
+    if (oldest !== undefined) publicStoryMediaByRow.delete(oldest);
+  }
+  publicStoryMediaByRow.set(key, copyPublicStoryMedia(media));
+  return media;
+}
+
 function parseAttributes(tag: string): Record<string, string> {
   const attributes: Record<string, string> = {};
   const pattern = /([:\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
