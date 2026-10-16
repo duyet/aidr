@@ -102,3 +102,23 @@ describe("day card image view", () => {
     ]);
   });
 });
+
+describe("day card fetch", () => {
+  it("does not fetch the 600 KB card on a plain homepage render", () => {
+    vi.useFakeTimers();
+    try {
+      renderSection();
+      vi.advanceTimersByTime(10_000);
+      expect(screen.queryByAltText("AI;DR card for 2026-10-09")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("warms the card when the pointer reaches the switch", () => {
+    renderSection();
+    fireEvent.pointerEnter(screen.getByRole("group", { name: "View" }));
+    const card = screen.getByAltText("AI;DR card for 2026-10-09");
+    expect((card.parentElement as HTMLElement).hidden).toBe(true);
+  });
+});
