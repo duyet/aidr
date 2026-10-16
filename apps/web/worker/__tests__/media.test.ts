@@ -8,6 +8,7 @@ import {
   isGenericImageUrl,
   MAX_MEDIA_ASSETS,
   MAX_MEDIA_URL_LENGTH,
+  mediaIdentityKey,
   parseMediaManifest,
   parseMediaMetadata,
   primaryThumbnailUrl,
@@ -795,5 +796,26 @@ describe("isGenericImageUrl avatars", () => {
     expect(
       isGenericImageUrl("https://pbs.twimg.com/card_img/123/abc?format=jpg")
     ).toBe(false);
+  });
+});
+
+describe("memoized canonical forms", () => {
+  // The identity map is keyed by type as well as URL: an image key strips the
+  // extension and resize suffix, a video key keeps them, and a hit for one
+  // type must never answer the other.
+  it("keeps image and video identities apart for one URL", () => {
+    const url = "https://cdn.example.com/media/clip-1024x576.jpg";
+    const image = mediaIdentityKey("image", url);
+    const video = mediaIdentityKey("video", url);
+    expect(image).toBe("cdn.example.com/media/clip");
+    expect(video).toBe("cdn.example.com/media/clip-1024x576.jpg");
+    expect(mediaIdentityKey("image", url)).toBe(image);
+    expect(mediaIdentityKey("video", url)).toBe(video);
+  });
+
+  it("answers a rejected URL the same way on a repeat", () => {
+    const raw = "https://user:pw@example.com/a.jpg";
+    expect(canonicalizeMediaUrl(raw)).toBeNull();
+    expect(canonicalizeMediaUrl(raw)).toBeNull();
   });
 });
