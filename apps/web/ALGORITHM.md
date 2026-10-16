@@ -1061,8 +1061,11 @@ images rather than a broken-src fallback.
   proxy outside Cloudflare keep it up to 7 days. That header only reaches
   the browser because `/api/thumb/<id>` is on the public API allowlist in
   `src/lib/route-indexability.ts`; the Worker stamps `private, no-store`
-  on every other `/api/*` path, so a new public API route must be listed
-  there or its own Cache-Control is lost (issue #891). The edge copy is keyed
+  on every other `/api/*` path except `/api/subscribe/preview` with a
+  query, where `applyQueryPolicy` decides, so a new public API route must be
+  listed there or its own Cache-Control is lost (issue #891). Any response
+  that carries `Set-Cookie`, such as a Clerk token refresh, goes out
+  `private, no-store` whatever its route (issue #898). The edge copy is keyed
   on item id, canonical `u` and `THUMB_RENDER_VERSION` only, so extra query
   parameters cannot force a new publisher fetch. The source fetch is capped
   at 8 MB and 5 s including the body, and is resized through the Images

@@ -60,7 +60,10 @@ import {
 } from "./lib/news-sitemap";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
 import { withRequestTiming, withServerTiming } from "./lib/request-timing";
-import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
+import {
+  withPrivateSetCookie,
+  withRouteIndexabilityHeaders,
+} from "./lib/route-indexability";
 import { handleFeedXmlRequest, RSS_CACHE_CONTROL } from "./lib/rss";
 import { classifyServerFnPath } from "./lib/server-fn-registry";
 import { isServerFnBasePath, isServerFnPath } from "./lib/server-fn-request";
@@ -423,7 +426,9 @@ export default {
   ...worker,
   fetch(request: Request, env: Env, ctx?: ExecutionContext) {
     return withRequestTiming(async () => {
-      const response = await worker.fetch(request, env, ctx);
+      const response = withPrivateSetCookie(
+        await worker.fetch(request, env, ctx)
+      );
       try {
         recordRequestUsage(env, request, response);
       } catch {
