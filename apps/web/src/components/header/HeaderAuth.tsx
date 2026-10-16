@@ -29,6 +29,8 @@ export function HeaderAuth({
   const navigationLang = useLang();
   const { mod, preloadClerk } = useClerkModule();
   // The router's href, not window.location, so SSR renders the same link.
+  // The server's href still holds a /subscribe token the head boot script
+  // strips; sameOriginReturnPath drops it and the hash, so both renders match.
   const here = useRouterState({ select: (s) => s.location.href });
   const back = sameOriginReturnPath(here);
   const search = back

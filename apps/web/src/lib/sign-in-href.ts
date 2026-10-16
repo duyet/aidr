@@ -1,3 +1,4 @@
+import { SAFE_PARAMS, sanitizeUrl } from "./analytics/url-privacy";
 import { withLang } from "./locale-url";
 import type { Lang } from "./types";
 
@@ -8,7 +9,9 @@ const AUTH_PATHS = ["/sign-in", "/sign-up"];
  * `returnTo` as a path on this site, or null. Resolving against a probe
  * origin rejects anything a browser would send elsewhere: `//host`,
  * `/\host`, `https://host`, `javascript:`. Auth routes are rejected too, so
- * sign-in never returns to itself.
+ * sign-in never returns to itself. The path goes to Clerk, so only
+ * SAFE_PARAMS survive (a mailed subscriber token must not) and the hash is
+ * dropped, which the server never sees and so could not render.
  */
 export function sameOriginReturnPath(returnTo: string): string | null {
   let url: URL;
@@ -22,7 +25,11 @@ export function sameOriginReturnPath(returnTo: string): string | null {
   if (AUTH_PATHS.some((p) => path === p || path.startsWith(`${p}/`))) {
     return null;
   }
-  return `${path}${url.search}${url.hash}`;
+  const back = sanitizeUrl(url.href, SAFE_PARAMS).slice(PROBE_ORIGIN.length);
+  // Dot segments collapse during parsing, so `/..//host` comes out as
+  // `//host`. Check the path a browser will read, not the one written.
+  if (new URL(back, PROBE_ORIGIN).origin !== PROBE_ORIGIN) return null;
+  return back;
 }
 
 /**
