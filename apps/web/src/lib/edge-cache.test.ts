@@ -783,7 +783,8 @@ describe("global KV tier", () => {
     const { tier, kv } = kvTier();
     for (const url of [
       "https://aidr.today/74c9e10c?lang=en",
-      "https://aidr.today/?lang=en&q=openai",
+      "https://aidr.today/?lang=en&q=x",
+      "https://aidr.today/?lang=en&tag=ai",
     ]) {
       await cachedSsrResponse(get(url), ctx, v1, tier);
     }
@@ -796,7 +797,7 @@ describe("global KV tier", () => {
       tier
     );
     await Promise.all(pending);
-    expect(fake.put).toHaveBeenCalledTimes(3);
+    expect(fake.put).toHaveBeenCalledTimes(4);
     expect(kv.get).not.toHaveBeenCalled();
     expect(kv.put).not.toHaveBeenCalled();
   });
