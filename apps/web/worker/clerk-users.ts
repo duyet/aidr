@@ -178,46 +178,6 @@ export async function softDeleteClerkUser(
   await db.prepare(CLERK_USER_DELETE_SQL).bind(at, at, id).run();
 }
 
-/** D1 reports an unmigrated table as "no such table"; never treat that as 0. */
-export function isMissingClerkUsersTable(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /no such table|has no table|unknown table/i.test(message);
-}
-
-/** Schema probe: cheapest statement that proves 0026 has been applied. */
-export const CLERK_USERS_PROBE_SQL = `SELECT id FROM ${CLERK_USERS_TABLE} LIMIT 1`;
-
-let clerkUsersTableSupported: boolean | null = null;
-
-/** Test seam: the probe result is cached per isolate, like the other probes. */
-export function resetClerkUsersTableProbe(): void {
-  clerkUsersTableSupported = null;
-}
-
-/**
- * Has migration 0026 been applied? D1 migration application is an operator
- * step, so this probe reports the state instead of applying anything, and a
- * missing table stays `unconfigured` rather than an empty count.
- */
-export async function hasClerkUsersTable(
-  db: Pick<D1Database, "prepare">
-): Promise<boolean> {
-  if (clerkUsersTableSupported != null) return clerkUsersTableSupported;
-  try {
-    await db.prepare(CLERK_USERS_PROBE_SQL).all();
-    clerkUsersTableSupported = true;
-  } catch (error) {
-    if (!isMissingClerkUsersTable(error)) {
-      // A transient D1 failure is not a schema answer; let the caller read and
-      // surface the error instead of caching "unsupported" forever.
-      clerkUsersTableSupported = null;
-      throw error;
-    }
-    clerkUsersTableSupported = false;
-  }
-  return clerkUsersTableSupported;
-}
-
 /** COUNT of live (non-deleted) mirrored accounts. Never infers from a page. */
 /** Addresses Clerk has verified for this live account, primary included. */
 export async function listVerifiedEmails(

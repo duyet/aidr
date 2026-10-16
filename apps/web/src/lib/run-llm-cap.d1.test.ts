@@ -11,23 +11,22 @@
  * by run count rather than call count and cannot starve anyone. This file
  * proves that on a real D1 database seeded with far more than 2,000 calls.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadRunAttempts, loadSystemRuns } from "./system-queries";
 
-/** 0001 creates `workflow_runs`; 0012 adds the `stats` column this test
- * writes. The llm_calls chain starts at 0013. */
-const MIGRATIONS = [
-  "0001_init.sql",
-  "0012_workflow_run_stats.sql",
-  "0013_llm_calls.sql",
-  "0016_llm_calls_usage.sql",
-  "0025_llm_call_run_identity.sql",
-];
+const MIGRATIONS_DIR = path.resolve(import.meta.dirname, "../../migrations");
 
-/** Split a migration file, asking SQLite which statements are complete. */
+/** Every migration, in the order Wrangler applies them: the loaders read
+ * the schema the deploy gate guarantees, with no fallback for a subset. */
+const MIGRATIONS = readdirSync(MIGRATIONS_DIR)
+  .filter((name) => name.endsWith(".sql"))
+  .sort();
+
+/** Split a migration file on `;`, keeping a quoted literal and a trigger's
+ * BEGIN ... END body in one statement. */
 function statements(sql: string): string[] {
   const noComments = sql
     .split("\n")
@@ -38,6 +37,11 @@ function statements(sql: string): string[] {
   for (const part of noComments.split(";")) {
     current = current ? `${current};\n${part}` : part;
     if (!current.trim()) continue;
+    // Inside a quoted literal (seed text can hold `;`) or a trigger body.
+    if ((current.match(/'/g)?.length ?? 0) % 2 === 1) continue;
+    const begins = current.match(/\bBEGIN\b/gi)?.length ?? 0;
+    const ends = current.match(/\bEND\b/gi)?.length ?? 0;
+    if (begins > ends) continue;
     // A trailing comment-only or partial fragment is not executable.
     if (!/\S/.test(current.replace(/--.*$/gm, ""))) {
       current = "";
@@ -91,9 +95,10 @@ beforeAll(async () => {
   });
   db = await mf.getD1Database("DB");
 
-  const dir = path.resolve(import.meta.dirname, "../../migrations");
   for (const name of MIGRATIONS) {
-    for (const stmt of statements(readFileSync(path.join(dir, name), "utf8"))) {
+    for (const stmt of statements(
+      readFileSync(path.join(MIGRATIONS_DIR, name), "utf8")
+    )) {
       await db.prepare(stmt).run();
     }
   }

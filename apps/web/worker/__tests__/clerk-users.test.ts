@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   backfillClerkUsers,
   CLERK_USER_DELETE_SQL,
@@ -10,10 +10,8 @@ import {
   CLERK_USERS_COUNT_SQL,
   clerkUserEmail,
   countClerkUsers,
-  hasClerkUsersTable,
   parseClerkUserList,
   parseClerkUserTotal,
-  resetClerkUsersTableProbe,
   softDeleteClerkUser,
   upsertClerkUser,
   upsertClerkUsers,
@@ -111,10 +109,6 @@ const user = (id: string, over: Record<string, unknown> = {}) => ({
   primary_email_address_id: "e1",
   created_at: 1_700_000_000_000,
   ...over,
-});
-
-beforeEach(() => {
-  resetClerkUsersTableProbe();
 });
 
 describe("clerk_users mirror", () => {
@@ -261,16 +255,6 @@ describe("clerk_users mirror", () => {
       expect(store.read()[0].deleted_at).toBeNull();
     } finally {
       store.close();
-    }
-  });
-
-  it("treats an unmigrated database as unconfigured, never as zero", async () => {
-    const sqlite = new DatabaseSync(":memory:");
-    try {
-      const db = new SqliteD1(sqlite) as unknown as D1Database;
-      expect(await hasClerkUsersTable(db)).toBe(false);
-    } finally {
-      sqlite.close();
     }
   });
 

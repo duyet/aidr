@@ -94,7 +94,7 @@ function storyDb(row: Record<string, unknown>) {
       return this;
     },
     async all() {
-      return { results: sql.includes("FROM items LIMIT 1") ? [] : [row] };
+      return { results: [row] };
     },
   });
   return {

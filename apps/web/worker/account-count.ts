@@ -8,16 +8,12 @@
  * the Clerk Admin API, so it can never be flaky and never has to render
  * "Unavailable" because an upstream request timed out.
  *
- * States stay explicit: an unmirrored database is `unconfigured`, an empty
- * mirror is `unconfigured` too (an empty table cannot prove that Clerk has no
- * accounts), and a read failure is `error`. None of them invent a number.
+ * States stay explicit: an empty mirror is `unconfigured` (an empty table
+ * cannot prove that Clerk has no accounts), and a read failure is `error`.
+ * Neither invents a number.
  */
 
-import {
-  countClerkUsers,
-  hasClerkUsersTable,
-  isMissingClerkUsersTable,
-} from "./clerk-users.js";
+import { countClerkUsers } from "./clerk-users.js";
 
 export type AccountCountStatus = "available" | "unconfigured" | "error";
 
@@ -40,8 +36,9 @@ export interface AccountCountDb {
 }
 
 /**
- * Count live mirrored Clerk accounts. A missing D1 binding or a database that
- * has not applied the 0026 migration is `unconfigured` — never zero.
+ * Count live mirrored Clerk accounts. A missing D1 binding is `unconfigured`,
+ * never zero. The deploy gate guarantees `clerk_users` (0026), so the COUNT
+ * runs without a schema probe.
  *
  * An empty mirror is also `unconfigured`, not a real `0`. An empty table cannot
  * distinguish "Clerk has no accounts" from "the webhook has not delivered
@@ -57,17 +54,11 @@ export async function loadClerkAccountCount(
   if (!db) return accountCount(null, "unconfigured");
 
   try {
-    if (!(await hasClerkUsersTable(db))) {
-      return accountCount(null, "unconfigured");
-    }
     const total = await countClerkUsers(db);
     return total > 0
       ? accountCount(total, "available")
       : accountCount(null, "unconfigured");
   } catch (error) {
-    if (isMissingClerkUsersTable(error)) {
-      return accountCount(null, "unconfigured");
-    }
     console.error("account count unavailable:", error);
     return accountCount(null, "error");
   }

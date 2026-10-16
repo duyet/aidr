@@ -97,38 +97,20 @@ function groupTopStories(
     .sort((a, b) => opens(b) - opens(a) || a.channel.localeCompare(b.channel));
 }
 
-function empty(): SystemReads {
-  return {
-    window_days: READS_WINDOW_DAYS,
-    total: 0,
-    by_category: [],
-    by_channel: [],
-    by_kind: [],
-    top_stories: [],
-  };
-}
-
 export async function loadSystemReads(db: DbReader): Promise<SystemReads> {
   const offset = `-${READS_WINDOW_DAYS - 1} days`;
-  let batch: D1Result[];
-  try {
-    batch = await db.batch([
-      db.prepare(CATEGORY_SQL).bind(offset),
-      db.prepare(CHANNEL_SQL).bind(offset),
-      db.prepare(KIND_SQL).bind(offset),
-      db
-        .prepare(TOP_STORIES_SQL)
-        .bind(
-          `-${TOP_STORIES_WINDOW_DAYS - 1} days`,
-          TOP_STORIES_MIN_OPENS,
-          TOP_STORIES_PER_CHANNEL
-        ),
-    ]);
-  } catch (e) {
-    // Before migration 0065 the card shows "no reads", not a 500.
-    if (String(e).includes("no such table")) return empty();
-    throw e;
-  }
+  const batch = await db.batch([
+    db.prepare(CATEGORY_SQL).bind(offset),
+    db.prepare(CHANNEL_SQL).bind(offset),
+    db.prepare(KIND_SQL).bind(offset),
+    db
+      .prepare(TOP_STORIES_SQL)
+      .bind(
+        `-${TOP_STORIES_WINDOW_DAYS - 1} days`,
+        TOP_STORIES_MIN_OPENS,
+        TOP_STORIES_PER_CHANNEL
+      ),
+  ]);
   const [categories, channels, kinds, tops] = batch.map(
     (r) => r?.results ?? []
   );

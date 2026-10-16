@@ -29,7 +29,6 @@ import { looksVietnamese } from "./tldr-lang.js";
 import { viSystemPrompt } from "./translation-knowledge.js";
 import { stripSourceBoilerplate } from "./translation-terms.js";
 import type { Env } from "./types.js";
-import { itemVotesTableReady } from "./votes.js";
 
 /** Stories in one weekly edition. */
 export const WEEKLY_MAX_STORIES = 10;
@@ -361,16 +360,15 @@ export async function loadRangeCandidates(
   }
   const hits = editionHits(snaps ?? [], canonical);
 
-  const votes = await itemVotesTableReady(env.DB);
   const select = `SELECT i.id, i.source_id, i.title, tr.title AS title_vi,
       i.summary, i.category, i.llm_importance, i.llm_quality, i.points,
       i.comments, i.url AS signal_url,
       (SELECT json_group_array(json_array(m.source_id, m.points, m.comments, m.url))
          FROM items m WHERE m.duplicate_of = i.id AND m.status = 'merged') AS merged_members,
-      ${votes ? "COALESCE(vote_sum.vote_net, 0)" : "0"} AS vote_net
+      COALESCE(vote_sum.vote_net, 0) AS vote_net
     FROM items i
     LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-    ${votes ? "LEFT JOIN (SELECT item_id, SUM(value) AS vote_net FROM item_votes GROUP BY item_id) AS vote_sum ON vote_sum.item_id = i.id" : ""}
+    LEFT JOIN (SELECT item_id, SUM(value) AS vote_net FROM item_votes GROUP BY item_id) AS vote_sum ON vote_sum.item_id = i.id
     WHERE i.status = 'published'`;
   const { from, to } = weekSecBounds(bounds.start, bounds.end);
   const [cited, windowRows] = await Promise.all([

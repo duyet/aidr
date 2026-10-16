@@ -561,19 +561,11 @@ export async function loadDaySitemapUrls(
   db: DbReader,
   now: number = Date.now()
 ): Promise<SitemapUrl[]> {
-  const { results } = await db
-    .prepare(DAY_ROWS_SQL)
-    .bind(SITEMAP_DAY_LIMIT)
-    .all<SitemapDayRow>();
-  let videos: SitemapDayVideoRow[] = [];
-  try {
-    videos =
-      (await db.prepare(DAY_VIDEO_ROWS_SQL).all<SitemapDayVideoRow>())
-        .results ?? [];
-  } catch {
-    // day_videos not migrated yet — days are listed without thumbnails
-  }
-  return daySitemapUrls(results ?? [], videos, now);
+  const [days, videos] = await Promise.all([
+    db.prepare(DAY_ROWS_SQL).bind(SITEMAP_DAY_LIMIT).all<SitemapDayRow>(),
+    db.prepare(DAY_VIDEO_ROWS_SQL).all<SitemapDayVideoRow>(),
+  ]);
+  return daySitemapUrls(days.results ?? [], videos.results ?? [], now);
 }
 
 // ---------------------------------------------------------------------------

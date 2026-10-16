@@ -44,10 +44,4 @@ describe("loadSystemMailStats", () => {
       ],
     });
   });
-
-  it("answers empty before migration 0067", async () => {
-    expect(await loadSystemMailStats(d1(new DatabaseSync(":memory:")))).toEqual(
-      { window_days: 28, by_lang: [] }
-    );
-  });
 });

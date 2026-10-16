@@ -149,7 +149,11 @@ class PublicFakeD1 {
     }
 
     // getFeed: main item window.
-    if (sql.includes("FROM items i LEFT JOIN translations t ON t.item_id")) {
+    if (
+      sql.includes(
+        "AS vote_sum ON vote_sum.item_id = i.id LEFT JOIN translations t ON t.item_id"
+      )
+    ) {
       const [since, until] = args as [number, number];
       return {
         results: this.published().filter((row) => {
@@ -162,9 +166,6 @@ class PublicFakeD1 {
       sql.startsWith("SELECT category AS name, COUNT(*) AS count FROM items")
     ) {
       return { results: [{ name: "Models", count: this.published().length }] };
-    }
-    if (sql.startsWith("SELECT llm_tokens FROM items LIMIT 1")) {
-      return { results: [] };
     }
     if (sql.startsWith("SELECT 1 AS yes FROM items")) {
       return { results: [] };

@@ -155,7 +155,7 @@ describe("loadDaySitemapUrls", () => {
 
   function fakeDb(
     dayRows: unknown[],
-    videos: unknown[] | Error,
+    videos: unknown[],
     sql: string[] = [],
     binds: unknown[][] = []
   ): DbReader {
@@ -163,10 +163,7 @@ describe("loadDaySitemapUrls", () => {
       prepare(query: string) {
         sql.push(query);
         const run = async () => {
-          if (query.includes("day_videos")) {
-            if (videos instanceof Error) throw videos;
-            return { results: videos };
-          }
+          if (query.includes("day_videos")) return { results: videos };
           return { results: dayRows };
         };
         return {
@@ -188,18 +185,6 @@ describe("loadDaySitemapUrls", () => {
     expect(sql[0]).toContain("tldr_snapshots");
     expect(sql[0]).toContain("status = 'published'");
     expect(binds[0]).toEqual([SITEMAP_DAY_LIMIT]);
-  });
-
-  it("still lists days when day_videos is not migrated", async () => {
-    const urls = await loadDaySitemapUrls(
-      fakeDb(
-        [{ date: "2026-10-01", updated: 1 }],
-        new Error("no such table: day_videos")
-      ),
-      NOW
-    );
-    expect(urls).toHaveLength(2);
-    expect(urls[0]?.image).toBeUndefined();
   });
 
   it("serves 200 valid XML when D1 fails (fail-closed)", async () => {

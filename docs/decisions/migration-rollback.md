@@ -185,7 +185,8 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
 - Change: creates `day_videos` (date PK, `youtube_id`, `short_id`, title,
   added_by, timestamps) for the optional video on `/date/YYYY-MM-DD`. No rows
   are seeded.
-- Risk: none. The day page treats a missing table as "no video".
+- Risk: none. The day page and the day sitemap read it in the same batch
+  as the stories, without a fallback (#886); the deploy gate keeps it present.
 - Rollback: redeploy the previous Worker, then `DROP TABLE day_videos;`
 
 ## 0047_item_content_log.sql
@@ -255,9 +256,9 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   row per signed-in reader per story. `value` is +1 or -1. Clearing a vote
   deletes the row, so `SUM(value)` is the net that `rank_score` folds into
   reader engagement. No rows are seeded.
-- Risk: none for mail or Telegram. Feed and story reads treat a missing
-  table as "no votes". Apply this before deploying the Worker that writes
-  a vote or recomputes rank from `item_votes`, or those statements fail.
+- Risk: none for mail or Telegram. Apply this before deploying the
+  Worker; the deploy gate refuses a Worker while it is missing. Feed,
+  story, day and weekly reads join `item_votes` without probing it (#886).
 - Rollback: redeploy the previous Worker, then `DROP TABLE item_votes;`
   Rank scores already written keep the vote term until the next re-rank.
 
@@ -324,7 +325,8 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   (28 days).
 - Risk: none for existing rows. Apply it before the Worker deploys so events
   count from the first request. Without it the route answers as before and
-  writes nothing, and the /data card shows no events.
+  writes nothing. `GET /api/system/extension` reads it without a fallback
+  (#886); the deploy gate keeps it present.
 - Rollback: deploy the previous Worker; `DROP TABLE ext_events;`. Nothing
   else holds a value derived from it.
 
@@ -336,9 +338,10 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   by unsubscribe (`worker/mail/stats.ts`); read by
   `GET /api/system/mail-stats` (28 days).
 - Risk: none for existing rows. Apply it before or after the Worker
-  deploys: until it exists every write is skipped silently, sending and
-  unsubscribing are unaffected, and the card answers as if empty. Days sent
-  before it is applied are never counted.
+  deploys: until it exists every write is skipped silently, and sending and
+  unsubscribing are unaffected. `GET /api/system/mail-stats` reads it
+  without a fallback (#886). Days sent before it is applied are never
+  counted.
 - Rollback: deploy the previous Worker; `DROP TABLE mail_daily_stats;`.
   Nothing else holds a value derived from it.
 
@@ -362,12 +365,12 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   `POST /api/read`; read by the homepage feed order (`getFeed`, today and
   yesterday) and `GET /api/system/reads` (28 days). Stored `rank_score`
   never reads it.
-- Risk: none for existing rows. Apply it before the Worker deploys so
-  reads count from the first beacon. Without it the collector answers 204
-  and writes nothing, `getFeed` probes the table and orders by `rank_score`
-  alone, and `/api/system/reads` answers as if empty.
+- Risk: none for existing rows. Apply it before the Worker deploys; the
+  deploy gate refuses a Worker while it is missing. The homepage `getFeed`
+  joins the table without probing it (#886).
 - Rollback: deploy the previous Worker; `DROP TABLE item_reads;`. Nothing
-  else holds a value derived from it.
+  else holds a value derived from it. Never drop it under a Worker that
+  still reads it: the homepage feed query fails.
 
 ## 0064_hf_trending_source.sql
 

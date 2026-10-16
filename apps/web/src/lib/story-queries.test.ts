@@ -15,7 +15,7 @@ function makeDb(rows: Row[], opts: { sources?: Row[] } = {}) {
       return this;
     },
     async all() {
-      return { results: sql.includes("FROM items LIMIT 1") ? [] : rows };
+      return { results: rows };
     },
   });
   return {
@@ -123,7 +123,6 @@ describe("getStory for a merged id", () => {
         },
         async all() {
           if (sql.includes("status = 'merged'")) return { results: mergedRows };
-          if (sql.includes("FROM items LIMIT 1")) return { results: [] };
           return { results: [] };
         },
       };
@@ -181,7 +180,6 @@ describe("getStory content log", () => {
             if (log instanceof Error) throw log;
             return { results: log };
           }
-          if (sql.includes("FROM items LIMIT 1")) return { results: [] };
           return { results: [base] };
         },
       };
@@ -248,8 +246,8 @@ describe("getStory content log", () => {
     ]);
   });
 
-  it("omits content_log when item_content_log does not exist", async () => {
-    const { db } = contentLogDb(new Error("no such table: item_content_log"));
+  it("omits content_log when the history read fails", async () => {
+    const { db } = contentLogDb(new Error("D1_ERROR: network connection lost"));
     const item = await getStory(db, "abcdef12");
     expect(item?.id).toBe(base.id);
     expect(item?.content_log).toBeUndefined();

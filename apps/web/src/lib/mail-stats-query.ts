@@ -23,22 +23,14 @@ export async function loadSystemMailStats(
   db: DbReader
 ): Promise<SystemMailStats> {
   const offset = `-${MAIL_STATS_WINDOW_DAYS - 1} days`;
-  try {
-    const { results } = await db.prepare(SQL).bind(offset).all();
-    return {
-      window_days: MAIL_STATS_WINDOW_DAYS,
-      by_lang: (results as unknown as MailLangStats[]).map((r) => ({
-        lang: r.lang,
-        sent: Number(r.sent) || 0,
-        failed: Number(r.failed) || 0,
-        unsubscribed: Number(r.unsubscribed) || 0,
-      })),
-    };
-  } catch (e) {
-    // Before migration 0067 the card shows its empty state, not a 500.
-    if (String(e).includes("no such table")) {
-      return { window_days: MAIL_STATS_WINDOW_DAYS, by_lang: [] };
-    }
-    throw e;
-  }
+  const { results } = await db.prepare(SQL).bind(offset).all();
+  return {
+    window_days: MAIL_STATS_WINDOW_DAYS,
+    by_lang: (results as unknown as MailLangStats[]).map((r) => ({
+      lang: r.lang,
+      sent: Number(r.sent) || 0,
+      failed: Number(r.failed) || 0,
+      unsubscribed: Number(r.unsubscribed) || 0,
+    })),
+  };
 }

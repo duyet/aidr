@@ -83,6 +83,8 @@ function dayArchiveDb(
     ...row,
   }));
   const resultFor = (sql: string) => {
+    if (sql.includes("FROM day_videos"))
+      return { results: video ? [video] : [] };
     if (sql.includes("FROM items i")) return { results: items };
     if (
       sql.includes("MAX(published_at)") ||
@@ -102,7 +104,7 @@ function dayArchiveDb(
         return resultFor(sql);
       },
       async first() {
-        return sql.includes("FROM day_videos") ? video : null;
+        return null;
       },
     };
     return stmt;

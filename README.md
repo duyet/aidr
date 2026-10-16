@@ -60,7 +60,7 @@ cp .env.example .env.local   # fill values (gitignored)
 pnpm --filter @aidr/web dev  # http://localhost:3014
 ```
 
-The local D1 starts empty. Apply the schema once with `cd apps/web && pnpm exec wrangler d1 migrations apply aidr --local`.
+The local D1 starts empty. Apply the schema with `cd apps/web && pnpm exec wrangler d1 migrations apply aidr --local`, and again after pulling a new migration: read paths assume every migration is applied and do not probe for missing columns.
 
 Clerk is optional locally. With no `CLERK_SECRET_KEY`, the dev server skips Clerk and every page renders signed out. To sign in locally, use a Clerk development instance (`pk_test_` / `sk_test_`):
 

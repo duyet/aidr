@@ -102,30 +102,6 @@ WHERE i.status = 'published' AND i.published_at >= ?
 ORDER BY i.rank_score DESC
 LIMIT ?`;
 
-const STORIES_SQL_NO_MEDIA = `SELECT i.id, i.source_id, i.url, i.title, tr.title AS title_vi, i.category,
-       i.image_url, i.published_at
-FROM items i
-LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-WHERE i.status = 'published' AND i.published_at >= ?
-ORDER BY i.rank_score DESC
-LIMIT ?`;
-
-const STORIES_SQL_MEDIA_NO_IMAGE = `SELECT i.id, i.source_id, i.url, i.title, tr.title AS title_vi, i.category,
-       i.media_manifest, i.published_at
-FROM items i
-LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-WHERE i.status = 'published' AND i.published_at >= ?
-ORDER BY i.rank_score DESC
-LIMIT ?`;
-
-const STORIES_SQL_LEGACY = `SELECT i.id, i.source_id, i.url, i.title, tr.title AS title_vi, i.category,
-       i.published_at
-FROM items i
-LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = 'vi'
-WHERE i.status = 'published' AND i.published_at >= ?
-ORDER BY i.rank_score DESC
-LIMIT ?`;
-
 const TLDR_SQL =
   "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots ORDER BY date DESC LIMIT 1";
 
@@ -135,14 +111,6 @@ const IMAGES_SQL = `SELECT id, url, image_url, media_manifest FROM items
 WHERE id IN ({placeholders}) AND status = 'published'
   AND (image_url IS NOT NULL AND image_url != ''
        OR media_manifest IS NOT NULL AND media_manifest != '')`;
-
-const IMAGES_SQL_MEDIA_NO_IMAGE = `SELECT id, url, media_manifest FROM items
-WHERE id IN ({placeholders}) AND status = 'published'
-  AND media_manifest IS NOT NULL AND media_manifest != ''`;
-
-const IMAGES_SQL_LEGACY = `SELECT id, url, image_url FROM items
-WHERE id IN ({placeholders}) AND status = 'published'
-  AND image_url IS NOT NULL AND image_url != ''`;
 
 function capBullets(raw: TldrBullet[]): TldrBullet[] {
   return raw.slice(0, PUBLIC_BULLET_CAP).map((b) => ({
@@ -230,49 +198,19 @@ async function loadTopStories(
   nowMs: number = Date.now()
 ): Promise<PublicStory[]> {
   const since = Math.floor(nowMs / 1000) - PUBLIC_STORY_WINDOW_SEC;
-  try {
-    const { results } = await db
-      .prepare(STORIES_SQL)
-      .bind(since, PUBLIC_STORY_CANDIDATE_LIMIT)
-      .all<StoryRow>();
-    return topStories(results);
-  } catch {
-    try {
-      const { results } = await db
-        .prepare(STORIES_SQL_NO_MEDIA)
-        .bind(since, PUBLIC_STORY_CANDIDATE_LIMIT)
-        .all<StoryRow>();
-      return topStories(results);
-    } catch {
-      try {
-        const { results } = await db
-          .prepare(STORIES_SQL_MEDIA_NO_IMAGE)
-          .bind(since, PUBLIC_STORY_CANDIDATE_LIMIT)
-          .all<StoryRow>();
-        return topStories(results);
-      } catch {
-        const { results } = await db
-          .prepare(STORIES_SQL_LEGACY)
-          .bind(since, PUBLIC_STORY_CANDIDATE_LIMIT)
-          .all<StoryRow>();
-        return topStories(results);
-      }
-    }
-  }
+  const { results } = await db
+    .prepare(STORIES_SQL)
+    .bind(since, PUBLIC_STORY_CANDIDATE_LIMIT)
+    .all<StoryRow>();
+  return topStories(results);
 }
 
-/** Same four column-set fallbacks as the top-stories query, keyed by id
- *  instead of rank/window: a cited item may be older than the 48h window. */
-const STORIES_BY_ID_SQL = [
-  STORIES_SQL,
-  STORIES_SQL_NO_MEDIA,
-  STORIES_SQL_MEDIA_NO_IMAGE,
-  STORIES_SQL_LEGACY,
-].map((sql) =>
-  sql
-    .replace("i.published_at >= ?", "i.id IN ({placeholders})")
-    .replace(/\nORDER BY i\.rank_score DESC\nLIMIT \?$/, "")
-);
+/** The top-stories query keyed by id instead of rank/window: a cited item
+ *  may be older than the 48h window. */
+const STORIES_BY_ID_SQL = STORIES_SQL.replace(
+  "i.published_at >= ?",
+  "i.id IN ({placeholders})"
+).replace(/\nORDER BY i\.rank_score DESC\nLIMIT \?$/, "");
 
 /** Published rows for the given ids, in the order of `ids`. */
 async function loadStoriesByIds(
@@ -281,22 +219,15 @@ async function loadStoriesByIds(
 ): Promise<PublicStory[]> {
   if (ids.length === 0) return [];
   const placeholders = ids.map(() => "?").join(",");
-  for (let i = 0; i < STORIES_BY_ID_SQL.length; i++) {
-    try {
-      const { results } = await db
-        .prepare(STORIES_BY_ID_SQL[i]!.replace("{placeholders}", placeholders))
-        .bind(...ids)
-        .all<StoryRow>();
-      const byId = new Map((results ?? []).map((row) => [row.id, row]));
-      return ids.flatMap((id) => {
-        const row = byId.get(id);
-        return row ? [toPublicStory(row)] : [];
-      });
-    } catch (error) {
-      if (i === STORIES_BY_ID_SQL.length - 1) throw error;
-    }
-  }
-  return [];
+  const { results } = await db
+    .prepare(STORIES_BY_ID_SQL.replace("{placeholders}", placeholders))
+    .bind(...ids)
+    .all<StoryRow>();
+  const byId = new Map((results ?? []).map((row) => [row.id, row]));
+  return ids.flatMap((id) => {
+    const row = byId.get(id);
+    return row ? [toPublicStory(row)] : [];
+  });
 }
 
 function resolvePublicTldr(
@@ -433,8 +364,8 @@ export async function getPublicDigest(db: DbReader): Promise<PublicDigest> {
 }
 
 /** Look up og/thumbnails for TL;DR item ids that are not in the stories
- * payload (past PUBLIC_STORY_MAX). Best-effort: a missing `image_url` column returns
- * an empty map so the digest still ships. */
+ * payload (past PUBLIC_STORY_MAX). Best-effort: a failed read returns an
+ * empty map so the digest still ships. */
 async function loadImagesForIds(
   db: DbReader,
   ids: string[]
@@ -465,49 +396,6 @@ async function loadImagesForIds(
       })
     );
   } catch {
-    try {
-      const { results } = await db
-        .prepare(IMAGES_SQL_LEGACY.replace("{placeholders}", placeholders))
-        .bind(...ids)
-        .all<{ id: string; url?: string | null; image_url: string }>();
-      return imageUrlByItemId(
-        (results ?? []).map((row) => {
-          const imageUrl = canonicalizeMediaImageUrl(row.image_url);
-          const articleUrl = canonicalizeMediaUrl(row.url);
-          return {
-            id: row.id,
-            image_url: imageUrl && imageUrl !== articleUrl ? imageUrl : null,
-          };
-        })
-      );
-    } catch {
-      try {
-        const { results } = await db
-          .prepare(
-            IMAGES_SQL_MEDIA_NO_IMAGE.replace("{placeholders}", placeholders)
-          )
-          .bind(...ids)
-          .all<{
-            id: string;
-            url?: string | null;
-            media_manifest?: string | null;
-          }>();
-        return imageUrlByItemId(
-          (results ?? []).map((row) => {
-            const manifest = parseMediaManifest(
-              row.media_manifest,
-              undefined,
-              row.url
-            );
-            return {
-              id: row.id,
-              image_url: primaryThumbnailUrl(manifest, undefined, row.url),
-            };
-          })
-        );
-      } catch {
-        return new Map();
-      }
-    }
+    return new Map();
   }
 }

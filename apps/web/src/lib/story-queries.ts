@@ -8,7 +8,6 @@ import {
   primaryThumbnailUrl,
 } from "../../worker/media.js";
 import { VOTE_NET_COLUMN, VOTE_NET_JOIN_I } from "../../worker/ranking.js";
-import { itemVotesTableReady } from "../../worker/votes.js";
 import type { DbReader } from "./db";
 import type { ContentLogEntry, FeedItem, ItemSource } from "./types";
 
@@ -31,34 +30,6 @@ export function idPrefixBinds(
   prefix: string
 ): [string, string, number, string] {
   return [prefix, `${prefix}\uffff`, prefix.length, prefix];
-}
-
-let llmTokensSupported: boolean | null = null;
-let imageUrlSupported: boolean | null = null;
-let mediaManifestSupported: boolean | null = null;
-
-async function probeColumn(
-  db: DbReader,
-  column: string,
-  cache: boolean | null
-): Promise<boolean> {
-  if (cache !== null) return cache;
-  try {
-    await db.prepare(`SELECT ${column} FROM items LIMIT 1`).all();
-    return true;
-  } catch {
-    // column not migrated in yet
-    return false;
-  }
-}
-
-async function supportsMediaManifest(db: DbReader): Promise<boolean> {
-  mediaManifestSupported = await probeColumn(
-    db,
-    "media_manifest",
-    mediaManifestSupported
-  );
-  return mediaManifestSupported;
 }
 
 function parseTags(value: unknown): string[] {
@@ -156,29 +127,17 @@ async function queryStories(
   idPrefix: string,
   requestedLimit: number
 ): Promise<FeedItem[]> {
-  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes] =
-    await Promise.all([
-      probeColumn(db, "llm_tokens", llmTokensSupported),
-      probeColumn(db, "image_url", imageUrlSupported),
-      supportsMediaManifest(db),
-      itemVotesTableReady(db),
-    ]);
-  llmTokensSupported = hasLlmTokens;
-  imageUrlSupported = hasImageUrl;
-
   // The Markdown contract needs at most two rows to detect a prefix
   // collision. The number is clamped before interpolation, never user input.
   const limit = Math.min(Math.max(Math.trunc(requestedLimit), 1), 2);
   const itemSql = `SELECT i.id, i.url, i.title, t.title AS title_vi,
               ${enSummarySql("i")} AS summary,
               t.summary AS summary_vi, i.category, i.published_at,
-              i.points, i.comments, i.rank_score, i.source_id, i.tags
-              ${hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""}
-              ${hasImageUrl ? ", i.image_url" : ""}
-              ${hasMediaManifest ? ", i.media_manifest" : ""}
-              ${hasVotes ? `, ${VOTE_NET_COLUMN}` : ""}
+              i.points, i.comments, i.rank_score, i.source_id, i.tags,
+              COALESCE(i.llm_tokens, 0) AS llm_tokens, i.image_url,
+              i.media_manifest, ${VOTE_NET_COLUMN}
        FROM items i
-       ${hasVotes ? VOTE_NET_JOIN_I : ""}
+       ${VOTE_NET_JOIN_I}
        LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
        WHERE ${idPrefixPredicate("i.id")} AND i.status = 'published' LIMIT ${limit}`;
 
@@ -272,7 +231,7 @@ async function attachContentLog(
     );
     return { ...story, content_log };
   } catch {
-    // The table arrives in 0047. A story still renders without history.
+    // History is best-effort: a failed read still renders the story.
     return story;
   }
 }
