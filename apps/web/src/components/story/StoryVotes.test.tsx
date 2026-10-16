@@ -73,7 +73,10 @@ describe("StoryVotes signed out", () => {
     fireEvent.click(screen.getByRole("button", { name: "Upvote" }));
     const dialog = screen.getByRole("dialog", { name: "Sign in to vote" });
     const link = dialog.querySelector("a");
-    expect(link?.getAttribute("href")).toBe("/sign-in?lang=en");
+    // Back to this story after sign-in, not the provider's homepage fallback.
+    expect(link?.getAttribute("href")).toBe(
+      "/sign-in?lang=en&redirect_url=%2Fabcdef12%3Flang%3Den"
+    );
     expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
     expect(vote.cast).not.toHaveBeenCalled();
     // Clicks on the control or inside the portal never reach the row.

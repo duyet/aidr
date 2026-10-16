@@ -65,8 +65,10 @@ vi.mock("@tanstack/react-router", async () => {
     useRouterState: ({
       select,
     }: {
-      select: (state: { location: { pathname: string } }) => unknown;
-    }) => select({ location: { pathname: "/" } }),
+      select: (state: {
+        location: { pathname: string; href: string };
+      }) => unknown;
+    }) => select({ location: { pathname: "/", href: "/?lang=en" } }),
   };
 });
 
@@ -160,7 +162,7 @@ describe("PhoneMenu modal behavior", () => {
     expect(newsLink.getAttribute("href")).toBe("/?lang=en");
     expect(
       within(dialog).getByRole("link", { name: "Sign in" }).getAttribute("href")
-    ).toBe("/sign-in?lang=en");
+    ).toBe("/sign-in?lang=en&redirect_url=%2F%3Flang%3Den");
   });
 
   it("wraps Tab and Shift+Tab inside the dialog", async () => {
