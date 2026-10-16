@@ -7,12 +7,14 @@ const EXHIBIT = /\bexhibit(?:ing)? at\b/i;
 const COUNTDOWN =
   /^\d+\s+(?:days?|hours?)\s+to\s+(?:techcrunch\s+)?(?:disrupt|founder summit|sessions|startup battlefield)\b/i;
 
-function isTechCrunch(url: string): boolean {
+function techCrunchPath(url: string): string | null {
   try {
-    const host = new URL(url).hostname;
-    return host === "techcrunch.com" || host.endsWith(".techcrunch.com");
+    const { hostname, pathname } = new URL(url);
+    return hostname === "techcrunch.com" || hostname.endsWith(".techcrunch.com")
+      ? pathname
+      : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -24,8 +26,9 @@ function isTechCrunch(url: string): boolean {
 export function isEventPromo(
   item: Pick<FetchedItem, "title" | "url">
 ): boolean {
-  if (!isTechCrunch(item.url)) return false;
-  if (new URL(item.url).pathname.startsWith("/events/")) return true;
+  const path = techCrunchPath(item.url);
+  if (path === null) return false;
+  if (path.startsWith("/events/")) return true;
   const { title } = item;
   return (
     (PASS_WORD.test(title) && SALE_WORD.test(title)) ||
