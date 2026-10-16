@@ -827,7 +827,7 @@ runtime through `upsert_source` with no deploy — see
 [`worker/README.md`](worker/README.md) → "Add a source without a deploy".
 
 - **Flood gate.** A high-volume feed is cut before the scorer sees it, in
-  this order: an optional named title pre-filter (`keywordFilter: "ai"`,
+  this order: event promos drop (see the next bullet), an optional named title pre-filter (`keywordFilter: "ai"`,
   the same regex HN uses; it admits inflections such as agents,
   fine-tuning, LLMs and benchmarks, and named frameworks, platforms and
   data tooling such as LangGraph, Workers AI, vector databases and
@@ -840,8 +840,10 @@ runtime through `upsert_source` with no deploy — see
   is exactly what was published since the last one, so the cap samples the
   live edge and dedupe drops the rest.
 - **Event-promo gate.** Every adapter's output also drops TechCrunch
-  event sales before dedupe (`worker/sources/event-promo.ts`, applied in
-  `registry.ts` `normalized`): a `techcrunch.com` URL whose title pairs
+  event sales before dedupe (`worker/sources/event-promo.ts`, applied first
+  in `applyFloodGate` so promos never take a `maxItems` slot, and again in
+  `registry.ts` `normalized` for adapters with no gate; `fetched` in source
+  health counts what is left after the drop): a `techcrunch.com` URL whose title pairs
   pass/ticket with a sale word (save, deal, early bird, last chance, pay
   more), "Exhibit at ...", a "N days/hours to Disrupt" countdown, or a
   `/events/` path. Other hosts are never touched. Measured 2026-10-16 over

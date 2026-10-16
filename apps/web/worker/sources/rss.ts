@@ -7,6 +7,7 @@ import {
 } from "../media.js";
 import { lastSentenceEnd } from "../sentences.js";
 import { parseFeedDate, parseUtcOffset } from "./feed-date.js";
+import { isEventPromo } from "./event-promo.js";
 import { KEYWORD_FILTERS } from "./keywords.js";
 import type { FetchedItem, SourceAdapter, SourceLanguage } from "./types.js";
 
@@ -212,7 +213,9 @@ function mediaCandidatesFromBlock(block: string): MediaCandidate[] {
  *
  * Order matters and is the point of the gate:
  *
- * 1. `keywordFilter` runs first, so a high-volume firehose (arXiv emits
+ * 0. Event promos drop first, so a sale post in the newest N never takes a
+ *    slot from a real story.
+ * 1. `keywordFilter` runs next, so a high-volume firehose (arXiv emits
  *    hundreds of submissions a day) is cut down to the AI-relevant slice
  *    *before* anything is counted.
  * 2. `maxItems` then takes the **newest** N of what survived. Newest-first is
@@ -230,9 +233,9 @@ export function applyFloodGate(
     typeof config.keywordFilter === "string"
       ? KEYWORD_FILTERS[config.keywordFilter.trim().toLowerCase()]
       : undefined;
-  const filtered = named
-    ? items.filter((item) => named.test(item.title))
-    : items;
+  const filtered = items.filter(
+    (item) => !isEventPromo(item) && (!named || named.test(item.title))
+  );
   const rawMax = config.maxItems;
   const max =
     typeof rawMax === "number" && Number.isFinite(rawMax) && rawMax > 0
