@@ -637,6 +637,26 @@ ORDER BY week DESC, hits DESC
   Laguna by `llm_calls` (10-07 to 10-10) max 6.7% -> 9.1%, and the
   windows from 10-10 14:00 (gemma-latest, glm-latest) stay at median 0%,
   max 4.3%, none above 10%.
+- Image coverage collapse (`worker/image-coverage.ts`, same step, no model
+  call): one D1 read per run gives each source's published items with a
+  usable image over 24h and 7 days. Usable is `image_url` set, or a media
+  manifest with an image asset or a video with a poster (the Telegram photo
+  path's test). A source is eligible when it has ≥ 21 items in 7 days and
+  ≥ 60% coverage over them. It raises `image-coverage:<source>` (warning,
+  routed to `duyet/aidr`) when it has ≥ 4 items in 24h and the 24h share is
+  under half its 7-day share. Once per source per 24h, like
+  `translation-english`: the check reads the window's `stats.alerts`, not
+  just the 6h cooldown. Sources that rarely have pictures sit under the 60%
+  bar and never alert. Baseline, 7 days to 2026-10-16 (24h / 7d coverage,
+  items a day): marketbrief 100% / 100% (27), huggingnews 100% / 100% (16),
+  techmeme 100% / 100% (15), hn 83% / 80% (13), techcrunch-ai 100% / 98% (7),
+  theverge-ai 100% / 100% (4), the-decoder n/a / 96% (3); exempt by baseline:
+  lobsters 44% / 54% (7), hf-papers n/a / 53% (5), arxiv-research 83% / 38%
+  (3), simonwillison 0% / 36% (2), openai 0% / 0% (1). `agent audit` prints
+  every source's two shares under `imageCoverage` (from
+  `/api/system/sources`) and counts the ones that would alert now. The
+  7-day share includes the 24h being judged, so a total collapse of a
+  high-volume source barely moves its own baseline.
 - Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
   `TELEGRAM_OWNER_CHAT_ID` DMs each freshly fired alert (same 6h cooldown)
   with evidence and the run link, plus one daily summary in the first run

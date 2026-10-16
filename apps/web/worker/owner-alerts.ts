@@ -2,6 +2,7 @@ import { reportPipelineException } from "./bugsink.js";
 import { CLUSTER_GATE_KEY_PREFIX } from "./cluster-gate.js";
 import { DAY_VIDEO_ALERT_KEY } from "./day-video-watchdog.js";
 import type { HealthIssue, PriorRun } from "./health.js";
+import { IMAGE_COVERAGE_KEY_PREFIX } from "./image-coverage.js";
 import { escapeHtml } from "./notify/telegram.js";
 import {
   VI_ENGLISH_KEY_PREFIX,
@@ -148,6 +149,8 @@ function suggestion(issue: HealthIssue): string {
     return "Search the Worker logs for `cluster gate:` to see the rejected links. If the model keeps linking unrelated stories, re-run the cluster gold set (scripts/cluster-gold-eval.ts) and move it down ANYROUTER_MODEL in wrangler.toml.";
   if (issue.key.startsWith(VI_ENGLISH_KEY_PREFIX))
     return "Read that model's recent Vietnamese titles and summaries. If it keeps English, move it down ANYROUTER_TRANSLATE_MODEL in wrangler.toml.";
+  if (issue.key.startsWith(IMAGE_COVERAGE_KEY_PREFIX))
+    return "Open a recent story of that source and check its page for an og:image or lead picture. If the page still has one, the extractor in worker/media.ts or the fetch is missing it.";
   if (issue.key === "tldr-failing")
     return "Open the TL;DR step on the run page and check the tldr LLM chain.";
   return "Open the run page and check the failed step's reason.";
