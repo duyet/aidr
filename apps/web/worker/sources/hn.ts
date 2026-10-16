@@ -52,46 +52,41 @@ async function search(url: string): Promise<AlgoliaHit[]> {
   return data.hits ?? [];
 }
 
+/** Algolia's largest page. A 26h window can hold more than 100 stories at
+ *  the points floor, and a shorter page drops whichever ranked last. */
+const POPULAR_HITS_PER_PAGE = 1000;
+
 /**
- * Config (all optional):
- * - `query`: Algolia full-text query for the newest-first search.
- * - `popularMinPoints`: adds a third search, most-relevant first, restricted
- *   to stories at or above this score inside the same window. It catches
- *   high-scoring AI stories that fell outside both the newest-100 and the
- *   front page. Absent = the original two searches only.
+ * The front page, plus with `popularMinPoints` every story at or above that
+ * score in the window, deduped, then kept only when the title passes
+ * `AI_KEYWORD_RE`. No search sends an Algolia `query`: HN Algolia requires
+ * every query word, so `AI OR LLM` required the word `OR` and matched
+ * nothing (#873), and a fixed keyword list misses titles the regex accepts.
+ * A `query` key in the row's config is ignored.
+ * There is no newest-first search: unfloored, it returns about 250 AI posts
+ * a day, most under 5 points.
  */
 export const hnAdapter: SourceAdapter = {
   type: "hn",
 
   async fetchItems(config, sinceEpochSec) {
-    const query = typeof config.query === "string" ? config.query : "";
     const numericFilters = `created_at_i>${sinceEpochSec}`;
-
-    const byDateUrl = new URL("https://hn.algolia.com/api/v1/search_by_date");
-    byDateUrl.searchParams.set("tags", "story");
-    if (query) byDateUrl.searchParams.set("query", query);
-    byDateUrl.searchParams.set("numericFilters", numericFilters);
-    byDateUrl.searchParams.set("hitsPerPage", "100");
 
     const frontPageUrl = new URL("https://hn.algolia.com/api/v1/search");
     frontPageUrl.searchParams.set("tags", "front_page");
     frontPageUrl.searchParams.set("numericFilters", numericFilters);
     frontPageUrl.searchParams.set("hitsPerPage", "100");
 
-    const searches = [
-      search(byDateUrl.toString()),
-      search(frontPageUrl.toString()),
-    ];
+    const searches = [search(frontPageUrl.toString())];
     const minPoints = config.popularMinPoints;
     if (typeof minPoints === "number" && Number.isFinite(minPoints)) {
       const popularUrl = new URL("https://hn.algolia.com/api/v1/search");
       popularUrl.searchParams.set("tags", "story");
-      if (query) popularUrl.searchParams.set("query", query);
       popularUrl.searchParams.set(
         "numericFilters",
         `${numericFilters},points>=${Math.max(1, Math.floor(minPoints))}`
       );
-      popularUrl.searchParams.set("hitsPerPage", "100");
+      popularUrl.searchParams.set("hitsPerPage", String(POPULAR_HITS_PER_PAGE));
       searches.push(search(popularUrl.toString()));
     }
     const results = await Promise.all(searches);
