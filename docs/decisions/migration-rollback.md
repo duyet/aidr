@@ -56,16 +56,14 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
 ## 0029_subscriber_mail_format.sql
 
 - Change: `ALTER TABLE subscribers ADD COLUMN mail_format TEXT NOT NULL DEFAULT 'design'`.
-  The same ALTER also runs at runtime from `ensureMailSchema`, so the column
-  may exist before this migration is recorded as applied.
+  No runtime code adds the column; only this migration does.
 - Risk: dropping the column loses each subscriber's text-vs-designed choice.
   Any code still selecting `mail_format` errors on a missing column.
 - Rollback: not needed for a code rollback; old code never reads the column.
   If it must go: export first
   `SELECT id, mail_format FROM subscribers WHERE mail_format <> 'design';`
   then `ALTER TABLE subscribers DROP COLUMN mail_format;`.
-  `ensureMailSchema` adds the column again on the next mail send, so also
-  remove or revert that code, or the drop is undone silently.
+  Nothing recreates the column at runtime, so the drop stays dropped.
 - Re-applying: if the ledger row is removed and the migration re-runs, it fails
   with "duplicate column name". Treat that as already applied and re-insert the
   ledger row rather than dropping the column.
