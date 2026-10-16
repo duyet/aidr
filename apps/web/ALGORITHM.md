@@ -1058,7 +1058,11 @@ images rather than a broken-src fallback.
   for an open tab. A browser that already loaded the thumb can keep it up
   to a day (`max-age=86400`) and show it once more within the next day
   while it revalidates (`stale-while-revalidate`); `s-maxage` lets a shared
-  proxy outside Cloudflare keep it up to 7 days. The edge copy is keyed
+  proxy outside Cloudflare keep it up to 7 days. That header only reaches
+  the browser because `/api/thumb/<id>` is on the public API allowlist in
+  `src/lib/route-indexability.ts`; the Worker stamps `private, no-store`
+  on every other `/api/*` path, so a new public API route must be listed
+  there or its own Cache-Control is lost (issue #891). The edge copy is keyed
   on item id, canonical `u` and `THUMB_RENDER_VERSION` only, so extra query
   parameters cannot force a new publisher fetch. The source fetch is capped
   at 8 MB and 5 s including the body, and is resized through the Images

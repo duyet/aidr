@@ -33,6 +33,8 @@ const SENSITIVE_QUERY_KEY_RE =
 const STORY_MARKDOWN_PATH = /^\/api\/story\/[^/]+\.md(?:\/|$)/;
 const STORY_JSON_PATH = /^\/api\/story\/[^/]+$/;
 const OG_PATH = /^\/api\/og\/(?:[^/]+|date\/[^/]+)$/;
+/** `/api/thumb/{item id}`; the route sets its own day-long public policy. */
+const THUMB_PATH = /^\/api\/thumb\/[0-9a-f]{64}$/;
 const ENCODED_PATH_SEPARATOR = /%(?:2f|5c)/i;
 const ENCODED_PERCENT = /%25/gi;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: mirrors TanStack Router's path sanitizer
@@ -277,13 +279,15 @@ function isExplicitPublicApiPath(pathname: string): boolean {
     lower === "/api/extension" ||
     lower === "/api/feed" ||
     lower === "/api/feed/freshness" ||
+    lower === "/api/health" ||
     lower === "/api/public" ||
     lower === "/api/system" ||
     lower.startsWith("/api/system/") ||
     /^\/api\/week\/\d{4}-w\d{2}$/.test(lower) ||
     STORY_JSON_PATH.test(pathname) ||
     STORY_MARKDOWN_PATH.test(pathname) ||
-    OG_PATH.test(pathname)
+    OG_PATH.test(pathname) ||
+    THUMB_PATH.test(pathname)
   );
 }
 
