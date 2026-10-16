@@ -74,3 +74,52 @@ describe("an /api path outside the public allowlist", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
   });
 });
+
+/**
+ * Clerk's token refresh can add Set-Cookie to a GET on any route. A shared
+ * cache outside Cloudflare could store one reader's session cookie under a
+ * public `s-maxage` and replay it to others (issue #898).
+ */
+describe("a response carrying Set-Cookie", () => {
+  const PUBLIC_IMAGE_CACHE_CONTROL = "public, max-age=300, s-maxage=3600";
+  const refreshCookie = [["__session", "refreshed"].join("="), "Path=/"].join(
+    "; "
+  );
+
+  function answerWith(headers: Record<string, string>) {
+    vi.mocked(handler.fetch).mockImplementation(
+      async () =>
+        new Response(new Uint8Array([1, 2, 3]), {
+          headers: {
+            "Content-Type": "image/png",
+            "Cache-Control": PUBLIC_IMAGE_CACHE_CONTROL,
+            Vary: "Accept-Encoding",
+            ...headers,
+          },
+        })
+    );
+  }
+
+  it("goes out private on a public /api/og route, Vary intact", async () => {
+    answerWith({ "Set-Cookie": refreshCookie });
+    const response = await fetchPath("/api/og/abcdef12.png");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("set-cookie")).toBe(refreshCookie);
+    expect(response.headers.get("vary")).toBe("Accept-Encoding");
+  });
+
+  it("goes out private on /feed.json, which skips the route wrapper", async () => {
+    answerWith({ "Set-Cookie": refreshCookie });
+    const response = await fetchPath("/feed.json");
+    expect(handler.fetch).toHaveBeenCalledOnce();
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it("leaves the public policy alone when no cookie is set", async () => {
+    answerWith({});
+    const response = await fetchPath("/api/og/abcdef12.png");
+    expect(response.headers.get("cache-control")).toBe(
+      PUBLIC_IMAGE_CACHE_CONTROL
+    );
+  });
+});

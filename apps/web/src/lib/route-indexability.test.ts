@@ -77,6 +77,21 @@ describe("routeIndexability", () => {
     }
   });
 
+  // Only the exact `/api/thumb/{64-hex item id}` shape may keep the route's
+  // public policy; anything near it is an unknown API path (issue #898).
+  it.each([
+    ["an extra segment", `/api/thumb/${"ab".repeat(32)}/extra`],
+    ["a file extension", `/api/thumb/${"ab".repeat(32)}.png`],
+    ["63 hex characters", `/api/thumb/${"a".repeat(63)}`],
+    ["65 hex characters", `/api/thumb/${"a".repeat(65)}`],
+    ["a version prefix", `/api/thumb/v1/${"ab".repeat(32)}`],
+  ])("keeps a thumb path with %s private", (_label, pathname) => {
+    expect(routeIndexability({ pathname })).toMatchObject({
+      kind: "private",
+      cacheControl: PRIVATE_CACHE_CONTROL,
+    });
+  });
+
   it("defaults unknown API routes to private and uncached", () => {
     for (const pathname of [
       "/api/not-allowlisted",
