@@ -28,6 +28,7 @@ import { archiveDateOfSec, dayBoundsSec } from "./day-archive";
 import { DAY_VIDEO_TITLE_MAX, type DayVideo, isYoutubeId } from "./day-video";
 import type { DbReader } from "./db";
 import { NEWEST_PUBLISHED_FETCHED_AT_SQL } from "./feed-freshness";
+import { markStage } from "./request-timing";
 import { parseStoredBullets } from "./tldr-bullets";
 import { resolveTldrForDisplay } from "./tldr-fallback";
 import { imageUrlByItemId, withTldrImages } from "./tldr-images";
@@ -536,6 +537,7 @@ export async function getFeed(
       opts.readOrder ? itemReadsTableReady(db) : false,
     ]);
   const probesMs = Date.now() - startedAt;
+  markStage("probe");
   const itemSelect = itemSelectSql({
     hasLlmTokens,
     hasImageUrl,
@@ -598,6 +600,7 @@ export async function getFeed(
   }
   const batchStartedAt = Date.now();
   const batched = await db.batch(stmts);
+  markStage("d1");
   const itemsRes = batched[FEED_BATCH.items];
   logFeedBatch(itemsRes, {
     probesMs,
@@ -663,7 +666,7 @@ export async function getFeed(
     }
   }
 
-  return boundFeedResponse({
+  const feed = boundFeedResponse({
     tldr: withTldrImages(
       resolveTldrForDisplay(tldr, items),
       imageUrlByItemId(items)
@@ -679,6 +682,8 @@ export async function getFeed(
       null,
     hasMore: (olderRes.results ?? []).length > 0,
   });
+  markStage("rows");
+  return feed;
 }
 
 /** Published stories by exact id, in the order of `ids` (missing or

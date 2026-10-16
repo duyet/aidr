@@ -21,6 +21,7 @@ import {
   isPrivateSsrPath,
 } from "./locale-routing";
 import { hasCanonicalLocaleQuery } from "./locale-url";
+import { markStage } from "./request-timing";
 
 export const EDGE_CACHE_HEADER = "x-aidr-cache";
 /**
@@ -198,6 +199,15 @@ function entryState(hit: Response): Exclude<CacheState, "MISS"> | "EXPIRED" {
   return "EXPIRED";
 }
 
+/** A render outside the cache still ends the `ssr` stage. */
+async function renderStaged(
+  render: () => Promise<Response>
+): Promise<Response> {
+  const response = await render();
+  markStage("ssr");
+  return response;
+}
+
 /** Keys with a background revalidation in flight in this isolate. */
 const revalidating = new Set<string>();
 
@@ -215,6 +225,7 @@ async function serveThroughCache(
   const freshFor = (response: Response) =>
     Math.min(declaredFresh(response), EDGE_CACHE_FRESH_MAX_S);
   const hit = await cache.match(key).catch(() => undefined);
+  markStage("cache");
   if (hit) {
     const state = entryState(hit);
     if (state === "HIT") return toClient(hit, "HIT");
@@ -238,6 +249,7 @@ async function serveThroughCache(
   }
 
   const response = await render();
+  markStage("ssr");
   const fresh = freshFor(response);
   if (fresh <= 0) return response;
   const write = cache
@@ -259,7 +271,7 @@ export async function cachedSsrResponse(
 ): Promise<Response> {
   const cache = edgeCache();
   const key = cache ? edgeCacheKey(request) : null;
-  if (!(cache && key)) return render();
+  if (!(cache && key)) return renderStaged(render);
   return serveThroughCache(cache, key, ctx, render, sharedMaxAge);
 }
 
@@ -300,7 +312,7 @@ export async function cachedLocaleResponse(
 ): Promise<Response> {
   const cache = edgeCache();
   if (!cache || request.method !== "GET" || hasAuthSignal(request)) {
-    return render();
+    return renderStaged(render);
   }
   const url = normalizedCacheUrl(request.url);
   url.searchParams.set("__l", lang);
