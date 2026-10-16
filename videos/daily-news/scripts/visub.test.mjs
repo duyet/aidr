@@ -21,7 +21,6 @@ import {
 } from "./status.mjs";
 import { chatFor, telegramPost, youtubeIdFor } from "./telegram-video.mjs";
 import {
-  cutProblems,
   enPost,
   formatSrt,
   houseStyle,
@@ -181,7 +180,7 @@ const SHORT_VI =
 const isRetitle = (messages) =>
   /title is \d+ characters/.test(messages.at(-1).content);
 
-test("a Vietnamese title over 100 characters keeps the translation: one shorter-title retry, else a cut at a clause", async () => {
+test("a Vietnamese title over 100 characters keeps the translation: one shorter-title retry, else “Bản tin AI;DR” and the date", async () => {
   const cues = parseSrt(EN_SRT);
   const run = async (retitle) => {
     const asked = [];
@@ -217,6 +216,10 @@ test("a Vietnamese title over 100 characters keeps the translation: one shorter-
   const fixed = await run(async () => JSON.stringify({ title: SHORT_VI }));
   assert.deepEqual(fixed.asked, ["m1", "m1 retitle"]);
   assert.equal(fixed.title, SHORT_VI);
+  const nfd = await run(async () =>
+    JSON.stringify({ title: SHORT_VI.normalize("NFD") })
+  );
+  assert.equal(nfd.title, SHORT_VI, "a decomposed retry is composed");
 
   for (const retitle of [
     async () => JSON.stringify({ title: `${LONG_VI} ${LONG_VI}` }),
@@ -224,24 +227,13 @@ test("a Vietnamese title over 100 characters keeps the translation: one shorter-
       throw new Error("anyrouter m1: 502 upstream_exhausted");
     },
   ]) {
-    const cut = await run(retitle);
-    assert.deepEqual(cut.asked, ["m1", "m1 retitle"]);
-    assert.ok([...cut.title].length <= 100, cut.title);
-    assert.match(
-      cut.title,
-      / — ngày 16 tháng 10 năm 2026$/,
-      "the date after the last separator is kept"
-    );
-    const head = cut.title.split(" — ")[0].replace(/…$/, "").split(" ");
-    assert.deepEqual(
-      head,
-      LONG_VI.split(" ").slice(0, head.length),
-      "the cut falls between whole Vietnamese syllables"
-    );
+    const out = await run(retitle);
+    assert.deepEqual(out.asked, ["m1", "m1 retitle"]);
+    assert.equal(out.title, "Bản tin AI;DR — ngày 16 tháng 10 năm 2026");
   }
 });
 
-test("a decomposed Vietnamese title is counted and cut in composed form", async () => {
+test("a decomposed long Vietnamese title falls back to a composed “Bản tin AI;DR” and its date", async () => {
   const out = await translateCues({
     cues: parseSrt(EN_SRT),
     title: LONG_EN,
@@ -253,12 +245,10 @@ test("a decomposed Vietnamese title is counted and cut in composed form", async 
     style,
     log: () => {},
   });
-  assert.equal(out.title, out.title.normalize("NFC"));
-  assert.ok([...out.title].length <= 100);
-  assert.ok(LONG_VI.startsWith(out.title.split(" — ")[0].replace(/…$/, "")));
+  assert.equal(out.title, "Bản tin AI;DR — ngày 16 tháng 10 năm 2026");
 });
 
-// A Vietnamese title translated `vi`, whose shorter-title retry answers `retitle`.
+// A Vietnamese title translated `vi`, whose shorter-title retry answers `retitle()`.
 const titled = (en, vi, retitle, log = () => {}) =>
   translateCues({
     cues: parseSrt(EN_SRT),
@@ -266,162 +256,134 @@ const titled = (en, vi, retitle, log = () => {}) =>
     models: ["m1"],
     llm: async (_model, messages) =>
       isRetitle(messages)
-        ? JSON.stringify({ title: retitle })
+        ? retitle()
         : JSON.stringify({ title: vi, lines: VI.lines }),
     style,
     log,
   });
 
-// Real 2026-10 titles the model wrote over 100 characters; a word-level cut kept each number but moved it onto other
-// words ("…doanh thu, 870…" credits OpenAI with TypeSafe's raise), so a cut drops whole clauses from the end.
-const TYPESAFE_EN =
-  "AI News Today: OpenAI revenue revision hits AI stocks, TypeSafe AI's $870M & more | Oct 10, 2026";
-const TYPESAFE_VI =
-  "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu, TypeSafe AI gọi vốn thành công 870 triệu USD và hơn thế | 10/10/2026";
-const MSFT_EN =
-  "AI News Today: Microsoft commits $2.4T to AI infrastructure & more | Oct 16, 2026";
-const MSFT_VI =
-  "Tin AI hôm nay: Microsoft bất ngờ công bố kế hoạch cam kết rót vốn đầu tư tổng cộng lên tới 2,4 nghìn tỷ USD vào hạ tầng AI | 16/10/2026";
-const META_EN =
-  "AI News Today: Anthropic's Claude 4.5 gets 1M tokens, Meta cuts 10–20% & more | Oct 16, 2026";
-const META_VI =
-  "Tin AI hôm nay: Claude 4.5 của Anthropic hỗ trợ ngữ cảnh 1 triệu token, Meta cắt giảm 10–20% nhân sự trong mảng AI cùng nhiều tin khác | 16/10/2026";
-
-test("a long title is cut to whole clauses from the end, so every number left keeps its subject, verb and unit", async () => {
-  for (const [en, vi, want] of [
-    [
-      TYPESAFE_EN,
-      TYPESAFE_VI,
-      "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu… | 10/10/2026",
-    ],
-    [
-      TYPESAFE_EN,
-      "Tin AI: OpenAI điều chỉnh doanh thu, TypeSafe AI gọi vốn thành công 870 triệu USD cùng nhiều tin nổi bật khác trong ngày | 10/10/2026",
-      "Tin AI: OpenAI điều chỉnh doanh thu, TypeSafe AI gọi vốn thành công 870 triệu USD… | 10/10/2026",
-    ],
-    [
-      META_EN,
-      META_VI,
-      "Tin AI hôm nay: Claude 4.5 của Anthropic hỗ trợ ngữ cảnh 1 triệu token… | 16/10/2026",
-    ],
-    [MSFT_EN, MSFT_VI, "Bản tin AI;DR | 16/10/2026"],
-  ]) {
-    const out = await titled(en, vi, "");
-    assert.equal(out.title, want);
-    assert.ok([...out.title].length <= 100, out.title);
-    if (out.title.includes("870"))
-      assert.match(out.title, /TypeSafe AI gọi vốn thành công 870 triệu USD/);
-    else assert.doesNotMatch(out.title, /TypeSafe/, "870 goes with its clause");
-  }
-});
-
-test("a cut that moves a number onto other words is refused; one that drops its whole clause is not", () => {
-  for (const [vi, wordCut] of [
-    [
-      TYPESAFE_VI,
-      "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu, 870… | 10/10/2026",
-    ],
-    [
-      MSFT_VI,
-      "Tin AI hôm nay: Microsoft bất ngờ công bố kế hoạch cam kết rót vốn đầu tư tổng 2,4… | 16/10/2026",
-    ],
-    [
-      META_VI,
-      "Tin AI hôm nay: Claude 4.5 của Anthropic hỗ trợ ngữ cảnh 1 triệu token, Meta 10–20%… | 16/10/2026",
-    ],
-  ])
-    assert.match(cutProblems(vi, wordCut).join(";"), /not whole clauses/);
-  assert.deepEqual(
-    cutProblems(
-      TYPESAFE_VI,
-      "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu… | 10/10/2026"
-    ),
-    []
-  );
-  assert.match(
-    cutProblems(
-      TYPESAFE_VI,
-      "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu… | 16/10/2026"
-    ).join(";"),
-    /not whole clauses/,
-    "the date part is kept as written"
-  );
-});
-
-test("a number and the magnitude it shares with the next clause stay one unit", async () => {
-  const out = await titled(
-    "AI News Today: OpenAI raises $60B at a record $852B valuation, Nvidia ships a chip & more | Oct 16, 2026",
-    "Tin AI hôm nay: OpenAI huy động thêm 60 tỷ và đạt mức định giá kỷ lục chưa từng có lên tới 852 tỷ USD, Nvidia ra mắt chip mới | 16/10/2026",
-    ""
-  );
-  assert.equal(
-    out.title,
+// Long titles where cutting the model's Vietnamese posted something false. A word cut moved a number onto other words
+// ("…doanh thu, 870…" credits OpenAI with TypeSafe's raise); a clause cut dropped the clause that reverses or limits the
+// one before it, which Vietnamese often joins with a plain comma ("…phạt 2 tỷ USD…, tòa án hủy bỏ án phạt").
+const REPROS = [
+  [
+    "AI News Today: OpenAI revenue revision hits AI stocks, TypeSafe AI's $870M & more | Oct 10, 2026",
+    "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu, TypeSafe AI gọi vốn thành công 870 triệu USD và hơn thế | 10/10/2026",
+    "Bản tin AI;DR | 10/10/2026",
+    "Tin AI: OpenAI điều chỉnh doanh thu, TypeSafe AI gọi vốn 870 triệu USD | 10/10/2026",
+  ],
+  [
+    "AI News Today: Microsoft commits $2.4T to AI infrastructure & more | Oct 16, 2026",
+    "Tin AI hôm nay: Microsoft bất ngờ công bố kế hoạch cam kết rót vốn đầu tư tổng cộng lên tới 2,4 nghìn tỷ USD vào hạ tầng AI | 16/10/2026",
     "Bản tin AI;DR | 16/10/2026",
-    "not “…huy động thêm 60 tỷ…”, which loses USD"
+    "Tin AI: Microsoft cam kết 2,4 nghìn tỷ USD cho hạ tầng AI | 16/10/2026",
+  ],
+  [
+    "AI News Today: Anthropic's Claude 4.5 gets 1M tokens, Meta cuts 10–20% & more | Oct 16, 2026",
+    "Tin AI hôm nay: Claude 4.5 của Anthropic hỗ trợ ngữ cảnh 1 triệu token, Meta cắt giảm 10–20% nhân sự trong mảng AI cùng nhiều tin khác | 16/10/2026",
+    "Bản tin AI;DR | 16/10/2026",
+    "Tin AI: Claude 4.5 có ngữ cảnh 1 triệu token, Meta cắt 10–20% nhân sự | 16/10/2026",
+  ],
+  [
+    "AI News Today: Court annuls Apple's $2B EU fine & more | Oct 16, 2026",
+    "Tin AI hôm nay: Apple bị EU phạt 2 tỷ USD vì vi phạm luật cạnh tranh, tòa án hủy bỏ án phạt sau kháng cáo của công ty | 16/10/2026",
+    "Bản tin AI;DR | 16/10/2026",
+    "Tin AI: Tòa án hủy án phạt 2 tỷ USD của EU với Apple | 16/10/2026",
+  ],
+  [
+    "AI News Today: Claude 5 launches worldwide except the EU & more | Oct 16, 2026",
+    "Tin AI hôm nay: Anthropic ra mắt Claude 5 cho mọi người dùng trên toàn cầu, trừ người dùng tại EU và Trung Quốc lục địa | 16/10/2026",
+    "Bản tin AI;DR | 16/10/2026",
+    "Tin AI: Claude 5 ra mắt toàn cầu, trừ EU | 16/10/2026",
+  ],
+  [
+    "AI News Today: OpenAI's $60B raise falls through & more | Oct 16, 2026",
+    "Tin AI hôm nay: OpenAI huy động thêm 60 tỷ USD từ các quỹ đầu tư lớn, thương vụ đã đổ vỡ vào phút chót | 16/10/2026",
+    "Bản tin AI;DR | 16/10/2026",
+    "Tin AI: Thương vụ gọi vốn 60 tỷ USD của OpenAI đổ vỡ | 16/10/2026",
+  ],
+];
+
+test("a long title is never cut: the retry's own title, else “Bản tin AI;DR” and the date", async () => {
+  for (const [en, vi, fallback, retry] of REPROS) {
+    assert.ok([...vi].length > 100, vi);
+    for (const retitle of [
+      () => JSON.stringify({ title: "" }),
+      () => JSON.stringify({ title: `${vi} ${vi}` }),
+      () => {
+        throw new Error("anyrouter m1: 502 upstream_exhausted");
+      },
+    ])
+      assert.equal((await titled(en, vi, retitle)).title, fallback);
+    assert.equal(
+      (await titled(en, vi, () => JSON.stringify({ title: retry }))).title,
+      retry
+    );
+  }
+});
+
+test("the fallback takes the date from the Vietnamese title, else the English one, never a clause after a separator", async () => {
+  const none = () => JSON.stringify({ title: "" });
+  const en = "AI News Today: Apple's $2B fine & more | Oct 16, 2026";
+  const body =
+    "Tin AI hôm nay: Apple bị EU phạt 2 tỷ USD vì vi phạm luật cạnh tranh của khối này trong năm 2026";
+  for (const [vi, want] of [
+    [
+      `${body} | ngày 16 tháng 10, 2026`,
+      "Bản tin AI;DR | ngày 16 tháng 10, 2026",
+    ],
+    [
+      `${body.replace(" vì vi phạm", "")} — tòa án hủy bỏ án phạt 16/10/2026`,
+      "Bản tin AI;DR | Oct 16, 2026",
+    ],
+    [`${body} hôm 16/10`, "Bản tin AI;DR | Oct 16, 2026"],
+    [`${body} hôm 16/10 | 10–20%`, "Bản tin AI;DR | Oct 16, 2026"],
+  ])
+    assert.equal((await titled(en, vi, none)).title, want, vi);
+  assert.equal(
+    (
+      await titled(
+        "Apple's $2B fine & more, 16 Oct 2026",
+        `${body} ngày 16/10`,
+        none
+      )
+    ).title,
+    "Bản tin AI;DR"
   );
 });
 
-test("a clause that qualifies the one before it is never dropped on its own", async () => {
-  for (const vi of [
-    "Tin AI hôm nay: OpenAI huy động thêm 60 tỷ USD từ các quỹ đầu tư lớn, nhưng thương vụ đã đổ vỡ vào phút chót | 16/10/2026",
-    "Tin AI hôm nay: OpenAI huy động thêm 60 tỷ USD từ các quỹ đầu tư lớn, theo một nguồn tin chưa được xác nhận chính thức | 16/10/2026",
-  ]) {
-    const out = await titled(
-      "AI News Today: OpenAI's $60B raise falls through & more | Oct 16, 2026",
-      vi,
-      ""
-    );
-    assert.equal(
-      out.title,
-      "Bản tin AI;DR | 16/10/2026",
-      "not “…60 tỷ USD từ các quỹ đầu tư lớn…”, which states the hedged raise as done"
-    );
-  }
-});
-
-test("a title with no clause cut that fits is posted as “Bản tin AI;DR” and its date, with a warning", async () => {
-  for (const [en, vi, want] of [
-    [
-      "OpenAI raises $60B at $852B & more | 2026-10-16",
-      "OpenAI huy động thêm 60 tỷ USD từ các nhà đầu tư lớn trên toàn thế giới với mức định giá kỷ lục 852 tỷ USD ngày 16/10/2026",
-      "Bản tin AI;DR | 2026-10-16",
-    ],
-    [
-      "AI;DR: OpenAI raises $60B | 2026-10-16",
-      "OpenAI huy động thêm 60 tỷ USD với mức định giá kỷ lục chưa từng có, AI;DR tổng hợp các tin tức khác | 2026-10-16",
-      "Bản tin AI;DR | 2026-10-16",
-    ],
-    [
-      `Funding rounds ${Array.from({ length: 14 }, (_, i) => `${i + 1}0000000`).join(", ")} | 2026-10-16`,
-      `Các vòng gọi vốn ${Array.from({ length: 14 }, (_, i) => `${i + 1}0000000`).join(", ")} | 2026-10-16`,
-      "Bản tin AI;DR | 2026-10-16",
-    ],
-  ]) {
-    const logs = [];
-    const out = await titled(en, vi, "", (l) => logs.push(l));
-    assert.equal(out.title, want);
-    assert.ok(
-      logs.some((l) => l.startsWith("!") && l.includes(want) && l.includes(vi)),
-      logs.join("\n")
-    );
-    const post = await translatePost({
-      en: enPost(POSTS),
-      title: out.title,
-      chain: () => ({ models: ["m1"], llm: postModel([]) }),
-      style,
-      log: () => {},
-    });
-    assert.equal(post.title, want, "the fallback title still posts");
-  }
+test("the fallback title is logged with the title it replaces, and still posts", async () => {
+  const [en, vi, want] = REPROS[3];
+  const logs = [];
+  const out = await titled(
+    en,
+    vi,
+    () => JSON.stringify({ title: "" }),
+    (l) => logs.push(l)
+  );
+  assert.equal(out.title, want);
+  assert.ok(
+    logs.some((l) => l.startsWith("!") && l.includes(want) && l.includes(vi)),
+    logs.join("\n")
+  );
+  const post = await translatePost({
+    en: enPost(POSTS),
+    title: out.title,
+    chain: () => ({ models: ["m1"], llm: postModel([]) }),
+    style,
+    log: () => {},
+  });
+  assert.equal(post.title, want);
 });
 
 test("a shorter-title retry that drops a number is not used", async () => {
-  const out = await titled(
-    LONG_EN,
-    LONG_VI,
-    "FTC gửi trát đòi OpenAI và Anthropic về an toàn AI — ngày 16 tháng 10"
+  const out = await titled(LONG_EN, LONG_VI, () =>
+    JSON.stringify({
+      title:
+        "FTC gửi trát đòi OpenAI và Anthropic về an toàn AI — ngày 16 tháng 10",
+    })
   );
-  assert.match(out.title, / — ngày 16 tháng 10 năm 2026$/);
+  assert.equal(out.title, "Bản tin AI;DR — ngày 16 tháng 10 năm 2026");
 });
 
 test("a decomposed title within 100 characters is composed, so the YouTube metadata accepts it", async () => {
@@ -431,7 +393,9 @@ test("a decomposed title within 100 characters is composed, so the YouTube metad
     [...vi.normalize("NFD")].length > 100,
     "the fixture is long in NFD"
   );
-  const out = await titled(TITLE, vi.normalize("NFD"), vi);
+  const out = await titled(TITLE, vi.normalize("NFD"), () =>
+    JSON.stringify({ title: vi })
+  );
   assert.equal(out.title, vi);
   const post = await translatePost({
     en: enPost(POSTS),
