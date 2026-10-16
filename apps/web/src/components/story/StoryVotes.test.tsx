@@ -201,6 +201,27 @@ describe("StoryVotes while a session's Clerk SDK loads", () => {
   });
 });
 
+// Once Clerk has loaded and found no user (a stale cookie, or a signed-out
+// reader on a Clerk route), the thumb is the signed-out one again. It must
+// not read or cast votes without a session.
+describe("StoryVotes with Clerk loaded and no user", () => {
+  it("opens the sign-in dialog and never fetches or casts a vote", () => {
+    render(
+      withClerk(
+        <StoryVotes itemId={ITEM} voteNet={4} lang="en" />,
+        clerk({ isLoaded: true, userId: null })
+      )
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Upvote" }));
+    const dialog = screen.getByRole("dialog", { name: "Sign in to vote" });
+    expect(dialog.querySelector("a")?.getAttribute("href")).toBe(
+      "/sign-in?lang=en&redirect_url=%2Fabcdef12%3Flang%3Den"
+    );
+    expect(vote.mine).not.toHaveBeenCalled();
+    expect(vote.cast).not.toHaveBeenCalled();
+  });
+});
+
 function clerk(auth: { isLoaded: boolean; userId: string | null }) {
   return {
     useAuth: () => ({ ...auth, getToken: () => Promise.resolve("token") }),
