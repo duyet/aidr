@@ -209,7 +209,7 @@ function entryState(hit: Response): "HIT" | "STALE" | "EXPIRED" {
   return "EXPIRED";
 }
 
-/** A render outside the cache still ends the `ssr` stage. */
+/** A render outside the cache ends the `ssr` stage, omitted when it waited on nothing. */
 async function renderStaged(
   render: () => Promise<Response>
 ): Promise<Response> {

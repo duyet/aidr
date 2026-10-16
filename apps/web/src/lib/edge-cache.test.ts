@@ -249,6 +249,32 @@ describe("cachedSsrResponse", () => {
     expect(fake.put).not.toHaveBeenCalled();
   });
 
+  // Defect: a render that waited on nothing still reported an `ssr` stage.
+  it("omits the ssr stage from a MISS that waited on nothing", async () => {
+    const { ctx } = setup();
+    const res = await withRequestTiming(async () =>
+      withServerTiming(
+        await cachedSsrResponse(get(EXT), ctx, async () => page())
+      )
+    );
+    expect(res.headers.get(EDGE_CACHE_HEADER)).toBe("MISS");
+    expect(res.headers.get("server-timing") ?? "").not.toContain("ssr;");
+  });
+
+  // Defect: a render that did wait losing its `ssr` duration.
+  it("reports the ssr stage of a MISS that waited", async () => {
+    const { ctx } = setup();
+    const res = await withRequestTiming(async () =>
+      withServerTiming(
+        await cachedSsrResponse(get(EXT), ctx, async () => {
+          vi.setSystemTime(Date.now() + 30);
+          return page();
+        })
+      )
+    );
+    expect(res.headers.get("server-timing") ?? "").toContain("ssr;dur=30");
+  });
+
   it("renders straight through for authed requests and bare /", async () => {
     const { ctx } = setup();
     const render = vi.fn(async () => page());
