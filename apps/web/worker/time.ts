@@ -31,14 +31,27 @@ export function isActiveHour(localHour: number): boolean {
  */
 export function localCalendarDate(nowMs: number, timezone: string): string {
   const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    })
+    calendarDateFormat(timezone)
       .formatToParts(new Date(nowMs))
       .map((p) => [p.type, p.value])
   );
   return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+// Building an Intl.DateTimeFormat loads timezone data each time. The feed
+// files every row by audience day, so one formatter per timezone is kept.
+const calendarDateFormats = new Map<string, Intl.DateTimeFormat>();
+
+function calendarDateFormat(timezone: string): Intl.DateTimeFormat {
+  let format = calendarDateFormats.get(timezone);
+  if (!format) {
+    format = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    calendarDateFormats.set(timezone, format);
+  }
+  return format;
 }
