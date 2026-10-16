@@ -490,54 +490,11 @@ export async function translatePost({
   return { model, lines, title: viTitle, desc, tags };
 }
 
-// --- CLI -----------------------------------------------------------------
-async function main() {
-  const argv = process.argv.slice(2);
-  const date = argv[0];
-  if (!date) throw new Error("usage: visub.mjs <date> [--youtube] [--force]");
+/** The subtitle path of the CLI: the English captions of editions/<date> to Vietnamese cues, json and srt. `chain()`
+ *  gives { models, llm } and is called only when a model is needed. */
+export async function buildSubs({ date, force = false, chain, root = ROOT }) {
   const cut = cutFor("visub");
-  const dir = join(ROOT, "editions", date);
-  const force = argv.includes("--force");
-  const chain = () => {
-    const apiKey = requireLlmKey();
-    const models = videoModels(envVar("ANYROUTER_VIDEO_MODEL"));
-    const baseUrl =
-      envVar("ANYROUTER_BASE_URL") ?? "https://anyrouter.dev/api/v1";
-    return {
-      models,
-      llm: (model, messages) => complete({ model, messages, apiKey, baseUrl }),
-    };
-  };
-  if (argv.includes("--youtube")) {
-    const subsPath = join(dir, cut.subs.json);
-    const ytPath = join(dir, cut.subs.youtube);
-    const prev =
-      existsSync(ytPath) && !force
-        ? JSON.parse(readFileSync(ytPath, "utf8"))
-        : null;
-    const out = await translatePost({
-      en: enPost(readFileSync(join(dir, "posts.md"), "utf8")),
-      title: existsSync(subsPath)
-        ? (JSON.parse(readFileSync(subsPath, "utf8")).title ?? null)
-        : null,
-      cached: prev?.lines ?? {},
-      chain,
-    });
-    const meta = {
-      lang: "vi",
-      model: out.model ?? prev?.model,
-      at: out.model ? new Date().toISOString() : prev?.at,
-      title: out.title,
-      desc: out.desc,
-      tags: out.tags,
-      lines: out.lines,
-    };
-    writeFileSync(ytPath, `${JSON.stringify(meta, null, 2)}\n`);
-    console.log(
-      `${out.model ? "✓" : "="} editions/${date}/${cut.subs.youtube}: ${out.model ? `translated with ${out.model}` : "every line cached"}`
-    );
-    return;
-  }
+  const dir = join(root, "editions", date);
   const srt = join(dir, cutFor("en").captions);
   if (!existsSync(srt))
     throw new Error(`${srt} is missing: build the English cut first`);
@@ -593,6 +550,57 @@ async function main() {
     )
   );
   console.log(`✓ editions/${date}/${cut.subs.srt}`);
+}
+
+// --- CLI -----------------------------------------------------------------
+async function main() {
+  const argv = process.argv.slice(2);
+  const date = argv[0];
+  if (!date) throw new Error("usage: visub.mjs <date> [--youtube] [--force]");
+  const cut = cutFor("visub");
+  const dir = join(ROOT, "editions", date);
+  const force = argv.includes("--force");
+  const chain = () => {
+    const apiKey = requireLlmKey();
+    const models = videoModels(envVar("ANYROUTER_VIDEO_MODEL"));
+    const baseUrl =
+      envVar("ANYROUTER_BASE_URL") ?? "https://anyrouter.dev/api/v1";
+    return {
+      models,
+      llm: (model, messages) => complete({ model, messages, apiKey, baseUrl }),
+    };
+  };
+  if (argv.includes("--youtube")) {
+    const subsPath = join(dir, cut.subs.json);
+    const ytPath = join(dir, cut.subs.youtube);
+    const prev =
+      existsSync(ytPath) && !force
+        ? JSON.parse(readFileSync(ytPath, "utf8"))
+        : null;
+    const out = await translatePost({
+      en: enPost(readFileSync(join(dir, "posts.md"), "utf8")),
+      title: existsSync(subsPath)
+        ? (JSON.parse(readFileSync(subsPath, "utf8")).title ?? null)
+        : null,
+      cached: prev?.lines ?? {},
+      chain,
+    });
+    const meta = {
+      lang: "vi",
+      model: out.model ?? prev?.model,
+      at: out.model ? new Date().toISOString() : prev?.at,
+      title: out.title,
+      desc: out.desc,
+      tags: out.tags,
+      lines: out.lines,
+    };
+    writeFileSync(ytPath, `${JSON.stringify(meta, null, 2)}\n`);
+    console.log(
+      `${out.model ? "✓" : "="} editions/${date}/${cut.subs.youtube}: ${out.model ? `translated with ${out.model}` : "every line cached"}`
+    );
+    return;
+  }
+  await buildSubs({ date, force, chain });
 }
 
 if (resolve(process.argv[1] ?? "") === import.meta.filename) await main();

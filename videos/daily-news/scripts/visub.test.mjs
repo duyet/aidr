@@ -2,7 +2,13 @@
 // The visub cut: the English cut with Vietnamese subtitles, posted to the Vietnamese Telegram channel.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
@@ -21,6 +27,7 @@ import {
 } from "./status.mjs";
 import { chatFor, telegramPost, youtubeIdFor } from "./telegram-video.mjs";
 import {
+  buildSubs,
   enPost,
   formatSrt,
   houseStyle,
@@ -1041,5 +1048,42 @@ test("yt-meta.py --json gives the uploaders visub's metadata with the Vietnamese
     );
   } finally {
     rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+// 2026-10-16: nothing covered the hop from the CLI's <date> to translateCues; dropping it left every title fallback without its day.
+test("the edition folder name reaches the fallback title through buildSubs", async () => {
+  const root = mkdtempSync(join(tmpdir(), "visub-"));
+  try {
+    const dir = join(root, "editions", "2026-10-16");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, cutFor("en").captions), EN_SRT);
+    writeFileSync(
+      join(dir, "script.json"),
+      JSON.stringify({ post: { youtubeTitle: LONG_EN } })
+    );
+    const logged = console.log;
+    console.log = () => {};
+    try {
+      await buildSubs({
+        date: "2026-10-16",
+        root,
+        chain: () => ({
+          models: ["m1"],
+          llm: async (_model, messages) => {
+            if (isRetitle(messages)) throw new Error("502 upstream_exhausted");
+            return JSON.stringify({ title: LONG_VI, lines: VI.lines });
+          },
+        }),
+      });
+    } finally {
+      console.log = logged;
+    }
+    const subs = JSON.parse(
+      readFileSync(join(dir, cutFor("visub").subs.json), "utf8")
+    );
+    assert.equal(subs.title, "Bản tin AI;DR | 16/10/2026");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
