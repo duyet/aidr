@@ -722,14 +722,16 @@ function loadArm(spec: string, items: ArmItem[]) {
 }
 
 /** Numbers as written, thousands separators dropped and the decimal mark
- *  read as a point: "$2.5B" and "2,5 tỷ USD" both give "2.5". */
+ *  read as a point: "$2.5B" and "2,5 tỷ USD" both give "2.5". A Vietnamese
+ *  "0.042" may be an English decimal the model kept, so it counts both ways. */
 function numberSet(text: string, lang: "en" | "vi"): Set<string> {
   const [thousands, decimal] = lang === "en" ? [",", "."] : [".", ","];
+  const grouped = new RegExp(`^\\d{1,3}(?:\\${thousands}\\d{3})+$`);
   const out = new Set<string>();
-  for (const match of text.matchAll(/\d+(?:[.,]\d+)*/g)) {
-    let n = match[0];
-    if (new RegExp(`^\\d{1,3}(?:\\${thousands}\\d{3})+$`).test(n))
-      n = n.split(thousands).join("");
+  for (const match of text.replace(/\\,/g, ",").matchAll(/\d+(?:[.,]\d+)*/g)) {
+    const n = match[0];
+    if (grouped.test(n)) out.add(n.split(thousands).join(""));
+    if (lang === "en" && grouped.test(n)) continue;
     out.add(n.split(decimal).join("."));
   }
   return out;
@@ -740,9 +742,18 @@ const QUOTED_RE = /“[^”]*”|"[^"]*"|«[^»]*»/g;
 const FIRST_PERSON_RE =
   /(?<![\p{L}\p{M}])(?:chúng tôi|chúng ta|tôi|bạn)(?![\p{L}\p{M}])/giu;
 
-/** Calques found in stored production VI and master-card output on this
- *  fixture, never in the candidate card's output. */
-const CALQUES: readonly [string, RegExp][] = [];
+/** English structure carried into Vietnamese, each seen in the stored
+ *  production VI or the master card's output on this fixture (listed
+ *  before any candidate card ran). */
+const CALQUES: readonly [string, RegExp][] = [
+  ["của nó/của chúng (its/their)", /của (?:nó|chúng)(?![\p{L}\p{M}])/giu],
+  [
+    "Nó/Điều này opener (It/This)",
+    /(?:^|[.!?:]\s+)(?:Nó|Điều này)(?![\p{L}\p{M}])/gmu,
+  ],
+  ["được … bởi (by-passive)", /được [^.,;:\n]{1,40}? bởi(?![\p{L}\p{M}])/giu],
+  ["một cách + adjective (-ly)", /một cách (?!đó|này)[\p{L}\p{M}]+/giu],
+];
 
 function percentile(sorted: number[], q: number): number | null {
   return sorted.length
@@ -1054,10 +1065,29 @@ function verdictMode(): void {
     };
   });
   const [j1, j2] = files.map((f) => new Map(f.rows.map((r) => [r.id, r])));
-  const agreed = (field: "natural" | "faithful", arm: string) =>
+  // A batch whose call failed fell back to titles only (translateItems):
+  // an availability loss, reported apart from the card's quality.
+  const degraded = new Set(
+    first.files.flatMap((spec) => {
+      const arm = loadArm(spec, []).file;
+      const failed = new Set(
+        (arm?.batches ?? [])
+          .filter((b) => b.attempts.some((a) => !a.ok))
+          .map((b) => b.batch)
+      );
+      return (arm?.rows ?? [])
+        .filter((r) => failed.has(r.batch))
+        .map((r) => r.id);
+    })
+  );
+  const agreed = (field: "natural" | "faithful", arm: string, skip = false) =>
     [...(j1?.values() ?? [])].filter(
-      (r) => r[field] === arm && j2?.get(r.id)?.[field] === arm
+      (r) =>
+        r[field] === arm &&
+        j2?.get(r.id)?.[field] === arm &&
+        !(skip && degraded.has(r.id))
     ).length;
+  const clean = total - degraded.size;
   console.log(
     JSON.stringify(
       {
@@ -1070,6 +1100,13 @@ function verdictMode(): void {
           naturalWinRate: {
             [x]: Number((agreed("natural", x) / total).toFixed(3)),
             [y]: Number((agreed("natural", y) / total).toFixed(3)),
+          },
+        },
+        withoutDegradedBatches: {
+          stories: clean,
+          naturalWinRate: {
+            [x]: Number((agreed("natural", x, true) / clean).toFixed(3)),
+            [y]: Number((agreed("natural", y, true) / clean).toFixed(3)),
           },
         },
       },
