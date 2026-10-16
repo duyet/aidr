@@ -22,8 +22,8 @@
  * serving it. A limiter that silently fails open is not a limiter, and the
  * admin failed-auth limiter's fail-open posture is a different trade-off —
  * there the fallback is to let a *credentialed* operator through, here it
- * would let anyone through. The table is created by migration 0015 and by
- * `ensureMailSchema`, so it is present in every deployed environment.
+ * would let anyone through. The table is created by migration 0015, which
+ * the deploy gate guarantees, so it is present in every deployed environment.
  */
 
 import { checkRateLimit, hashIp } from "../rate-limit.js";
@@ -74,8 +74,8 @@ export async function checkAnonymousMcpReadLimit(
     // Fail CLOSED. A limiter that silently fails open is not a limiter, and
     // the admin failed-auth limiter's fail-open posture is a different
     // trade-off: its fallback lets a *credentialed* operator through, this
-    // one would let anyone through. The table is created by migration 0015
-    // and by `ensureMailSchema`, so it exists in every deployed env.
+    // one would let anyone through. The table is created by migration 0015,
+    // which the deploy gate guarantees, so it exists in every deployed env.
     console.error(
       JSON.stringify({
         event: "mcp.read_limit_unavailable",

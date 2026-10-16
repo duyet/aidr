@@ -21,7 +21,7 @@ import type { Env } from "../types.js";
  *  - `getPublicDigest`'s four-way column fallback against the real
  *    `items` schema after 27 migrations;
  *  - `getFeed`'s five-statement batch, its `INSERT INTO tldr_snapshots`
- *    read-time rebuild, and `ensureTopicLearningSchema`'s DDL;
+ *    read-time rebuild;
  *  - `getStoryCandidates`' id-prefix range matching, which
  *    is the query an ambiguous-id rejection depends on;
  *  - the rate limiter's real `SELECT COUNT(*)` over a real

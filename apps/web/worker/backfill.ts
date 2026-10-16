@@ -25,20 +25,16 @@ export const BACKFILL_BATCH_SIZE = 4;
 
 /** Published items still missing a summary, oldest-content-first isn't the
  * point — most-recently-published first, so the backlog drains starting
- * from what readers are most likely to open. With `uncheckedOnly`, a row the
- * leg already fetched (`summary_checked_at`, migration 0066) is not selected
- * again; pass false only while that column is missing. */
-export function buildMissingSummaryQuery(
-  limit = BACKFILL_CONTENT_CAP,
-  uncheckedOnly = true
-): string {
+ * from what readers are most likely to open. A row the leg already
+ * fetched (`summary_checked_at`, migration 0066) is not selected again. */
+export function buildMissingSummaryQuery(limit = BACKFILL_CONTENT_CAP): string {
   return `SELECT id, url, source_id, summary, image_url, media_manifest FROM items
           WHERE status = 'published' AND (
             summary IS NULL OR summary = ''
             OR rtrim(summary) LIKE '%…' OR rtrim(summary) LIKE '%...'
             OR rtrim(summary) LIKE '%[…]' OR rtrim(summary) LIKE '%[...]'
             OR summary LIKE '%Read more%' OR summary LIKE '%Continue reading%'
-          )${uncheckedOnly ? " AND summary_checked_at IS NULL" : ""}
+          ) AND summary_checked_at IS NULL
           ORDER BY published_at DESC
           LIMIT ${limit}`;
 }

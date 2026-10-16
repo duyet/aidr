@@ -12,7 +12,6 @@ import {
   parseMediaManifest,
   primaryThumbnailUrl,
 } from "../media.js";
-import { assertMediaManifestSchema } from "../media-schema.js";
 import {
   familyCapFor,
   familyCounts,
@@ -899,7 +898,6 @@ function failureLabel(result: SendResult): string {
 export async function dispatchStoryNotifications(
   env: Env
 ): Promise<NotifyRunResult> {
-  await assertMediaManifestSchema(env.DB);
   assertNotifyConfig(env);
 
   const sent: Record<string, number> = {};

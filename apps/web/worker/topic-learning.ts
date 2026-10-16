@@ -1,48 +1,6 @@
 import type { DbReader } from "../src/lib/db";
 import { normalizeTopicName } from "./topics.js";
 
-/** The tables and indexes of migrations/0017_topic_learning.sql, so learning
- * works before `wrangler d1 migrations apply`. DDL only: the catalog seed
- * (`worker/sources/seed.ts`) owns every `sources` row, and a write here runs
- * after it on each ingest and undoes it (#871). */
-const TOPIC_LEARNING_SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS topic_daily (
-  day TEXT NOT NULL,
-  topic TEXT NOT NULL,
-  count INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (day, topic)
-);
-CREATE INDEX IF NOT EXISTS idx_topic_daily_day ON topic_daily (day);
-CREATE INDEX IF NOT EXISTS idx_topic_daily_topic ON topic_daily (topic);
-CREATE TABLE IF NOT EXISTS learned_keywords (
-  keyword TEXT PRIMARY KEY,
-  source_topic TEXT NOT NULL,
-  first_seen INTEGER NOT NULL,
-  last_seen INTEGER NOT NULL,
-  hit_count INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'active'
-);
-CREATE INDEX IF NOT EXISTS idx_learned_keywords_status
-  ON learned_keywords (status, hit_count DESC);
-`;
-
-let schemaReady = false;
-
-export async function ensureTopicLearningSchema(db: DbReader): Promise<void> {
-  if (schemaReady) return;
-  const statements = TOPIC_LEARNING_SCHEMA_SQL.split(";")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((sql) => db.prepare(sql));
-  await db.batch(statements);
-  schemaReady = true;
-}
-
-/** Test helper — Worker isolate is long-lived; tests share the module. */
-export function resetTopicLearningSchemaCache(): void {
-  schemaReady = false;
-}
-
 /** Calendar day key in Asia/Ho_Chi_Minh (same as TL;DR / digest). */
 export function learningDayKey(nowMs: number): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -825,7 +783,6 @@ export async function loadLearnedKeywords(
   limit = 80
 ): Promise<string[]> {
   try {
-    await ensureTopicLearningSchema(db);
     const { results } = await learnedKeywordsStmt(db, limit).all<{
       keyword: string;
     }>();
@@ -841,7 +798,6 @@ export async function loadTopicDailyCounts(
   day: string
 ): Promise<Map<string, number>> {
   try {
-    await ensureTopicLearningSchema(db);
     const { results } = await topicDailyCountsStmt(db, day).all<{
       topic: string;
       count: number;
@@ -889,7 +845,6 @@ export async function captureAndLearnTopics(
   }));
 
   try {
-    await ensureTopicLearningSchema(db);
     await recordTopicDaily(db, topics, day);
     const promoted = await promoteEmergingTopics(db, {
       day,

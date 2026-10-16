@@ -254,47 +254,6 @@ export async function writeGa4Snapshot(
     .run();
 }
 
-/** D1 reports an unmigrated table as "no such table". */
-export function isMissingGa4Table(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /no such table|has no table|unknown table/i.test(message);
-}
-
-/** Cheapest statement that proves migration 0028 has been applied. */
-export const GA4_TABLE_PROBE_SQL = "SELECT id FROM ga4_insights LIMIT 1";
-
-let ga4TableSupported: boolean | null = null;
-
-/** Test seam: the probe is cached per isolate, like the other D1 probes. */
-export function resetGa4TableProbe(): void {
-  ga4TableSupported = null;
-}
-
-/**
- * Has migration 0028 been applied? Applying migrations is an operator step,
- * so the sync *reports* the state instead of assuming it: without this probe
- * an un-migrated database would spend a Google token exchange every day only
- * to fail on the write, and an unconfigured cron must stay silent.
- */
-export async function hasGa4Table(
-  db: Pick<D1Database, "prepare">
-): Promise<boolean> {
-  if (ga4TableSupported != null) return ga4TableSupported;
-  try {
-    await db.prepare(GA4_TABLE_PROBE_SQL).all();
-    ga4TableSupported = true;
-  } catch (error) {
-    if (!isMissingGa4Table(error)) {
-      // A transient D1 failure is not a schema answer; let the caller decide
-      // rather than caching "unsupported" for the life of the isolate.
-      ga4TableSupported = null;
-      throw error;
-    }
-    ga4TableSupported = false;
-  }
-  return ga4TableSupported;
-}
-
 /** Last stored snapshot header, or null. Used for the 24-hour gate. */
 export async function readGa4SnapshotFetchedAt(
   db: Pick<D1Database, "prepare">,
@@ -329,11 +288,6 @@ export async function syncGa4Insights(
   }
   if (!env.DB) {
     return { status: "unconfigured", reason: "D1 binding DB not configured" };
-  }
-  // Check the destination before spending a Google round-trip: an un-migrated
-  // database cannot store the result, and the write would only fail later.
-  if (!(await hasGa4Table(env.DB))) {
-    return { status: "unconfigured", reason: "migration 0028 not applied" };
   }
 
   const fetcher = opts.fetcher ?? fetch;
@@ -426,9 +380,6 @@ export async function maybeSyncGa4Insights(
   }
   if (!env.DB) {
     return { status: "unconfigured", reason: "D1 binding DB not configured" };
-  }
-  if (!(await hasGa4Table(env.DB))) {
-    return { status: "unconfigured", reason: "migration 0028 not applied" };
   }
 
   const nowMs = opts.now ?? Date.now();

@@ -1,10 +1,9 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   GA4_SNAPSHOT_ID,
   GA4_SYNC_INTERVAL_MS,
   maybeSyncGa4Insights,
   normalizeGa4PropertyId,
-  resetGa4TableProbe,
   syncGa4Insights,
 } from "../ga4/insights.js";
 import { parseGa4Snapshot } from "../ga4/snapshot.js";
@@ -17,50 +16,38 @@ const PEM_END = "-----" + "END PRIVATE KEY-----";
  *  the bound args, and the `run`/`first`/`all` methods the module calls. */
 function fakeDb(options: {
   rows?: Record<string, unknown>[];
-  missingTable?: boolean;
   onPrepare?: (sql: string) => void;
 }) {
   const written: { sql: string; args: unknown[] }[] = [];
-  const missing = (sql: string): boolean =>
-    options.missingTable === true && /ga4_insights/.test(sql);
   const prepare = (sql: string) => {
     options.onPrepare?.(sql);
-    const guard = () => {
-      if (missing(sql)) throw new Error(`no such table: ga4_insights`);
-    };
     return {
       bind: (...args: unknown[]) => ({
         sql,
         args,
         run: async () => {
-          guard();
           written.push({ sql, args });
           return { success: true };
         },
         first: async <T>() => {
-          guard();
           return (
             ((options.rows ?? []).find((row) => matches(row, sql)) as T) ?? null
           );
         },
         all: async <T>() => {
-          guard();
           return { results: (options.rows ?? []) as T[] };
         },
       }),
       run: async () => {
-        guard();
         written.push({ sql, args: [] });
         return { success: true };
       },
       first: async <T>() => {
-        guard();
         return (
           ((options.rows ?? []).find((row) => matches(row, sql)) as T) ?? null
         );
       },
       all: async <T>() => {
-        guard();
         return { results: (options.rows ?? []) as T[] };
       },
     };
@@ -148,11 +135,6 @@ function ga4Fetcher(
 }
 
 const NOW_MS = Date.UTC(2026, 8, 29, 12, 0, 0);
-
-// The table probe is cached per isolate, exactly as it is in the Worker.
-beforeEach(() => {
-  resetGa4TableProbe();
-});
 
 describe("normalizeGa4PropertyId", () => {
   it("accepts the bare id and the properties/ form", () => {
@@ -299,38 +281,6 @@ describe("syncGa4Insights", () => {
       { now: NOW_MS }
     );
     expect(result.status).toBe("unconfigured");
-    expect(written).toHaveLength(0);
-  });
-
-  it("reports unconfigured when migration 0028 has not been applied", async () => {
-    // An un-migrated database cannot store the result, so the sync must not
-    // spend a Google round-trip discovering that on every alarm.
-    const { db, written } = fakeDb({ missingTable: true });
-    const { fetcher, calls } = ga4Fetcher({
-      totalsRows: [
-        {
-          metricValues: [
-            { value: "1" },
-            { value: "1" },
-            { value: "1" },
-            { value: "0" },
-          ],
-        },
-      ],
-    });
-
-    const result = await syncGa4Insights(
-      {
-        DB: db,
-        GA4_PROPERTY_ID: "123456",
-        GA4_SERVICE_ACCOUNT_JSON: serviceAccountJson,
-      },
-      { now: NOW_MS, fetcher }
-    );
-
-    expect(result.status).toBe("unconfigured");
-    expect(result.reason).toContain("0028");
-    expect(calls).toHaveLength(0);
     expect(written).toHaveLength(0);
   });
 

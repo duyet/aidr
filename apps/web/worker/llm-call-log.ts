@@ -9,75 +9,6 @@ import type { Env } from "./types.js";
 
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Additive usage/identity columns from migrations 0016, 0025, 0033, 0034, 0035. Applied at
- * runtime so local/preview DBs keep logging before migrations are applied. */
-const TELEMETRY_COLUMNS_SQL = [
-  "ALTER TABLE llm_calls ADD COLUMN prompt_tokens INTEGER",
-  "ALTER TABLE llm_calls ADD COLUMN completion_tokens INTEGER",
-  "ALTER TABLE llm_calls ADD COLUMN cached_tokens INTEGER",
-  "ALTER TABLE llm_calls ADD COLUMN run_id TEXT",
-  "ALTER TABLE llm_calls ADD COLUMN error_code TEXT",
-  "ALTER TABLE llm_calls ADD COLUMN error_status INTEGER",
-  "ALTER TABLE llm_calls ADD COLUMN route TEXT",
-  "ALTER TABLE llm_calls ADD COLUMN provider TEXT",
-  "ALTER TABLE llm_calls ADD COLUMN call_id TEXT",
-  "ALTER TABLE llm_calls ADD COLUMN cost_usd REAL",
-  "ALTER TABLE llm_calls ADD COLUMN request_id TEXT",
-];
-
-let telemetryColumnsReady = false;
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-/** A column that already exists is the success case, not a failure: D1
- * reports `duplicate column name` for the second attempt. */
-function isAlreadyPresent(error: unknown): boolean {
-  return /duplicate column name|already exists/i.test(errorMessage(error));
-}
-
-/**
- * Errors that will not fix themselves. Re-issuing the ALTER list on every
- * logged call for a schema that is never going to change would add a failed
- * DDL round-trip per attempt for the life of the isolate. Deliberately
- * excludes transient problems (lock contention, a busy database), which must
- * keep retrying.
- */
-function isSettled(error: unknown): boolean {
-  const message = errorMessage(error);
-  return (
-    /no such table/i.test(message) ||
-    /not authorized|permission denied|read-only/i.test(message) ||
-    /syntax error/i.test(message) ||
-    /\bunsupported\b|\bsorry\b/i.test(message)
-  );
-}
-
-async function ensureTelemetryColumns(db: D1Database): Promise<void> {
-  if (telemetryColumnsReady) return;
-  let complete = true;
-  let settled = false;
-  for (const sql of TELEMETRY_COLUMNS_SQL) {
-    try {
-      await db.prepare(sql).run();
-    } catch (error) {
-      if (isAlreadyPresent(error)) continue;
-      // A transient failure must not latch the cache: if it did, `run_id`
-      // would never be added and every later call would fall through to the
-      // legacy INSERT that carries no identity. Retry instead.
-      if (isSettled(error)) {
-        settled = true;
-        continue;
-      }
-      complete = false;
-    }
-  }
-  // `settled` means this isolate can never add the columns, so stop
-  // re-issuing the DDL; the insert ladder still logs what the schema allows.
-  telemetryColumnsReady = complete || settled;
-}
-
 /** Every D1 insert started by a logger, so a step can await them before its
  * callback returns. `logLlmCall` is fire-and-forget: without an explicit
  * drain, a Workflow step can resolve (and its isolate be reused/discarded)
@@ -103,8 +34,7 @@ export async function flushLlmCallWrites(): Promise<void> {
 }
 
 /** Test helper — Worker isolate is long-lived; tests share the module. */
-export function resetLlmCallLogSchemaCache(): void {
-  telemetryColumnsReady = false;
+export function resetLlmCallLogState(): void {
   pendingLlmCallWrites.clear();
 }
 
@@ -148,177 +78,18 @@ export function createD1LlmCallLogger(
       const safeError = sanitizeError(safeEntry.error);
       const runId = entry.runId ?? fallbackRunId ?? null;
       try {
-        await ensureTelemetryColumns(env.DB);
         const route =
           safeEntry.route && safeEntry.route.length > 0
             ? JSON.stringify(safeEntry.route.slice(0, 5))
             : null;
-        try {
-          await env.DB.prepare(
-            `INSERT INTO llm_calls (
-               ts, task, model, ok, tokens, duration_ms, error,
-               prompt_chars, response_snippet,
-               prompt_tokens, completion_tokens, cached_tokens,
-               run_id, error_code, error_status, route, provider, call_id,
-               cost_usd, request_id
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          )
-            .bind(
-              safeEntry.ts,
-              safeEntry.task,
-              safeEntry.model,
-              safeEntry.ok ? 1 : 0,
-              safeEntry.tokens,
-              safeEntry.durationMs,
-              safeError?.message ?? null,
-              safeEntry.promptChars,
-              safeEntry.responseSnippet,
-              safeEntry.promptTokens,
-              safeEntry.completionTokens,
-              safeEntry.cachedTokens,
-              runId,
-              safeError?.code ?? null,
-              safeError?.status ?? null,
-              route,
-              safeEntry.provider ?? null,
-              safeEntry.callId ?? null,
-              safeEntry.costUsd ?? null,
-              safeEntry.requestId ?? null
-            )
-            .run();
-          return;
-        } catch {
-          // Pre-0035 DB: no cost_usd/request_id columns. Fall through.
-        }
-        try {
-          await env.DB.prepare(
-            `INSERT INTO llm_calls (
-               ts, task, model, ok, tokens, duration_ms, error,
-               prompt_chars, response_snippet,
-               prompt_tokens, completion_tokens, cached_tokens,
-               run_id, error_code, error_status, route, provider, call_id
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          )
-            .bind(
-              safeEntry.ts,
-              safeEntry.task,
-              safeEntry.model,
-              safeEntry.ok ? 1 : 0,
-              safeEntry.tokens,
-              safeEntry.durationMs,
-              safeError?.message ?? null,
-              safeEntry.promptChars,
-              safeEntry.responseSnippet,
-              safeEntry.promptTokens,
-              safeEntry.completionTokens,
-              safeEntry.cachedTokens,
-              runId,
-              safeError?.code ?? null,
-              safeError?.status ?? null,
-              route,
-              safeEntry.provider ?? null,
-              safeEntry.callId ?? null
-            )
-            .run();
-          return;
-        } catch {
-          // Pre-0034 DB: no call_id column. Fall through.
-        }
-        try {
-          await env.DB.prepare(
-            `INSERT INTO llm_calls (
-               ts, task, model, ok, tokens, duration_ms, error,
-               prompt_chars, response_snippet,
-               prompt_tokens, completion_tokens, cached_tokens,
-               run_id, error_code, error_status, route, provider
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          )
-            .bind(
-              safeEntry.ts,
-              safeEntry.task,
-              safeEntry.model,
-              safeEntry.ok ? 1 : 0,
-              safeEntry.tokens,
-              safeEntry.durationMs,
-              safeError?.message ?? null,
-              safeEntry.promptChars,
-              safeEntry.responseSnippet,
-              safeEntry.promptTokens,
-              safeEntry.completionTokens,
-              safeEntry.cachedTokens,
-              runId,
-              safeError?.code ?? null,
-              safeError?.status ?? null,
-              route,
-              safeEntry.provider ?? null
-            )
-            .run();
-          return;
-        } catch {
-          // Pre-0033 DB: no route/provider columns. Fall through.
-        }
-        try {
-          await env.DB.prepare(
-            `INSERT INTO llm_calls (
-               ts, task, model, ok, tokens, duration_ms, error,
-               prompt_chars, response_snippet,
-               prompt_tokens, completion_tokens, cached_tokens,
-               run_id, error_code, error_status
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          )
-            .bind(
-              safeEntry.ts,
-              safeEntry.task,
-              safeEntry.model,
-              safeEntry.ok ? 1 : 0,
-              safeEntry.tokens,
-              safeEntry.durationMs,
-              safeError?.message ?? null,
-              safeEntry.promptChars,
-              safeEntry.responseSnippet,
-              safeEntry.promptTokens,
-              safeEntry.completionTokens,
-              safeEntry.cachedTokens,
-              runId,
-              safeError?.code ?? null,
-              safeError?.status ?? null
-            )
-            .run();
-          return;
-        } catch {
-          // A pre-0016/0025 DB may not have every optional column. The next
-          // insert keeps identity if the identity migration exists, then the
-          // legacy insert keeps logging safe aggregate fields only.
-        }
-        try {
-          await env.DB.prepare(
-            `INSERT INTO llm_calls (
-               ts, task, model, ok, tokens, duration_ms, error,
-               prompt_chars, response_snippet, run_id, error_code, error_status
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          )
-            .bind(
-              safeEntry.ts,
-              safeEntry.task,
-              safeEntry.model,
-              safeEntry.ok ? 1 : 0,
-              safeEntry.tokens,
-              safeEntry.durationMs,
-              safeError?.message ?? null,
-              safeEntry.promptChars,
-              safeEntry.responseSnippet,
-              runId,
-              safeError?.code ?? null,
-              safeError?.status ?? null
-            )
-            .run();
-          return;
-        } catch {
-          // Fall through to the pre-identity schema.
-        }
         await env.DB.prepare(
-          `INSERT INTO llm_calls (ts, task, model, ok, tokens, duration_ms, error, prompt_chars, response_snippet)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO llm_calls (
+             ts, task, model, ok, tokens, duration_ms, error,
+             prompt_chars, response_snippet,
+             prompt_tokens, completion_tokens, cached_tokens,
+             run_id, error_code, error_status, route, provider, call_id,
+             cost_usd, request_id
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
           .bind(
             safeEntry.ts,
@@ -329,7 +100,18 @@ export function createD1LlmCallLogger(
             safeEntry.durationMs,
             safeError?.message ?? null,
             safeEntry.promptChars,
-            safeEntry.responseSnippet
+            safeEntry.responseSnippet,
+            safeEntry.promptTokens,
+            safeEntry.completionTokens,
+            safeEntry.cachedTokens,
+            runId,
+            safeError?.code ?? null,
+            safeError?.status ?? null,
+            route,
+            safeEntry.provider ?? null,
+            safeEntry.callId ?? null,
+            safeEntry.costUsd ?? null,
+            safeEntry.requestId ?? null
           )
           .run();
       } catch (error) {

@@ -57,7 +57,6 @@ import {
 import { writeItems } from "./ingest/write.js";
 import { setLlmCallLogger, withLlmCallContext } from "./llm.js";
 import { createD1LlmCallLogger, pruneLlmCalls } from "./llm-call-log.js";
-import { assertMediaManifestSchema } from "./media-schema.js";
 import type { NotifyChannelReason } from "./notify/index.js";
 import { pruneSubscribeAttempts } from "./rate-limit.js";
 import {
@@ -296,8 +295,6 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     };
 
     try {
-      await assertMediaManifestSchema(this.env.DB);
-
       // 1–3. Consume sources, score, translate, persist and re-rank.
       if (runChainStep(ctx, "fetch")) {
         const fresh = await ingestFreshItems();
