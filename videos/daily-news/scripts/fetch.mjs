@@ -4,7 +4,7 @@
 // Usage: node scripts/fetch.mjs [--count 6]
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { download, hasWrittenScript, UA } from "./media.mjs";
+import { downloadImages, hasWrittenScript, UA } from "./media.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
@@ -40,11 +40,7 @@ for (const [i, bullet] of bullets_en.slice(0, count).entries()) {
         .map((a) => a.url),
     ]),
   ].filter(Boolean);
-  const images = [];
-  for (const url of [...new Set(urls)].slice(0, 3)) {
-    const local = await download(dir, url, `s${rank}-${images.length + 1}`);
-    if (local) images.push({ url, local });
-  }
+  const images = await downloadImages(dir, urls, `s${rank}`);
   stories.push({
     rank,
     text: bullet.text,
