@@ -332,7 +332,7 @@ describe("CalendarButton month loading", () => {
       ).disabled
     ).toBe(true);
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Retry" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Try again" }));
     await within(dialog).findByLabelText(/^Wednesday, September 30: 3 stories/);
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });

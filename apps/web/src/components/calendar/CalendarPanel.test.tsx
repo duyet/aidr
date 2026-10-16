@@ -24,6 +24,6 @@ describe("CalendarPanel error state", () => {
 
     const alert = screen.getByRole("alert");
     expect(alert.textContent).toBe("The calendar could not be loaded.");
-    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 });

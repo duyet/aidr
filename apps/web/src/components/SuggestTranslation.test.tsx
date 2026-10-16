@@ -93,13 +93,15 @@ describe("SuggestTranslation signed out without the Clerk SDK", () => {
     expect(assign).toHaveBeenCalledTimes(2);
   });
 
-  // A signed-in reader whose SDK is still downloading must not be sent to
-  // /sign-in, by a click or by a selection "Suggest".
-  it("shows plain text and never navigates while a session's SDK loads", () => {
+  // A signed-in reader whose SDK is still downloading must not be told to
+  // sign in, nor sent to /sign-in by a click or a selection "Suggest".
+  it("shows the disabled control, never 'Sign in to suggest', while a session's SDK loads", () => {
     setCookie("__client_uat=1757000000");
     renderSignedOut({ initialText: "bản dịch này sai", suggestionAttempt: 1 });
+    const button = screen.getByRole("button", { name: "Suggest an edit" });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText("Sign in to suggest")).toBeNull();
     expect(screen.queryByRole("link")).toBeNull();
-    expect(screen.getByText("Sign in to suggest")).not.toBeNull();
     expect(assign).not.toHaveBeenCalled();
   });
 

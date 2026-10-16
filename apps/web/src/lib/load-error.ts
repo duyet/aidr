@@ -1,7 +1,7 @@
 import type { Lang } from "./types";
 
 /** A page whose loader read failed. Not a 404: the URL may still exist. */
-export type LoadErrorSubject = "day" | "story" | "week" | "weeks";
+export type LoadErrorSubject = "day" | "story" | "week" | "weeks" | "calendar";
 
 interface LoadErrorCopy {
   title: string;
@@ -41,6 +41,10 @@ const COPY: Record<LoadErrorSubject, Record<Lang, [string, string]>> = {
       "Không tải được bản tin tuần | AI;DR",
       "Không tải được bản tin tuần này. Vui lòng thử lại.",
     ],
+  },
+  calendar: {
+    en: ["Calendar unavailable | AI;DR", "The calendar could not be loaded."],
+    vi: ["Không tải được lịch | AI;DR", "Không tải được lịch."],
   },
   weeks: {
     en: [
