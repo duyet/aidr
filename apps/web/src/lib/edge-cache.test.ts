@@ -10,6 +10,7 @@ import {
   normalizedCacheUrl,
   sharedMaxAge,
 } from "./edge-cache";
+import { type GlobalHtmlCache, globalHtmlCache } from "./global-html-cache";
 import { hasCanonicalLocaleQuery } from "./locale-url";
 import {
   markStage,
@@ -197,9 +198,11 @@ const T0 = new Date("2026-10-16T00:00:00Z");
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(T0);
+  vi.spyOn(console, "log").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
+  vi.mocked(console.log).mockRestore();
   store.clear();
   fake.match.mockClear();
   fake.put.mockClear();
@@ -578,5 +581,273 @@ describe("bareLocalizedCacheLang", () => {
         })
       )
     ).toBeNull();
+  });
+});
+
+describe("global KV tier", () => {
+  const HOME = "https://aidr.today/?lang=en";
+  const v1 = async () => page({ vary: "Cookie, Accept-Language" });
+  const v2 = async () =>
+    new Response("<html>v2</html>", {
+      headers: { "content-type": "text/html", "cache-control": PUBLIC },
+    });
+
+  function kvTier() {
+    const values = new Map<string, string>();
+    const ttls: number[] = [];
+    const kv = {
+      get: vi.fn(async (key: string, _type: "text") => values.get(key) ?? null),
+      put: vi.fn(
+        async (
+          key: string,
+          value: string,
+          options: { expirationTtl: number }
+        ) => {
+          values.set(key, value);
+          ttls.push(options.expirationTtl);
+        }
+      ),
+    };
+    const tier = globalHtmlCache({
+      HTML_CACHE: kv as unknown as KVNamespace,
+      CF_VERSION_METADATA: { id: "build-a" },
+    }) as GlobalHtmlCache;
+    return { kv, ttls, tier };
+  }
+
+  /** Render once on "another colo": KV and the local cache both hold it. */
+  async function renderElsewhere(
+    tier: GlobalHtmlCache,
+    ctx: { waitUntil: (p: Promise<unknown>) => void },
+    pending: Promise<unknown>[],
+    render: () => Promise<Response> = v1
+  ) {
+    await cachedSsrResponse(get(HOME), ctx, render, tier);
+    await Promise.all(pending);
+    store.clear();
+  }
+
+  function storedAt(url: string): string | null | undefined {
+    return [...store.entries()]
+      .find(([k]) => k.startsWith(url))?.[1]
+      .headers.get("x-aidr-stored-at");
+  }
+
+  // Defect: a cold colo rendering (1.2 s) while another colo's copy sits in
+  // KV, or the copy reaching the client with the Worker's internal headers.
+  it("serves a cold colo from KV without rendering and keeps it locally", async () => {
+    const { ctx, pending } = setup();
+    const { tier } = kvTier();
+    await renderElsewhere(tier, ctx, pending);
+    advance(120);
+
+    const render = vi.fn(v2);
+    const out = await cachedSsrResponse(get(HOME), ctx, render, tier);
+    await Promise.all(pending);
+    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("KV");
+    expect(out.headers.get("server-timing")).toBe("aidr-cache;desc=KV");
+    expect(render).not.toHaveBeenCalled();
+    expect(await out.text()).toBe("<html></html>");
+    expect(out.headers.get("cache-control")).toBe(PUBLIC);
+    expect(out.headers.get("vary")).toBe("Cookie, Accept-Language");
+    expect(out.headers.get("content-type")).toBe("text/html");
+    expect(
+      [...out.headers.keys()].filter((h) => h.startsWith("x-aidr-"))
+    ).toEqual([EDGE_CACHE_HEADER]);
+    expect(console.log).toHaveBeenLastCalledWith({
+      event: "html-cache",
+      state: "KV",
+      path: "/",
+      lang: "en",
+      age: 120,
+      global: true,
+    });
+
+    const again = await cachedSsrResponse(get(HOME), ctx, render, tier);
+    expect(again.headers.get(EDGE_CACHE_HEADER)).toBe("HIT");
+    expect(render).not.toHaveBeenCalled();
+  });
+
+  // Defect: restamping a KV copy on arrival, so each colo it reaches restarts
+  // its fresh and stale windows and the HTML outlives its build's chunks.
+  it("keeps the copy's original stored-at in the local cache", async () => {
+    const { ctx, pending } = setup();
+    const { tier } = kvTier();
+    await renderElsewhere(tier, ctx, pending);
+    const renderedAt = String(T0.getTime() / 1000);
+    advance(200);
+    await cachedSsrResponse(get(HOME), ctx, vi.fn(v2), tier);
+    await Promise.all(pending);
+    expect(storedAt(HOME)).toBe(renderedAt);
+
+    advance(101);
+    const render = vi.fn(v2);
+    const later = await cachedSsrResponse(get(HOME), ctx, render, tier);
+    expect(later.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    await Promise.all(pending);
+  });
+
+  // Defect: a dormant KV copy served past the Worker's stale window, or one
+  // KV keeps longer than the local cache would.
+  it("renders over a KV copy past the stale window and sets KV's TTL to fresh + stale", async () => {
+    const { ctx, pending } = setup();
+    const { tier, ttls } = kvTier();
+    await renderElsewhere(tier, ctx, pending);
+    expect(ttls).toEqual([300 + EDGE_CACHE_STALE_S]);
+    advance(300 + EDGE_CACHE_STALE_S + 1);
+
+    const render = vi.fn(v2);
+    const out = await cachedSsrResponse(get(HOME), ctx, render, tier);
+    await Promise.all(pending);
+    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("MISS");
+    expect(await out.text()).toBe("<html>v2</html>");
+    expect(render).toHaveBeenCalledOnce();
+  });
+
+  // Defect: a stale colo rendering although another colo already refreshed
+  // KV, so every colo renders once per window anyway.
+  it("refreshes a stale local entry from a fresh KV copy without rendering", async () => {
+    const { ctx, pending } = setup();
+    const { tier } = kvTier();
+    await cachedSsrResponse(get(HOME), ctx, v1, tier);
+    await Promise.all(pending);
+    const oldColo = new Map(store);
+    store.clear();
+
+    advance(610);
+    await cachedSsrResponse(get(HOME), ctx, v2, tier);
+    await Promise.all(pending);
+    for (const [k, v] of oldColo) store.set(k, v);
+
+    advance(90);
+    const render = vi.fn(v2);
+    const stale = await cachedSsrResponse(get(HOME), ctx, render, tier);
+    expect(stale.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    expect(await stale.text()).toBe("<html></html>");
+    await Promise.all(pending);
+    expect(render).not.toHaveBeenCalled();
+    const hit = await cachedSsrResponse(get(HOME), ctx, render, tier);
+    expect(hit.headers.get(EDGE_CACHE_HEADER)).toBe("HIT");
+    expect(await hit.text()).toBe("<html>v2</html>");
+  });
+
+  // Defect: unbounded KV writes against the Free plan's 1,000 a day.
+  it("writes KV at most once per write interval per key", async () => {
+    const { ctx, pending } = setup();
+    const { tier, kv } = kvTier();
+    const render = vi.fn(v2);
+    await cachedSsrResponse(get(HOME), ctx, render, tier);
+    await Promise.all(pending);
+    expect(kv.put).toHaveBeenCalledTimes(1);
+
+    advance(301);
+    await cachedSsrResponse(get(HOME), ctx, render, tier);
+    await Promise.all(pending);
+    expect(render).toHaveBeenCalledTimes(2);
+    expect(kv.put).toHaveBeenCalledTimes(1);
+
+    advance(301);
+    await cachedSsrResponse(get(HOME), ctx, render, tier);
+    await Promise.all(pending);
+    expect(render).toHaveBeenCalledTimes(3);
+    expect(kv.put).toHaveBeenCalledTimes(2);
+  });
+
+  // Defect: a response the local cache refuses (private, Set-Cookie, an
+  // error, a signed-in view) still reaching every colo through KV.
+  it("never sends a response the local cache would refuse to KV", async () => {
+    const { ctx, pending } = setup();
+    const { tier, kv } = kvTier();
+    for (const res of [
+      page({ "cache-control": "private, no-store" }),
+      page({ "set-cookie": "a=b" }),
+      page({}, 500),
+    ]) {
+      await cachedSsrResponse(get(HOME), ctx, async () => res, tier);
+    }
+    await cachedSsrResponse(
+      get(HOME, { cookie: "__session=abc" }),
+      ctx,
+      v1,
+      tier
+    );
+    await Promise.all(pending);
+    expect(kv.put).not.toHaveBeenCalled();
+    expect(fake.put).not.toHaveBeenCalled();
+  });
+
+  // Defect: story pages, searches and the feed reading or writing KV, whose
+  // key counts no write interval can bound.
+  it("leaves every key but the unfiltered homepage out of KV", async () => {
+    const { ctx, pending } = setup();
+    const { tier, kv } = kvTier();
+    for (const url of [
+      "https://aidr.today/74c9e10c?lang=en",
+      "https://aidr.today/?lang=en&q=openai",
+    ]) {
+      await cachedSsrResponse(get(url), ctx, v1, tier);
+    }
+    await cachedLocaleResponse(
+      new Request("https://aidr.today/feed.xml"),
+      ctx,
+      "en",
+      "public, max-age=300, s-maxage=600",
+      async () => new Response("<rss/>"),
+      tier
+    );
+    await Promise.all(pending);
+    expect(fake.put).toHaveBeenCalledTimes(3);
+    expect(kv.get).not.toHaveBeenCalled();
+    expect(kv.put).not.toHaveBeenCalled();
+  });
+
+  // Defect: bare / (private to clients, keyed by resolved language) left off
+  // KV, so most cold-colo readers still render.
+  it("shares bare / per resolved language", async () => {
+    const { ctx, pending } = setup();
+    const { tier, kv } = kvTier();
+    const bare = async () =>
+      new Response("<html>bare</html>", {
+        headers: {
+          "content-type": "text/html",
+          "cache-control": "private, no-store",
+          vary: "Cookie, Accept-Language",
+        },
+      });
+    const serve = (render: () => Promise<Response>) =>
+      cachedLocaleResponse(
+        get("https://aidr.today/"),
+        ctx,
+        "en",
+        "public, max-age=60, s-maxage=300",
+        render,
+        tier
+      );
+    await serve(bare);
+    await Promise.all(pending);
+    expect(kv.put).toHaveBeenCalledOnce();
+    store.clear();
+    const render = vi.fn(bare);
+    const out = await serve(render);
+    await Promise.all(pending);
+    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("KV");
+    expect(out.headers.get("cache-control")).toBe("private, no-store");
+    expect(render).not.toHaveBeenCalled();
+  });
+
+  // Defect: a KV outage failing or slowing the page into an error.
+  it("renders through a failed KV read and keeps the local copy on a failed write", async () => {
+    const { ctx, pending } = setup();
+    const { tier, kv } = kvTier();
+    kv.get.mockRejectedValueOnce(new Error("KV unavailable"));
+    kv.put.mockRejectedValueOnce(new Error("429 too many writes"));
+    const out = await cachedSsrResponse(get(HOME), ctx, v1, tier);
+    await Promise.all(pending);
+    expect(out.status).toBe(200);
+    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("MISS");
+    expect(kv.put).toHaveBeenCalledOnce();
+    expect(fake.put).toHaveBeenCalledOnce();
+    const hit = await cachedSsrResponse(get(HOME), ctx, v1, tier);
+    expect(hit.headers.get(EDGE_CACHE_HEADER)).toBe("HIT");
   });
 });

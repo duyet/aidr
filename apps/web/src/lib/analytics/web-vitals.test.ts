@@ -39,15 +39,20 @@ const metric = (
   }) as Metric;
 
 describe("documentCacheStatus", () => {
-  it("passes STALE through instead of folding it into none", () => {
-    const spy = vi
-      .spyOn(performance, "getEntriesByType")
-      .mockReturnValue([
-        { serverTiming: [{ name: "aidr-cache", description: "STALE" }] },
-      ] as unknown as PerformanceNavigationTiming[]);
-    expect(documentCacheStatus()).toBe("STALE");
-    spy.mockRestore();
-  });
+  // Defect: STALE and KV loads folded into "none", hiding how the Worker
+  // and KV tiers change load times.
+  it.each(["STALE", "KV"])(
+    "passes %s through instead of folding it into none",
+    (desc) => {
+      const spy = vi
+        .spyOn(performance, "getEntriesByType")
+        .mockReturnValue([
+          { serverTiming: [{ name: "aidr-cache", description: desc }] },
+        ] as unknown as PerformanceNavigationTiming[]);
+      expect(documentCacheStatus()).toBe(desc);
+      spy.mockRestore();
+    }
+  );
 });
 
 describe("metricParams", () => {
