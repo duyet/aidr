@@ -718,7 +718,9 @@ ORDER BY week DESC, hits DESC
   35s. Cluster (`worker/dedupe.ts`): `CLUSTER_SLICE_MAX_MS` 45s inside the
   120s `CLUSTER_TIMEOUT_MS`. Served cluster calls finish within 30s; at 90s
   a stalled first hop left each later id 13.3s, under the 20s first-token
-  cutoff (#672).
+  cutoff (#672). Each extra chain id also holds back a fallback floor: with
+  `anyrouter/auto` as a fifth id, the last id got 18.3s after a stalled
+  first hop; without it, 35s.
 - Do not treat GitHub Actions SUCCESS as a finished ingest. Poll
   `GET /api/system` (no-store) until `lastRun.id` matches the POST `id`
   (or at least is no longer the previous id) and `runsToday > 0`.
@@ -2425,10 +2427,11 @@ then this chat chain:
 - `google/gemma-latest` (rolling alias, served `gemma-4-31b` on 2026-10-10)
 - `z-ai/glm-latest` (rolling alias, served `glm-5.2`)
 - `@preset/aidr` (workspace preset, served `gemma-4-31b` on 2026-10-10)
-- `anyrouter/auto` (router safety net, after the free ids; served Laguna)
 - `anthropic/claude-sonnet-5-5` (paid last resort, usable on this key since
-  2026-10-15; the 100 calls that reached `anyrouter/auto` in the 7 days
-  before got nothing from it)
+  2026-10-15)
+
+`anyrouter/auto` left this chain on 2026-10-16 (#672): it served 0 of 97
+calls in the 7 days before (cluster 0 of 48, score 0 of 41).
 
 This chain also runs the cluster call. On the gold cluster set, Laguna
 scored F1 0.51, while Gemma, GLM 5.2 and the preset scored 1.0. TL;DR uses

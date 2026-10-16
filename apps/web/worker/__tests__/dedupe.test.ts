@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { existingAlias } from "../cluster-alias.js";
 import {
@@ -948,4 +950,65 @@ describe("clusterSimilar chain budget", () => {
     expect(glm?.error ?? null).toBeNull();
     expect(glm?.ok).toBe(true);
   });
+
+  // Calls 10-14 14:04 and 10-15 00:56: gemma-latest stalled for its 45s
+  // slice and every later id sent no token. On the production chain the
+  // last id must still get time to answer like gemma does (cluster p90
+  // 20.5s, 7 days to 10-16); with anyrouter/auto in the chain it got 18.3s.
+  it("leaves the production chain's last id time to answer after every earlier id fails", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    const chain = productionChain();
+    const [head, last] = [chain[0], chain.at(-1)];
+    const lastAnswerMs = 19_000;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init?: RequestInit) => {
+        const { model } = JSON.parse(String(init?.body)) as { model: string };
+        if (model === head)
+          return Promise.resolve(tokenThenStall(init?.signal));
+        if (model === last)
+          return new Promise<Response>((resolve) =>
+            setTimeout(
+              () =>
+                resolve(
+                  chatResponse(
+                    `{"clusters":[{"new":[0],"existing":["${existingAlias(0)}"]}]}`
+                  )
+                ),
+              lastAnswerMs
+            )
+          );
+        return silentUntilAbort(init?.signal);
+      })
+    );
+
+    const pending = clusterSimilar(
+      { ...env, ANYROUTER_MODEL: chain.join(",") },
+      [{ i: 0, title: "OpenAI launches Dots" }],
+      [{ id: "abc", title: "Introducing dots" }]
+    );
+    await vi.advanceTimersByTimeAsync(120_000);
+    const result = await pending;
+
+    expect(entries.find((e) => e.model === last)?.ok).toBe(true);
+    expect(result.model).toBe(last);
+    expect(result.clusters).toEqual([{ new: [0], existing: ["abc"] }]);
+  });
 });
+
+function productionChain(): string[] {
+  const wrangler = readFileSync(
+    fileURLToPath(new URL("../../wrangler.toml", import.meta.url)),
+    "utf-8"
+  );
+  const spec = wrangler.match(/^ANYROUTER_MODEL = "([^"]+)"$/m)?.[1];
+  if (!spec) throw new Error("ANYROUTER_MODEL missing from wrangler.toml");
+  return spec.split(",").map((id) => id.trim());
+}
