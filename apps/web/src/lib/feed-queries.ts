@@ -9,7 +9,6 @@ import {
 } from "../../worker/media.js";
 import { VOTE_NET_COLUMN, VOTE_NET_JOIN_I } from "../../worker/ranking.js";
 import {
-  itemReadsTableReady,
   READ_COUNT_COLUMN,
   READ_COUNT_JOIN_I,
   readFactor,
@@ -23,7 +22,6 @@ import {
   readableLearnedKeywords,
   topicDailyCountsStmt,
 } from "../../worker/topic-learning.js";
-import { itemVotesTableReady } from "../../worker/votes.js";
 import { archiveDateOfSec, dayBoundsSec } from "./day-archive";
 import { DAY_VIDEO_TITLE_MAX, type DayVideo, isYoutubeId } from "./day-video";
 import type { DbReader } from "./db";
@@ -58,11 +56,12 @@ interface ItemRow {
   rank_score: number;
   source_id: string;
   tags: string;
-  vote_net?: number;
+  vote_net: number;
+  llm_tokens: number;
+  image_url: string | null;
+  media_manifest: string | null;
+  /** Read-ordered select only (`readOrder: true`). */
   read_count?: number;
-  llm_tokens?: number;
-  image_url?: string | null;
-  media_manifest?: string | null;
   /** Collapsed select only (`detail: false`): summary/summary_vi come back
    * NULL and these say what the full select would have carried. */
   has_detail?: 0 | 1;
@@ -72,9 +71,12 @@ interface ItemRow {
 const ITEM_SELECT_BASE = `
   SELECT i.id, i.url, i.title, t.title AS title_vi,
          {summary}, i.category,
-         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}{media}{votes}{reads}{detail}
+         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags,
+         COALESCE(i.llm_tokens, 0) AS llm_tokens, i.image_url, i.media_manifest,
+         ${VOTE_NET_COLUMN}{reads}{detail}
   FROM items i
-  {vote_join}{read_join}LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
+  ${VOTE_NET_JOIN_I}
+  {read_join}LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
   WHERE i.status = 'published'
 `;
 
@@ -93,76 +95,20 @@ const DETAIL_COLUMNS = `,
          (SELECT COUNT(*) FROM item_sources s WHERE s.item_id = i.id) AS source_count`;
 
 interface ItemSelectFlags {
-  hasLlmTokens: boolean;
-  hasImageUrl: boolean;
-  hasMediaManifest: boolean;
-  hasVotes: boolean;
-  hasReads: boolean;
+  /** Homepage only: join today's and yesterday's opens as `read_count`. */
+  reads: boolean;
   /** false: no summary text, `has_detail` + `source_count` instead. */
   detail: boolean;
 }
 
-function itemSelectSql({
-  hasLlmTokens,
-  hasImageUrl,
-  hasMediaManifest,
-  hasVotes,
-  hasReads,
-  detail,
-}: ItemSelectFlags): string {
+function itemSelectSql({ reads, detail }: ItemSelectFlags): string {
   return ITEM_SELECT_BASE.replace(
     "{summary}",
     detail ? SUMMARY_COLUMNS : COLLAPSED_COLUMNS
   )
     .replace("{detail}", detail ? "" : DETAIL_COLUMNS)
-    .replace(
-      "{tokens}",
-      hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""
-    )
-    .replace("{image}", hasImageUrl ? ", i.image_url" : "")
-    .replace("{media}", hasMediaManifest ? ", i.media_manifest" : "")
-    .replace("{votes}", hasVotes ? `, ${VOTE_NET_COLUMN}` : "")
-    .replace("{vote_join}", hasVotes ? `${VOTE_NET_JOIN_I}\n  ` : "")
-    .replace("{reads}", hasReads ? `, ${READ_COUNT_COLUMN}` : "")
-    .replace("{read_join}", hasReads ? `${READ_COUNT_JOIN_I}\n  ` : "");
-}
-
-let llmTokensSupported: boolean | null = null;
-let imageUrlSupported: boolean | null = null;
-let mediaManifestSupported: boolean | null = null;
-
-async function probeColumn(
-  db: DbReader,
-  column: string,
-  cache: boolean | null
-): Promise<boolean> {
-  if (cache !== null) return cache;
-  try {
-    await db.prepare(`SELECT ${column} FROM items LIMIT 1`).all();
-    return true;
-  } catch {
-    // column not migrated in yet
-    return false;
-  }
-}
-
-async function supportsLlmTokens(db: DbReader): Promise<boolean> {
-  llmTokensSupported = await probeColumn(db, "llm_tokens", llmTokensSupported);
-  return llmTokensSupported;
-}
-
-async function supportsImageUrl(db: DbReader): Promise<boolean> {
-  imageUrlSupported = await probeColumn(db, "image_url", imageUrlSupported);
-  return imageUrlSupported;
-}
-
-async function supportsMediaManifest(db: DbReader): Promise<boolean> {
-  mediaManifestSupported = await probeColumn(
-    db,
-    "media_manifest",
-    mediaManifestSupported
-  );
-  return mediaManifestSupported;
+    .replace("{reads}", reads ? `, ${READ_COUNT_COLUMN}` : "")
+    .replace("{read_join}", reads ? `${READ_COUNT_JOIN_I}\n  ` : "");
 }
 
 function toFeedItem(row: ItemRow, detail = true): FeedItem {
@@ -219,7 +165,7 @@ interface SourceRow {
  * colo's miss can be read off the logs instead of inferred. */
 function logFeedBatch(
   itemsRes: D1Result | undefined,
-  timing: { probesMs: number; batchMs: number; detail: boolean }
+  timing: { batchMs: number; detail: boolean }
 ): void {
   const meta = (itemsRes?.meta ?? {}) as {
     duration?: number;
@@ -230,7 +176,6 @@ function logFeedBatch(
   console.log(
     JSON.stringify({
       event: "getFeed.batch",
-      probes_ms: timing.probesMs,
       batch_ms: timing.batchMs,
       d1_ms: meta.duration,
       rows_read: meta.rows_read,
@@ -527,25 +472,8 @@ export async function getFeed(
     : Math.floor(Date.now() / 1000);
   const since = until - days * 86400;
 
-  const startedAt = Date.now();
-  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes, hasReads] =
-    await Promise.all([
-      supportsLlmTokens(db),
-      supportsImageUrl(db),
-      supportsMediaManifest(db),
-      itemVotesTableReady(db),
-      opts.readOrder ? itemReadsTableReady(db) : false,
-    ]);
-  const probesMs = Date.now() - startedAt;
-  markStage("probe");
-  const itemSelect = itemSelectSql({
-    hasLlmTokens,
-    hasImageUrl,
-    hasMediaManifest,
-    hasVotes,
-    hasReads,
-    detail,
-  });
+  const hasReads = opts.readOrder === true;
+  const itemSelect = itemSelectSql({ reads: hasReads, detail });
 
   let sql = `${itemSelect} AND i.published_at >= ? AND i.published_at < ?`;
   const binds: unknown[] = [since, until];
@@ -603,7 +531,6 @@ export async function getFeed(
   markStage("d1");
   const itemsRes = batched[FEED_BATCH.items];
   logFeedBatch(itemsRes, {
-    probesMs,
     batchMs: Date.now() - batchStartedAt,
     detail,
   });
@@ -691,16 +618,9 @@ export async function getItemsByIds(
   ids: readonly string[]
 ): Promise<FeedItem[]> {
   if (ids.length === 0) return [];
-  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes] =
-    await Promise.all([
-      supportsLlmTokens(db),
-      supportsImageUrl(db),
-      supportsMediaManifest(db),
-      itemVotesTableReady(db),
-    ]);
   const { results } = await db
     .prepare(
-      `${itemSelectSql({ hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes, hasReads: false, detail: true })} AND i.id IN (SELECT value FROM json_each(?))`
+      `${itemSelectSql({ reads: false, detail: true })} AND i.id IN (SELECT value FROM json_each(?))`
     )
     .bind(JSON.stringify(ids))
     .all<ItemRow>();
@@ -772,21 +692,7 @@ export async function getDayArchive(
   date: string
 ): Promise<DayArchive> {
   const { start, end } = dayBoundsSec(date);
-  const [hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes] =
-    await Promise.all([
-      supportsLlmTokens(db),
-      supportsImageUrl(db),
-      supportsMediaManifest(db),
-      itemVotesTableReady(db),
-    ]);
-  const itemSelect = itemSelectSql({
-    hasLlmTokens,
-    hasImageUrl,
-    hasMediaManifest,
-    hasVotes,
-    hasReads: false,
-    detail: true,
-  });
+  const itemSelect = itemSelectSql({ reads: false, detail: true });
 
   const [itemsRes, tldrRes, prevRes, nextRes] = await db.batch([
     db

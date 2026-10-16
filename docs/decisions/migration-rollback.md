@@ -336,12 +336,12 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   `POST /api/read`; read by the homepage feed order (`getFeed`, today and
   yesterday) and `GET /api/system/reads` (28 days). Stored `rank_score`
   never reads it.
-- Risk: none for existing rows. Apply it before the Worker deploys so
-  reads count from the first beacon. Without it the collector answers 204
-  and writes nothing, `getFeed` probes the table and orders by `rank_score`
-  alone, and `/api/system/reads` answers as if empty.
+- Risk: none for existing rows. Apply it before the Worker deploys; the
+  deploy gate refuses a Worker while it is missing. The homepage `getFeed`
+  joins the table without probing it (#886).
 - Rollback: deploy the previous Worker; `DROP TABLE item_reads;`. Nothing
-  else holds a value derived from it.
+  else holds a value derived from it. Never drop it under a Worker that
+  still reads it: the homepage feed query fails.
 
 ## 0064_hf_trending_source.sql
 

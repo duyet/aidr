@@ -578,6 +578,10 @@ re-renders off the request path instead of on it. For the homepage policy
 sees a render at most 80 minutes old: 5m fresh + 1h stale in the Worker, then
 5m + 10m at the CDN. `Server-Timing: aidr-cache`
 reports `HIT`, `STALE` or `MISS`; web-vitals splits by the same value.
+The same header carries the request's stages (`request-timing.ts`): `cache`
+(the Worker cache lookup), `d1` (through the end of the feed batch), `ssr` (the rest of the render), then
+`total` and `iso` (this isolate's request count). Each `dur` is the I/O
+waited on since the previous mark.
 
 There is no read endpoint yet: querying needs an account API token secret that
 the Worker does not hold. Weekly totals, run against the Analytics Engine SQL
@@ -1568,7 +1572,12 @@ probe, learned keywords, yesterday's topic counts, and for the full shape
 the `item_sources` rows selected off the same item query): a Worker far
 from the ENAM primary pays about 300ms per round trip, so nothing waits on
 an earlier statement's result, and the read path never issues DDL or any
-other write (`src/lib/feed-queries.roundtrips.test.ts`). For those,
+other write (`src/lib/feed-queries.roundtrips.test.ts`). No schema probe
+runs before that batch, even on a cold isolate. The deploy gate
+(`check:migrations`, `worker/migration-gate.ts`) refuses to upload a Worker
+while any migration is missing from the D1 ledger, so feed, story, day and
+weekly reads select `llm_tokens`, `image_url`, `media_manifest`, the
+`item_votes` join and the `item_reads` join directly. For those,
 `getFeed`'s `readOrder` sorts each day by:
 
 ```text

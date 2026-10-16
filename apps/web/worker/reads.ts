@@ -49,22 +49,6 @@ export const READ_COUNT_JOIN_I = `LEFT JOIN (
     GROUP BY item_id
   ) AS read_sum ON read_sum.item_id = i.id`;
 
-let readsTableReady: boolean | null = null;
-
-/** Whether `item_reads` exists, so the feed still loads before 0065. */
-export async function itemReadsTableReady(db: {
-  prepare(sql: string): { all(): Promise<unknown> };
-}): Promise<boolean> {
-  if (readsTableReady !== null) return readsTableReady;
-  try {
-    await db.prepare("SELECT item_id FROM item_reads LIMIT 1").all();
-  } catch {
-    return false;
-  }
-  readsTableReady = true;
-  return true;
-}
-
 export interface ReadBeacon {
   itemId: string;
   kind: ReadKind;

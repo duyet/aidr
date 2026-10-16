@@ -15,7 +15,7 @@ function makeDb(rows: Row[], opts: { sources?: Row[] } = {}) {
       return this;
     },
     async all() {
-      return { results: sql.includes("FROM items LIMIT 1") ? [] : rows };
+      return { results: rows };
     },
   });
   return {
@@ -123,7 +123,6 @@ describe("getStory for a merged id", () => {
         },
         async all() {
           if (sql.includes("status = 'merged'")) return { results: mergedRows };
-          if (sql.includes("FROM items LIMIT 1")) return { results: [] };
           return { results: [] };
         },
       };
@@ -181,7 +180,6 @@ describe("getStory content log", () => {
             if (log instanceof Error) throw log;
             return { results: log };
           }
-          if (sql.includes("FROM items LIMIT 1")) return { results: [] };
           return { results: [base] };
         },
       };
