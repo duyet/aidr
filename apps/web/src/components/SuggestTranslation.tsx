@@ -23,8 +23,14 @@ export function SuggestTranslation(props: {
 }
 
 function SignInFallback({ lang }: { lang: Lang }) {
+  const { requestClerk } = useClerkModule();
   return (
-    <span className="text-xs text-muted-foreground">
+    // biome-ignore lint/a11y/noStaticElementInteractions: hover/click only pre-warm the Clerk SDK; the text stays a plain label.
+    <span
+      className="text-xs text-muted-foreground"
+      onPointerEnter={requestClerk}
+      onClick={requestClerk}
+    >
       {lang === "vi"
         ? "Đăng nhập để góp ý, chỉnh sửa"
         : "Sign in to suggest edits"}

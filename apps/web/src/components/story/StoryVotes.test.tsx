@@ -99,7 +99,11 @@ describe("StoryVotes signed in", () => {
     const outer = vi.fn();
     render(
       <ClerkModuleContext.Provider
-        value={{ mod: signedInClerk(), publishableKey: "pk_test" }}
+        value={{
+          mod: signedInClerk(),
+          publishableKey: "pk_test",
+          requestClerk: () => {},
+        }}
       >
         {/* biome-ignore lint/a11y/noStaticElementInteractions: stands in for the row header */}
         <div onClick={outer}>

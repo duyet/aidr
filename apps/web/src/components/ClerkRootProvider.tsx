@@ -1,6 +1,6 @@
 import { ErrorBoundary } from "@aidr/ui";
 import { useRouterState } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { resolveClerkProxyUrl } from "../lib/clerk-proxy-config";
 import {
   type ClerkModule,
@@ -37,9 +37,11 @@ export function clerkProviderLocaleOptions(lang: Lang) {
 /**
  * Mounts the ONE app-wide <ClerkProvider> (deferred — the Clerk SDK is
  * dynamically imported only once something can need it: a session cookie,
- * a route that mounts Clerk UI, or the visitor's first pointer/key
- * interaction. Most readers are signed out and never interact, so they skip
- * the ~330KB gzip SDK entirely; it stays out of SSR). Children render
+ * a route that mounts Clerk UI, or a signed-out fallback reporting intent
+ * via `requestClerk` (hover/focus/click on a sign-in control). A window
+ * pointerdown is not a signal: on a phone the first scroll fires it, so
+ * most readers, who never sign in, skip the ~330KB gzip SDK entirely; it
+ * stays out of SSR). Children render
  * immediately with `mod: null`; every consumer handles that fallback. When the import
  * resolves the provider is inserted above children, which remounts the
  * subtree — consumers then see the shared module via ClerkModuleContext.
@@ -54,21 +56,13 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
   const [mod, setMod] = useState<ClerkModule | null>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [wanted, setWanted] = useState(false);
+  const requestClerk = useCallback(() => setWanted(true), []);
 
   useEffect(() => {
     if (!publishableKey || wanted) return;
     if (hasClerkSessionCookie(document.cookie) || routeNeedsClerk(pathname)) {
       setWanted(true);
-      return;
     }
-    const arm = () => setWanted(true);
-    const opts = { once: true, passive: true } as const;
-    window.addEventListener("pointerdown", arm, opts);
-    window.addEventListener("keydown", arm, opts);
-    return () => {
-      window.removeEventListener("pointerdown", arm);
-      window.removeEventListener("keydown", arm);
-    };
   }, [publishableKey, pathname, wanted]);
 
   useEffect(() => {
@@ -87,7 +81,9 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
   }, [publishableKey, wanted]);
 
   const withoutProvider = (
-    <ClerkModuleContext.Provider value={{ mod: null, publishableKey }}>
+    <ClerkModuleContext.Provider
+      value={{ mod: null, publishableKey, requestClerk }}
+    >
       {children}
     </ClerkModuleContext.Provider>
   );
@@ -100,7 +96,9 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
 
   return (
     <ErrorBoundary fallback={withoutProvider}>
-      <ClerkModuleContext.Provider value={{ mod, publishableKey }}>
+      <ClerkModuleContext.Provider
+        value={{ mod, publishableKey, requestClerk }}
+      >
         <mod.ClerkProvider
           publishableKey={publishableKey}
           // Environment-specific absolute URL; never derive this from Host.

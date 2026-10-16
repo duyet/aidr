@@ -24,8 +24,9 @@ export function HeaderAuth({
   onSignIn?: () => void;
 }) {
   const navigationLang = useLang();
-  const { mod } = useClerkModule();
+  const { mod, requestClerk } = useClerkModule();
   const onClick = () => {
+    requestClerk();
     track("nav_click", {
       to: "/sign-in",
       placement: stacked ? "phone_menu" : "header",
@@ -39,6 +40,8 @@ export function HeaderAuth({
         params={{ _splat: "" }}
         search={{ lang: navigationLang }}
         onClick={onClick}
+        onPointerEnter={requestClerk}
+        onFocus={requestClerk}
       >
         Sign in
       </Link>
@@ -49,6 +52,8 @@ export function HeaderAuth({
       params={{ _splat: "" }}
       search={{ lang: navigationLang }}
       onClick={onClick}
+      onPointerEnter={requestClerk}
+      onFocus={requestClerk}
       aria-label="Sign in"
       title="Sign in"
       className={`${avatarSize} inline-flex shrink-0 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50`}

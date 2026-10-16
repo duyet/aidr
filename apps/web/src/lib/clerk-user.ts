@@ -17,9 +17,16 @@ export type ClerkModule = ClerkTanStackMod & {
 export interface ClerkModuleState {
   mod: ClerkModule | null;
   publishableKey: string | undefined;
+  /** Signed-out fallbacks call this on hover/focus/click so the SDK starts
+   * downloading before the reader reaches the Clerk UI that replaces them. */
+  requestClerk: () => void;
 }
 
-const EMPTY_STATE: ClerkModuleState = { mod: null, publishableKey: undefined };
+const EMPTY_STATE: ClerkModuleState = {
+  mod: null,
+  publishableKey: undefined,
+  requestClerk: () => {},
+};
 
 function withSignedInOutCompat(mod: ClerkTanStackMod): ClerkModule {
   function SignedIn({ children }: { children?: ReactNode }) {

@@ -19,6 +19,7 @@ import {
   ClerkRootProvider,
   clerkProviderLocaleOptions,
 } from "./ClerkRootProvider";
+import { HeaderAuth } from "./header/HeaderAuth";
 import { SubmitForm } from "./submit/SubmitForm";
 
 const routerState = { pathname: "/" };
@@ -44,14 +45,19 @@ vi.mock("@tanstack/react-router", async () => {
       children,
       hash,
       to,
+      params: _params,
+      search: _search,
+      ...rest
     }: {
       children?: ReactNode;
       hash?: string;
       to: string;
-    }) =>
+      params?: unknown;
+      search?: unknown;
+    } & Record<string, unknown>) =>
       React.createElement(
         "a",
-        { href: `${to}${hash ? `#${hash}` : ""}` },
+        { ...rest, href: `${to}${hash ? `#${hash}` : ""}` },
         children
       ),
   };
@@ -60,6 +66,8 @@ vi.mock("@tanstack/react-router", async () => {
 vi.mock("../lib/submit-fn", () => ({
   submitStory: vi.fn(),
 }));
+
+vi.mock("../lib/analytics/track", () => ({ track: vi.fn() }));
 
 interface UpdateProps {
   options?: Record<string, unknown>;
@@ -177,13 +185,27 @@ describe("ClerkRootProvider load gate", () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
-  it("loads once after the first pointerdown so modal sign-in buttons work on tap", () => {
+  it("does not load after a window pointerdown, which a phone touch-scroll fires", () => {
     mount();
-    expect(load).not.toHaveBeenCalled();
-    fireEvent.pointerDown(window);
-    expect(load).toHaveBeenCalledTimes(1);
     fireEvent.pointerDown(window);
     fireEvent.keyDown(window, { key: "a" });
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("loads once after intent on the header sign-in link", () => {
+    render(
+      <LangContext.Provider value="en">
+        <ClerkRootProvider>
+          <HeaderAuth />
+        </ClerkRootProvider>
+      </LangContext.Provider>
+    );
+    const link = screen.getByRole("link", { name: "Sign in" });
+    expect(load).not.toHaveBeenCalled();
+    fireEvent.pointerEnter(link);
+    expect(load).toHaveBeenCalledTimes(1);
+    fireEvent.focus(link);
+    fireEvent.click(link);
     expect(load).toHaveBeenCalledTimes(1);
   });
 });
