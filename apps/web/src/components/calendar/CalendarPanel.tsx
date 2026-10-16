@@ -132,7 +132,7 @@ export function CalendarPanel({
         />
       ) : state.status === "error" ? (
         <div className="py-6 text-center text-sm text-muted-foreground">
-          <p>
+          <p role="alert">
             {vi ? "Không tải được lịch." : "The calendar could not be loaded."}
           </p>
           <button
