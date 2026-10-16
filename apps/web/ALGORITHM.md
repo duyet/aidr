@@ -557,7 +557,16 @@ template (ids, dates and weeks replaced, no query), `blob3` MCP tool (or empty),
 `blob4` client bucket (`mcp-client`, `feed-reader`, `browser`, `bot`, `other`),
 `double1` 1, `double2` HTTP status, `index1` surface. No IP, user agent or
 query string is stored. Without the binding the code is a no-op, and a
-`writeDataPoint` error is swallowed.
+`writeDataPoint` error is swallowed. A negotiated Markdown response counts only
+for the negotiable pages (`/`, a story id, `/date/:date`, `/week/:week`); any
+other path that answers `text/markdown`, such as a 404, writes nothing.
+
+The counts are a floor, not request totals. Workers Cache (`[cache] enabled`)
+answers `/api/public`, `/api/feed`, `/api/story/{id}` and `llms.txt` before the
+Worker runs, so those count about once per cache TTL per key per location.
+`/feed.xml` is served from the Worker's own `cachedLocaleResponse` inside the
+wrapper, so feed hits do count. Compare surfaces week over week, not as
+absolute traffic.
 
 There is no read endpoint yet: querying needs an account API token secret that
 the Worker does not hold. Weekly totals, run against the Analytics Engine SQL

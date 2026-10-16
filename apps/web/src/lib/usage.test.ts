@@ -99,4 +99,42 @@ describe("recordRequestUsage", () => {
       "feed-reader",
     ]);
   });
+
+  // Production answers text/markdown on a 404 for any `.md` path, so the
+  // negotiated fallback used to write the raw path into the dataset.
+  it("writes nothing for an unknown path that answers text/markdown", () => {
+    const USAGE = { writeDataPoint: vi.fn() };
+    const markdown404 = () =>
+      new Response("not found", {
+        status: 404,
+        headers: { "Content-Type": "text/markdown; charset=utf-8" },
+      });
+    for (const path of [
+      "/api/story/zzzz-secret.md",
+      "/date/2026-10-16x.md",
+      "/week/foo.md",
+      "/wp-admin/anything",
+    ]) {
+      recordRequestUsage(
+        { USAGE },
+        new Request(`https://aidr.today${path}`),
+        markdown404()
+      );
+    }
+    expect(USAGE.writeDataPoint).not.toHaveBeenCalled();
+  });
+
+  it("counts a negotiated page under its template", () => {
+    const USAGE = { writeDataPoint: vi.fn() };
+    recordRequestUsage(
+      { USAGE },
+      new Request("https://aidr.today/date/2026-10-16"),
+      new Response("# day", {
+        headers: { "Content-Type": "text/markdown; charset=utf-8" },
+      })
+    );
+    expect(USAGE.writeDataPoint.mock.calls[0]?.[0].blobs[1]).toBe(
+      "/date/:date"
+    );
+  });
 });

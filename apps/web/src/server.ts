@@ -422,7 +422,11 @@ export default {
   ...worker,
   async fetch(request: Request, env: Env, ctx?: ExecutionContext) {
     const response = await worker.fetch(request, env, ctx);
-    recordRequestUsage(env, request, response);
+    try {
+      recordRequestUsage(env, request, response);
+    } catch {
+      // Telemetry must never fail a request.
+    }
     return response;
   },
 };

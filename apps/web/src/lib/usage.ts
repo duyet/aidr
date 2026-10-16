@@ -1,4 +1,5 @@
 import type { Env } from "../../worker/types";
+import { negotiableMarkdownPath } from "./markdown-negotiation";
 
 export type UsageSurface = "rss" | "api" | "mcp" | "llms" | "markdown";
 
@@ -101,9 +102,12 @@ export function recordRequestUsage(
   const negotiated = response.headers
     .get("Content-Type")
     ?.startsWith("text/markdown");
+  // A negotiated page counts only when it is one of the negotiable pages;
+  // any other path that answers text/markdown (e.g. a 404) is dropped, or a
+  // scanner could write raw paths into the dataset.
   const hit =
     classifyRequest(pathname) ??
-    (negotiated
+    (negotiated && negotiableMarkdownPath(pathname)
       ? { surface: "markdown" as const, route: templateRoute(pathname) }
       : null);
   if (!hit) return;
