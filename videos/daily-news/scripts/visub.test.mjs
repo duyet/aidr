@@ -257,6 +257,71 @@ test("a decomposed Vietnamese title is counted and cut in composed form", async 
   assert.ok(LONG_VI.startsWith(out.title.split(" — ")[0].replace(/…$/, "")));
 });
 
+// A Vietnamese title translated `vi`, whose shorter-title retry answers `retitle`.
+const titled = (en, vi, retitle) =>
+  translateCues({
+    cues: parseSrt(EN_SRT),
+    title: en,
+    models: ["m1"],
+    llm: async (_model, messages) =>
+      isRetitle(messages)
+        ? JSON.stringify({ title: retitle })
+        : JSON.stringify({ title: vi, lines: VI.lines }),
+    style,
+    log: () => {},
+  });
+
+test("a title cut at a word keeps every number and the date, dropping words without digits first", async () => {
+  const en = "OpenAI raises $60B at $852B & more | 2026-10-16";
+  for (const vi of [
+    "OpenAI huy động thêm 60 tỷ USD từ các nhà đầu tư lớn trên toàn thế giới với mức định giá kỷ lục 852 tỷ USD và nhiều tin khác | 2026-10-16",
+    "OpenAI huy động thêm 60 tỷ USD từ các nhà đầu tư lớn trên toàn thế giới với mức định giá kỷ lục 852 tỷ USD ngày 16/10/2026",
+  ]) {
+    const out = await titled(en, vi, vi);
+    assert.ok([...out.title].length <= 100, out.title);
+    for (const n of ["60", "852", "2026", "10", "16"])
+      assert.match(out.title, new RegExp(`\\b${n}\\b`), `${n} in ${out.title}`);
+    assert.ok(out.title.startsWith("OpenAI huy động thêm 60 tỷ USD"));
+  }
+});
+
+test("a title that cannot fit 100 characters with all its numbers fails the run instead of posting", async () => {
+  const nums = Array.from({ length: 14 }, (_, i) => `${i + 1}0000000`);
+  const vi = `Các vòng gọi vốn ${nums.join(", ")} | 2026-10-16`;
+  await assert.rejects(
+    titled(`Funding rounds ${nums.join(", ")} | 2026-10-16`, vi, vi),
+    /Vietnamese title[\s\S]*over 100/
+  );
+});
+
+test("a shorter-title retry that drops a number is not used", async () => {
+  const out = await titled(
+    LONG_EN,
+    LONG_VI,
+    "FTC gửi trát đòi OpenAI và Anthropic về an toàn AI — ngày 16 tháng 10"
+  );
+  assert.match(out.title, / — ngày 16 tháng 10 năm 2026$/);
+});
+
+test("a decomposed title within 100 characters is composed, so the YouTube metadata accepts it", async () => {
+  const vi =
+    "Muse Wonder đưa Meta lên tuyến đầu trí tuệ nhân tạo cùng nhiều tin tức nổi bật khác | 2026-10-13";
+  assert.ok(
+    [...vi.normalize("NFD")].length > 100,
+    "the fixture is long in NFD"
+  );
+  const out = await titled(TITLE, vi.normalize("NFD"), vi);
+  assert.equal(out.title, vi);
+  const post = await translatePost({
+    en: enPost(POSTS),
+    title: out.title,
+    chain: () => ({ models: ["m1"], llm: postModel([]) }),
+    style,
+    log: () => {},
+  });
+  assert.equal(post.title, vi);
+});
+
 test("a refused model (403 behind a 502) hands over to the next model in the chain", async () => {
   const asked = [];
   const out = await translateCues({
