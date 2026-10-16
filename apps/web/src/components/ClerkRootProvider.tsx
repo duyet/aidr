@@ -35,18 +35,18 @@ export function clerkProviderLocaleOptions(lang: Lang) {
 }
 
 /**
- * Mounts the ONE app-wide <ClerkProvider> (deferred — the Clerk SDK is
- * dynamically imported only once something can need it: a session cookie,
- * a route that mounts Clerk UI, or a signed-out fallback reporting intent
- * via `requestClerk` (hover/focus/click on a sign-in control). A window
- * pointerdown is not a signal: on a phone the first scroll fires it, so
- * most readers, who never sign in, skip the ~330KB gzip SDK entirely; it
- * stays out of SSR). Children render
- * immediately with `mod: null`; every consumer handles that fallback. When the import
- * resolves the provider is inserted above children, which remounts the
- * subtree — consumers then see the shared module via ClerkModuleContext.
- * A second <ClerkProvider> crashes the app; if Clerk fails, ErrorBoundary
- * degrades to children with no Clerk context.
+ * Mounts the ONE app-wide <ClerkProvider>. The Clerk SDK is dynamically
+ * imported only once something can need it: a session cookie, a route that
+ * mounts Clerk UI, or a signed-out fallback reporting intent via
+ * `requestClerk` (hover, focus or click on a sign-in control). A window
+ * pointerdown is not a signal: on a phone the first scroll fires it, and
+ * most readers never sign in, so they skip the ~330 KB gzip SDK entirely.
+ * The SDK stays out of SSR. Children render immediately with `mod: null`;
+ * every consumer handles that fallback. When the import resolves the
+ * provider is inserted above children, which remounts the subtree;
+ * consumers then see the shared module via ClerkModuleContext. A second
+ * <ClerkProvider> crashes the app; if Clerk fails, ErrorBoundary degrades
+ * to children with no Clerk context.
  */
 export function ClerkRootProvider({ children }: { children: ReactNode }) {
   const publishableKey = getClerkPublishableKey();
