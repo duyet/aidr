@@ -579,7 +579,7 @@ sees a render at most 80 minutes old: 5m fresh + 1h stale in the Worker, then
 5m + 10m at the CDN. `Server-Timing: aidr-cache`
 reports `HIT`, `STALE`, `KV` or `MISS`; web-vitals splits by the same value.
 The same header carries the request's stages (`request-timing.ts`): `cache`
-(the Worker cache lookup), `d1` (through the end of the feed batch), `ssr` (the rest of the render), then
+(the Worker cache lookup), `d1` (through the end of the feed batch), `ssr` (the rest of the render, left out when it waited on no I/O, as on a homepage miss where `d1` already holds the wait), then
 `total` and `iso` (this isolate's request count). Each `dur` is the I/O
 waited on since the previous mark.
 

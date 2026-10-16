@@ -33,7 +33,11 @@ import {
   isPrivateSsrPath,
 } from "./locale-routing";
 import { hasCanonicalLocaleQuery } from "./locale-url";
-import { markStage, withoutRequestTiming } from "./request-timing";
+import {
+  markStage,
+  markStageIfWaited,
+  withoutRequestTiming,
+} from "./request-timing";
 
 export { EDGE_CACHE_FRESH_MAX_S, EDGE_CACHE_STALE_S };
 
@@ -210,7 +214,7 @@ async function renderStaged(
   render: () => Promise<Response>
 ): Promise<Response> {
   const response = await render();
-  markStage("ssr");
+  markStageIfWaited("ssr");
   return response;
 }
 
@@ -327,7 +331,7 @@ async function serveThroughCache(
   }
 
   const response = await render();
-  markStage("ssr");
+  markStageIfWaited("ssr");
   logServed(key, "MISS", null, shared !== null);
   const fresh = freshFor(response);
   if (fresh <= 0) return response;
