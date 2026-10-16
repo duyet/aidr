@@ -1,12 +1,5 @@
 import { enSummarySql } from "../../worker/en-summary.js";
-import {
-  boundedPublicManifest,
-  canonicalizeMediaImageUrl,
-  canonicalizeMediaUrl,
-  MAX_PUBLIC_MEDIA_URL_LENGTH,
-  parseMediaManifest,
-  primaryThumbnailUrl,
-} from "../../worker/media.js";
+import { canonicalizeMediaUrl, publicStoryMedia } from "../../worker/media.js";
 import { VOTE_NET_COLUMN, VOTE_NET_JOIN_I } from "../../worker/ranking.js";
 import {
   READ_COUNT_COLUMN,
@@ -125,8 +118,7 @@ function toFeedItem(row: ItemRow, detail = true): FeedItem {
     source_count: _sourceCount,
     ...item
   } = row;
-  const manifest = parseMediaManifest(rawManifest, row.image_url, row.url);
-  const exposedManifest = boundedPublicManifest(manifest);
+  const media = publicStoryMedia(rawManifest, row.image_url, row.url);
   const articleUrl = canonicalizeMediaUrl(row.url);
   return {
     ...item,
@@ -135,15 +127,8 @@ function toFeedItem(row: ItemRow, detail = true): FeedItem {
     tags,
     sources: [],
     llm_tokens: row.llm_tokens ?? 0,
-    image_url: (() => {
-      const imageUrl = canonicalizeMediaImageUrl(
-        primaryThumbnailUrl(manifest, row.image_url, row.url)
-      );
-      return imageUrl && imageUrl.length <= MAX_PUBLIC_MEDIA_URL_LENGTH
-        ? imageUrl
-        : null;
-    })(),
-    ...(exposedManifest ? { media_manifest: exposedManifest } : {}),
+    image_url: media.image_url,
+    ...(media.media_manifest ? { media_manifest: media.media_manifest } : {}),
     vote_net: typeof row.vote_net === "number" ? row.vote_net : 0,
     ...(detail
       ? {}

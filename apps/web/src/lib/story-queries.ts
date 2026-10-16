@@ -1,12 +1,5 @@
 import { enSummarySql } from "../../worker/en-summary.js";
-import {
-  boundedPublicManifest,
-  canonicalizeMediaImageUrl,
-  canonicalizeMediaUrl,
-  MAX_PUBLIC_MEDIA_URL_LENGTH,
-  parseMediaManifest,
-  primaryThumbnailUrl,
-} from "../../worker/media.js";
+import { canonicalizeMediaUrl, publicStoryMedia } from "../../worker/media.js";
 import { VOTE_NET_COLUMN, VOTE_NET_JOIN_I } from "../../worker/ranking.js";
 import type { DbReader } from "./db";
 import type { ContentLogEntry, FeedItem, ItemSource } from "./types";
@@ -65,16 +58,12 @@ function mapStoryRow(
   if (!id) return null;
   const rawArticleUrl = asString(row.url);
   const legacyImageUrl = asNullableString(row.image_url);
-  const manifest = parseMediaManifest(
+  const media = publicStoryMedia(
     asNullableString(row.media_manifest),
     legacyImageUrl,
     rawArticleUrl
   );
-  const exposedManifest = boundedPublicManifest(manifest);
   const articleUrl = canonicalizeMediaUrl(rawArticleUrl);
-  const imageUrl = canonicalizeMediaImageUrl(
-    primaryThumbnailUrl(manifest, legacyImageUrl, rawArticleUrl)
-  );
   const item: FeedItem = {
     id,
     url:
@@ -93,11 +82,8 @@ function mapStoryRow(
     sources: [],
     llm_tokens: asNumber(row.llm_tokens),
     vote_net: asNumber(row.vote_net),
-    image_url:
-      imageUrl && imageUrl.length <= MAX_PUBLIC_MEDIA_URL_LENGTH
-        ? imageUrl
-        : null,
-    ...(exposedManifest ? { media_manifest: exposedManifest } : {}),
+    image_url: media.image_url,
+    ...(media.media_manifest ? { media_manifest: media.media_manifest } : {}),
   };
 
   item.sources = sourceRows
