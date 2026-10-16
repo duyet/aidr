@@ -1016,14 +1016,23 @@ images rather than a broken-src fallback.
 
 Batches of 5.
 
-- `ANYROUTER_DECISION_MODEL` (`anyrouter/decision`, `POST /api/v1/systemone`)
-  judges each item first, with the same questions as Jev and a 15s cap.
-  It is a System One router: it forwards to TypeSafe Jev when the BYOK
-  key is healthy and to Fastino GLiNER when it is not. An answer is used
-  only if the response's served `model` is Jev (`jev-*`) on a TypeSafe
-  provider (`anyrouter_metadata.upstream.provider`); anything else is a
-  miss, because GLiNER's levels are not calibrated. `llm_calls` records
-  the served model in `route` and `provider`. Empty var → score starts at Jev.
+- `ANYROUTER_DECISION_MODEL` is an optional System One router (such as
+  `anyrouter/decision`) tried on each item before Jev, with the same
+  questions and a 15s cap. An answer is used only if the response's served
+  `model` is Jev (`jev-*`) on a TypeSafe provider
+  (`anyrouter_metadata.upstream.provider`). Anything else is a miss that
+  costs a second call to Jev, because only Jev's levels are calibrated.
+  `llm_calls` records the served model in `route` and `provider`. Empty
+  var → score starts at Jev. Production leaves it empty (#854). Over the
+  7 days to 2026-10-16, `anyrouter/decision` made 1734 score calls. It
+  served Jev on 66 of them and failed on 188. The other 1480 answers came
+  from `experiential-byok` `jev-latest` (763, same input-token counts as
+  Jev on every run) and, since 2026-10-13, `hal-x` `THX-01` (717, 1.25×
+  Jev's input tokens, so a different model). All 1480 were rejected and
+  re-asked of Jev. The router failed in the same runs as Jev (177 router
+  and 174 Jev failures in 25 runs), so it never covered for Jev. Turn it
+  back on only after the bench (`decision` step with
+  `--models anyrouter/decision`) shows it serving Jev.
 - TypeSafe Jev (`typesafe/jev`) judges the items the router missed:
   relevance is P(AI/tech), importance is the probability-weighted level on
   a 1–10 scale anchored by the shared bands in `worker/importance-rubric.ts`

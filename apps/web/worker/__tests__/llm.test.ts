@@ -1488,6 +1488,7 @@ describe("model fallback chain", () => {
         false
       );
       expect(servedByJev(r("jev-1.13.0", "fastino-byok"))).toBe(false);
+      expect(servedByJev(r("THX-01", "hal-x"))).toBe(false);
       expect(servedByJev(r("", ""))).toBe(false);
     });
 
@@ -1570,6 +1571,90 @@ describe("model fallback chain", () => {
       ]);
       expect(chatModelsOf(allDown)).toEqual(["test-model"]);
       expect(viaChat[0]?.category).toBe("Models");
+    });
+
+    /** Since 2026-10-13 the router answers from hal-x THX-01, which
+     * servedByJev rejects, so every item it judges is judged again by Jev. */
+    const thxRouterFetch = () =>
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        const { model } = JSON.parse(init?.body as string) as {
+          model: string;
+        };
+        return Response.json({
+          model: model === "anyrouter/decision" ? "THX-01" : "jev-1.13.0",
+          anyrouter_metadata: {
+            upstream: {
+              provider:
+                model === "anyrouter/decision" ? "hal-x" : "typesafe-byok",
+            },
+          },
+          answers: jevAnswers("6"),
+          usage: { input_tokens: 10, output_tokens: 0, cost: 0 },
+        });
+      });
+    const threeItems = [0, 1, 2].map((i) => ({
+      i,
+      title: `Story ${i}`,
+      source: "hn",
+    }));
+    const systemOneCallsPerItem = (fetchMock: ReturnType<typeof vi.fn>) => {
+      const perItem = new Map<number, string[]>();
+      for (const call of fetchMock.mock.calls) {
+        if (!String(call[0]).includes("/systemone")) continue;
+        const body = JSON.parse((call[1] as RequestInit).body as string) as {
+          model: string;
+          state: { i: number };
+        };
+        perItem.set(body.state.i, [
+          ...(perItem.get(body.state.i) ?? []),
+          body.model,
+        ]);
+      }
+      return perItem;
+    };
+
+    // #854: the configured router cost one rejected answer plus one Jev call
+    // per item (1480 rejected answers in 7 days). Production must score
+    // each item with a single Jev call.
+    it("scores with one Jev call per item under the production config", async () => {
+      const toml = readFileSync(
+        fileURLToPath(new URL("../../wrangler.toml", import.meta.url)),
+        "utf8"
+      );
+      const tomlVar = (name: string) =>
+        new RegExp(`^${name}\\s*=\\s*"([^"]*)"`, "m").exec(toml)?.[1];
+      const prodEnv = {
+        ...env,
+        ANYROUTER_DECISION_MODEL: tomlVar("ANYROUTER_DECISION_MODEL"),
+        ANYROUTER_JEV_MODEL: tomlVar("ANYROUTER_JEV_MODEL"),
+      };
+      const fetchMock = thxRouterFetch();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const results = await scoreItems(prodEnv, threeItems);
+      expect([...systemOneCallsPerItem(fetchMock).values()]).toEqual([
+        ["typesafe/jev"],
+        ["typesafe/jev"],
+        ["typesafe/jev"],
+      ]);
+      expect(chatModelsOf(fetchMock)).toEqual([]);
+      expect(results.map((r) => r.importance)).toEqual([6, 6, 6]);
+    });
+
+    // Guards against a retry or an extra hop that asks the router again
+    // after a rejected answer: with the router on, an item costs at most
+    // one router call and one Jev call.
+    it("makes at most one router call and one Jev call per item", async () => {
+      const fetchMock = thxRouterFetch();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const results = await scoreItems(decisionEnv, threeItems);
+      for (const models of systemOneCallsPerItem(fetchMock).values()) {
+        expect(models).toEqual(["anyrouter/decision", "typesafe/jev"]);
+      }
+      expect(systemOneCallsPerItem(fetchMock).size).toBe(3);
+      expect(chatModelsOf(fetchMock)).toEqual([]);
+      expect(results).toHaveLength(3);
     });
 
     // anyrouter/decision reroutes to GLiNER when Jev is unavailable. Its
