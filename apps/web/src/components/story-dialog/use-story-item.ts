@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { withLang } from "../../lib/locale-url";
 import type { FeedItem, Lang } from "../../lib/types";
 
@@ -6,25 +6,38 @@ export function storyApiUrl(id: string, lang: Lang): string {
   return withLang(`/api/story/${encodeURIComponent(id)}`, lang);
 }
 
-/** Fetches a story by id prefix — undefined while loading, null on a miss. */
-export function useStoryItem(activeId: string, lang: Lang) {
-  const [item, setItem] = useState<FeedItem | null | undefined>(undefined);
+/** `missing` is a 404. `failed` is a 5xx or a request that never landed. */
+export type StoryItemState =
+  | { status: "loading" }
+  | { status: "ready"; item: FeedItem }
+  | { status: "missing" }
+  | { status: "failed" };
+
+/** Fetches a story by id prefix. `retry` fetches it again. */
+export function useStoryItem(
+  activeId: string,
+  lang: Lang
+): { state: StoryItemState; retry: () => void } {
+  const [state, setState] = useState<StoryItemState>({ status: "loading" });
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((a) => a + 1), []);
 
   useEffect(() => {
     let cancelled = false;
-    setItem(undefined);
+    setState({ status: "loading" });
     fetch(storyApiUrl(activeId, lang))
-      .then((res) => (res.ok ? (res.json() as Promise<FeedItem>) : null))
-      .then((res) => {
-        if (!cancelled) setItem(res);
+      .then(async (res): Promise<StoryItemState> => {
+        if (res.ok) return { status: "ready", item: await res.json() };
+        return { status: res.status === 404 ? "missing" : "failed" };
       })
-      .catch(() => {
-        if (!cancelled) setItem(null);
+      .catch((): StoryItemState => ({ status: "failed" }))
+      .then((next) => {
+        if (!cancelled) setState(next);
       });
     return () => {
       cancelled = true;
     };
-  }, [activeId, lang]);
+  }, [activeId, lang, attempt]);
 
-  return item;
+  return { state, retry };
 }
