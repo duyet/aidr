@@ -36,7 +36,9 @@ export function SuggestTranslation(props: {
  * No Clerk SDK on the page. A reader with a session cookie only waits for
  * the SDK, so they get plain text; a link would bounce them to /sign-in.
  * This render reads the cookie only after hydration, so the server and the
- * hydrating client render plain text too. Signed out, a
+ * hydrating client render plain text too. A session cookie with a
+ * configured SDK never reaches it: `SuggestTranslationInner` shows the
+ * disabled control instead. Signed out, a
  * link to /sign-in, where the route mounts the SDK: mounting it here would
  * remount the story and drop the pending selection. `redirect_url` is the
  * story permalink, because a feed row or dialog has no URL of its own. A
@@ -93,7 +95,12 @@ function SuggestTranslationInner({
 }) {
   const { mod, publishableKey } = useClerkModule();
 
+  const hydrated = useHydrated();
+
   if (!publishableKey || !mod) {
+    if (publishableKey && hydrated && hasClerkSessionCookie(document.cookie)) {
+      return <PendingSuggest lang={lang} />;
+    }
     return (
       <SignInFallback
         itemId={itemId}

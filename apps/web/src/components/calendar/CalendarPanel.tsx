@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { calendarPath, currentMonth, shiftMonth } from "../../lib/calendar";
 import { latestArchiveDate } from "../../lib/day-archive";
+import { loadErrorCopy } from "../../lib/load-error";
 import type { Lang } from "../../lib/types";
 import { DayPreview } from "./DayPreview";
 import { MonthGrid } from "./MonthGrid";
@@ -132,15 +133,13 @@ export function CalendarPanel({
         />
       ) : state.status === "error" ? (
         <div className="py-6 text-center text-sm text-muted-foreground">
-          <p role="alert">
-            {vi ? "Không tải được lịch." : "The calendar could not be loaded."}
-          </p>
+          <p role="alert">{loadErrorCopy("calendar", lang).body}</p>
           <button
             type="button"
             onClick={retry}
             className="mt-2 font-bold text-foreground underline-offset-2 hover:underline"
           >
-            {vi ? "Thử lại" : "Retry"}
+            {loadErrorCopy("calendar", lang).retry}
           </button>
         </div>
       ) : (
