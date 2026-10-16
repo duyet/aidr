@@ -3,8 +3,9 @@
 // into captions.visub.json + captions.visub.srt, one Vietnamese cue per English cue at the same times.
 // Cues are 1-4 word fragments, so whole sentences (consecutive cues up to . ! ?) are translated and the
 // Vietnamese is split back over the sentence's cues in proportion to the English text. The YouTube title from
-// script.json is translated in the same call (the Vietnamese Telegram caption).
-// Model: the auto-script.mjs chain through anyrouter (a key from local-llm-key.mjs, ANYROUTER_VIDEO_MODEL); the house style
+// script.json is translated in the same call (the Vietnamese Telegram caption); a title over YouTube's 100 characters
+// is asked for once more, shorter, then clipped at a word, and never discards the lines.
+// Model: the auto-script.mjs chain through anyrouter (videoModels: a key from local-llm-key.mjs, ANYROUTER_VIDEO_MODEL); the house style
 // is read from the Worker (VI_STYLE and RULES_OVERVIEW in apps/web/worker/llm.ts), never copied here.
 // An answer is checked (same line count, no empty or untranslated line, every number kept, AI;DR and aidr.today
 // kept, the text lint) and the next model is tried; no key or no valid answer exits 1.
@@ -16,7 +17,7 @@
 // Usage: node scripts/visub.mjs <date> [--youtube] [--force]
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { complete, DEFAULT_MODELS } from "./auto-script.mjs";
+import { complete, videoModels } from "./auto-script.mjs";
 import { lintText } from "./gate.mjs";
 import { cutFor } from "./lang.mjs";
 import { requireLlmKey } from "./local-llm-key.mjs";
@@ -163,6 +164,10 @@ export function houseStyle(workerDir = WORKER) {
   return { style: filled, overview };
 }
 
+// YouTube rejects a longer title; the same title heads the Vietnamese day page and Telegram caption.
+const TITLE_MAX = 100;
+const chars = (t) => [...t.normalize("NFC")].length;
+
 export function promptFor(lines, title, style = houseStyle()) {
   return [
     {
@@ -171,7 +176,7 @@ export function promptFor(lines, title, style = houseStyle()) {
     },
     {
       role: "user",
-      content: `Translate each line. Return {"title": "<the title in Vietnamese>", "lines": [<exactly ${lines.length} strings, line i translates line i>]}.\n\n${JSON.stringify({ title: title ?? "", lines }, null, 1)}`,
+      content: `Translate each line. Return {"title": "<the title in Vietnamese, at most ${TITLE_MAX} characters>", "lines": [<exactly ${lines.length} strings, line i translates line i>]}.\n\n${JSON.stringify({ title: title ?? "", lines }, null, 1)}`,
     },
   ];
 }
@@ -202,14 +207,13 @@ export function lineProblems(label, en, vi) {
   return p;
 }
 
-// YouTube rejects a longer title.
-const TITLE_MAX = 100;
+const parseAnswer = (text) =>
+  JSON.parse(text.replace(/^[\s\S]*?(\{)/, "$1").replace(/\}[^}]*$/, "}"));
 
-/** Parse and check one model answer (`check` judges each line). Returns { title, lines, problems }. */
+/** Parse and check one model answer (`check` judges each line). Returns { title, lines, problems }.
+ *  A title over TITLE_MAX is not a problem here: fitTitle shortens it without discarding the lines. */
 export function checkAnswer(text, lines, title, check = lineProblems) {
-  const json = JSON.parse(
-    text.replace(/^[\s\S]*?(\{)/, "$1").replace(/\}[^}]*$/, "}")
-  );
+  const json = parseAnswer(text);
   const out = Array.isArray(json.lines)
     ? json.lines.map((l) => (typeof l === "string" ? l.trim() : l))
     : [];
@@ -218,9 +222,63 @@ export function checkAnswer(text, lines, title, check = lineProblems) {
   const problems = lines.flatMap((en, i) => check(`line ${i + 1}`, en, out[i]));
   const viTitle = typeof json.title === "string" ? json.title.trim() : "";
   if (title) problems.push(...lineProblems("title", title, viTitle));
-  if ([...viTitle].length > TITLE_MAX)
-    problems.push(`title: over ${TITLE_MAX} characters`);
   return { title: title ? viTitle : null, lines: out, problems };
+}
+
+/** `title` cut to `max` characters between words, with "…" at the cut. The part after its last " | " or " — " (the
+ *  date) is kept. Composed (NFC) first, so a tone mark is never counted apart from its letter or cut from it. */
+function clipTitle(title, max = TITLE_MAX) {
+  const t = title.normalize("NFC").trim();
+  if ([...t].length <= max) return t;
+  const m = t.match(/^(.*\S)(\s+[|—–-]\s+.*)$/);
+  const tail = m && [...m[2]].length <= max / 2 ? m[2] : "";
+  const words = (tail ? m[1] : t).split(/\s+/);
+  const room = max - [...tail].length - 1;
+  let head = "";
+  for (const w of words) {
+    const next = head ? `${head} ${w}` : w;
+    if ([...next].length > room) break;
+    head = next;
+  }
+  if (!head) head = [...words[0]].slice(0, room).join("");
+  return `${head.replace(/[\s,;:]+$/, "")}…${tail}`;
+}
+
+function titlePromptFor(en, vi, style = houseStyle()) {
+  return [
+    {
+      role: "system",
+      content: `${style.style}\n\nNow you shorten the Vietnamese YouTube title of the AI;DR Daily Brief, an English-language news video. Keep its numbers, names and date. Answer with one JSON object only.`,
+    },
+    {
+      role: "user",
+      content: `This Vietnamese title is ${chars(vi)} characters; YouTube allows at most ${TITLE_MAX}. Rewrite it in at most ${TITLE_MAX} characters. Return {"title": "<the shorter Vietnamese title>"}.\n\n${JSON.stringify({ english: en, vietnamese: vi }, null, 1)}`,
+    },
+  ];
+}
+
+/** A translated title within TITLE_MAX. A longer one goes back to the model that wrote it, once, with the limit and
+ *  its length; a retry that fails or is still long is clipped at a word. The lines already passed and are kept. */
+async function fitTitle({ en, vi, model, llm, style, log }) {
+  if (chars(vi) <= TITLE_MAX) return vi.normalize("NFC");
+  log(
+    `! ${model}: title is ${chars(vi)} characters, over ${TITLE_MAX}; asking for a shorter one`
+  );
+  try {
+    const t = String(
+      parseAnswer(await llm(model, titlePromptFor(en, vi, style))).title ?? ""
+    ).trim();
+    const problems = lineProblems("title", en, t);
+    if (chars(t) > TITLE_MAX)
+      problems.push(`title: ${chars(t)} characters, over ${TITLE_MAX}`);
+    if (!problems.length) return t.normalize("NFC");
+    log(`! ${model}: ${problems.join("; ")}`);
+  } catch (e) {
+    log(`! ${model}: ${e.message}`);
+  }
+  const cut = clipTitle(vi);
+  log(`! title clipped at a word: ${cut}`);
+  return cut;
 }
 
 /** The first model whose answer `check(text)` passes ({ problems: [] , ...}); throws with what each model got wrong. */
@@ -273,7 +331,16 @@ export async function translateCues({
   });
   return {
     model: a.model,
-    title: a.title,
+    title:
+      a.title &&
+      (await fitTitle({
+        en: title,
+        vi: a.title,
+        model: a.model,
+        llm,
+        style,
+        log,
+      })),
     cues: cues.map((c, i) => ({
       start: c.start,
       end: c.end,
@@ -434,10 +501,7 @@ async function main() {
   const force = argv.includes("--force");
   const chain = () => {
     const apiKey = requireLlmKey();
-    const models = (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS)
-      .split(",")
-      .map((m) => m.trim())
-      .filter(Boolean);
+    const models = videoModels(envVar("ANYROUTER_VIDEO_MODEL"));
     const baseUrl =
       envVar("ANYROUTER_BASE_URL") ?? "https://anyrouter.dev/api/v1";
     return {
