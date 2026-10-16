@@ -5,7 +5,7 @@
  *
  * Usage (from apps/web):
  *   pnpm exec tsx scripts/kind-eval.ts freeze --gold <gold.json> --rows <rows.json>
- *   pnpm exec tsx scripts/kind-eval.ts run --split dev|held --variant <v> --cache <dir> [--limit N] [--cap 250]
+ *   pnpm exec tsx scripts/kind-eval.ts run --split dev|held --variant <v> --cache <dir> [--limit N] [--cap 250] [--pace-ms 3000]
  *   pnpm exec tsx scripts/kind-eval.ts report --split dev|held --variant <v> --cache <dir> [--threshold P]
  *
  * `freeze` builds `fixtures/kind-eval/sample.json` from #917's gold set
@@ -371,6 +371,8 @@ async function run() {
   const variant = need("--variant");
   const cache = need("--cache");
   const cap = Number(arg("--cap") ?? 250);
+  // 72 back-to-back calls drew a 429 on 2026-10-16; space them out.
+  const paceMs = Number(arg("--pace-ms") ?? 3000);
   const items = splitItems(loadSample(), split, variant).slice(
     0,
     Number(arg("--limit") ?? Number.POSITIVE_INFINITY)
@@ -401,6 +403,7 @@ async function run() {
       console.log(`cap of ${cap} calls reached; stopping`);
       break;
     }
+    if (called > 0) await new Promise((r) => setTimeout(r, paceMs));
     const body = requestBody(item, variant);
     const res = await callSystemOne(
       env,
@@ -646,8 +649,12 @@ function report() {
     )
   );
 
-  console.log("hard negatives: drama-regex matches gold calls something else");
-  const hard = rows.filter((r) => r.item.regex && r.gold !== "drama");
+  console.log(
+    "hard negatives: drama-regex matches gold calls neither drama nor breaking"
+  );
+  const hard = rows.filter(
+    (r) => r.item.regex && r.gold !== "drama" && r.gold !== "breaking"
+  );
   console.table({
     hard: {
       n: hard.length,
