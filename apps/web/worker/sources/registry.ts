@@ -4,6 +4,7 @@ import {
 } from "../../src/lib/plain-text.js";
 import { stripSourceBoilerplate } from "../translation-terms.js";
 import { anthropicAdapter } from "./anthropic.js";
+import { isEventPromo } from "./event-promo.js";
 import { githubReleasesAdapter } from "./githubreleases.js";
 import { hfModelsAdapter } from "./hfmodels.js";
 import { hfPapersAdapter } from "./hfpapers.js";
@@ -41,7 +42,9 @@ function normalized(adapter: SourceAdapter): SourceAdapter {
     type: adapter.type,
     async fetchItems(config, sinceEpochSec, secrets) {
       const items = await adapter.fetchItems(config, sinceEpochSec, secrets);
-      return items.map(normalizeFetchedItem);
+      return items
+        .map(normalizeFetchedItem)
+        .filter((item) => !isEventPromo(item));
     },
   };
 }

@@ -839,6 +839,16 @@ runtime through `upsert_source` with no deploy — see
   the cap safe: the 26h window means the head of the feed at the next run
   is exactly what was published since the last one, so the cap samples the
   live edge and dedupe drops the rest.
+- **Event-promo gate.** Every adapter's output also drops TechCrunch
+  event sales before dedupe (`worker/sources/event-promo.ts`, applied in
+  `registry.ts` `normalized`): a `techcrunch.com` URL whose title pairs
+  pass/ticket with a sale word (save, deal, early bird, last chance, pay
+  more), "Exhibit at ...", a "N days/hours to Disrupt" countdown, or a
+  `/events/` path. Other hosts are never touched. Measured 2026-10-16 over
+  14 days of stored rows (3,230): 10 hits, all TechCrunch Disrupt or Founder
+  Summit sales on `techcrunch-ai` (7 published, 2 merged, 1 rejected), 0 false positives; "Tesla Registers 43 Cybercabs" and
+  "One Way Tickets to Saudi Arabia" stay in. Speaker, agenda, lineup and
+  recap posts (#852) still pass to the scorer: some announce a lab's news.
 - **Feed share cap.** The flood gate only bounds new rows, and a source
   that omits `maxItems` can still dominate the served feed. `marketbrief`
   is already capped at 6 by the flood gate. `getFeed`
