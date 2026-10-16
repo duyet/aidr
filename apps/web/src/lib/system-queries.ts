@@ -1,4 +1,8 @@
 import {
+  IMAGE_COVERAGE_SQL,
+  type ImageCoverageRow,
+} from "../../worker/image-coverage.js";
+import {
   FETCH_FAILED_ALERT_RUNS,
   staleAfterRunsFor,
 } from "../../worker/sources/catalog.js";
@@ -9,10 +13,6 @@ import {
   sanitizeRunStats,
   sanitizeText,
 } from "../../worker/telemetry-safe.js";
-import {
-  IMAGE_COVERAGE_SQL,
-  type ImageCoverageRow,
-} from "../../worker/image-coverage.js";
 import { WORKFLOW_RUN_STARTED_AT_ORDER_SQL } from "../../worker/workflow-run.js";
 import type { DbReader } from "./db";
 import { runItemWindow } from "./run-items";

@@ -254,7 +254,7 @@ async function audit(args: Args): Promise<void> {
   const [overview, runs, sources] = await Promise.all([
     api<Record<string, unknown>>("/api/system/overview"),
     loadRuns(),
-    api<{ imageCoverage: ImageCoverageRow[] }>("/api/system/sources"),
+    api<{ imageCoverage?: ImageCoverageRow[] }>("/api/system/sources"),
   ]);
   const wanted = args.flags.get("run");
   const target =
@@ -281,12 +281,14 @@ async function audit(args: Args): Promise<void> {
         (r) => r.feedback
       )
     : null;
-  const collapsed = evaluateImageCoverage(sources.imageCoverage, new Set());
+  // An older Worker serves no imageCoverage; audit the rest instead of throwing.
+  const coverage = sources.imageCoverage ?? [];
+  const collapsed = evaluateImageCoverage(coverage, new Set());
   const result = {
     mailFeedback,
     imageCoverage: {
       collapsed: collapsed.map((issue) => issue.detail),
-      sources: sources.imageCoverage.map(formatCoverage),
+      sources: coverage.map(formatCoverage),
     },
     health: {
       runsToday: overview.runsToday,

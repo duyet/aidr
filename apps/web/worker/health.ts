@@ -12,13 +12,13 @@ import {
   dayVideoConfirmedKey,
   shouldCheckDayVideo,
 } from "./day-video-watchdog.js";
-import { NOT_SELECTED_REASON } from "./ingest/mode.js";
-import { flushLlmCallWrites } from "./llm-call-log.js";
 import {
   evaluateImageCoverage,
   IMAGE_COVERAGE_SQL,
   type ImageCoverageRow,
 } from "./image-coverage.js";
+import { NOT_SELECTED_REASON } from "./ingest/mode.js";
+import { flushLlmCallWrites } from "./llm-call-log.js";
 import type { AlertEvent, AlertSeverity } from "./notify/alert.js";
 import {
   type DailySummary,
