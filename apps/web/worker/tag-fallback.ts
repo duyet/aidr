@@ -35,7 +35,7 @@ const FALLBACK_ENTITIES: ReadonlySet<string> = new Set(
   palantir coreweave intel salesforce tsmc broadcom github samsung tencent
   bytedance nebius shopify cloudflare sk-hynix mediatek ibm qualcomm micron
   paypal minimax zhipu stepfun sakana-ai cerebras asml mozilla airbnb
-  accenture uber tiktok lumentum heygen world-labs
+  accenture uber tiktok lumentum heygen
   claude gpt grok gemini qwen codex glm copilot llama gemma kimi cursor vllm
   ollama langchain bedrock sagemaker tpu ios android
   sam-altman elon-musk jensen-huang zuckerberg trump

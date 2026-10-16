@@ -1101,12 +1101,10 @@ Batches of 5.
     companies `topics` has no canonical for (Yandex, Dyson, Deezer,
     Omron). The fallback only returns existing canonicals, so it cannot
     name a company seen for the first time.
-  - `uk`, `ukraine` and `world-labs` joined the entity list then. They
-    tag 3 of the week's 23 rows the fallback missed, and 4 of the 133
-    published rows still untagged. In all 35 published headlines naming
-    UK or Ukraine, the country is where the story happens or who acts in
-    it. 3 of the 4 naming World Labs are about the lab; the fourth says
-    "Real World Labs".
+  - `uk` and `ukraine` joined the entity list then. In all 35 published
+    headlines naming UK or Ukraine, the country is where the story happens
+    or who acts in it. `world-labs` was left out: one of four headlines
+    naming it was "Real World Labs", and a wrong tag is worse than none.
 - Emerging entity/model names that clear a frequency/growth bar promote
   into `learned_keywords` for title highlight and growth-boosted
   homepage trending chips (`worker/topic-learning.ts`). Nothing retires a

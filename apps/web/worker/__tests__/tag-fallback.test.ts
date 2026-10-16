@@ -65,9 +65,12 @@ describe("fallbackTags", () => {
     expect(
       tags("Russian Bot Traffic Plummets After Ukraine Hits Yandex Data Hubs")
     ).toEqual(["ukraine"]);
-    expect(
-      tags("World Labs Releases First Atlas Beta for Camera Management")
-    ).toEqual(["world-labs"]);
+  });
+
+  // A wrong tag is worse than none: these words sit inside other names.
+  it("does not tag a country or lab from a lookalike word", () => {
+    expect(tags("Duke researchers publish a new benchmark")).toEqual([]);
+    expect(tags("Real World Labs opens a new campus")).toEqual([]);
   });
 
   it("reads a company's other name and tags the company once", () => {
