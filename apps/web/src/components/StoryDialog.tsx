@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { localizedTitle } from "../lib/display-title";
 import { fetchFeedOnce, getCachedFeed } from "../lib/feed-cache";
+import { loadErrorCopy } from "../lib/load-error";
 import { usePrefs } from "../lib/prefs";
 import type { FeedItem, Lang } from "../lib/types";
 import { StoryDetail } from "./StoryDetail";
@@ -115,7 +116,7 @@ export function StoryDialog({
           )}
           {state.status === "failed" && (
             <div className="text-sm text-muted-foreground">
-              <p>
+              <p role="alert">
                 {lang === "vi"
                   ? "Không tải được tin."
                   : "The story could not be loaded."}
@@ -129,7 +130,7 @@ export function StoryDialog({
                 }}
                 className="mt-2 font-bold text-foreground underline-offset-2 hover:underline"
               >
-                {lang === "vi" ? "Thử lại" : "Try again"}
+                {loadErrorCopy("story", lang).retry}
               </button>
             </div>
           )}

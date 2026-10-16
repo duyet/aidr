@@ -98,6 +98,15 @@ describe("story dialog load states", () => {
     expect(screen.queryByText("Loading...")).toBeNull();
   });
 
+  it("announces the failure to screen readers (defect: the failed state appeared silently)", async () => {
+    stubFetch({ status: 500 });
+    await openDialog();
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      "The story could not be loaded."
+    );
+  });
+
   it("offers a retry when the request never reaches the server (defect: offline reads as a deleted story)", async () => {
     stubFetch("network");
     await openDialog();
