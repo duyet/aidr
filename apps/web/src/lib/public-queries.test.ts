@@ -501,6 +501,7 @@ describe("getPublicDigest", () => {
       text: "Nvidia buys Hugging Face.",
       item_ids: [id],
       image_url: `https://img.example/${id}.jpg`,
+      image_item_id: id,
     });
   });
 

@@ -63,6 +63,7 @@ import { Route as ApiSystemRunItemsRouteImport } from './routes/api/system.run-i
 import { Route as ApiSystemRunsRouteImport } from './routes/api/system.runs'
 import { Route as ApiSystemSourcesRouteImport } from './routes/api/system.sources'
 import { Route as ApiSystemTrendsRouteImport } from './routes/api/system.trends'
+import { Route as ApiThumbIdRouteImport } from './routes/api/thumb.$id'
 import { Route as ApiWebhooksClerkRouteImport } from './routes/api/webhooks.clerk'
 import { Route as ApiWeekWeekRouteImport } from './routes/api/week.$week'
 import { Route as ApiOgDateDateRouteImport } from './routes/api/og.date.$date'
@@ -337,6 +338,11 @@ const ApiSystemTrendsRoute = ApiSystemTrendsRouteImport.update({
   path: '/trends',
   getParentRoute: () => ApiSystemRoute,
 } as any)
+const ApiThumbIdRoute = ApiThumbIdRouteImport.update({
+  id: '/api/thumb/$id',
+  path: '/api/thumb/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksClerkRoute = ApiWebhooksClerkRouteImport.update({
   id: '/api/webhooks/clerk',
   path: '/api/webhooks/clerk',
@@ -408,6 +414,7 @@ export interface FileRoutesByFullPath {
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/system/trends': typeof ApiSystemTrendsRoute
+  '/api/thumb/$id': typeof ApiThumbIdRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
   '/api/week/$week': typeof ApiWeekWeekRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
@@ -467,6 +474,7 @@ export interface FileRoutesByTo {
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/system/trends': typeof ApiSystemTrendsRoute
+  '/api/thumb/$id': typeof ApiThumbIdRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
   '/api/week/$week': typeof ApiWeekWeekRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
@@ -527,6 +535,7 @@ export interface FileRoutesById {
   '/api/system/runs': typeof ApiSystemRunsRoute
   '/api/system/sources': typeof ApiSystemSourcesRoute
   '/api/system/trends': typeof ApiSystemTrendsRoute
+  '/api/thumb/$id': typeof ApiThumbIdRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
   '/api/week/$week': typeof ApiWeekWeekRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
@@ -588,6 +597,7 @@ export interface FileRouteTypes {
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/system/trends'
+    | '/api/thumb/$id'
     | '/api/webhooks/clerk'
     | '/api/week/$week'
     | '/api/og/date/$date'
@@ -647,6 +657,7 @@ export interface FileRouteTypes {
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/system/trends'
+    | '/api/thumb/$id'
     | '/api/webhooks/clerk'
     | '/api/week/$week'
     | '/api/og/date/$date'
@@ -706,6 +717,7 @@ export interface FileRouteTypes {
     | '/api/system/runs'
     | '/api/system/sources'
     | '/api/system/trends'
+    | '/api/thumb/$id'
     | '/api/webhooks/clerk'
     | '/api/week/$week'
     | '/api/og/date/$date'
@@ -749,6 +761,7 @@ export interface RootRouteChildren {
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
+  ApiThumbIdRoute: typeof ApiThumbIdRoute
   ApiWebhooksClerkRoute: typeof ApiWebhooksClerkRoute
   ApiWeekWeekRoute: typeof ApiWeekWeekRoute
   ApiOgDateDateRoute: typeof ApiOgDateDateRoute
@@ -1134,6 +1147,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSystemTrendsRouteImport
       parentRoute: typeof ApiSystemRoute
     }
+    '/api/thumb/$id': {
+      id: '/api/thumb/$id'
+      path: '/api/thumb/$id'
+      fullPath: '/api/thumb/$id'
+      preLoaderRoute: typeof ApiThumbIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/clerk': {
       id: '/api/webhooks/clerk'
       path: '/api/webhooks/clerk'
@@ -1259,6 +1279,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSplatRoute: ApiAdminSplatRoute,
   ApiOgIdRoute: ApiOgIdRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,
+  ApiThumbIdRoute: ApiThumbIdRoute,
   ApiWebhooksClerkRoute: ApiWebhooksClerkRoute,
   ApiWeekWeekRoute: ApiWeekWeekRoute,
   ApiOgDateDateRoute: ApiOgDateDateRoute,

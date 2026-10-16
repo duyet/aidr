@@ -55,6 +55,9 @@ export interface TldrBullet {
   /** Story og/thumbnail for the first linked item that has one.
    * Additive read-time field — not stored on `tldr_snapshots`. */
   image_url?: string | null;
+  /** The story `image_url` belongs to, so the feed thumb can ask
+   * `/api/thumb/<id>` for a resized copy. Read-time only, like `image_url`. */
+  image_item_id?: string;
 }
 
 export interface DayGroup {

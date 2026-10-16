@@ -1033,6 +1033,17 @@ images rather than a broken-src fallback.
 - **A video poster is only URL-checked here.** At collection time the
   poster URL passes the same URL policy as any image and nothing is
   fetched. Its bytes are checked later, at Telegram send time (see Notify).
+- **Feed thumbs are served resized, from the story's own media.** A 48 px
+  TL;DR thumb loads `/api/thumb/<item id>?u=<image url>`
+  (`src/routes/api/thumb.$id.ts`), which refuses a `u` the item does not
+  carry (`image_url` or a manifest image asset), fetches the source once
+  per edge location and resizes it through the Images binding to a 144 px
+  square WebP. The 2026-10-16 homepage carried a 1.1 MB publisher hero for
+  one such box; the six thumbs went from 2.08 MB to 25 KB. A miss (binding
+  absent, publisher down, non-image) 302s to the publisher URL, and the
+  client steps to that URL on a hard error, so the thumb never disappears.
+  The lightbox and the story-page gallery still use the manifest URLs as
+  written; only the feed-size copy is derived.
 
 ### 4. Score (decision router, then Jev, then LLM)
 

@@ -5,6 +5,7 @@ import {
   imageUrlByItemId,
   resizeCdnImageUrl,
   sanitizeImageUrl,
+  thumbRouteUrl,
   withTldrImages,
 } from "./tldr-images";
 
@@ -178,20 +179,37 @@ describe("attachTldrBulletImages", () => {
         text: "Has image",
         item_ids: ["a"],
         image_url: "https://img.example/a.jpg",
+        image_item_id: "a",
       },
       { text: "No image", item_ids: ["b"] },
       {
         text: "Cluster",
         item_ids: ["b", "c"],
         image_url: "https://img.example/c.jpg",
+        // The resizer refuses a URL "b" does not carry, so the owner is "c".
+        image_item_id: "c",
       },
       {
         text: "Already set",
         item_ids: ["a"],
         image_url: "https://img.example/a.jpg",
+        image_item_id: "a",
       },
       { text: "No ids" },
     ]);
+  });
+});
+
+describe("thumbRouteUrl", () => {
+  it("pairs the sanitized URL with the item that owns it", () => {
+    expect(
+      thumbRouteUrl("abc123", "https://img.example/a.jpg?utm_source=x&amp;w=1")
+    ).toBe("/api/thumb/abc123?u=https%3A%2F%2Fimg.example%2Fa.jpg%3Fw%3D1");
+  });
+
+  it("gives no route URL without an item or for a rejected URL", () => {
+    expect(thumbRouteUrl(undefined, "https://img.example/a.jpg")).toBeNull();
+    expect(thumbRouteUrl("abc123", "http://127.0.0.1/a.jpg")).toBeNull();
   });
 });
 

@@ -44,6 +44,7 @@ const NON_HTML_FILES = new Set([
   "src/routes/api/og.$id.tsx",
   "src/routes/api/og.date.$date.tsx",
   "src/routes/api/story.$id.ts",
+  "src/routes/api/thumb.$id.ts",
   "worker/public-assets.ts",
 ]);
 
