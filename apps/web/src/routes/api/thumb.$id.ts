@@ -26,7 +26,9 @@ const THUMB_CACHE_CONTROL =
 
 /** A miss (publisher down, not an image, no binding) sends the browser to
  *  the publisher URL it would have loaded before this route existed, so the
- *  thumb still shows. Short-lived so a transient failure is retried. */
+ *  thumb still shows. The edge keeps the 302 under the hit's key for this
+ *  long too, so a failing source costs one fetch per location per 5 minutes
+ *  and a transient failure is retried after that. */
 const FALLBACK_CACHE_CONTROL = "public, max-age=300";
 
 /** Covers the headers and the whole body, so a publisher that trickles
@@ -104,10 +106,17 @@ function thumbCacheKey(origin: string, id: string, wanted: string): Request {
  *
  * `u` must be an image the story already carries (`image_url` or a manifest
  * image asset), so this is not an open image proxy: an unknown URL is a 404
- * before any fetch. Ownership is read on every request, cached or not, so a
- * removed image stops serving at once. The source is fetched once per edge
- * location and resized through the Images binding to a `THUMB_SIDE` square
- * WebP, which turns a 1 MB publisher hero into a few KB for a 48 px box.
+ * before any fetch. Ownership is read on every request before the edge
+ * cache, so once a story drops an image the Worker answers 404 for it, edge
+ * copy or not. `StoryThumb` then falls back to the publisher URL, so the
+ * image leaves the page only when the page HTML stops carrying it (up to
+ * about 2 hours at the edge). A browser that already loaded the thumb can
+ * keep it up to a day (`max-age`) and show it once more within the next day
+ * while it revalidates (`stale-while-revalidate`). `s-maxage` also lets a shared
+ * proxy outside Cloudflare keep it up to 7 days. The source is fetched once
+ * per edge location and resized through the Images binding to a
+ * `THUMB_SIDE` square WebP, which turns a 1 MB publisher hero into a few KB
+ * for a 48 px box.
  */
 export const Route = createFileRoute("/api/thumb/$id")({
   server: {
@@ -175,23 +184,21 @@ export const Route = createFileRoute("/api/thumb/$id")({
         const source = resizeCdnImageUrl(wanted, "thumb") ?? wanted;
         const images: ImagesBinding | undefined = env?.IMAGES;
         const rendered = images ? await renderThumb(images, source) : null;
-        if (!rendered) {
-          return new Response(null, {
-            status: 302,
-            headers: {
-              Location: wanted,
-              "Cache-Control": FALLBACK_CACHE_CONTROL,
-            },
-          });
-        }
-        const bytes = await rendered.arrayBuffer();
-        const res = new Response(bytes, {
-          headers: {
-            "Content-Type": "image/webp",
-            "Cache-Control": THUMB_CACHE_CONTROL,
-            "X-Content-Type-Options": "nosniff",
-          },
-        });
+        const res = rendered
+          ? new Response(await rendered.arrayBuffer(), {
+              headers: {
+                "Content-Type": "image/webp",
+                "Cache-Control": THUMB_CACHE_CONTROL,
+                "X-Content-Type-Options": "nosniff",
+              },
+            })
+          : new Response(null, {
+              status: 302,
+              headers: {
+                Location: wanted,
+                "Cache-Control": FALLBACK_CACHE_CONTROL,
+              },
+            });
         if (cache) {
           const store = cache.put(cacheKey, res.clone()).catch(() => undefined);
           if (ctx?.waitUntil) ctx.waitUntil(store);

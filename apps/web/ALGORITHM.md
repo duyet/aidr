@@ -1044,8 +1044,16 @@ images rather than a broken-src fallback.
   TL;DR thumb loads `/api/thumb/<item id>?u=<image url>`
   (`src/routes/api/thumb.$id.ts`). It takes only a full 64-hex item id and
   refuses a `u` that published item does not carry (`image_url` or a
-  manifest image asset). That ownership read runs on every request, cached
-  or not, so a removed image stops serving at once. The edge copy is keyed
+  manifest image asset). That ownership read runs on every request before
+  the edge cache, so once a story drops an image the Worker answers 404 for
+  it. The 404 alone does not hide the image: `StoryThumb` falls back to the
+  publisher URL on any load error, 404 included. The image goes when the
+  page stops carrying it, which takes up to about 2 hours for edge-cached
+  HTML (`EDGE_CACHE_FRESH_MAX_S` plus `EDGE_CACHE_STALE_S`) and a reload
+  for an open tab. A browser that already loaded the thumb can keep it up
+  to a day (`max-age=86400`) and show it once more within the next day
+  while it revalidates (`stale-while-revalidate`); `s-maxage` lets a shared
+  proxy outside Cloudflare keep it up to 7 days. The edge copy is keyed
   on item id, canonical `u` and `THUMB_RENDER_VERSION` only, so extra query
   parameters cannot force a new publisher fetch. The source fetch is capped
   at 8 MB and 5 s including the body, and is resized through the Images
@@ -1055,6 +1063,10 @@ images rather than a broken-src fallback.
   the six thumbs went from 2.08 MB to 25 KB. A miss (binding
   absent, publisher down, non-image) 302s to the publisher URL, and the
   client steps to that URL on a hard error, so the thumb never disappears.
+  The 302 is stored under the same edge key for 5 minutes (`max-age=300`),
+  so a source that always fails (about 10 of 95 on 2026-10-16: FT 400,
+  axios, geekwire and marktechpost 403) costs one publisher fetch per edge
+  location per 5 minutes, not a fetch of up to 5 s on every request.
   The lightbox and the story-page gallery still use the manifest URLs as
   written; only the feed-size copy is derived.
 

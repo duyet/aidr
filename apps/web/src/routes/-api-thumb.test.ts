@@ -2,9 +2,10 @@
  * `/api/thumb/$id` resizes only a picture a published story carries. The
  * defects guarded here: an open proxy (any `u` fetched), a cached copy that
  * outlives the story's image, cache-busting query noise that forces a fresh
- * publisher fetch per request, an SVG or oversized or stalled source reaching
- * the resizer, and a resize failure that hides the thumb instead of sending
- * the browser to the publisher.
+ * publisher fetch per request, a failing source fetched again on every
+ * request, a followed publisher redirect, an SVG or oversized or stalled
+ * source reaching the resizer, and a resize failure that hides the thumb
+ * instead of sending the browser to the publisher.
  */
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -45,7 +46,10 @@ let fetched: string[] = [];
 let transforms: Array<Record<string, unknown>> = [];
 let outputs: Array<Record<string, unknown>> = [];
 let transformFails = false;
-let cached: Map<string, { body: ArrayBuffer; headers: Headers }>;
+let cached: Map<
+  string,
+  { status: number; body: ArrayBuffer; headers: Headers }
+>;
 let reads = 0;
 
 function fakeImages(): ImagesBinding {
@@ -96,11 +100,15 @@ function fakeCache(): Cache {
     match: async (req: Request) => {
       const entry = cached.get(req.url);
       return entry
-        ? new Response(entry.body.slice(0), { headers: entry.headers })
+        ? new Response(entry.body.slice(0), {
+            status: entry.status,
+            headers: entry.headers,
+          })
         : undefined;
     },
     put: async (req: Request, res: Response) => {
       cached.set(req.url, {
+        status: res.status,
         body: await res.arrayBuffer(),
         headers: res.headers,
       });
@@ -246,18 +254,65 @@ describe("api/thumb/$id", () => {
     expect(res.headers.get("cache-control")).toBe("public, max-age=300");
   });
 
-  it("sends the browser to the publisher URL when the publisher answers non-image or 3xx", async () => {
+  it("sends the browser to the publisher URL when the publisher answers 3xx, without following it", async () => {
+    const redirects: Array<RequestRedirect | undefined> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        fetched.push(url);
+        redirects.push(init?.redirect);
+        // A followed redirect lands on the private host's image.
+        return init?.redirect === "manual"
+          ? new Response("<html>", {
+              status: 302,
+              headers: { location: "http://10.0.0.1/x" },
+            })
+          : new Response("private-bytes", {
+              headers: { "content-type": "image/jpeg" },
+            });
+      })
+    );
+    const res = await call(OWNED);
+    expect(redirects).toEqual(["manual"]);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe(OWNED);
+    expect(transforms).toEqual([]);
+  });
+
+  it("sends the browser to the publisher URL when the publisher answers non-image", async () => {
     publisherAnswers(
-      () =>
-        new Response("<html>", {
-          status: 302,
-          headers: { location: "http://10.0.0.1/x" },
-        })
+      () => new Response("<html>", { headers: { "content-type": "text/html" } })
     );
     const res = await call(OWNED);
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe(OWNED);
     expect(transforms).toEqual([]);
+  });
+
+  it("fetches a failing source once per edge copy and keeps the miss for 5 minutes", async () => {
+    publisherAnswers(() => new Response("forbidden", { status: 403 }));
+    for (let i = 0; i < 3; i++) {
+      const res = await call(OWNED);
+      expect(res.status).toBe(302);
+      expect(res.headers.get("location")).toBe(OWNED);
+    }
+    expect(fetched).toEqual([OWNED]);
+    const u = encodeURIComponent(OWNED);
+    const entry = cached.get(
+      `https://aidr.today/api/thumb/v${THUMB_RENDER_VERSION}/${ID}?u=${u}`
+    );
+    expect(entry?.status).toBe(302);
+    expect(entry?.headers.get("cache-control")).toBe("public, max-age=300");
+  });
+
+  it("stops redirecting to a cached miss once the story drops the image", async () => {
+    publisherAnswers(() => new Response("forbidden", { status: 403 }));
+    expect((await call(OWNED)).status).toBe(302);
+    sqlite.exec("UPDATE items SET image_url = NULL, media_manifest = NULL");
+    const res = await call(OWNED);
+    expect(res.status).toBe(404);
+    expect(res.headers.get("location")).toBeNull();
+    expect(fetched).toEqual([OWNED]);
   });
 
   it("never hands an SVG to the resizer", async () => {
