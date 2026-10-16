@@ -59,6 +59,7 @@ import {
   safeNewsSitemapResponse,
 } from "./lib/news-sitemap";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
+import { withRequestTiming, withServerTiming } from "./lib/request-timing";
 import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
 import { handleFeedXmlRequest, RSS_CACHE_CONTROL } from "./lib/rss";
 import { classifyServerFnPath } from "./lib/server-fn-registry";
@@ -420,14 +421,16 @@ const worker = {
 
 export default {
   ...worker,
-  async fetch(request: Request, env: Env, ctx?: ExecutionContext) {
-    const response = await worker.fetch(request, env, ctx);
-    try {
-      recordRequestUsage(env, request, response);
-    } catch {
-      // Telemetry must never fail a request.
-    }
-    return response;
+  fetch(request: Request, env: Env, ctx?: ExecutionContext) {
+    return withRequestTiming(async () => {
+      const response = await worker.fetch(request, env, ctx);
+      try {
+        recordRequestUsage(env, request, response);
+      } catch {
+        // Telemetry must never fail a request.
+      }
+      return withServerTiming(response);
+    });
   },
 };
 
