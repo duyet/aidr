@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { dayNumber } from "./look.mjs";
 import { AXES, entry, LAYOUTS, lookCss, lookScript } from "./looks/index.mjs";
-import { BED, POOLS, SFX, soundFor } from "./looks/sound.mjs";
+import { BED, bedStartFor, POOLS, SFX, soundFor } from "./looks/sound.mjs";
 import { isoWeekOf } from "./week.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -183,6 +183,26 @@ test("no two cues play the same file on one day", () => {
 
 // build.mjs throws when the bed ends before the cut: every daily start must leave room for a Reel (90 s) and for the
 // longest committed edition, or that edition stops building on the days that draw the start; weekly for 150 s.
+test("a cut too long for the day's bed start moves back to an earlier phrase instead of running off the bed", () => {
+  // A weekly cut over 156 s from the 24 s start, or a daily one over 124 s from 56 s, ran past the bed and failed
+  // the build. The clamp lands on a phrase start, so the music still opens on a full bar.
+  assert.equal(bedStartFor(56, 130), 48);
+  assert.equal(bedStartFor(24, 160), 16);
+  assert.equal(bedStartFor(56, 179), 0);
+  for (const [start, total] of [
+    [56, 130],
+    [24, 160],
+    [40, 175],
+  ]) {
+    const at = bedStartFor(start, total);
+    assert.ok(at + total <= BED.duration, `${start}+${total} → ${at}`);
+    assert.ok(BED.starts.daily.includes(at), `${at} is a phrase start`);
+  }
+  // With room, the day's rotation stands.
+  for (const start of BED.starts.daily)
+    assert.equal(bedStartFor(start, 117), start);
+});
+
 test("the bed start leaves room for the cut and changes every day", () => {
   const longest = Math.max(
     90,

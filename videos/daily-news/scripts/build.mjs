@@ -26,7 +26,7 @@ import { join, resolve } from "node:path";
 import { cutFor, cutOf, formatsOf } from "./lang.mjs";
 import { coverStory, resolveLook, thumbStory } from "./look.mjs";
 import { entry, lookCss, lookScript } from "./looks/index.mjs";
-import { gainFor, SFX, soundFor } from "./looks/sound.mjs";
+import { bedStartFor, gainFor, SFX, soundFor } from "./looks/sound.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
 import { spreadWords, subsMismatch } from "./visub.mjs";
 import { applyScreen } from "./visub-screen.mjs";
@@ -235,6 +235,7 @@ for (const seg of segs) {
   clock += seg.dur;
 }
 const total = r3(clock);
+sound.bedStart = bedStartFor(sound.bedStart, total);
 const intro = segs[0];
 const outro = segs.at(-1);
 const storySegs = segs.filter((s) => s.kind === "story");
@@ -575,7 +576,7 @@ function buildMix(outFile) {
   const bedEnd = sound.bedStart + total;
   if (!(bedEnd <= bedLength))
     throw new Error(
-      `this ${total}s cut runs off the end of the music bed (${config.music.file}, ${bedLength}s) from this date's ${sound.bedStart}s start: shorten the script, or keep BED.starts in looks/sound.mjs at or under ${r3(bedLength - total)}s`
+      `this ${total}s cut runs off the end of the music bed (${config.music.file}, ${bedLength}s) from ${sound.bedStart}s: shorten the script, or set BED.duration in looks/sound.mjs to the bed's length`
     );
   inputs.push("-i", bed);
   filters.push(

@@ -45,6 +45,17 @@ export const BED = {
   starts: { daily: [0, 16, 24, 32, 40, 48, 56], weekly: [0, 16, 24] },
 };
 
+/**
+ * `start` when a `total`-second cut still ends inside the bed from it, else the latest earlier phrase start that
+ * does (BED.starts.daily lists every phrase start in use). 0 when none does; build.mjs then fails on the overrun.
+ */
+export function bedStartFor(start, total) {
+  return Math.max(
+    0,
+    ...BED.starts.daily.filter((s) => s <= start && s + total <= BED.duration)
+  );
+}
+
 /** The file for each cue and the bed start on `dateKey` ("YYYY-MM-DD" or "week-YYYY-Www"). Every cut of a day gets the same. */
 export function soundFor(dateKey) {
   const day = dayNumber(dateKey);
