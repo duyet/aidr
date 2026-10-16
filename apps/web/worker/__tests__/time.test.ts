@@ -33,4 +33,24 @@ describe("localCalendarDate", () => {
       localCalendarDate(Date.UTC(2026, 7, 17, 16, 30, 0), AUDIENCE_TIMEZONE)
     ).toBe("2026-08-17");
   });
+
+  // The formatter is cached per timezone. A cache keyed on anything else
+  // hands the first zone's formatter to the second and files rows on the
+  // wrong day, so both zones are asked at an instant where their dates differ
+  // and in both orders.
+  describe("per-timezone formatter cache", () => {
+    const instant = Date.UTC(2026, 7, 17, 17, 30, 0);
+    const ict = "Asia/Ho_Chi_Minh";
+    const ny = "America/New_York";
+
+    it("keeps ICT and New York apart when ICT is asked first", () => {
+      expect(localCalendarDate(instant, ict)).toBe("2026-08-18");
+      expect(localCalendarDate(instant, ny)).toBe("2026-08-17");
+    });
+
+    it("keeps New York and ICT apart when New York is asked first", () => {
+      expect(localCalendarDate(instant, ny)).toBe("2026-08-17");
+      expect(localCalendarDate(instant, ict)).toBe("2026-08-18");
+    });
+  });
 });

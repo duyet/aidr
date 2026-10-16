@@ -359,7 +359,9 @@ export function withStoryMediaSuffix(url: URL): void {
  * them without bound.
  */
 const MEMO_MAX_ENTRIES = 4096;
-const MEMO_MAX_KEY_LENGTH = MAX_MEDIA_URL_LENGTH;
+// Real snapshot URLs peak near 350 chars; a low cap bounds what a flood of
+// long submitted URLs can pin (4096 entries x 2048 chars x 2 maps is ~30 MB).
+const MEMO_MAX_KEY_LENGTH = 512;
 const canonicalMediaUrls = new Map<string, string | null>();
 const mediaIdentityKeys = new Map<string, string | null>();
 
