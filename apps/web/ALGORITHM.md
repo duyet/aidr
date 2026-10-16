@@ -577,11 +577,32 @@ re-renders off the request path instead of on it. For the homepage policy
 (`s-maxage=300, stale-while-revalidate=600`) a reader without a browser copy
 sees a render at most 80 minutes old: 5m fresh + 1h stale in the Worker, then
 5m + 10m at the CDN. `Server-Timing: aidr-cache`
-reports `HIT`, `STALE` or `MISS`; web-vitals splits by the same value.
+reports `HIT`, `STALE`, `KV` or `MISS`; web-vitals splits by the same value.
 The same header carries the request's stages (`request-timing.ts`): `cache`
 (the Worker cache lookup), `d1` (through the end of the feed batch), `ssr` (the rest of the render), then
 `total` and `iso` (this isolate's request count). Each `dur` is the I/O
 waited on since the previous mark.
+
+The homepage also has a tier shared by every colo: KV (`HTML_CACHE`,
+`global-html-cache.ts`) holds the same stored entry for its four keys (bare
+`/` and `/?lang=` in each language; a `?q=`, `?tag=` or any other param stays
+local). Keys start with the deployed version id (`CF_VERSION_METADATA`), so a
+copy never names another build's chunks. A colo with no usable local copy
+reads KV before it renders: a fresh or stale copy is served as `KV` and
+copied into the local cache with its original `x-aidr-stored-at`, so the
+fresh and stale windows still count from the render. A local STALE entry
+checks KV first and takes a fresh copy without rendering. A render writes KV
+only when the KV copy is absent or at least `GLOBAL_WRITE_INTERVAL_S` (600 s)
+old: about 4 keys x 144 a day = 576 in steady traffic, plus one per key
+after each deploy (new version prefix) and the rare race of two colos that
+render inside KV's visibility window, against the Free plan's 1,000. The
+TTL is fresh + `EDGE_CACHE_STALE_S`. KV is eventually consistent, so a colo
+may read a copy up to about 60 s older than the newest write;
+`x-aidr-stored-at` still bounds its age. A failed read or write (an outage,
+the daily write quota) is swallowed: that colo falls back to its own cache
+and renders. Each document served through the Worker cache logs one
+`{ event: "html-cache", state, path, lang, age, global }` line to Workers
+Logs (no cookie, URL or user agent).
 
 There is no read endpoint yet: querying needs an account API token secret that
 the Worker does not hold. Weekly totals, run against the Analytics Engine SQL
