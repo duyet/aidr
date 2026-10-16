@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildMediaManifest,
   canonicalizeMediaUrl,
@@ -8,6 +8,7 @@ import {
   isGenericImageUrl,
   MAX_MEDIA_ASSETS,
   MAX_MEDIA_URL_LENGTH,
+  mediaIdentityKey,
   parseMediaManifest,
   parseMediaMetadata,
   primaryThumbnailUrl,
@@ -795,5 +796,63 @@ describe("isGenericImageUrl avatars", () => {
     expect(
       isGenericImageUrl("https://pbs.twimg.com/card_img/123/abc?format=jpg")
     ).toBe(false);
+  });
+});
+
+describe("memoized canonical forms", () => {
+  // The identity map is keyed by type as well as URL: an image key strips the
+  // extension and resize suffix, a video key keeps them, and a hit for one
+  // type must never answer the other.
+  it("keeps image and video identities apart for one URL", () => {
+    const url = "https://cdn.example.com/media/clip-1024x576.jpg";
+    const image = mediaIdentityKey("image", url);
+    const video = mediaIdentityKey("video", url);
+    expect(image).toBe("cdn.example.com/media/clip");
+    expect(video).toBe("cdn.example.com/media/clip-1024x576.jpg");
+    expect(mediaIdentityKey("image", url)).toBe(image);
+    expect(mediaIdentityKey("video", url)).toBe(video);
+  });
+
+  it("answers a rejected URL the same way on a repeat", () => {
+    const raw = "https://user:pw@example.com/a.jpg";
+    expect(canonicalizeMediaUrl(raw)).toBeNull();
+    expect(canonicalizeMediaUrl(raw)).toBeNull();
+  });
+
+  // A guard that dropped the length cap would let a flood of long submitted
+  // URLs pin ~30 MB per isolate. Re-parsing is the only observable difference
+  // between a stored and an unstored URL, so count URL constructions.
+  describe("memo key length cap", () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    function countUrlParses(raw: string): number {
+      const RealURL = URL;
+      let parses = 0;
+      vi.stubGlobal(
+        "URL",
+        class extends RealURL {
+          constructor(...args: ConstructorParameters<typeof URL>) {
+            super(...args);
+            parses++;
+          }
+        }
+      );
+      canonicalizeMediaUrl(raw);
+      canonicalizeMediaUrl(raw);
+      return parses;
+    }
+
+    it("stores a short URL, so the repeat does not re-parse", () => {
+      const raw = "https://cdn.example.com/memo-short-control.jpg";
+      expect(countUrlParses(raw)).toBe(1);
+    });
+
+    it("answers a 600-character URL correctly without storing it", () => {
+      const raw = `https://cdn.example.com/${"a".repeat(572)}.jpg`;
+      expect(raw).toHaveLength(600);
+      expect(canonicalizeMediaUrl(raw)).toBe(raw);
+      expect(countUrlParses(raw)).toBe(2);
+      expect(canonicalizeMediaUrl(raw)).toBe(raw);
+    });
   });
 });

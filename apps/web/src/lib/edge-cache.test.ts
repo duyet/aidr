@@ -11,6 +11,11 @@ import {
   sharedMaxAge,
 } from "./edge-cache";
 import { hasCanonicalLocaleQuery } from "./locale-url";
+import {
+  markStage,
+  withRequestTiming,
+  withServerTiming,
+} from "./request-timing";
 
 const PUBLIC = "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
 const EXT =
@@ -303,6 +308,27 @@ describe("stale-while-revalidate", () => {
     advance(301);
     await cachedSsrResponse(get(EXT), ctx, render);
     expect(render).toHaveBeenCalledTimes(2);
+  });
+
+  // Defect: the background render writing its stage marks into the stale
+  // request's Server-Timing, which then reports work it never waited on.
+  it("keeps the background render's marks off the STALE response", async () => {
+    const { ctx, pending } = setup();
+    await seed(ctx);
+    advance(301);
+    const render = vi.fn(async () => {
+      markStage("background");
+      return v2();
+    });
+    const stale = await withRequestTiming(async () =>
+      withServerTiming(await cachedSsrResponse(get(EXT), ctx, render))
+    );
+    expect(stale.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    expect(render).toHaveBeenCalledOnce();
+    const timing = stale.headers.get("server-timing") ?? "";
+    expect(timing).toMatch(/^aidr-cache;desc=STALE, cache;dur=\d+, total;dur=/);
+    expect(timing).not.toContain("background");
+    await Promise.all(pending);
   });
 
   // Defect: revalidating inside the fresh window.

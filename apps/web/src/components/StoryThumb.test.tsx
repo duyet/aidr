@@ -67,10 +67,14 @@ describe("StoryThumb image errors", () => {
     const { container } = render(
       <StoryThumb src={PUBLISHER} itemId={ITEM_ID} lang="en" />
     );
+    const fail = () => {
+      const img = container.querySelector("img");
+      if (!img) throw new Error("missing thumb");
+      fireEvent.error(img);
+    };
+    fail();
     expect(srcOf(container)).toBe(PUBLISHER);
-    const img = container.querySelector("img");
-    if (!img) throw new Error("missing thumb");
-    fireEvent.error(img);
+    fail();
     expect(container.querySelector("img")).toBeNull();
     expect(container.innerHTML).not.toContain("/api/og/");
     expect(container.textContent).toBe(";");
@@ -85,5 +89,53 @@ describe("StoryThumb image errors", () => {
     expect(document.body.innerHTML).not.toContain(OG);
     fireEvent.click(getByRole("button", { name: "Zoom image" }));
     expect(document.body.innerHTML).toContain(OG);
+  });
+});
+
+/**
+ * A feed thumb is 48 px, so it loads the same-origin resized copy. The route
+ * 404s for a URL the item does not own, so a hard error must step to the
+ * publisher URL the row showed before, never straight to the brand tile.
+ */
+describe("StoryThumb feed resizing", () => {
+  const RESIZED = `/api/thumb/${ITEM_ID}?u=${encodeURIComponent(PUBLISHER)}`;
+
+  it("asks /api/thumb for the owning item, then falls back to the publisher URL", () => {
+    const { container } = render(
+      <StoryThumb src={PUBLISHER} itemId={ITEM_ID} lang="en" />
+    );
+    expect(srcOf(container)).toBe(RESIZED);
+    expect(container.querySelector("img")?.getAttribute("width")).toBe("48");
+
+    const img = container.querySelector("img");
+    if (!img) throw new Error("missing thumb");
+    fireEvent.error(img);
+    expect(srcOf(container)).toBe(PUBLISHER);
+  });
+
+  it("routes through the item that owns the picture, not the row's first item", () => {
+    const { container } = render(
+      <StoryThumb
+        src={PUBLISHER}
+        itemId={ITEM_ID}
+        thumbItemId="0123456789abcdef"
+        lang="en"
+      />
+    );
+    expect(srcOf(container)).toBe(
+      `/api/thumb/0123456789abcdef?u=${encodeURIComponent(PUBLISHER)}`
+    );
+  });
+
+  it("loads the publisher URL directly when no item vouches for it", () => {
+    const { container } = render(<StoryThumb src={PUBLISHER} lang="en" />);
+    expect(srcOf(container)).toBe(PUBLISHER);
+  });
+
+  it("keeps the card variant on the publisher URL", () => {
+    const { container } = render(
+      <StoryThumb src={PUBLISHER} itemId={ITEM_ID} lang="en" variant="card" />
+    );
+    expect(srcOf(container)).toBe(PUBLISHER);
   });
 });

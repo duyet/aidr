@@ -2,7 +2,8 @@ import { ThumbsUp } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { useEffect, useRef, useState } from "react";
 import { bearerHeaders, useClerkModule } from "../../lib/clerk-user";
-import { withLang } from "../../lib/locale-url";
+import { signInHref } from "../../lib/sign-in-href";
+import { storyPath } from "../../lib/slug";
 import type { Lang } from "../../lib/types";
 import { castStoryVote, fetchMyVotes } from "../../lib/vote-fn";
 
@@ -80,10 +81,6 @@ async function flush() {
   }
 }
 
-function signInHref(lang: Lang): string {
-  return withLang("/sign-in", lang);
-}
-
 const COPY = {
   en: {
     upvote: "Upvote",
@@ -149,7 +146,15 @@ function Thumb({
   );
 }
 
-function SignInVotes({ voteNet, lang }: { voteNet: number; lang: Lang }) {
+function SignInVotes({
+  itemId,
+  voteNet,
+  lang,
+}: {
+  itemId: string;
+  voteNet: number;
+  lang: Lang;
+}) {
   const [open, setOpen] = useState(false);
   const copy = COPY[lang];
   return (
@@ -180,7 +185,7 @@ function SignInVotes({ voteNet, lang }: { voteNet: number; lang: Lang }) {
                 {copy.close}
               </DialogPrimitive.Close>
               <a
-                href={signInHref(lang)}
+                href={signInHref(lang, storyPath({ id: itemId }, lang))}
                 className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 {copy.signIn}
@@ -289,7 +294,7 @@ function ClerkVotes({
   return (
     <>
       <SignedOut>
-        <SignInVotes voteNet={voteNet} lang={lang} />
+        <SignInVotes itemId={itemId} voteNet={voteNet} lang={lang} />
       </SignedOut>
       <SignedIn>
         <AuthedVotes
@@ -337,7 +342,7 @@ export function StoryVotes({
 }) {
   const { mod, publishableKey } = useClerkModule();
   if (!mod || !publishableKey) {
-    return <SignInVotes voteNet={voteNet} lang={lang} />;
+    return <SignInVotes itemId={itemId} voteNet={voteNet} lang={lang} />;
   }
   return <ClerkVotes itemId={itemId} voteNet={voteNet} lang={lang} mod={mod} />;
 }

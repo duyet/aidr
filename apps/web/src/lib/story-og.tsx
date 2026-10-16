@@ -225,7 +225,7 @@ export function isCardSizedPhoto(image: StoryOgImage): boolean {
   return Math.min(image.width, image.height) >= MIN_STORY_OG_PHOTO_SIDE;
 }
 
-async function readBoundedBody(
+export async function readBoundedBody(
   response: Response,
   maxBytes: number
 ): Promise<Uint8Array | null> {

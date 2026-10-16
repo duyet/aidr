@@ -90,6 +90,7 @@ export function TldrBulletList({
                 b.image_url ??
                 (primaryId ? imageByItemId?.get(primaryId) : undefined) ??
                 null;
+              const thumbItemId = b.image_item_id ?? primaryId;
               const highlighted = (
                 <HighlightedText text={b.text} tags={itemTags} />
               );
@@ -98,6 +99,7 @@ export function TldrBulletList({
                   layout={layout}
                   n={n}
                   thumbSrc={thumbSrc}
+                  thumbItemId={thumbItemId}
                   itemId={primaryId}
                   lang={lang}
                   fullText={b.text}

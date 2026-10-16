@@ -3,7 +3,7 @@ import { type ReactElement, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { track } from "../lib/analytics/track";
 import { withLang } from "../lib/locale-url";
-import { resizeCdnImageUrl } from "../lib/tldr-images";
+import { resizeCdnImageUrl, thumbRouteUrl } from "../lib/tldr-images";
 import type { Lang } from "../lib/types";
 import {
   STORY_DIALOG_CLOSE_BUTTON_CLASS,
@@ -96,6 +96,7 @@ export function StoryThumb({
   alt = "",
   priority = false,
   itemId,
+  thumbItemId = itemId,
   lang,
   variant = "feed",
 }: {
@@ -104,6 +105,9 @@ export function StoryThumb({
   /** First-screen thumbs: eager so LCP is not a lazy 800KB og:image. */
   priority?: boolean;
   itemId?: string;
+  /** The story `src` belongs to, when it is not `itemId` (a TL;DR bullet
+   * whose first story has no picture). Feeds `/api/thumb/<id>`. */
+  thumbItemId?: string;
   /** Card language when the card variant falls back to `/api/og`. */
   lang?: Lang;
   variant?: "feed" | "card";
@@ -116,7 +120,14 @@ export function StoryThumb({
   const [open, setOpen] = useState(false);
   const labelId = useId();
   const url = resizeCdnImageUrl(src, variant === "card" ? "card" : "thumb");
-  const remote = url && !failedSrcs.has(url) ? url : null;
+  // A feed thumb asks the same-origin resizer first; the route 302s to the
+  // publisher on a miss, and a hard error here falls back to the direct URL.
+  const resized =
+    variant === "feed" && url ? thumbRouteUrl(thumbItemId, src) : null;
+  const remote =
+    [resized, url].find(
+      (candidate) => candidate && !failedSrcs.has(candidate)
+    ) ?? null;
   const og = variant === "card" ? storyOgThumbUrl(itemId, lang) : null;
   const ogSrc = og && !failedSrcs.has(og) ? og : null;
   const showSrc = remote ?? ogSrc ?? STORY_THUMB_PLACEHOLDER;
