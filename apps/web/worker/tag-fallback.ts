@@ -39,7 +39,7 @@ const FALLBACK_ENTITIES: ReadonlySet<string> = new Set(
   claude gpt grok gemini qwen codex glm copilot llama gemma kimi cursor vllm
   ollama langchain bedrock sagemaker tpu ios android
   sam-altman elon-musk jensen-huang zuckerberg trump
-  china taiwan japan south-korea russia vietnam iran europe`
+  china taiwan japan south-korea russia vietnam iran europe uk ukraine`
     .trim()
     .split(/\s+/)
 );

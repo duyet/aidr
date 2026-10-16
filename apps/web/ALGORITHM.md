@@ -1087,6 +1087,24 @@ Batches of 5.
   Keyword rules for `security`, `energy`, `stock-market` and `research`,
   and generic topic words (`model`, `cloud`, `memory`), were dropped as
   too often wrong.
+
+  Measured again on 2026-10-16, over the week of published stories to
+  that date (847 rows; the chat rubric answered 7 score batches that
+  week, Jev the rest):
+  - 5 of the 186 stories published after the fallback shipped have no
+    tags (2.7%), against 37 of 661 before it (5.6%, 5.7% over the same
+    sources). Jev still answers none/none for an inferred 14 to 23 of the
+    186: 18 carry exactly the fallback's tags, 9 of them a tag outside
+    Jev's vocabulary.
+  - The untagged rows are essays with no named company ("Men Can't Stop
+    Faking How Much They Know About AI"), TechCrunch Disrupt promos, and
+    companies `topics` has no canonical for (Yandex, Dyson, Deezer,
+    Omron). The fallback only returns existing canonicals, so it cannot
+    name a company seen for the first time.
+  - `uk` and `ukraine` joined the entity list then. In all 35 published
+    headlines naming UK or Ukraine, the country is where the story happens
+    or who acts in it. `world-labs` was left out: one of four headlines
+    naming it was "Real World Labs", and a wrong tag is worse than none.
 - Emerging entity/model names that clear a frequency/growth bar promote
   into `learned_keywords` for title highlight and growth-boosted
   homepage trending chips (`worker/topic-learning.ts`). Nothing retires a
