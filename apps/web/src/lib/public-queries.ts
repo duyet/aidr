@@ -129,16 +129,20 @@ LIMIT ?`;
 const TLDR_SQL =
   "SELECT date, bullets_en, bullets_vi FROM tldr_snapshots ORDER BY date DESC LIMIT 1";
 
+// Published only, like every other reader query: `/api/thumb` vouches only
+// for a published story's media, so a merged item's image would 404 there.
 const IMAGES_SQL = `SELECT id, url, image_url, media_manifest FROM items
-WHERE id IN ({placeholders})
+WHERE id IN ({placeholders}) AND status = 'published'
   AND (image_url IS NOT NULL AND image_url != ''
        OR media_manifest IS NOT NULL AND media_manifest != '')`;
 
 const IMAGES_SQL_MEDIA_NO_IMAGE = `SELECT id, url, media_manifest FROM items
-WHERE id IN ({placeholders}) AND media_manifest IS NOT NULL AND media_manifest != ''`;
+WHERE id IN ({placeholders}) AND status = 'published'
+  AND media_manifest IS NOT NULL AND media_manifest != ''`;
 
 const IMAGES_SQL_LEGACY = `SELECT id, url, image_url FROM items
-WHERE id IN ({placeholders}) AND image_url IS NOT NULL AND image_url != ''`;
+WHERE id IN ({placeholders}) AND status = 'published'
+  AND image_url IS NOT NULL AND image_url != ''`;
 
 function capBullets(raw: TldrBullet[]): TldrBullet[] {
   return raw.slice(0, PUBLIC_BULLET_CAP).map((b) => ({
@@ -429,7 +433,7 @@ export async function getPublicDigest(db: DbReader): Promise<PublicDigest> {
 }
 
 /** Look up og/thumbnails for TL;DR item ids that are not in the stories
- * payload (unpublished, or past PUBLIC_STORY_MAX). Best-effort: a missing `image_url` column returns
+ * payload (past PUBLIC_STORY_MAX). Best-effort: a missing `image_url` column returns
  * an empty map so the digest still ships. */
 async function loadImagesForIds(
   db: DbReader,

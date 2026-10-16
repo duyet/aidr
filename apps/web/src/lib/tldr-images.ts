@@ -74,6 +74,20 @@ function rewriteTwimg(parsed: URL, size: CdnImageSize): string {
   return parsed.toString();
 }
 
+/**
+ * Same-origin resized copy of a story's own image (`/api/thumb/$id`). The
+ * route refuses a URL the story does not carry, so the pair must come from
+ * the same item. Null when there is no item to vouch for the URL.
+ */
+export function thumbRouteUrl(
+  itemId: string | null | undefined,
+  url: string | null | undefined
+): string | null {
+  const clean = sanitizeImageUrl(url);
+  if (!itemId || !clean) return null;
+  return `/api/thumb/${encodeURIComponent(itemId)}?u=${encodeURIComponent(clean)}`;
+}
+
 /** Build id → story image for attaching to AI;DR bullets at read time. */
 export function imageUrlByItemId(
   items: Array<{
@@ -117,12 +131,16 @@ export function attachTldrBulletImages(
     // it over a possibly stale image embedded in an older snapshot.
     for (const id of bullet.item_ids ?? []) {
       const url = imageByItemId.get(id);
-      if (url) return { ...bullet, image_url: url };
+      if (url) return { ...bullet, image_url: url, image_item_id: id };
     }
     const existing = sanitizeImageUrl(bullet.image_url);
     if (existing) return { ...bullet, image_url: existing };
     if (bullet.image_url !== undefined) {
-      const { image_url: _discarded, ...withoutImage } = bullet;
+      const {
+        image_url: _discarded,
+        image_item_id: _owner,
+        ...withoutImage
+      } = bullet;
       return withoutImage;
     }
     return bullet;

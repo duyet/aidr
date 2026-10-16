@@ -7,6 +7,7 @@ export function TldrBulletRow({
   layout,
   n,
   thumbSrc,
+  thumbItemId,
   itemId,
   lang,
   fullText,
@@ -17,6 +18,8 @@ export function TldrBulletRow({
   layout: AidrLayout;
   n: number;
   thumbSrc: string | null;
+  /** The story `thumbSrc` belongs to; defaults to `itemId`. */
+  thumbItemId?: string;
   itemId?: string;
   lang?: Lang;
   fullText: string;
@@ -44,6 +47,7 @@ export function TldrBulletRow({
           {copy}
           <StoryThumb
             src={thumbSrc}
+            thumbItemId={thumbItemId}
             itemId={itemId}
             lang={lang}
             priority={priority}
@@ -57,6 +61,7 @@ export function TldrBulletRow({
           <span className="relative shrink-0 self-stretch">
             <StoryThumb
               src={thumbSrc}
+              thumbItemId={thumbItemId}
               itemId={itemId}
               lang={lang}
               priority={priority}
