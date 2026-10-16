@@ -24,6 +24,19 @@ export function withBootScriptFirst(html: string): string {
   return `${html.slice(0, match.index)}<script>${URL_PRIVACY_BOOT_SCRIPT}</script>${html.slice(match.index)}`;
 }
 
+function concat(chunks: Uint8Array[]): Uint8Array {
+  if (chunks.length === 1) return chunks[0];
+  const out = new Uint8Array(
+    chunks.reduce((total, chunk) => total + chunk.byteLength, 0)
+  );
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
+}
+
 function rewriteHeadStream(
   response: Response,
   rewrite: (head: string) => Promise<string>
@@ -33,29 +46,37 @@ function rewriteHeadStream(
 
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
-  let held = "";
+  // Raw bytes until `</head>` is found, so the body after it is forwarded
+  // as it came, never decoded and re-encoded. The head is located in the
+  // decoded text and cut at its byte length, which is exact because
+  // `</head>` is ASCII and everything before it is complete UTF-8.
+  let held: Uint8Array[] = [];
   let headDone = false;
 
   const stream = new TransformStream<Uint8Array, Uint8Array>({
     async transform(chunk, controller) {
-      const text = decoder.decode(chunk, { stream: true });
       if (headDone) {
-        controller.enqueue(encoder.encode(text));
+        controller.enqueue(chunk);
         return;
       }
-      held += text;
-      const end = held.indexOf(HEAD_END);
+      held.push(chunk);
+      const bytes = concat(held);
+      const text = decoder.decode(bytes);
+      const end = text.indexOf(HEAD_END);
       if (end === -1) return;
       const cut = end + HEAD_END.length;
       headDone = true;
-      const head = await rewrite(held.slice(0, cut));
-      controller.enqueue(encoder.encode(head + held.slice(cut)));
-      held = "";
+      held = [];
+      const headBytes = encoder.encode(text.slice(0, cut)).byteLength;
+      const head = await rewrite(text.slice(0, cut));
+      controller.enqueue(encoder.encode(head));
+      if (headBytes < bytes.byteLength) {
+        controller.enqueue(bytes.subarray(headBytes));
+      }
     },
     flush(controller) {
       // No `</head>` seen: emit what we held, unchanged.
-      held += decoder.decode();
-      if (held) controller.enqueue(encoder.encode(held));
+      if (held.length > 0) controller.enqueue(concat(held));
     },
   });
 
