@@ -97,6 +97,22 @@ export function rotatePair(listA, listB, day, axisA, axisB) {
   return [a[mod(day, n)], b[mod(day + Math.floor(day / n), n)]];
 }
 
+/** The story `script.thumb` names, else rank 1, else the first. */
+export const thumbStory = ({ stories = [], thumb }) =>
+  stories.find((s) => s.rank === (thumb?.story ?? 1)) ?? stories[0];
+
+/**
+ * The story that frame 0, the cover still and the poster scene all open on: the thumb story (rank 1 when the
+ * script names none) when it has a picture, else the first ranked story with one, else the thumb story.
+ * `images` must be the files that exist.
+ */
+export function coverStory(script) {
+  const stories = script.stories ?? [];
+  const thumb = thumbStory(script);
+  const pictured = (s) => s?.images?.length > 0;
+  return pictured(thumb) ? thumb : (stories.find(pictured) ?? thumb);
+}
+
 /**
  * { [rank]: layout id } in script order, plus a note for each request it could not honour.
  * Priority: an eligible `story.layout` pin, then the scene that suits the story best (looks/layout.mjs `suits`)
@@ -108,6 +124,8 @@ function chooseLayouts(script, edition) {
   const layouts = {};
   const notes = [];
   const history = [];
+  // The poster marks a cover the script chose: with no `thumb`, no story gets it.
+  const cover = script.thumb ? coverStory(script) : undefined;
   for (const [index, story] of (script.stories ?? []).entries()) {
     const { rank, layout: pin } = story;
     const images = story.images?.length ?? 0;
@@ -117,7 +135,7 @@ function chooseLayouts(script, edition) {
       money: MONEY.test(
         edition.stories?.find((s) => s.rank === rank)?.text ?? ""
       ),
-      thumb: script.thumb?.story === rank,
+      cover: story === cover,
     };
     const fits = (id) => images > 0 || !LAYOUTS[id].image;
     let id;

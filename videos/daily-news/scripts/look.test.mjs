@@ -237,15 +237,21 @@ test("a story whose images all failed never gets full, even when its script asks
 });
 
 // The poster panel is the cover story's scene: a chooser that ignored the registry's `suits` (or the thumb) would
-// never show it, and a second poster would make the cover story's look ordinary.
-test("the cover (thumb) story gets the poster panel, with or without an image, and only it", () => {
+// never show it, and a second poster would make the cover story's look ordinary. The cover is the story frame 0
+// and the cover still open on, so an image-less thumb story hands the poster to the story that stands in for it.
+test("the cover story gets the poster panel, and only it", () => {
   const edition = e13();
   const script = templateScript(edition, hosts);
-  for (const thumb of [1, 2, 6]) {
+  // 2026-10-13: story 2 is a paper with no image; the cover falls back to story 1.
+  for (const [thumb, poster] of [
+    [1, 1],
+    [2, 1],
+    [6, 6],
+  ]) {
     const ids = layoutIds({ ...script, thumb: { story: thumb } }, edition);
     assert.deepEqual(
       script.stories.filter((_, i) => ids[i] === "poster").map((s) => s.rank),
-      [thumb],
+      [poster],
       `thumb ${thumb}: ${ids.join(" ")}`
     );
   }

@@ -24,7 +24,7 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { cutFor, cutOf, formatsOf } from "./lang.mjs";
-import { resolveLook } from "./look.mjs";
+import { coverStory, resolveLook, thumbStory } from "./look.mjs";
 import { entry, lookCss, lookScript } from "./looks/index.mjs";
 import { gainFor, SFX, soundFor } from "./looks/sound.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
@@ -629,28 +629,21 @@ function buildMix(outFile) {
 }
 
 // ---------------------------------------------------------------- cover still
-// One story gives the cover both its picture and its hook, so they never come from different stories:
-// the thumb story when it has an image, else the first ranked story with one (its kicker as the hook),
-// else the thumb story with its paper card.
-const thumbStory =
-  script.stories.find((s) => s.rank === (script.thumb?.story ?? 1)) ??
-  script.stories[0];
-const coverStory = firstImage(thumbStory)
-  ? thumbStory
-  : (script.stories.find(firstImage) ?? thumbStory);
-if (coverStory !== thumbStory && !cut.subs)
+// One story (look.mjs coverStory) gives the cover both its picture and its hook, so they never come from
+// different stories. A stand-in for an image-less thumb story uses its own kicker as the hook.
+const thumb = thumbStory(script);
+const cover = coverStory(script);
+if (cover !== thumb && !cut.subs)
   console.warn(
-    `! cover: thumb story ${thumbStory.rank} has no image; the cover uses story ${coverStory.rank} (${coverStory.kicker})`
+    `! cover: thumb story ${thumb.rank} has no image; the cover uses story ${cover.rank} (${cover.kicker})`
   );
 const coverHook =
-  coverStory === thumbStory
-    ? (script.thumb?.hook ?? coverStory.kicker)
-    : coverStory.kicker;
+  cover === thumb ? (script.thumb?.hook ?? cover.kicker) : cover.kicker;
 // The cover intro opens on the cover still's story and hook.
-Object.assign(introCtx, { lead: coverStory, hook: coverHook });
+Object.assign(introCtx, { lead: cover, hook: coverHook });
 
 function coverHtml(fmt) {
-  const lead = coverStory;
+  const lead = cover;
   const hook = coverHook;
   const img = firstImage(lead);
   const list = script.stories

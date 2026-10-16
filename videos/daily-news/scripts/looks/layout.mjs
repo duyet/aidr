@@ -1,8 +1,8 @@
 // Story scenes (chosen per story by look.mjs, not rotated by date). The story section carries `l-<id>`; the base
 // story CSS in template/style.css is the split layout. `image`: needs at least one image on disk. `max`: at most
 // this many a day unless pinned. `suits(f)`: how well the scene fits a story, 0 = never; the highest eligible score
-// wins. `f` is { index, images, money, thumb }: script position, images on disk, a dollar figure in the English
-// bullet, and whether it is the cover (thumb) story. `motion(tl, S, sc, h)` adds to the shared story motion.
+// wins. `f` is { index, images, money, cover }: script position, images on disk, a dollar figure in the English
+// bullet, and whether it is the cover story (look.mjs coverStory). `motion(tl, S, sc, h)` adds to the shared story motion.
 
 export const LAYOUTS = [
   {
@@ -155,7 +155,7 @@ export const LAYOUTS = [
     image: false,
     max: 1,
     // frame.md Poster Panel: the cover story's copy in ink on a flat yellow panel, its picture on the paper side.
-    suits: (f) => (f.thumb ? 5 : 0),
+    suits: (f) => (f.cover ? 5 : 0),
     motion: (tl, S, sc, h) => {
       tl.fromTo(
         h.$(".copy", sc),
@@ -225,7 +225,7 @@ export const LAYOUTS = [
     image: false,
     max: 2,
     // frame.md Manifesto: a story with no picture is its headline, centred in large italic serif with the marker.
-    suits: (f) => (f.images === 0 && !f.thumb ? 4 : 0),
+    suits: (f) => (f.images === 0 && !f.cover ? 4 : 0),
     motion: (tl, S, sc, h) => {
       h.fit(h.$(".head", sc), h.vertical ? 5 : 3, 48);
       tl.fromTo(
