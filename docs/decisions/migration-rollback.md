@@ -294,10 +294,14 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
 - Change: sets the `hn` row's config to `{"popularMinPoints":20}`,
   name/type/config only, never `enabled`. The `query` key goes: HN Algolia
   required every word of it, `OR` included, so it matched nothing (#873).
-- Risk: none for other rows. The runtime seed writes the same config on the
-  first ingest after deploy, so applying this file before or after the
-  deploy is equivalent. HN gains popular AI stories that never reached the
-  front page, at most 14 in 48h as measured on 2026-10-16.
+- Apply after the Worker deploys, never before. The previous Worker always
+  runs a newest-first search and only adds the query when the config has
+  one, so with this config it fetches the newest 100 stories unqueried:
+  42 items in one run on 2026-10-16, 20 of them under 5 points. The new
+  Worker's seed writes the same config on its first ingest, so after the
+  deploy this file is a no-op kept for the registry parity test.
+- Risk: none for other rows. HN gains popular AI stories that never reached
+  the front page, at most 14 in 48h as measured on 2026-10-16.
 - Rollback: redeploy the previous Worker. Its seed writes the 0043 config
   back on its first ingest. To restore it by hand:
   `UPDATE sources SET config = '{"query":"AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek OR \"language model\" OR \"foundation model\" OR \"open weights\" OR \"AI lab\" OR \"world model\" OR \"video model\"","popularMinPoints":40}' WHERE id = 'hn';`
