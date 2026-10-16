@@ -490,7 +490,9 @@ heading's Full day link is the archive that contains the story. `getDayArchive`
 rebuild a snapshot. 404 for a malformed date, a date after today (ICT), or a
 day with neither stories nor a snapshot. With `?lang=`, days older than 3
 days (ranks frozen, §7) cache for a day at the edge; recent days for 5
-minutes. Without `?lang=` the response is private, like story pages.
+minutes. Without `?lang=` the response is private, like story pages;
+both forms sit in the Worker cache (`edge-cache.ts`) keyed by the explicit or
+resolved language, as story pages do. The same applies to `/week/YYYY-Www`.
 
 Optional media lives in `day_videos` (`date` PK, `youtube_id` 16:9 shown on
 md+, `short_id` 9:16 shown on mobile, `title`, the same three as `*_vi`,

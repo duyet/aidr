@@ -3,6 +3,7 @@ import {
   bareLocalizedCacheLang,
   cachedLocaleResponse,
   cachedSsrResponse,
+  EDGE_CACHE_FRESH_MAX_S,
   EDGE_CACHE_HEADER,
   EDGE_CACHE_STALE_S,
   edgeCacheKey,
@@ -64,6 +65,29 @@ describe("edgeCacheKey", () => {
     expect(edgeCacheKey(get("https://aidr.today/?lang=en"))?.url).not.toBe(
       clean?.url
     );
+  });
+
+  // Defect: /date and /week re-rendering on every request (they are not
+  // localized paths in locale-routing, so no cache ever held them).
+  it("keys day and week archives like story pages, not their Markdown twins", () => {
+    expect(
+      edgeCacheKey(get("https://aidr.today/date/2026-10-12?lang=en"))?.url
+    ).toContain("/date/2026-10-12?");
+    expect(
+      edgeCacheKey(get("https://aidr.today/week/2026-W41?lang=vi"))?.url
+    ).toContain("/week/2026-W41?");
+    expect(edgeCacheKey(get("https://aidr.today/date/2026-10-12"))).toBeNull();
+    expect(
+      edgeCacheKey(get("https://aidr.today/date/2026-10-12.md?lang=en"))
+    ).toBeNull();
+    expect(
+      bareLocalizedCacheLang(
+        get("https://aidr.today/date/2026-10-12", { cookie: "news_lang=vi" })
+      )
+    ).toBe("vi");
+    expect(
+      bareLocalizedCacheLang(get("https://aidr.today/week/2026-W41"))
+    ).toBe("vi");
   });
 
   it("never keys bare / (locale from cookie/Accept-Language)", () => {
