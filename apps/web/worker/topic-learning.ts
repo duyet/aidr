@@ -1,9 +1,10 @@
 import type { DbReader } from "../src/lib/db";
 import { normalizeTopicName } from "./topics.js";
 
-/** Mirrors migrations/0017_topic_learning.sql so learning works before
- * `wrangler d1 migrations apply`. Also widens the HN Algolia query and
- * seeds the Lobsters source. */
+/** The tables and indexes of migrations/0017_topic_learning.sql, so learning
+ * works before `wrangler d1 migrations apply`. DDL only: the catalog seed
+ * (`worker/sources/seed.ts`) owns every `sources` row, and a write here runs
+ * after it on each ingest and undoes it (#871). */
 const TOPIC_LEARNING_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS topic_daily (
   day TEXT NOT NULL,
@@ -23,11 +24,6 @@ CREATE TABLE IF NOT EXISTS learned_keywords (
 );
 CREATE INDEX IF NOT EXISTS idx_learned_keywords_status
   ON learned_keywords (status, hit_count DESC);
-UPDATE sources
-SET config = '{"query":"AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek OR Qwen OR Mistral OR Llama OR Grok OR Cursor OR Copilot OR Nvidia OR HuggingFace OR ollama OR vLLM OR MCP OR agentic OR OpenRouter"}'
-WHERE id = 'hn';
-INSERT OR IGNORE INTO sources (id, name, type, config, enabled) VALUES
-  ('lobsters', 'Lobsters', 'lobsters', '{"tags":["ai","ml","vibecoding"]}', 1);
 `;
 
 let schemaReady = false;
@@ -783,8 +779,7 @@ const LEARNED_KEYWORD_OVERFETCH = 2;
 /** Prepared SELECT for active learned keywords. Exported at statement
  * level so read paths (the feed) can ride it in the same `db.batch` as
  * other queries — one D1 round-trip instead of one per SELECT. Callers
- * must run `ensureTopicLearningSchema` first (module-cached) and pass the
- * rows through `readableLearnedKeywords`. */
+ * pass the rows through `readableLearnedKeywords`. */
 export function learnedKeywordsStmt(
   db: DbReader,
   limit = 80

@@ -835,7 +835,10 @@ time is disabled instead.
 The set of sources is **declarative**: one list in
 `worker/sources/catalog.ts` generates the runtime seed, the migration, and
 the `/api/system/sources` + `/data` surfaces, so a source cannot reach one
-and miss the others. An operator can also add or enable an `rss` row at
+and miss the others. The seed upserts name, type and config (never
+`enabled`) at the start of each ingest. The topic-learning schema setup
+that runs later in the same ingest is DDL only, so it cannot undo the seed
+(#871). An operator can also add or enable an `rss` row at
 runtime through `upsert_source` with no deploy — see
 [`worker/README.md`](worker/README.md) → "Add a source without a deploy".
 
