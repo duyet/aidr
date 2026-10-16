@@ -13,7 +13,19 @@
  * isolate replaces it. The stored copy carries the long `s-maxage` so the
  * Cache API keeps it through the stale window; the client always receives
  * the render's own Cache-Control and Vary.
+ *
+ * The homepage has a second tier in KV (`global-html-cache.ts`): a colo with
+ * no usable copy serves another colo's stored render instead of rendering.
  */
+import {
+  EDGE_CACHE_FRESH_MAX_S,
+  EDGE_CACHE_STALE_S,
+} from "./edge-cache-window";
+import {
+  GLOBAL_WRITE_INTERVAL_S,
+  type GlobalHtmlCache,
+  isGloballyCachedKey,
+} from "./global-html-cache";
 import { resolveLocale } from "./lang";
 import {
   isLanguageNeutralSsrPath,
@@ -22,6 +34,8 @@ import {
 } from "./locale-routing";
 import { hasCanonicalLocaleQuery } from "./locale-url";
 import { markStage, withoutRequestTiming } from "./request-timing";
+
+export { EDGE_CACHE_FRESH_MAX_S, EDGE_CACHE_STALE_S };
 
 export const EDGE_CACHE_HEADER = "x-aidr-cache";
 /**
@@ -37,18 +51,6 @@ function isLocaleKeyedSsrPath(pathname: string): boolean {
 }
 /** Bump to orphan every stored page after a markup-shape change. */
 const EDGE_CACHE_VERSION = "2";
-/**
- * A dormant colo must never serve content older than this. Ingest publishes
- * every 30 minutes, so 1h keeps a stale homepage or Telegram "full day" link
- * within about two editions of the live one.
- */
-export const EDGE_CACHE_STALE_S = 3600;
-/**
- * Cap on the fresh window, whatever `s-maxage` a page declares: a settled day
- * archive says a day, and Worker fresh + stale + CDN lifetime must stay under
- * `ASSET_RETENTION_MS` (html-cache.test.ts) or the HTML outlives its chunks.
- */
-export const EDGE_CACHE_FRESH_MAX_S = 3600;
 
 type WaitUntil = { waitUntil?: (p: Promise<unknown>) => void } | undefined;
 
@@ -139,7 +141,7 @@ function edgeCache(): Cache | null {
   return c?.default ?? null;
 }
 
-type CacheState = "HIT" | "STALE" | "MISS";
+type CacheState = "HIT" | "STALE" | "KV" | "MISS";
 
 function stamp(response: Response, state: CacheState): Response {
   // Cached and freshly built responses may have immutable headers.
@@ -191,8 +193,12 @@ function toClient(hit: Response, state: CacheState): Response {
   return out;
 }
 
-function entryState(hit: Response): Exclude<CacheState, "MISS"> | "EXPIRED" {
-  const age = nowSeconds() - Number(hit.headers.get(STORED_AT) ?? 0);
+function entryAge(hit: Response): number {
+  return nowSeconds() - Number(hit.headers.get(STORED_AT) ?? 0);
+}
+
+function entryState(hit: Response): "HIT" | "STALE" | "EXPIRED" {
+  const age = entryAge(hit);
   const fresh = Number(hit.headers.get(FRESH) ?? 0);
   if (age <= fresh) return "HIT";
   if (age <= fresh + EDGE_CACHE_STALE_S) return "STALE";
@@ -211,56 +217,121 @@ async function renderStaged(
 /** Keys with a background revalidation in flight in this isolate. */
 const revalidating = new Set<string>();
 
+/** One Workers Logs line per document served through the cache. */
+function logServed(
+  key: Request,
+  state: CacheState,
+  age: number | null,
+  global: boolean
+): void {
+  const url = new URL(key.url);
+  const lang = url.searchParams.get("lang") ?? url.searchParams.get("__l");
+  console.log({
+    event: "html-cache",
+    state,
+    path: url.pathname,
+    lang,
+    age,
+    global,
+  });
+}
+
 /**
  * Match policy shared by both entry points. `declaredFresh` returns the
- * seconds a render counts as fresh, or 0 when it must not be stored.
+ * seconds a render counts as fresh, or 0 when it must not be stored. A
+ * `globalCache` serves keys `isGloballyCachedKey` admits from KV when this
+ * colo holds no usable copy.
  */
 async function serveThroughCache(
   cache: Cache,
   key: Request,
   ctx: WaitUntil,
   render: () => Promise<Response>,
-  declaredFresh: (response: Response) => number
+  declaredFresh: (response: Response) => number,
+  globalCache: GlobalHtmlCache | null
 ): Promise<Response> {
+  const shared = globalCache && isGloballyCachedKey(key) ? globalCache : null;
   const freshFor = (response: Response) =>
     Math.min(declaredFresh(response), EDGE_CACHE_FRESH_MAX_S);
+  const served = (entry: Response, state: CacheState) => {
+    logServed(key, state, entryAge(entry), shared !== null);
+    return toClient(entry, state);
+  };
+  const settle = async (work: Promise<unknown>) => {
+    const safe = work.catch(() => undefined);
+    if (ctx?.waitUntil) ctx.waitUntil(safe);
+    else await safe;
+  };
+  // KV is written only once its copy is GLOBAL_WRITE_INTERVAL_S old, which
+  // bounds writes per key whatever the number of colos rendering.
+  const store = (response: Response, fresh: number, copy: Response | null) => {
+    const stored = toStored(response, fresh);
+    const forGlobal =
+      shared && (!copy || entryAge(copy) >= GLOBAL_WRITE_INTERVAL_S)
+        ? stored.clone()
+        : null;
+    return Promise.all([
+      cache.put(key, stored).catch(() => undefined),
+      forGlobal && shared?.put(key, forGlobal, fresh),
+    ]);
+  };
+  // `copy` undefined: KV not read yet. Null: read, nothing usable.
+  const revalidate = (copy?: Response | null) => {
+    if (!ctx?.waitUntil || revalidating.has(key.url)) return;
+    revalidating.add(key.url);
+    // The work outlives this response, so its marks must not land in this
+    // request's Server-Timing.
+    ctx.waitUntil(
+      withoutRequestTiming(async () => {
+        try {
+          const known =
+            copy !== undefined ? copy : shared ? await shared.get(key) : null;
+          // Another colo already refreshed it; keep its stored-at so the
+          // copy expires on the render's clock, not this colo's.
+          if (known && entryState(known) === "HIT") {
+            return await cache.put(key, known);
+          }
+          const response = await render();
+          const fresh = freshFor(response);
+          if (fresh > 0) await store(response, fresh, known);
+        } catch {
+          // The stale entry stays; the next stale hit retries.
+        } finally {
+          revalidating.delete(key.url);
+        }
+      })
+    );
+  };
+
   const hit = await cache.match(key).catch(() => undefined);
+  const local = hit ? entryState(hit) : "EXPIRED";
+  if (hit && local === "HIT") {
+    markStage("cache");
+    return served(hit, "HIT");
+  }
+  if (hit && local === "STALE") {
+    markStage("cache");
+    // Without waitUntil nothing can outlive the response, so serve as a hit.
+    if (!ctx?.waitUntil) return served(hit, "HIT");
+    revalidate();
+    return served(hit, "STALE");
+  }
+
+  const copy = shared ? await shared.get(key) : null;
   markStage("cache");
-  if (hit) {
-    const state = entryState(hit);
-    if (state === "HIT") return toClient(hit, "HIT");
-    if (state === "STALE") {
-      // Without waitUntil nothing can outlive the response, so serve as a hit.
-      if (!ctx?.waitUntil) return toClient(hit, "HIT");
-      if (!revalidating.has(key.url)) {
-        revalidating.add(key.url);
-        // The render outlives this response, so its marks must not land in
-        // this request's Server-Timing.
-        ctx.waitUntil(
-          withoutRequestTiming(() =>
-            render()
-              .then((response) => {
-                const fresh = freshFor(response);
-                if (fresh > 0) return cache.put(key, toStored(response, fresh));
-              })
-              .catch(() => undefined)
-              .finally(() => revalidating.delete(key.url))
-          )
-        );
-      }
-      return toClient(hit, "STALE");
-    }
+  const remote = copy ? entryState(copy) : "EXPIRED";
+  if (copy && remote !== "EXPIRED") {
+    await settle(cache.put(key, copy.clone()));
+    if (remote === "STALE") revalidate(copy);
+    return served(copy, "KV");
   }
 
   const response = await render();
   markStage("ssr");
+  logServed(key, "MISS", null, shared !== null);
   const fresh = freshFor(response);
   if (fresh <= 0) return response;
-  const write = cache
-    .put(key, toStored(response, fresh))
-    .catch(() => undefined);
-  if (ctx?.waitUntil) ctx.waitUntil(write);
-  else await write;
+  await settle(store(response, fresh, copy));
   return stamp(response, "MISS");
 }
 
@@ -271,12 +342,13 @@ async function serveThroughCache(
 export async function cachedSsrResponse(
   request: Request,
   ctx: WaitUntil,
-  render: () => Promise<Response>
+  render: () => Promise<Response>,
+  globalCache: GlobalHtmlCache | null = null
 ): Promise<Response> {
   const cache = edgeCache();
   const key = cache ? edgeCacheKey(request) : null;
   if (!(cache && key)) return renderStaged(render);
-  return serveThroughCache(cache, key, ctx, render, sharedMaxAge);
+  return serveThroughCache(cache, key, ctx, render, sharedMaxAge, globalCache);
 }
 
 /**
@@ -312,7 +384,8 @@ export async function cachedLocaleResponse(
   ctx: WaitUntil,
   lang: string,
   sharedControl: string,
-  render: () => Promise<Response>
+  render: () => Promise<Response>,
+  globalCache: GlobalHtmlCache | null = null
 ): Promise<Response> {
   const cache = edgeCache();
   if (!cache || request.method !== "GET" || hasAuthSignal(request)) {
@@ -323,7 +396,13 @@ export async function cachedLocaleResponse(
   url.searchParams.set("__v", EDGE_CACHE_VERSION);
   const key = new Request(url.toString(), { method: "GET" });
   const fresh = Number(/\bs-maxage=(\d+)/.exec(sharedControl)?.[1] ?? 0);
-  return serveThroughCache(cache, key, ctx, render, (response) =>
-    response.status !== 200 || response.headers.has("set-cookie") ? 0 : fresh
+  return serveThroughCache(
+    cache,
+    key,
+    ctx,
+    render,
+    (response) =>
+      response.status !== 200 || response.headers.has("set-cookie") ? 0 : fresh,
+    globalCache
   );
 }

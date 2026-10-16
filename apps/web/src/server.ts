@@ -22,6 +22,7 @@ import {
   cachedLocaleResponse,
   cachedSsrResponse,
 } from "./lib/edge-cache";
+import { globalHtmlCache } from "./lib/global-html-cache";
 import {
   handleHomeMarkdownRequest,
   isHomeMarkdownPath,
@@ -399,15 +400,17 @@ const worker = {
     // language from Cookie/Accept-Language, so they stay private to clients;
     // the Worker cache still keys them by the resolved language.
     const bareLocale = bareLocalizedCacheLang(request);
+    const globalCache = globalHtmlCache(env);
     const html = bareLocale
       ? await cachedLocaleResponse(
           request,
           ctx,
           bareLocale,
           SSR_LOCALIZED_CACHE_CONTROL,
-          renderSsr
+          renderSsr,
+          globalCache
         )
-      : await cachedSsrResponse(request, ctx, renderSsr);
+      : await cachedSsrResponse(request, ctx, renderSsr, globalCache);
     // After both caches: an inner-cache hit is stored without Vary.
     if (!markdownTwin) return html;
     return withAcceptVary(

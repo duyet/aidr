@@ -6,9 +6,11 @@ import { track } from "./track";
 type VitalsParams = EventParams<"web_vitals">;
 type EdgeCache = VitalsParams["edge_cache"];
 
+const CACHE_STATES = ["HIT", "STALE", "KV", "MISS"] as const;
+
 /**
  * Edge-cache outcome of the document request, read from the Worker's
- * `Server-Timing: aidr-cache;desc=HIT|STALE|MISS`. "none" when the response was
+ * `Server-Timing: aidr-cache;desc=HIT|STALE|KV|MISS`. "none" when the response was
  * not cache-eligible (or the browser hides server timing).
  */
 export function documentCacheStatus(): EdgeCache {
@@ -20,9 +22,7 @@ export function documentCacheStatus(): EdgeCache {
       | undefined;
     const entry = nav?.serverTiming?.find((t) => t.name === "aidr-cache");
     const desc = entry?.description;
-    return desc === "HIT" || desc === "STALE" || desc === "MISS"
-      ? desc
-      : "none";
+    return CACHE_STATES.find((state) => state === desc) ?? "none";
   } catch {
     return "none";
   }
