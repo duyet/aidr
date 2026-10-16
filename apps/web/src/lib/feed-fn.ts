@@ -6,7 +6,12 @@ import type { FeedItem, FeedResponse, Lang } from "./types";
 
 /** Server fn wrapping getFeed so the homepage loader can SSR stories. A
  * search page gets every match; the plain homepage gets its first view only
- * (see shapeHomepageFeed). */
+ * (see shapeHomepageFeed). Rows arrive collapsed (`detail: false`): the
+ * SSR payload keeps every collapsed-row field (headline, title_vi, tags,
+ * meta — all the SEO-relevant markup) but not summary, summary_vi or
+ * sources, which never leave D1. StoryRow lazily refetches the full story
+ * from /api/story on first expand via the `lazyDetail` flag. /api/feed
+ * keeps the complete shape — it's an external contract. */
 export const fetchFeed = createServerFn({ method: "GET" })
   .inputValidator((input: { q?: string; days?: number; lang?: Lang }) => input)
   .handler(async ({ data }): Promise<FeedResponse | null> => {
@@ -18,33 +23,18 @@ export const fetchFeed = createServerFn({ method: "GET" })
         q: data.q,
         days: data.days,
         readOrder: true,
+        detail: false,
       });
       if (!feed) return null;
-      const stripped = stripExpandableDetail(feed);
-      return data.q ? stripped : shapeHomepageFeed(stripped);
+      return data.q ? feed : shapeHomepageFeed(feed);
     } catch {
       return null;
     }
   });
 
-/**
- * The SSR payload keeps every collapsed-row field (headline, title_vi,
- * tags, meta — all the SEO-relevant markup) but drops the expand-only
- * fields: summary, summary_vi and sources. StoryRow lazily refetches the
- * full story from /api/story on first expand via the `lazyDetail` flag.
- * /api/feed keeps the complete shape — it's an external contract.
- */
-function stripExpandableDetail(feed: FeedResponse): FeedResponse {
-  return {
-    ...feed,
-    days: feed.days.map((day) => ({
-      ...day,
-      items: day.items.map(stripItemDetail),
-    })),
-  };
-}
-
-/** One collapsed-row item: expand-only fields dropped, `lazyDetail` set. */
+/** One collapsed-row item: expand-only fields dropped, `lazyDetail` set.
+ * The day archive and week pages collapse full rows this way; `getFeed`
+ * with `detail: false` produces the same item from SQL. */
 export function stripItemDetail(item: FeedItem): FeedItem {
   return {
     ...item,

@@ -1507,7 +1507,12 @@ SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
 (migration 0065) counts story opens and publisher clicks per story, UTC
 day, arrival channel and kind (`POST /api/read`, `worker/reads.ts`). Only
 the homepage asks for read order: its SSR loader (`feed-fn.ts`) and its own
-`/api/feed?order=reads` calls (refresh, Load more, Older days). For those,
+`/api/feed?order=reads` calls (refresh, Load more, Older days). The SSR
+loader also asks `getFeed` for collapsed rows (`detail: false`): the item
+SELECT carries no summaries, no `item_sources` batch runs, and SQL computes
+`has_detail` (becomes `lazyDetail`, so the row refetches `/api/story` on
+first expand) and `source_count` (the trending weight). `/api/feed`, RSS,
+the news sitemap and the MCP tools keep the full shape. For those,
 `getFeed`'s `readOrder` sorts each day by:
 
 ```text

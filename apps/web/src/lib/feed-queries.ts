@@ -63,29 +63,62 @@ interface ItemRow {
   llm_tokens?: number;
   image_url?: string | null;
   media_manifest?: string | null;
+  /** Collapsed select only (`detail: false`): summary/summary_vi come back
+   * NULL and these say what the full select would have carried. */
+  has_detail?: 0 | 1;
+  source_count?: number;
 }
 
 const ITEM_SELECT_BASE = `
   SELECT i.id, i.url, i.title, t.title AS title_vi,
-         ${enSummarySql("i")} AS summary,
-         t.summary AS summary_vi, i.category,
-         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}{media}{votes}{reads}
+         {summary}, i.category,
+         i.published_at, i.points, i.comments, i.rank_score, i.source_id, i.tags{tokens}{image}{media}{votes}{reads}{detail}
   FROM items i
   {vote_join}{read_join}LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
   WHERE i.status = 'published'
 `;
 
-function itemSelectSql(
-  hasLlmTokens: boolean,
-  hasImageUrl: boolean,
-  hasMediaManifest: boolean,
-  hasVotes: boolean,
-  hasReads: boolean
-): string {
+const SUMMARY_COLUMNS = `${enSummarySql("i")} AS summary,
+         t.summary AS summary_vi`;
+
+/** Same NULL placeholders in the same positions so a collapsed row has the
+ * key order of a full one. `has_detail` must agree with `stripItemDetail`
+ * on the full row: a non-empty summary in either language or any source. */
+const COLLAPSED_COLUMNS = `NULL AS summary, NULL AS summary_vi`;
+const DETAIL_COLUMNS = `,
+         CASE WHEN COALESCE(${enSummarySql("i")}, '') != ''
+                OR COALESCE(t.summary, '') != ''
+                OR EXISTS (SELECT 1 FROM item_sources s WHERE s.item_id = i.id)
+              THEN 1 ELSE 0 END AS has_detail,
+         (SELECT COUNT(*) FROM item_sources s WHERE s.item_id = i.id) AS source_count`;
+
+interface ItemSelectFlags {
+  hasLlmTokens: boolean;
+  hasImageUrl: boolean;
+  hasMediaManifest: boolean;
+  hasVotes: boolean;
+  hasReads: boolean;
+  /** false: no summary text, `has_detail` + `source_count` instead. */
+  detail: boolean;
+}
+
+function itemSelectSql({
+  hasLlmTokens,
+  hasImageUrl,
+  hasMediaManifest,
+  hasVotes,
+  hasReads,
+  detail,
+}: ItemSelectFlags): string {
   return ITEM_SELECT_BASE.replace(
-    "{tokens}",
-    hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""
+    "{summary}",
+    detail ? SUMMARY_COLUMNS : COLLAPSED_COLUMNS
   )
+    .replace("{detail}", detail ? "" : DETAIL_COLUMNS)
+    .replace(
+      "{tokens}",
+      hasLlmTokens ? ", COALESCE(i.llm_tokens, 0) AS llm_tokens" : ""
+    )
     .replace("{image}", hasImageUrl ? ", i.image_url" : "")
     .replace("{media}", hasMediaManifest ? ", i.media_manifest" : "")
     .replace("{votes}", hasVotes ? `, ${VOTE_NET_COLUMN}` : "")
@@ -132,14 +165,20 @@ async function supportsMediaManifest(db: DbReader): Promise<boolean> {
   return mediaManifestSupported;
 }
 
-function toFeedItem(row: ItemRow): FeedItem {
+function toFeedItem(row: ItemRow, detail = true): FeedItem {
   let tags: string[] = [];
   try {
     tags = JSON.parse(row.tags || "[]");
   } catch {
     // malformed tags JSON from an old pipeline run — treat as untagged
   }
-  const { media_manifest: rawManifest, read_count: _reads, ...item } = row;
+  const {
+    media_manifest: rawManifest,
+    read_count: _reads,
+    has_detail: hasDetail = 0,
+    source_count: _sourceCount,
+    ...item
+  } = row;
   const manifest = parseMediaManifest(rawManifest, row.image_url, row.url);
   const exposedManifest = boundedPublicManifest(manifest);
   const articleUrl = canonicalizeMediaUrl(row.url);
@@ -160,6 +199,9 @@ function toFeedItem(row: ItemRow): FeedItem {
     })(),
     ...(exposedManifest ? { media_manifest: exposedManifest } : {}),
     vote_net: typeof row.vote_net === "number" ? row.vote_net : 0,
+    ...(detail
+      ? {}
+      : { summary: null, summary_vi: null, lazyDetail: hasDetail === 1 }),
   };
 }
 
@@ -174,15 +216,17 @@ interface SourceRow {
 
 /**
  * One batch for every read that follows the main query: the item_sources
- * chunks (chunked to stay under D1's bound-parameter limit) plus the two
- * topic-learning SELECTs. A single D1 round-trip for all of them. Any
- * statement failing (e.g. item_sources missing pre-migration) fails the
- * batch — the same empty fallbacks the individual callers had apply.
+ * chunks (chunked to stay under D1's bound-parameter limit; none for a
+ * collapsed feed) plus the two topic-learning SELECTs. A single D1
+ * round-trip for all of them. Any statement failing (e.g. item_sources
+ * missing pre-migration) fails the batch — the same empty fallbacks the
+ * individual callers had apply.
  */
 async function attachSourcesAndTopics(
   db: DbReader,
   items: FeedItem[],
-  yesterday: string
+  yesterday: string,
+  withSources: boolean
 ): Promise<{
   yesterdayCounts: Map<string, number>;
   learnedKeywords: string[];
@@ -190,7 +234,7 @@ async function attachSourcesAndTopics(
   let learnedKeywords: string[] = [];
   let yesterdayCounts = new Map<string, number>();
   const byId = new Map(items.map((i) => [i.id, i]));
-  const ids = [...byId.keys()];
+  const ids = withSources ? [...byId.keys()] : [];
   const stmts: D1PreparedStatement[] = [];
   for (let i = 0; i < ids.length; i += 90) {
     const chunk = ids.slice(i, i + 90);
@@ -463,8 +507,12 @@ export async function getFeed(
     /** Homepage only: order each day by rank_score x `readFactor`. Rows,
      * membership, the TL;DR fallback and rank_score itself stay stored. */
     readOrder?: boolean;
+    /** false (homepage SSR): rows arrive collapsed, as `stripItemDetail`
+     * would leave them, without moving summaries or sources out of D1. */
+    detail?: boolean;
   } = {}
 ): Promise<FeedResponse> {
+  const detail = opts.detail ?? true;
   const days = opts.days ?? (opts.q ? 30 : 3);
   // `before` is the audience-zone day `groupByDay` emits. Cut at that day's
   // ICT midnight so the next page does not bisect a Vietnam day.
@@ -481,13 +529,14 @@ export async function getFeed(
       itemVotesTableReady(db),
       opts.readOrder ? itemReadsTableReady(db) : false,
     ]);
-  const itemSelect = itemSelectSql(
+  const itemSelect = itemSelectSql({
     hasLlmTokens,
     hasImageUrl,
     hasMediaManifest,
     hasVotes,
-    hasReads
-  );
+    hasReads,
+    detail,
+  });
 
   let sql = `${itemSelect} AND i.published_at >= ? AND i.published_at < ?`;
   const binds: unknown[] = [since, until];
@@ -536,15 +585,19 @@ export async function getFeed(
   const [itemsRes, catsRes, tldrRes, fetchedRes, olderRes] = mainResults;
 
   const rows = (itemsRes.results ?? []) as ItemRow[];
-  const items = capSourceShare(rows.map(toFeedItem));
+  const items = capSourceShare(rows.map((row) => toFeedItem(row, detail)));
   const readCounts = hasReads
     ? new Map(rows.map((row) => [row.id, row.read_count ?? 0]))
     : undefined;
+  const sourceCounts = detail
+    ? undefined
+    : new Map(rows.map((row) => [row.id, row.source_count ?? 0]));
   // Sources chunks + learned keywords + yesterday's counts: one round-trip.
   const { yesterdayCounts, learnedKeywords } = await attachSourcesAndTopics(
     db,
     items,
-    yesterday
+    yesterday,
+    detail
   );
   // Trending: prefer versioned models / products extracted from titles
   // (GPT-6 Astra, Fable 5.1) over generic score themes (llm, agent).
@@ -558,7 +611,10 @@ export async function getFeed(
       title: it.title,
       tags: it.tags,
       published_at: it.published_at,
-      sourceCount: Math.max(1, it.sources.length),
+      sourceCount: Math.max(
+        1,
+        sourceCounts ? (sourceCounts.get(it.id) ?? 0) : it.sources.length
+      ),
     })),
     dayAgo
   );
@@ -619,7 +675,7 @@ export async function getItemsByIds(
     ]);
   const { results } = await db
     .prepare(
-      `${itemSelectSql(hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes, false)} AND i.id IN (SELECT value FROM json_each(?))`
+      `${itemSelectSql({ hasLlmTokens, hasImageUrl, hasMediaManifest, hasVotes, hasReads: false, detail: true })} AND i.id IN (SELECT value FROM json_each(?))`
     )
     .bind(JSON.stringify(ids))
     .all<ItemRow>();
@@ -698,13 +754,14 @@ export async function getDayArchive(
       supportsMediaManifest(db),
       itemVotesTableReady(db),
     ]);
-  const itemSelect = itemSelectSql(
+  const itemSelect = itemSelectSql({
     hasLlmTokens,
     hasImageUrl,
     hasMediaManifest,
     hasVotes,
-    false
-  );
+    hasReads: false,
+    detail: true,
+  });
 
   const [itemsRes, tldrRes, prevRes, nextRes] = await db.batch([
     db
@@ -746,7 +803,9 @@ export async function getDayArchive(
     // day_videos not migrated yet — the page renders without the TV slot
   }
 
-  const items = ((itemsRes.results ?? []) as ItemRow[]).map(toFeedItem);
+  const items = ((itemsRes.results ?? []) as ItemRow[]).map((row) =>
+    toFeedItem(row)
+  );
   let tldr: FeedResponse["tldr"] = null;
   const tldrRow = tldrRes.results?.[0] as
     | { date: string; bullets_en: string; bullets_vi: string }
