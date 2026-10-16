@@ -6,8 +6,8 @@ import {
   primaryThumbnailUrl,
 } from "../media.js";
 import { lastSentenceEnd } from "../sentences.js";
-import { parseFeedDate, parseUtcOffset } from "./feed-date.js";
 import { isEventPromo } from "./event-promo.js";
+import { parseFeedDate, parseUtcOffset } from "./feed-date.js";
 import { KEYWORD_FILTERS } from "./keywords.js";
 import type { FetchedItem, SourceAdapter, SourceLanguage } from "./types.js";
 
