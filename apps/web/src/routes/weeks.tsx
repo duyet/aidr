@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { LoadErrorPage } from "../components/LoadErrorPage";
 import { weeklyTitle } from "../components/WeeklyPaper";
 import { WeeklySubscribeCta } from "../components/WeeklySubscribeCta";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
+import { loadErrorHead, loadErrorHeaders } from "../lib/load-error";
 import { localizedPageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
 import { formatWeekRange, WEEKS_INDEX_PATH, weekPath } from "../lib/week";
@@ -14,7 +16,10 @@ const INDEX_CACHE_CONTROL =
 
 export const Route = createFileRoute("/weeks")({
   loader: async () => ({ weeks: await fetchWeekIndex() }),
-  headers: ({ match }): Record<string, string> => {
+  headers: ({ loaderData, match }): Record<string, string> => {
+    // No loaderData: the read failed and Start answers 500. An empty index
+    // here would be edge-cached as "no issues yet".
+    if (!loaderData) return loadErrorHeaders(match.context.lang);
     const explicitLocale =
       match.search.lang !== undefined && match.search.locale === undefined;
     return {
@@ -25,8 +30,9 @@ export const Route = createFileRoute("/weeks")({
       ...(explicitLocale ? {} : { Vary: "Cookie, Accept-Language" }),
     };
   },
-  head: ({ match }) => {
+  head: ({ loaderData, match }) => {
     const lang = match.context.lang;
+    if (!loaderData) return loadErrorHead("weeks", lang);
     return localizedPageHead({
       path: WEEKS_INDEX_PATH,
       title:
@@ -42,6 +48,7 @@ export const Route = createFileRoute("/weeks")({
     });
   },
   component: WeeksPage,
+  errorComponent: () => <LoadErrorPage subject="weeks" />,
 });
 
 /** The intro in this language only; a week without one shows no teaser. */

@@ -9,6 +9,7 @@ import { weekEditionExists } from "./week-queries";
 /**
  * Server fn for the `/date/$date` loader. Returns null for an invalid or
  * future date and when D1 is unavailable; the route turns both into a 404.
+ * A failed read throws `day_unavailable`, which the route renders as a 500.
  * Rows ship collapsed (like the homepage SSR feed) and refetch detail on
  * expand.
  */
@@ -39,7 +40,9 @@ export const fetchDayArchive = createServerFn({ method: "GET" })
             },
           }
         : archive;
-    } catch {
-      return null;
+    } catch (error) {
+      console.error("day page failed", error);
+      // Start serializes a loader error into the page; keep D1 text out.
+      throw new Error("day_unavailable");
     }
   });

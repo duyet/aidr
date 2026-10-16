@@ -1,8 +1,10 @@
-import { createFileRoute, useLocation } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { LoadErrorPage } from "../components/LoadErrorPage";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { WeeklyPaper, weeklyTitle } from "../components/WeeklyPaper";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
+import { loadErrorHead, loadErrorHeaders } from "../lib/load-error";
 import { absoluteSiteUrl } from "../lib/locale-url";
 import { notFoundCopy } from "../lib/not-found";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
@@ -53,13 +55,7 @@ export const Route = createFileRoute("/week/$week")({
   },
   headers: ({ loaderData, match }): Record<string, string> => {
     // No loaderData: the loader threw and Start answers 500. Not a 404.
-    if (!loaderData) {
-      return {
-        "Cache-Control": "private, no-store",
-        "Content-Language": match.context.lang,
-        Vary: "Cookie, Accept-Language",
-      };
-    }
+    if (!loaderData) return loadErrorHeaders(match.context.lang);
     if (loaderData.kind === "missing") {
       return {
         [NOT_FOUND_HEADER]: "1",
@@ -81,14 +77,7 @@ export const Route = createFileRoute("/week/$week")({
     };
   },
   head: ({ loaderData, match }) => {
-    if (!loaderData) {
-      return {
-        meta: [
-          { title: weekErrorCopy(match.context.lang).title },
-          { name: "robots", content: "noindex" },
-        ],
-      };
-    }
+    if (!loaderData) return loadErrorHead("week", match.context.lang);
     if (loaderData.kind === "missing") {
       return notFoundHead(notFoundCopy(loaderData.lang).documentTitle);
     }
@@ -136,42 +125,8 @@ export const Route = createFileRoute("/week/$week")({
     };
   },
   component: WeekPage,
-  errorComponent: WeekErrorPage,
+  errorComponent: () => <LoadErrorPage subject="week" />,
 });
-
-function weekErrorCopy(lang: Lang) {
-  return lang === "vi"
-    ? {
-        title: "Không tải được bản tin tuần | AI;DR",
-        body: "Không tải được bản tin tuần này. Vui lòng thử lại.",
-        retry: "Thử lại",
-      }
-    : {
-        title: "Weekly edition unavailable | AI;DR",
-        body: "This weekly edition could not load. Please try again.",
-        retry: "Try again",
-      };
-}
-
-/** A failed D1 read, not a missing week: offer a reload of the same URL. */
-function WeekErrorPage() {
-  const lang = useLang();
-  const href = useLocation({ select: (l) => l.href });
-  const copy = weekErrorCopy(lang);
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center px-6">
-      <div className="text-center">
-        <p className="text-sm text-muted-foreground">{copy.body}</p>
-        <a
-          href={href}
-          className="mt-6 inline-block text-sm underline underline-offset-4 decoration-accent hover:decoration-2"
-        >
-          {copy.retry}
-        </a>
-      </div>
-    </div>
-  );
-}
 
 function WeekPage() {
   const data = Route.useLoaderData();

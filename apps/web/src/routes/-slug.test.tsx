@@ -163,9 +163,10 @@ describe("missing permalink language", () => {
     );
   });
 
-  it("uses the request language when the loader has not returned", () => {
-    expect(missingTitle(undefined, "en")).toBe(
-      notFoundCopy("en").documentTitle
-    );
+  // No loaderData means the loader threw (a failed read, #904): an error
+  // title in the request language, never the not-found one.
+  it("titles a failed load as an error in the request language", () => {
+    expect(missingTitle(undefined, "en")).toBe("Story unavailable | AI;DR");
+    expect(missingTitle(undefined, "vi")).toBe("Không tải được tin | AI;DR");
   });
 });

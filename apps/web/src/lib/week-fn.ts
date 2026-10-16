@@ -42,11 +42,18 @@ export const fetchWeekEdition = createServerFn({ method: "GET" })
       : null;
   });
 
-/** Server fn for `/weeks`: every edition, newest first. */
+/** Server fn for `/weeks`: every edition, newest first. A failed read
+ * throws `weeks_unavailable`, which the route renders as an uncached 500. */
 export const fetchWeekIndex = createServerFn({ method: "GET" }).handler(
   async (): Promise<WeekSummary[]> => {
     const binding = await db();
     if (!binding) return [];
-    return listWeekEditions(readSession(binding));
+    try {
+      return await listWeekEditions(readSession(binding));
+    } catch (error) {
+      console.error("weeks index failed", error);
+      // Start serializes a loader error into the page; keep D1 text out.
+      throw new Error("weeks_unavailable");
+    }
   }
 );

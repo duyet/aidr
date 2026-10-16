@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { LoadErrorPage } from "../components/LoadErrorPage";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { StoryRow } from "../components/StoryRow";
 import { ARTICLE_DATE_TAG, ARTICLE_TITLE_TAG } from "../lib/article-headings";
@@ -6,6 +7,7 @@ import { archiveDateOfSec, dayArchivePath } from "../lib/day-archive";
 import { headRouteInput } from "../lib/head-route";
 import { formatDayHeading } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
+import { loadErrorHead, loadErrorHeaders } from "../lib/load-error";
 import { notFoundCopy } from "../lib/not-found";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { articleHead, notFoundHead } from "../lib/seo";
@@ -38,7 +40,10 @@ export const Route = createFileRoute("/$slug")({
     return { kind: "story", item };
   },
   headers: ({ loaderData, match }): Record<string, string> => {
-    if (loaderData?.kind === "missing") {
+    // No loaderData: the loader threw and Start answers 500. Not a 404, and
+    // not the public story policy a browser could keep.
+    if (!loaderData) return loadErrorHeaders(match.context.lang);
+    if (loaderData.kind === "missing") {
       return {
         [NOT_FOUND_HEADER]: "1",
         "Cache-Control": "private, no-store",
@@ -57,7 +62,8 @@ export const Route = createFileRoute("/$slug")({
     };
   },
   head: ({ loaderData, match }) => {
-    if (!loaderData || loaderData.kind === "missing") {
+    if (!loaderData) return loadErrorHead("story", match.context.lang);
+    if (loaderData.kind === "missing") {
       return notFoundHead(notFoundCopy(match.context.lang).documentTitle);
     }
     return articleHead(loaderData.item, match.context.lang, {
@@ -65,6 +71,7 @@ export const Route = createFileRoute("/$slug")({
     });
   },
   component: StoryPage,
+  errorComponent: () => <LoadErrorPage subject="story" />,
 });
 
 function NotFoundStory({ lang }: { lang: Lang }) {
