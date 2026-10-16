@@ -14,6 +14,10 @@
  * Cache API keeps it through the stale window; the client always receives
  * the render's own Cache-Control and Vary.
  */
+import {
+  EDGE_CACHE_FRESH_MAX_S,
+  EDGE_CACHE_STALE_S,
+} from "./edge-cache-window";
 import { resolveLocale } from "./lang";
 import {
   isLanguageNeutralSsrPath,
@@ -22,6 +26,8 @@ import {
 } from "./locale-routing";
 import { hasCanonicalLocaleQuery } from "./locale-url";
 import { markStage, withoutRequestTiming } from "./request-timing";
+
+export { EDGE_CACHE_FRESH_MAX_S, EDGE_CACHE_STALE_S };
 
 export const EDGE_CACHE_HEADER = "x-aidr-cache";
 /**
@@ -37,19 +43,6 @@ function isLocaleKeyedSsrPath(pathname: string): boolean {
 }
 /** Bump to orphan every stored page after a markup-shape change. */
 const EDGE_CACHE_VERSION = "2";
-/**
- * A dormant colo must never serve content older than this. Ingest publishes
- * every 30 minutes, so 1h keeps a stale homepage or Telegram "full day" link
- * within about two editions of the live one.
- */
-export const EDGE_CACHE_STALE_S = 3600;
-/**
- * Cap on the fresh window, whatever `s-maxage` a page declares: a settled day
- * archive says a day, and Worker fresh + stale + CDN lifetime must stay under
- * `ASSET_RETENTION_MS` (html-cache.test.ts) or the HTML outlives its chunks.
- */
-export const EDGE_CACHE_FRESH_MAX_S = 3600;
-
 type WaitUntil = { waitUntil?: (p: Promise<unknown>) => void } | undefined;
 
 const TRACKING_PARAMS = new Set(["ref", "fbclid", "gclid"]);

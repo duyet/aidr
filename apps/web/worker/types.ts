@@ -4,6 +4,10 @@ export interface Env {
   DB: D1Database;
   /** Rendered OG PNGs, the shared tier behind the edge cache. */
   OG_CACHE?: R2Bucket;
+  /** Homepage HTML shared across colos (`global-html-cache.ts`). */
+  HTML_CACHE?: KVNamespace;
+  /** This deployment's version (`[version_metadata]`); keys `HTML_CACHE`. */
+  CF_VERSION_METADATA?: { id: string; tag: string; timestamp: string };
   /** Cloudflare Images: WebP → JPEG for OG photos the renderer cannot draw. */
   IMAGES?: ImagesBinding;
   NEWS_INGEST: Workflow;
