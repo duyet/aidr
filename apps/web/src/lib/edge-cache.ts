@@ -37,10 +37,11 @@ function isLocaleKeyedSsrPath(pathname: string): boolean {
 /** Bump to orphan every stored page after a markup-shape change. */
 const EDGE_CACHE_VERSION = "2";
 /**
- * A dormant colo must never serve content older than this; ingest publishes
- * every 30 minutes, so 6h bounds a missed revalidation to a dozen editions.
+ * A dormant colo must never serve content older than this. Ingest publishes
+ * every 30 minutes, so 1h keeps a stale homepage or Telegram "full day" link
+ * within about two editions of the live one.
  */
-export const EDGE_CACHE_STALE_S = 6 * 3600;
+export const EDGE_CACHE_STALE_S = 3600;
 /**
  * Cap on the fresh window, whatever `s-maxage` a page declares: a settled day
  * archive says a day, and Worker fresh + stale + CDN lifetime must stay under

@@ -341,6 +341,26 @@ describe("stale-while-revalidate", () => {
     const again = await cachedSsrResponse(get(EXT), ctx, render);
     expect(again.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
     expect(await again.text()).toBe("<html>v1</html>");
+    expect(render).toHaveBeenCalledTimes(2);
+  });
+
+  // Defect: a failed revalidation escaping waitUntil, wiping the entry, or
+  // leaving its key marked in flight so no later stale hit ever retries.
+  it("swallows a failed revalidation and retries on the next stale hit", async () => {
+    const { ctx, pending } = setup();
+    await seed(ctx);
+    advance(301);
+    const render = vi.fn(async (): Promise<Response> => {
+      throw new Error("D1 unavailable");
+    });
+    const first = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(first.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    await expect(Promise.all(pending)).resolves.toBeDefined();
+    const again = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(again.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    expect(await again.text()).toBe("<html>v1</html>");
+    expect(render).toHaveBeenCalledTimes(2);
+    await Promise.all(pending);
   });
 
   // Defect: no waitUntil means no background work; serve as a hit, no render.
@@ -354,7 +374,7 @@ describe("stale-while-revalidate", () => {
     expect(render).not.toHaveBeenCalled();
   });
 
-  // Defect: the CDN caching a stale page for 6h, or seeing internal headers.
+  // Defect: the CDN caching a page for the Worker's stale window, or seeing internal headers.
   it("hands the client the render's own headers on HIT, STALE and MISS", async () => {
     const { ctx, pending } = setup();
     const render = async () =>

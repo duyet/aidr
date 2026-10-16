@@ -143,11 +143,12 @@ describe("HTML cache lifetime", () => {
 
   it("adds the Worker cache layer for pages behind it", () => {
     const cc = "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
+    // 1h stale window: a quiet colo stays about two 30-minute editions behind.
     expect(htmlLifetimeSeconds(cc, "/?lang=en")).toBe(
-      300 + EDGE_CACHE_STALE_S + 14_400 + 600
+      300 + 3600 + 14_400 + 600
     );
     expect(htmlLifetimeSeconds(cc, "/date/2026-01-01?lang=en")).toBe(
-      300 + EDGE_CACHE_STALE_S + 14_400 + 600
+      300 + 3600 + 14_400 + 600
     );
   });
 });
