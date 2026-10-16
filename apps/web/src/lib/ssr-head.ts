@@ -7,7 +7,7 @@ import { URL_PRIVACY_BOOT_SCRIPT } from "./analytics/url-privacy";
 import { type AssetsFetcher, inlineStylesheets } from "./inline-stylesheet";
 
 const HEAD_START = /<head[\s>]/i;
-const HEAD_END = "</head>";
+const HEAD_END = new TextEncoder().encode("</head>");
 
 /**
  * The URL privacy boot script goes ahead of the `<head>` tag. React hoists
@@ -37,6 +37,15 @@ function concat(chunks: Uint8Array[]): Uint8Array {
   return out;
 }
 
+function indexOfHeadEnd(bytes: Uint8Array): number {
+  const last = bytes.byteLength - HEAD_END.byteLength;
+  for (let i = bytes.indexOf(HEAD_END[0]); i !== -1 && i <= last; ) {
+    if (HEAD_END.every((b, j) => bytes[i + j] === b)) return i;
+    i = bytes.indexOf(HEAD_END[0], i + 1);
+  }
+  return -1;
+}
+
 function rewriteHeadStream(
   response: Response,
   rewrite: (head: string) => Promise<string>
@@ -44,13 +53,16 @@ function rewriteHeadStream(
   const type = response.headers.get("Content-Type") ?? "";
   if (!response.body || !type.includes("text/html")) return response;
 
-  const decoder = new TextDecoder();
+  // A BOM is head text the rewrite must keep, so the decoder may not strip it.
+  const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
   const encoder = new TextEncoder();
-  // Raw bytes until `</head>` is found, so the body after it is forwarded
-  // as it came, never decoded and re-encoded. The head is located in the
-  // decoded text and cut at its byte length, which is exact because
-  // `</head>` is ASCII and everything before it is complete UTF-8.
+  // `</head>` is found in the raw bytes and only the head is decoded, so
+  // the body after it is forwarded as it came. Each chunk is searched
+  // with the last few held bytes in front, which catches a tag split
+  // between chunks without rescanning everything held.
   let held: Uint8Array[] = [];
+  let heldBytes = 0;
+  let tail = new Uint8Array(0);
   let headDone = false;
 
   const stream = new TransformStream<Uint8Array, Uint8Array>({
@@ -60,19 +72,20 @@ function rewriteHeadStream(
         return;
       }
       held.push(chunk);
+      const window = concat([tail, chunk]);
+      const at = indexOfHeadEnd(window);
+      if (at === -1) {
+        heldBytes += chunk.byteLength;
+        tail = window.slice(-(HEAD_END.byteLength - 1));
+        return;
+      }
+      const cut = heldBytes - tail.byteLength + at + HEAD_END.byteLength;
       const bytes = concat(held);
-      const text = decoder.decode(bytes);
-      const end = text.indexOf(HEAD_END);
-      if (end === -1) return;
-      const cut = end + HEAD_END.length;
       headDone = true;
       held = [];
-      const headBytes = encoder.encode(text.slice(0, cut)).byteLength;
-      const head = await rewrite(text.slice(0, cut));
+      const head = await rewrite(decoder.decode(bytes.subarray(0, cut)));
       controller.enqueue(encoder.encode(head));
-      if (headBytes < bytes.byteLength) {
-        controller.enqueue(bytes.subarray(headBytes));
-      }
+      if (cut < bytes.byteLength) controller.enqueue(bytes.subarray(cut));
     },
     flush(controller) {
       // No `</head>` seen: emit what we held, unchanged.
