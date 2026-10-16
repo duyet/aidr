@@ -406,6 +406,18 @@ export function mediaIdentityKey(
     host = "static.huggingnews.com";
     if (type === "image")
       pathname = pathname.replace(/-large(?=\.[^/.]+$)/i, "");
+    // The hash is the tweet photo's own media key, so the mirror and the
+    // `pbs.twimg.com/media/<key>` original are one image.
+    const mediaKey =
+      type === "image"
+        ? pathname.match(
+            /^\/story-media\/\d+\/([A-Za-z0-9_-]{15})(?:\.[^/.]+)?$/
+          )
+        : null;
+    if (mediaKey) {
+      host = "pbs.twimg.com";
+      pathname = `/media/${mediaKey[1]}`;
+    }
   }
   if (type === "image") {
     pathname = pathname
