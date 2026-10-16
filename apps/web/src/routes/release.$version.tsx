@@ -7,8 +7,9 @@ import { useLang } from "../lib/lang-context";
 import { notFoundCopy } from "../lib/not-found";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { releaseDocumentTitle, t } from "../lib/releases/format";
-import { findRelease, RELEASES, releasePath } from "../lib/releases/index";
+import { releaseNeighbours } from "../lib/releases/index";
 import type { Release } from "../lib/releases/types";
+import { releasePathForVersion } from "../lib/releases/versions";
 import { localizedPageHead, notFoundHead } from "../lib/seo";
 import { SITE_URL } from "../lib/site";
 import type { Lang } from "../lib/types";
@@ -17,17 +18,11 @@ type LoaderResult =
   | { kind: "release"; release: Release }
   | { kind: "missing"; lang: Lang };
 
-/** Older and newer neighbours in `RELEASES` (newest first). */
-export function releaseNeighbours(release: Release): {
-  prev?: Release;
-  next?: Release;
-} {
-  const i = RELEASES.findIndex((r) => r.version === release.version);
-  return { prev: RELEASES[i + 1], next: RELEASES[i - 1] };
-}
-
 export const Route = createFileRoute("/release/$version")({
-  loader: ({ params, context }): LoaderResult => {
+  // The release notes are imported on demand: a static import would put
+  // every version's content into the entry chunk of every page.
+  loader: async ({ params, context }): Promise<LoaderResult> => {
+    const { findRelease } = await import("../lib/releases/index");
     const release = findRelease(params.version);
     if (!release) return { kind: "missing", lang: context.lang };
     return { kind: "release", release };
@@ -54,7 +49,7 @@ export const Route = createFileRoute("/release/$version")({
     const lang = match.context.lang;
     const { release } = loaderData;
     return localizedPageHead({
-      path: releasePath(release),
+      path: releasePathForVersion(release.version),
       title: releaseDocumentTitle(release, lang),
       description: t(release.intro, lang),
       imageUrl: release.cover ? `${SITE_URL}${release.cover.src}` : undefined,

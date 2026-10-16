@@ -16,3 +16,12 @@ export function findRelease(version: string): Release | undefined {
 export function releasePath(release: Release): string {
   return releasePathForVersion(release.version);
 }
+
+/** Older and newer neighbours in `RELEASES` (newest first). */
+export function releaseNeighbours(release: Release): {
+  prev?: Release;
+  next?: Release;
+} {
+  const i = RELEASES.findIndex((r) => r.version === release.version);
+  return { prev: RELEASES[i + 1], next: RELEASES[i - 1] };
+}
