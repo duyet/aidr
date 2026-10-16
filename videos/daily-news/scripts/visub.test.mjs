@@ -170,6 +170,114 @@ test("an answer that drops a number or a line goes to the next model; none valid
   );
 });
 
+// 2026-10-16: a valid translation was thrown away for its title alone, and the only fallback was refused (#875).
+const LONG_EN =
+  "FTC subpoenas OpenAI and Anthropic over AI safety & more — October 16, 2026";
+const LONG_VI =
+  "Ủy ban Thương mại Liên bang Mỹ gửi trát đòi hầu tòa tới OpenAI và Anthropic về vấn đề an toàn trí tuệ nhân tạo và nhiều tin khác — ngày 16 tháng 10 năm 2026";
+const SHORT_VI =
+  "FTC gửi trát đòi OpenAI và Anthropic về an toàn AI và hơn thế nữa — ngày 16 tháng 10 năm 2026";
+const isRetitle = (messages) => /100 characters/.test(messages.at(-1).content);
+
+test("a Vietnamese title over 100 characters keeps the translation: one shorter-title retry, else a cut at a word", async () => {
+  const cues = parseSrt(EN_SRT);
+  const run = async (retitle) => {
+    const asked = [];
+    const out = await translateCues({
+      cues,
+      title: LONG_EN,
+      models: ["m1", "m2"],
+      llm: async (model, messages) => {
+        asked.push(`${model}${isRetitle(messages) ? " retitle" : ""}`);
+        if (!isRetitle(messages))
+          return JSON.stringify({ title: LONG_VI, lines: VI.lines });
+        assert.match(
+          messages.at(-1).content,
+          new RegExp(`${[...LONG_VI].length} characters`),
+          "the retry states the observed length"
+        );
+        return retitle();
+      },
+      style,
+      log: () => {},
+    });
+    assert.equal(out.model, "m1", "the first model's lines are kept");
+    assert.equal(
+      out.cues
+        .slice(3)
+        .map((c) => c.vi)
+        .join(" "),
+      VI.lines[1]
+    );
+    return { asked, title: out.title };
+  };
+
+  const fixed = await run(async () => JSON.stringify({ title: SHORT_VI }));
+  assert.deepEqual(fixed.asked, ["m1", "m1 retitle"]);
+  assert.equal(fixed.title, SHORT_VI);
+
+  for (const retitle of [
+    async () => JSON.stringify({ title: `${LONG_VI} ${LONG_VI}` }),
+    async () => {
+      throw new Error("anyrouter m1: 502 upstream_exhausted");
+    },
+  ]) {
+    const cut = await run(retitle);
+    assert.deepEqual(cut.asked, ["m1", "m1 retitle"]);
+    assert.ok([...cut.title].length <= 100, cut.title);
+    assert.match(
+      cut.title,
+      / — ngày 16 tháng 10 năm 2026$/,
+      "the date after the last separator is kept"
+    );
+    const head = cut.title.split(" — ")[0].replace(/…$/, "").split(" ");
+    assert.deepEqual(
+      head,
+      LONG_VI.split(" ").slice(0, head.length),
+      "the cut falls between whole Vietnamese syllables"
+    );
+  }
+});
+
+test("a decomposed Vietnamese title is counted and cut in composed form", async () => {
+  const out = await translateCues({
+    cues: parseSrt(EN_SRT),
+    title: LONG_EN,
+    models: ["m1"],
+    llm: async (_model, messages) =>
+      isRetitle(messages)
+        ? JSON.stringify({ title: LONG_VI.normalize("NFD") })
+        : JSON.stringify({ title: LONG_VI.normalize("NFD"), lines: VI.lines }),
+    style,
+    log: () => {},
+  });
+  assert.equal(out.title, out.title.normalize("NFC"));
+  assert.ok([...out.title].length <= 100);
+  assert.ok(LONG_VI.startsWith(out.title.split(" — ")[0].replace(/…$/, "")));
+});
+
+test("a refused model (403 behind a 502) hands over to the next model in the chain", async () => {
+  const asked = [];
+  const out = await translateCues({
+    cues: parseSrt(EN_SRT),
+    title: TITLE,
+    models: ["google/gemini-3-flash", "google/gemma-latest"],
+    llm: async (model) => {
+      asked.push(model);
+      if (model === "google/gemini-3-flash")
+        throw new Error(
+          'anyrouter google/gemini-3-flash: 502 {"error":{"code":"upstream_exhausted","message":"Your provider key was refused (HTTP 403)"}}'
+        );
+      return JSON.stringify(VI);
+    },
+    style,
+    log: () => {},
+  });
+  assert.deepEqual(asked, ["google/gemini-3-flash", "google/gemma-latest"]);
+  assert.equal(out.model, "google/gemma-latest");
+  assert.equal(out.title, VI.title);
+});
+
 test("the cache is reused only for the same English cues", async () => {
   const cues = parseSrt(EN_SRT);
   const out = await translateCues({
