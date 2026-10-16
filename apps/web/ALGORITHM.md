@@ -1021,7 +1021,8 @@ Batches of 5.
   Jev's input tokens, so a different model). All 1480 were rejected and
   re-asked of Jev. The router failed in the same runs as Jev (177 router
   and 174 Jev failures in 25 runs), so it never covered for Jev. Turn it
-  back on only after the `decision` bench step shows it serving Jev.
+  back on only after the bench (`decision` step with
+  `--models anyrouter/decision`) shows it serving Jev.
 - TypeSafe Jev (`typesafe/jev`) judges the items the router missed:
   relevance is P(AI/tech), importance is the probability-weighted level on
   a 1–10 scale anchored by the shared bands in `worker/importance-rubric.ts`

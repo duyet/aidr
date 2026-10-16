@@ -250,7 +250,8 @@ ANYROUTER_JEV_MODEL = "typesafe/jev"
 # Jev on 66 of 1546 answers; the rest came from experiential-byok jev-latest
 # or hal-x THX-01, were rejected by servedByJev, and each cost a second Jev
 # call. Its outages matched Jev's, so it never covered for Jev. Turn it back
-# on only after the bench shows it serving Jev.
+# on only after the bench (decision step, --models anyrouter/decision) shows
+# it serving Jev.
 ANYROUTER_DECISION_MODEL = ""
 # Derived from VITE_CLERK_PUBLISHABLE_KEY's base64 domain suffix, then
 # overridden to the /__clerk Worker proxy (Cloudflare Error 1000/1014
