@@ -109,7 +109,7 @@ describe("/<slug> page", () => {
     const title = head({ loaderData: undefined, match }).meta?.find(
       (m) => "title" in m
     )?.title;
-    expect(title).not.toMatch(/not found/i);
+    expect(title).toMatch(/unavailable/i);
   });
 
   it("marks a missing story not-found", () => {
