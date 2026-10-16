@@ -289,6 +289,32 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0069_hn_popular_without_query.sql
+
+- Change: sets the `hn` row's config to `{"popularMinPoints":20}`,
+  name/type/config only, never `enabled`. The `query` key goes: HN Algolia
+  required every word of it, `OR` included, so it matched nothing (#873).
+- Order: a push to master runs Migrate D1 and Deploy Web Worker together,
+  and the deploy's `check:migrations` fails until every file is applied, so
+  this file lands about a minute before the new Worker uploads. The Worker
+  live in that minute must be the #874 Worker or later. Its adapter ignores
+  `query` and reads this config as the front page plus every story at 20+
+  points, which is the intended behavior. A fresh isolate of that Worker
+  can seed the 0043 config back during the minute, which the same adapter
+  reads as a floor of 40, and the new Worker's first ingest writes this
+  config again.
+- Merge only after #874's deploy has finished. An adapter older than #874
+  runs an unqueried newest-100 search with this config: 42 items in one run
+  on 2026-10-16, 20 of them under 5 points. `deploy-web` cancels an
+  in-progress deploy when a newer push arrives, so merging both PRs close
+  together can leave the older Worker live when this file applies.
+- Risk: none for other rows. HN gains popular AI stories that never reached
+  the front page, at most 14 in 48h as measured on 2026-10-16.
+- Rollback: redeploy the #874 Worker. Its seed writes the 0043 config back
+  before its first fetch, and its adapter reads that as a floor of 40. To
+  restore the row by hand:
+  `UPDATE sources SET config = '{"query":"AI OR LLM OR GPT OR Claude OR Gemini OR OpenAI OR Anthropic OR DeepSeek OR \"language model\" OR \"foundation model\" OR \"open weights\" OR \"AI lab\" OR \"world model\" OR \"video model\"","popularMinPoints":40}' WHERE id = 'hn';`
+
 ## 0068_ext_events.sql
 
 - Change: new table `ext_events`. One row per UTC day, extension event and

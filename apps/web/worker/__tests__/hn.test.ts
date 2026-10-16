@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { HN_SCOPE_SOURCE } from "../sources/catalog.js";
+import { HN_POPULAR_SOURCE, HN_SCOPE_SOURCE } from "../sources/catalog.js";
 import { hnAdapter } from "../sources/hn.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -178,14 +178,16 @@ describe("hnAdapter against Algolia's search semantics (#873)", () => {
   });
 
   describe.each([
+    // A #874 Worker can seed this row back while 0069 applies, and a
+    // rollback restores it.
     {
       row: "the 0043 row (an `OR` query, floor 40)",
       config: HN_SCOPE_SOURCE.config,
       expected: ["front", "muse", "riser"],
     },
     {
-      row: "a floor of 20 and no query",
-      config: { popularMinPoints: 20 },
+      row: "the 0069 row (floor 20, no query)",
+      config: HN_POPULAR_SOURCE.config,
       expected: ["front", "muse", "revenue", "riser"],
     },
   ])("with $row", ({ config, expected }) => {
