@@ -666,7 +666,7 @@ export async function getFeed(
     }
   }
 
-  const feed = boundFeedResponse({
+  return boundFeedResponse({
     tldr: withTldrImages(
       resolveTldrForDisplay(tldr, items),
       imageUrlByItemId(items)
@@ -682,8 +682,6 @@ export async function getFeed(
       null,
     hasMore: (olderRes.results ?? []).length > 0,
   });
-  markStage("rows");
-  return feed;
 }
 
 /** Published stories by exact id, in the order of `ids` (missing or

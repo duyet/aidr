@@ -1,7 +1,6 @@
 import { clerkMiddleware } from "@clerk/tanstack-react-start/server";
 import { createMiddleware, createStart } from "@tanstack/react-start";
 import { resolveClerkProxyUrl } from "./lib/clerk-proxy-config";
-import { markStage } from "./lib/request-timing";
 import { isSubscriberTokenRequest } from "./lib/subscriber-token-request";
 
 const configuredProxyUrl = resolveClerkProxyUrl(
@@ -34,7 +33,6 @@ export const startInstance = createStart(() => {
       // Those handlers never read auth. Clerk's server handler is read per
       // request because the client bundle stubs clerkMiddleware to `{}`.
       createMiddleware().server((options) => {
-        markStage("route");
         const url = new URL(options.request.url);
         if (isSubscriberTokenRequest(url.pathname, url.search)) {
           return options.next();

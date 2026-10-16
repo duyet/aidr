@@ -59,11 +59,7 @@ import {
   safeNewsSitemapResponse,
 } from "./lib/news-sitemap";
 import { applyNotFoundHttpStatus } from "./lib/not-found-status";
-import {
-  markStage,
-  withRequestTiming,
-  withServerTiming,
-} from "./lib/request-timing";
+import { withRequestTiming, withServerTiming } from "./lib/request-timing";
 import { withRouteIndexabilityHeaders } from "./lib/route-indexability";
 import { handleFeedXmlRequest, RSS_CACHE_CONTROL } from "./lib/rss";
 import { classifyServerFnPath } from "./lib/server-fn-registry";
@@ -399,7 +395,6 @@ const worker = {
     // Localized pages without `?lang=` (bare `/`, `/{8-hex}`) pick the
     // language from Cookie/Accept-Language, so they stay private to clients;
     // the Worker cache still keys them by the resolved language.
-    markStage("pre");
     const bareLocale = bareLocalizedCacheLang(request);
     const html = bareLocale
       ? await cachedLocaleResponse(

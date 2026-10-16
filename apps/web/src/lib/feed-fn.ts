@@ -16,6 +16,7 @@ import type { FeedItem, FeedResponse, Lang } from "./types";
 export const fetchFeed = createServerFn({ method: "GET" })
   .inputValidator((input: { q?: string; days?: number; lang?: Lang }) => input)
   .handler(async ({ data }): Promise<FeedResponse | null> => {
+    // Ends `auth`: Start routing, Clerk and the root beforeLoad.
     markStage("auth");
     const { env } = await import("cloudflare:workers");
     const db = (env as { DB?: D1Database }).DB;

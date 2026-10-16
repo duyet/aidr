@@ -21,7 +21,7 @@ import {
   isPrivateSsrPath,
 } from "./locale-routing";
 import { hasCanonicalLocaleQuery } from "./locale-url";
-import { markStage } from "./request-timing";
+import { markStage, withoutRequestTiming } from "./request-timing";
 
 export const EDGE_CACHE_HEADER = "x-aidr-cache";
 /**
@@ -234,14 +234,18 @@ async function serveThroughCache(
       if (!ctx?.waitUntil) return toClient(hit, "HIT");
       if (!revalidating.has(key.url)) {
         revalidating.add(key.url);
+        // The render outlives this response, so its marks must not land in
+        // this request's Server-Timing.
         ctx.waitUntil(
-          render()
-            .then((response) => {
-              const fresh = freshFor(response);
-              if (fresh > 0) return cache.put(key, toStored(response, fresh));
-            })
-            .catch(() => undefined)
-            .finally(() => revalidating.delete(key.url))
+          withoutRequestTiming(() =>
+            render()
+              .then((response) => {
+                const fresh = freshFor(response);
+                if (fresh > 0) return cache.put(key, toStored(response, fresh));
+              })
+              .catch(() => undefined)
+              .finally(() => revalidating.delete(key.url))
+          )
         );
       }
       return toClient(hit, "STALE");
