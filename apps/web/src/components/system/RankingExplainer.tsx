@@ -15,7 +15,7 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
     <div className="space-y-2.5 text-sm">
       <p className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-foreground">
         rankScore = importance^1.5 / √10 × qualityFactor × decay ×
-        min(engagement × sources, 3.25) × votes × breaking
+        min(engagement × sources, 3.25) × votes × kind × breaking
       </p>
       <ul className="grid gap-x-4 gap-y-1 text-[11px] leading-relaxed text-muted-foreground sm:grid-cols-2">
         <li>
@@ -43,6 +43,12 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
           <span className="font-medium text-foreground">reads</span> = 1 + 0.15
           × r / (r + 800), r = opens today and yesterday UTC, at most 100 a day;
           homepage order within a day only, at most ×1.03
+        </li>
+        <li>
+          <span className="font-medium text-foreground">kind</span> = by
+          category: Models, Regulation 1.2; Open Source, Agents 1.15; Research,
+          Chips, Tools 1.1; Frameworks 1.05; Industry 0.9; Funding 0.85; the
+          rest 1
         </li>
         <li>
           <span className="font-medium text-foreground">breaking</span> = 1 +

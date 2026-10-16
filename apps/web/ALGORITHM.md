@@ -219,13 +219,16 @@ published items, merged members, vote nets and TL;DR snapshots from prod D1
 no writes) and recomputes rank at hourly `now` for each named formula.
 `production` is the live `rankScore`; `base` is the 2026-10-16 formula frozen
 with its own constants, and lever patches (`E1` floor-adjusted engagement,
-`K1` the shipped kind table, `K2`/`K3` stronger tables, `R` drama words,
-`B75`/`BK` breaking variants) stack on it with `+`. On startup the script
-asserts that `base` plus `PRODUCTION_LEVERS` equals `rankScore` on every
-live item-hour, so a formula edit the script does not describe fails loudly.
+`K1` the first kind table, `K4` the shipped one, `K2`/`K3`/`K5`/`K6`/`K7`
+other tables, `R` drama words, `B75`/`BK` breaking variants) stack on it
+with `+`. Every kind table is a literal. On startup the script asserts that
+`base` plus `PRODUCTION_LEVERS` equals `rankScore` on every live item-hour
+and that its kind table equals `STORY_KIND_WEIGHTS` key for key, so a
+formula edit or a retune the script does not describe fails loudly.
 It prints the gold-set shares (rise and fall stories in the top 10, rise in
 the top 30, mean best position of rise stories; `scripts/fixtures/rank-kinds/
-gold.json` by default), TL;DR overlap of the hourly top 8, duplicate-event
+gold.json` by default; then rise in the top 10 split by the gold row's
+`kind`), TL;DR overlap of the hourly top 8, duplicate-event
 slots and age of the top 30, hours-to-top-10 for importance 8+, top-10
 overlap with `base`, and how far one vote moves an item.
 `--gold-candidates` lists the stories a new gold set must label. Points and votes are
@@ -1543,13 +1546,13 @@ rank_score = importance^1.5 / √10             # 10 stays 10; 7 → 5.9, 8 → 
            × decay(age)                       # exp(−age/36h); after 24h also × exp(−(age−24h)/24h)
            × min(engagement × sourceBoost, 3.25)
            × (1 + 0.2·min(voteNet, 6))        # reader votes; net < 0: 1 / (1 + 0.2·min(−voteNet, 6))
-           × kind(category)                   # STORY_KIND_WEIGHTS; 1 for null or an unknown category
+           × kind(category)                   # STORY_KIND_WEIGHTS; 1 for "" (unscored or unknown)
            × breaking(age)                    # importance ≥ 8 only: 1 + 0.4·exp(−age/3h)
 
 engagement  = 1 + log10(1 + points + 0.5·comments)   # capped at 1.3 when importance < 4
 sourceBoost = 1 + 0.12·(min(sourceCount, 8) − 1)     # extra independent outlets
-kind        = Models 1.2 · Open Source 1.15 · Research, Chips, Tools, Agents 1.1
-              · Frameworks, Regulation 1.05 · Products, Infra, Releases, Data 1
+kind        = Models, Regulation 1.2 · Open Source, Agents 1.15 · Research, Chips, Tools 1.1
+              · Frameworks 1.05 · Products, Infra, Releases, Data 1
               · Industry 0.9 · Funding 0.85
 ```
 
@@ -1580,28 +1583,52 @@ and `rank-replay` (below):
   launches, drama and breaking news above markets, HR and ad-business
   pieces. The scorer's category is the only kind signal items carry
   without another LLM call, so one table (`STORY_KIND_WEIGHTS`, every
-  category listed, `storyKindWeight`) multiplies the score. Every
-  `rankScore` caller passes `category` (a required field), and the
-  re-rank, vote, admin and merge queries read the column. Replay over 14
-  days to 2026-10-16 against a 659-story gold set labelled from titles
-  before tuning (`scripts/fixtures/rank-kinds/gold.json`, rules at the
-  top): gold "rise" stories held 55.2% of top-10 slots instead of 49.0%
-  and "fall" stories 10.7% instead of 15.1%; top-30 staleness (0.19 vs
-  0.18 stories over 36h), duplicate slots (0.20 vs 0.19), median age
-  (8.4h) and the vote guards did not move. Overlap with the stored TL;DR
-  picks fell from 0.484 to 0.459, which the replay's bias predicts (those
-  picks were made by the old formula). The replay also scores every hour
-  with final HN points, so it flatters engagement-heavy stories and the
-  live gain may be a little larger. Rejected on the same data: counting
-  HN points above the 20-point admission floor (no rise/fall change,
-  duplicate slots 0.19 to 0.24, TL;DR overlap 0.434); a title-keyword
-  drama factor (56% of its 102 matched headlines were drama; a 15-word
-  list reached 88% on only 24); a 7.5 breaking threshold (no change);
-  stronger weights (Models 1.35, Funding 0.75: rise 57.0%, fall 8.5%, but
-  fresh importance-8 stories reaching the top 10 fell from 73% to 67%).
-  The weight trusts the scorer's category, so a jobs piece filed under
-  Research rises with it. `weeklyScore` carries the weight too (it is not
-  a freshness factor).
+  category listed) multiplies the score. `storyCategory` parses the
+  column at each row into `Category | ""` (an own-key check, so
+  "toString" reads as unknown), and `RankScoreInput.category` is
+  required and not nullable, so a caller that drops it fails to
+  type-check. Replay over 14 days to 2026-10-16 (`base+K4`) against a
+  659-story gold set labelled before tuning
+  (`scripts/fixtures/rank-kinds/gold.json`, rules at the top; the
+  labeller saw each title with the scorer's category and importance, so
+  the labels are not independent of the category the table keys on):
+  gold "rise" stories held 54.4% of top-10 slots instead of 49.0% and
+  "fall" stories 10.1% instead of 15.1%. Split by gold kind (share of
+  top-10 slots, base to `K4`): release 17.9% to 20.5%, benchmark 2.2% to
+  3.3%, research 3.8% to 4.0%, tech 3.8% to 4.3%, breaking 5.9% to 6.6%,
+  drama 15.4% to 15.6%. Drama only holds level: the category cannot see
+  it (29 of 101 drama stories are filed under Industry), and a
+  scorer-side kind is #919. Regulation 1.2 carries breaking news (24 of
+  37 breaking stories are Regulation), Agents 1.15 the agent incidents
+  in drama. Top-30 staleness (0.18 stories over 36h), duplicate slots
+  (0.20 vs 0.19), median age (8.5h vs 8.4h) and the vote guards did not
+  move; importance-8 stories reaching the top 10 went from 73% to 72%.
+  Overlap with the stored TL;DR picks fell from 0.484 to 0.460, which the
+  replay's bias predicts (those picks were made by the old formula). The
+  weights were picked on the same 14 days and gold set they are judged
+  on. Rejected on the same data: the first table (`K1`: Regulation 1.05,
+  Agents 1.1) lifted rise to 55.2% but cut breaking to 5.2%; Industry at
+  1 with only Funding below it (`K5`) still cut breaking and let fall
+  stories back to 12.3%; Regulation 1.1 (`K6`) still cut breaking;
+  Agents 1.2 and Models 1.25 on top of `K4` (`K7`) added drama 0.4
+  points but raised duplicate slots and staleness; counting HN points
+  above the 20-point admission floor (no rise/fall change, duplicate
+  slots 0.19 to 0.24, TL;DR overlap 0.434); a title-keyword drama factor
+  (56% of its 102 matched headlines were drama; a 15-word list reached
+  88% on only 24); a 7.5 breaking threshold (no change); stronger weights
+  (`K2`: rise 57.0%, fall 8.5%, but importance-8 stories reaching the top
+  10 fell from 73% to 67%). The weight trusts the scorer's category, so a
+  jobs piece filed under Research rises with it. It also reaches beyond
+  the stored score: merge clustering picks the canonical among new items
+  by `rankScore` (`selectCanonical` in `dedupe.ts`), so the category now
+  breaks those ties; `weeklyScore` carries the weight and also rewards
+  daily edition days, which the weight already helped win, so the weekly
+  edition compounds it; and unmerge scales a restored story by stored
+  over recomputed scores of nearby rows (`restoredScale`), whose
+  recomputed side now carries the weight. Rows inside the 72h window are
+  rewritten with the weight within 30 minutes of deploy; older rows keep
+  pre-weight stored scores, so restoring an old story skews its score by
+  its own weight over its calibration rows' (at most 1.2/0.85).
 
 A story's cluster is the canonical item plus every `merged` item whose
 `duplicate_of` points at it. `rankSignals` reads it one way everywhere

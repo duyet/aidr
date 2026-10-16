@@ -965,7 +965,8 @@ function parseArgs(argv: string[]): Args {
 /** The stories a gold set must cover: each replay day's top 40 under `base`
  *  at 12:00 UTC, every story with importance ≥ 8, and every headline
  *  `storyKind` reads as drama (so its precision can be measured). One JSON line each,
- *  unlabelled, for a human to label from the title. */
+ *  unlabelled. Each line carries the scorer's category and importance
+ *  beside the title, so a labeller sees all three. */
 function printGoldCandidates(prepared: Prepared[], hours: number[]): void {
   const base = buildLevers(BASE_LEVERS);
   const picked = new Map<string, ReplayItem>();
