@@ -1,9 +1,6 @@
 {
   "judge": "openai/gpt-5.6-luna",
-  "pair": [
-    "A",
-    "C"
-  ],
+  "pair": ["A", "C"],
   "files": [
     "A=scripts/fixtures/vi-natural/arm-A.json",
     "C=scripts/fixtures/vi-natural/arm-C.json"
@@ -114,9 +111,7 @@
       "faithful": "A",
       "lost": {
         "A": [],
-        "C": [
-          "It changes built-in evaluation into self-evaluation."
-        ]
+        "C": ["It changes built-in evaluation into self-evaluation."]
       }
     },
     {
@@ -215,9 +210,7 @@
       "natural": "A",
       "faithful": "A",
       "lost": {
-        "C": [
-          "Adds that the developer successfully transformed the model."
-        ],
+        "C": ["Adds that the developer successfully transformed the model."],
         "A": []
       }
     },
@@ -291,9 +284,7 @@
       "natural": "C",
       "faithful": "A",
       "lost": {
-        "A": [
-          "“Film negatives” is mistranslated as reflective films."
-        ],
+        "A": ["“Film negatives” is mistranslated as reflective films."],
         "C": [
           "The negatives are described as being about family trips, dropping that they contain photos.",
           "“And similar” is omitted.",
@@ -311,9 +302,7 @@
       "faithful": "C",
       "lost": {
         "C": [],
-        "A": [
-          "“Baseball cap” is mistranslated as a baseball helmet."
-        ]
+        "A": ["“Baseball cap” is mistranslated as a baseball helmet."]
       }
     },
     {
@@ -492,9 +481,7 @@
         "C": [
           "\"Creators of the technology\" is narrowed to \"those developing the technology.\""
         ],
-        "A": [
-          "\"A new consciousness\" is changed to \"a new awareness.\""
-        ]
+        "A": ["\"A new consciousness\" is changed to \"a new awareness.\""]
       }
     },
     {

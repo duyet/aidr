@@ -1,9 +1,6 @@
 {
   "judge": "deepseek/deepseek-flash-latest",
-  "pair": [
-    "A",
-    "E"
-  ],
+  "pair": ["A", "E"],
   "files": [
     "A=scripts/fixtures/vi-natural/arm-A.json",
     "E=scripts/fixtures/vi-natural/arm-E.json"
@@ -245,9 +242,7 @@
       "faithful": "A",
       "lost": {
         "A": [],
-        "E": [
-          "gateway left in English in title, not capitalized consistently"
-        ]
+        "E": ["gateway left in English in title, not capitalized consistently"]
       }
     },
     {
@@ -572,14 +567,8 @@
       "natural": "E",
       "faithful": "E",
       "lost": {
-        "A": [
-          "no lost facts",
-          "no lost facts"
-        ],
-        "E": [
-          "a_lost is empty",
-          "b_lost is empty"
-        ]
+        "A": ["no lost facts", "no lost facts"],
+        "E": ["a_lost is empty", "b_lost is empty"]
       }
     },
     {
@@ -592,9 +581,7 @@
           "\"communities can still make some noise in the AI infrastructure boom\" is changed to \"cộng đồng vẫn có thể tạo ra tiếng ồn trong làn sóng cơ sở hạ tầng AI\" - missing \"some\" nuance",
           "\"more deals of the week\" is rendered as \"thêm nhiều giao dịch trong tuần\", but English says \"more deals of the week\" which implies additional deals beyond those mentioned"
         ],
-        "E": [
-          "no lost facts"
-        ]
+        "E": ["no lost facts"]
       }
     },
     {
@@ -606,9 +593,7 @@
         "E": [
           "the title includes \"(Tim Higgins/Wall Street Journal)\" from the English title but version a omits the parenthesis and provides a cleaner translation"
         ],
-        "A": [
-          "no lost facts"
-        ]
+        "A": ["no lost facts"]
       }
     },
     {
@@ -617,9 +602,7 @@
       "natural": "E",
       "faithful": "E",
       "lost": {
-        "E": [
-          "no lost facts"
-        ],
+        "E": ["no lost facts"],
         "A": [
           "\"Sinh sinh hoán vị\" is a typo (redundant word) for \"Sinh hoán vị\" - not a fact loss but a typo"
         ]
@@ -631,9 +614,7 @@
       "natural": "E",
       "faithful": "E",
       "lost": {
-        "E": [
-          "no lost facts"
-        ],
+        "E": ["no lost facts"],
         "A": [
           "\"humanoid\" is translated as \"con người hai chân\" which is narrower (biped) than the original humanoid",
           "\"egocentric vision\" is translated as \"thị giác egocentric\" - English term kept, but the original uses \"egocentric vision\" consistently"
@@ -646,9 +627,7 @@
       "natural": "E",
       "faithful": "E",
       "lost": {
-        "E": [
-          "no lost facts"
-        ],
+        "E": ["no lost facts"],
         "A": [
           "\"bài báo cáo này\" - extra word \"cáo\" not in original",
           "\"suy diễn\" used instead of \"suy luận\" for inference - different term but acceptable",

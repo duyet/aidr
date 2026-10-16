@@ -1,9 +1,6 @@
 {
   "judge": "openai/gpt-5.6-luna",
-  "pair": [
-    "A",
-    "B"
-  ],
+  "pair": ["A", "B"],
   "files": [
     "A=scripts/fixtures/vi-natural/arm-A.json",
     "B=scripts/fixtures/vi-natural/arm-B.json"
@@ -31,9 +28,7 @@
       "natural": "A",
       "faithful": "A",
       "lost": {
-        "A": [
-          "“Anecdotal insights” is rendered as situational insights."
-        ],
+        "A": ["“Anecdotal insights” is rendered as situational insights."],
         "B": [
           "“Anecdotal insights” is rendered as situational insights.",
           "“Algorithmic aversion” is rendered as avoidance of algorithms.",

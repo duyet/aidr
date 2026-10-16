@@ -1,9 +1,6 @@
 {
   "judge": "deepseek/deepseek-flash-latest",
-  "pair": [
-    "A",
-    "B"
-  ],
+  "pair": ["A", "B"],
   "files": [
     "A=scripts/fixtures/vi-natural/arm-A.json",
     "B=scripts/fixtures/vi-natural/arm-B.json"
@@ -15,9 +12,7 @@
       "natural": "A",
       "faithful": "A",
       "lost": {
-        "A": [
-          "One notch below investment grade is missing from the title."
-        ],
+        "A": ["One notch below investment grade is missing from the title."],
         "B": [
           "The Info reports that Azure leadership denied instructing teams to develop cost-reduction strategies, but b says 'bác đảm báo' which is garbled.",
           "In the summary, the English says 'The company reorganizes the division around Arun Ulag, executive vice president of databases', but b says 'Phó Chủ tịch điện toán cơ sở dữ liệu' which is inaccurate (does not say executive VP of databases)."
@@ -100,12 +95,8 @@
       "natural": "A",
       "faithful": "B",
       "lost": {
-        "A": [
-          "seven further factors"
-        ],
-        "B": [
-          "over the one byte space"
-        ]
+        "A": ["seven further factors"],
+        "B": ["over the one byte space"]
       }
     },
     {
@@ -152,12 +143,8 @@
       "natural": "A",
       "faithful": "A",
       "lost": {
-        "A": [
-          "including MLR Bench, ScienceAgentBench, and DSBench"
-        ],
-        "B": [
-          "MLR Bench, ScienceAgentBench, and DSBench"
-        ]
+        "A": ["including MLR Bench, ScienceAgentBench, and DSBench"],
+        "B": ["MLR Bench, ScienceAgentBench, and DSBench"]
       }
     },
     {
@@ -264,9 +251,7 @@
       "faithful": "B",
       "lost": {
         "B": [],
-        "A": [
-          "Costs $0.042 per million input tokens."
-        ]
+        "A": ["Costs $0.042 per million input tokens."]
       }
     },
     {
@@ -338,9 +323,7 @@
       "faithful": "A",
       "lost": {
         "A": [],
-        "B": [
-          "English title retained as is, no translation needed — okay"
-        ]
+        "B": ["English title retained as is, no translation needed — okay"]
       }
     },
     {
@@ -421,9 +404,7 @@
         "A": [
           "The English says 'via vitriolic truth-bombing' but a says 'thông qua những lời nói sâu sắc đầy hơi giận dữ' loses the exact nuance"
         ],
-        "B": [
-          "The English says 'vibe-rewrote' not just 'viết lại'"
-        ]
+        "B": ["The English says 'vibe-rewrote' not just 'viết lại'"]
       }
     },
     {

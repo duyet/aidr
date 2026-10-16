@@ -1538,9 +1538,11 @@ more facts, so the card above is unchanged:
 Lost facts exclude batches whose first call failed (titles-only
 fallback). The model, not the card, decides how natural the Vietnamese
 reads: gemma-latest wins 75% of stories on the master card. It stays
-second in `ANYROUTER_TRANSLATE_MODEL` because its route failed the first
-call on 2 of 12 batches here and served 62 of 88 production calls in the
-24h before, against Laguna's 1 of 13 and 493 of 527.
+second in `ANYROUTER_TRANSLATE_MODEL` because its route is unreliable: the
+first call failed on 2 of 12 batches here (502s), and in the 7 days to
+2026-10-16 production translate attempts on gemma-latest succeeded 84
+times out of 289 that were not rate-limited (116 502s, 83 first-token
+timeouts at 35s), against Laguna's 575 of 698.
 
 ### 7. Rank (pure code, `worker/ranking.ts`)
 

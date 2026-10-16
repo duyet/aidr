@@ -1,9 +1,6 @@
 {
   "judge": "deepseek/deepseek-flash-latest",
-  "pair": [
-    "A",
-    "F"
-  ],
+  "pair": ["A", "F"],
   "files": [
     "A=scripts/fixtures/vi-natural/arm-A.json",
     "F=scripts/fixtures/vi-natural/arm-F.json"
@@ -134,9 +131,7 @@
         "F": [
           "English summary has a colon after 'syncing' before 'with native enterprise connectors'"
         ],
-        "A": [
-          "English title says 'AI builders'"
-        ]
+        "A": ["English title says 'AI builders'"]
       }
     },
     {
@@ -172,9 +167,7 @@
       "natural": "A",
       "faithful": "A",
       "lost": {
-        "A": [
-          "English summary mentions 'over two cycles' explicitly"
-        ],
+        "A": ["English summary mentions 'over two cycles' explicitly"],
         "F": [
           "Missing entire summary details from English",
           "Missing mention of UC Berkeley collaboration",
@@ -355,9 +348,7 @@
       "faithful": "F",
       "lost": {
         "F": [],
-        "A": [
-          "Kept English title unchanged instead of translating it"
-        ]
+        "A": ["Kept English title unchanged instead of translating it"]
       }
     },
     {
@@ -367,9 +358,7 @@
       "faithful": "A",
       "lost": {
         "A": [],
-        "F": [
-          "Changed 'audio' to 'giọng nói' (speech) instead of 'audio'"
-        ]
+        "F": ["Changed 'audio' to 'giọng nói' (speech) instead of 'audio'"]
       }
     },
     {
@@ -379,9 +368,7 @@
       "faithful": "tie",
       "lost": {
         "A": [],
-        "F": [
-          "drop 'off-policy training' is paraphrased but acceptable"
-        ]
+        "F": ["drop 'off-policy training' is paraphrased but acceptable"]
       }
     },
     {
@@ -410,9 +397,7 @@
       "natural": "F",
       "faithful": "A",
       "lost": {
-        "A": [
-          "drop 'real-world' from competition description"
-        ],
+        "A": ["drop 'real-world' from competition description"],
         "F": [
           "drop 'Evaluating Heuristic Learning' from title",
           "drop 'more complex rule specifications' from summary"
@@ -442,12 +427,8 @@
       "natural": "A",
       "faithful": "tie",
       "lost": {
-        "F": [
-          "change 'skipping' to 'đang bỏ qua' scale"
-        ],
-        "A": [
-          "change 'skipping' to 'đang bỏ qua' scale"
-        ]
+        "F": ["change 'skipping' to 'đang bỏ qua' scale"],
+        "A": ["change 'skipping' to 'đang bỏ qua' scale"]
       }
     },
     {

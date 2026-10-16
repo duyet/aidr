@@ -1,9 +1,6 @@
 {
   "judge": "openai/gpt-5.6-luna",
-  "pair": [
-    "E",
-    "C"
-  ],
+  "pair": ["E", "C"],
   "files": [
     "E=scripts/fixtures/vi-natural/arm-E.json",
     "C=scripts/fixtures/vi-natural/arm-C.json"
@@ -19,9 +16,7 @@
           "The phrase “potential savings” is rendered as a definite goal to cut costs.",
           "The wording about expanded budget allocations for personnel is simplified to increasing the personnel budget."
         ],
-        "E": [
-          "The hedge that the savings were “potential” is not explicit."
-        ]
+        "E": ["The hedge that the savings were “potential” is not explicit."]
       }
     },
     {
@@ -105,9 +100,7 @@
       "faithful": "E",
       "lost": {
         "E": [],
-        "C": [
-          "It changes built-in evaluation into built-in self-evaluation."
-        ]
+        "C": ["It changes built-in evaluation into built-in self-evaluation."]
       }
     },
     {
@@ -477,9 +470,7 @@
           "It omits that recent work initializes and fine-tunes a base unimodal model for bi-modal generation.",
           "It changes the recent work to previous approaches and says they only fine-tune the model."
         ],
-        "E": [
-          "It changes bi-modal generation to generating bi-modal data."
-        ]
+        "E": ["It changes bi-modal generation to generating bi-modal data."]
       }
     },
     {
@@ -515,9 +506,7 @@
       "faithful": "E",
       "lost": {
         "E": [],
-        "C": [
-          "It omits the @1 qualifier from Recall@1."
-        ]
+        "C": ["It omits the @1 qualifier from Recall@1."]
       }
     },
     {
@@ -543,9 +532,7 @@
           "It changes dynamic to flexible in the title.",
           "It renders virtual GPU cloud with the awkward and potentially misleading word order Virtual Cloud GPU."
         ],
-        "E": [
-          "It changes infrastructure elasticity to flexibility."
-        ]
+        "E": ["It changes infrastructure elasticity to flexibility."]
       }
     }
   ]

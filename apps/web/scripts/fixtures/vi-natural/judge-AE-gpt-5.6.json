@@ -1,9 +1,6 @@
 {
   "judge": "openai/gpt-5.6-luna",
-  "pair": [
-    "A",
-    "E"
-  ],
+  "pair": ["A", "E"],
   "files": [
     "A=scripts/fixtures/vi-natural/arm-A.json",
     "E=scripts/fixtures/vi-natural/arm-E.json"
@@ -86,9 +83,7 @@
       "natural": "E",
       "faithful": "E",
       "lost": {
-        "E": [
-          "It renders the plural AI agents as a singular AI agent."
-        ],
+        "E": ["It renders the plural AI agents as a singular AI agent."],
         "A": [
           "It renders “decompiling” as the incorrect term “phân dịch.”",
           "It renders “first-person shooter” as a shooter involving a first character, rather than a first-person shooter.",
@@ -298,9 +293,7 @@
           "The title omits that the prompts are text prompts.",
           "Changes “Palo Alto-based” to “Alto-based,” dropping Palo."
         ],
-        "A": [
-          "Translates “baseball cap” as “baseball helmet.”"
-        ]
+        "A": ["Translates “baseball cap” as “baseball helmet.”"]
       }
     },
     {
@@ -319,9 +312,7 @@
       "natural": "E",
       "faithful": "E",
       "lost": {
-        "E": [
-          "Omits that Gemini 4 Argon was made available today."
-        ],
+        "E": ["Omits that Gemini 4 Argon was made available today."],
         "A": [
           "Omits that Gemini 4 Argon was made available today.",
           "Misidentifies pelicans as penguins.",

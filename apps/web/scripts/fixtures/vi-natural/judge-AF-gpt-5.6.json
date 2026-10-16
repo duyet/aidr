@@ -1,9 +1,6 @@
 {
   "judge": "openai/gpt-5.6-luna",
-  "pair": [
-    "A",
-    "F"
-  ],
+  "pair": ["A", "F"],
   "files": [
     "A=scripts/fixtures/vi-natural/arm-A.json",
     "F=scripts/fixtures/vi-natural/arm-F.json"
@@ -121,9 +118,7 @@
       "faithful": "A",
       "lost": {
         "A": [],
-        "F": [
-          "It changes AI builders/developers into AI users."
-        ]
+        "F": ["It changes AI builders/developers into AI users."]
       }
     },
     {
@@ -136,9 +131,7 @@
           "It mistranslates unified multimodal generation as an unclear phrase meaning “diverse intelligent generation.”",
           "It drops the hedge “to our knowledge” from the first diffusion language model claim."
         ],
-        "F": [
-          "It repeatedly misspells “discrete” as “rời rạp.”"
-        ]
+        "F": ["It repeatedly misspells “discrete” as “rời rạp.”"]
       }
     },
     {
@@ -270,9 +263,7 @@
       "natural": "A",
       "faithful": "A",
       "lost": {
-        "F": [
-          "'Former' is misspelled as 'cự' instead of 'cựu.'"
-        ],
+        "F": ["'Former' is misspelled as 'cự' instead of 'cựu.'"],
         "A": []
       }
     },
@@ -308,9 +299,7 @@
       "natural": "F",
       "faithful": "A",
       "lost": {
-        "A": [
-          "It mistranslates “film negatives” as reflective films."
-        ],
+        "A": ["It mistranslates “film negatives” as reflective films."],
         "F": [
           "It mistranslates “film negatives” as emissive films.",
           "It changes “ended up with” the box to “received” the box.",
@@ -325,9 +314,7 @@
       "natural": "A",
       "faithful": "A",
       "lost": {
-        "F": [
-          "It changes the summary’s 100,000 sensors to 10,000 sensors."
-        ],
+        "F": ["It changes the summary’s 100,000 sensors to 10,000 sensors."],
         "A": []
       }
     },
@@ -363,9 +350,7 @@
       "faithful": "A",
       "lost": {
         "A": [],
-        "F": [
-          "It drops “custom” as a modifier of “skills.”"
-        ]
+        "F": ["It drops “custom” as a modifier of “skills.”"]
       }
     },
     {
@@ -374,12 +359,8 @@
       "natural": "F",
       "faithful": "tie",
       "lost": {
-        "A": [
-          "It translates “speech” as the broader term “audio.”"
-        ],
-        "F": [
-          "It changes “developers” to the singular “developer.”"
-        ]
+        "A": ["It translates “speech” as the broader term “audio.”"],
+        "F": ["It changes “developers” to the singular “developer.”"]
       }
     },
     {
@@ -388,9 +369,7 @@
       "natural": "F",
       "faithful": "F",
       "lost": {
-        "F": [
-          "None."
-        ],
+        "F": ["None."],
         "A": [
           "The expansion of DiffusionART's name is changed from “Diffusion Reinforcement with Aggregation-First Reward Tilting” to a Vietnamese translation.",
           "“Without EMA tuning” is rendered as “by not needing EMA tuning,” changing the phrasing of the condition."
@@ -403,9 +382,7 @@
       "natural": "A",
       "faithful": "A",
       "lost": {
-        "A": [
-          "None."
-        ],
+        "A": ["None."],
         "F": [
           "Adds that the firearms “had existed,” whereas the supplied English source ends at “once they.”"
         ]
@@ -435,9 +412,7 @@
       "natural": "F",
       "faithful": "A",
       "lost": {
-        "A": [
-          "None."
-        ],
+        "A": ["None."],
         "F": [
           "“Replays” is generalized to reviewed matches, losing the specific fact that agents analyze replays."
         ]
