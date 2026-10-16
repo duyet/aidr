@@ -103,6 +103,38 @@ describe("withSsrHead inlines the homepage stylesheet", () => {
     );
     expect(await res.text()).toContain(`<style>${CSS}</style>`);
   });
+
+  // Bytes after </head> are forwarded as they arrive. A decode/re-encode
+  // of a chunk that ends mid-character would ship U+FFFD; a head cut at
+  // a character index rather than a byte offset would drop or repeat
+  // bytes around a multibyte title.
+  it("forwards body bytes untouched when chunks split multibyte characters", async () => {
+    const enc = new TextEncoder();
+    const page = `<!DOCTYPE html><html><head><title>Tin tức</title></head><body><p>Đọc tiếp — ngày mới</p></body></html>`;
+    const bytes = enc.encode(page);
+    const headEnd = page.indexOf("</head>") + "</head>".length;
+    const headBytes = enc.encode(page.slice(0, headEnd)).byteLength;
+    const tuBytes = enc.encode(page.slice(0, page.indexOf("ức"))).byteLength;
+    const docBytes = enc.encode(page.slice(0, page.indexOf("ọc"))).byteLength;
+    const cuts = [tuBytes + 1, headBytes + 3, docBytes + 1, docBytes + 2];
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        let from = 0;
+        for (const cut of cuts) {
+          c.enqueue(bytes.subarray(from, cut));
+          from = cut;
+        }
+        c.enqueue(bytes.subarray(from));
+        c.close();
+      },
+    });
+    const res = withSsrHead(
+      new Request("https://aidr.today/01234567"),
+      new Response(body, { headers: { "Content-Type": "text/html" } }),
+      undefined
+    );
+    expect(await res.text()).toBe(withBootScriptFirst(page));
+  });
 });
 
 describe("withSsrHead leaves API responses alone", () => {
