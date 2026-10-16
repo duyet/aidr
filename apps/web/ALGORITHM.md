@@ -1505,8 +1505,12 @@ at most once a minute per story and kind. Category totals over 28 days
 show on `/data` (Algo tab, `GET /api/system/reads`). The same response
 carries `top_stories`, the top 5 published stories per channel by opens over
 7 days with their outbound clicks (`TOP_STORIES_*` in `reads-query.ts`).
-Reads on a merged id fold into the canonical, and a story under 3 opens in
-a channel is not listed, so a small count cannot single a reader out.
+Reads on a merged id fold into the canonical. A story is not listed in a
+channel under that channel's minimum opens: 3 by default, 10 for `email`,
+`telegram` and `extension` (`TOP_STORIES_MIN_OPENS_BY_CHANNEL`). `count` is
+hits, not readers, and those channels have few readers, so 3 opens could be
+one reader. Facebook, YouTube, RSS and `other` keep 3 because they are
+broadcast surfaces with no known small audience.
 
 ### 8. Write
 

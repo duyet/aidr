@@ -71,10 +71,6 @@ describe("loadSystemReads", () => {
           channel: "web",
           stories: [{ id: "a", title: null, opens: 5, outbound: 0 }],
         },
-        {
-          channel: "email",
-          stories: [{ id: "c", title: null, opens: 4, outbound: 0 }],
-        },
       ],
     });
   });
@@ -162,10 +158,56 @@ describe("top stories by channel", () => {
       INSERT INTO items (id, title) VALUES ${ids.map((i) => `('${i}', '${i}')`).join(",")};
       INSERT INTO item_reads VALUES
         ${ids.map((i, n) => `('${i}', date('now'), 'web', 'open', ${10 - n})`).join(",")},
-        ('a', date('now'), 'email', 'open', 3)`);
+        ('a', date('now'), 'facebook', 'open', 3)`);
     expect(tops.map((c) => [c.channel, c.stories.map((s) => s.id)])).toEqual([
       ["web", ["a", "b", "c", "d", "e"]],
-      ["email", ["a"]],
+      ["facebook", ["a"]],
+    ]);
+  });
+
+  it("holds email to 10 opens while web shows at 3 (defect: one flat minimum lets one email reader open a story 3 times and appear)", async () => {
+    const tops = await top(`
+      INSERT INTO items (id, title) VALUES ('a', 'A');
+      INSERT INTO item_reads VALUES
+        ('a', date('now'), 'email', 'open', 5),
+        ('a', date('now'), 'web', 'open', 5),
+        ('a', date('now'), 'telegram', 'open', 9),
+        ('a', date('now'), 'extension', 'open', 9),
+        ('a', date('now'), 'facebook', 'open', 3)`);
+    expect(tops.map((c) => c.channel).sort()).toEqual(["facebook", "web"]);
+    const atTen = await top(`
+      INSERT INTO items (id, title) VALUES ('a', 'A');
+      INSERT INTO item_reads VALUES
+        ('a', date('now'), 'email', 'open', 10),
+        ('a', date('now'), 'telegram', 'open', 10),
+        ('a', date('now'), 'extension', 'open', 10)`);
+    expect(atTen.map((c) => c.channel).sort()).toEqual([
+      "email",
+      "extension",
+      "telegram",
+    ]);
+  });
+
+  it("lists only published canonicals (defect: a draft, an unpublished item or a merged id with an unpublished canonical is listed)", async () => {
+    const tops = await top(`
+      INSERT INTO items (id, title, status, duplicate_of) VALUES
+        ('pub', 'Published', 'published', NULL),
+        ('draft', 'Draft', 'draft', NULL),
+        ('hidden', 'Hidden', 'unpublished', NULL),
+        ('canon-draft', 'Canon draft', 'draft', NULL),
+        ('m-draft', 'Merged into draft', 'merged', 'canon-draft'),
+        ('m-gone', 'Merged into nothing', 'merged', 'missing');
+      INSERT INTO item_reads VALUES
+        ('pub', date('now'), 'web', 'open', 3),
+        ('draft', date('now'), 'web', 'open', 9),
+        ('hidden', date('now'), 'web', 'open', 9),
+        ('m-draft', date('now'), 'web', 'open', 9),
+        ('m-gone', date('now'), 'web', 'open', 9)`);
+    expect(tops).toEqual([
+      {
+        channel: "web",
+        stories: [{ id: "pub", title: "Published", opens: 3, outbound: 0 }],
+      },
     ]);
   });
 });

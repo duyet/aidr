@@ -13,8 +13,13 @@ export interface CategoryReads extends ReadTotal {
 }
 
 /** A story row is listed only from this many opens, so a count of one or two
- * readers can't single anyone out. */
+ * readers can't single anyone out. `count` is hits, not readers, so a channel
+ * with a handful of readers (email, telegram, extension) needs a higher floor
+ * or a few opens could be one reader. Broadcast channels use the default. */
 export const TOP_STORIES_MIN_OPENS = 3;
+export const TOP_STORIES_MIN_OPENS_BY_CHANNEL: Readonly<
+  Record<string, number>
+> = { email: 10, telegram: 10, extension: 10 };
 export const TOP_STORIES_WINDOW_DAYS = 7;
 export const TOP_STORIES_PER_CHANNEL = 5;
 
@@ -51,6 +56,12 @@ const KIND_SQL = `SELECT r.kind AS name, SUM(r.count) AS reads
   ${WINDOW} GROUP BY name ORDER BY reads DESC, name`;
 
 // Reads on a merged id count for its canonical, as in READ_COUNT_JOIN_I.
+const MIN_OPENS_CASE = `CASE f.channel ${Object.entries(
+  TOP_STORIES_MIN_OPENS_BY_CHANNEL
+)
+  .map(([channel, min]) => `WHEN '${channel}' THEN ${Number(min)}`)
+  .join(" ")} ELSE ?2 END`;
+
 const TOP_STORIES_SQL = `WITH folded AS (
     SELECT COALESCE(m.duplicate_of, r.item_id) AS id, r.channel,
       SUM(CASE WHEN r.kind = 'open' THEN r.count ELSE 0 END) AS opens,
@@ -65,7 +76,7 @@ const TOP_STORIES_SQL = `WITH folded AS (
         PARTITION BY f.channel ORDER BY f.opens DESC, f.outbound DESC, f.id
       ) AS rn
     FROM folded f JOIN items i ON i.id = f.id AND i.status = 'published'
-    WHERE f.opens >= ?2
+    WHERE f.opens >= ${MIN_OPENS_CASE}
   )
   SELECT id, channel, title, opens, outbound FROM ranked
   WHERE rn <= ?3 ORDER BY channel, rn`;
