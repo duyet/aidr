@@ -1,7 +1,13 @@
+import { useHydrated } from "@tanstack/react-router";
 import { ThumbsUp } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { useEffect, useRef, useState } from "react";
-import { bearerHeaders, useClerkModule } from "../../lib/clerk-user";
+import {
+  bearerHeaders,
+  type ClerkModule,
+  hasClerkSessionCookie,
+  useClerkModule,
+} from "../../lib/clerk-user";
 import { signInHref } from "../../lib/sign-in-href";
 import { storyPath } from "../../lib/slug";
 import type { Lang } from "../../lib/types";
@@ -85,6 +91,7 @@ const COPY = {
   en: {
     upvote: "Upvote",
     removeUpvote: "Remove upvote",
+    pending: "Loading your vote",
     count: "Reader votes",
     signInTitle: "Sign in to vote",
     signInBody: "Votes help good stories rank higher.",
@@ -94,6 +101,7 @@ const COPY = {
   vi: {
     upvote: "Thích tin này",
     removeUpvote: "Bỏ thích tin này",
+    pending: "Đang tải phiếu bầu của bạn",
     count: "Tổng phiếu",
     signInTitle: "Đăng nhập để bình chọn",
     signInBody: "Phiếu bầu giúp tin hay được xếp hạng cao hơn.",
@@ -113,12 +121,14 @@ function Thumb({
   lang,
   pressed,
   disabled,
+  label,
   onClick,
 }: {
   voteNet: number;
   lang: Lang;
   pressed?: boolean;
   disabled?: boolean;
+  label?: string;
   onClick: () => void;
 }) {
   const copy = COPY[lang];
@@ -129,7 +139,7 @@ function Thumb({
         pressed ? "text-primary" : "text-muted-foreground hover:text-foreground"
       }`}
       aria-pressed={pressed}
-      aria-label={pressed ? copy.removeUpvote : copy.upvote}
+      aria-label={label ?? (pressed ? copy.removeUpvote : copy.upvote)}
       disabled={disabled}
       onClick={(event) => {
         keepRowClosed(event);
@@ -143,6 +153,21 @@ function Thumb({
         {Math.max(0, voteNet)}
       </span>
     </button>
+  );
+}
+
+/** The reader may be signed in but Clerk has not said yet. Same box as the
+ * live thumb, and nothing to click that could send them to /sign-in. */
+function PendingVotes({ voteNet, lang }: { voteNet: number; lang: Lang }) {
+  return (
+    <Thumb
+      voteNet={voteNet}
+      lang={lang}
+      pressed={false}
+      disabled
+      label={COPY[lang].pending}
+      onClick={() => {}}
+    />
   );
 }
 
@@ -279,36 +304,9 @@ function SignedInVotes({
   );
 }
 
+/** Clerk's <Show> renders nothing until Clerk loads, which would drop the
+ * thumb out of the row, so this reads the same `useAuth` state directly. */
 function ClerkVotes({
-  itemId,
-  voteNet,
-  lang,
-  mod,
-}: {
-  itemId: string;
-  voteNet: number;
-  lang: Lang;
-  mod: NonNullable<ReturnType<typeof useClerkModule>["mod"]>;
-}) {
-  const { SignedIn, SignedOut, useAuth } = mod;
-  return (
-    <>
-      <SignedOut>
-        <SignInVotes itemId={itemId} voteNet={voteNet} lang={lang} />
-      </SignedOut>
-      <SignedIn>
-        <AuthedVotes
-          itemId={itemId}
-          voteNet={voteNet}
-          lang={lang}
-          useAuth={useAuth}
-        />
-      </SignedIn>
-    </>
-  );
-}
-
-function AuthedVotes({
   itemId,
   voteNet,
   lang,
@@ -317,9 +315,13 @@ function AuthedVotes({
   itemId: string;
   voteNet: number;
   lang: Lang;
-  useAuth: () => { getToken: () => Promise<string | null> };
+  useAuth: ClerkModule["useAuth"];
 }) {
-  const { getToken } = useAuth();
+  const { isLoaded, userId, getToken } = useAuth();
+  if (!isLoaded) return <PendingVotes voteNet={voteNet} lang={lang} />;
+  if (!userId) {
+    return <SignInVotes itemId={itemId} voteNet={voteNet} lang={lang} />;
+  }
   return (
     <SignedInVotes
       itemId={itemId}
@@ -330,7 +332,7 @@ function AuthedVotes({
   );
 }
 
-/** A small thumbs-up and the count (floored at 0). Signed out, the click opens a sign-in dialog and stores nothing. */
+/** A small thumbs-up and the count (floored at 0). Signed out, the click opens a sign-in dialog and stores nothing. A session cookie without the Clerk SDK yet gets a disabled thumb. The server cannot read that cookie, so the server and the hydrating render both show the signed-out thumb. */
 export function StoryVotes({
   itemId,
   voteNet,
@@ -341,8 +343,19 @@ export function StoryVotes({
   lang: Lang;
 }) {
   const { mod, publishableKey } = useClerkModule();
+  const hydrated = useHydrated();
   if (!mod || !publishableKey) {
+    if (publishableKey && hydrated && hasClerkSessionCookie(document.cookie)) {
+      return <PendingVotes voteNet={voteNet} lang={lang} />;
+    }
     return <SignInVotes itemId={itemId} voteNet={voteNet} lang={lang} />;
   }
-  return <ClerkVotes itemId={itemId} voteNet={voteNet} lang={lang} mod={mod} />;
+  return (
+    <ClerkVotes
+      itemId={itemId}
+      voteNet={voteNet}
+      lang={lang}
+      useAuth={mod.useAuth}
+    />
+  );
 }
