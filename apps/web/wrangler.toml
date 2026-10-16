@@ -101,11 +101,11 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 #                            finish_reason length, no content); prod ~4.5K
 #                            translate 8 of 8 ok, ~7K and TL;DR time out at 20s
 #   anyrouter/auto           502 upstream_exhausted or nemotron-3-ultra with a
-#                            29-66s first token; prod translate 0 of 8. Kept
-#                            last only as the router safety net on score and
-#                            TL;DR; TL;DR is the one place it paid off
-#                            (resolved to Laguna, 3 prod successes in the 24h
-#                            before the recheck). Off the translate chains.
+#                            29-66s first token; prod translate 0 of 8. Off
+#                            every chain since 2026-10-16: served 0 of 97
+#                            calls in the 7 days before (cluster 0/48, score
+#                            0/41), and its slot cut Claude Sonnet to 18s
+#                            after a stalled cluster head (#672).
 #   google/gemini-3-flash    2026-10-04 streaming json_object: HTTP 200, usable
 #                            vi JSON in 2-6s. Off every chain since
 #                            2026-10-14: 0 of 21 since 00:00 UTC (404, 502).
@@ -160,10 +160,10 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # Claude Sonnet 5.5 is the paid last resort (2026-10-15). Over the 7 days
 # before, 100 calls reached anyrouter/auto (cluster 50, score 46, other 4)
 # and it served none; 25 of them were the 10-13 account-wide 429 window.
-# With a 5th id the first two hops keep at least their old slices; the
-# 3rd and 4th each hold back one more fallback floor (up to 20s) for it.
-# Translate, summarize and TL;DR stay off it: see those chains.
-ANYROUTER_MODEL = "google/gemma-latest,z-ai/glm-latest,@preset/aidr,anyrouter/auto,anthropic/claude-sonnet-5-5"
+# 2026-10-16: anyrouter/auto dropped (#672). When the cluster head stalls
+# for its 45s slice, Sonnet now gets 35s instead of 18s.
+# Translate, summarize and TL;DR stay off Sonnet: see those chains.
+ANYROUTER_MODEL = "google/gemma-latest,z-ai/glm-latest,@preset/aidr,anthropic/claude-sonnet-5-5"
 # Translate tries Laguna first, then gemma-latest. Each extra id still
 # reserves a 20s fallback slice
 # (2026-10-02). Dropped @preset/aidr (11/87 ok over 24h,

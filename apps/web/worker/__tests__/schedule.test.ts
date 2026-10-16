@@ -94,20 +94,6 @@ describe("live AnyRouter model chains", () => {
   // review (must stay disjoint from the generators).
   const PAID_FALLBACK = "anthropic/claude-sonnet-5-5";
 
-  // Router aliases are the safety net on score: they go after the free
-  // concrete ids so one bad pick cannot burn a step's budget. Translate does
-  // not use anyrouter/auto. TL;DR has no alias either: anyrouter/auto served
-  // 0 of 26 tldr calls over 7 days (2026-10-11, 22 timeouts), so it only
-  // spent the fallback slice.
-  it("puts the router safety net after the free concrete ids on score", () => {
-    const ids = idsOf("ANYROUTER_MODEL").filter((id) => id !== PAID_FALLBACK);
-    expect(ids.at(-1)).toMatch(/^anyrouter\//);
-    const firstAlias = ids.findIndex((id) => id.startsWith("anyrouter/"));
-    expect(
-      ids.slice(firstAlias).every((id) => id.startsWith("anyrouter/"))
-    ).toBe(true);
-  });
-
   it("keeps Claude Sonnet as the last score fallback and off every other chain", () => {
     expect(idsOf("ANYROUTER_MODEL").at(-1)).toBe(PAID_FALLBACK);
     for (const name of [
@@ -121,10 +107,6 @@ describe("live AnyRouter model chains", () => {
         name
       ).toBe(false);
     }
-  });
-
-  it("keeps anyrouter/auto off the TL;DR chain", () => {
-    expect(idsOf("ANYROUTER_TLDR_MODEL")).not.toContain("anyrouter/auto");
   });
 
   const chains = [
@@ -161,8 +143,14 @@ describe("live AnyRouter model chains", () => {
   // 0 of 484 (98 404s in the last 24h alone). Every review attempt in a
   // run failed while it held the fallback slot (#655). gemma-4-31b served
   // 16 of 542 translate and summarize calls, none after 2026-10-12 03:16
-  // UTC (#663).
-  const KNOWN_DEAD = ["stealth/space-bunny-alpha", "google/gemma-4-31b"];
+  // UTC (#663). anyrouter/auto served 0 of 97 calls over 7 days to
+  // 2026-10-16 (cluster 0/48, score 0/41) and 0 of 26 tldr calls before
+  // that; its slot only shrank the next id's slice (#672).
+  const KNOWN_DEAD = [
+    "stealth/space-bunny-alpha",
+    "google/gemma-4-31b",
+    "anyrouter/auto",
+  ];
 
   it("keeps known-dead model ids off every chain", () => {
     for (const name of chains) {
