@@ -283,6 +283,12 @@ test("a title cut at a word keeps every number and the date, dropping words with
       assert.match(out.title, new RegExp(`\\b${n}\\b`), `${n} in ${out.title}`);
     assert.ok(out.title.startsWith("OpenAI huy động thêm 60 tỷ USD"));
   }
+  const brand = await titled(
+    "AI;DR: OpenAI raises $60B | 2026-10-16",
+    "OpenAI huy động thêm 60 tỷ USD từ các nhà đầu tư lớn trên toàn thế giới với mức định giá kỷ lục, theo AI;DR | 2026-10-16",
+    ""
+  );
+  assert.match(brand.title, /AI;DR… \| 2026-10-16$/, brand.title);
 });
 
 test("a title that cannot fit 100 characters with all its numbers fails the run instead of posting", async () => {
