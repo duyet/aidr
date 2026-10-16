@@ -77,6 +77,25 @@ describe("an imageless story is never lost", () => {
     expect(JSON.stringify(fetchMock.mock.calls)).not.toMatch(/api\/og/);
   });
 
+  it("reports a delivered imageless story with its publisher preview at info level", async () => {
+    // Guards against Bugsink alerting on a correct #804 fallback (story
+    // 76f3c65e, a Hugging Face paper with no image of its own).
+    const fetchMock = stubTelegram();
+    const story = hydrateStory(
+      row({ url: "https://huggingface.co/papers/2610.18072" })
+    );
+
+    const result = await telegramNotifier.sendStory(ENV, story);
+
+    expect(result).toMatchObject({ ok: true });
+    expect(result.error).toBe("fallback ok: photo:no_usable_image");
+    expect(calls(fetchMock)[0]?.body.link_preview_options.url).toBe(
+      "https://huggingface.co/papers/2610.18072"
+    );
+    expect(reportDeliveryFailure).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(reportDeliveryFailure).mock.calls[0]?.[3]).toBe("info");
+  });
+
   it("posts text with the preview off when the publisher URL canonicalizes to empty", async () => {
     // An overlong URL hydrates to "" (`canonicalizeMediaUrl` -> null). The
     // aidr page cannot stand in: its og:image is the share card.
@@ -100,6 +119,7 @@ describe("an imageless story is never lost", () => {
     expect(sent[0]?.body.link_preview_options).toEqual({ is_disabled: true });
     expect(JSON.stringify(fetchMock.mock.calls)).not.toMatch(/api\/og/);
     expect(reportDeliveryFailure).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(reportDeliveryFailure).mock.calls[0]?.[3]).toBeUndefined();
     expect(vi.mocked(reportDeliveryFailure).mock.calls[0]?.[2]).toEqual({
       channel: "telegram",
       kind: "story_media",
@@ -116,6 +136,7 @@ describe("an imageless story is never lost", () => {
     expect(vi.mocked(reportDeliveryFailure).mock.calls[0]?.[1]).toContain(
       "photo:no_usable_image"
     );
+    expect(vi.mocked(reportDeliveryFailure).mock.calls[0]?.[3]).toBeUndefined();
   });
 });
 

@@ -107,9 +107,10 @@ export async function reportToSentry(
 export async function reportDeliveryFailure(
   env: Pick<Env, "SENTRY_DSN">,
   message: string,
-  tags: Record<string, string>
+  tags: Record<string, string>,
+  level?: SentryReport["level"]
 ): Promise<void> {
-  await reportToSentry(env, { message, tags });
+  await reportToSentry(env, { message, tags, level });
 }
 
 const SENTRY_LEVEL = {
