@@ -460,9 +460,8 @@ export function getModelChains(env: {
 }
 
 /** Read SQL shared by the aggregate /api/system and the granular
- * /api/system/* endpoints. Keep every statement unconditionally safe for
- * db.batch() — a batch aborts entirely if one statement fails, so
- * migration-gated queries stay out unless their probe passed. */
+ * /api/system/* endpoints. A db.batch() aborts entirely if one statement
+ * fails; the deploy gate guarantees every table and column named here. */
 const SQL = {
   itemsCount: "SELECT COUNT(*) AS c FROM items",
   translationsCount: "SELECT COUNT(*) AS c FROM translations",
@@ -522,11 +521,8 @@ const SQL = {
     ORDER BY date ASC, model ASC`,
 } as const;
 
-function runsSelectSql(hasRunStats: boolean, limit: number): string {
-  const runColumns = hasRunStats
-    ? "id, started_at, finished_at, items_fetched, items_new, error, stats"
-    : "id, started_at, finished_at, items_fetched, items_new, error";
-  return `SELECT ${runColumns} FROM workflow_runs ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC LIMIT ${limit}`;
+function runsSelectSql(limit: number): string {
+  return `SELECT id, started_at, finished_at, items_fetched, items_new, error, stats FROM workflow_runs ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC LIMIT ${limit}`;
 }
 
 function firstRow<T>(res: { results?: unknown[] } | undefined): T | null {
@@ -577,44 +573,6 @@ function countRunsToday(runs: WorkflowRunRow[]): number {
   ).length;
 }
 
-let llmTokensSupported: boolean | null = null;
-let llmCallsSupported: boolean | null = null;
-let llmRunIdentitySupported: boolean | null = null;
-let runStatsSupported: boolean | null = null;
-let contentLogSupported: boolean | null = null;
-
-/** Column/table probes run in parallel once per isolate; each flag caches
- * in module scope so repeat hits skip the round-trip. Probes stay
- * individual queries (not batch) because failures are the signal — a D1
- * batch aborts wholesale on one failing statement. */
-async function probeSystemTables(db: DbReader): Promise<{
-  hasTokens: boolean;
-  hasRunStats: boolean;
-  hasLlmCalls: boolean;
-  hasContentLog: boolean;
-}> {
-  const probe = async (sql: string): Promise<boolean> => {
-    try {
-      await db.prepare(sql).all();
-      return true;
-    } catch {
-      return false;
-    }
-  };
-  const [hasTokens, hasRunStats, hasLlmCalls, hasContentLog] =
-    await Promise.all([
-      llmTokensSupported ?? probe("SELECT llm_tokens FROM items LIMIT 1"),
-      runStatsSupported ?? probe("SELECT stats FROM workflow_runs LIMIT 1"),
-      llmCallsSupported ?? probe("SELECT ts FROM llm_calls LIMIT 1"),
-      contentLogSupported ?? probe("SELECT id FROM item_content_log LIMIT 1"),
-    ]);
-  llmTokensSupported = hasTokens;
-  runStatsSupported = hasRunStats;
-  llmCallsSupported = hasLlmCalls;
-  contentLogSupported = hasContentLog;
-  return { hasTokens, hasRunStats, hasLlmCalls, hasContentLog };
-}
-
 /** D1 refuses page-count pragmas. A normal read still reports `size_after`
  * on the result meta, which is the database file size in bytes. */
 async function loadDatabaseBytes(db: DbReader): Promise<number | null> {
@@ -629,8 +587,8 @@ async function loadDatabaseBytes(db: DbReader): Promise<number | null> {
 
 type NamedStatement = [string, D1PreparedStatement];
 
-/** Names stay on the statements. A probe-gated insert then cannot move a
- * later count onto the wrong row of a variable-length batch. */
+/** Names stay on the statements, so a reordered entry cannot move a count
+ * onto the wrong row. */
 async function batchNamed(
   db: DbReader,
   entries: readonly NamedStatement[]
@@ -642,17 +600,6 @@ async function batchNamed(
     if (name) out[name] = rows[i];
   }
   return out;
-}
-
-async function probeLlmRunIdentity(db: DbReader): Promise<boolean> {
-  if (llmRunIdentitySupported != null) return llmRunIdentitySupported;
-  try {
-    await db.prepare("SELECT run_id FROM llm_calls LIMIT 1").all();
-    llmRunIdentitySupported = true;
-  } catch {
-    llmRunIdentitySupported = false;
-  }
-  return llmRunIdentitySupported;
 }
 
 async function loadLlmCallsPerDay(db: DbReader): Promise<LlmDayTaskCount[]> {
@@ -1010,32 +957,24 @@ export interface SystemOverview {
 export async function loadSystemOverview(
   db: DbReader
 ): Promise<SystemOverview> {
-  const [{ hasTokens, hasRunStats, hasContentLog }, databaseBytes] =
-    await Promise.all([probeSystemTables(db), loadDatabaseBytes(db)]);
-  const entries: NamedStatement[] = [
-    ["items", db.prepare(SQL.itemsCount)],
-    ["translations", db.prepare(SQL.translationsCount)],
-    ["tldr", db.prepare(SQL.tldrCount)],
-    ["subscribers", db.prepare(SQL.subscribersCount)],
-    ["sources", db.prepare(SQL.sourcesCount)],
-    ["itemSources", db.prepare(SQL.itemSourcesCount)],
-    ["runs", db.prepare(runsSelectSql(hasRunStats, 30))],
-    ["latestTldr", db.prepare(SQL.latestTldr)],
-  ];
-  if (hasTokens) {
-    entries.push(
+  const [row, databaseBytes] = await Promise.all([
+    batchNamed(db, [
+      ["items", db.prepare(SQL.itemsCount)],
+      ["translations", db.prepare(SQL.translationsCount)],
+      ["tldr", db.prepare(SQL.tldrCount)],
+      ["subscribers", db.prepare(SQL.subscribersCount)],
+      ["sources", db.prepare(SQL.sourcesCount)],
+      ["itemSources", db.prepare(SQL.itemSourcesCount)],
+      ["runs", db.prepare(runsSelectSql(30))],
+      ["latestTldr", db.prepare(SQL.latestTldr)],
       ["tokenTotal", db.prepare(SQL.tokenTotal)],
-      ["tokenAvg", db.prepare(SQL.tokenAvg)]
-    );
-  }
-  entries.push(
-    ["viTitles", db.prepare(SQL.viTitles)],
-    ["viSummaries", db.prepare(SQL.viSummaries)]
-  );
-  if (hasContentLog) {
-    entries.push(["contentEdits", db.prepare(SQL.contentEdits)]);
-  }
-  const row = await batchNamed(db, entries);
+      ["tokenAvg", db.prepare(SQL.tokenAvg)],
+      ["viTitles", db.prepare(SQL.viTitles)],
+      ["viSummaries", db.prepare(SQL.viSummaries)],
+      ["contentEdits", db.prepare(SQL.contentEdits)],
+    ]),
+    loadDatabaseBytes(db),
+  ]);
 
   const runRows = resultRows<RunDbRow>(row.runs).map(normalizeRunRow);
   const tokenTotal = firstRow<{ s: number | null }>(row.tokenTotal)?.s ?? 0;
@@ -1053,9 +992,7 @@ export async function loadSystemOverview(
       itemSourcesRows: firstRow<{ c: number }>(row.itemSources)?.c ?? 0,
       viTitles: firstRow<{ c: number }>(row.viTitles)?.c ?? 0,
       viSummaries: firstRow<{ c: number }>(row.viSummaries)?.c ?? 0,
-      contentEdits: hasContentLog
-        ? (firstRow<{ c: number }>(row.contentEdits)?.c ?? 0)
-        : 0,
+      contentEdits: firstRow<{ c: number }>(row.contentEdits)?.c ?? 0,
     },
     tokens: { total: tokenTotal, avgPerItem: tokenAvg },
     runsToday: countRunsToday(runRows),
@@ -1098,16 +1035,9 @@ export async function loadSystemActivity(
  * `/api/system/run-attempts` for the one expanded run — that is where the
  * row cap and its `truncated` flag apply. */
 export async function loadSystemRuns(db: DbReader): Promise<WorkflowRunRow[]> {
-  const [{ hasRunStats, hasLlmCalls }, hasLlmRunIdentity] = await Promise.all([
-    probeSystemTables(db),
-    probeLlmRunIdentity(db),
-  ]);
-  const { results } = await db
-    .prepare(runsSelectSql(hasRunStats, 30))
-    .all<RunDbRow>();
+  const { results } = await db.prepare(runsSelectSql(30)).all<RunDbRow>();
   const runRows = (results ?? []).map(normalizeRunRow);
-  if (!hasLlmCalls || !hasLlmRunIdentity || runRows.length === 0)
-    return runRows;
+  if (runRows.length === 0) return runRows;
   try {
     // Aggregated in SQL: bounded by run count, so every listed run keeps its
     // true call count and model inventory no matter how many calls it made.
@@ -1168,13 +1098,6 @@ export async function loadRunAttempts(
   db: DbReader,
   runId: string
 ): Promise<RunAttemptsResult> {
-  const [{ hasLlmCalls }, hasLlmRunIdentity] = await Promise.all([
-    probeSystemTables(db),
-    probeLlmRunIdentity(db),
-  ]);
-  if (!hasLlmCalls || !hasLlmRunIdentity) {
-    return { attempts: [], status: "unavailable", truncated: false };
-  }
   const { attempts, truncated } = await loadLlmCallsForRun(db, runId);
   return { attempts, status: "ready", truncated };
 }
@@ -1187,28 +1110,14 @@ export interface SystemLlm {
 }
 
 export async function loadSystemLlm(db: DbReader): Promise<SystemLlm> {
-  const { hasTokens, hasLlmCalls } = await probeSystemTables(db);
-  const stmts = [];
-  if (hasLlmCalls) {
-    stmts.push(
+  const [llmPerDay, llmByModel, tokenTotalRes, tokenAvgRes, tokenPerDayRes] =
+    await db.batch([
       db.prepare(SQL.llmCallsPerDay),
-      db.prepare(SQL.llmTokensByModel)
-    );
-  }
-  if (hasTokens) {
-    stmts.push(
+      db.prepare(SQL.llmTokensByModel),
       db.prepare(SQL.tokenTotal),
       db.prepare(SQL.tokenAvg),
-      db.prepare(SQL.tokenPerDay)
-    );
-  }
-  const rows = stmts.length ? await db.batch(stmts) : [];
-  let index = 0;
-  const llmPerDay = hasLlmCalls ? rows[index++] : undefined;
-  const llmByModel = hasLlmCalls ? rows[index++] : undefined;
-  const tokenTotalRes = hasTokens ? rows[index++] : undefined;
-  const tokenAvgRes = hasTokens ? rows[index++] : undefined;
-  const tokenPerDayRes = hasTokens ? rows[index++] : undefined;
+      db.prepare(SQL.tokenPerDay),
+    ]);
 
   return {
     llmCallsPerDay: resultRows<{
@@ -1363,11 +1272,10 @@ export function sourceStaleThreshold(id: string): number {
 }
 
 export async function loadSystemSources(db: DbReader): Promise<SystemSources> {
-  const { hasRunStats } = await probeSystemTables(db);
   const [sourceRows, bySource, lastRunRes, coverageRes] = await db.batch([
     db.prepare(SQL.ingestSources),
     db.prepare(SQL.bySource),
-    db.prepare(runsSelectSql(hasRunStats, 1)),
+    db.prepare(runsSelectSql(1)),
     db.prepare(IMAGE_COVERAGE_SQL),
   ]);
   const lastRun =
@@ -1405,46 +1313,30 @@ export async function loadSystemStats(
     ANYROUTER_JEV_MODEL?: string;
   } = {}
 ): Promise<SystemStats> {
-  const [
-    { hasTokens, hasRunStats, hasLlmCalls, hasContentLog },
-    hasLlmRunIdentity,
-    databaseBytes,
-  ] = await Promise.all([
-    probeSystemTables(db),
-    probeLlmRunIdentity(db),
-    loadDatabaseBytes(db),
-  ]);
-
-  const entries: NamedStatement[] = [
-    ["items", db.prepare(SQL.itemsCount)],
-    ["translations", db.prepare(SQL.translationsCount)],
-    ["tldr", db.prepare(SQL.tldrCount)],
-    ["subscribers", db.prepare(SQL.subscribersCount)],
-    ["sources", db.prepare(SQL.sourcesCount)],
-    ["itemSources", db.prepare(SQL.itemSourcesCount)],
-    ["byStatus", db.prepare(SQL.byStatus)],
-    ["bySource", db.prepare(SQL.bySource)],
-    ["byCategory", db.prepare(SQL.byCategory)],
-    ["perDay", db.prepare(SQL.itemsPerDay)],
-    ["runs", db.prepare(runsSelectSql(hasRunStats, 30))],
-    ["latestTldr", db.prepare(SQL.latestTldr)],
-    ["ingestSources", db.prepare(SQL.ingestSources)],
-  ];
-  if (hasTokens) {
-    entries.push(
+  const [row, databaseBytes] = await Promise.all([
+    batchNamed(db, [
+      ["items", db.prepare(SQL.itemsCount)],
+      ["translations", db.prepare(SQL.translationsCount)],
+      ["tldr", db.prepare(SQL.tldrCount)],
+      ["subscribers", db.prepare(SQL.subscribersCount)],
+      ["sources", db.prepare(SQL.sourcesCount)],
+      ["itemSources", db.prepare(SQL.itemSourcesCount)],
+      ["byStatus", db.prepare(SQL.byStatus)],
+      ["bySource", db.prepare(SQL.bySource)],
+      ["byCategory", db.prepare(SQL.byCategory)],
+      ["perDay", db.prepare(SQL.itemsPerDay)],
+      ["runs", db.prepare(runsSelectSql(30))],
+      ["latestTldr", db.prepare(SQL.latestTldr)],
+      ["ingestSources", db.prepare(SQL.ingestSources)],
       ["tokenTotal", db.prepare(SQL.tokenTotal)],
       ["tokenAvg", db.prepare(SQL.tokenAvg)],
-      ["tokenPerDay", db.prepare(SQL.tokenPerDay)]
-    );
-  }
-  entries.push(
-    ["viTitles", db.prepare(SQL.viTitles)],
-    ["viSummaries", db.prepare(SQL.viSummaries)]
-  );
-  if (hasContentLog) {
-    entries.push(["contentEdits", db.prepare(SQL.contentEdits)]);
-  }
-  const row = await batchNamed(db, entries);
+      ["tokenPerDay", db.prepare(SQL.tokenPerDay)],
+      ["viTitles", db.prepare(SQL.viTitles)],
+      ["viSummaries", db.prepare(SQL.viSummaries)],
+      ["contentEdits", db.prepare(SQL.contentEdits)],
+    ]),
+    loadDatabaseBytes(db),
+  ]);
 
   const tokenTotal = firstRow<{ s: number | null }>(row.tokenTotal)?.s ?? 0;
   const tokenAvg = Math.round(
@@ -1459,26 +1351,22 @@ export async function loadSystemStats(
 
   let llmCallsPerDay: LlmDayTaskCount[] = [];
   let runRows = runRowsRaw;
-  if (hasLlmCalls) {
-    try {
-      llmCallsPerDay = await loadLlmCallsPerDay(db);
-    } catch {
-      llmCallsPerDay = [];
-    }
-    if (hasLlmRunIdentity) {
-      try {
-        // Same SQL aggregation as the runs list: bounded by run count, so no
-        // run is starved by a busier neighbour and this aggregate endpoint
-        // cannot inflate into a multi-megabyte body.
-        const summaries = await loadLlmSummariesForRuns(
-          db,
-          runRowsRaw.map((run) => run.id)
-        );
-        runRows = attachLlmSummariesToRuns(runRowsRaw, summaries);
-      } catch {
-        // Leave runs without LLM detail rather than falling back to timestamps.
-      }
-    }
+  try {
+    llmCallsPerDay = await loadLlmCallsPerDay(db);
+  } catch {
+    llmCallsPerDay = [];
+  }
+  try {
+    // Same SQL aggregation as the runs list: bounded by run count, so no
+    // run is starved by a busier neighbour and this aggregate endpoint
+    // cannot inflate into a multi-megabyte body.
+    const summaries = await loadLlmSummariesForRuns(
+      db,
+      runRowsRaw.map((run) => run.id)
+    );
+    runRows = attachLlmSummariesToRuns(runRowsRaw, summaries);
+  } catch {
+    // Leave runs without LLM detail rather than falling back to timestamps.
   }
 
   return {
@@ -1491,9 +1379,7 @@ export async function loadSystemStats(
       itemSourcesRows: firstRow<{ c: number }>(row.itemSources)?.c ?? 0,
       viTitles: firstRow<{ c: number }>(row.viTitles)?.c ?? 0,
       viSummaries: firstRow<{ c: number }>(row.viSummaries)?.c ?? 0,
-      contentEdits: hasContentLog
-        ? (firstRow<{ c: number }>(row.contentEdits)?.c ?? 0)
-        : 0,
+      contentEdits: firstRow<{ c: number }>(row.contentEdits)?.c ?? 0,
     },
     databaseBytes,
     itemsByStatus: resultRows<NamedCount>(row.byStatus),

@@ -255,9 +255,9 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   row per signed-in reader per story. `value` is +1 or -1. Clearing a vote
   deletes the row, so `SUM(value)` is the net that `rank_score` folds into
   reader engagement. No rows are seeded.
-- Risk: none for mail or Telegram. Feed and story reads treat a missing
-  table as "no votes". Apply this before deploying the Worker that writes
-  a vote or recomputes rank from `item_votes`, or those statements fail.
+- Risk: none for mail or Telegram. Apply this before deploying the
+  Worker; the deploy gate refuses a Worker while it is missing. Feed,
+  story, day and weekly reads join `item_votes` without probing it (#886).
 - Rollback: redeploy the previous Worker, then `DROP TABLE item_votes;`
   Rank scores already written keep the vote term until the next re-rank.
 

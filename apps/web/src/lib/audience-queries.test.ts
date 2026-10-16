@@ -9,9 +9,8 @@ import type { DayCount, NamedCount } from "./system-queries";
 
 /**
  * D1 stand-in keyed on statement text. `unsupported` names the tables/columns
- * this environment has not applied so the probe path is exercised the way a
- * real un-migrated database behaves — including `batch()` aborting wholesale
- * on one failing statement, which is the hazard the probes exist to avoid.
+ * whose statements throw, the way a real database does, including `batch()`
+ * aborting wholesale on one failing statement.
  */
 interface FakeDbOptions {
   unsupported?: string[];
@@ -172,11 +171,11 @@ describe("loadAudienceStats", () => {
     expect(stats.subscribers.byDigestSize).toEqual([{ size: 5, count: 110 }]);
   });
 
-  it("reports unconfigured when migration 0028 has not been applied", async () => {
+  it("reports a failed GA4 read as error and still answers subscriber counts", async () => {
     const db = fakeDb({ unsupported: ["ga4_insights"], confirmed: 4 });
     const stats = await loadAudienceStats(db, { now: now() });
 
-    expect(stats.ga4.status).toBe("unconfigured");
+    expect(stats.ga4.status).toBe("error");
     expect(stats.ga4.audience).toBeNull();
     // Subscriber counts still answer — one broken source must not blank the tab.
     expect(stats.subscribers.confirmed).toBe(4);
@@ -229,28 +228,6 @@ describe("loadAudienceStats", () => {
 
     expect(stats.subscribers.confirmed).toBe(7);
     expect(stats.subscribers.byDigestSize).toEqual([]);
-  });
-
-  it("keeps the source query out of the batch when subscriber_sources is absent", async () => {
-    // digest_size is present and subscriber_sources is not. The two optional
-    // queries sit next to each other in the batch, so a positional read of
-    // the results would hand the digest-size rows to `bySource` here.
-    const db = fakeDb({
-      unsupported: ["subscriber_sources"],
-      confirmed: 7,
-      byDigestSize: [
-        { size: 5, count: 6 },
-        { size: 8, count: 1 },
-      ],
-    });
-    const stats = await loadAudienceStats(db, { now: now() });
-
-    expect(stats.subscribers.confirmed).toBe(7);
-    expect(stats.subscribers.bySource).toEqual([]);
-    expect(stats.subscribers.byDigestSize).toEqual([
-      { size: 5, count: 6 },
-      { size: 8, count: 1 },
-    ]);
   });
 
   it("never reports a negative unconfirmed count", async () => {

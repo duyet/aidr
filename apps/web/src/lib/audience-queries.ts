@@ -25,10 +25,11 @@ import type { DayCount, NamedCount } from "./system-queries";
  *   `subscriber_sources`, so they are exact at read time and need no
  *   snapshot of their own.
  *
- * Per the `system-queries.ts` rule, every statement that is not guaranteed by
- * the migration ledger is probed individually first: a D1 `batch()` aborts
- * wholesale on one failing statement, so `ga4_insights` and the two
- * runtime-added mail columns stay out of the batch unless their probe passed.
+ * The deploy gate guarantees every migrated table, `ga4_insights` (0028) and
+ * `subscriber_sources` (0015) included, so neither is probed. The one probe
+ * left is `subscribers.digest_size`: no migration creates it (0019 is a
+ * no-op), only `ensureMailSchema` does, and a D1 `batch()` aborts wholesale
+ * on one failing statement.
  */
 
 export type Ga4AudienceStatus =
@@ -137,47 +138,24 @@ function scalar(res: { results?: unknown[] } | undefined): number {
     : 0;
 }
 
-let ga4TableSupported: boolean | null = null;
 let digestSizeSupported: boolean | null = null;
-let subscriberSourcesSupported: boolean | null = null;
 
-/** Test seam: the probes are cached per isolate, like the system probes. */
+/** Test seam: the probe is cached per isolate. */
 export function resetAudienceProbes(): void {
-  ga4TableSupported = null;
   digestSizeSupported = null;
-  subscriberSourcesSupported = null;
 }
 
-async function probe(db: DbReader, sql: string): Promise<boolean> {
+/** `digest_size` is added at runtime by `ensureMailSchema`, not by a numbered
+ * migration, so its presence genuinely varies per environment. */
+async function hasDigestSize(db: DbReader): Promise<boolean> {
+  if (digestSizeSupported !== null) return digestSizeSupported;
   try {
-    await db.prepare(sql).all();
-    return true;
+    await db.prepare("SELECT digest_size FROM subscribers LIMIT 1").all();
+    digestSizeSupported = true;
   } catch {
-    return false;
+    digestSizeSupported = false;
   }
-}
-
-/**
- * Migration-gated columns stay out of the batch unless probed. `digest_size`
- * and `subscriber_sources` are created by the mail runtime schema, not by a
- * numbered migration, so their presence genuinely varies per environment.
- */
-async function probeAudienceSchema(db: DbReader): Promise<{
-  hasGa4: boolean;
-  hasDigestSize: boolean;
-  hasSubscriberSources: boolean;
-}> {
-  const [hasGa4, hasDigestSize, hasSubscriberSources] = await Promise.all([
-    ga4TableSupported ?? probe(db, "SELECT id FROM ga4_insights LIMIT 1"),
-    digestSizeSupported ??
-      probe(db, "SELECT digest_size FROM subscribers LIMIT 1"),
-    subscriberSourcesSupported ??
-      probe(db, "SELECT source FROM subscriber_sources LIMIT 1"),
-  ]);
-  ga4TableSupported = hasGa4;
-  digestSizeSupported = hasDigestSize;
-  subscriberSourcesSupported = hasSubscriberSources;
-  return { hasGa4, hasDigestSize, hasSubscriberSources };
+  return digestSizeSupported;
 }
 
 function emptyGa4(status: Ga4AudienceStatus): Ga4AudienceView {
@@ -217,11 +195,8 @@ function ga4View(snapshot: Ga4Snapshot, nowSec: number): Ga4AudienceView {
  *  subscriber counts sitting next to it. */
 async function loadGa4Audience(
   db: DbReader,
-  hasGa4: boolean,
   nowSec: number
 ): Promise<Ga4AudienceView> {
-  if (!hasGa4) return emptyGa4("unconfigured");
-
   let row: { property_id: string; fetched_at: number; payload: string } | null;
   try {
     row = await db
@@ -248,11 +223,9 @@ async function loadGa4Audience(
 
 async function loadSubscribers(
   db: DbReader,
-  schema: { hasDigestSize: boolean; hasSubscriberSources: boolean }
+  withDigestSize: boolean
 ): Promise<SubscriberAudience> {
-  // Keyed, not positional: the two breakdown queries are each optional, so a
-  // positional destructure would read the digest-size rows into `bySource` on
-  // any database that has one column and not the other.
+  // Keyed, not positional: the digest-size breakdown is optional.
   const plan: [keyof SubscriberAudience, string][] = [
     ["confirmed", SQL.confirmedCount],
     ["unconfirmed", SQL.totalCount],
@@ -260,11 +233,9 @@ async function loadSubscribers(
     ["new28d", SQL.new28d],
     ["newPerDay", SQL.newPerDay],
     ["byLang", SQL.byLang],
+    ["bySource", BY_SOURCE_SQL],
   ];
-  if (schema.hasSubscriberSources) {
-    plan.push(["bySource", BY_SOURCE_SQL]);
-  }
-  if (schema.hasDigestSize) {
+  if (withDigestSize) {
     plan.push(["byDigestSize", BY_DIGEST_SIZE_SQL]);
   }
 
@@ -302,11 +273,13 @@ export async function loadAudienceStats(
   opts: { now?: number } = {}
 ): Promise<AudienceStats> {
   const nowSec = Math.floor((opts.now ?? Date.now()) / 1000);
-  const schema = await probeAudienceSchema(db);
-  // GA4 is read outside the batch: it is the one statement that can fail on an
-  // unapplied migration, and it must not be able to take the subscriber
-  // counts down with it.
-  const ga4 = await loadGa4Audience(db, schema.hasGa4, nowSec);
-  const subscribers = await loadSubscribers(db, schema);
+  // GA4 is read outside the batch so a failed read cannot take the
+  // subscriber counts down with it.
+  const [ga4, subscribers] = await Promise.all([
+    loadGa4Audience(db, nowSec),
+    hasDigestSize(db).then((withDigestSize) =>
+      loadSubscribers(db, withDigestSize)
+    ),
+  ]);
   return { ga4, subscribers };
 }

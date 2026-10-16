@@ -6,12 +6,10 @@ import { describe, expect, it, vi } from "vitest";
  * the two properties that make that safe:
  *
  * - every section's reads go through a single db.batch() (statements
- *   awaited outside batch are sequential round-trips — only probes and
- *   explicit run-id LLM lookups are allowed there), and
- * - optional columns/tables behind later migrations (items.llm_tokens,
- *   workflow_runs.stats, llm_calls) degrade to empty sections instead of
- *   aborting the whole batch — a D1 batch fails wholesale on one bad
- *   statement, which is why probes stay out of it.
+ *   awaited outside batch are sequential round-trips; only the size read
+ *   and explicit run-id LLM lookups are allowed there), and
+ * - no schema probe runs first: the deploy gate guarantees every table and
+ *   column, so a probe would only add a round trip per cold isolate.
  */
 
 type Stub = {
@@ -67,8 +65,7 @@ function makeDb(stubs: Record<string, Stub>) {
   return { db, directAlls, batches, binds };
 }
 
-/** probeSystemTables caches its migration flags in module scope ("once
- * per isolate"), so each test re-imports to choose its own probe outcome. */
+/** Each test re-imports so no module-scope state leaks between cases. */
 async function freshQueries() {
   vi.resetModules();
   return import("./system-queries");
@@ -184,72 +181,11 @@ describe("loadSystemOverview", () => {
     expect(o.latestTldrDate).toBe("2026-01-02");
 
     // One batch: the original ten, plus Vietnamese fill counts and the
-    // content-log count. Sequential reads are the four migration probes
-    // plus the size read (`SELECT 1`), whose meta carries size_after.
+    // content-log count. The only other read is the size read (`SELECT 1`),
+    // whose meta carries size_after; no schema probe precedes either.
     expect(batches).toHaveLength(1);
     expect(batches[0]).toHaveLength(13);
-    expect(directAlls).toHaveLength(5);
-    expect(
-      directAlls
-        .filter((s) => !s.includes("SELECT 1 AS ok"))
-        .every((s) => s.includes("LIMIT 1"))
-    ).toBe(true);
-  });
-
-  it("runs the migration probes once per isolate, not per request", async () => {
-    const q = await freshQueries();
-    const { db, directAlls, batches } = makeDb({});
-
-    await q.loadSystemOverview(db);
-    await q.loadSystemOverview(db);
-
-    expect(batches).toHaveLength(2);
-    // Probes are cached. The size read runs on every request.
-    expect(directAlls).toHaveLength(6);
-  });
-
-  it("omits token statements when the llm_tokens column is not migrated", async () => {
-    const q = await freshQueries();
-    const { db, batches } = makeDb({
-      "llm_tokens FROM items LIMIT 1": {
-        all: () => {
-          throw new Error("no such column: llm_tokens");
-        },
-      },
-    });
-
-    const o = await q.loadSystemOverview(db);
-
-    expect(o.tokens).toEqual({ total: 0, avgPerItem: 0 });
-    // The failed probe keeps migration-gated statements out of the batch
-    // — otherwise one missing column would 500 the whole endpoint.
-    // Vietnamese counts stay; the content-log probe still succeeds here.
-    expect(batches[0]).toHaveLength(11);
-    expect(batches[0]?.some((s) => s.includes("llm_tokens"))).toBe(false);
-  });
-
-  it("omits the content-log count when item_content_log is missing", async () => {
-    const q = await freshQueries();
-    const { db, batches } = makeDb({
-      "SELECT id FROM item_content_log LIMIT 1": {
-        all: () => {
-          throw new Error("no such table: item_content_log");
-        },
-      },
-      "SELECT 1 AS ok": {
-        all: () => ({ results: [], meta: { size_after: 4096 } }),
-      },
-    });
-
-    const o = await q.loadSystemOverview(db);
-
-    expect(o.totals.contentEdits).toBe(0);
-    expect(o.databaseBytes).toBe(4096);
-    expect(
-      batches.some((sqls) =>
-        sqls.some((sql) => sql.includes("FROM item_content_log"))
-      )
-    ).toBe(false);
+    expect(directAlls).toEqual(["SELECT 1 AS ok"]);
   });
 });
 
@@ -352,9 +288,8 @@ describe("loadSystemRuns", () => {
 
     await q.loadSystemRuns(db);
 
-    // Scope to the two GROUP BY queries: the `SELECT … FROM llm_calls LIMIT 1`
-    // capability probes are one-row schema checks, and the 30-row cap on
-    // `workflow_runs` is the intended list size, not a truncation.
+    // Scope to the two GROUP BY queries: the 30-row cap on `workflow_runs`
+    // is the intended list size, not a truncation.
     const aggregates = directAlls.filter(
       (s) => s.includes("FROM llm_calls") && s.includes("GROUP BY run_id")
     );
@@ -405,31 +340,10 @@ describe("loadSystemRuns", () => {
     ]);
   });
 
-  it("returns plain runs when llm_calls does not exist yet", async () => {
-    const q = await freshQueries();
-    const { db, directAlls } = makeDb({
-      "ts FROM llm_calls LIMIT 1": {
-        all: () => {
-          throw new Error("no such table: llm_calls");
-        },
-      },
-      "FROM workflow_runs ORDER BY": {
-        all: () => ({ results: [RUN_ROW] }),
-      },
-    });
-
-    const runs = await q.loadSystemRuns(db);
-
-    expect(runs[0]?.id).toBe("run-1");
-    expect(runs[0]?.llm).toBeUndefined();
-    // The failed probe also skips the identity query entirely.
-    expect(directAlls.some((s) => s.includes("run_id IN"))).toBe(false);
-  });
-
   it("degrades to plain runs when the llm window query fails", async () => {
     const q = await freshQueries();
-    // Probe succeeds (table exists) but both window SELECTs fail —
-    // llm detail is best-effort and must not 500 the runs endpoint.
+    // Both window SELECTs fail; llm detail is best-effort and must not 500
+    // the runs endpoint.
     const { db } = makeDb({
       "run_id IN": {
         all: () => {
@@ -468,27 +382,6 @@ describe("loadRunAttempts", () => {
     expect(runBind?.args).toEqual([RUN_ID]);
     expect(runBind?.sql).not.toContain("ts >=");
     expect(runBind?.sql).not.toContain("ts <=");
-  });
-
-  it("reports unavailable without querying when identity is not migrated", async () => {
-    const q = await freshQueries();
-    const { db, directAlls } = makeDb({
-      "ts FROM llm_calls LIMIT 1": {
-        all: () => ({ results: [] }),
-      },
-      "run_id FROM llm_calls LIMIT 1": {
-        all: () => {
-          throw new Error("no such column: run_id");
-        },
-      },
-    });
-
-    expect(await q.loadRunAttempts(db, RUN_ID)).toEqual({
-      attempts: [],
-      status: "unavailable",
-      truncated: false,
-    });
-    expect(directAlls.some((s) => s.includes("run_id = ?"))).toBe(false);
   });
 
   it("falls back to the pre-0016 usage column set when usage columns are missing", async () => {
@@ -530,7 +423,7 @@ describe("loadRunAttempts", () => {
 describe("loadSystemLlm", () => {
   it("returns call volume and token burn from one batch", async () => {
     const q = await freshQueries();
-    const { db, batches } = makeDb({
+    const { db, batches, directAlls } = makeDb({
       "GROUP BY date, model": {
         all: () => ({
           results: [
@@ -601,26 +494,7 @@ describe("loadSystemLlm", () => {
     });
     expect(batches).toHaveLength(1);
     expect(batches[0]).toHaveLength(5);
-  });
-
-  it("returns empty sections without a batch on a pre-migration DB", async () => {
-    const q = await freshQueries();
-    const { db, batches } = makeDb({
-      "LIMIT 1": {
-        all: () => {
-          throw new Error("no such column");
-        },
-      },
-    });
-
-    const r = await q.loadSystemLlm(db);
-
-    expect(r.llmCallsPerDay).toEqual([]);
-    expect(r.llmTokensByModel).toEqual([]);
-    expect(r.tokens).toEqual({ total: 0, avgPerItem: 0, perDay: [] });
-    // Every statement was migration-gated, so there is nothing safe to
-    // send — the endpoint must not issue a doomed round-trip.
-    expect(batches).toHaveLength(0);
+    expect(directAlls).toEqual([]);
   });
 });
 
