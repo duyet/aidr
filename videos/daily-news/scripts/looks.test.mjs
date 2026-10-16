@@ -273,7 +273,7 @@ function frameZero(motion, { n, vertical, focus }) {
         stub(root?.sel ? `${root.sel} ${s}` : s, i)
       ),
     fit: () => {},
-    fitWidth: () => {},
+    fitWidth: () => true,
     fitAbove: () => {},
     measured: (_el, fn) => fn(),
     LAND: "expo.out",

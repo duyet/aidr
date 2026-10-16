@@ -812,7 +812,7 @@ export const INTROS = [
             `<div class="ch-cell face" data-rank="${s.rank}">${face(c, s)}<span class="ch-rank">${s.rank}</span><div class="ch-cap">${c.esc(s.kicker)}</div><span class="ch-bar"></span></div>`
         )
         .join("");
-      return `<div class="ch-rail">${c.esc(c.UI.daily)} · ${c.esc(c.dateline)}</div>
+      return `<div class="ch-rail"><span><b>${c.esc(c.UI.daily)} · </b>${c.esc(c.dateline)}</span></div>
 <div class="ch-num">${n}</div>
 <div class="ch-side"><div class="ch-label">${c.esc(c.UI.topIn(n))}</div><div class="ch-title">${c.esc(c.title)}</div></div>
 <div class="ch-strip" data-n="${n}" style="--n:${n};--cols:${n <= 4 ? n : Math.ceil(n / 2)}">${cells}</div>`;
@@ -822,7 +822,15 @@ export const INTROS = [
       ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
     ],
     motion: (tl, I, h) => {
+      // A cross-year week's range is too long for the rail even at 14px, so it drops the show name.
+      const rail = h.$(".ch-rail span");
+      if (!h.fitWidth(rail, 14)) {
+        h.$("b", rail).remove();
+        rail.style.fontSize = "";
+        h.fitWidth(rail, 14);
+      }
       h.fit(h.$(".ch-title"), h.vertical ? 2 : 3, 44);
+      if (h.vertical) h.fitAbove(h.$(".ch-title"), h.$(".ch-strip"), 24, 28);
       tl.fromTo(
         ".ch-num",
         { y: 0 },
@@ -873,23 +881,32 @@ export const INTROS = [
         );
     },
     css: `${FACE_CSS}
+/* The rail's box bounds its length (rotated, its width runs up from y=640), and the motion fits the text to it. */
 .ch-rail {
   position: absolute;
+  overflow: hidden;
   font-weight: 600;
   font-size: 20px;
   letter-spacing: 0.32em;
   text-transform: uppercase;
   white-space: nowrap;
 }
+.ch-rail span {
+  display: inline-block;
+}
+.ch-rail b {
+  font-weight: inherit;
+}
 .f-16x9 .ch-rail {
   left: 70px;
   top: 640px;
+  width: 590px;
   transform: rotate(-90deg);
   transform-origin: 0 0;
 }
 .f-9x16 .ch-rail {
-  left: 0;
-  right: 0;
+  left: 40px;
+  right: 40px;
   top: 140px;
   text-align: center;
   font-size: 22px;

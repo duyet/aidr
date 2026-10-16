@@ -34,14 +34,17 @@
     });
   }
 
+  // Shrink a one-line block until it fits its parent's width; false when even minPx does not fit.
   function fitWidth(el, minPx) {
     if (!el) return;
-    measured(el, () => {
+    return measured(el, () => {
+      const over = () => el.scrollWidth > el.parentElement.clientWidth;
       let px = parseFloat(getComputedStyle(el).fontSize);
-      while (el.scrollWidth > el.parentElement.clientWidth && px > minPx) {
+      while (over() && px > minPx) {
         px -= 1;
         el.style.fontSize = px + "px";
       }
+      return !over();
     });
   }
 
@@ -52,7 +55,8 @@
     measured(el, () => {
       let px = parseFloat(getComputedStyle(el).fontSize);
       const over = () =>
-        el.getBoundingClientRect().bottom > below.getBoundingClientRect().top - gapPx;
+        el.getBoundingClientRect().bottom >
+        below.getBoundingClientRect().top - gapPx;
       while (over() && px > minPx) {
         px -= 2;
         el.style.fontSize = px + "px";
