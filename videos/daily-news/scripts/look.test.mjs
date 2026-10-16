@@ -5,6 +5,8 @@ import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { templateScript } from "./auto-script.mjs";
 import { dayNumber, resolveLook, rotate, rotatePair } from "./look.mjs";
+import { AXES, LAYOUTS } from "./looks/index.mjs";
+import { BED, POOLS as SOUND_POOLS, soundFor } from "./looks/sound.mjs";
 import { applyScreen } from "./visub-screen.mjs";
 import { isoWeekOf } from "./week.mjs";
 
@@ -33,7 +35,7 @@ test("CI's script for the next day gets a different transition and background (n
   const [a, b] = [resolveLook(s13, e13), resolveLook(s14, e14)];
   assert.notEqual(a.transition, b.transition);
   assert.notEqual(a.background, b.background);
-  assert.equal(b.intro, "grid");
+  assert.notEqual(a.intro, b.intro);
 });
 
 test("rotate never repeats on adjacent days over two years, for pools of 2, 3 and 4", () => {
@@ -88,10 +90,17 @@ test("rotate shows every id once per cycle, and the same day always gets the sam
   }
 });
 
-test("the intro is the grid on every unpinned day (frame 0 is the thumbnail)", () => {
-  const edition = { date: "2026-01-01" };
-  for (const date of datesFrom("2026-01-01", 365))
-    assert.equal(resolveLook({}, { ...edition, date }).intro, "grid");
+// Every auto intro is frame-0 safe (looks.test.mjs), so the opening rotates like the other axes; a pin-shaped
+// default would freeze it on the grid again.
+test("the unpinned intro rotates over every auto intro and never repeats on adjacent days", () => {
+  const auto = AXES.intro.filter((e) => e.auto).map((e) => e.id);
+  assert.ok(auto.length >= 4, auto.join(", "));
+  const intros = datesFrom("2026-01-01", 365).map(
+    (date) => resolveLook({}, { date }).intro
+  );
+  for (let i = 1; i < intros.length; i++)
+    assert.notEqual(intros[i], intros[i - 1], `day ${i}`);
+  assert.deepEqual([...new Set(intros)].sort(), [...auto].sort());
 });
 
 test("a theme in script.json pins that axis; the others still rotate", () => {
@@ -110,6 +119,7 @@ test("a theme in script.json pins that axis; the others still rotate", () => {
       dayNumber("2026-10-13"),
       "background"
     ),
+    choreography: free.choreography,
     accent: "#E0B000",
     layouts: {},
     notes: [],
@@ -207,23 +217,51 @@ test("a story whose images all failed never gets full, even when its script asks
       `the template wrote a layout for story ${s.rank}`
     );
   assert.equal(
-    resolveLook(script, edition).layouts?.[3],
+    resolveLook(script, edition).layouts?.[4],
     "full",
-    "story 3 with its images follows two splits"
+    "story 4 with its images takes full"
   );
   assert.equal(
-    resolveLook(withStory(script, 3, { images: [] }), edition).layouts?.[3],
-    "stat"
+    resolveLook(withStory(script, 4, { images: [] }), edition).layouts?.[4],
+    "statement"
   );
 
   const pinned = resolveLook(
-    withStory(script, 3, { images: [], layout: "full" }),
+    withStory(script, 4, { images: [], layout: "full" }),
     edition
   );
-  assert.equal(pinned.layouts?.[3], "stat");
+  assert.equal(pinned.layouts?.[4], "statement");
   assert.deepEqual(pinned.notes, [
-    'story 3: layout "full" needs an image; chose stat',
+    'story 4: layout "full" needs an image; chose statement',
   ]);
+});
+
+// The poster panel is the cover story's scene: a chooser that ignored the registry's `suits` (or the thumb) would
+// never show it, and a second poster would make the cover story's look ordinary. The cover is the story frame 0
+// and the cover still open on, so an image-less thumb story hands the poster to the story that stands in for it.
+test("the cover story gets the poster panel, and only it", () => {
+  const edition = e13();
+  const script = templateScript(edition, hosts);
+  // 2026-10-13: story 2 is a paper with no image; the cover falls back to story 1.
+  for (const [thumb, poster] of [
+    [1, 1],
+    [2, 1],
+    [6, 6],
+  ]) {
+    const ids = layoutIds({ ...script, thumb: { story: thumb } }, edition);
+    assert.deepEqual(
+      script.stories.filter((_, i) => ids[i] === "poster").map((s) => s.rank),
+      [poster],
+      `thumb ${thumb}: ${ids.join(" ")}`
+    );
+  }
+  const none = layoutIds({ ...script, thumb: undefined }, edition);
+  assert.ok(!none.includes("poster"), "no thumb, no poster");
+  const pin = resolveLook(
+    withStory({ ...script, thumb: { story: 1 } }, 1, { layout: "full" }),
+    edition
+  );
+  assert.equal(pin.layouts[1], "full", "a pinned layout beats the poster");
 });
 
 test("a pinned layout wins over the rules, and an unknown one fails the build", () => {
@@ -261,20 +299,31 @@ test("a pinned layout wins over the rules, and an unknown one fails the build", 
   assert.deepEqual(over.notes, []);
 });
 
-/** Three of one id in a row only when no other id is eligible; stat at most twice. */
+/** Three of one id in a row only when no other id is eligible; stat and statement at most twice, poster once. */
 function assertSpread(ids, script, label) {
-  let stats = 0;
+  const count = (id, upto = ids.length) =>
+    ids.slice(0, upto).filter((x) => x === id).length;
   for (const [i, id] of ids.entries()) {
     if (i >= 2 && id === ids[i - 1] && id === ids[i - 2]) {
       const imageless = !script.stories[i].images?.length;
       assert.ok(
-        id === "split" && imageless && stats >= 2,
+        id === "split" &&
+          imageless &&
+          count("stat", i) >= 2 &&
+          count("statement", i) >= 2,
         `${label}: ${id} three times in a row at story ${script.stories[i].rank} (${ids.join(" ")})`
       );
     }
-    if (id === "stat") stats++;
   }
-  assert.ok(stats <= 2, `${label}: ${stats} stat layouts (${ids.join(" ")})`);
+  for (const [id, max] of [
+    ["stat", 2],
+    ["statement", 2],
+    ["poster", 1],
+  ])
+    assert.ok(
+      count(id) <= max,
+      `${label}: ${count(id)} ${id} layouts (${ids.join(" ")})`
+    );
 }
 
 test("no layout shows three times in a row while another fits, and stat shows at most twice unless pinned", () => {
@@ -314,11 +363,12 @@ test("no layout shows three times in a row while another fits, and stat shows at
     { rank: 1, images: ["assets/a.jpg"], text: "A plain story." },
     { rank: 2, images: [], text: "A paper." },
     { rank: 3, images: [], text: "Another paper." },
+    { rank: 4, images: [], text: "A third paper." },
   ]);
   assert.deepEqual(
     layoutIds(script, edition),
-    ["split", "split", "stat"],
-    "an image-less story after two splits takes the paper card in stat"
+    ["split", "statement", "statement", "split"],
+    "image-less stories take the statement scene twice, then the paper card"
   );
 });
 
@@ -401,4 +451,97 @@ test("rotatePair rejects pools it cannot walk", () => {
     () => rotatePair(["a", "b", "c"], ["d", "e", "f", "g"], 0, "x", "y"),
     /same size >= 3/
   );
+});
+
+// A new rotating axis must not reshuffle the days already planned: rotatePair only walks transition and
+// background, so a third free axis (intro, choreography) leaves their schedule as #631 shipped it.
+test("the new axes leave the transition/background schedule of #631 as it was", () => {
+  const was = {
+    "2026-10-14": "shutter/grid",
+    "2026-10-15": "ink/soft",
+    "2026-10-16": "wipe/grid",
+    "2026-10-17": "shutter/soft",
+    "2026-10-18": "ink/paper",
+    "2026-10-22": "wipe/paper",
+    "2026-10-27": "ink/paper",
+  };
+  for (const [date, c] of Object.entries(was))
+    assert.equal(combo(resolveLook({}, { date })), c, date);
+});
+
+const DAY_AXES = Object.fromEntries(
+  Object.entries(AXES).map(([axis, list]) => [
+    axis,
+    list.filter((e) => e.auto).map((e) => e.id),
+  ])
+);
+const dayLook = (l) => Object.keys(DAY_AXES).map((axis) => l[axis]);
+
+// Two weeks of CI days from launch: what a regular viewer sees, picture and sound. A rotation bug (an axis frozen by a
+// pin-shaped default, a pool that stopped rotating, a pair that ping-pongs) shows up here as a repeat or a missing
+// variant. Story scenes follow each story's pictures and facts, not the date, so they may repeat the day before; the
+// committed editions, unpinned and spread over the same days, must still show every scene.
+test("over two weeks of CI days, no day repeats yesterday's intro, look or sound, and every variant shows", () => {
+  const days = datesFrom("2026-10-16", 14);
+  const rows = days.map((date) => {
+    const look = lookOn(date);
+    const { sfx, bedStart } = soundFor(date);
+    return {
+      ...Object.fromEntries(Object.keys(DAY_AXES).map((a) => [a, look[a]])),
+      ...Object.fromEntries(
+        Object.entries(sfx).map(([cue, file]) => [`sfx:${cue}`, file])
+      ),
+      bed: bedStart,
+    };
+  });
+  const pools = {
+    ...DAY_AXES,
+    ...Object.fromEntries(
+      Object.entries(SOUND_POOLS).map(([cue, pool]) => [`sfx:${cue}`, pool])
+    ),
+    bed: BED.starts.daily,
+  };
+  for (let i = 1; i < rows.length; i++) {
+    for (const [axis, pool] of Object.entries(pools))
+      if (pool.length > 1)
+        assert.notEqual(
+          rows[i][axis],
+          rows[i - 1][axis],
+          `${days[i]} repeats ${axis}`
+        );
+    assert.notDeepEqual(dayLook(rows[i]), dayLook(rows[i - 1]), days[i]);
+  }
+  for (const [axis, pool] of Object.entries(pools))
+    assert.deepEqual(
+      [...new Set(rows.map((r) => r[axis]))].sort(),
+      [...pool].sort(),
+      `${axis} over ${days[0]}..${days.at(-1)}`
+    );
+  const editions = committed().map(([, script, edition]) => [
+    unpinned(script),
+    edition,
+  ]);
+  const scenes = days.flatMap((date, i) => {
+    const [script, edition] = editions[i % editions.length];
+    return Object.values(resolveLook(script, { ...edition, date }).layouts);
+  });
+  assert.deepEqual(
+    [...new Set(scenes)].sort(),
+    LAYOUTS.map((e) => e.id).sort(),
+    "scenes over the committed editions"
+  );
+});
+
+// "Regularly": each cycle of a rotating axis is a permutation of its pool, so any 2n - 1 days hold a full cycle.
+test("every rotating variant shows within any 2n - 1 days of its axis over two years (n = its pool size)", () => {
+  const looks = TWO_YEARS.map((d) => lookOn(d));
+  for (const [axis, pool] of Object.entries(DAY_AXES)) {
+    const N = Math.max(1, 2 * pool.length - 1);
+    for (let i = 0; i + N <= looks.length; i++)
+      assert.deepEqual(
+        [...new Set(looks.slice(i, i + N).map((l) => l[axis]))].sort(),
+        [...pool].sort(),
+        `${axis}: window of ${N} days from ${TWO_YEARS[i]}`
+      );
+  }
 });

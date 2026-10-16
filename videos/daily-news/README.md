@@ -7,7 +7,7 @@ A news-broadcast video of the day's top AI stories, rendered every day in two sh
 | `16x9` | 3840x2160 (authored 1920x1080) | YouTube, Facebook Page video |
 | `9x16` | 2160x3840 (authored 1080x1920) | TikTok, Reels (Instagram + Facebook), YouTube Shorts |
 
-Look: "Yellow Desk". It opens on a **summary grid** (frame 0 shows every story with the date, so the first frame works as a thumbnail), then two anchors read the news like TV. Paper ground, AI;DR yellow, EB Garamond headlines, a live broadcast bar with a story counter, an ink news crawl, yellow stinger wipes that carry the next rank, real post images with a slow push, the headline swept by the yellow marker, the key number landing on its spoken word, and burned-in word-by-word captions.
+Look: "Yellow Desk". It opens on one of seven intros, rotated by date (the summary grid, a cover, a date panel, a chapter numeral, the semicolon hinge, a numbered list, a masthead); each shows the date and real pictures on frame 0, so the first frame works as a thumbnail. Then two anchors read the news like TV. Paper ground, AI;DR yellow, EB Garamond headlines, a live broadcast bar with a story counter, an ink news crawl, yellow stinger wipes that carry the next rank, real post images with a slow push, the headline swept by the yellow marker, the key number landing on its spoken word, and burned-in word-by-word captions.
 
 The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This page is the reference.
 
@@ -27,7 +27,8 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 | `scripts/novoice.mjs` | yes | The no-voice helpers: reading-speed word timing, the quota check, `QuotaError` |
 | `scripts/lang.mjs` | yes | The cut's language (`--lang vi`) and its file names |
 | `scripts/cast.mjs` | yes | The voice cast: host keys, seeded host order, the "never twice in a row" check |
-| `scripts/look.mjs` | yes | The day's look (intro, transition, background) from the edition's date, and each story's layout from the images on disk, resolved at build time |
+| `scripts/look.mjs` | yes | The day's look (intro, transition, background, choreography) from the edition's date, and each story's layout from the images on disk, resolved at build time |
+| `scripts/sound-measure.mjs` | yes | Measures every effect's peak and level and the music bed's phrase starts with ffmpeg; prints the tables `scripts/looks/sound.mjs` holds |
 | `scripts/build.mjs` | yes | Timeline, both compositions, audio mix, captions, covers, post copy |
 | `scripts/grid.mjs` | yes | The summary grid's layout per format and story count (1–8): areas, tracks, and the tile type scale, so frame 0 has no empty cell; an odd count gives the lead story a hero tile (with `grid.test.mjs`) |
 | `scripts/render.mjs` | yes | 4K MP4s and cover PNGs |
@@ -119,7 +120,7 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
   "date": "2026-10-02",
   "dateline": "Friday, October 2, 2026",
   "theme": {                     // optional pin, only when the owner asks; leave it out (see "Looks" below)
-    "intro": "grid",             // grid (default: summary grid on frame 0) | date-slam | countdown | headline-stack
+    "intro": "grid",             // grid | cover | date-slam | chapter | hinge | headline-stack | countdown
     "transition": "wipe",        // wipe (yellow + rank) | ink (ink panel + yellow rank) | shutter (two halves)
     "background": "paper",       // paper | soft | grid
     "accent": "#F5C518"          // optional override of the yellow
@@ -127,7 +128,7 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
   "thumb": { "story": 4, "hook": "$60B to fund Anthropic's AI chips" },   // cover still
   "post": { "hook": "...", "hashtags": ["AI", "..."], "tiktok": "...", "facebook": "...", "youtubeTitle": "...", "shortsTitle": "..." },
   "intro": { "voice": [{ "anchor": "ivanna", "text": "This is AI DR, ..." }, { "anchor": "allison", "text": "..." }], "title": "Six stories that matter today",
-             "focus": [{ "rank": 1, "word": "twenty" }] },   // grid intro: tile lifts (others dim) on the spoken word that names its story
+             "focus": [{ "rank": 1, "word": "twenty" }] },   // the intro lifts that story (others dim) on the spoken word that names it
   "stories": [{
     "rank": 1,
     "category": "Tools",                     // label (amber small caps)
@@ -135,7 +136,7 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
     "headline": "*Open-weight decision models*, now on Workers AI",  // *stars* = yellow marker; auto-fits
     "stat": "Clef + Clef-flash", "statLabel": "plus an RL fine-tuning platform",
     "statWord": "clef",                      // the stat lands when this word is spoken
-    "layout": "split",                       // optional request: split | full (image full-bleed, card lower third) | stat (giant number); see "Looks"
+    "layout": "split",                       // optional request: split | full (image full-bleed, card lower third) | stat (giant number) | poster (yellow panel) | statement (centred headline); see "Looks"
     "images": ["assets/s1-1.png"],           // curated from assets/; several = crossfade; [] = typographic card
     "paper": { "venue": "arXiv:2609.37725", "title": "..." },  // the no-image card
     "source": "blog.cloudflare.com",         // optional override of the credit
@@ -148,14 +149,15 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
 
 ### Looks
 
-The look is derived at build time, never stored. `scripts/look.mjs` `resolveLook(script, edition)` picks the transition and the background from the edition's date (the ISO week for a weekly edition), so the next day always differs on both, with no record of yesterday. The intro is always `grid`. Each key in `script.json` `theme` pins that axis and wins over the rotation; an unknown id fails the build and lists the allowed ones. Every cut reads the pin from `script.json` (a `theme` in `script.vi.json` is ignored), so the English, Vietnamese and `visub` cuts of a day look the same. Adding or removing an `auto` entry in `scripts/looks/` reshuffles every unpinned day, past ones included. `timeline.json` records the resolved `theme` and `layouts` as a receipt; the build never reads it back. The four committed editions from before this change pin their theme and every story's layout, so they rebuild as they shipped.
+The look is derived at build time, never stored. `scripts/look.mjs` `resolveLook(script, edition)` picks the intro, the transition, the background and the story choreography from the edition's date (the ISO week for a weekly edition), so the next day differs on every one, with no record of yesterday. Every rotating intro must be finished on frame 0 (`looks.test.mjs` fails one that fades its content in). Each key in `script.json` `theme` pins that axis and wins over the rotation; an unknown id fails the build and lists the allowed ones. Every cut reads the pin from `script.json` (a `theme` in `script.vi.json` is ignored), so the English, Vietnamese and `visub` cuts of a day look the same. Adding or removing an `auto` entry in `scripts/looks/` reshuffles every unpinned day, past ones included. `timeline.json` records the resolved `theme` and `layouts` as a receipt; the build never reads it back. The four committed editions from before this change pin their theme and every story's layout, so they rebuild as they shipped.
 
-Story layouts (`split`, `full`, `stat`) are chosen in the same `resolveLook` call, after the build drops every image that is not on disk (a failed download, or a path that no longer exists). So a story's layout always matches the images it really shows, and a `full` never ships without one. The rules, in priority order:
+Story layouts (`split`, `full`, `stat`, `poster`, `statement`) are chosen in the same `resolveLook` call, after the build drops every image that is not on disk (a failed download, or a path that no longer exists). So a story's layout always matches the images it really shows, and a scene that needs a picture never ships without one. The rules, in priority order:
 
 1. A story's `layout` in `script.json` wins when it can render: `full` needs at least one image. An unknown id fails the build. A `full` with no image falls back to the rules below, and the build prints `! look:`.
-2. `full` needs an image. `stat` shows at most twice a day; it puts the paper card in the media box when the story has no image.
+2. Each scene in `scripts/looks/layout.mjs` scores how well it `suits` the story; the highest score that its image need and its `max` allow wins.
 3. No layout shows three times in a row when another one can render.
-4. Defaults: a story with no image gets `split`; a story whose bullet has a dollar amount gets `stat`; the others alternate `split` and `full` by position.
+
+What the scores say today: the cover (`thumb`) story gets `poster` (its copy in ink on a flat yellow panel, its picture or paper card on the paper side; once a day). A story with no image that is not the cover gets `statement` (its headline centred in large italic serif with the marker; at most twice a day), then `split` with the paper card. A story whose bullet has a dollar amount gets `stat` (at most twice). The others alternate `split` and `full` by position.
 
 The layouts read the English bullet and the image lists only, never the screen text, so the English, Vietnamese and `visub` cuts of a day get the same layouts. `auto-script.mjs` and `new.mjs` write no `layout`.
 
@@ -175,7 +177,7 @@ Spoken text says "AI DR" and "aidr dot today"; `config.captions.replace` shows t
 
 ## Sound
 
-One mixed track (`out/mix.wav`, 48 kHz stereo, loudness-normalised to about −14 LUFS): voice lines placed at `start + lead`; the music bed under a sidechain duck with a fade in and a 2.5 s fade out; effects placed so each one's peak lands on its visual hit (wipe, rank tile, stat). Change the sound in `scripts/looks/sound.mjs` (which effect plays on each cue, and each file's peak), not in the build.
+One mixed track (`out/mix.wav`, 48 kHz stereo, loudness-normalised to about −14 LUFS): voice lines placed at `start + lead`; the music bed under a sidechain duck with a fade in and a 2.5 s fade out; effects placed so each one's peak lands on its visual hit (wipe, rank tile, stat). The date picks the sound like the look: each cue draws one effect from its pool, trimmed to the level of the pool's first file, and the bed starts on one of its 8 s phrase starts (a cut that would run off the end of the bed fails the build). Change pools and starts in `scripts/looks/sound.mjs`, not in the build; `node scripts/sound-measure.mjs` measures each file's peak and level and the bed's phrase starts.
 
 ## No voice (out of ElevenLabs quota)
 

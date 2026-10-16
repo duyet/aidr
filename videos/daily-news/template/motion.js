@@ -34,14 +34,17 @@
     });
   }
 
+  // Shrink a one-line block until it fits its parent's width; false when even minPx does not fit.
   function fitWidth(el, minPx) {
     if (!el) return;
-    measured(el, () => {
+    return measured(el, () => {
+      const over = () => el.scrollWidth > el.parentElement.clientWidth;
       let px = parseFloat(getComputedStyle(el).fontSize);
-      while (el.scrollWidth > el.parentElement.clientWidth && px > minPx) {
+      while (over() && px > minPx) {
         px -= 1;
         el.style.fontSize = px + "px";
       }
+      return !over();
     });
   }
 
@@ -52,7 +55,8 @@
     measured(el, () => {
       let px = parseFloat(getComputedStyle(el).fontSize);
       const over = () =>
-        el.getBoundingClientRect().bottom > below.getBoundingClientRect().top - gapPx;
+        el.getBoundingClientRect().bottom >
+        below.getBoundingClientRect().top - gapPx;
       while (over() && px > minPx) {
         px -= 2;
         el.style.fontSize = px + "px";
@@ -178,20 +182,10 @@
         t
       );
 
-      const media = $(".media", sc);
-      tl.fromTo(
-        media,
-        { clipPath: "inset(0% 100% 0% 0%)" },
-        { clipPath: "inset(0% 0% 0% 0%)", duration: 0.7, ease: "power3.out" },
-        t + 0.05
-      );
+      // The day's choreography: media reveal, image drift, rank badge, copy lines.
+      L.choreography(tl, S, sc, H);
       const imgs = $$(".media img", sc);
       imgs.forEach((img, k) => {
-        const from =
-          k % 2 ? { scale: 1.02, xPercent: -2 } : { scale: 1.14, xPercent: 2 };
-        const to =
-          k % 2 ? { scale: 1.12, xPercent: 2 } : { scale: 1.02, xPercent: 0 };
-        tl.fromTo(img, from, { ...to, duration: S.dur, ease: "none" }, t);
         if (k > 0)
           tl.fromTo(
             img,
@@ -228,21 +222,6 @@
         );
       }
 
-      tl.fromTo(
-        $(".rank", sc),
-        { scale: 0.4, rotation: -10, opacity: 0 },
-        { scale: 1, rotation: 0, opacity: 1, duration: 0.5, ease: LAND },
-        t + 0.2
-      );
-      const copyBits = [".cat", ".kicker", ".head"].map((s) => $(s, sc));
-      copyBits.forEach((el, k) => {
-        tl.fromTo(
-          el,
-          { y: 36, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.55, ease: LAND },
-          t + 0.3 + k * 3 * F
-        );
-      });
       L.layouts[S.layout]?.(tl, S, sc, H);
       $$(".head .mk", sc).forEach((mk, k) => {
         tl.fromTo(

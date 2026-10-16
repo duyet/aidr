@@ -1,7 +1,7 @@
 // The video's look, derived from the edition's date at build time and never stored.
 // Every axis rotates over its `auto` ids so two adjacent days (or weeks) never share a value, with no
 // memory of yesterday: CI never commits, so a look read back from a committed script froze every CI day.
-// When two axes are free they rotate together as combinations, so the whole look never ping-pongs either.
+// Transition and background rotate together as combinations, so the whole look never ping-pongs either.
 // `script.theme` pins an axis: a key it sets wins, and an id outside the axis fails the build.
 import { LAYOUTS as LAYOUT_ENTRIES, AXES as REGISTRY } from "./looks/index.mjs";
 import { parseWeek } from "./week.mjs";
@@ -17,9 +17,10 @@ const AXES = Object.fromEntries(
   ])
 );
 const PIN_ONLY = ["accent"];
+const PAIR = ["transition", "background"];
 // Story layouts are chosen per story from what the story has, not rotated by date (looks/layout.mjs).
 const LAYOUTS = Object.fromEntries(
-  LAYOUT_ENTRIES.map(({ id, image, max }) => [id, { image, max }])
+  LAYOUT_ENTRIES.map(({ id, image, max, suits }) => [id, { image, max, suits }])
 );
 /** A dollar figure ("$40B"): a story whose English bullet names one leads with it. auto-script reads its stat with it. */
 export const MONEY = /\$[\d.,]+\s?[KMBT]?\b/;
@@ -96,22 +97,46 @@ export function rotatePair(listA, listB, day, axisA, axisB) {
   return [a[mod(day, n)], b[mod(day + Math.floor(day / n), n)]];
 }
 
+/** The story `script.thumb` names, else rank 1, else the first. */
+export const thumbStory = ({ stories = [], thumb }) =>
+  stories.find((s) => s.rank === (thumb?.story ?? 1)) ?? stories[0];
+
+/**
+ * The story that frame 0, the cover still and the poster scene all open on: the thumb story (rank 1 when the
+ * script names none) when it has a picture, else the first ranked story with one, else the thumb story.
+ * `images` must be the files that exist.
+ */
+export function coverStory(script) {
+  const stories = script.stories ?? [];
+  const thumb = thumbStory(script);
+  const pictured = (s) => s?.images?.length > 0;
+  return pictured(thumb) ? thumb : (stories.find(pictured) ?? thumb);
+}
+
 /**
  * { [rank]: layout id } in script order, plus a note for each request it could not honour.
- * Priority: an eligible `story.layout` pin, then the image requirement, then `max`, then no three of one id in a
- * row, then the defaults. `images` must be the files that exist; `money` reads the English bullet only, because
- * visub rewrites the screen text and both cuts must get the same layouts.
+ * Priority: an eligible `story.layout` pin, then the scene that suits the story best (looks/layout.mjs `suits`)
+ * among those whose image requirement and `max` allow it, never the same id three times in a row while another
+ * fits. `images` must be the files that exist; `money` reads the English bullet only, because visub rewrites the
+ * screen text and both cuts must get the same layouts.
  */
-function chooseLayouts(stories, edition) {
+function chooseLayouts(script, edition) {
   const layouts = {};
   const notes = [];
   const history = [];
-  for (const [index, story] of stories.entries()) {
+  // The poster marks a cover the script chose: with no `thumb`, no story gets it.
+  const cover = script.thumb ? coverStory(script) : undefined;
+  for (const [index, story] of (script.stories ?? []).entries()) {
     const { rank, layout: pin } = story;
     const images = story.images?.length ?? 0;
-    const money = MONEY.test(
-      edition.stories?.find((s) => s.rank === rank)?.text ?? ""
-    );
+    const facts = {
+      index,
+      images,
+      money: MONEY.test(
+        edition.stories?.find((s) => s.rank === rank)?.text ?? ""
+      ),
+      cover: story === cover,
+    };
     const fits = (id) => images > 0 || !LAYOUTS[id].image;
     let id;
     if (pin !== undefined) {
@@ -122,17 +147,16 @@ function chooseLayouts(stories, edition) {
       if (fits(pin)) id = pin;
     }
     if (!id) {
-      const alt = index % 2 ? "full" : "split";
-      const other = alt === "full" ? "split" : "full";
-      const prefs =
-        images === 0
-          ? ["split", "stat"]
-          : money
-            ? ["stat", alt, other]
-            : [alt, other];
-      const eligible = prefs.filter(
-        (p) => fits(p) && history.filter((h) => h === p).length < LAYOUTS[p].max
-      );
+      const eligible = Object.entries(LAYOUTS)
+        .map(([p, { suits }]) => [p, suits(facts)])
+        .filter(
+          ([p, score]) =>
+            score > 0 &&
+            fits(p) &&
+            history.filter((h) => h === p).length < LAYOUTS[p].max
+        )
+        .sort((a, b) => b[1] - a[1])
+        .map(([p]) => p);
       id =
         eligible.find((p) => !(history.at(-1) === p && history.at(-2) === p)) ??
         eligible[0];
@@ -148,7 +172,7 @@ function chooseLayouts(stories, edition) {
 }
 
 /**
- * { intro, transition, background, accent?, layouts, notes } for this edition. Takes no language: build passes
+ * { intro, transition, background, choreography, accent?, layouts, notes } for this edition. Takes no language: build passes
  * script.json for every cut, with each story's images already filtered to the files that exist.
  */
 export function resolveLook(script, edition) {
@@ -165,25 +189,24 @@ export function resolveLook(script, edition) {
       );
   }
   const day = dayNumber(edition.date);
-  const free = Object.keys(AXES).filter(
-    (axis) => !(axis in pin) && AXES[axis].auto.length > 1
-  );
-  const joint =
-    free.length === 2
-      ? rotatePair(AXES[free[0]].auto, AXES[free[1]].auto, day, ...free)
-      : [];
+  // The pair walks its combinations together (rotatePair) while both are free; every other axis, and a lone
+  // free one of the pair, rotates on its own.
+  const paired = PAIR.every((axis) => !(axis in pin));
+  const joint = paired
+    ? rotatePair(AXES[PAIR[0]].auto, AXES[PAIR[1]].auto, day, ...PAIR)
+    : [];
   const look = Object.fromEntries(
     Object.entries(AXES).map(([axis, { auto }]) => [
       axis,
       pin[axis] ??
-        (free.length === 2 && free.includes(axis)
-          ? joint[free.indexOf(axis)]
+        (paired && PAIR.includes(axis)
+          ? joint[PAIR.indexOf(axis)]
           : rotate(auto, day, axis)),
     ])
   );
   return {
     ...look,
     ...(pin.accent ? { accent: pin.accent } : {}),
-    ...chooseLayouts(script.stories ?? [], edition),
+    ...chooseLayouts(script, edition),
   };
 }

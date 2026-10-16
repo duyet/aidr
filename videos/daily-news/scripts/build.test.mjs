@@ -1,8 +1,10 @@
 // node --test videos/daily-news/scripts/*.test.mjs
 import assert from "node:assert/strict";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, test } from "node:test";
+import { AXES } from "./looks/index.mjs";
+import { BED, soundFor } from "./looks/sound.mjs";
 import { ROOT, runBuild, scratchRoot } from "./scratch-root.mjs";
 
 const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
@@ -83,18 +85,22 @@ test("the built intro tags the grid with its story count and carries that count'
 });
 
 test("a story whose image files are missing shows no picture and loses its full layout", () => {
-  // 2026-10-13 pins story 3 to full; with its files gone it follows two splits, so it takes stat.
+  // 2026-10-13 pins story 3 to full; with its files gone it is an image-less story, so it takes the statement scene.
   const { script, page, stdout, timeline } = build("2026-10-13", undefined, [
     "assets/s3-1.jpg",
     "assets/s3-2.jpg",
   ]);
   assert.match(
     stdout,
-    /! look: story 3: layout "full" needs an image; chose stat/
+    /! look: story 3: layout "full" needs an image; chose statement/
   );
   for (const fmt of FORMATS) {
     const html = page(fmt);
-    assert.match(html, /<section id="story-3" class="clip scene l-stat"/, fmt);
+    assert.match(
+      html,
+      /<section id="story-3" class="clip scene l-statement"/,
+      fmt
+    );
     assert.match(
       html,
       /<div class="tile noimg" data-rank="3">/,
@@ -113,7 +119,12 @@ test("a story whose image files are missing shows no picture and loses its full 
   }
   const { theme, layouts } = timeline();
   assert.deepEqual(theme, script.theme, "theme holds the day axes only");
-  assert.deepEqual(layouts, { 1: "split", 2: "split", 3: "stat", 4: "full" });
+  assert.deepEqual(layouts, {
+    1: "split",
+    2: "split",
+    3: "statement",
+    4: "full",
+  });
 });
 
 const coverHook = (html) =>
@@ -174,4 +185,157 @@ test("a cover with no story image anywhere shows the thumb story's paper card", 
       `${fmt}: the thumb story's hook with its paper card`
     );
   }
+});
+
+// The vi cut mixes its own audio and visub copies the English mix: a pick read from anything but the date (the
+// language, a vi file) would give one day two soundtracks.
+test("the en and vi cuts of a day record the same sound, the date's", () => {
+  const date = "2026-10-10";
+  const { dn, cleanup } = scratchRoot();
+  cleanups.push(cleanup);
+  const dir = join(dn, "editions", date);
+  mkdirSync(join(dir, "assets"), { recursive: true });
+  for (const f of ["edition.json", "script.json", "script.vi.json"])
+    cpSync(join(ROOT, "editions", date, f), join(dir, f));
+  for (const s of read(join(dir, "edition.json")).stories)
+    for (const im of s.images) writeFileSync(join(dir, im.local), "");
+  for (const lang of ["en", "vi"]) {
+    const run = runBuild(dn, [
+      date,
+      "--lang",
+      lang,
+      "--no-voice",
+      "--no-audio",
+    ]);
+    assert.equal(run.status, 0, run.stderr);
+  }
+  const en = read(join(dir, "timeline.json")).sound;
+  assert.deepEqual(en, soundFor(date));
+  assert.deepEqual(read(join(dir, "timeline.vi.json")).sound, en);
+});
+
+// An intro's markup reads labels, date parts and story fields from the build: a raw field the vi cut or a story
+// lacks renders as "undefined" or "NaN" on frame 0, the thumbnail. The frame-0 motion check cannot see markup.
+test("every intro builds in English and Vietnamese with no undefined or NaN in its markup", () => {
+  const date = "2026-10-10";
+  for (const { id } of AXES.intro) {
+    const { dn, cleanup } = scratchRoot();
+    cleanups.push(cleanup);
+    const dir = join(dn, "editions", date);
+    mkdirSync(join(dir, "assets"), { recursive: true });
+    cpSync(
+      join(ROOT, "editions", date, "edition.json"),
+      join(dir, "edition.json")
+    );
+    for (const f of ["script.json", "script.vi.json"]) {
+      const s = read(join(ROOT, "editions", date, f));
+      writeFileSync(
+        join(dir, f),
+        JSON.stringify({ ...s, theme: { ...s.theme, intro: id } })
+      );
+    }
+    for (const s of read(join(dir, "edition.json")).stories)
+      for (const im of s.images) writeFileSync(join(dir, im.local), "");
+    for (const lang of ["en", "vi"]) {
+      const run = runBuild(dn, [
+        date,
+        "--lang",
+        lang,
+        "--no-voice",
+        "--no-audio",
+      ]);
+      assert.equal(run.status, 0, `${id} ${lang}: ${run.stderr}`);
+      const out = lang === "en" ? "out" : `out-${lang}`;
+      for (const fmt of FORMATS) {
+        const html = readFileSync(join(dir, out, fmt, "index.html"), "utf8");
+        const intro = html.match(/<section id="intro"[\s\S]*?<\/section>/)?.[0];
+        assert.ok(intro, `${id} ${lang} ${fmt}: no intro section`);
+        assert.doesNotMatch(
+          intro,
+          /undefined|NaN|\[object /,
+          `${id} ${lang} ${fmt}`
+        );
+      }
+    }
+  }
+});
+
+test("every intro escapes the script's text, so a headline cannot inject markup", () => {
+  // A headline, kicker, title or hook is model output; one unescaped field puts raw HTML on frame 0.
+  const date = "2026-10-10";
+  const EVIL = "<img src=x onerror=1>";
+  for (const { id } of AXES.intro) {
+    const { dn, cleanup } = scratchRoot();
+    cleanups.push(cleanup);
+    const dir = join(dn, "editions", date);
+    mkdirSync(join(dir, "assets"), { recursive: true });
+    cpSync(
+      join(ROOT, "editions", date, "edition.json"),
+      join(dir, "edition.json")
+    );
+    for (const f of ["script.json", "script.vi.json"]) {
+      const s = read(join(ROOT, "editions", date, f));
+      for (const st of s.stories) {
+        st.headline = `${EVIL}${st.headline}`;
+        st.kicker = `${EVIL}${st.kicker}`;
+      }
+      s.intro.title = `${EVIL}${s.intro.title}`;
+      s.thumb = { ...s.thumb, hook: `${EVIL}hook` };
+      s.theme = { ...s.theme, intro: id };
+      writeFileSync(join(dir, f), JSON.stringify(s));
+    }
+    for (const s of read(join(dir, "edition.json")).stories)
+      for (const im of s.images) writeFileSync(join(dir, im.local), "");
+    for (const lang of ["en", "vi"]) {
+      const run = runBuild(dn, [
+        date,
+        "--lang",
+        lang,
+        "--no-voice",
+        "--no-audio",
+      ]);
+      assert.equal(run.status, 0, `${id} ${lang}: ${run.stderr}`);
+      const out = lang === "en" ? "out" : `out-${lang}`;
+      for (const fmt of FORMATS) {
+        const html = readFileSync(join(dir, out, fmt, "index.html"), "utf8");
+        assert.ok(
+          html.includes("&lt;img src=x"),
+          `${id} ${lang} ${fmt}: the field reached the page`
+        );
+        assert.doesNotMatch(html, /<img src=x/, `${id} ${lang} ${fmt}`);
+      }
+    }
+  }
+});
+
+test("a cut too long for the day's bed start records the earlier phrase start it moved back to", () => {
+  // 2026-09-30 rotates to the 56 s start, which leaves the bed room for 124 s. A longer cut ran off the bed.
+  const date = "2026-09-30";
+  assert.equal(soundFor(date).bedStart, 56);
+  const { dn, cleanup } = scratchRoot();
+  cleanups.push(cleanup);
+  const dir = join(dn, "editions", date);
+  mkdirSync(join(dir, "assets"), { recursive: true });
+  const edition = {
+    ...read(join(ROOT, "editions/2026-10-10/edition.json")),
+    date,
+  };
+  writeFileSync(join(dir, "edition.json"), JSON.stringify(edition));
+  const script = read(join(ROOT, "editions/2026-10-10/script.json"));
+  for (const s of script.stories) s.voice = [...s.voice, { ...s.voice[0] }];
+  writeFileSync(join(dir, "script.json"), JSON.stringify(script));
+  for (const s of edition.stories)
+    for (const im of s.images) writeFileSync(join(dir, im.local), "");
+  const run = runBuild(dn, [date, "--no-voice", "--no-audio"]);
+  assert.equal(run.status, 0, run.stderr);
+  const { total, sound } = read(join(dir, "timeline.json"));
+  assert.ok(total > BED.duration - 56, `the cut runs ${total}s`);
+  assert.ok(
+    BED.starts.daily.includes(sound.bedStart) && sound.bedStart < 56,
+    `starts on an earlier phrase, got ${sound.bedStart}`
+  );
+  assert.ok(
+    sound.bedStart + total <= BED.duration,
+    `${sound.bedStart} + ${total}`
+  );
 });

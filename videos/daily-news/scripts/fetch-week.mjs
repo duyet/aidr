@@ -5,7 +5,7 @@
 // Usage: node scripts/fetch-week.mjs [--week 2026-W41] [--count 8] [--force]
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { download, hasWrittenScript, UA } from "./media.mjs";
+import { downloadImages, hasWrittenScript, UA } from "./media.mjs";
 import { lastClosedWeek, parseWeek } from "./week.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -38,11 +38,7 @@ mkdirSync(join(dir, "assets"), { recursive: true });
 const stories = [];
 for (const s of data.stories.slice(0, count)) {
   const urls = [s.image_url, ...(s.media_images ?? [])].filter(Boolean);
-  const images = [];
-  for (const url of [...new Set(urls)].slice(0, 3)) {
-    const local = await download(dir, url, `s${s.rank}-${images.length + 1}`);
-    if (local) images.push({ url, local });
-  }
+  const images = await downloadImages(dir, urls, `s${s.rank}`);
   stories.push({
     rank: s.rank,
     text: s.text_en,

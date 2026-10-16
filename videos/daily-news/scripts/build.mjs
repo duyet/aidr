@@ -24,9 +24,9 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { cutFor, cutOf, formatsOf } from "./lang.mjs";
-import { resolveLook } from "./look.mjs";
+import { coverStory, resolveLook, thumbStory } from "./look.mjs";
 import { entry, lookCss, lookScript } from "./looks/index.mjs";
-import { CUES, PEAK } from "./looks/sound.mjs";
+import { bedStartFor, gainFor, SFX, soundFor } from "./looks/sound.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
 import { spreadWords, subsMismatch } from "./visub.mjs";
 import { applyScreen } from "./visub-screen.mjs";
@@ -164,6 +164,7 @@ const issueTag = WEEKLY
 // One look per day for every cut: a pin is read from the English script.json, never script.vi.json.
 const look = resolveLook(withImages(read(join(dir, "script.json"))), edition);
 for (const n of look.notes) console.log(`! look: ${n}`);
+const sound = soundFor(edition.date);
 const esc = (s) =>
   String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -234,6 +235,7 @@ for (const seg of segs) {
   clock += seg.dur;
 }
 const total = r3(clock);
+sound.bedStart = bedStartFor(sound.bedStart, total);
 const intro = segs[0];
 const outro = segs.at(-1);
 const storySegs = segs.filter((s) => s.kind === "story");
@@ -435,9 +437,9 @@ function storyHtml(seg, i) {
   if (!layout)
     throw new Error(`story ${s.rank}: no layout resolved for this cut's rank`);
   // The layout comes from script.json's images; the vi cut renders script.vi.json's.
-  if (layout === "full" && !s.images.length)
+  if (entry("layout", layout).image && !s.images.length)
     throw new Error(
-      `${cut.script} story ${s.rank}: layout "full" but no image on disk; give it the images script.json lists`
+      `${cut.script} story ${s.rank}: layout "${layout}" but no image on disk; give it the images script.json lists`
     );
   const source = s.source ?? ed.source ?? "";
   let media;
@@ -546,14 +548,13 @@ function buildMix(outFile) {
   const sfxDir = resolve(ROOT, config.sfx.dir);
   const sfxMeta = read(join(sfxDir, "manifest.json"));
   const cues = [
-    [CUES.open, 0.25, 1.0],
-    ...wipes.map((w) => [CUES.storyIn, w.at, 0.8]),
-    ...storySegs.map((s) => [CUES.rankHit, s.start + 0.3, 0.55]),
-    ...storySegs.map((s) => [CUES.statHit, s.statAt + 0.1, 0.5]),
-    [CUES.outro, outro.start + 0.4, 0.8],
+    ["open", 0.25, 1.0],
+    ...wipes.map((w) => ["storyIn", w.at, 0.8]),
+    ...storySegs.map((s) => ["rankHit", s.start + 0.3, 0.55]),
+    ...storySegs.map((s) => ["statHit", s.statAt + 0.1, 0.5]),
+    ["outro", outro.start + 0.4, 0.8],
+    ...entry("intro", look.intro).cues(introCtx),
   ];
-  for (const [cue, at, gain] of entry("intro", look.intro).cues(introCtx))
-    cues.push([CUES[cue], at, gain]);
 
   const inputs = [];
   const filters = [];
@@ -570,9 +571,16 @@ function buildMix(outFile) {
       `${segs.map((_, i) => `[v${i}]`).join("")}amix=inputs=${nv}:normalize=0,volume=${config.voice.volume},apad=whole_dur=${total}[voice]`
     );
   }
-  inputs.push("-i", resolve(ROOT, config.music.file));
+  const bed = resolve(ROOT, config.music.file);
+  const bedLength = probe(bed);
+  const bedEnd = sound.bedStart + total;
+  if (!(bedEnd <= bedLength))
+    throw new Error(
+      `this ${total}s cut runs off the end of the music bed (${config.music.file}, ${bedLength}s) from ${sound.bedStart}s: shorten the script, or set BED.duration in looks/sound.mjs to the bed's length`
+    );
+  inputs.push("-i", bed);
   filters.push(
-    `[${nv}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:${total},volume=${config.music.volume},afade=t=in:d=0.4,afade=t=out:st=${r3(total - 2.5)}:d=2.5[bgm]`
+    `[${nv}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=start=${sound.bedStart}:end=${r3(bedEnd)},asetpts=PTS-STARTPTS,volume=${config.music.volume},afade=t=in:d=0.4,afade=t=out:st=${r3(total - 2.5)}:d=2.5[bgm]`
   );
   if (!noVoice) {
     filters.push(`[voice]asplit=2[vmix][vkey]`);
@@ -584,12 +592,16 @@ function buildMix(outFile) {
       `[bgm][vkey]sidechaincompress=threshold=0.02:ratio=${r3(duckRatio)}:attack=15:release=350[duck]`
     );
   }
-  cues.forEach(([name, at, gain], k) => {
+  cues.forEach(([cue, at, cueGain], k) => {
     const idx = nv + 1 + k;
+    const name = sound.sfx[cue];
     inputs.push("-i", join(sfxDir, sfxMeta[name].file));
-    const startMs = Math.max(0, Math.round((at - (PEAK[name] ?? 0)) * 1000));
+    // A hit earlier than the file's lead-in plays from part-way in, so the hit still lands on time.
+    const lead = SFX[name].peak - at;
+    const head =
+      lead > 0 ? `atrim=start=${r3(lead)},asetpts=PTS-STARTPTS,` : "";
     filters.push(
-      `[${idx}:a]aresample=48000,aformat=channel_layouts=stereo,volume=${r3(config.sfx.volume * gain)},adelay=${startMs}:all=1[x${k}]`
+      `[${idx}:a]${head}aresample=48000,aformat=channel_layouts=stereo,volume=${r3(config.sfx.volume * gainFor(cue, name) * cueGain)},adelay=${Math.round(Math.max(0, -lead) * 1000)}:all=1[x${k}]`
     );
   });
   filters.push(
@@ -618,24 +630,22 @@ function buildMix(outFile) {
 }
 
 // ---------------------------------------------------------------- cover still
-// One story gives the cover both its picture and its hook, so they never come from different stories:
-// the thumb story when it has an image, else the first ranked story with one (its kicker as the hook),
-// else the thumb story with its paper card.
-const thumbStory =
-  script.stories.find((s) => s.rank === (script.thumb?.story ?? 1)) ??
-  script.stories[0];
-const coverStory = firstImage(thumbStory)
-  ? thumbStory
-  : (script.stories.find(firstImage) ?? thumbStory);
-if (coverStory !== thumbStory && !cut.subs)
+// One story (look.mjs coverStory) gives the cover both its picture and its hook, so they never come from
+// different stories. A stand-in for an image-less thumb story uses its own kicker as the hook.
+const thumb = thumbStory(script);
+const cover = coverStory(script);
+if (cover !== thumb && !cut.subs)
   console.warn(
-    `! cover: thumb story ${thumbStory.rank} has no image; the cover uses story ${coverStory.rank} (${coverStory.kicker})`
+    `! cover: thumb story ${thumb.rank} has no image; the cover uses story ${cover.rank} (${cover.kicker})`
   );
+const coverHook =
+  cover === thumb ? (script.thumb?.hook ?? cover.kicker) : cover.kicker;
+// The cover intro opens on the cover still's story and hook.
+Object.assign(introCtx, { lead: cover, hook: coverHook });
 
 function coverHtml(fmt) {
-  const lead = coverStory;
-  const hook =
-    lead === thumbStory ? (script.thumb?.hook ?? lead.kicker) : lead.kicker;
+  const lead = cover;
+  const hook = coverHook;
   const img = firstImage(lead);
   const list = script.stories
     .slice(0, fmt === "9x16" ? 4 : 3)
@@ -788,7 +798,7 @@ const mmss = (t) => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}`;
 const { layouts, notes, ...theme } = look;
 writeFileSync(
   join(dir, cut.timeline),
-  `${JSON.stringify({ date, total, voice: !noVoice, theme, layouts, segments: segs.map((s) => ({ id: s.id, start: r3(s.start), dur: r3(s.dur), voice: r3(s.voiceDur) })) }, null, 2)}\n`
+  `${JSON.stringify({ date, total, voice: !noVoice, theme, layouts, sound, segments: segs.map((s) => ({ id: s.id, start: r3(s.start), dur: r3(s.dur), voice: r3(s.voiceDur) })) }, null, 2)}\n`
 );
 
 const P = script.post ?? {};
