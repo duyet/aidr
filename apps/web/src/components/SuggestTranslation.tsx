@@ -1,7 +1,11 @@
 import { ErrorBoundary } from "@aidr/ui";
 import { useHydrated } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { hasClerkSessionCookie, useClerkModule } from "../lib/clerk-user";
+import {
+  type ClerkModule,
+  hasClerkSessionCookie,
+  useClerkModule,
+} from "../lib/clerk-user";
 import { signInHref } from "../lib/sign-in-href";
 import { storyPath } from "../lib/slug";
 import type { Lang } from "../lib/types";
@@ -100,31 +104,75 @@ function SuggestTranslationInner({
     );
   }
 
-  const { SignedIn, SignedOut, useUser, useAuth, SignInButton, useClerk } = mod;
+  return (
+    <ClerkSuggest
+      mod={mod}
+      itemId={itemId}
+      lang={lang}
+      initialText={initialText}
+      suggestionAttempt={suggestionAttempt}
+      onInitialTextConsumed={onInitialTextConsumed}
+    />
+  );
+}
+
+/** Clerk's <Show> renders nothing until Clerk loads, which would leave the
+ * row empty and then shift it, so this reads the same `useAuth` state
+ * directly. Same as the vote thumb in StoryVotes. */
+function ClerkSuggest({
+  mod,
+  itemId,
+  lang,
+  initialText,
+  suggestionAttempt,
+  onInitialTextConsumed,
+}: {
+  mod: ClerkModule;
+  itemId: string;
+  lang: Lang;
+  initialText?: string;
+  suggestionAttempt?: number;
+  onInitialTextConsumed?: () => void;
+}) {
+  const { useUser, useAuth, SignInButton, useClerk } = mod;
+  const { isLoaded, userId } = useAuth();
 
   // No own <ClerkProvider> here — __root.tsx mounts the single app-wide
   // one; a second provider crashes the whole page.
+  if (!isLoaded) return <PendingSuggest lang={lang} />;
+  if (!userId) {
+    return (
+      <SignInToSuggest
+        lang={lang}
+        SignInButton={SignInButton}
+        useClerk={useClerk}
+        initialText={initialText}
+        suggestionAttempt={suggestionAttempt}
+      />
+    );
+  }
   return (
-    <>
-      <SignedOut>
-        <SignInToSuggest
-          lang={lang}
-          SignInButton={SignInButton}
-          useClerk={useClerk}
-          initialText={initialText}
-          suggestionAttempt={suggestionAttempt}
-        />
-      </SignedOut>
-      <SignedIn>
-        <SuggestFormGate
-          itemId={itemId}
-          lang={lang}
-          useUser={useUser}
-          useAuth={useAuth}
-          initialText={initialText}
-          onInitialTextConsumed={onInitialTextConsumed}
-        />
-      </SignedIn>
-    </>
+    <SuggestFormGate
+      itemId={itemId}
+      lang={lang}
+      useUser={useUser}
+      useAuth={useAuth}
+      initialText={initialText}
+      onInitialTextConsumed={onInitialTextConsumed}
+    />
+  );
+}
+
+/** Same box as the live control, with nothing to click until Clerk says who
+ * the reader is. */
+function PendingSuggest({ lang }: { lang: Lang }) {
+  return (
+    <button
+      type="button"
+      disabled
+      className="text-xs text-accent underline underline-offset-2 disabled:opacity-60"
+    >
+      {lang === "vi" ? "Góp ý chỉnh sửa" : "Suggest an edit"}
+    </button>
   );
 }

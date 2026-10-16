@@ -1,9 +1,10 @@
 /** @vitest-environment happy-dom */
 
 import { cleanup, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ClerkModuleContext } from "../lib/clerk-user";
+import { type ClerkModule, ClerkModuleContext } from "../lib/clerk-user";
 import { SuggestTranslation } from "./SuggestTranslation";
 
 // The server fn module imports cloudflare:workers, which vitest cannot load.
@@ -118,5 +119,69 @@ describe("SuggestTranslation signed out without the Clerk SDK", () => {
     );
     expect(html).toContain("Đăng nhập để góp ý");
     expect(html).not.toContain("<a");
+  });
+});
+
+// Clerk's <Show> (behind SignedIn/SignedOut) renders null until Clerk has
+// loaded. These stand-ins keep that contract, so a control built on them
+// leaves the row empty until the SDK reports who the reader is.
+function clerkMod(auth: { isLoaded: boolean; userId: string | null }) {
+  const Gate = ({
+    when,
+    children,
+  }: {
+    when: "in" | "out";
+    children?: ReactNode;
+  }): ReactNode => {
+    if (!auth.isLoaded) return null;
+    return (when === "in") === Boolean(auth.userId) ? children : null;
+  };
+  return {
+    useAuth: () => ({ ...auth, getToken: () => Promise.resolve("token") }),
+    useUser: () => ({
+      user: auth.userId ? { id: auth.userId, fullName: "Reader" } : null,
+    }),
+    useClerk: () => ({ openSignIn: vi.fn() }),
+    SignInButton: ({ children }: { children?: ReactNode }) => <>{children}</>,
+    SignedIn: ({ children }: { children?: ReactNode }) => (
+      <Gate when="in">{children}</Gate>
+    ),
+    SignedOut: ({ children }: { children?: ReactNode }) => (
+      <Gate when="out">{children}</Gate>
+    ),
+  } as unknown as ClerkModule;
+}
+
+function renderWithClerk(auth: { isLoaded: boolean; userId: string | null }) {
+  return render(
+    <ClerkModuleContext.Provider
+      value={{
+        mod: clerkMod(auth),
+        publishableKey: "pk_test_suggest",
+        preloadClerk: () => {},
+      }}
+    >
+      <SuggestTranslation itemId="abcdef12deadbeef" lang="en" />
+    </ClerkModuleContext.Provider>
+  );
+}
+
+describe("SuggestTranslation while the mounted Clerk SDK loads", () => {
+  it("keeps a disabled control in the row instead of rendering nothing", () => {
+    renderWithClerk({ isLoaded: false, userId: null });
+    const pending = screen.getByRole("button", { name: "Suggest an edit" });
+    expect(pending.hasAttribute("disabled")).toBe(true);
+  });
+
+  it("swaps the disabled control for the live one once Clerk has loaded", () => {
+    const { unmount } = renderWithClerk({ isLoaded: true, userId: "user_1" });
+    const live = screen.getByRole("button", { name: "Suggest an edit" });
+    expect(live.hasAttribute("disabled")).toBe(false);
+    unmount();
+
+    renderWithClerk({ isLoaded: true, userId: null });
+    expect(
+      screen.getByRole("button", { name: "Sign in to suggest" })
+    ).not.toBeNull();
   });
 });
