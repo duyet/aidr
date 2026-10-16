@@ -9,7 +9,9 @@ import { withLang } from "../../lib/locale-url";
 
 /**
  * Always-visible sign-in: a plain /sign-in link that renders immediately —
- * no waiting on the deferred Clerk SDK or an auth round-trip. In the header
+ * no waiting on the deferred Clerk SDK or an auth round-trip. Hover or focus
+ * preloads the SDK chunk so /sign-in renders its form at once; the chunk is
+ * only inserted there, never on this page. In the header
  * it is an empty avatar in a fixed avatar-sized slot; once Clerk reports
  * signed-in, the real UserButton avatar fills the same slot, so the header
  * never shifts. The stacked (phone menu) variant stays a full-width button.
@@ -24,7 +26,7 @@ export function HeaderAuth({
   onSignIn?: () => void;
 }) {
   const navigationLang = useLang();
-  const { mod } = useClerkModule();
+  const { mod, preloadClerk } = useClerkModule();
   const onClick = () => {
     track("nav_click", {
       to: "/sign-in",
@@ -39,6 +41,8 @@ export function HeaderAuth({
         params={{ _splat: "" }}
         search={{ lang: navigationLang }}
         onClick={onClick}
+        onPointerEnter={preloadClerk}
+        onFocus={preloadClerk}
       >
         Sign in
       </Link>
@@ -49,6 +53,8 @@ export function HeaderAuth({
       params={{ _splat: "" }}
       search={{ lang: navigationLang }}
       onClick={onClick}
+      onPointerEnter={preloadClerk}
+      onFocus={preloadClerk}
       aria-label="Sign in"
       title="Sign in"
       className={`${avatarSize} inline-flex shrink-0 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50`}

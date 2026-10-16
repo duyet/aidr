@@ -1,5 +1,7 @@
 import { ErrorBoundary } from "@aidr/ui";
+import { useEffect } from "react";
 import { useClerkModule } from "../lib/clerk-user";
+import { withLang } from "../lib/locale-url";
 import type { Lang } from "../lib/types";
 import { SignInToSuggest } from "./suggest/SignInToSuggest";
 import { SuggestFormGate } from "./suggest/SuggestForm";
@@ -22,13 +24,39 @@ export function SuggestTranslation(props: {
   );
 }
 
-function SignInFallback({ lang }: { lang: Lang }) {
+/**
+ * Signed out with no Clerk SDK on the page. A link to /sign-in, where the
+ * route mounts the SDK, instead of the modal `SignInToSuggest` opens: mounting
+ * the SDK here would remount the story and drop the pending selection, and
+ * the modal's own redirect leaves the page after sign-in anyway. The floating
+ * "Suggest" button hands over selected text through `initialText`; that
+ * click goes to /sign-in too, so it is never silently dropped. A plain href,
+ * like the vote dialog's, so this also renders outside the router.
+ */
+function SignInFallback({
+  lang,
+  initialText,
+  suggestionAttempt,
+}: {
+  lang: Lang;
+  initialText?: string;
+  suggestionAttempt?: number;
+}) {
+  const href = withLang("/sign-in", lang);
+
+  // `suggestionAttempt` is in the deps so a repeat of the same text is a
+  // new click.
+  useEffect(() => {
+    if (initialText) window.location.assign(href);
+  }, [initialText, suggestionAttempt, href]);
+
   return (
-    <span className="text-xs text-muted-foreground">
-      {lang === "vi"
-        ? "Đăng nhập để góp ý, chỉnh sửa"
-        : "Sign in to suggest edits"}
-    </span>
+    <a
+      href={href}
+      className="text-xs text-accent underline underline-offset-2 hover:no-underline"
+    >
+      {lang === "vi" ? "Đăng nhập để góp ý" : "Sign in to suggest"}
+    </a>
   );
 }
 
@@ -47,7 +75,15 @@ function SuggestTranslationInner({
 }) {
   const { mod, publishableKey } = useClerkModule();
 
-  if (!publishableKey || !mod) return <SignInFallback lang={lang} />;
+  if (!publishableKey || !mod) {
+    return (
+      <SignInFallback
+        lang={lang}
+        initialText={initialText}
+        suggestionAttempt={suggestionAttempt}
+      />
+    );
+  }
 
   const { SignedIn, SignedOut, useUser, useAuth, SignInButton, useClerk } = mod;
 
