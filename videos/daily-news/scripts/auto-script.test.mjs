@@ -198,7 +198,7 @@ test("the video model chain is gpt-5.6-luna, then the Worker's chat chain read f
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-  const chain = videoModels(undefined);
+  const chain = videoModels(null);
   assert.deepEqual(chain, [
     "openai/gpt-5.6-luna",
     ...workerChatChain().filter((m) => m !== "openai/gpt-5.6-luna"),

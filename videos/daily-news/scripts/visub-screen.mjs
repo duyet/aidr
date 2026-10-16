@@ -11,7 +11,7 @@
 // Usage: node scripts/visub-screen.mjs <date> [--force]
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { complete, DEFAULT_MODELS, WORD_LIMITS } from "./auto-script.mjs";
+import { complete, videoModels, WORD_LIMITS } from "./auto-script.mjs";
 import { cutFor } from "./lang.mjs";
 import { requireLlmKey } from "./local-llm-key.mjs";
 import { envVar } from "./telegram-video.mjs";
@@ -276,10 +276,7 @@ async function main() {
   const edition = read(join(dir, "edition.json"));
   const cached =
     !argv.includes("--force") && existsSync(file) ? read(file).fields : {};
-  const models = (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS)
-    .split(",")
-    .map((m) => m.trim())
-    .filter(Boolean);
+  const models = videoModels(envVar("ANYROUTER_VIDEO_MODEL"));
   const apiKey = requireLlmKey();
   const baseUrl =
     envVar("ANYROUTER_BASE_URL") ?? "https://anyrouter.dev/api/v1";

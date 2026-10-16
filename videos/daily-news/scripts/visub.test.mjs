@@ -177,7 +177,8 @@ const LONG_VI =
   "Ủy ban Thương mại Liên bang Mỹ gửi trát đòi hầu tòa tới OpenAI và Anthropic về vấn đề an toàn trí tuệ nhân tạo và nhiều tin khác — ngày 16 tháng 10 năm 2026";
 const SHORT_VI =
   "FTC gửi trát đòi OpenAI và Anthropic về an toàn AI và hơn thế nữa — ngày 16 tháng 10 năm 2026";
-const isRetitle = (messages) => /100 characters/.test(messages.at(-1).content);
+const isRetitle = (messages) =>
+  /title is \d+ characters/.test(messages.at(-1).content);
 
 test("a Vietnamese title over 100 characters keeps the translation: one shorter-title retry, else a cut at a word", async () => {
   const cues = parseSrt(EN_SRT);

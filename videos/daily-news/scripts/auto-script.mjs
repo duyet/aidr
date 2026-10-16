@@ -27,7 +27,8 @@ import { download } from "./media.mjs";
 import { envVar } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
-export const DEFAULT_MODELS = "openai/gpt-5.6-luna,google/gemini-3-flash";
+const WRANGLER = resolve(ROOT, "../../apps/web/wrangler.toml");
+const SCRIPT_MODEL = "openai/gpt-5.6-luna";
 const MIN_STORIES = 3;
 /** Screen text length in words, [min, max]; the visub cut checks its Vietnamese screen text against it too. */
 export const WORD_LIMITS = { kicker: [1, 6], headline: [3, 12] };
@@ -483,6 +484,29 @@ export function promptFor(edition) {
   ];
 }
 
+const ids = (spec) =>
+  spec
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+
+/** The Worker's chat chain (ANYROUTER_MODEL in apps/web/wrangler.toml), read from source so the video never keeps a
+ *  fallback the Worker has dropped. */
+export function workerChatChain(file = WRANGLER) {
+  const spec = readFileSync(file, "utf8").match(
+    /^ANYROUTER_MODEL\s*=\s*"([^"]+)"/m
+  )?.[1];
+  if (!spec) throw new Error(`cannot read ANYROUTER_MODEL from ${file}`);
+  return ids(spec);
+}
+
+/** The video scripts' model chain: `spec` (ANYROUTER_VIDEO_MODEL, a comma list) when set, else gpt-5.6-luna, which
+ *  writes the script, then the Worker's chat chain, whose paid Claude id stays last. */
+export function videoModels(spec) {
+  if (spec != null) return ids(spec);
+  return [...new Set([SCRIPT_MODEL, ...workerChatChain()])];
+}
+
 /** One streamed chat completion from anyrouter (the request shape apps/web/worker/llm.ts sends). */
 export async function complete({
   model,
@@ -503,7 +527,8 @@ export async function complete({
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.4,
+      // Claude ids reject temperature with a 400 (acceptsTemperature in apps/web/worker/llm.ts).
+      ...(model.startsWith("anthropic/") ? {} : { temperature: 0.4 }),
       max_tokens: 8192,
       stream: true,
       response_format: { type: "json_object" },
@@ -690,12 +715,7 @@ async function main() {
     process.exit(1);
   }
   const apiKey = keyed.key ?? null;
-  const models = apiKey
-    ? (envVar("ANYROUTER_VIDEO_MODEL") ?? DEFAULT_MODELS)
-        .split(",")
-        .map((m) => m.trim())
-        .filter(Boolean)
-    : [];
+  const models = apiKey ? videoModels(envVar("ANYROUTER_VIDEO_MODEL")) : [];
   if (!models.length)
     console.log(
       `! no model (${keyed.fallback ?? "empty ANYROUTER_VIDEO_MODEL"}): using the template`
