@@ -156,6 +156,7 @@ describe("sharedMaxAge", () => {
     expect(sharedMaxAge(page({ "set-cookie": "a=b" }))).toBe(0);
     expect(sharedMaxAge(page({ vary: "*" }))).toBe(0);
     expect(sharedMaxAge(page({}, 404))).toBe(0);
+    expect(sharedMaxAge(page({}, 500))).toBe(0);
     expect(sharedMaxAge(page({ "cache-control": "public, max-age=60" }))).toBe(
       0
     );

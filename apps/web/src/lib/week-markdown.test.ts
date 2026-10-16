@@ -124,6 +124,36 @@ describe("week Markdown", () => {
     expect(res.status).toBe(404);
   });
 
+  // A D1 blip on a real week must not tell crawlers the URL is gone (#892).
+  it("500s, uncached, when the D1 read fails", async () => {
+    const db = {
+      batch: async () => {
+        throw new Error("D1_ERROR: Network connection lost.");
+      },
+      prepare: () => ({ bind: () => ({}) }),
+    } as unknown as D1Database;
+    const res = await handleWeekMarkdownRequest(
+      new Request("https://aidr.today/week/2026-W41.md?lang=en"),
+      db,
+      Date.parse("2026-10-12T03:00:00Z")
+    );
+    expect(res.status).toBe(500);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+  });
+
+  it("404s a closed week that has no edition", async () => {
+    const db = {
+      batch: async () => [{ results: [] }, { results: [] }, { results: [] }],
+      prepare: () => ({ bind: () => ({}) }),
+    } as unknown as D1Database;
+    const res = await handleWeekMarkdownRequest(
+      new Request("https://aidr.today/week/2026-W41.md?lang=en"),
+      db,
+      Date.parse("2026-10-12T03:00:00Z")
+    );
+    expect(res.status).toBe(404);
+  });
+
   it("404s the week that is still open", async () => {
     const res = await handleWeekMarkdownRequest(
       new Request("https://aidr.today/week/2026-W42.md?lang=en"),
