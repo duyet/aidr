@@ -21,6 +21,7 @@ import {
 } from "./status.mjs";
 import { chatFor, telegramPost, youtubeIdFor } from "./telegram-video.mjs";
 import {
+  cutProblems,
   enPost,
   formatSrt,
   houseStyle,
@@ -180,7 +181,7 @@ const SHORT_VI =
 const isRetitle = (messages) =>
   /title is \d+ characters/.test(messages.at(-1).content);
 
-test("a Vietnamese title over 100 characters keeps the translation: one shorter-title retry, else a cut at a word", async () => {
+test("a Vietnamese title over 100 characters keeps the translation: one shorter-title retry, else a cut at a clause", async () => {
   const cues = parseSrt(EN_SRT);
   const run = async (retitle) => {
     const asked = [];
@@ -258,7 +259,7 @@ test("a decomposed Vietnamese title is counted and cut in composed form", async 
 });
 
 // A Vietnamese title translated `vi`, whose shorter-title retry answers `retitle`.
-const titled = (en, vi, retitle) =>
+const titled = (en, vi, retitle, log = () => {}) =>
   translateCues({
     cues: parseSrt(EN_SRT),
     title: en,
@@ -268,36 +269,132 @@ const titled = (en, vi, retitle) =>
         ? JSON.stringify({ title: retitle })
         : JSON.stringify({ title: vi, lines: VI.lines }),
     style,
-    log: () => {},
+    log,
   });
 
-test("a title cut at a word keeps every number and the date, dropping words without digits first", async () => {
-  const en = "OpenAI raises $60B at $852B & more | 2026-10-16";
-  for (const vi of [
-    "OpenAI huy động thêm 60 tỷ USD từ các nhà đầu tư lớn trên toàn thế giới với mức định giá kỷ lục 852 tỷ USD và nhiều tin khác | 2026-10-16",
-    "OpenAI huy động thêm 60 tỷ USD từ các nhà đầu tư lớn trên toàn thế giới với mức định giá kỷ lục 852 tỷ USD ngày 16/10/2026",
+// Real 2026-10 titles the model wrote over 100 characters; a word-level cut kept each number but moved it onto other
+// words ("…doanh thu, 870…" credits OpenAI with TypeSafe's raise), so a cut drops whole clauses from the end.
+const TYPESAFE_EN =
+  "AI News Today: OpenAI revenue revision hits AI stocks, TypeSafe AI's $870M & more | Oct 10, 2026";
+const TYPESAFE_VI =
+  "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu, TypeSafe AI gọi vốn thành công 870 triệu USD và hơn thế | 10/10/2026";
+const MSFT_EN =
+  "AI News Today: Microsoft commits $2.4T to AI infrastructure & more | Oct 16, 2026";
+const MSFT_VI =
+  "Tin AI hôm nay: Microsoft bất ngờ công bố kế hoạch cam kết rót vốn đầu tư tổng cộng lên tới 2,4 nghìn tỷ USD vào hạ tầng AI | 16/10/2026";
+const META_EN =
+  "AI News Today: Anthropic's Claude 4.5 gets 1M tokens, Meta cuts 10–20% & more | Oct 16, 2026";
+const META_VI =
+  "Tin AI hôm nay: Claude 4.5 của Anthropic hỗ trợ ngữ cảnh 1 triệu token, Meta cắt giảm 10–20% nhân sự trong mảng AI cùng nhiều tin khác | 16/10/2026";
+
+test("a long title is cut to whole clauses from the end, so every number left keeps its subject, verb and unit", async () => {
+  for (const [en, vi, want] of [
+    [
+      TYPESAFE_EN,
+      TYPESAFE_VI,
+      "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu… | 10/10/2026",
+    ],
+    [
+      TYPESAFE_EN,
+      "Tin AI: OpenAI điều chỉnh doanh thu, TypeSafe AI gọi vốn thành công 870 triệu USD cùng nhiều tin nổi bật khác trong ngày | 10/10/2026",
+      "Tin AI: OpenAI điều chỉnh doanh thu, TypeSafe AI gọi vốn thành công 870 triệu USD… | 10/10/2026",
+    ],
+    [
+      META_EN,
+      META_VI,
+      "Tin AI hôm nay: Claude 4.5 của Anthropic hỗ trợ ngữ cảnh 1 triệu token… | 16/10/2026",
+    ],
+    [MSFT_EN, MSFT_VI, "Bản tin AI;DR | 16/10/2026"],
   ]) {
-    const out = await titled(en, vi, vi);
+    const out = await titled(en, vi, "");
+    assert.equal(out.title, want);
     assert.ok([...out.title].length <= 100, out.title);
-    for (const n of ["60", "852", "2026", "10", "16"])
-      assert.match(out.title, new RegExp(`\\b${n}\\b`), `${n} in ${out.title}`);
-    assert.ok(out.title.startsWith("OpenAI huy động thêm 60 tỷ USD"));
+    if (out.title.includes("870"))
+      assert.match(out.title, /TypeSafe AI gọi vốn thành công 870 triệu USD/);
+    else assert.doesNotMatch(out.title, /TypeSafe/, "870 goes with its clause");
   }
-  const brand = await titled(
-    "AI;DR: OpenAI raises $60B | 2026-10-16",
-    "OpenAI huy động thêm 60 tỷ USD từ các nhà đầu tư lớn trên toàn thế giới với mức định giá kỷ lục, theo AI;DR | 2026-10-16",
-    ""
-  );
-  assert.match(brand.title, /AI;DR… \| 2026-10-16$/, brand.title);
 });
 
-test("a title that cannot fit 100 characters with all its numbers fails the run instead of posting", async () => {
-  const nums = Array.from({ length: 14 }, (_, i) => `${i + 1}0000000`);
-  const vi = `Các vòng gọi vốn ${nums.join(", ")} | 2026-10-16`;
-  await assert.rejects(
-    titled(`Funding rounds ${nums.join(", ")} | 2026-10-16`, vi, vi),
-    /Vietnamese title[\s\S]*over 100/
+test("a cut that moves a number onto other words is refused; one that drops its whole clause is not", () => {
+  for (const [vi, wordCut] of [
+    [
+      TYPESAFE_VI,
+      "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu, 870… | 10/10/2026",
+    ],
+    [
+      MSFT_VI,
+      "Tin AI hôm nay: Microsoft bất ngờ công bố kế hoạch cam kết rót vốn đầu tư tổng 2,4… | 16/10/2026",
+    ],
+    [
+      META_VI,
+      "Tin AI hôm nay: Claude 4.5 của Anthropic hỗ trợ ngữ cảnh 1 triệu token, Meta 10–20%… | 16/10/2026",
+    ],
+  ])
+    assert.match(cutProblems(vi, wordCut).join(";"), /not whole clauses/);
+  assert.deepEqual(
+    cutProblems(
+      TYPESAFE_VI,
+      "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu… | 10/10/2026"
+    ),
+    []
   );
+  assert.match(
+    cutProblems(
+      TYPESAFE_VI,
+      "Tin AI hôm nay: Cổ phiếu AI giảm mạnh sau khi OpenAI điều chỉnh doanh thu… | 16/10/2026"
+    ).join(";"),
+    /not whole clauses/,
+    "the date part is kept as written"
+  );
+});
+
+test("a number and the magnitude it shares with the next clause stay one unit", async () => {
+  const out = await titled(
+    "AI News Today: OpenAI raises $60B at a record $852B valuation, Nvidia ships a chip & more | Oct 16, 2026",
+    "Tin AI hôm nay: OpenAI huy động thêm 60 tỷ và đạt mức định giá kỷ lục chưa từng có lên tới 852 tỷ USD, Nvidia ra mắt chip mới | 16/10/2026",
+    ""
+  );
+  assert.equal(
+    out.title,
+    "Bản tin AI;DR | 16/10/2026",
+    "not “…huy động thêm 60 tỷ…”, which loses USD"
+  );
+});
+
+test("a title with no clause cut that fits is posted as “Bản tin AI;DR” and its date, with a warning", async () => {
+  for (const [en, vi, want] of [
+    [
+      "OpenAI raises $60B at $852B & more | 2026-10-16",
+      "OpenAI huy động thêm 60 tỷ USD từ các nhà đầu tư lớn trên toàn thế giới với mức định giá kỷ lục 852 tỷ USD ngày 16/10/2026",
+      "Bản tin AI;DR | 2026-10-16",
+    ],
+    [
+      "AI;DR: OpenAI raises $60B | 2026-10-16",
+      "OpenAI huy động thêm 60 tỷ USD với mức định giá kỷ lục chưa từng có, theo bản tin hằng ngày AI;DR | 2026-10-16",
+      "Bản tin AI;DR | 2026-10-16",
+    ],
+    [
+      `Funding rounds ${Array.from({ length: 14 }, (_, i) => `${i + 1}0000000`).join(", ")} | 2026-10-16`,
+      `Các vòng gọi vốn ${Array.from({ length: 14 }, (_, i) => `${i + 1}0000000`).join(", ")} | 2026-10-16`,
+      "Bản tin AI;DR | 2026-10-16",
+    ],
+  ]) {
+    const logs = [];
+    const out = await titled(en, vi, "", (l) => logs.push(l));
+    assert.equal(out.title, want);
+    assert.ok(
+      logs.some((l) => l.startsWith("!") && l.includes(want) && l.includes(vi)),
+      logs.join("\n")
+    );
+    const post = await translatePost({
+      en: enPost(POSTS),
+      title: out.title,
+      chain: () => ({ models: ["m1"], llm: postModel([]) }),
+      style,
+      log: () => {},
+    });
+    assert.equal(post.title, want, "the fallback title still posts");
+  }
 });
 
 test("a shorter-title retry that drops a number is not used", async () => {

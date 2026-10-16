@@ -4,7 +4,7 @@
 // Cues are 1-4 word fragments, so whole sentences (consecutive cues up to . ! ?) are translated and the
 // Vietnamese is split back over the sentence's cues in proportion to the English text. The YouTube title from
 // script.json is translated in the same call (the Vietnamese Telegram caption); a title over YouTube's 100 characters
-// is asked for once more, shorter, then clipped at a word, and never discards the lines.
+// is asked for once more, shorter, then cut to whole clauses (else "Bản tin AI;DR | <date>"), and never discards the lines.
 // Model: the auto-script.mjs chain through anyrouter (videoModels: a key from local-llm-key.mjs, ANYROUTER_VIDEO_MODEL); the house style
 // is read from the Worker (VI_STYLE and RULES_OVERVIEW in apps/web/worker/llm.ts), never copied here.
 // An answer is checked (same line count, no empty or untranslated line, every number kept, AI;DR and aidr.today
@@ -235,20 +235,54 @@ const titleProblems = (en, vi) => [
     : []),
 ];
 
-/** `title` cut to `max` characters by dropping whole words from the end, with "…" at the cut. A word with a digit or
- *  a KEEP name is never dropped, and the part after its last " | " or " — " (the date) is kept, so the cut may still
- *  be over `max`. Composed (NFC) first, so a tone mark is never counted apart from its letter or cut from it. */
-function clipTitle(title, max = TITLE_MAX) {
+// A clause starts at a list separator ("…, B", "… và B", "…, cùng B"). Not right after a number or a magnitude word:
+// in "60 tỷ và 852 tỷ USD" the unit after the separator belongs to both.
+const CLAUSE = /[,;] (?:và|cùng) |[,;] | (?:và|cùng|&) /gu;
+const SHARED_UNIT = /\d\S*$|(?:^|\s)(?:tỷ|triệu|nghìn|ngàn)$/u;
+
+/** `title` (NFC) as its clauses and its date part, the part after its last " | " or " — " when that is at most half
+ *  of TITLE_MAX: "A, B và C | date" → { clauses: ["A", ", B", " và C"], tail: " | date" }. */
+function titleParts(title) {
   const t = title.normalize("NFC").trim();
-  if ([...t].length <= max) return t;
   const m = t.match(/^(.*\S)(\s+[|—–-]\s+.*)$/);
-  const tail = m && [...m[2]].length <= max / 2 ? m[2] : "";
-  const words = (tail ? m[1] : t).split(/\s+/);
-  const cut = () => `${words.join(" ").replace(/[\s,;:]+$/, "")}…${tail}`;
-  for (let i = words.length - 1; i >= 0 && [...cut()].length > max; i--)
-    if (!/\d/.test(words[i]) && !KEEP.some((k) => words[i].includes(k)))
-      words.splice(i, 1);
-  return cut();
+  const tail = m && chars(m[2]) <= TITLE_MAX / 2 ? m[2] : "";
+  const head = tail ? m[1] : t;
+  const clauses = [];
+  let from = 0;
+  for (const { index } of head.matchAll(CLAUSE)) {
+    if (SHARED_UNIT.test(head.slice(from, index))) continue;
+    clauses.push(head.slice(from, index));
+    from = index;
+  }
+  clauses.push(head.slice(from));
+  return { clauses, tail };
+}
+
+/** The shortenings of `vi` that drop whole clauses from the end, longest first: each keeps the clauses before it, so a
+ *  number keeps its subject, verb and unit or goes with them, and the date part is kept. */
+function clauseCuts(vi) {
+  const { clauses, tail } = titleParts(vi);
+  if (!tail) return [];
+  return clauses
+    .slice(1)
+    .map(
+      (_, i) => `${clauses.slice(0, clauses.length - 1 - i).join("")}…${tail}`
+    );
+}
+
+/** Problems with `cut` as a shortening of the checked title `vi` (empty = fine). It must be within TITLE_MAX and
+ *  drop only whole clauses from the end: a number that stays keeps its clause, one that goes takes its clause with
+ *  it, so the title says less but nothing false. AI;DR and aidr.today stay. */
+export function cutProblems(vi, cut) {
+  const p = [];
+  if (chars(cut) > TITLE_MAX)
+    p.push(`title: ${chars(cut)} characters, over ${TITLE_MAX}`);
+  if (!clauseCuts(vi).includes(cut))
+    p.push("title: not whole clauses from the start of the title and its date");
+  for (const keep of KEEP)
+    if (vi.includes(keep) && !cut.includes(keep))
+      p.push(`title: "${keep}" is missing`);
+  return p;
 }
 
 function titlePromptFor(en, vi, style = houseStyle()) {
@@ -265,8 +299,8 @@ function titlePromptFor(en, vi, style = houseStyle()) {
 }
 
 /** A translated title within TITLE_MAX. A longer one goes back to the model that wrote it, once, with the limit and
- *  its length; a retry that fails or is still long is clipped at a word. The lines already passed and are kept.
- *  Throws when even the clipped title is over TITLE_MAX or lost a number, rather than post it. */
+ *  its length. A retry that fails or is still long gives way to the longest clause cut (cutProblems) that fits, else to
+ *  "Bản tin AI;DR" and the date: the title may say less, never something false. The lines already passed and are kept. */
 async function fitTitle({ en, vi, model, llm, style, log }) {
   if (chars(vi) <= TITLE_MAX) return vi.normalize("NFC");
   log(
@@ -282,14 +316,16 @@ async function fitTitle({ en, vi, model, llm, style, log }) {
   } catch (e) {
     log(`! ${model}: ${e.message}`);
   }
-  const cut = clipTitle(vi);
-  const problems = titleProblems(en, cut);
-  if (problems.length)
-    throw new Error(
-      `the Vietnamese title cannot be cut to ${TITLE_MAX} characters and keep every number: ${problems.join("; ")}: ${cut}`
-    );
-  log(`! title clipped at a word: ${cut}`);
-  return cut;
+  const cut = clauseCuts(vi).find((c) => !cutProblems(vi, c).length);
+  if (cut) {
+    log(`! title cut to whole clauses: ${cut}`);
+    return cut;
+  }
+  const fixed = `Bản tin AI;DR${titleParts(vi).tail || titleParts(en).tail}`;
+  log(
+    `! no cut of the title to whole clauses fits ${TITLE_MAX} characters; posting "${fixed}" for: ${vi.normalize("NFC")}`
+  );
+  return fixed;
 }
 
 /** The first model whose answer `check(text)` passes ({ problems: [] , ...}); throws with what each model got wrong. */
