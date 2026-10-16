@@ -137,6 +137,108 @@ describe("withSsrHead inlines the homepage stylesheet", () => {
   });
 });
 
+function streamed(bytes: Uint8Array, cuts: number[]): Response {
+  const body = new ReadableStream<Uint8Array>({
+    start(c) {
+      let from = 0;
+      for (const cut of cuts) {
+        c.enqueue(bytes.slice(from, cut));
+        from = cut;
+      }
+      c.enqueue(bytes.slice(from));
+      c.close();
+    },
+  });
+  return new Response(body, { headers: { "Content-Type": "text/html" } });
+}
+
+describe("withSsrHead cuts the head at the raw `</head>` bytes", () => {
+  const enc = new TextEncoder();
+  const HEAD = "<html><head><title>t</title></head>";
+  const BODY = new Uint8Array([0xff, ...enc.encode("<body>x</body></html>")]);
+
+  // A search of the newest chunk alone misses a tag split between chunks
+  // and ships the page without the boot script.
+  it("rewrites the head when `</head>` is split at any byte", async () => {
+    const page = `<!DOCTYPE html><html><head><title>Tin tức</title></head><body><p>Đọc</p></body></html>`;
+    const bytes = enc.encode(page);
+    const tag = enc.encode(page.slice(0, page.indexOf("</head>"))).byteLength;
+    for (let at = tag; at <= tag + "</head>".length; at++) {
+      const res = withSsrHead(
+        new Request("https://aidr.today/01234567"),
+        streamed(bytes, [tag - 3, at]),
+        undefined
+      );
+      expect(await res.text(), `split at ${at - tag}`).toBe(
+        withBootScriptFirst(page)
+      );
+    }
+  });
+
+  // 0xff is not UTF-8, so a decode and re-encode of the body turns it into
+  // U+FFFD.
+  it("forwards a non-UTF-8 byte after `</head>` raw", async () => {
+    const head = "<!DOCTYPE html><html><head><title>t</title></head>";
+    const bytes = new Uint8Array([
+      ...enc.encode(`${head}<body>`),
+      0xff,
+      ...enc.encode("</body></html>"),
+    ]);
+    const res = withSsrHead(
+      new Request("https://aidr.today/01234567"),
+      streamed(bytes, [head.length - 2, head.length + 3]),
+      undefined
+    );
+    const out = new Uint8Array(await res.arrayBuffer());
+    const rewritten = enc.encode(withBootScriptFirst(head));
+    expect(out.subarray(0, rewritten.byteLength)).toEqual(rewritten);
+    expect(out.subarray(rewritten.byteLength)).toEqual(
+      bytes.subarray(head.length)
+    );
+  });
+
+  // Head bytes whose decoded text re-encodes to a different length: a BOM
+  // (3 bytes, dropped by a default decoder) and a byte that is not UTF-8
+  // (1 byte, re-encoded as the 3-byte U+FFFD). A cut measured by
+  // re-encoding the head repeats, drops, or re-encodes body bytes; the
+  // 0xff that opens the body catches the last.
+  it.each([
+    ["a BOM", [0xef, 0xbb, 0xbf], "\uFEFF"],
+    ["a non-UTF-8 byte in the head", [0xff], "\uFFFD"],
+  ])("never repeats or drops body bytes after %s", async (_, raw, text) => {
+    const head = enc.encode(HEAD);
+    const bytes = new Uint8Array([...raw, ...head, ...BODY]);
+    const res = withSsrHead(
+      new Request("https://aidr.today/01234567"),
+      streamed(bytes, [raw.length + 4]),
+      undefined
+    );
+    const out = new Uint8Array(await res.arrayBuffer());
+    expect(out).toEqual(
+      new Uint8Array([
+        ...enc.encode(withBootScriptFirst(`${text}${HEAD}`)),
+        ...BODY,
+      ])
+    );
+  });
+
+  // With no `</head>` every byte is held until the stream ends, so a flush
+  // that drops or reorders the held chunks loses the page.
+  it("flushes every held byte in order when `</head>` never arrives", async () => {
+    const bytes = new Uint8Array([
+      ...enc.encode("<html><body><p>Đọc</p>"),
+      0xff,
+      ...enc.encode("<p>x</p></body></html></hea"),
+    ]);
+    const res = withSsrHead(
+      new Request("https://aidr.today/01234567"),
+      streamed(bytes, [3, 10, 17, 24, bytes.byteLength - 2]),
+      undefined
+    );
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+  });
+});
+
 describe("withSsrHead leaves API responses alone", () => {
   it("passes /api/* HTML through byte for byte, with no boot script", async () => {
     // 0xff is not valid UTF-8: a decode/encode pass would turn it into U+FFFD.
