@@ -84,29 +84,27 @@ export async function getWeekEdition(
   };
 }
 
-/** Newest first, for `/weeks`. Empty when the table is not migrated. */
+/** Newest first, for `/weeks`. A failed read throws, so the edge-cached
+ * index never stores an empty list it did not read. */
 export async function listWeekEditions(db: DbReader): Promise<WeekSummary[]> {
-  try {
-    const { results } = await db
-      .prepare(
-        `SELECT week, issue, start_date, end_date, intro_en, intro_vi,
-           json_array_length(item_ids) AS stories
-         FROM weekly_snapshots ORDER BY week DESC LIMIT ${WEEKS_INDEX_LIMIT}`
-      )
-      .all<WeekSummary>();
-    return (results ?? []).map((r) => ({
-      ...r,
-      intro_en: r.intro_en?.trim() || null,
-      intro_vi: r.intro_vi?.trim() || null,
-      stories: Number(r.stories) || 0,
-    }));
-  } catch {
-    return [];
-  }
+  const { results } = await db
+    .prepare(
+      `SELECT week, issue, start_date, end_date, intro_en, intro_vi,
+         json_array_length(item_ids) AS stories
+       FROM weekly_snapshots ORDER BY week DESC LIMIT ${WEEKS_INDEX_LIMIT}`
+    )
+    .all<WeekSummary>();
+  return (results ?? []).map((r) => ({
+    ...r,
+    intro_en: r.intro_en?.trim() || null,
+    intro_vi: r.intro_vi?.trim() || null,
+    stories: Number(r.stories) || 0,
+  }));
 }
 
-/** Week key that has an edition, or null. A cheap probe for the day page's
- * "this week" link so it never points at a 404. */
+/** Whether the week has an edition. A cheap probe for the day page's
+ * "this week" link so it never points at a 404. A failed read logs and
+ * answers false: the link is optional, so it must not fail the day page. */
 export async function weekEditionExists(
   db: DbReader,
   week: string
@@ -117,7 +115,8 @@ export async function weekEditionExists(
       .bind(week)
       .first();
     return row !== null;
-  } catch {
+  } catch (error) {
+    console.error("week edition probe failed", error);
     return false;
   }
 }

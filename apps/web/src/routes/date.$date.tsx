@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Home, Newspaper } from "lucide-react";
 import { DayBriefing } from "../components/DayBriefing";
 import { DaySection } from "../components/DaySection";
 import { DayVideo } from "../components/DayVideo";
+import { LoadErrorPage } from "../components/LoadErrorPage";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { TldrSection } from "../components/TldrSection";
 import {
@@ -16,6 +17,7 @@ import type { DayArchive } from "../lib/feed-queries";
 import { headRouteInput } from "../lib/head-route";
 import { formatDayHeading } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
+import { loadErrorHead, loadErrorHeaders } from "../lib/load-error";
 import { absoluteSiteUrl } from "../lib/locale-url";
 import { notFoundCopy } from "../lib/not-found";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
@@ -44,7 +46,9 @@ export const Route = createFileRoute("/date/$date")({
     return { kind: "day", archive };
   },
   headers: ({ loaderData, match }): Record<string, string> => {
-    if (!loaderData || loaderData.kind === "missing") {
+    // No loaderData: the loader threw and Start answers 500. Not a 404.
+    if (!loaderData) return loadErrorHeaders(match.context.lang);
+    if (loaderData.kind === "missing") {
       return {
         [NOT_FOUND_HEADER]: "1",
         "Cache-Control": "private, no-store",
@@ -65,9 +69,9 @@ export const Route = createFileRoute("/date/$date")({
     };
   },
   head: ({ loaderData, match }) => {
-    if (!loaderData || loaderData.kind === "missing") {
-      const lang = loaderData?.kind === "missing" ? loaderData.lang : "vi";
-      return notFoundHead(notFoundCopy(lang).documentTitle);
+    if (!loaderData) return loadErrorHead("day", match.context.lang);
+    if (loaderData.kind === "missing") {
+      return notFoundHead(notFoundCopy(loaderData.lang).documentTitle);
     }
     const lang = match.context.lang;
     const { archive } = loaderData;
@@ -101,6 +105,7 @@ export const Route = createFileRoute("/date/$date")({
     };
   },
   component: DayPage,
+  errorComponent: () => <LoadErrorPage subject="day" />,
 });
 
 function DayNav({ archive, lang }: { archive: DayArchive; lang: Lang }) {
