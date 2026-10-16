@@ -83,6 +83,19 @@ function PrivacyPage() {
           </li>
           <li>
             <strong className="text-foreground">
+              Aggregate request counts.
+            </strong>{" "}
+            For each request to the RSS feeds, the public API, the MCP server,{" "}
+            <code>llms.txt</code>, and the Markdown pages, we add one data point
+            to a Cloudflare Analytics Engine dataset. It holds the kind of
+            request, the route with ids and dates removed, the MCP tool name,
+            the response status, and one coarse client type (MCP client, feed
+            reader, browser, bot, or other). It holds no IP address, user agent,
+            query string, or identifier, and it is used only to see how much
+            each surface is read.
+          </li>
+          <li>
+            <strong className="text-foreground">
               Local settings and cache.
             </strong>{" "}
             Theme, language, and a copy of the last digest live in{" "}

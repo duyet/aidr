@@ -88,6 +88,7 @@ import {
   handleStoryMarkdownRequest,
   isStoryMarkdownPath,
 } from "./lib/story-markdown";
+import { recordRequestUsage } from "./lib/usage";
 import {
   handleWeekMarkdownRequest,
   isWeekMarkdownPath,
@@ -149,7 +150,7 @@ function isHtmlRequest(request: Request): boolean {
   );
 }
 
-export default {
+const worker = {
   async fetch(request: Request, env: Env, ctx?: ExecutionContext) {
     const publicFile = await handlePublicAsset(request, env);
     if (publicFile) return publicFile;
@@ -414,6 +415,15 @@ export default {
   },
   async scheduled(_controller: ScheduledController, env: Env) {
     await tickIngest(env);
+  },
+};
+
+export default {
+  ...worker,
+  async fetch(request: Request, env: Env, ctx?: ExecutionContext) {
+    const response = await worker.fetch(request, env, ctx);
+    recordRequestUsage(env, request, response);
+    return response;
   },
 };
 
