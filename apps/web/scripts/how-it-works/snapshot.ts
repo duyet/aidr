@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { rankScore, rankSignals } from "../../worker/ranking";
+import { rankScore, rankSignals, storyCategory } from "../../worker/ranking";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const HOURS = 30;
@@ -76,7 +76,7 @@ const items = rows.map((r) => {
     quality: Number(r.quality ?? 0),
     voteNet: Number(r.votes ?? 0),
     ...signals,
-    category: r.category == null ? null : String(r.category),
+    category: storyCategory(r.category == null ? null : String(r.category)),
   };
   return {
     ...base,

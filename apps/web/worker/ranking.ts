@@ -12,30 +12,36 @@ export interface RankScoreInput {
   sourceCount?: number;
   /** Net of signed-in reader votes on this item. 0 when nobody has voted. */
   voteNet?: number;
-  /** The scorer's category (`items.category`), null before scoring. Every
-   *  caller passes it, so a re-rank cannot silently drop the kind weight. */
-  category: string | null;
+  /** The scorer's category, parsed by `storyCategory`. Required, and
+   *  not nullable, so a caller that drops it fails to type-check instead of
+   *  scoring the story as flat. */
+  category: StoryCategory;
 }
 
 type Category = typeof import("./llm.js")["CATEGORIES"][number];
 
+/** A category the kind table weighs, or "" for an unscored row or a name
+ *  the scorer's list does not have. */
+export type StoryCategory = Category | "";
+
 /** Multiplier per story kind, keyed by the scorer's category. Model and
- *  tech launches rise, company and money news falls, everything else is
- *  flat. Replay over 14 days (2026-10-16, `rank-replay`, `base+K1`): gold
- *  "rise" stories in the top 10 went from 49.0% to 55.2% of slots and
- *  "fall" stories from 15.1% to 10.7%, with staleness, duplicate slots and
- *  the vote guards unchanged. Stronger weights (Models 1.35, Funding 0.75)
- *  bought three more points but cut fresh importance-8 stories reaching
- *  the top 10 from 73% to 67%. */
+ *  tech launches, government action (most breaking news) and agent
+ *  incidents (much of the drama) rise; company and money news falls;
+ *  everything else is flat. Replay over 14 days to 2026-10-16
+ *  (`rank-replay`, `base+K4`, gold set labelled before tuning): gold "rise"
+ *  stories held 54.4% of top-10 slots instead of 49.0% and "fall" stories
+ *  10.1% instead of 15.1%, with every rise kind at or above its old share
+ *  and staleness, duplicate slots and the vote guards unchanged. The first
+ *  table (`K1`: Regulation 1.05, Agents 1.1) cut breaking stories' share. */
 export const STORY_KIND_WEIGHTS: Readonly<Record<Category, number>> = {
   Models: 1.2,
+  Regulation: 1.2,
   "Open Source": 1.15,
+  Agents: 1.15,
   Research: 1.1,
   Chips: 1.1,
   Tools: 1.1,
-  Agents: 1.1,
   Frameworks: 1.05,
-  Regulation: 1.05,
   Products: 1,
   Infra: 1,
   Releases: 1,
@@ -44,9 +50,16 @@ export const STORY_KIND_WEIGHTS: Readonly<Record<Category, number>> = {
   Funding: 0.85,
 };
 
-/** 1 for an unscored item or a category the table does not know. */
-export function storyKindWeight(category: string | null): number {
-  return (STORY_KIND_WEIGHTS as Record<string, number>)[category ?? ""] ?? 1;
+/** Parses `items.category` (or a score result's) at the row boundary. An
+ *  own-key check, so "toString" or "constructor" read as unknown. */
+export function storyCategory(raw: string | null | undefined): StoryCategory {
+  return raw != null && Object.hasOwn(STORY_KIND_WEIGHTS, raw)
+    ? (raw as Category)
+    : "";
+}
+
+export function storyKindWeight(category: StoryCategory): number {
+  return category === "" ? 1 : STORY_KIND_WEIGHTS[category];
 }
 
 /** Independent-source corroboration in rank_score. */

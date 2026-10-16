@@ -47,7 +47,7 @@ function seed() {
       updated_at INTEGER NOT NULL,
       PRIMARY KEY (item_id, user_id))`);
   const add = db.prepare(
-    `INSERT INTO items VALUES (?, 'published', ?, 8, 8, NULL, 1, 'hn', 10, 0, ?, NULL)`
+    `INSERT INTO items VALUES (?, 'published', ?, 8, 8, 'Models', 1, 'hn', 10, 0, ?, NULL)`
   );
   const published = Math.floor(NOW / 1000) - 3600;
   add.run(ITEM, published, "https://example.com/a");
@@ -71,7 +71,9 @@ function expected(published: number, voteNet: number) {
     sourceCount: 1,
     publishedAt: published * 1000,
     now: NOW,
-    category: null,
+    // Seeded as Models: a vote that re-scores without the row's category
+    // would silently drop the story's kind weight.
+    category: "Models",
   });
 }
 

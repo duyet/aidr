@@ -97,6 +97,11 @@ describe("writeItems: merge into an existing canonical", () => {
     db.prepare(
       "INSERT INTO item_sources VALUES ('canon', 0, 'source', NULL, NULL, NULL, 'https://a.test')"
     ).run();
+    // Non-flat kinds on both write paths: the merge re-score and the 72h
+    // re-rank each read category from D1, and either could drop it.
+    db.exec(
+      "UPDATE items SET category = 'Models' WHERE id = 'canon'; UPDATE items SET category = 'Funding' WHERE id = 'other'"
+    );
 
     const extraSources = ["b", "c", "d"].map((h) => ({
       kind: "support" as const,
@@ -154,7 +159,7 @@ describe("writeItems: merge into an existing canonical", () => {
       comments: 20,
       publishedAt: (nowSec - 30 * 3600) * 1000,
       now,
-      category: null,
+      category: "Models",
       // hn, theverge-ai, aggregator, techcrunch-ai
       sourceCount: 4,
     });
@@ -170,8 +175,20 @@ describe("writeItems: merge into an existing canonical", () => {
     expect(sources.n).toBe(1 + extraSources.length);
     expect(row("canon").rank_score).toBeCloseTo(expected, 6);
     expect(row("canon").rank_score).toBeGreaterThan(6.7);
-    // The window re-rank still ran for the untouched item.
-    expect(row("other").rank_score).not.toBe(1);
+    // The window re-rank still ran for the untouched item, with its kind.
+    expect(row("other").rank_score).toBeCloseTo(
+      rankScore({
+        importance: 8,
+        quality: 8,
+        points: 0,
+        comments: 0,
+        sourceCount: 1,
+        publishedAt: (nowSec - 10 * 3600) * 1000,
+        now,
+        category: "Funding",
+      }),
+      6
+    );
   });
 
   it("logs a summary change before the item upsert and leaves title unlogged", async () => {
@@ -430,7 +447,7 @@ describe("writeItems: an official post takes the canonical", () => {
       quality: 5,
       publishedAt: (nowSec - 3600) * 1000,
       now,
-      category: null,
+      category: "" as const,
       ...rankSignals([
         { sourceId: "official", points: 0, comments: 0, url: OFFICIAL_URL },
       ]),

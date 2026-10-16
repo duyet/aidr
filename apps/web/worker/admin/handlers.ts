@@ -30,6 +30,7 @@ import {
   type RankSignalRow,
   rankScore,
   rowRankSignals,
+  storyCategory,
 } from "../ranking.js";
 import { adapters } from "../sources/registry.js";
 import type { SourceLanguage } from "../sources/types.js";
@@ -476,7 +477,7 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
           publishedAt: row.published_at * 1000,
           now,
           ...signals,
-          category: row.category,
+          category: storyCategory(row.category),
         }),
         inputs: {
           relevance: row.llm_relevance,
@@ -994,7 +995,7 @@ export async function reprocessToday(
           publishedAt: row.published_at * 1000,
           now: Date.now(),
           ...rowRankSignals(row),
-          category: score.category,
+          category: storyCategory(score.category),
         });
         statements.push(
           env.DB.prepare(
@@ -1163,7 +1164,7 @@ export async function updateItem(
       publishedAt: row.published_at * 1000,
       now: Date.now(),
       ...rowRankSignals(row),
-      category: row.category,
+      category: storyCategory(row.category),
     });
 
     await env.DB.prepare(

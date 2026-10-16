@@ -411,7 +411,7 @@ class FakeD1 {
 
     if (
       sql.startsWith(
-        "SELECT id, published_at, llm_relevance, llm_importance, llm_quality, source_id, points, comments, url AS signal_url, COALESCE(merged.members"
+        "SELECT id, published_at, llm_relevance, llm_importance, llm_quality, category, source_id, points, comments, url AS signal_url, COALESCE(merged.members"
       )
     ) {
       const [id] = args as [string];

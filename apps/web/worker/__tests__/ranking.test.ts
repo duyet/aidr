@@ -20,6 +20,7 @@ import {
   rowRankSignals,
   STORY_KIND_WEIGHTS,
   sourceBoost,
+  storyCategory,
   storyKindWeight,
   voteFactor,
 } from "../ranking.js";
@@ -35,7 +36,7 @@ describe("rankScore", () => {
       comments: 20,
       publishedAt: NOW,
       now: NOW,
-      category: null,
+      category: "" as const,
     });
     const old = rankScore({
       importance: 8,
@@ -44,7 +45,7 @@ describe("rankScore", () => {
       comments: 20,
       publishedAt: NOW - 48 * 60 * 60 * 1000,
       now: NOW,
-      category: null,
+      category: "" as const,
     });
     expect(old).toBeLessThan(fresh);
   });
@@ -55,7 +56,7 @@ describe("rankScore", () => {
       quality: 5,
       publishedAt: NOW,
       now: NOW,
-      category: null,
+      category: "" as const,
     };
     const low = rankScore({ ...base, points: 1, comments: 0 });
     const high = rankScore({ ...base, points: 500, comments: 200 });
@@ -70,7 +71,7 @@ describe("rankScore", () => {
       comments: 10,
       publishedAt: NOW,
       now: NOW,
-      category: null,
+      category: "" as const,
     };
     const plain = rankScore(base);
     expect(rankScore({ ...base, voteNet: 5 })).toBeGreaterThan(plain);
@@ -92,7 +93,7 @@ describe("rankScore", () => {
       comments: 5,
       publishedAt: NOW,
       now: NOW,
-      category: null,
+      category: "" as const,
     };
     const lowQuality = rankScore({ ...base, quality: 1 });
     const highQuality = rankScore({ ...base, quality: 10 });
@@ -106,7 +107,7 @@ describe("rankScore", () => {
       comments: 5,
       publishedAt: NOW,
       now: NOW,
-      category: null,
+      category: "" as const,
     };
     const lowImportance = rankScore({ ...base, importance: 1 });
     const highImportance = rankScore({ ...base, importance: 10 });
@@ -121,7 +122,7 @@ describe("rankScore", () => {
       comments: 0,
       publishedAt: NOW,
       now: NOW,
-      category: null,
+      category: "" as const,
     });
     expect(score).toBeGreaterThanOrEqual(0);
   });
@@ -137,7 +138,7 @@ describe("rank reachability", () => {
       comments: 40,
       publishedAt: NOW,
       now: NOW,
-      category: null,
+      category: "" as const,
     });
     expect(score).toBeGreaterThanOrEqual(25);
   });
@@ -150,7 +151,7 @@ describe("rank reachability", () => {
       comments: 4,
       publishedAt: NOW,
       now: NOW,
-      category: null,
+      category: "" as const,
     };
     const thin = rankScore({ ...base, sourceCount: 1 });
     const backed = rankScore({ ...base, sourceCount: 4 });
@@ -166,7 +167,7 @@ describe("rank reachability", () => {
       comments: 4,
       publishedAt: NOW,
       now: NOW,
-      category: null,
+      category: "" as const,
     };
     const eight = rankScore({ ...base, sourceCount: 8 });
     const twenty = rankScore({ ...base, sourceCount: 20 });
@@ -184,7 +185,7 @@ describe("rank reachability", () => {
       comments: 10,
       publishedAt: NOW - 6 * 60 * 60 * 1000,
       now: NOW,
-      category: null,
+      category: "" as const,
     });
     expect(score).toBeLessThan(25);
   });
@@ -201,7 +202,7 @@ describe("hourly re-rank keeps the source boost", () => {
     comments: 25,
     publishedAt: 1_790_659_371_000,
     now: 1_790_659_371_000 + 8.09 * 3_600_000,
-    category: null,
+    category: "" as const,
   };
 
   it("prices the dropped sourceCount at the full boost", () => {
@@ -272,7 +273,7 @@ describe("corroboration counts independent outlets, not tweets", () => {
       quality: 6,
       publishedAt: NOW,
       now: NOW,
-      category: null,
+      category: "" as const,
     };
     expect(rankScore({ ...base, ...signals })).toBeGreaterThan(
       rankScore({ ...base, ...rankSignals([member("huggingnews", 120, 319)]) })
@@ -357,7 +358,7 @@ describe("reader votes", () => {
       quality: 8,
       publishedAt: NOW - 30 * 3_600_000,
       now: NOW,
-      category: null,
+      category: "" as const,
       comments: 0,
     };
     // Yandex outage 2026-10-11: with the old weight-10-in-the-log term, one
@@ -380,7 +381,7 @@ describe("ranking rules from the 2026-10-11 replay", () => {
     comments: 20,
     sourceCount: 1,
     now: NOW,
-    category: null,
+    category: "" as const,
   };
 
   it("decays faster after 24h than the plain 36h curve", () => {
@@ -467,7 +468,7 @@ describe("ranking rules, literal anchors", () => {
     comments: 20,
     sourceCount: 1,
     now: NOW,
-    category: null,
+    category: "" as const,
   };
 
   it("pins the importance curve: 10 stays 10, 7 is about 5.86", () => {
@@ -539,7 +540,7 @@ describe("rankScore on malformed input", () => {
     comments: 2,
     publishedAt: NOW,
     now: NOW,
-    category: null,
+    category: "" as const,
   };
 
   it.each([
@@ -583,7 +584,7 @@ describe("rankScore on malformed input", () => {
   });
 });
 
-describe("story kind weights (2026-10-16 replay, base+K1)", () => {
+describe("story kind weights (2026-10-16 replay, base+K4)", () => {
   const sixHoursAgo = NOW - 6 * 3_600_000;
 
   it("lets a 9.0 model release from a quiet outlet outrank an importance-5 HN story with 40 points", () => {
@@ -621,15 +622,59 @@ describe("story kind weights (2026-10-16 replay, base+K1)", () => {
       publishedAt: NOW,
       now: NOW,
     };
-    const flat = rankScore({ ...input, category: null });
+    const flat = rankScore({ ...input, category: "" });
     expect(rankScore({ ...input, category: "Industry" })).toBeLessThan(flat);
     expect(rankScore({ ...input, category: "Models" }) / flat).toBeCloseTo(
       STORY_KIND_WEIGHTS.Models,
       10
     );
-    // An unscored item or a category the table does not know is flat.
-    expect(storyKindWeight(null)).toBe(1);
-    expect(storyKindWeight("Weather")).toBe(1);
+  });
+
+  it("keeps breaking and drama kinds level with the tech lift", () => {
+    // The first table (Regulation 1.05, Agents 1.1) let model and tool
+    // stories push government action out of the top 10: breaking stories
+    // lost a tenth of their slots in the replay.
+    const input = {
+      importance: 8,
+      quality: 6,
+      points: 10,
+      comments: 2,
+      publishedAt: NOW,
+      now: NOW,
+    };
+    const models = rankScore({ ...input, category: "Models" });
+    expect(
+      rankScore({ ...input, category: "Regulation" })
+    ).toBeGreaterThanOrEqual(models);
+    expect(rankScore({ ...input, category: "Agents" })).toBeGreaterThan(
+      rankScore({ ...input, category: "Tools" })
+    );
+  });
+
+  it("parses an unscored row, an unknown name or a prototype key as flat, never as a zero score", () => {
+    const input = {
+      importance: 7,
+      quality: 6,
+      points: 10,
+      comments: 2,
+      publishedAt: NOW,
+      now: NOW,
+    };
+    const flat = rankScore({ ...input, category: "" });
+    expect(flat).toBeGreaterThan(0);
+    for (const raw of [
+      null,
+      undefined,
+      "Weather",
+      "toString",
+      "constructor",
+      "__proto__",
+    ]) {
+      expect(storyCategory(raw)).toBe("");
+      expect(rankScore({ ...input, category: storyCategory(raw) })).toBe(flat);
+    }
+    expect(storyCategory("Models")).toBe("Models");
+    expect(storyKindWeight("")).toBe(1);
   });
 
   it("weighs every scorer category, within a band a typo would leave", () => {
@@ -652,7 +697,7 @@ describe("story kind weights (2026-10-16 replay, base+K1)", () => {
       now: 0,
     };
     const models = rankScoreWithoutBreaking({ ...input, category: "Models" });
-    const flat = rankScoreWithoutBreaking({ ...input, category: null });
+    const flat = rankScoreWithoutBreaking({ ...input, category: "" });
     expect(models).toBeGreaterThan(flat);
     expect(models / flat).toBeCloseTo(STORY_KIND_WEIGHTS.Models, 10);
     // At age zero rankScore carries the x1.4 breaking boost; the weekly path must not.

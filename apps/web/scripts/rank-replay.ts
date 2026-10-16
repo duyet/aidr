@@ -35,6 +35,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import {
   hasReaderEngagement,
   rankScore,
@@ -247,11 +248,36 @@ const BASE_LEVERS: Levers = {
   breakingRiseImportance: null,
 };
 
-/** The table production ships (`STORY_KIND_WEIGHTS`): Models, Open
- *  Source, Research, Chips, Tools, Agents and Frameworks carry the "new
- *  model / more tech" ask; Industry and Funding carry the markets, HR, ads
- *  and analyst pieces the owner wants lower. */
-const KIND_MILD: Record<string, number> = STORY_KIND_WEIGHTS;
+/** The first table (PR #917 head 8155e75c): Models, Open Source,
+ *  Research, Chips, Tools, Agents and Frameworks carry the "new model /
+ *  more tech" ask; Industry and Funding carry the markets, HR, ads and
+ *  analyst pieces the owner wants lower. Literal, like every table here,
+ *  so a retune of `STORY_KIND_WEIGHTS` cannot move a measured row. */
+const KIND_MILD: Record<string, number> = {
+  Models: 1.2,
+  "Open Source": 1.15,
+  Research: 1.1,
+  Chips: 1.1,
+  Tools: 1.1,
+  Agents: 1.1,
+  Frameworks: 1.05,
+  Regulation: 1.05,
+  Products: 1,
+  Infra: 1,
+  Releases: 1,
+  Data: 1,
+  Industry: 0.9,
+  Funding: 0.85,
+};
+
+/** `KIND_MILD` with government action (Regulation) and agent incidents
+ *  (Agents) lifted, so breaking and drama stories keep their top-10 share
+ *  while the model and tech stories rise. What `STORY_KIND_WEIGHTS` ships. */
+const KIND_BREAKING: Record<string, number> = {
+  ...KIND_MILD,
+  Regulation: 1.2,
+  Agents: 1.15,
+};
 
 const KIND_STRONG: Record<string, number> = {
   Models: 1.35,
@@ -273,6 +299,10 @@ const LEVER_PATCHES: Record<string, Partial<Levers>> = {
   K1: { kindWeights: KIND_MILD },
   K2: { kindWeights: KIND_STRONG },
   K3: { kindWeights: { ...KIND_MILD, Industry: 0.85, Funding: 0.8 } },
+  K4: { kindWeights: KIND_BREAKING },
+  K5: { kindWeights: { ...KIND_MILD, Industry: 1 } },
+  K6: { kindWeights: { ...KIND_MILD, Regulation: 1.1 } },
+  K7: { kindWeights: { ...KIND_BREAKING, Agents: 1.2, Models: 1.25 } },
   R: { drama: 1.2 },
   B75: { breakingImportance: 7.5 },
   BK: { breakingRiseImportance: 7 },
@@ -280,7 +310,7 @@ const LEVER_PATCHES: Record<string, Partial<Levers>> = {
 
 /** The lever set `worker/ranking.ts` implements today. Update it in the
  *  same commit as the formula, or the startup check fails. */
-export const PRODUCTION_LEVERS = "base+K1";
+export const PRODUCTION_LEVERS = "base+K4";
 
 function clamp10(value: number): number {
   return Number.isFinite(value) ? Math.min(10, Math.max(0, value)) : 0;
@@ -320,7 +350,9 @@ function buildLevers(levers: Levers): Formula {
     const weighted =
       importance ** FROZEN.importanceExponent /
       10 ** (FROZEN.importanceExponent - 1);
-    const kindWeight = levers.kindWeights[i.category] ?? 1;
+    const kindWeight = Object.hasOwn(levers.kindWeights, i.category)
+      ? levers.kindWeights[i.category]
+      : 1;
     const drama =
       levers.drama !== 1 && storyKind(i.title) === "drama" ? levers.drama : 1;
     const breakingFrom =
@@ -351,16 +383,10 @@ function buildLevers(levers: Levers): Formula {
 export function formulaFromName(name: string): Formula | undefined {
   if (name === "production") return productionFormula;
   if (name === "current") return build(BASE);
-  if (name === "base") return buildLevers(BASE_LEVERS);
   const parts = name.split("+");
   if (parts[0] === "base") {
-    const levers = { ...BASE_LEVERS };
-    for (const part of parts.slice(1)) {
-      const patch = LEVER_PATCHES[part];
-      if (!patch) return undefined;
-      Object.assign(levers, patch);
-    }
-    return buildLevers(levers);
+    const levers = leversFromName(name);
+    return levers && buildLevers(levers);
   }
   const knobs = { ...BASE };
   for (const part of parts) {
@@ -369,6 +395,18 @@ export function formulaFromName(name: string): Formula | undefined {
     Object.assign(knobs, patch);
   }
   return build(knobs);
+}
+
+function leversFromName(name: string): Levers | undefined {
+  const [head, ...patches] = name.split("+");
+  if (head !== "base") return undefined;
+  const levers = { ...BASE_LEVERS };
+  for (const part of patches) {
+    const patch = LEVER_PATCHES[part];
+    if (!patch) return undefined;
+    Object.assign(levers, patch);
+  }
+  return levers;
 }
 
 const productionFormula: Formula = (i) =>
@@ -636,6 +674,9 @@ export interface Metrics {
   fallTop10: number;
   /** Mean over gold `rise` items of the best 1-based position they reach. */
   meanBestRise: number;
+  /** `riseTop10` split by the gold row's `kind`, and the story-hours behind
+   *  each share (slots summed over replay hours). */
+  riseTop10ByKind: Record<string, { share: number; slots: number }>;
 }
 
 function median(xs: number[]): number {
@@ -728,6 +769,7 @@ export function evaluate(
   const rise10: number[] = [];
   const rise30: number[] = [];
   const fall10: number[] = [];
+  const riseSlotsByKind = new Map<string, number>();
   const bestRise = new Map<string, number>();
   const firstTop10 = new Map<string, number>();
 
@@ -761,6 +803,11 @@ export function evaluate(
     if (gold.size) {
       const label = (p: Prepared) => gold.get(p.item.id)?.label;
       rise10.push(top10.filter((p) => label(p) === "rise").length / 10);
+      for (const p of top10) {
+        const row = gold.get(p.item.id);
+        if (row?.label !== "rise") continue;
+        riseSlotsByKind.set(row.kind, (riseSlotsByKind.get(row.kind) ?? 0) + 1);
+      }
       fall10.push(top10.filter((p) => label(p) === "fall").length / 10);
       rise30.push(top30.filter((p) => label(p) === "rise").length / 30);
       ordered.forEach((p, index) => {
@@ -832,14 +879,28 @@ export function evaluate(
     riseTop30: mean(rise30),
     fallTop10: mean(fall10),
     meanBestRise: mean([...bestRise.values()]),
+    riseTop10ByKind: Object.fromEntries(
+      [...riseSlotsByKind].map(([kind, slots]) => [
+        kind,
+        { share: slots / (10 * rise10.length), slots },
+      ])
+    ),
   };
 }
 
-/** `base` plus `PRODUCTION_LEVERS` must be `rankScore`, item for item. */
+/** `base` plus `PRODUCTION_LEVERS` must be `rankScore`, item for item, and
+ *  its kind table must be `STORY_KIND_WEIGHTS` key for key (the item check
+ *  misses a category no cached item carries). */
 function checkProductionMatches(prepared: Prepared[], hours: number[]): void {
-  const described = formulaFromName(PRODUCTION_LEVERS);
-  if (!described)
+  const levers = leversFromName(PRODUCTION_LEVERS);
+  if (!levers)
     throw new Error(`unknown PRODUCTION_LEVERS ${PRODUCTION_LEVERS}`);
+  if (!isDeepStrictEqual({ ...STORY_KIND_WEIGHTS }, levers.kindWeights)) {
+    throw new Error(
+      `rank-replay: STORY_KIND_WEIGHTS differs from the "${PRODUCTION_LEVERS}" table; add the new table as a patch, measure it, and point PRODUCTION_LEVERS at it`
+    );
+  }
+  const described = buildLevers(levers);
   let worst = 0;
   let checked = 0;
   for (const now of hours) {
@@ -1012,6 +1073,32 @@ function main(): void {
       [
         name.padEnd(width),
         ...cols.map(([, f]) => f(results[name]).padStart(10)),
+      ].join(" ")
+    );
+  }
+  const kinds = [
+    ...new Set(
+      [...gold.values()].filter((g) => g.label === "rise").map((g) => g.kind)
+    ),
+  ].sort();
+  if (kinds.length === 0) return;
+  console.log(
+    `\nrise@10 by gold kind (share of top-10 slots, story-hours)\n${[
+      "formula".padEnd(width),
+      ...kinds.map((k) => k.padStart(14)),
+    ].join(" ")}`
+  );
+  for (const name of names) {
+    const byKind = results[name].riseTop10ByKind;
+    console.log(
+      [
+        name.padEnd(width),
+        ...kinds.map((k) => {
+          const cell = byKind[k] ?? { share: 0, slots: 0 };
+          return `${cell.share.toFixed(3)} ${String(cell.slots).padStart(4)}`.padStart(
+            14
+          );
+        }),
       ].join(" ")
     );
   }

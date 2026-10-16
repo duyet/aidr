@@ -4,6 +4,7 @@ import {
   type RankSignalRow,
   rankScore,
   rowRankSignals,
+  storyCategory,
 } from "./ranking.js";
 
 /** Story ids are the sha256 hex of the canonical URL. */
@@ -54,7 +55,7 @@ function scoreOf(row: RankRow, nowMs: number): number {
     publishedAt: row.published_at * 1000,
     now: nowMs,
     ...rowRankSignals(row),
-    category: row.category,
+    category: storyCategory(row.category),
   });
 }
 

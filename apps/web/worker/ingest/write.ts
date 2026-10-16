@@ -18,6 +18,7 @@ import {
   rankScore,
   rankSignals,
   rowRankSignals,
+  storyCategory,
 } from "../ranking.js";
 import type { FetchedItemSource } from "../sources/types.js";
 import { toEpochSeconds } from "../time.js";
@@ -178,7 +179,7 @@ async function existingCanonicalStatements(
         // The window re-rank reads vote_net itself. This write skips that
         // row, so the merge score has to carry the votes or they vanish.
         voteNet: existingRow.vote_net ?? 0,
-        category: existingRow.category,
+        category: storyCategory(existingRow.category),
       })
     : null;
 
@@ -298,7 +299,7 @@ async function rerankRecentStatements(
         publishedAt: row.published_at * 1000,
         now,
         ...rowRankSignals(row),
-        category: row.category,
+        category: storyCategory(row.category),
       }),
     }));
   if (scores.length === 0) return [];

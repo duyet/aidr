@@ -38,8 +38,10 @@ const {
   rankWeeklyCandidates,
   sanitizeWeeklyOutput,
   weeklyGateReason,
+  weeklyScore,
   WEEKLY_RETRY_MS,
 } = await import("../weekly.js");
+const { STORY_KIND_WEIGHTS } = await import("../ranking.js");
 const { generateWeekly } = await import("../ingest/publish.js");
 const { evaluateHealth } = await import("../health.js");
 
@@ -531,6 +533,31 @@ describe("loadWeeklyCandidates engagement", () => {
     // The HN copy merged into it supplies the reader signal.
     expect(c?.points).toBe(120);
     expect(c?.comments).toBe(30);
+  });
+
+  it("carries the stored category into the weekly score's kind weight", async () => {
+    // Dropping category on load or in weeklyScore would score every weekly
+    // story flat while the daily ranking weighs it.
+    const d = db([
+      {
+        ...base,
+        category: "Models",
+        id: "release",
+        source_id: "hn",
+        points: 50,
+        comments: 10,
+        merged_members: "[]",
+      },
+    ]);
+    const [c] = await loadWeeklyCandidates(
+      { DB: d as unknown as D1Database },
+      "2026-W41"
+    );
+    if (!c) throw new Error("expected one candidate");
+    expect(weeklyScore(c) / weeklyScore({ ...c, category: null })).toBeCloseTo(
+      STORY_KIND_WEIGHTS.Models,
+      10
+    );
   });
 
   it("bounds cited stories to the week", async () => {

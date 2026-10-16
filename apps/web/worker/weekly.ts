@@ -23,7 +23,11 @@ import {
   TRANSLATE_FIRST_TOKEN_MS,
   VI_STYLE,
 } from "./llm.js";
-import { rankScoreWithoutBreaking, rowRankSignals } from "./ranking.js";
+import {
+  rankScoreWithoutBreaking,
+  rowRankSignals,
+  storyCategory,
+} from "./ranking.js";
 import { pickDiverse } from "./source-diversity.js";
 import { looksVietnamese } from "./tldr-lang.js";
 import { viSystemPrompt } from "./translation-knowledge.js";
@@ -109,7 +113,7 @@ export function weeklyScore(c: WeeklyCandidate): number {
     publishedAt: 0,
     now: 0,
     voteNet: c.vote_net,
-    category: c.category,
+    category: storyCategory(c.category),
   });
   const days = Math.min(c.editionDays, EDITION_DAY_CAP);
   const top = c.bestPosition !== null && c.bestPosition < 3;

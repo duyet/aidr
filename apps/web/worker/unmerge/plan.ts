@@ -51,6 +51,7 @@ import {
   type RankMember,
   rankScore,
   rankSignals,
+  storyCategory,
 } from "../ranking.js";
 import { officialSourceFor } from "../sources/catalog.js";
 import type {
@@ -1696,7 +1697,7 @@ function clusterScore(
     now: freezeNowMs(row.published_at, nowMs),
     ...rankSignals(cluster),
     voteNet: row.vote_net,
-    category: row.category ?? null,
+    category: storyCategory(row.category),
   });
 }
 
