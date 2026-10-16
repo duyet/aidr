@@ -291,6 +291,23 @@ describe("handleDayMarkdownRequest", () => {
     expect(empty.status).toBe(404);
   });
 
+  // A D1 blip on a real day must not tell crawlers the URL is gone (#904).
+  it("500s, uncached and without D1 text, when the read fails", async () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    getDayArchive.mockRejectedValue(
+      new Error("D1_ERROR: Network connection lost.")
+    );
+    const res = await handleDayMarkdownRequest(
+      request("/date/2026-08-01.md?lang=en"),
+      DB,
+      NOW
+    );
+    expect(res.status).toBe(500);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+    expect(await res.text()).not.toContain("D1_ERROR");
+    quiet.mockRestore();
+  });
+
   it("rejects bad locales and non-GET methods, and 503s without D1", async () => {
     expect(
       (
