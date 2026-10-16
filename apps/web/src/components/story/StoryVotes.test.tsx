@@ -125,6 +125,7 @@ describe("StoryVotes while a session's Clerk SDK loads", () => {
   function expectPending(outer: ReturnType<typeof vi.fn>) {
     const thumb = screen.getByRole("button", { name: "Loading your vote" });
     expect(thumb.hasAttribute("disabled")).toBe(true);
+    expect(thumb.hasAttribute("aria-pressed")).toBe(false);
     expect(thumb.textContent).toContain("4");
     fireEvent.click(thumb);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -278,4 +279,48 @@ describe("StoryVotes signed in", () => {
     }
     expect(outer).not.toHaveBeenCalled();
   });
+});
+
+// The mine/net caches are module state, so each case votes on its own item.
+describe("StoryVotes signed-in error rollback", () => {
+  const cases = [
+    { status: 429, held: 0 as const, net: 4, label: "Upvote" },
+    { status: 500, held: 0 as const, net: 4, label: "Upvote" },
+    { status: 429, held: 1 as const, net: 5, label: "Remove upvote" },
+    { status: 500, held: 1 as const, net: 5, label: "Remove upvote" },
+  ];
+
+  it.each(cases)(
+    "restores the previous state and count when the cast fails with $status (held vote $held)",
+    async ({ status, held, net, label }) => {
+      const item = `rollback${status}${held}deadbeef`;
+      vote.mine.mockResolvedValue({
+        votes: held ? { [item]: 1 } : {},
+        nets: { [item]: net },
+      });
+      vote.cast.mockRejectedValue(
+        Object.assign(new Error(`cast failed ${status}`), { status })
+      );
+      render(
+        withClerk(
+          <StoryVotes itemId={item} voteNet={net} lang="en" />,
+          signedInClerk()
+        )
+      );
+      const thumb = await screen.findByRole("button", { name: label });
+      await waitFor(() => expect(thumb.hasAttribute("disabled")).toBe(false));
+
+      await act(async () => {
+        fireEvent.click(thumb);
+      });
+
+      await waitFor(() => expect(vote.cast).toHaveBeenCalledTimes(1));
+      const restored = await screen.findByRole("button", { name: label });
+      await waitFor(() =>
+        expect(restored.hasAttribute("disabled")).toBe(false)
+      );
+      expect(restored.getAttribute("aria-pressed")).toBe(String(held === 1));
+      expect(restored.textContent).toContain(String(net));
+    }
+  );
 });

@@ -163,7 +163,6 @@ function PendingVotes({ voteNet, lang }: { voteNet: number; lang: Lang }) {
     <Thumb
       voteNet={voteNet}
       lang={lang}
-      pressed={false}
       disabled
       label={COPY[lang].pending}
       onClick={() => {}}
