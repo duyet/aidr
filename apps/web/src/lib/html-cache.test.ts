@@ -3,7 +3,11 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { ASSET_RETENTION_MS } from "./deploy-assets";
-import { EDGE_CACHE_STALE_S, edgeCacheKey } from "./edge-cache";
+import {
+  EDGE_CACHE_FRESH_MAX_S,
+  EDGE_CACHE_STALE_S,
+  edgeCacheKey,
+} from "./edge-cache";
 
 const WEB_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -85,8 +89,8 @@ function seconds(cacheControl: string, directive: string): number {
 
 /**
  * Longest a copy of this HTML can be served after it was rendered. The Worker
- * cache holds an entry for its `s-maxage` plus the stale window it serves
- * while revalidating. The CDN restarts `age` at 0 when it stores a
+ * cache holds an entry for its `s-maxage` (capped) plus the stale window it
+ * serves while revalidating. The CDN restarts `age` at 0 when it stores a
  * Worker-cache hit, so the two layers add; a browser counts from the CDN's
  * `age`, so it overlaps the CDN layer.
  */
@@ -103,8 +107,9 @@ function htmlLifetimeSeconds(cacheControl: string, samplePage: string): number {
     ? Math.max(seconds(cacheControl, "max-age"), ZONE_BROWSER_TTL_S)
     : seconds(cacheControl, "max-age");
   return (
-    (workerCached ? sMaxAge + EDGE_CACHE_STALE_S : 0) +
-    Math.max(sMaxAge + stale, browser + stale)
+    (workerCached
+      ? Math.min(sMaxAge, EDGE_CACHE_FRESH_MAX_S) + EDGE_CACHE_STALE_S
+      : 0) + Math.max(sMaxAge + stale, browser + stale)
   );
 }
 
@@ -141,6 +146,8 @@ describe("HTML cache lifetime", () => {
     expect(htmlLifetimeSeconds(cc, "/?lang=en")).toBe(
       300 + 3600 + 14_400 + 600
     );
-    expect(htmlLifetimeSeconds(cc, "/date/2026-01-01?lang=en")).toBe(900);
+    expect(htmlLifetimeSeconds(cc, "/date/2026-01-01?lang=en")).toBe(
+      300 + 3600 + 14_400 + 600
+    );
   });
 });

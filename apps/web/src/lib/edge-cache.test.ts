@@ -66,6 +66,29 @@ describe("edgeCacheKey", () => {
     );
   });
 
+  // Defect: /date and /week re-rendering on every request (they are not
+  // localized paths in locale-routing, so no cache ever held them).
+  it("keys day and week archives like story pages, not their Markdown twins", () => {
+    expect(
+      edgeCacheKey(get("https://aidr.today/date/2026-10-12?lang=en"))?.url
+    ).toContain("/date/2026-10-12?");
+    expect(
+      edgeCacheKey(get("https://aidr.today/week/2026-W41?lang=vi"))?.url
+    ).toContain("/week/2026-W41?");
+    expect(edgeCacheKey(get("https://aidr.today/date/2026-10-12"))).toBeNull();
+    expect(
+      edgeCacheKey(get("https://aidr.today/date/2026-10-12.md?lang=en"))
+    ).toBeNull();
+    expect(
+      bareLocalizedCacheLang(
+        get("https://aidr.today/date/2026-10-12", { cookie: "news_lang=vi" })
+      )
+    ).toBe("vi");
+    expect(
+      bareLocalizedCacheLang(get("https://aidr.today/week/2026-W41"))
+    ).toBe("vi");
+  });
+
   it("never keys bare / (locale from cookie/Accept-Language)", () => {
     expect(edgeCacheKey(get("https://aidr.today/"))).toBeNull();
     expect(edgeCacheKey(get("https://aidr.today/?utm_source=x"))).toBeNull();
@@ -336,6 +359,29 @@ describe("stale-while-revalidate", () => {
     expect(again.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
     expect(await again.text()).toBe("<html>v1</html>");
     expect(render).toHaveBeenCalledTimes(2);
+    await Promise.all(pending);
+  });
+
+  // Defect: a settled day archive (`s-maxage=86400`) staying fresh in the
+  // Worker for a day, so Worker + CDN lifetime outlives the /assets/* chunks
+  // its HTML names (issue #702).
+  it("caps the fresh window at an hour whatever s-maxage the page declares", async () => {
+    const { ctx, pending } = setup();
+    const settled = async () =>
+      page({
+        "cache-control":
+          "public, max-age=3600, s-maxage=86400, stale-while-revalidate=43200",
+      });
+    await cachedSsrResponse(get(EXT), ctx, settled);
+    await Promise.all(pending);
+    expect(store.values().next().value?.headers.get("cache-control")).toBe(
+      "s-maxage=7200"
+    );
+    advance(3601);
+    const render = vi.fn(settled);
+    const out = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    expect(render).toHaveBeenCalledOnce();
     await Promise.all(pending);
   });
 

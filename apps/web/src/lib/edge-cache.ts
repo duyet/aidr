@@ -23,6 +23,17 @@ import {
 import { hasCanonicalLocaleQuery } from "./locale-url";
 
 export const EDGE_CACHE_HEADER = "x-aidr-cache";
+/**
+ * Day and week archives pick their locale like a story page but stamp their
+ * own Cache-Control in the route, so `locale-routing` does not list them as
+ * localized. They cache the same way: keyed by `?lang=`, or by the resolved
+ * language when bare.
+ */
+const ARCHIVE_SSR_PATH = /^\/(?:date\/\d{4}-\d{2}-\d{2}|week\/\d{4}-W\d{2})$/;
+
+function isLocaleKeyedSsrPath(pathname: string): boolean {
+  return isLocalizedSsrPath(pathname) || ARCHIVE_SSR_PATH.test(pathname);
+}
 /** Bump to orphan every stored page after a markup-shape change. */
 const EDGE_CACHE_VERSION = "2";
 /**
@@ -31,6 +42,12 @@ const EDGE_CACHE_VERSION = "2";
  * within about two editions of the live one.
  */
 export const EDGE_CACHE_STALE_S = 3600;
+/**
+ * Cap on the fresh window, whatever `s-maxage` a page declares: a settled day
+ * archive says a day, and Worker fresh + stale + CDN lifetime must stay under
+ * `ASSET_RETENTION_MS` (html-cache.test.ts) or the HTML outlives its chunks.
+ */
+export const EDGE_CACHE_FRESH_MAX_S = 3600;
 
 type WaitUntil = { waitUntil?: (p: Promise<unknown>) => void } | undefined;
 
@@ -96,7 +113,7 @@ export function edgeCacheKey(request: Request): Request | null {
     if (!locale.ok) return null;
     url.searchParams.set("__l", locale.lang);
   } else if (
-    !(isLocalizedSsrPath(url.pathname) && hasCanonicalLocaleQuery(url.search))
+    !(isLocaleKeyedSsrPath(url.pathname) && hasCanonicalLocaleQuery(url.search))
   ) {
     return null;
   }
@@ -185,16 +202,18 @@ function entryState(hit: Response): Exclude<CacheState, "MISS"> | "EXPIRED" {
 const revalidating = new Set<string>();
 
 /**
- * Match policy shared by both entry points. `freshFor` returns the seconds a
- * render counts as fresh, or 0 when it must not be stored.
+ * Match policy shared by both entry points. `declaredFresh` returns the
+ * seconds a render counts as fresh, or 0 when it must not be stored.
  */
 async function serveThroughCache(
   cache: Cache,
   key: Request,
   ctx: WaitUntil,
   render: () => Promise<Response>,
-  freshFor: (response: Response) => number
+  declaredFresh: (response: Response) => number
 ): Promise<Response> {
+  const freshFor = (response: Response) =>
+    Math.min(declaredFresh(response), EDGE_CACHE_FRESH_MAX_S);
   const hit = await cache.match(key).catch(() => undefined);
   if (hit) {
     const state = entryState(hit);
@@ -254,7 +273,7 @@ export function bareLocalizedCacheLang(request: Request): string | null {
   if (!/(^|,)\s*(\*\/\*|text\/html)/.test(accept)) return null;
   if (hasAuthSignal(request)) return null;
   const url = normalizedCacheUrl(request.url);
-  if (!isLocalizedSsrPath(url.pathname)) return null;
+  if (!isLocaleKeyedSsrPath(url.pathname)) return null;
   if (hasCanonicalLocaleQuery(url.search)) return null;
   if (isPrivateSsrPath(url.pathname, url.search)) return null;
   const locale = resolveLocale({
