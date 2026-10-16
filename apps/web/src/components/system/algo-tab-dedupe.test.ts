@@ -80,12 +80,12 @@ describe("data tab spacing", () => {
 
   it("keeps the spacing in one shared module", () => {
     expect(read("tab-spacing.ts")).toContain("export const TAB_PANEL");
-    // The route's admin panel is the seventh body; it must not drift either.
-    expect(read("../../routes/data.tsx")).toContain("TAB_PANEL");
+    // The page's admin panel is the seventh body; it must not drift either.
+    expect(read("SystemPage.tsx")).toContain("TAB_PANEL");
   });
 
   it("renders the strip as underline tabs on a hairline, not a filled pill", () => {
-    const route = read("../../routes/data.tsx");
+    const route = read("SystemPage.tsx");
     const tokens = (re: RegExp) => route.match(re)?.[1].split(/\s+/) ?? [];
 
     // Token-exact so `bg-muted/40` or `rounded-xl` creeping back fails here.

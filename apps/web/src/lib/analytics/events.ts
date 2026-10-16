@@ -287,7 +287,7 @@ export const EVENTS = {
         "restore",
         "soft-navigation",
       ] as const satisfies readonly Metric["navigationType"][]),
-      edge_cache: dim(oneOf(["HIT", "MISS", "none"])),
+      edge_cache: dim(oneOf(["HIT", "STALE", "MISS", "none"])),
       page_path: path(),
     },
   },

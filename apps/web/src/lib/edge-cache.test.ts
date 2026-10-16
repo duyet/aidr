@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   bareLocalizedCacheLang,
   cachedLocaleResponse,
   cachedSsrResponse,
   EDGE_CACHE_HEADER,
+  EDGE_CACHE_STALE_S,
   edgeCacheKey,
   hasAuthSignal,
   normalizedCacheUrl,
@@ -63,6 +64,29 @@ describe("edgeCacheKey", () => {
     expect(edgeCacheKey(get("https://aidr.today/?lang=en"))?.url).not.toBe(
       clean?.url
     );
+  });
+
+  // Defect: /date and /week re-rendering on every request (they are not
+  // localized paths in locale-routing, so no cache ever held them).
+  it("keys day and week archives like story pages, not their Markdown twins", () => {
+    expect(
+      edgeCacheKey(get("https://aidr.today/date/2026-10-12?lang=en"))?.url
+    ).toContain("/date/2026-10-12?");
+    expect(
+      edgeCacheKey(get("https://aidr.today/week/2026-W41?lang=vi"))?.url
+    ).toContain("/week/2026-W41?");
+    expect(edgeCacheKey(get("https://aidr.today/date/2026-10-12"))).toBeNull();
+    expect(
+      edgeCacheKey(get("https://aidr.today/date/2026-10-12.md?lang=en"))
+    ).toBeNull();
+    expect(
+      bareLocalizedCacheLang(
+        get("https://aidr.today/date/2026-10-12", { cookie: "news_lang=vi" })
+      )
+    ).toBe("vi");
+    expect(
+      bareLocalizedCacheLang(get("https://aidr.today/week/2026-W41"))
+    ).toBe("vi");
   });
 
   it("never keys bare / (locale from cookie/Accept-Language)", () => {
@@ -132,31 +156,53 @@ describe("sharedMaxAge", () => {
   });
 });
 
-describe("cachedSsrResponse", () => {
-  const store = new Map<string, Response>();
-  const fake = {
-    match: vi.fn(async (req: Request) => store.get(req.url)?.clone()),
-    put: vi.fn(async (req: Request, res: Response) => {
-      store.set(req.url, res);
-    }),
+const store = new Map<string, Response>();
+const fake = {
+  match: vi.fn(async (req: Request) => store.get(req.url)?.clone()),
+  put: vi.fn(async (req: Request, res: Response) => {
+    store.set(req.url, res);
+  }),
+};
+
+function setup() {
+  vi.stubGlobal("caches", { default: fake });
+  const pending: Promise<unknown>[] = [];
+  return {
+    ctx: { waitUntil: (p: Promise<unknown>) => void pending.push(p) },
+    pending,
   };
+}
 
-  afterEach(() => {
-    store.clear();
-    fake.match.mockClear();
-    fake.put.mockClear();
-    vi.unstubAllGlobals();
+function advance(seconds: number) {
+  vi.setSystemTime(Date.now() + seconds * 1000);
+}
+
+/** A render whose completion the test controls. */
+function gate(body: () => Promise<Response>) {
+  let release = () => {};
+  const released = new Promise<void>((r) => {
+    release = r;
   });
+  const render = vi.fn(() => released.then(body));
+  return { render, release };
+}
 
-  function setup() {
-    vi.stubGlobal("caches", { default: fake });
-    const pending: Promise<unknown>[] = [];
-    return {
-      ctx: { waitUntil: (p: Promise<unknown>) => void pending.push(p) },
-      pending,
-    };
-  }
+const T0 = new Date("2026-10-16T00:00:00Z");
 
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(T0);
+});
+
+afterEach(() => {
+  store.clear();
+  fake.match.mockClear();
+  fake.put.mockClear();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+describe("cachedSsrResponse", () => {
   it("misses, stores without Vary, then hits for a differently-tracked URL", async () => {
     const { ctx, pending } = setup();
     const render = vi.fn(async () => page({ vary: "Cookie, Accept-Language" }));
@@ -165,7 +211,11 @@ describe("cachedSsrResponse", () => {
     expect(first.headers.get(EDGE_CACHE_HEADER)).toBe("MISS");
     await Promise.all(pending);
     expect(fake.put).toHaveBeenCalledOnce();
-    expect(store.values().next().value?.headers.get("vary")).toBeNull();
+    const stored = store.values().next().value;
+    expect(stored?.headers.get("vary")).toBeNull();
+    expect(stored?.headers.get("cache-control")).toBe(
+      `s-maxage=${300 + EDGE_CACHE_STALE_S}`
+    );
 
     const second = await cachedSsrResponse(
       get("https://aidr.today/?lang=vi&utm_source=newsletter&fbclid=9"),
@@ -200,18 +250,218 @@ describe("cachedSsrResponse", () => {
   });
 });
 
-describe("cachedLocaleResponse", () => {
-  const store = new Map<string, Response>();
-  const fake = {
-    match: vi.fn(async (req: Request) => store.get(req.url)?.clone()),
-    put: vi.fn(async (req: Request, res: Response) => {
-      store.set(req.url, res);
-    }),
-  };
-  afterEach(() => {
-    store.clear();
-    vi.unstubAllGlobals();
+describe("stale-while-revalidate", () => {
+  const v1 = () =>
+    new Response("<html>v1</html>", {
+      headers: { "content-type": "text/html", "cache-control": PUBLIC },
+    });
+  const v2 = async () =>
+    new Response("<html>v2</html>", {
+      headers: { "content-type": "text/html", "cache-control": PUBLIC },
+    });
+
+  async function seed(ctx: { waitUntil: (p: Promise<unknown>) => void }) {
+    await cachedSsrResponse(get(EXT), ctx, async () => v1());
+  }
+
+  // Defect: a stale hit blocking on the render, or the revalidation never stored.
+  it("serves the stale body at once and swaps in the background render", async () => {
+    const { ctx, pending } = setup();
+    await seed(ctx);
+    advance(301);
+
+    const { render, release } = gate(v2);
+    const stale = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(stale.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    expect(stale.headers.get("server-timing")).toBe("aidr-cache;desc=STALE");
+    expect(await stale.text()).toBe("<html>v1</html>");
+    expect(render).toHaveBeenCalledOnce();
+    expect(fake.put).toHaveBeenCalledOnce();
+
+    release();
+    await Promise.all(pending);
+    expect(fake.put).toHaveBeenCalledTimes(2);
+    const after = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(after.headers.get(EDGE_CACHE_HEADER)).toBe("HIT");
+    expect(await after.text()).toBe("<html>v2</html>");
+    expect(render).toHaveBeenCalledOnce();
   });
+
+  // Defect: every stale hit in an isolate re-rendering (thundering herd).
+  it("renders once for concurrent stale hits on one key", async () => {
+    const { ctx, pending } = setup();
+    await seed(ctx);
+    advance(301);
+    const { render, release } = gate(v2);
+    const a = await cachedSsrResponse(get(EXT), ctx, render);
+    const b = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(a.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    expect(b.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    expect(render).toHaveBeenCalledOnce();
+    release();
+    await Promise.all(pending);
+    advance(301);
+    await cachedSsrResponse(get(EXT), ctx, render);
+    expect(render).toHaveBeenCalledTimes(2);
+  });
+
+  // Defect: revalidating inside the fresh window.
+  it("never renders on a fresh hit", async () => {
+    const { ctx } = setup();
+    await seed(ctx);
+    advance(300);
+    const render = vi.fn(v2);
+    const hit = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(hit.headers.get(EDGE_CACHE_HEADER)).toBe("HIT");
+    expect(render).not.toHaveBeenCalled();
+  });
+
+  // Defect: serving content of unbounded age from a dormant colo.
+  it("re-renders inline past the stale window", async () => {
+    const { ctx } = setup();
+    await seed(ctx);
+    advance(300 + EDGE_CACHE_STALE_S + 1);
+    const render = vi.fn(v2);
+    const out = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("MISS");
+    expect(await out.text()).toBe("<html>v2</html>");
+    expect(render).toHaveBeenCalledOnce();
+  });
+
+  // Defect: a transient 500 wiping a good copy.
+  it("keeps the old entry when the revalidation render is not storable", async () => {
+    const { ctx, pending } = setup();
+    await seed(ctx);
+    advance(301);
+    const render = vi.fn(async () => page({}, 500));
+    await cachedSsrResponse(get(EXT), ctx, render);
+    await Promise.all(pending);
+    expect(fake.put).toHaveBeenCalledOnce();
+    const again = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(again.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    expect(await again.text()).toBe("<html>v1</html>");
+    expect(render).toHaveBeenCalledTimes(2);
+  });
+
+  // Defect: a failed revalidation escaping waitUntil, wiping the entry, or
+  // leaving its key marked in flight so no later stale hit ever retries.
+  it("swallows a failed revalidation and retries on the next stale hit", async () => {
+    const { ctx, pending } = setup();
+    await seed(ctx);
+    advance(301);
+    const render = vi.fn(async (): Promise<Response> => {
+      throw new Error("D1 unavailable");
+    });
+    const first = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(first.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    await expect(Promise.all(pending)).resolves.toBeDefined();
+    const again = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(again.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    expect(await again.text()).toBe("<html>v1</html>");
+    expect(render).toHaveBeenCalledTimes(2);
+    await Promise.all(pending);
+  });
+
+  // Defect: a settled day archive (`s-maxage=86400`) staying fresh in the
+  // Worker for a day, so Worker + CDN lifetime outlives the /assets/* chunks
+  // its HTML names (issue #702).
+  it("caps the fresh window at an hour whatever s-maxage the page declares", async () => {
+    const { ctx, pending } = setup();
+    const settled = async () =>
+      page({
+        "cache-control":
+          "public, max-age=3600, s-maxage=86400, stale-while-revalidate=43200",
+      });
+    await cachedSsrResponse(get(EXT), ctx, settled);
+    await Promise.all(pending);
+    expect(store.values().next().value?.headers.get("cache-control")).toBe(
+      "s-maxage=7200"
+    );
+    advance(3601);
+    const render = vi.fn(settled);
+    const out = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    expect(render).toHaveBeenCalledOnce();
+    await Promise.all(pending);
+  });
+
+  // Defect: no waitUntil means no background work; serve as a hit, no render.
+  it("serves a stale entry as HIT without a waitUntil context", async () => {
+    const { ctx } = setup();
+    await seed(ctx);
+    advance(301);
+    const render = vi.fn(v2);
+    const out = await cachedSsrResponse(get(EXT), undefined, render);
+    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("HIT");
+    expect(render).not.toHaveBeenCalled();
+  });
+
+  // Defect: the CDN caching a page for the Worker's stale window, or seeing internal headers.
+  it("hands the client the render's own headers on HIT, STALE and MISS", async () => {
+    const { ctx, pending } = setup();
+    const render = async () =>
+      page({ vary: "Cookie, Accept-Language", "x-extra": "kept" });
+    const ssr = [
+      await cachedSsrResponse(get(EXT), ctx, render),
+      await cachedSsrResponse(get(EXT), ctx, render),
+    ];
+    advance(301);
+    ssr.push(await cachedSsrResponse(get(EXT), ctx, render));
+    await Promise.all(pending);
+    expect(ssr.map((r) => r.headers.get(EDGE_CACHE_HEADER))).toEqual([
+      "MISS",
+      "HIT",
+      "STALE",
+    ]);
+    for (const r of ssr) {
+      expect(r.headers.get("cache-control")).toBe(PUBLIC);
+      expect(r.headers.get("vary")).toBe("Cookie, Accept-Language");
+      expect(r.headers.get("x-extra")).toBe("kept");
+      expect(
+        [...r.headers.keys()].filter((h) => h.startsWith("x-aidr-"))
+      ).toEqual([EDGE_CACHE_HEADER]);
+    }
+
+    const SHARED = "public, max-age=300, s-maxage=600";
+    const feed = async () =>
+      new Response("<rss/>", {
+        headers: {
+          "cache-control": "private, no-store",
+          vary: "Cookie, Accept-Language",
+        },
+      });
+    const url = "https://aidr.today/feed.xml";
+    const locale = [
+      await cachedLocaleResponse(new Request(url), ctx, "vi", SHARED, feed),
+      await cachedLocaleResponse(new Request(url), ctx, "vi", SHARED, feed),
+    ];
+    advance(601);
+    locale.push(
+      await cachedLocaleResponse(new Request(url), ctx, "vi", SHARED, feed)
+    );
+    await Promise.all(pending);
+    expect(locale.map((r) => r.headers.get(EDGE_CACHE_HEADER))).toEqual([
+      "MISS",
+      "HIT",
+      "STALE",
+    ]);
+    for (const r of locale) {
+      expect(r.headers.get("cache-control")).toBe("private, no-store");
+      expect(r.headers.get("vary")).toBe("Cookie, Accept-Language");
+      expect(
+        [...r.headers.keys()].filter((h) => h.startsWith("x-aidr-"))
+      ).toEqual([EDGE_CACHE_HEADER]);
+    }
+    const storedFeed = [...store.entries()].find(([k]) =>
+      k.includes("feed.xml")
+    )?.[1];
+    expect(storedFeed?.headers.get("cache-control")).toBe(
+      `s-maxage=${600 + EDGE_CACHE_STALE_S}`
+    );
+  });
+});
+
+describe("cachedLocaleResponse", () => {
   const SHARED = "public, max-age=300, s-maxage=600";
   const feed = (lang: string) =>
     new Response(`<rss lang="${lang}"/>`, {
@@ -222,8 +472,7 @@ describe("cachedLocaleResponse", () => {
     });
 
   it("keeps one copy per language and never leaks public headers to clients", async () => {
-    vi.stubGlobal("caches", { default: fake });
-    const ctx = { waitUntil: () => undefined };
+    const { ctx, pending } = setup();
     const url = "https://aidr.today/feed.xml?utm_source=x";
     const vi1 = await cachedLocaleResponse(
       new Request(url),
@@ -232,7 +481,7 @@ describe("cachedLocaleResponse", () => {
       SHARED,
       async () => feed("vi")
     );
-    await Promise.resolve();
+    await Promise.all(pending);
     expect(vi1.headers.get(EDGE_CACHE_HEADER)).toBe("MISS");
     const en = await cachedLocaleResponse(
       new Request(url),
@@ -260,13 +509,13 @@ describe("cachedLocaleResponse", () => {
   });
 
   it("bypasses signed-in readers", async () => {
-    vi.stubGlobal("caches", { default: fake });
+    const { ctx } = setup();
     const render = vi.fn(async () => feed("vi"));
     await cachedLocaleResponse(
       new Request("https://aidr.today/feed.xml", {
         headers: { cookie: "__session=abc" },
       }),
-      { waitUntil: () => undefined },
+      ctx,
       "vi",
       SHARED,
       render

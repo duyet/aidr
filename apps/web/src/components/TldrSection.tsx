@@ -57,6 +57,7 @@ export function TldrSection({
 }): ReactElement | null {
   const { setPrefs } = usePrefs();
   const [preview, setPreview] = useState(false);
+  const [cardWarm, setCardWarm] = useState(false);
 
   if (bullets.length === 0) return null;
 
@@ -129,6 +130,7 @@ export function TldrSection({
                 track("tldr_toggle", { view: showImage ? "image" : "text" });
                 setPreview(showImage);
               }}
+              onIntent={() => setCardWarm(true)}
             />
           ) : null}
           {options.length > 0 && (
@@ -161,7 +163,12 @@ export function TldrSection({
 
       <div className="px-4 py-5 sm:px-5">
         {snapshotDate && dateHref ? (
-          <DayCardView date={snapshotDate} lang={lang} open={preview} />
+          <DayCardView
+            date={snapshotDate}
+            lang={lang}
+            open={preview}
+            warm={cardWarm}
+          />
         ) : null}
         {/* The day card takes the list's place; the footer stays. */}
         <div hidden={preview}>

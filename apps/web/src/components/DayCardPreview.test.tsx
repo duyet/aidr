@@ -5,7 +5,13 @@
  *
  * @vitest-environment happy-dom
  */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { track } from "../lib/analytics/track";
 import type { TldrBullet } from "../lib/types";
@@ -100,5 +106,27 @@ describe("day card image view", () => {
       ["tldr_toggle", { view: "image" }],
       ["tldr_toggle", { view: "text" }],
     ]);
+  });
+});
+
+describe("day card fetch", () => {
+  it("does not fetch the 600 KB card on a plain homepage render", () => {
+    vi.useFakeTimers();
+    try {
+      renderSection();
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      expect(screen.queryByAltText("AI;DR card for 2026-10-09")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("warms the card when the pointer reaches the switch", () => {
+    renderSection();
+    fireEvent.pointerEnter(screen.getByRole("group", { name: "View" }));
+    const card = screen.getByAltText("AI;DR card for 2026-10-09");
+    expect((card.parentElement as HTMLElement).hidden).toBe(true);
   });
 });

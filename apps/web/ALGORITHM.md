@@ -490,7 +490,9 @@ heading's Full day link is the archive that contains the story. `getDayArchive`
 rebuild a snapshot. 404 for a malformed date, a date after today (ICT), or a
 day with neither stories nor a snapshot. With `?lang=`, days older than 3
 days (ranks frozen, §7) cache for a day at the edge; recent days for 5
-minutes. Without `?lang=` the response is private, like story pages.
+minutes. Without `?lang=` the response is private, like story pages;
+both forms sit in the Worker cache (`edge-cache.ts`) keyed by the explicit or
+resolved language, as story pages do. The same applies to `/week/YYYY-Www`.
 
 Optional media lives in `day_videos` (`date` PK, `youtube_id` 16:9 shown on
 md+, `short_id` 9:16 shown on mobile, `title`, the same three as `*_vi`,
@@ -567,6 +569,15 @@ Worker runs, so those count about once per cache TTL per key per location.
 `/feed.xml` is served from the Worker's own `cachedLocaleResponse` inside the
 wrapper, so feed hits do count. Compare surfaces week over week, not as
 absolute traffic.
+
+The Worker's own cache (`edge-cache.ts`) keeps an SSR entry fresh for the
+page's `s-maxage`, then serves it stale for up to `EDGE_CACHE_STALE_S` (1h)
+while one background render per key per isolate refreshes it, so a colo
+re-renders off the request path instead of on it. For the homepage policy
+(`s-maxage=300, stale-while-revalidate=600`) a reader without a browser copy
+sees a render at most 80 minutes old: 5m fresh + 1h stale in the Worker, then
+5m + 10m at the CDN. `Server-Timing: aidr-cache`
+reports `HIT`, `STALE` or `MISS`; web-vitals splits by the same value.
 
 There is no read endpoint yet: querying needs an account API token secret that
 the Worker does not hold. Weekly totals, run against the Analytics Engine SQL
