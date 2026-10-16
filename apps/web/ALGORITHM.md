@@ -1046,10 +1046,14 @@ images rather than a broken-src fallback.
   refuses a `u` that published item does not carry (`image_url` or a
   manifest image asset). That ownership read runs on every request before
   the edge cache, so once a story drops an image the Worker answers 404 for
-  it. A browser that already loaded the thumb can keep it up to a day
-  (`max-age=86400`) and show it once more within the next day while it
-  revalidates (`stale-while-revalidate`); `s-maxage` lets a shared proxy
-  outside Cloudflare keep it up to 7 days. The edge copy is keyed
+  it. The 404 alone does not hide the image: `StoryThumb` falls back to the
+  publisher URL on any load error, 404 included. The image goes when the
+  page stops carrying it, which takes up to about 2 hours for edge-cached
+  HTML (`EDGE_CACHE_FRESH_MAX_S` plus `EDGE_CACHE_STALE_S`) and a reload
+  for an open tab. A browser that already loaded the thumb can keep it up
+  to a day (`max-age=86400`) and show it once more within the next day
+  while it revalidates (`stale-while-revalidate`); `s-maxage` lets a shared
+  proxy outside Cloudflare keep it up to 7 days. The edge copy is keyed
   on item id, canonical `u` and `THUMB_RENDER_VERSION` only, so extra query
   parameters cannot force a new publisher fetch. The source fetch is capped
   at 8 MB and 5 s including the body, and is resized through the Images

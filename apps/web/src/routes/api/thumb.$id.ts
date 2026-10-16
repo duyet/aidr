@@ -108,9 +108,11 @@ function thumbCacheKey(origin: string, id: string, wanted: string): Request {
  * image asset), so this is not an open image proxy: an unknown URL is a 404
  * before any fetch. Ownership is read on every request before the edge
  * cache, so once a story drops an image the Worker answers 404 for it, edge
- * copy or not. A browser that already loaded the thumb can keep it up to a
- * day (`max-age`) and show it once more within the next day while it
- * revalidates (`stale-while-revalidate`). `s-maxage` also lets a shared
+ * copy or not. `StoryThumb` then falls back to the publisher URL, so the
+ * image leaves the page only when the page HTML stops carrying it (up to
+ * about 2 hours at the edge). A browser that already loaded the thumb can
+ * keep it up to a day (`max-age`) and show it once more within the next day
+ * while it revalidates (`stale-while-revalidate`). `s-maxage` also lets a shared
  * proxy outside Cloudflare keep it up to 7 days. The source is fetched once
  * per edge location and resized through the Images binding to a
  * `THUMB_SIDE` square WebP, which turns a 1 MB publisher hero into a few KB
