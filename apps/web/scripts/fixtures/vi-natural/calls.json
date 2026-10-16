@@ -1,9 +1,24 @@
 {
   "cap": 200,
-  "calls": 28,
+  "calls": 159,
   "byStep": {
-    "gen:A": 14,
-    "gen:T": 14
+    "gen:A": 15,
+    "gen:T": 14,
+    "gen:B": 30,
+    "debug:capture": 1,
+    "gen:C": 19,
+    "judge:A-B:anthropic/claude-sonnet-5-5": 8,
+    "judge:A-B:openai/gpt-5.6-luna": 6,
+    "judge:A-B:z-ai/glm-latest": 1,
+    "judge:A-B:z-ai/glm-4.6": 1,
+    "judge:A-B:deepseek/deepseek-flash-latest": 9,
+    "judge:A-C:openai/gpt-5.6-luna": 6,
+    "judge:A-C:deepseek/deepseek-flash-latest": 7,
+    "gen:E": 18,
+    "judge:E-C:openai/gpt-5.6-luna": 6,
+    "judge:E-C:deepseek/deepseek-flash-latest": 6,
+    "judge:A-E:openai/gpt-5.6-luna": 6,
+    "judge:A-E:deepseek/deepseek-flash-latest": 6
   },
   "stopped": null
 }

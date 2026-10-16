@@ -1,7 +1,8 @@
 {
   "arm": "A",
   "model": "poolside/laguna-s-2.1",
-  "card": "56852ac9",
+  "card": "4f63c5628672",
+  "commit": "56852ac9",
   "rows": [
     {
       "id": "1bf3461ed74eaee24ca130718556005db446e5940d363833dae3f3590ec8e667",
@@ -148,24 +149,6 @@
       "summary": "Mô hình đa hình thức 740M tham số mới đây ra mắt từ Google nhanh chóng trở thành mô hình được yêu thích thứ 4 trong lịch sử công ty sau khi vượt qua độ phổ biến của EmbeddingGemma 1. EmbeddingGemma 2 đạt benchmark tương đương với embedding-3-large của OpenAI và Qwen 8B trong khi chạy trên CPUs tiêu dùng thay vì GPUs. Mặc dù đã xác định thành công 13 trong 14 đoạn video từ một câu, nó thiếu cảm giác thời gian, xem một video và phiên bản đảo ngược của nó là 99% giống nhau.\n\nCác nhà phát triển đã áp dụng mô hình để xây dựng DigUp, một công cụ mã nguồn mở cho Mac lập chỉ mục tệp tin và podcast cục bộ. Để hỗ trợ tìm kiếm trên thiết bị, Google sử dụng Matryoshka embeddings để chỉ lưu 256 giá trị đầu tiên trong tổng số 768 giá trị trong một vector. Cách tiếp cận này giảm nhu cầu lưu trữ xuống 1/3 nhưng vẫn duy trì khoảng 95% chất lượng truy xuất cho hình ảnh và âm thanh, theo Google."
     },
     {
-      "id": "5aa3dba3daf901f686ef5e027c6ec28fe7bc85f26192dce9eacfe7538fa3333d",
-      "batch": 8,
-      "title": "DiffusionART: Huấn luyện mô hình diffusion hiệu quả, ổn định và có khả năng mở rộng",
-      "summary": "DiffusionART được thiết kế để huấn luyện các mô hình diffusion một cách hiệu quả, ổn định và có khả năng mở rộng."
-    },
-    {
-      "id": "fa5cd199ec83c6c6b75747905805667db4601d0ce2a9fb51b7278186c8e1cfef",
-      "batch": 8,
-      "title": "Ít điều \"không thể tránh khỏi\" trong AI",
-      "summary": "Có rất ít điều thực sự \"không thể tránh khỏi\" khi nói đến AI."
-    },
-    {
-      "id": "fe42140b9345e878809ff0d5c693958b12ff4cbf1e704a2b5558f3f1cf9a5f83",
-      "batch": 8,
-      "title": "Thợ đào thông Bitcoin Bitdeer đạt 273,5 MW công suất AI với thỏa thuận Malaysia",
-      "summary": "Thợ đào thông Bitcoin Bitdeer đã đạt 273,5 MW công suất AI nhờ thỏa thuận tại Malaysia."
-    },
-    {
       "id": "4bb0972ddb59f840c1dd94189794eb82159a5a126bc652b5c80536e4c1a05938",
       "batch": 9,
       "title": "Câu hỏi: Các AI agent có thể học để lên đến đỉnh cao? Đánh giá học heuristic trong cuộc thi agent game kéo dài",
@@ -218,6 +201,24 @@
       "batch": 11,
       "title": "Minions: Một đám mây GPU ảo động và phân phối dựa trên các thiết bị Apple Silicon không hoạt động",
       "summary": "Minions: Một đám mây GPU ảo động và phân phối dựa trên các thiết bị Apple Silicon không hoạt động. Tác giả: Jianhua Li, Yun Xing, Girisha De Silva, Ryan Flint, Kai Yuan, Sean Suchter. Nhu cầu ngày càng tăng về suy diễn học máy tính tăng tốc GPU đã ph노t ra những hạn chế trong cơ sở hữu GPU trung tâm, bao gồm chi phí cao, khả năng co giãn hạn chế, và thời gian chờ dài dưới ràng buộc tài nguyên. Đồng thời, các thiết bị macOS dựa trên Apple Silicon hiện được trang bị GPU mạnh mẽ nhưng vẫn chủ yếu không hoạt động trong quá trình sử dụng bình thường. Bài báo cáo này trình bày Minions, một đám mây GPU ảo động và phân phối tập hợp các GPU Apple Silicon không hoạt động trên các thiết bị macOS để thực thi các khối lượng công việc suy diễn học máy tính quy mô lớn. Minions cho phép các nhóm khai thác phần cứng hiện có mà không cần mua sắm GPU bổ sung. Hệ thống cung cấp thực thi linh hoạt các tác vụ suy diễn GPU, khả năng chịu lỗi, và sử dụng tài nguyên hiệu quả. Kinh nghiệm của chúng tôi cho thấy các thiết bị macOS không hoạt động có thể được biến thành một nền tảng suy diễn GPU phân phối thực tế trong môi trường nơi tài nguyên GPU trung tâm bị ràng buộc. Khám phá LLMs với MLX và Neural Accelerators trong M5 GPU Mac với Apple Silicon đang trở nên phổ biến hơn trong số các nhà phát triển và nhà nghiên cứu AI quan tâm đến việc dùng Mac của họ để thử nghiệm các mô hình và kỹ thuật mới nhất. Với MLX, người dùng có thể khám phá và chạy LLMs hiệu quả trên Mac. Nó cho phép các nhà nghiên cứu thử nghiệm các kỹ thuật suy diễn hoặc fine-tune mới, hoặc điều tra kỹ thuật AI trong môi trường riêng tư, trên phần cứng của chính họ."
+    },
+    {
+      "id": "5aa3dba3daf901f686ef5e027c6ec28fe7bc85f26192dce9eacfe7538fa3333d",
+      "batch": 8,
+      "title": "DiffusionART: Tăng cường hiệu quả, ổn định và có khả năng mở rộng cho các mô hình Diffusion",
+      "summary": "Học tập tăng cường trực tuyến (RL) fine-tune các mô hình Diffusion bằng phần thưởng đen, nhưng các phương pháp quá trình ngược như Flow-GRPO bị giới hạn về hiệu quả do phân bổ điểm tín nhiệm kém, trong khi các phương pháp quá trình tiến như DiffusionNFT hiệu quả nhưng không ổn định nếu không có EMA huấn luyện off-policy được điều chỉnh cẩn thận. Chúng tôi chứng minh rằng các mục tiêu theo phong cách NFT chứa một lực lượng nhất quán tiến-sau-ngược ẩn, mà việc huấn luyện cùng lúc tích cực và tiêu cực chỉ hủy bỏ một phần, và EMA ổn định quá trình huấn luyện thông qua sự khôi phục thay vì rollout off-policy. Chúng tôi giới thiệu DiffusionART (Tăng cường Diffusion bằng Cách Đẩy mạnh Phần thưởng Trước khi Tổng hợp), tổng hợp phần thưởng của mỗi prompt thành một hướng cải thiện phần thưởng chung cho các trạng thái quá trình ngược, loại bỏ lực lượng nhất quán bằng cách xây dựng, và thêm một bản cập nhật thứ hai được mặt nạ vùng tin cậy cho sự khôi phục thích ứng trượt bằng cách không cần điều chỉnh EMA. DiffusionART không yêu cầu mô hình phần thưởng khả vi, vẫn hiệu quả với ít mẫu hơn cho mỗi prompt, và hỗ trợ mô hình phần thưởng đôi (DiffusionART-Pairwise). Trên toàn bộ tạo ảnh và video, DiffusionART huấn luyện hiệu quả và ổn định mà không cần điều chỉnh cho từng nhiệm vụ."
+    },
+    {
+      "id": "fa5cd199ec83c6c6b75747905805667db4601d0ce2a9fb51b7278186c8e1cfef",
+      "batch": 8,
+      "title": "Ít điều gì là \"không thể tránh khỏi\" về AI",
+      "summary": "Câu trả lời lười biếng ở đây sẽ là nói rằng không có công nghệ nào thực sự không thể tránh khỏi và mọi thứ đều phụ thuộc vào hoàn cảnh. Điều này có lợi thế là đúng về mặt kỹ thuật và nghe có vẻ khôn ngoan, nhưng thật tiếp tục có những công nghệ tồn tại mà một người lý trí có thể gọi là như vậy. Súng là một ví dụ tốt cho trường hợp sau: một khi chúng"
+    },
+    {
+      "id": "fe42140b9345e878809ff0d5c693958b12ff4cbf1e704a2b5558f3f1cf9a5f83",
+      "batch": 8,
+      "title": "Thợ đào Bitcoin Bitdeer đạt 273,5 MW công suất AI với thỏa thuận Malaysia",
+      "summary": "Hợp đồng thuê 10 năm cho một khu dữ liệu 67 MW ở Malaysia cho phép Bitdeer lắp đặt hệ thống Nvidia GB300. Sự mở rộng này tăng tổng công suất đám mây AI đã bảo mật của công ty lên 273,5 MW và đẩy tổng khối lượng kinh doanh đang hoạt động vượt $10 tỷ. Thỏa thuận kéo dài một thập kỷ, đánh dấu sự chuyển hướng tiếp tục của người đào Bitcoin vào cơ sở hạ tầng tính toán hiệu năng cao. Cơ sở dữ liệu mới ở Malaysia là một phần của chiến lược rộng hơn để tận dụng tài sản điện và đất cho thị trường đám mây AI."
     }
   ],
   "batches": [
@@ -324,24 +325,6 @@
       ]
     },
     {
-      "batch": 8,
-      "wallMs": 70466,
-      "attempts": [
-        {
-          "model": "poolside/laguna-s-2.1",
-          "ok": false,
-          "ms": 60007,
-          "error": "anyrouter request timed out"
-        },
-        {
-          "model": "poolside/laguna-s-2.1",
-          "ok": true,
-          "ms": 10456,
-          "error": null
-        }
-      ]
-    },
-    {
       "batch": 9,
       "wallMs": 28291,
       "attempts": [
@@ -373,6 +356,38 @@
           "model": "poolside/laguna-s-2.1",
           "ok": true,
           "ms": 41771,
+          "error": null
+        }
+      ]
+    },
+    {
+      "batch": 8,
+      "wallMs": 37466,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 37390,
+          "error": null
+        }
+      ]
+    }
+  ],
+  "failedFirst": [
+    {
+      "batch": 8,
+      "wallMs": 70466,
+      "attempts": [
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": false,
+          "ms": 60007,
+          "error": "anyrouter request timed out"
+        },
+        {
+          "model": "poolside/laguna-s-2.1",
+          "ok": true,
+          "ms": 10456,
           "error": null
         }
       ]

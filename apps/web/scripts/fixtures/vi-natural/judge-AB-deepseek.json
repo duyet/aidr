@@ -1,0 +1,543 @@
+{
+  "judge": "deepseek/deepseek-flash-latest",
+  "pair": [
+    "A",
+    "B"
+  ],
+  "files": [
+    "A=scripts/fixtures/vi-natural/arm-A.json",
+    "B=scripts/fixtures/vi-natural/arm-B.json"
+  ],
+  "rows": [
+    {
+      "id": "1bf3461ed74eaee24ca130718556005db446e5940d363833dae3f3590ec8e667",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "One notch below investment grade is missing from the title."
+        ],
+        "B": [
+          "The Info reports that Azure leadership denied instructing teams to develop cost-reduction strategies, but b says 'bác đảm báo' which is garbled.",
+          "In the summary, the English says 'The company reorganizes the division around Arun Ulag, executive vice president of databases', but b says 'Phó Chủ tịch điện toán cơ sở dữ liệu' which is inaccurate (does not say executive VP of databases)."
+        ]
+      }
+    },
+    {
+      "id": "5633ac0815d3b59e4394990a375c88c18efcfe86f1979e1c18d84bc811e333ad",
+      "a": "B",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "B": [],
+        "A": [
+          "English says 'can subsequently lead to algorithmic aversion', but b says 'có thể dẫn đến việc tránh dùng thuật toán' which changes 'can subsequently lead' to 'can lead' (missing 'subsequently')."
+        ]
+      }
+    },
+    {
+      "id": "631645b6ccd9d06c7a7456efacddf167d5c294c5e15b9c69fa1c0d83253f9b50",
+      "a": "A",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "A": [
+          "Title in English is 'You Should Specify Your Code Unambiguously', but a's Vietnamese title uses 'unambiguously' correctly but in the summary, a writes 'trong một định dạng tương đối quăm quyển' which is nonsensical (should be 'quen thuộc').",
+          "English says 'I have a program that grants wishes', but a says 'ban ước mơ' (grant dreams) rather than 'grants wishes'.",
+          "English says 'I describe what it should do', but a omits 'it' clarification.",
+          "English says 'the Djinn writes code that provably does exactly that', a says 'viết mã chứng minh', dropping 'provably' nuance."
+        ],
+        "B": [
+          "English title says 'Unambiguously', but b writes 'Unambiguityly' which is an error in English, not Vietnamese."
+        ]
+      }
+    },
+    {
+      "id": "61234206e575a0fe9a5d50dfde453636c3d2941bdbdcd271a5b119eb2fe8e36a",
+      "a": "B",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "B": [],
+        "A": [
+          "Title in English includes 'One Notch Below Investment Grade', but b's title drops that fact entirely.",
+          "English says 'documents seen by the Financial Times reveal', b says 'như các tài liệu do Financial Times nhìn thấy tiết lộ' which adds 'như' (as) that softens the source.",
+          "English says 'Broadcom's senior debt yielding 5.75%', b says 'trái phiếu cao hạn của Broadcom cho lãi suất 5,75%' using 'trái phiếu cao hạn' (high-term bonds) instead of 'senior debt'."
+        ]
+      }
+    },
+    {
+      "id": "d51fc7a9edf702b82ade45529ceadcae89ce5c0df3542cedc985c7db0d9865d6",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "English says 'including script writing, voiceover and motion graphics', b drops 'voiceover' (it says 'thu âm và đồ họa chuyển động' missing 'voiceover' specifically).",
+          "English says 'to scale its AI agents that handle the end to end production process', b's summary drops the 'AI agents' phrase."
+        ]
+      }
+    },
+    {
+      "id": "59499c68644ca0485f53db16690d5635c12f74e63eee201be1dc98566346667a",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "English says 'I spent some of my time and tokens', but a says 'tác giả' (the author) instead of first-person.",
+          "English says 'we really wanted', a says 'chúng thực sự muốn' (they/we?) missing 'we' clear first-person.",
+          "English says 'corporate America', a says 'chứng biện xã hội Mỹ' which is incorrect (should be 'corporate America' or 'doanh nghiệp Mỹ')."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "add7e11ad964d1ef033c776771084c6351683d8e6ec829a6e219ade449dcd542",
+      "a": "A",
+      "natural": "A",
+      "faithful": "B",
+      "lost": {
+        "A": [
+          "seven further factors"
+        ],
+        "B": [
+          "over the one byte space"
+        ]
+      }
+    },
+    {
+      "id": "da19564dd2e91871544f9c072bbf6cc01bf081cabd955bbf5b4f56b8063c79f2",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": []
+      }
+    },
+    {
+      "id": "1b5e04430747b59eb38ec6598b99f73c82b5e3f695359325cdc5bcdbb954ffe3",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": []
+      }
+    },
+    {
+      "id": "b3dd2a0f914f65ea3ebf2914c49ade1e17bfc0ff4ce94bbe898bdf584e0a61b2",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "Accelerate innovation across the DSX ecosystem",
+          "bring AI factory solutions to market faster",
+          "production-grade AI workload and GPU orchestration capabilities",
+          "By open sourcing NVIDIA Run:ai platform capabilities as part of NVIDIA DSX AI Factory",
+          "more efficiently and effectively",
+          "This post details the open source release",
+          "Together with additional platform code, these components form the integrated NVIDIA Run:ai platform."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "77744cb30da4f3b58e25980759b18461bb411ad34faea27acc5a48af896dd5de",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "including MLR Bench, ScienceAgentBench, and DSBench"
+        ],
+        "B": [
+          "MLR Bench, ScienceAgentBench, and DSBench"
+        ]
+      }
+    },
+    {
+      "id": "164ef0f32666d135ed8f5d80b309408ac9b0256247d1614edec242e0fe7e6862",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "It seems like people are really tired of hearing about LLMs, and they enjoyed being able to deprioritize them from their feed. It was a good demo of why a tool like this is useful. Everything was looking up, and then…",
+          "painfully slow",
+          "vowed to make my website more resiliant in the future",
+          "Strangely though, the slowness continued, and even started to get worse several days after my post went live, and the metrics I did log did not make sense. Like, you know, a good handful of genuinely active, logged-in users, and a server exhibiting exhorbatantly high load.",
+          "majority of the requests did not even make an attempt to fetch news articles",
+          "a majority of the requests did not even run the javascript necessary to render the page (!)",
+          "For reference, my website is built as a single-page-application, and what this means is that a majority of the requests did not even run the javascript necessary to render the page (!)."
+        ]
+      }
+    },
+    {
+      "id": "64fc2a8f84c91b7ab28f97ed627bb801987f761235eb0d27f501b4d90f9f834b",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "The tool delivers 288x real time speed on a base M3 MacBook Air.",
+          "The developer repurposed the EmbeddingGemma 2 multimodal model.",
+          "By exploiting the way the model maps audio and spoken words into a shared vector space.",
+          "Without using a cloud server.",
+          "The 740M parameter model, released by Google under an Apache 2.0 license.",
+          "Supports a new wave of local Mac applications including the search tool DigUp and Google's own Foresight app.",
+          "Recent community implementations show the model sorting roughly 620 posts per second on the Apple M5 Pro Neural Engine.",
+          "The architecture unifies text, image, audio, and video, allowing it to outperform some specialist models twice its size on various benchmarks."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "618aa0b2482f1123cd94c8a57fca40cd7cf5974c856061c82051422e67f32fd9",
+      "a": "B",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "Marktechpost ranks the 9 best AI gateways for 2026.",
+          "We compare Bifrost, Portkey, LiteLLM, Kong, TrueFoundry, Cloudflare, Vercel, OpenRouter and Orq.ai on latency, pricing, licensing, governance and deployment."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "3ea8663ef4cdebc3be7013e0296bc41280639726f10856ab7c0056039ed2af87",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "Building on earlier ReplaySSM work.",
+          "NVIDIA and the Dao AI Lab at Princeton University explore how caching SSM inputs speeds up decoding and supports low-precision state with less error accumulation.",
+          "Hybrid models interleave state-space model (SSM) layers with a few attention layers.",
+          "NVIDIA Nemotron 3, Qwen3.5 through Qwen3.8, Kimi-K3, and GLM-5.3-Flash are all built this way, with Mamba-2, Gated DeltaNet (GDN), or Kimi Delta Attention (KDA) as the SSM layer.",
+          "SSM layers are designed to make decoding fast: they use a fixed-size state in place of a key-value (KV) cache that grows with context length.",
+          "At serving batch sizes, however, the SSM layers, not attention, can be the latency bottleneck up to 100K tokens of context.",
+          "SSM layers also complicate two techniques that reliably speed up attention decoding: speculative decoding and quantization.",
+          "ReplaySSM makes SSM layers the fast part again. It represents the SSM state as a checkpoint plus a buffer of recent inputs. This separates output computation from state updates and addresses three challenges in current SSM decoding: state traffic, rollback for speculative decoding, and error accumulation in a quantized state.",
+          "ReplaySSM is joint work between NVIDIA and the Dao AI Lab at Princeton.",
+          "The paper, ReplaySSM: Cache SSM Inputs, Not State, details all three benefits and presents the full evaluation.",
+          "It is available on arXiv, with code on GitHub.",
+          "It is integrated into NVIDIA TensorRT-LLM, vLLM, and FlashInfer, and also runs in production in GLM-5.3-Flash and Kimi-K3."
+        ]
+      }
+    },
+    {
+      "id": "89f4f685d9b7d96369d5544f853e59063b83dce589ccfb59c23c5164797fef18",
+      "a": "B",
+      "natural": "A",
+      "faithful": "B",
+      "lost": {
+        "B": [],
+        "A": []
+      }
+    },
+    {
+      "id": "8e2ae9ca3297dcc12263e647a3d4b38c857f508aa50550352f8e8c90974ad602",
+      "a": "B",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "B": [],
+        "A": [
+          "Model deliberately destroyed its own environment hoping for a fresh start with better data.",
+          "One evaluation model fabricated data and sabotaged its own environment.",
+          "Other models deliberately bypassed network restrictions by routing requests through anonymizing relays or building their own FTP clients."
+        ]
+      }
+    },
+    {
+      "id": "8c1bc8435859ef749bdefd40187d1c384744a1d48c55ebd1b6924f716e467ce2",
+      "a": "B",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "B": [],
+        "A": [
+          "Costs $0.042 per million input tokens."
+        ]
+      }
+    },
+    {
+      "id": "ef44c8c2fd567dd7b4567ed9891951302cffe409586c83a702ea149dbd6e5be9",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "\"reverse engineer\" changed to \"nghịch ngợm\" (play around), losing core technical meaning",
+          "\"film negatives\" translated as \"phim phim\" (redundant) and later \"phim phim cũ\"",
+          "\"SANE driver\" changed to \"trình điều khiển SANE\" (driver not capitalized)"
+        ],
+        "A": [
+          "\"reverse engineer hardware\" translated as \"đảo ngược kỹ thuật phần cứng\" is awkward but present"
+        ]
+      }
+    },
+    {
+      "id": "1a43b4df04302ec5052772db111ad7f14619b4b35b255b69b1603832ad84faba",
+      "a": "B",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "\"baseball cap\" changed to \"mũ lót thể thao\" (sports liner cap), not accurate",
+          "\"non-contact neuro-sensors\" simplified to \"cảm biến não\"",
+          "\"neural signals\" to \"tín hiệu não\" (brain signals), omits \"neural\"",
+          "\"for AI systems\" omitted",
+          "\"seed\" omitted from title and summary",
+          "\"$50M\" changed to \"50 triệu USD\" loses currency formatting consistency"
+        ],
+        "A": [
+          "\"mọ người\" typo for \"mọi người\"",
+          "\"nói chuyện\" (talk) instead of \"giao tiếp\" (communicate) but acceptable"
+        ]
+      }
+    },
+    {
+      "id": "cc4341195d8d52dd1bf8f6ac3736520a4aa94b924344c3bc8e4d2937d3bfb9b5",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "\"Muse Wonder AI model\" changed to \"mô hình Muse Wonder AI\" but missing \"AI\"? Actually present."
+        ]
+      }
+    },
+    {
+      "id": "39b03f627696e97fefd3023480ad2bb1697830ab788e3c16430f3d66ebf29146",
+      "a": "B",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "B": [],
+        "A": [
+          "\"Gemini API\" changed to \"API Gemini\" (order reversed)",
+          "\"pelicans\" translated as \"chim cánh cụn\" (penguins? incorrect — should be \"bồ nông\")",
+          "\"17.166 cents\" formatted as \"17,166 xu\" (uses comma as decimal separator incorrectly)"
+        ]
+      }
+    },
+    {
+      "id": "23216cfbe10c8c92d859347b187120d76e204e5f5643f059323d90e8ebc783e4",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "English title retained as is, no translation needed — okay"
+        ]
+      }
+    },
+    {
+      "id": "b99beecb4669479f86b86323705160881d050bd4fc54a1e5599f3be4487a5375",
+      "a": "B",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "B": [
+          "\"mô hình đa dạng thức\" (multimodal) — term is less standard than \"đa hình thức\"",
+          "\"trong lịch sử\" missing \"công ty\" (company history)",
+          "\"tệp cục bộ\" (local files) instead of \"tệp tin và podcast cục bộ\" (local files and podcasts)"
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "5aa3dba3daf901f686ef5e027c6ec28fe7bc85f26192dce9eacfe7538fa3333d",
+      "a": "B",
+      "natural": "B",
+      "faithful": "tie",
+      "lost": {
+        "B": [],
+        "A": [
+          "The English says 'We show that' not 'Nhóm tác giả phát hiện'",
+          "The English says 'Diffusion Reinforcement with Aggregation-First Reward Tilting' not 'Tăng cường Diffusion bằng Cách Đẩy mạnh Phần thưởng Trước khi Tổng hợp';",
+          "The English says 'trust-region-masked' not 'mặt nạ vùng tin cậy'"
+        ]
+      }
+    },
+    {
+      "id": "fa5cd199ec83c6c6b75747905805667db4601d0ce2a9fb51b7278186c8e1cfef",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "The English ends 'once they...' but version b adds 'xuất hiện...' which is not present in the English"
+        ]
+      }
+    },
+    {
+      "id": "fe42140b9345e878809ff0d5c693958b12ff4cbf1e704a2b5558f3f1cf9a5f83",
+      "a": "B",
+      "natural": "B",
+      "faithful": "tie",
+      "lost": {
+        "B": [],
+        "A": [
+          "The English says 'data center campus' not 'cơ sở dữ liệu' (data instead of data center)",
+          "The English says 'active business pipeline' not 'khối lượng kinh doanh đang hoạt động'"
+        ]
+      }
+    },
+    {
+      "id": "4bb0972ddb59f840c1dd94189794eb82159a5a126bc652b5c80536e4c1a05938",
+      "a": "A",
+      "natural": "B",
+      "faithful": "tie",
+      "lost": {
+        "A": [
+          "The English says 'We introduce' but version a says 'chúng tôi đưa ra' which is acceptable translation",
+          "The English says 'We evaluate' but version a says 'Chúng tôi đánh giá' which is fine"
+        ],
+        "B": [
+          "The English says 'We formalize Adversarial Heuristic Learning' not 'các nhà nghiên cứu đưa ra hình thái Adversarial Heuristic Learning'",
+          "The English says 'an evaluation protocol modeled on' not 'đánh giá mô phỏng'"
+        ]
+      }
+    },
+    {
+      "id": "fec0d0fc70a62740538a9b685594ab36cef74556b6a18f99d554667b3e3ea90a",
+      "a": "A",
+      "natural": "B",
+      "faithful": "tie",
+      "lost": {
+        "A": [
+          "The English says 'via vitriolic truth-bombing' but a says 'thông qua những lời nói sâu sắc đầy hơi giận dữ' loses the exact nuance"
+        ],
+        "B": [
+          "The English says 'vibe-rewrote' not just 'viết lại'"
+        ]
+      }
+    },
+    {
+      "id": "3edeaa8d7764aa277fd52cfb351208e00ccbe8f89c8ee92faf6329aed447d742",
+      "a": "A",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "A": [],
+        "B": [
+          "The title says 'skipping security basics' but b says 'bỏ qua những cơ bản bảo mật' missing the word 'security' in the title"
+        ]
+      }
+    },
+    {
+      "id": "aa65eb3ab36b5eef10afd8013f57ac938e7f406160eadcec57c2cf92b2630f43",
+      "a": "B",
+      "natural": "B",
+      "faithful": "B",
+      "lost": {
+        "B": [],
+        "A": [
+          "The title includes 'sources' and formatting symbols such as asterisks, which are not in the English summary.",
+          "It writes 'rời rạp' (discrete) instead of 'Masked' (masked) for the model type 'discrete diffusion models', though the English says 'Masked Diffusion Models'.",
+          "It translates 'inference sampling defaults' as 'giá trị mặc định mẫu suất quảng', changing the meaning to something like 'propagation sampling defaults'.",
+          "It adds a hyphen/dash for each bullet point, which is not in the English summary."
+        ]
+      }
+    },
+    {
+      "id": "7fbc7f2d590fe3c5dc0bc787e3e7f728f5ee736c1d30d1cafd05a5021d94c84f",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "It translates 'data center deals' as 'thỏa thợ trung tâm dữ liệu', which is an incorrect word for 'deals' (should be 'giao dịch' or 'thỏa thuận').",
+          "It refers to 'NDA' as 'thỏa thợ bảo mật', which is incorrect (NDA stands for Non-Disclosure Agreement, not 'security agreements'), and uses 'thỏa thợ' (a misspelling of 'thỏa thuận').",
+          "It translates 'personal AI agents' as 'các AI agent trở nên hữu ích cho cá nhân', which adds 'cho cá nhân' but changes the structure; 'personal' is a descriptor, not an adverb.",
+          "It says 'cộng đồng vẫn có thể tạo ra tiếng ồn' which matches 'make some noise', but the phrasing 'trong làn sóng bùng nổ hạ tầng AI' adds 'bùng nổ' (boom) which is not in the English.",
+          "It translates 'the race to make personal AI agents useful' as 'cuộc chạy đua để làm cho các AI agent trở nên hữu ích cho cá nhân', adding 'cho cá nhân' which is not directly stated.",
+          "It translates 'more deals of the week' as 'thêm các giao dịch trong tuần', losing the specific sense 'of the week' (của tuần)."
+        ]
+      }
+    },
+    {
+      "id": "0021a6e94edbcecbc9ae26c5807cff9c1f2fcc196d59d858771519b956d99967",
+      "a": "A",
+      "natural": "B",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "It translates 'weighing in on AI' as 'quan tâm đến AI' which means 'interested in AI' rather than 'weighing in' (giving opinions).",
+          "It translates 'creates a new political risk' as 'chiếm lĩnh quan ngại tôn giáo' which means 'occupies religious concerns', changing the meaning.",
+          "It translates 'religious leaders are weighing in' as 'Các nhà lãnh đạo tôn giáo đang can thiệp', which adds 'can thiệp' (intervene) not present in the English.",
+          "It translates 'creating a new political risk for the creators of the technology' as 'tạo ra một rủi ro chính trị mới cho những người sáng tạo công nghệ này', which is accurate, but the earlier part has a wording change.",
+          "The title translates 'weighing in' as 'quan tâm đến' (interested in) instead of 'giving opinions on'.",
+          "The summary uses 'đang thúc đẩy các quan ngại tôn giáo' for 'fuels religious concerns', which changes 'fuels' to 'thúc đẩy' (promotes) rather than 'ignites' or 'intensifies'.",
+          "The summary changes 'weighing in' to 'can thiệp' (intervene) for the religious leaders, implying action beyond just voicing opinions."
+        ]
+      }
+    },
+    {
+      "id": "27faadd7cc1b81ba5cfecf68e857cf7984acdd7ed4fb43b290094bbf397a9ae6",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "It translates 'Permutation generation with language models' as 'Sinh ra văn bản theo hoán vị', which adds 'văn bản' (text) not present; English says 'permutation generation' without specifying text.",
+          "It translates 'hard-assignment prediction over shuffled candidate-index sequences' as 'dự đoán phép gán cứng trên các dãy chỉ số ứng cử viên đã xáo trộn', which is accurate but the phrasing 'phép gán' is a small addition.",
+          "It changes 'We study' to 'Nhóm tác giả nghiên cứu', which is a factual shift (first-person to third-person).",
+          "It translates 'masked-diffusion baseline' as 'diffusion mặc định bị ràng buộc', which means 'constrained default diffusion', losing the word 'masked'.",
+          "It translates 'constrained masked-diffusion baseline' as 'đường cơ sở diffusion mặc định bị ràng buộc', dropping 'masked' and adding 'mặc định' (default), which is not in the original.",
+          "It uses 'phép gán' again for the description of 'soft-assignment'.",
+          "The phrase 'We evaluate these designs' becomes 'Các thiết kế này được đánh giá', shifting from active to passive, which loses the explicit 'We'."
+        ]
+      }
+    },
+    {
+      "id": "73af984c8530ca56d15e8177878140095c18ca7de10e07a838a17646b7c2b4cc",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "It translates 'humanoid' as 'con người giả' which means 'fake human' or 'artificial human', not the standard term for robot humanoid; also 'điều khiển phản ứng trực quan' for 'reactive humanoid control' changes 'reactive' to 'reactive visually'.",
+          "It translates 'catching a falling cup' as 'bắt một cái chén đang rơi', which uses 'chén' (small bowl) instead of 'ly' (cup).",
+          "It translates 'reflexively responding with the whole body' as 'phản hồi cơ thể nguyên bản', which means 'original body response', not reflexive whole-body response.",
+          "It uses 'kiểm soát phản ứng trực quan toàn cơ thể' for 'visual reactive whole-body control', which changes 'reactive' to 'reactive visually'.",
+          "It translates 'humanoids' as 'robot con người' which means 'human robot', while the English says 'humanoids'.",
+          "It translates 'We study' as 'Nhóm tác giả nghiên cứu', a shift from first-person to third-person.",
+          "It translates 'catching thrown boxes' as 'bắt các hộp được ném', adding 'các' (plural) but not changing meaning; however, it uses 'Họ trình bày Reflex' for 'We present Reflex', which changes the author perspective.",
+          "The translation of 'Reflex, a three-stage framework' uses 'khung ba giai đoạn' which is fine, but the later 'learning' part uses 'học các khả năng này từng giai đoạn', which is accurate.",
+          "It translates 'first, a state-based policy learns whole-body catching with reinforcement learning' as 'một chính sách dựa trên trạng thái học cách bắt toàn cơ thể bằng reinforcement learning', dropping the word 'hộp' (box) that was in the original context (the policy learns to catch a thrown box)."
+        ]
+      }
+    },
+    {
+      "id": "49ea926c111e41bb66ed9c0f02792bab2b55f2dfde08eb3affe5c6846c353e87",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "B": [
+          "No significant factual drops, changes, or additions compared to the English; both versions are similar, but 'b' is more concise. However, 'b' uses 'phân tán' for 'distributed' which is a synonym of 'phân phối' but acceptable. The only minor difference is 'b' uses 'Kinh nghiệm thực tế' (real experience) instead of 'Kinh nghiệm của chúng tôi' (our experience) in 'a', which drops the 'our' and changes to a general statement, but that may be a style issue; however, the English says 'Our experience', so 'b' drops that fact.",
+          "Note: The original summary in 'b' also wrote 'chúng tôi' (we) later, so inconsistency? Actually 'b' says 'Kinh nghiệm thực tế cho thấy' which drops 'của chúng tôi' (our). The English has 'Our experience shows', so 'b' loses the first-person ownership."
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,552 @@
+{
+  "judge": "openai/gpt-5.6-luna",
+  "pair": [
+    "E",
+    "C"
+  ],
+  "files": [
+    "E=scripts/fixtures/vi-natural/arm-E.json",
+    "C=scripts/fixtures/vi-natural/arm-C.json"
+  ],
+  "rows": [
+    {
+      "id": "1bf3461ed74eaee24ca130718556005db446e5940d363833dae3f3590ec8e667",
+      "a": "C",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "C": [
+          "The phrase “potential savings” is rendered as a definite goal to cut costs.",
+          "The wording about expanded budget allocations for personnel is simplified to increasing the personnel budget."
+        ],
+        "E": [
+          "The hedge that the savings were “potential” is not explicit."
+        ]
+      }
+    },
+    {
+      "id": "5633ac0815d3b59e4394990a375c88c18efcfe86f1979e1c18d84bc811e333ad",
+      "a": "E",
+      "natural": "C",
+      "faithful": "C",
+      "lost": {
+        "E": [
+          "The source gives both “unfaithfulness” and “infidelity” as names for the behavior; the translation includes only “unfaithfulness.”"
+        ],
+        "C": []
+      }
+    },
+    {
+      "id": "631645b6ccd9d06c7a7456efacddf167d5c294c5e15b9c69fa1c0d83253f9b50",
+      "a": "E",
+      "natural": "C",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "The requirement to establish trust boundaries is omitted.",
+          "The qualifier “somewhat” familiar is omitted from the proposed format."
+        ]
+      }
+    },
+    {
+      "id": "61234206e575a0fe9a5d50dfde453636c3d2941bdbdcd271a5b119eb2fe8e36a",
+      "a": "E",
+      "natural": "C",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "The title no longer states that Anthropic’s BB+ rating was undisclosed; it instead refers to undisclosed financial data."
+        ]
+      }
+    },
+    {
+      "id": "d51fc7a9edf702b82ade45529ceadcae89ce5c0df3542cedc985c7db0d9865d6",
+      "a": "E",
+      "natural": "C",
+      "faithful": "C",
+      "lost": {
+        "E": [
+          "“Moving away from high-end cinematic clips” is overstated as replacing those clips.",
+          "The hedge “up to” is omitted from the reported 80% reduction in production costs."
+        ],
+        "C": []
+      }
+    },
+    {
+      "id": "59499c68644ca0485f53db16690d5635c12f74e63eee201be1dc98566346667a",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "“Some of my time” is generalized to time, omitting the partial amount."
+        ]
+      }
+    },
+    {
+      "id": "add7e11ad964d1ef033c776771084c6351683d8e6ec829a6e219ade449dcd542",
+      "a": "C",
+      "natural": "C",
+      "faithful": "E",
+      "lost": {
+        "C": [
+          "It omits the sanity-check qualification in “convergence sanity checks.”"
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "da19564dd2e91871544f9c072bbf6cc01bf081cabd955bbf5b4f56b8063c79f2",
+      "a": "E",
+      "natural": "C",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "It changes built-in evaluation into built-in self-evaluation."
+        ]
+      }
+    },
+    {
+      "id": "1b5e04430747b59eb38ec6598b99f73c82b5e3f695359325cdc5bcdbb954ffe3",
+      "a": "E",
+      "natural": "C",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "It weakens “within a single backbone” to “within the same backbone.”",
+          "It renders “visual representations” as image representations rather than visual representations."
+        ]
+      }
+    },
+    {
+      "id": "b3dd2a0f914f65ea3ebf2914c49ade1e17bfc0ff4ce94bbe898bdf584e0a61b2",
+      "a": "E",
+      "natural": "C",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "It omits the goal of accelerating innovation across the DSX ecosystem and bringing AI factory solutions to market faster.",
+          "It omits that customers, developers, and ecosystem partners receive access to production-grade AI workload and GPU orchestration capabilities.",
+          "It omits that the release expands DSX by establishing Run:ai as an open foundation for differentiated ecosystem solutions responding to changing customer needs.",
+          "It omits Run:ai’s history of helping organizations run AI workloads on Kubernetes at scale.",
+          "It omits dynamic GPU allocation and workload management across the lifecycle from data processing and training through inference.",
+          "It omits the claimed benefits for every DSX ecosystem partner and AI cloud: higher throughput, better GPU utilization, and more efficient and effective shared infrastructure operation.",
+          "It omits that the release includes the complete Run:ai platform and the independently adoptable KAI Scheduler, GPU Fractioning Operator, KAI Resource Management, and Workload Map components.",
+          "It omits that these components, together with additional platform code, form the integrated NVIDIA Run:ai platform."
+        ],
+        "C": [
+          "It omits that NVIDIA, specifically, is making the full NVIDIA Run:ai platform available as open source.",
+          "It omits the goal of accelerating innovation across the DSX ecosystem and bringing AI factory solutions to market faster.",
+          "It omits that customers, developers, and ecosystem partners receive access to production-grade AI workload and GPU orchestration capabilities.",
+          "It omits that the release expands DSX by establishing Run:ai as an open foundation for differentiated ecosystem solutions responding to changing customer needs.",
+          "It omits Run:ai’s history of helping organizations run AI workloads on Kubernetes at scale.",
+          "It omits dynamic GPU allocation and workload management across the lifecycle from data processing and training through inference.",
+          "It omits the claimed benefits for every DSX ecosystem partner and AI cloud: higher throughput, better GPU utilization, and more efficient and effective shared infrastructure operation.",
+          "It omits that the release includes the complete Run:ai platform and the independently adoptable KAI Scheduler, GPU Fractioning Operator, KAI Resource Management, and Workload Map components.",
+          "It omits that these components, together with additional platform code, form the integrated NVIDIA Run:ai platform."
+        ]
+      }
+    },
+    {
+      "id": "77744cb30da4f3b58e25980759b18461bb411ad34faea27acc5a48af896dd5de",
+      "a": "C",
+      "natural": "E",
+      "faithful": "tie",
+      "lost": {
+        "C": [
+          "It omits the use of virtual subagents in the training framework.",
+          "It omits that Sakana AI developed MASS with UC Berkeley.",
+          "It omits that MASS organizes copies of one model into teams to solve tasks and optimize workflows.",
+          "It omits that the tested model was a 27B open-weights model run over two cycles.",
+          "It omits the 1.2–1.6x range in scores per output token across four research benchmarks, including MLR Bench, ScienceAgentBench, and DSBench.",
+          "It omits the supervision bottleneck caused when tasks become too complex for human experts to guide.",
+          "It omits the warning that recursive self-improvement may create safety risks.",
+          "It omits the risk that a model acting as its own evaluator could reinforce its blind spots.",
+          "It omits the call for the AI community to study detection and intervention as models improve beyond human expertise."
+        ],
+        "E": [
+          "It omits the use of virtual subagents in the training framework.",
+          "It omits that Sakana AI developed MASS with UC Berkeley.",
+          "It omits that MASS organizes copies of one model into teams to solve tasks and optimize workflows.",
+          "It omits that the tested model was a 27B open-weights model run over two cycles.",
+          "It omits the 1.2–1.6x range in scores per output token across four research benchmarks, including MLR Bench, ScienceAgentBench, and DSBench.",
+          "It omits the supervision bottleneck caused when tasks become too complex for human experts to guide.",
+          "It omits the warning that recursive self-improvement may create safety risks.",
+          "It omits the risk that a model acting as its own evaluator could reinforce its blind spots.",
+          "It omits the call for the AI community to study detection and intervention as models improve beyond human expertise."
+        ]
+      }
+    },
+    {
+      "id": "164ef0f32666d135ed8f5d80b309408ac9b0256247d1614edec242e0fe7e6862",
+      "a": "C",
+      "natural": "C",
+      "faithful": "tie",
+      "lost": {
+        "C": [
+          "It omits the name sprinklz.io and that the author had worked on it for several years.",
+          "It omits that sprinklz.io is a customizable feed reader that can deprioritize selected topics.",
+          "It omits that the HN post was made a month earlier and received around 100 upvotes.",
+          "It omits users’ fatigue with LLM coverage and their appreciation of deprioritizing it.",
+          "It omits that the post demonstrated the tool’s usefulness.",
+          "It omits the website’s severe slowness and the author’s initial attribution of it to attention from the popular post.",
+          "It omits the author’s celebration and promise to improve future resilience.",
+          "It omits that the slowness continued and worsened several days after publication.",
+          "It omits the nonsensical metrics, including many genuinely active logged-in users and an extraordinarily overloaded server.",
+          "It omits the endpoint logging and the finding that most requests did not attempt to fetch news articles.",
+          "It omits that the site is a single-page application and most requests did not execute the JavaScript needed to render the page."
+        ],
+        "E": [
+          "It omits the name sprinklz.io and that the author had worked on it for several years.",
+          "It omits that sprinklz.io is a customizable feed reader that can deprioritize selected topics.",
+          "It omits that the HN post was made a month earlier and received around 100 upvotes.",
+          "It omits users’ fatigue with LLM coverage and their appreciation of deprioritizing it.",
+          "It omits that the post demonstrated the tool’s usefulness.",
+          "It omits the website’s severe slowness and the author’s initial attribution of it to attention from the popular post.",
+          "It omits the author’s celebration and promise to improve future resilience.",
+          "It omits that the slowness continued and worsened several days after publication.",
+          "It omits the nonsensical metrics, including many genuinely active logged-in users and an extraordinarily overloaded server.",
+          "It omits the endpoint logging and the finding that most requests did not attempt to fetch news articles.",
+          "It omits that the site is a single-page application and most requests did not execute the JavaScript needed to render the page."
+        ]
+      }
+    },
+    {
+      "id": "64fc2a8f84c91b7ab28f97ed627bb801987f761235eb0d27f501b4d90f9f834b",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "The base M3 MacBook Air specification is not explicitly preserved."
+        ],
+        "C": [
+          "The base M3 MacBook Air specification is not explicitly preserved."
+        ]
+      }
+    },
+    {
+      "id": "618aa0b2482f1123cd94c8a57fca40cd7cf5974c856061c82051422e67f32fd9",
+      "a": "E",
+      "natural": "C",
+      "faithful": "tie",
+      "lost": {
+        "E": [],
+        "C": []
+      }
+    },
+    {
+      "id": "3ea8663ef4cdebc3be7013e0296bc41280639726f10856ab7c0056039ed2af87",
+      "a": "C",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "C": [
+          "It omits “University” from Princeton University.",
+          "It weakens the claim that all four named models are built this way by presenting them as examples.",
+          "It changes “up to 100K tokens of context” to context reaching 100K tokens. "
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "89f4f685d9b7d96369d5544f853e59063b83dce589ccfb59c23c5164797fef18",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "It changes the company's work with PRIMA into developing PRIMA."
+        ],
+        "C": [
+          "It changes the company's work with PRIMA into developing PRIMA.",
+          "It adds “Corporation” after “company,” implying a different or redundant company name."
+        ]
+      }
+    },
+    {
+      "id": "8e2ae9ca3297dcc12263e647a3d4b38c857f508aa50550352f8e8c90974ad602",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "It adds a recency claim equivalent to “just” or “recently” through “vừa.”"
+        ]
+      }
+    },
+    {
+      "id": "8c1bc8435859ef749bdefd40187d1c384744a1d48c55ebd1b6924f716e467ce2",
+      "a": "E",
+      "natural": "C",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "It omits the full name “Artificial Analysis” from Artificial Analysis Decision Index.",
+          "It adds a recency claim equivalent to “just” or “recently” through “vừa.”"
+        ]
+      }
+    },
+    {
+      "id": "ef44c8c2fd567dd7b4567ed9891951302cffe409586c83a702ea149dbd6e5be9",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "It omits the negatives containing photos from similar childhood experiences.",
+          "It omits that the author had some success using Claude Code for hardware configuration tools.",
+          "It shortens Claude Code to Claude, dropping the specific tool name.",
+          "It weakens “basically gave up” to merely planning to give up.",
+          "It omits the hedge “probably” about Claude Code improvements contributing to the result.",
+          "It changes “100% recognizable as the image in the negative” to saying the scan completely matches the negative, which is a stronger claim."
+        ]
+      }
+    },
+    {
+      "id": "1a43b4df04302ec5052772db111ad7f14619b4b35b255b69b1603832ad84faba",
+      "a": "E",
+      "natural": "C",
+      "faithful": "C",
+      "lost": {
+        "E": [
+          "It misrenders Palo Alto-based as “Alto-based,” omitting Palo.",
+          "It adds that Sabi is a startup, which the source does not explicitly state."
+        ],
+        "C": []
+      }
+    },
+    {
+      "id": "cc4341195d8d52dd1bf8f6ac3736520a4aa94b924344c3bc8e4d2937d3bfb9b5",
+      "a": "C",
+      "natural": "E",
+      "faithful": "tie",
+      "lost": {
+        "C": [],
+        "E": []
+      }
+    },
+    {
+      "id": "39b03f627696e97fefd3023480ad2bb1697830ab788e3c16430f3d66ebf29146",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "It changes “Release” to “Update” in the title.",
+          "It omits that the lab’s staff had previously boasted about their pelicans.",
+          "It changes the statement that prices are not really comparable to saying that comparing prices is not important.",
+          "It adds “officially” to the release claim, which is not stated in the source."
+        ]
+      }
+    },
+    {
+      "id": "23216cfbe10c8c92d859347b187120d76e204e5f5643f059323d90e8ebc783e4",
+      "a": "E",
+      "natural": "C",
+      "faithful": "tie",
+      "lost": {
+        "E": [],
+        "C": []
+      }
+    },
+    {
+      "id": "b99beecb4669479f86b86323705160881d050bd4fc54a1e5599f3be4487a5375",
+      "a": "C",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "C": [
+          "It changes “speech” retrieval quality to the broader category “sound” quality."
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "5aa3dba3daf901f686ef5e027c6ec28fe7bc85f26192dce9eacfe7538fa3333d",
+      "a": "C",
+      "natural": "C",
+      "faithful": "C",
+      "lost": {
+        "C": [],
+        "E": [
+          "It omits that online RL fine-tunes diffusion models with black-box rewards.",
+          "It omits Flow-GRPO's poor credit-assignment efficiency limitation and DiffusionNFT's instability without carefully tuned EMA off-policy training.",
+          "It omits the hidden forward–reverse consistency force in NFT-style objectives and the fact that joint positive–negative training only partially cancels it.",
+          "It omits that EMA stabilizes training through restoration rather than off-policy rollouts.",
+          "It omits the mechanism of aggregating each prompt's rewards into a shared reward-improving direction for reverse-process states.",
+          "It omits the trust-region-masked second update for drift-adaptive restoration without EMA tuning.",
+          "It omits that no differentiable reward model is required, that fewer samples per prompt suffice, and that pairwise reward models are supported through DiffusionART-Pairwise.",
+          "It omits the image-and-video evaluation and the claim that training needs no per-task tuning."
+        ]
+      }
+    },
+    {
+      "id": "fa5cd199ec83c6c6b75747905805667db4601d0ce2a9fb51b7278186c8e1cfef",
+      "a": "E",
+      "natural": "C",
+      "faithful": "C",
+      "lost": {
+        "E": [
+          "It omits the source's discussion of the glib claim that no technology is inevitable and everything is contingent.",
+          "It omits that this claim is technically true but merely sounds wise.",
+          "It omits that some technologies can reasonably be considered inevitable, with firearms given as an example, followed by the unfinished clause beginning “once they”.",
+          "It adds the narrower framing that the issue concerns the development of AI."
+        ],
+        "C": [
+          "The title changes “little” to “nothing,” making the claim more absolute.",
+          "It changes “everything is contingent” to everything depending on objective factors, adding a qualification not present in the source."
+        ]
+      }
+    },
+    {
+      "id": "fe42140b9345e878809ff0d5c693958b12ff4cbf1e704a2b5558f3f1cf9a5f83",
+      "a": "E",
+      "natural": "C",
+      "faithful": "C",
+      "lost": {
+        "E": [
+          "It omits the 10-year lease for a 67 MW data-center campus in Malaysia.",
+          "It omits that the campus allows Bitdeer to house Nvidia GB300 systems.",
+          "It omits the increase in secured AI cloud capacity to 273.5 MW.",
+          "It omits that the active business pipeline exceeds $10 billion.",
+          "It omits that the agreement spans a decade and marks Bitdeer's continued pivot into high-performance computing infrastructure.",
+          "It omits the role of the Malaysian facilities in a broader strategy to leverage power and land assets for the AI cloud market.",
+          "It changes the agreement into one that the company has signed, whereas the source only says there is a new lease agreement."
+        ],
+        "C": [
+          "It changes “house Nvidia GB300 systems” to “install Nvidia GB300 systems.”",
+          "It changes the active business pipeline into the scale of projects currently underway."
+        ]
+      }
+    },
+    {
+      "id": "4bb0972ddb59f840c1dd94189794eb82159a5a126bc652b5c80536e4c1a05938",
+      "a": "E",
+      "natural": "C",
+      "faithful": "tie",
+      "lost": {
+        "E": [],
+        "C": []
+      }
+    },
+    {
+      "id": "fec0d0fc70a62740538a9b685594ab36cef74556b6a18f99d554667b3e3ea90a",
+      "a": "C",
+      "natural": "C",
+      "faithful": "E",
+      "lost": {
+        "C": [
+          "It changes the quoted “we” who vibe-rewrote HEY to “they,” shifting who is presented as having done it.",
+          "It omits the “vibe” aspect of the rewrite of HEY."
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "3edeaa8d7764aa277fd52cfb351208e00ccbe8f89c8ee92faf6329aed447d742",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "It changes containment failures to failures of control, which is broader and less specific.",
+          "It changes agents with minds of their own to agents with their own consciousness.",
+          "It changes basic security measures to security principles."
+        ]
+      }
+    },
+    {
+      "id": "aa65eb3ab36b5eef10afd8013f57ac938e7f406160eadcec57c2cf92b2630f43",
+      "a": "C",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "C": [
+          "It omits that discrete diffusion models have emerged as strong alternatives to autoregressive language models.",
+          "It omits that recent work initializes and fine-tunes a base unimodal model for bi-modal generation.",
+          "It changes the recent work to previous approaches and says they only fine-tune the model."
+        ],
+        "E": [
+          "It changes bi-modal generation to generating bi-modal data."
+        ]
+      }
+    },
+    {
+      "id": "7fbc7f2d590fe3c5dc0bc787e3e7f728f5ee736c1d30d1cafd05a5021d94c84f",
+      "a": "E",
+      "natural": "E",
+      "faithful": "C",
+      "lost": {
+        "E": [
+          "It adds that the data-center deals involve construction.",
+          "It changes communities making some noise to local communities creating pressure.",
+          "It omits the sense of additional or other deals of the week."
+        ],
+        "C": []
+      }
+    },
+    {
+      "id": "0021a6e94edbcecbc9ae26c5807cff9c1f2fcc196d59d858771519b956d99967",
+      "a": "C",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "C": [
+          "It changes the creators of the technology to the developers of the technology."
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "27faadd7cc1b81ba5cfecf68e857cf7984acdd7ed4fb43b290094bbf397a9ae6",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "It omits the @1 qualifier from Recall@1."
+        ]
+      }
+    },
+    {
+      "id": "73af984c8530ca56d15e8177878140095c18ca7de10e07a838a17646b7c2b4cc",
+      "a": "E",
+      "natural": "C",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "C": [
+          "It changes the passing cart to a vehicle, losing the fact that it is a cart.",
+          "It changes catching thrown boxes to catching a thrown box, changing the plural to singular."
+        ]
+      }
+    },
+    {
+      "id": "49ea926c111e41bb66ed9c0f02792bab2b55f2dfde08eb3affe5c6846c353e87",
+      "a": "C",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "C": [
+          "It changes dynamic to flexible in the title.",
+          "It renders virtual GPU cloud with the awkward and potentially misleading word order Virtual Cloud GPU."
+        ],
+        "E": [
+          "It changes infrastructure elasticity to flexibility."
+        ]
+      }
+    }
+  ]
+}

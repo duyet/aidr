@@ -19,9 +19,9 @@ import { missingProtectedTerms } from "./translation-terms.js";
 
 /** Below this the source is too short for a length ratio to mean much. */
 const MIN_SOURCE_CHARS_FOR_RATIO = 200;
-/** Vietnamese runs about as long as English, even written freely; under
- * 0.6 means facts were dropped (prod median was 0.42 when the prompt said
- * "rephrase freely" without naming what must survive). */
+/** Vietnamese runs about as long as English; under 0.6 means sentences
+ * were dropped (prod median was 0.42 when the prompt said "rephrase
+ * freely"). */
 export const MIN_VI_EN_LENGTH_RATIO = 0.6;
 /** A source summary this long is prose, not a name. In 60 days of prod
  * (4,480 EN→VI rows to 2026-10-15) every summary kept English on purpose
@@ -381,7 +381,7 @@ export function translationDraftIssues(
     cand.summary.length / src.summary.length < MIN_VI_EN_LENGTH_RATIO
   ) {
     issues.push(
-      `the summary is ${Math.round((cand.summary.length / src.summary.length) * 100)}% of the source length, so facts are missing; keep every name, number, date and claim the source states`
+      `the summary is ${Math.round((cand.summary.length / src.summary.length) * 100)}% of the source length; translate every sentence, do not condense`
     );
   }
   return issues;

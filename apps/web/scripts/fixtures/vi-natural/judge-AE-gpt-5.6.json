@@ -1,0 +1,545 @@
+{
+  "judge": "openai/gpt-5.6-luna",
+  "pair": [
+    "A",
+    "E"
+  ],
+  "files": [
+    "A=scripts/fixtures/vi-natural/arm-A.json",
+    "E=scripts/fixtures/vi-natural/arm-E.json"
+  ],
+  "rows": [
+    {
+      "id": "1bf3461ed74eaee24ca130718556005db446e5940d363833dae3f3590ec8e667",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "It changes the spokesperson's denial into a denial that Azure leadership had never instructed teams, rather than a denial that they had instructed teams.",
+          "It adds the claim that Azure leadership had never issued such instructions."
+        ],
+        "E": [
+          "It names the source as “Information” instead of “The Information.”"
+        ]
+      }
+    },
+    {
+      "id": "5633ac0815d3b59e4394990a375c88c18efcfe86f1979e1c18d84bc811e333ad",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "It drops that the insights are anecdotal and omits the example marker introducing features learned by the model."
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "631645b6ccd9d06c7a7456efacddf167d5c294c5e15b9c69fa1c0d83253f9b50",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "It weakens “somewhat familiar format” to simply “familiar format.”",
+          "It renders “babysit agents” as “manage agents,” losing the meaning of closely supervising them."
+        ],
+        "A": [
+          "It renders “babysit agents” as waiting for agents, changing the meaning.",
+          "It garbles “somewhat familiar format” as “định dạng tương đối quăm quyển.”"
+        ]
+      }
+    },
+    {
+      "id": "61234206e575a0fe9a5d50dfde453636c3d2941bdbdcd271a5b119eb2fe8e36a",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "A": [
+          "It changes Anthropic's creditworthiness into its ability to pay.",
+          "It renders Broadcom's senior debt as senior bonds, changing the debt instrument.",
+          "It garbles “global chip sell-off” as “bán thái uống toàn cầu.”",
+          "It changes a video arcade into a game store."
+        ]
+      }
+    },
+    {
+      "id": "d51fc7a9edf702b82ade45529ceadcae89ce5c0df3542cedc985c7db0d9865d6",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "A": [
+          "It omits that the business videos are specifically for employee onboarding.",
+          "It garbles “capture screen recordings” as “collect screen-recording rights.”"
+        ]
+      }
+    },
+    {
+      "id": "59499c68644ca0485f53db16690d5635c12f74e63eee201be1dc98566346667a",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "It renders the plural AI agents as a singular AI agent."
+        ],
+        "A": [
+          "It renders “decompiling” as the incorrect term “phân dịch.”",
+          "It renders “first-person shooter” as a shooter involving a first character, rather than a first-person shooter.",
+          "It renders the plural AI agents as a singular AI agent.",
+          "It leaves “corporate America” untranslated."
+        ]
+      }
+    },
+    {
+      "id": "add7e11ad964d1ef033c776771084c6351683d8e6ec829a6e219ade449dcd542",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "It mistranslates the cross-session recurrent-state memory gate as a recurrent-state memory window.",
+          "It says the single-run sweeps covered four further factors instead of seven."
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "da19564dd2e91871544f9c072bbf6cc01bf081cabd955bbf5b4f56b8063c79f2",
+      "a": "E",
+      "natural": "E",
+      "faithful": "tie",
+      "lost": {
+        "E": [],
+        "A": []
+      }
+    },
+    {
+      "id": "1b5e04430747b59eb38ec6598b99f73c82b5e3f695359325cdc5bcdbb954ffe3",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "A": [
+          "The title changes “omni-visual understanding” to “comprehensive visual understanding.”",
+          "It mistranslates unified multimodal generation as an unintelligible phrase meaning something like “diverse intelligent comprehensive generation.”",
+          "It changes “to our knowledge” to “as of now,” dropping the stated epistemic hedge."
+        ]
+      }
+    },
+    {
+      "id": "b3dd2a0f914f65ea3ebf2914c49ade1e17bfc0ff4ce94bbe898bdf584e0a61b2",
+      "a": "E",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "E": [
+          "It omits the call to accelerate innovation across the DSX ecosystem and bring AI factory solutions to market faster.",
+          "It omits that the full NVIDIA Run:ai platform is being released as open source software.",
+          "It omits access for customers, developers, and ecosystem partners to production-grade AI workload and GPU orchestration capabilities.",
+          "It omits that the release expands the NVIDIA DSX AI Factory Platform and enables differentiated solutions to reach the market faster in response to customer needs.",
+          "It omits Run:ai’s history of helping organizations run AI workloads on Kubernetes at scale.",
+          "It omits dynamic GPU allocation and lifecycle management from data processing and training through inference.",
+          "It omits that every NVIDIA DSX ecosystem partner and AI cloud can improve throughput, GPU utilization, and shared-infrastructure efficiency.",
+          "It omits the four independently adoptable components: KAI Scheduler, GPU Fractioning Operator, KAI Resource Management, and Workload Map.",
+          "It omits that these components, together with additional platform code, form the integrated NVIDIA Run:ai platform."
+        ],
+        "A": [
+          "It mistranslates “production-grade” capabilities as merely “leading” capabilities.",
+          "It makes “AI cloud” appear to be owned by NVIDIA rather than referring to AI clouds in the DSX ecosystem.",
+          "It renders the official NVIDIA DSX AI Factory Platform name as a generic translated phrase."
+        ]
+      }
+    },
+    {
+      "id": "77744cb30da4f3b58e25980759b18461bb411ad34faea27acc5a48af896dd5de",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "E": [
+          "It omits that virtual subagents are used to overcome the limits of human evaluation in open-ended research.",
+          "It omits that Sakana AI developed MASS in collaboration with UC Berkeley.",
+          "It omits that MASS organizes copies of one model into teams to solve tasks and optimize workflows.",
+          "It omits the two-cycle test on a 27B open-weights model.",
+          "It omits the 1.2–1.6x increase in scores per output token across four research benchmarks.",
+          "It omits the benchmark names MLR Bench, ScienceAgentBench, and DSBench.",
+          "It omits the supervision bottleneck that arises when tasks become too complex for human experts to guide.",
+          "It omits the warning that recursive self-improvement may create safety risks.",
+          "It omits the explanation that a model evaluating itself may reinforce its own blind spots.",
+          "It omits the call for the AI community to investigate detection and intervention as models improve beyond human expertise."
+        ]
+      }
+    },
+    {
+      "id": "164ef0f32666d135ed8f5d80b309408ac9b0256247d1614edec242e0fe7e6862",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "It changes the positive sense of “Everything was looking up” to “Everything was reaching a climax.”",
+          "It weakens “a good handful” of genuinely active users to “a few” users.",
+          "It drops the extreme degree in “exorbitantly high load.”",
+          "It garbles the statement that most requests did not run the JavaScript needed to render the page, referring instead to a request layer and omitting “most.”"
+        ],
+        "E": [
+          "It omits the author’s work over several years on sprinklz.io, a customizable feed reader.",
+          "It omits the ability to deprioritize selected topics from the news feed.",
+          "It omits that the HN post received around one hundred upvotes.",
+          "It omits that users were tired of hearing about LLMs and liked deprioritizing them.",
+          "It omits that the post demonstrated the usefulness of the tool.",
+          "It omits that the website became painfully slow after the post.",
+          "It omits the author’s initial belief that the slowdown was caused by attention from a suddenly popular post.",
+          "It omits the author’s celebration and resolve to make the site more resilient.",
+          "It omits that the slowdown continued and worsened several days after publication.",
+          "It omits the presence of genuinely active, logged-in users alongside an extremely high-load server.",
+          "It omits the endpoint logging added to count requests for each URL path.",
+          "It omits that most requests did not even attempt to fetch news articles.",
+          "It omits that the site is a single-page application.",
+          "It omits that most requests did not run the JavaScript required to render the page."
+        ]
+      }
+    },
+    {
+      "id": "64fc2a8f84c91b7ab28f97ed627bb801987f761235eb0d27f501b4d90f9f834b",
+      "a": "A",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "A": [],
+        "E": []
+      }
+    },
+    {
+      "id": "618aa0b2482f1123cd94c8a57fca40cd7cf5974c856061c82051422e67f32fd9",
+      "a": "A",
+      "natural": "E",
+      "faithful": "tie",
+      "lost": {
+        "A": [],
+        "E": []
+      }
+    },
+    {
+      "id": "3ea8663ef4cdebc3be7013e0296bc41280639726f10856ab7c0056039ed2af87",
+      "a": "E",
+      "natural": "A",
+      "faithful": "tie",
+      "lost": {
+        "E": [],
+        "A": []
+      }
+    },
+    {
+      "id": "89f4f685d9b7d96369d5544f853e59063b83dce589ccfb59c23c5164797fef18",
+      "a": "A",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "E": [
+          "It changes the company's work with PRIMA to the company developing PRIMA.",
+          "It omits that Hodak explained how this work forms part of the company's path toward a new BCI."
+        ]
+      }
+    },
+    {
+      "id": "8e2ae9ca3297dcc12263e647a3d4b38c857f508aa50550352f8e8c90974ad602",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "A": [
+          "The title omits that the model acted deliberately.",
+          "The title omits that it hoped to start over with better data."
+        ]
+      }
+    },
+    {
+      "id": "8c1bc8435859ef749bdefd40187d1c384744a1d48c55ebd1b6924f716e467ce2",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [],
+        "E": []
+      }
+    },
+    {
+      "id": "ef44c8c2fd567dd7b4567ed9891951302cffe409586c83a702ea149dbd6e5be9",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [],
+        "A": [
+          "Changes “film negatives” and “negative photo scanner” to reflective film and reflective-photo scanner.",
+          "Says Tom was doing the same things rather than describing how he had managed to fix the mouse driver."
+        ]
+      }
+    },
+    {
+      "id": "1a43b4df04302ec5052772db111ad7f14619b4b35b255b69b1603832ad84faba",
+      "a": "E",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "E": [
+          "The title omits that the prompts are text prompts.",
+          "Changes “Palo Alto-based” to “Alto-based,” dropping Palo."
+        ],
+        "A": [
+          "Translates “baseball cap” as “baseball helmet.”"
+        ]
+      }
+    },
+    {
+      "id": "cc4341195d8d52dd1bf8f6ac3736520a4aa94b924344c3bc8e4d2937d3bfb9b5",
+      "a": "E",
+      "natural": "E",
+      "faithful": "tie",
+      "lost": {
+        "E": [],
+        "A": []
+      }
+    },
+    {
+      "id": "39b03f627696e97fefd3023480ad2bb1697830ab788e3c16430f3d66ebf29146",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "Omits that Gemini 4 Argon was made available today."
+        ],
+        "A": [
+          "Omits that Gemini 4 Argon was made available today.",
+          "Misidentifies pelicans as penguins.",
+          "Translates $2 per million input tokens and $10 per million output tokens as $2 billion and $10 billion per token.",
+          "Changes “not really comparable” to “almost impossible to compare directly.”"
+        ]
+      }
+    },
+    {
+      "id": "23216cfbe10c8c92d859347b187120d76e204e5f5643f059323d90e8ebc783e4",
+      "a": "A",
+      "natural": "E",
+      "faithful": "tie",
+      "lost": {
+        "A": [],
+        "E": []
+      }
+    },
+    {
+      "id": "b99beecb4669479f86b86323705160881d050bd4fc54a1e5599f3be4487a5375",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "Uses the inaccurate term “multiform” instead of “multimodal.”",
+          "Says the model identified 13 of 14 video segments from a sentence, omitting the emphasis that it was a single sentence.",
+          "Translates “speech” as “audio,” which broadens the source’s claim."
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "5aa3dba3daf901f686ef5e027c6ec28fe7bc85f26192dce9eacfe7538fa3333d",
+      "a": "A",
+      "natural": "A",
+      "faithful": "A",
+      "lost": {
+        "A": [
+          "“Black-box rewards” is mistranslated as “black rewards,” obscuring the black-box nature of the rewards.",
+          "“Drift-adaptive restoration” is mistranslated as “sliding-adaptive restoration.”"
+        ],
+        "E": [
+          "It omits the online RL fine-tuning setup and the use of black-box rewards.",
+          "It omits Flow-GRPO’s poor credit assignment and efficiency limitation.",
+          "It omits DiffusionNFT’s efficiency and instability without carefully tuned EMA off-policy training.",
+          "It omits the hidden forward-reverse consistency force in NFT-style objectives.",
+          "It omits the partial cancellation of that force by joint positive-negative training.",
+          "It omits EMA’s stabilization through restoration rather than off-policy rollouts.",
+          "It omits the DiffusionART method and its aggregation of per-prompt rewards into a shared reward-improving direction for reverse-process states.",
+          "It omits the removal of the consistency force by construction.",
+          "It omits the trust-region-masked second update and drift-adaptive restoration without EMA tuning.",
+          "It omits the lack of a differentiable reward model.",
+          "It omits effectiveness with fewer samples per prompt.",
+          "It omits support for pairwise reward models and DiffusionART-Pairwise.",
+          "It omits the results across image and video generation and the lack of per-task tuning."
+        ]
+      }
+    },
+    {
+      "id": "fa5cd199ec83c6c6b75747905805667db4601d0ce2a9fb51b7278186c8e1cfef",
+      "a": "A",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "E": [
+          "It omits the point that saying no technology is inevitable and everything is contingent would be a glib response.",
+          "It omits that this response is technically true and sounds wise.",
+          "It omits the claim that some technologies can reasonably be labeled inevitable.",
+          "It omits firearms as the example of such a technology.",
+          "It omits the unfinished “once they” clause from the source passage."
+        ]
+      }
+    },
+    {
+      "id": "fe42140b9345e878809ff0d5c693958b12ff4cbf1e704a2b5558f3f1cf9a5f83",
+      "a": "E",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "E": [
+          "It omits the 10-year lease.",
+          "It omits the 67 MW data center campus in Malaysia.",
+          "It omits that the site will house Nvidia GB300 systems.",
+          "It omits that the expansion raises Bitdeer’s secured AI cloud capacity to 273.5 MW.",
+          "It omits that the active business pipeline exceeds $10 billion.",
+          "It omits that the agreement marks Bitdeer’s continued pivot from Bitcoin mining into high-performance computing infrastructure.",
+          "It omits the broader strategy of leveraging power and land assets for the AI cloud market."
+        ],
+        "A": [
+          "“House Nvidia GB300 systems” is rendered as “install Nvidia GB300 systems,” changing the stated use of the facility.",
+          "“Data center campus” is reduced to a generic data site rather than a campus.",
+          "“Active business pipeline” is rendered as total active business volume, losing the pipeline meaning.",
+          "“Facilities” is mistranslated as “data facilities/database,” rather than physical Malaysian facilities."
+        ]
+      }
+    },
+    {
+      "id": "4bb0972ddb59f840c1dd94189794eb82159a5a126bc652b5c80536e4c1a05938",
+      "a": "E",
+      "natural": "E",
+      "faithful": "tie",
+      "lost": {
+        "E": [
+          "“Interpret rules” is rendered as “analyze rules,” changing the agents’ described activity.",
+          "“Analyze replays” is rendered as merely “review/watch matches,” omitting the analysis aspect."
+        ],
+        "A": []
+      }
+    },
+    {
+      "id": "fec0d0fc70a62740538a9b685594ab36cef74556b6a18f99d554667b3e3ea90a",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "“Jaded” is mistranslated as “mistaken” or “misguided.”",
+          "“Vibe-rewrote HEY” is rendered as rewriting HEY “in a playful way,” losing the vibe-rewriting description.",
+          "“Vitriolic truth-bombing” is changed to “deep words full of anger,” omitting the truth-bombing characterization.",
+          "The closing typo “mọ người” makes the intended reference to everyone unclear."
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "3edeaa8d7764aa277fd52cfb351208e00ccbe8f89c8ee92faf6329aed447d742",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "“Going rogue” is changed to “going crazy,” which does not convey rogue or uncontrolled behavior accurately.",
+          "“Containment failures” is mistranslated as failures of “sheltering” or “hosting,” rather than failures to contain agents."
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "aa65eb3ab36b5eef10afd8013f57ac938e7f406160eadcec57c2cf92b2630f43",
+      "a": "E",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "E": [
+          "The author footnote markers (†**, ‡**, and §**) are omitted.",
+          "“Bi-modal generation” is changed to generating bi-modal data."
+        ],
+        "A": [
+          "The SDE is mistranslated as a “stochastic-avoidance differential equation” rather than a stochastic differential equation.",
+          "The optimized inference sampling defaults are rendered as the nonsensical phrase “mẫu suất quảng,” losing their meaning."
+        ]
+      }
+    },
+    {
+      "id": "7fbc7f2d590fe3c5dc0bc787e3e7f728f5ee736c1d30d1cafd05a5021d94c84f",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "“Make some noise” is translated literally as “create noise,” losing the meaning that communities can exert pressure or raise objections."
+        ],
+        "E": [
+          "“Communities” is narrowed to “local communities.”",
+          "“Data center deals” is narrowed to deals for building data centers.",
+          "“More deals of the week” is changed to notable deals of the week."
+        ]
+      }
+    },
+    {
+      "id": "0021a6e94edbcecbc9ae26c5807cff9c1f2fcc196d59d858771519b956d99967",
+      "a": "A",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "A": [],
+        "E": [
+          "The title omits the Tim Higgins/Wall Street Journal attribution.",
+          "The title omits that the discussion of creating a new consciousness comes from AI leaders."
+        ]
+      }
+    },
+    {
+      "id": "27faadd7cc1b81ba5cfecf68e857cf7984acdd7ed4fb43b290094bbf397a9ae6",
+      "a": "A",
+      "natural": "E",
+      "faithful": "tie",
+      "lost": {
+        "A": [],
+        "E": []
+      }
+    },
+    {
+      "id": "73af984c8530ca56d15e8177878140095c18ca7de10e07a838a17646b7c2b4cc",
+      "a": "A",
+      "natural": "E",
+      "faithful": "E",
+      "lost": {
+        "A": [
+          "The title renders “humanoid” as “bipedal human,” changing the subject from humanoid robots to humans with two legs.",
+          "“Ground perception in egocentric vision” is rendered as the unnatural and inaccurate “nền tảng hóa nhận thức trong thị giác egocentric,” weakening the meaning of grounding perception in first-person vision."
+        ],
+        "E": []
+      }
+    },
+    {
+      "id": "49ea926c111e41bb66ed9c0f02792bab2b55f2dfde08eb3affe5c6846c353e87",
+      "a": "E",
+      "natural": "E",
+      "faithful": "A",
+      "lost": {
+        "E": [
+          "The six authors—Jianhua Li, Yun Xing, Girisha De Silva, Ryan Flint, Kai Yuan, and Sean Suchter—are omitted."
+        ],
+        "A": []
+      }
+    }
+  ]
+}

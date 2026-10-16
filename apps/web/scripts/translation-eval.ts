@@ -52,7 +52,6 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  callAnyrouter,
   type LlmCallLogEntry,
   parseJson,
   sentSource,
@@ -80,6 +79,7 @@ import type { Env } from "../worker/types";
 import {
   benchEnv,
   blindBackTranslate,
+  readApiKey,
   scoreBackTranslation,
   stubDb,
 } from "./bench-env";
@@ -532,14 +532,28 @@ interface ArmAttempt {
   error: string | null;
 }
 
+interface ArmBatch {
+  batch: number;
+  wallMs: number;
+  attempts: ArmAttempt[];
+}
+
 interface ArmFile {
   arm: string;
   model: string;
-  /** Commit whose translate prompt and draft gate wrote these rows. */
+  /** Hash of the translate prompt and draft gate sources that wrote these
+   *  rows, and the commit they were first run at. */
   card: string;
+  commit: string;
   rows: (TranslationText & { id: string; batch: number })[];
-  batches: { batch: number; wallMs: number; attempts: ArmAttempt[] }[];
+  batches: ArmBatch[];
+  /** Batches whose first call failed (titles-only fallback), kept for the
+   *  failure rate after `--retry-failed` reran them. */
+  failedFirst: ArmBatch[];
 }
+
+/** The first call failed, so translateItems fell back to titles only. */
+const degradedBatch = (b: ArmBatch) => b.attempts[0]?.ok === false;
 
 interface Ledger {
   cap: number;
@@ -614,18 +628,25 @@ function halted(ledger: Ledger): boolean {
   return true;
 }
 
-function cardRevision(): string {
-  const git = (...a: string[]) =>
-    execFileSync("git", a, { cwd: here, encoding: "utf-8" }).trim();
-  const dirty = git(
-    "status",
-    "--porcelain",
-    "--",
-    "../worker/llm.ts",
-    "../worker/translation-draft-check.ts",
-    "../worker/translation-terms.ts"
-  );
-  return `${git("rev-parse", "--short", "HEAD")}${dirty ? "+dirty" : ""}`;
+const CARD_SOURCES = [
+  "../worker/llm.ts",
+  "../worker/translation-draft-check.ts",
+  "../worker/translation-terms.ts",
+  "../worker/translation-knowledge.ts",
+];
+
+function cardHash(): string {
+  const hash = createHash("sha256");
+  for (const file of CARD_SOURCES)
+    hash.update(readFileSync(path.join(here, file)));
+  return hash.digest("hex").slice(0, 12);
+}
+
+function headCommit(): string {
+  return execFileSync("git", ["rev-parse", "--short", "HEAD"], {
+    cwd: here,
+    encoding: "utf-8",
+  }).trim();
 }
 
 function groupBatches(items: ArmItem[]): ArmItem[][] {
@@ -645,11 +666,20 @@ async function genMode(): Promise<void> {
   const env = benchEnv({ ANYROUTER_TRANSLATE_MODEL: model }, knowledgeDb());
   const file: ArmFile = existsSync(out)
     ? JSON.parse(readFileSync(out, "utf-8"))
-    : { arm: name, model, card: cardRevision(), rows: [], batches: [] };
-  if (file.model !== model || file.card !== cardRevision())
+    : {
+        arm: name,
+        model,
+        card: cardHash(),
+        commit: headCommit(),
+        rows: [],
+        batches: [],
+        failedFirst: [],
+      };
+  if (file.model !== model || file.card !== cardHash())
     throw new Error(
       `${out} holds ${file.model} @ ${file.card}; use a new file`
     );
+  const retry = process.argv.includes("--retry-failed");
   const attempts: ArmAttempt[] = [];
   setLlmCallLogger((e) => {
     attempts.push({
@@ -662,8 +692,11 @@ async function genMode(): Promise<void> {
   for (const group of groupBatches(loadArmItems())) {
     const batch = group[0]?.batch ?? -1;
     const done = new Set(file.rows.map((r) => r.id));
-    if (group.every((item) => done.has(item.id))) continue;
+    const prior = file.batches.find((b) => b.batch === batch);
+    const redo = retry && prior !== undefined && degradedBatch(prior);
+    if (group.every((item) => done.has(item.id)) && !redo) continue;
     if (halted(ledger)) break;
+    if (redo) file.failedFirst.push(prior);
     file.rows = file.rows.filter((r) => r.batch !== batch);
     file.batches = file.batches.filter((b) => b.batch !== batch);
     attempts.length = 0;
@@ -846,18 +879,22 @@ async function metricsMode(): Promise<void> {
       };
     }
     ratios.sort((a, b) => a - b);
-    const ok = (arm.file?.batches ?? [])
+    const every = [
+      ...(arm.file?.batches ?? []),
+      ...(arm.file?.failedFirst ?? []),
+    ];
+    const ok = every
       .flatMap((b) => b.attempts)
       .filter((a) => a.ok)
       .map((a) => a.ms)
       .sort((a, b) => a - b);
-    const attempts = (arm.file?.batches ?? []).flatMap((b) => b.attempts);
+    const attempts = every.flatMap((b) => b.attempts);
     const rate = (k: number, t: number) =>
       t ? Number((k / t).toFixed(3)) : null;
     table.push({
       arm: arm.name,
       model: arm.file?.model ?? "stored",
-      card: arm.file?.card ?? "production",
+      card: arm.file ? `${arm.file.card}@${arm.file.commit}` : "production",
       items: n,
       gateItems,
       gateIssues,
@@ -871,6 +908,10 @@ async function metricsMode(): Promise<void> {
       lengthRatioP50: Number((percentile(ratios, 0.5) ?? 0).toFixed(2)),
       calls: attempts.length,
       failedCalls: attempts.filter((a) => !a.ok).length,
+      degradedBatches: (arm.file?.batches ?? []).filter(degradedBatch).length,
+      failedFirstBatches:
+        (arm.file?.batches ?? []).filter(degradedBatch).length +
+        (arm.file?.failedFirst ?? []).length,
       repairBatches: (arm.file?.batches ?? []).filter(
         (b) => b.attempts.filter((a) => a.ok).length > 1
       ).length,
@@ -923,6 +964,35 @@ ${JSON.stringify(stories)}
 Respond with strict JSON only: {"stories":[{"id":"...","natural":"a|b|tie","faithful":"a|b|tie","a_lost":["..."],"b_lost":["..."]}]}`;
 }
 
+/** Not the Worker's streaming chain, which sends `temperature`: Claude ids
+ *  answer it with a 400 (caption-eval.ts makes the same call). */
+async function judgeCall(model: string, user: string): Promise<string> {
+  const res = await fetch("https://anyrouter.dev/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${readApiKey()}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 8_192,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: JUDGE_SYSTEM },
+        { role: "user", content: user },
+      ],
+    }),
+    signal: AbortSignal.timeout(240_000),
+  });
+  const body = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  if (!res.ok)
+    throw new Error(`${res.status} ${JSON.stringify(body).slice(0, 400)}`);
+  // DeepSeek writes raw newlines inside JSON strings.
+  return (body.choices?.[0]?.message?.content ?? "").replace(/[\n\r\t]+/g, " ");
+}
+
 function slotA(id: string, pair: string, judge: string): boolean {
   return (
     Number.parseInt(
@@ -951,7 +1021,6 @@ async function judgeMode(): Promise<void> {
     ReturnType<typeof loadArm>,
   ];
   const ledger = meterFetch(`judge:${x.name}-${y.name}:${judge}`);
-  const env = benchEnv({}, stubDb());
   const file: JudgeFile = existsSync(out)
     ? JSON.parse(readFileSync(out, "utf-8"))
     : {
@@ -987,24 +1056,14 @@ async function judgeMode(): Promise<void> {
     });
     let parsed: { stories?: Record<string, unknown>[] };
     try {
-      const result = await callAnyrouter(
-        env,
-        [
-          { role: "system", content: JUDGE_SYSTEM },
-          { role: "user", content: judgePrompt(chunk.map((c) => c.story)) },
-        ],
-        {
-          json: true,
-          modelSpec: judge,
-          task: "review",
-          timeoutMs: 180_000,
-          maxTokens: 8_192,
-        }
+      parsed = parseJson(
+        await judgeCall(judge, judgePrompt(chunk.map((c) => c.story)))
       );
-      parsed = parseJson(result.content);
     } catch (error) {
-      console.error(`chunk ${at / perCall}: ${safe(error)}`);
-      continue;
+      // Each retry spends production quota; one failure ends the run.
+      console.error(`chunk ${at / perCall}: ${String(error).slice(0, 400)}`);
+      process.exitCode = 3;
+      break;
     }
     for (const c of chunk) {
       const got = parsed.stories?.find((s) => s.id === c.key);
@@ -1079,9 +1138,7 @@ function verdictMode(): void {
     first.files.flatMap((spec) => {
       const arm = loadArm(spec, []).file;
       const failed = new Set(
-        (arm?.batches ?? [])
-          .filter((b) => b.attempts.some((a) => !a.ok))
-          .map((b) => b.batch)
+        (arm?.batches ?? []).filter(degradedBatch).map((b) => b.batch)
       );
       return (arm?.rows ?? [])
         .filter((r) => failed.has(r.batch))

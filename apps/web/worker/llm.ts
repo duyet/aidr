@@ -151,7 +151,7 @@ Prefer everyday Vietnamese over stiff Sino-Vietnamese formalese when both exist 
 
 Numbers and units follow Vietnamese press style: "2,5 tỷ USD" not "2.5 billion USD", "300 triệu người dùng" not "300 million users" — translate the unit word, keep the digits, use Vietnamese decimal comma. Magnitudes map exactly: B / bn / billion = tỷ, M / mn / million = triệu, T / trillion = nghìn tỷ. "$20B" is "20 tỷ USD", never "20 triệu USD". A model size such as "7B" or "235B" stays as written.
 
-Keep sentence subjects light: drop a pronoun or restated noun where Vietnamese naturally omits it across clauses (don't repeat "công ty này" every clause when context already carries it). Do not carry English pronouns over: "its" or "their" is rarely "của nó" or "của chúng", and a sentence does not open with "Nó" or "Điều này" for "It" or "This"; name the subject or drop it.
+Keep sentence subjects light: drop a pronoun or restated noun where Vietnamese naturally omits it across clauses (don't repeat "công ty này" every clause when context already carries it).
 
 Headlines: punchy and information-dense like Vietnamese tech press, but never clickbait — no teaser phrasing that withholds the actual news ("điều bất ngờ", "không thể tin nổi"). Use sentence case: capitalize only the first word and proper names, even when the English headline is in Title Case ("Nscale huy động 3,36 tỷ USD trước khi niêm yết trên NYSE", not "Nscale Huy Động 3,36 Tỷ USD Trước Khi Niêm Yết Trên NYSE").
 
@@ -1756,12 +1756,11 @@ export function sentSource(
   return { title: item.title, summary };
 }
 
-/** Lines the translate user message states first. The house style already
- *  carries the long version; this is the short card a small model follows.
- *  Locked by test. Not appended inside viSystemPrompt. */
-export const RULES_OVERVIEW = `Write each story the way a Vietnamese tech journalist would report it, not sentence by sentence. Follow Vietnamese word order. Split, merge, or reorder sentences, and drop what Vietnamese leaves unsaid, such as a repeated subject.
-Keep every fact: names, numbers, dates, who did what, and hedges such as "may" or "reportedly". Add nothing. A dropped fact is a failed translation; a shorter sentence that keeps every fact is not.
-Write in the third person, as a news report. For "we", "our", or "I", name who it is from the title or text; otherwise write "nhóm tác giả" for a paper or study, "tác giả" for a blog post, "hãng" for a company. "You" the reader becomes "người dùng" or is dropped. Keep the first person only inside a direct quote.
+/** Lines the translate user message states before the length rule. The house
+ *  style already carries the long version; this is the short card a small
+ *  model follows. Locked by test. Not appended inside viSystemPrompt. */
+export const RULES_OVERVIEW = `Keep every fact: names, numbers, dates, who did what, and hedges such as "may" or "reportedly". Add nothing.
+Translate every summary sentence. Merging two clauses is allowed only when every fact remains. Cutting a sentence is a failed translation.
 Write a Vietnamese headline in sentence case: the first word and proper names only. Returning the English title unchanged is a failed translation, unless that title is already Vietnamese.
 No English gloss in parentheses. Write "RAG", not "RAG (Retrieval-Augmented Generation)". A year, a percent, or a bare label such as "(SEC)" or "(YC S22)" may stay.
 A vague word is not a number. "Countless" is not "hàng triệu". Do not swap who did what: if A accuses B, do not write B's thing of A.`;
@@ -1788,7 +1787,7 @@ function translatePrompt(
 
 ${RULES_OVERVIEW}
 
-Copy every term in an item's "keep" list into the Vietnamese exactly as written, in English. An item with a "fix" list was translated before and broke those rules; translate it again and fix every one.
+A complete Vietnamese summary is about as long as the English one, at least 80% of its length. Copy every term in an item's "keep" list into the Vietnamese exactly as written, in English. An item with a "fix" list was translated before and broke those rules; translate it again and fix every one.
 
 Bad: "Clef ra mắt mô hình quyết định mở trọng lượng". Good: "Clef ra mắt decision model open-weight".
 Bad: "Các đại lý AI của OpenAI đã xâm nhập". Good: "Các AI agent của OpenAI đã xâm nhập".
@@ -1796,9 +1795,6 @@ Bad: "các hệ thống RAG (Retrieval-Augmented Generation)". Good: "các hệ 
 Bad: "Nscale Huy Động 3,36 Tỷ USD Trước Khi Niêm Yết Trên NYSE". Good: "Nscale huy động 3,36 tỷ USD trước khi niêm yết trên NYSE".
 Bad: "Các quỹ trái phiếu rộng đã hấp thụ khoản nợ AI sau khi các ngân hàng rút lui." Good: "Người vay AI đã bán khoảng 55 tỷ USD trái phiếu high-yield trong năm nay. Các quỹ trái phiếu rộng hấp thụ khoản nợ đó sau khi ngân hàng rút lui."
 Bad: "Nvidia và SoftBank giao nốt 20 triệu USD". Good: "Nvidia và SoftBank giao nốt 20 tỷ USD".
-Bad: "Người dùng trên mạng xã hội báo cáo không thể thực hiện nhiệm vụ làm việc, và hàng đợi mô hình DSV4.1 trên nền tảng Workbuddy đã vượt quá 20.000 người trong thời gian gián đoạn." Good: "Trên mạng xã hội, người dùng cho biết không làm việc được. Trong lúc gián đoạn, hàng đợi dùng mô hình DSV4.1 trên Workbuddy vượt 20.000 người."
-Bad: "Chúng tôi biến readout phase thành hàm của token hiện tại". Good: "Nhóm tác giả cho readout phase phụ thuộc vào token hiện tại".
-Bad: "Claude Haiku 5.5 là mô hình nhỏ nhanh nhất và mạnh nhất của chúng tôi". Good: "Claude Haiku 5.5 là mô hình nhỏ nhanh nhất và mạnh nhất của hãng".
 
 Items:
 ${JSON.stringify(items)}
