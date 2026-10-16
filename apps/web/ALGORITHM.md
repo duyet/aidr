@@ -494,6 +494,19 @@ minutes. Without `?lang=` the response is private, like story pages;
 both forms sit in the Worker cache (`edge-cache.ts`) keyed by the explicit or
 resolved language, as story pages do. The same applies to `/week/YYYY-Www`.
 
+`getDayArchive` reads stories, snapshot, both neighbours and the `day_videos`
+row in one D1 batch, and that coupling is deliberate (#893). A batch is
+all-or-nothing, so a failing video statement fails the whole page; but the
+only way that SELECT fails on its own is a missing table or column, which
+`check:migrations` refuses to deploy past, and a transient D1 error hits the
+whole batch whichever statement it names. Row content cannot fail it:
+`parseDayVideoRow` drops malformed ids. A separate read would add a primary
+round trip (about 300 ms from a far colo) to every day page to guard a case
+the deploy gate already rules out. A failed batch rejects, and the route
+answers 500 with no-store rather than a 404 or a page without stories. A new
+`day_videos` column must ship in a migration that is applied before the code
+that selects it.
+
 Optional media lives in `day_videos` (`date` PK, `youtube_id` 16:9 shown on
 md+, `short_id` 9:16 shown on mobile, `title`, the same three as `*_vi`,
 `added_by`, timestamps; at least one of the four ids). Each language shows only

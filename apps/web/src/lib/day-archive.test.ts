@@ -220,6 +220,36 @@ describe("getDayArchive", () => {
     }
   });
 
+  it("reads the day video in the same single batch as the stories", async () => {
+    // One D1 round trip per archive read (#888). Moving day_videos out would
+    // add a primary round trip to every day page for a table the deploy gate
+    // already guarantees (ALGORITHM.md "Day archive").
+    const { db } = fakeDb({ items: [] });
+    const batches: string[][] = [];
+    const batch = db.batch.bind(db);
+    db.batch = (async (stmts: { sql: string }[]) => {
+      batches.push(stmts.map((s) => s.sql));
+      return batch(stmts as never);
+    }) as unknown as typeof db.batch;
+    await getDayArchive(db, "2026-10-02");
+    expect(batches).toHaveLength(1);
+    expect(batches[0]?.some((sql) => sql.includes("FROM day_videos"))).toBe(
+      true
+    );
+  });
+
+  it("rejects when the batch fails so the route answers 500, not an empty or blank day", async () => {
+    const { db } = fakeDb({
+      items: [item("aaaaaaaa1111", "2026-10-02T01:00:00Z", 1)],
+    });
+    db.batch = (async () => {
+      throw new Error("D1_ERROR: no such table: day_videos");
+    }) as typeof db.batch;
+    await expect(getDayArchive(db, "2026-10-02")).rejects.toThrow(
+      "no such table: day_videos"
+    );
+  });
+
   it("returns an empty day (the route's 404)", async () => {
     const { db } = fakeDb({ items: [], tldr: null });
     const archive = await getDayArchive(db, "2026-10-02");
