@@ -7,6 +7,12 @@
  * Only public, locale-keyed HTML is stored: never `private`/`no-store`, never
  * a response with `Set-Cookie`, never a non-200, never a request carrying
  * auth. Locale policy itself stays in `locale-response.ts`.
+ *
+ * An entry is fresh for the `s-maxage` its render declared, then served STALE
+ * for up to `EDGE_CACHE_STALE_S` while one background render per key per
+ * isolate replaces it. The stored copy carries the long `s-maxage` so the
+ * Cache API keeps it through the stale window; the client always receives
+ * the render's own Cache-Control and Vary.
  */
 import { resolveLocale } from "./lang";
 import {
@@ -18,7 +24,12 @@ import { hasCanonicalLocaleQuery } from "./locale-url";
 
 export const EDGE_CACHE_HEADER = "x-aidr-cache";
 /** Bump to orphan every stored page after a markup-shape change. */
-const EDGE_CACHE_VERSION = "1";
+const EDGE_CACHE_VERSION = "2";
+/**
+ * A dormant colo must never serve content older than this; ingest publishes
+ * every 30 minutes, so 6h bounds a missed revalidation to a dozen editions.
+ */
+export const EDGE_CACHE_STALE_S = 6 * 3600;
 
 type WaitUntil = { waitUntil?: (p: Promise<unknown>) => void } | undefined;
 
@@ -109,13 +120,112 @@ function edgeCache(): Cache | null {
   return c?.default ?? null;
 }
 
-function stamp(response: Response, state: "HIT" | "MISS"): Response {
+type CacheState = "HIT" | "STALE" | "MISS";
+
+function stamp(response: Response, state: CacheState): Response {
   // Cached and freshly built responses may have immutable headers.
   const out = new Response(response.body, response);
   out.headers.set(EDGE_CACHE_HEADER, state);
   // Readable by the page (same origin) so web-vitals can split by cache.
   out.headers.append("server-timing", `aidr-cache;desc=${state}`);
   return out;
+}
+
+const CLIENT_CC = "x-aidr-client-cc";
+const CLIENT_VARY = "x-aidr-client-vary";
+const STORED_AT = "x-aidr-stored-at";
+const FRESH = "x-aidr-fresh";
+
+function nowSeconds(): number {
+  return Math.floor(Date.now() / 1000);
+}
+
+/** Client headers move to `x-aidr-*` so the Cache API keeps the copy through the stale window. */
+function toStored(response: Response, fresh: number): Response {
+  const stored = new Response(response.clone().body, response);
+  stored.headers.set(
+    CLIENT_CC,
+    response.headers.get("cache-control") ?? "private, no-store"
+  );
+  const vary = response.headers.get("vary");
+  if (vary) stored.headers.set(CLIENT_VARY, vary);
+  // The key already carries the locale, and the Cache API would otherwise
+  // refuse to match on a different Cookie.
+  stored.headers.delete("vary");
+  stored.headers.set(STORED_AT, String(nowSeconds()));
+  stored.headers.set(FRESH, String(fresh));
+  stored.headers.set("cache-control", `s-maxage=${fresh + EDGE_CACHE_STALE_S}`);
+  return stored;
+}
+
+function toClient(hit: Response, state: CacheState): Response {
+  const out = stamp(hit, state);
+  out.headers.set(
+    "cache-control",
+    out.headers.get(CLIENT_CC) ?? "private, no-store"
+  );
+  const vary = out.headers.get(CLIENT_VARY);
+  if (vary) out.headers.set("vary", vary);
+  for (const h of [CLIENT_CC, CLIENT_VARY, STORED_AT, FRESH]) {
+    out.headers.delete(h);
+  }
+  return out;
+}
+
+function entryState(hit: Response): Exclude<CacheState, "MISS"> | "EXPIRED" {
+  const age = nowSeconds() - Number(hit.headers.get(STORED_AT) ?? 0);
+  const fresh = Number(hit.headers.get(FRESH) ?? 0);
+  if (age <= fresh) return "HIT";
+  if (age <= fresh + EDGE_CACHE_STALE_S) return "STALE";
+  return "EXPIRED";
+}
+
+/** Keys with a background revalidation in flight in this isolate. */
+const revalidating = new Set<string>();
+
+/**
+ * Match policy shared by both entry points. `freshFor` returns the seconds a
+ * render counts as fresh, or 0 when it must not be stored.
+ */
+async function serveThroughCache(
+  cache: Cache,
+  key: Request,
+  ctx: WaitUntil,
+  render: () => Promise<Response>,
+  freshFor: (response: Response) => number
+): Promise<Response> {
+  const hit = await cache.match(key).catch(() => undefined);
+  if (hit) {
+    const state = entryState(hit);
+    if (state === "HIT") return toClient(hit, "HIT");
+    if (state === "STALE") {
+      // Without waitUntil nothing can outlive the response, so serve as a hit.
+      if (!ctx?.waitUntil) return toClient(hit, "HIT");
+      if (!revalidating.has(key.url)) {
+        revalidating.add(key.url);
+        ctx.waitUntil(
+          render()
+            .then((response) => {
+              const fresh = freshFor(response);
+              if (fresh > 0) return cache.put(key, toStored(response, fresh));
+            })
+            .catch(() => undefined)
+            .finally(() => revalidating.delete(key.url))
+        );
+      }
+      return toClient(hit, "STALE");
+    }
+  }
+
+  const response = await render();
+  const fresh = freshFor(response);
+  if (fresh <= 0) return response;
+  const write = cache
+    .put(key, toStored(response, fresh))
+    .catch(() => undefined);
+  if (ctx?.waitUntil) ctx.waitUntil(write);
+  else await write;
+  return stamp(response, "MISS");
 }
 
 /**
@@ -130,21 +240,7 @@ export async function cachedSsrResponse(
   const cache = edgeCache();
   const key = cache ? edgeCacheKey(request) : null;
   if (!(cache && key)) return render();
-
-  const hit = await cache.match(key).catch(() => undefined);
-  if (hit) return stamp(hit, "HIT");
-
-  const response = await render();
-  if (sharedMaxAge(response) <= 0) return response;
-
-  // The stored copy must not vary: the key already carries the locale, and
-  // the Cache API would otherwise refuse to match on a different Cookie.
-  const stored = new Response(response.clone().body, response);
-  stored.headers.delete("vary");
-  const write = cache.put(key, stored).catch(() => undefined);
-  if (ctx?.waitUntil) ctx.waitUntil(write);
-  else await write;
-  return stamp(response, "MISS");
+  return serveThroughCache(cache, key, ctx, render, sharedMaxAge);
 }
 
 /**
@@ -173,6 +269,7 @@ export function bareLocalizedCacheLang(request: Request): string | null {
  * (bare `/feed.xml`). The resolved `lang` joins the key, so readers never
  * share another locale's copy; the client still receives the original
  * private/varied headers, so no downstream cache can mix languages either.
+ * The entry stays fresh for `sharedControl`'s `s-maxage`.
  */
 export async function cachedLocaleResponse(
   request: Request,
@@ -189,36 +286,8 @@ export async function cachedLocaleResponse(
   url.searchParams.set("__l", lang);
   url.searchParams.set("__v", EDGE_CACHE_VERSION);
   const key = new Request(url.toString(), { method: "GET" });
-
-  const hit = await cache.match(key).catch(() => undefined);
-  if (hit) {
-    const out = stamp(hit, "HIT");
-    out.headers.set(
-      "cache-control",
-      out.headers.get("x-aidr-client-cc") ?? "private, no-store"
-    );
-    const vary = out.headers.get("x-aidr-client-vary");
-    if (vary) out.headers.set("vary", vary);
-    out.headers.delete("x-aidr-client-cc");
-    out.headers.delete("x-aidr-client-vary");
-    return out;
-  }
-
-  const response = await render();
-  if (response.status !== 200 || response.headers.has("set-cookie")) {
-    return response;
-  }
-  const stored = new Response(response.clone().body, response);
-  stored.headers.set(
-    "x-aidr-client-cc",
-    response.headers.get("cache-control") ?? "private, no-store"
+  const fresh = Number(/\bs-maxage=(\d+)/.exec(sharedControl)?.[1] ?? 0);
+  return serveThroughCache(cache, key, ctx, render, (response) =>
+    response.status !== 200 || response.headers.has("set-cookie") ? 0 : fresh
   );
-  const vary = response.headers.get("vary");
-  if (vary) stored.headers.set("x-aidr-client-vary", vary);
-  stored.headers.delete("vary");
-  stored.headers.set("cache-control", sharedControl);
-  const write = cache.put(key, stored).catch(() => undefined);
-  if (ctx?.waitUntil) ctx.waitUntil(write);
-  else await write;
-  return stamp(response, "MISS");
 }

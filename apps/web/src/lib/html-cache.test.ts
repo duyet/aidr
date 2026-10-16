@@ -3,7 +3,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { ASSET_RETENTION_MS } from "./deploy-assets";
-import { edgeCacheKey } from "./edge-cache";
+import { EDGE_CACHE_STALE_S, edgeCacheKey } from "./edge-cache";
 
 const WEB_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -84,9 +84,11 @@ function seconds(cacheControl: string, directive: string): number {
 }
 
 /**
- * Longest a copy of this HTML can be served after it was rendered. The CDN
- * restarts `age` at 0 when it stores a Worker-cache hit, so the two layers
- * add; a browser counts from the CDN's `age`, so it overlaps the CDN layer.
+ * Longest a copy of this HTML can be served after it was rendered. The Worker
+ * cache holds an entry for its `s-maxage` plus the stale window it serves
+ * while revalidating. The CDN restarts `age` at 0 when it stores a
+ * Worker-cache hit, so the two layers add; a browser counts from the CDN's
+ * `age`, so it overlaps the CDN layer.
  */
 function htmlLifetimeSeconds(cacheControl: string, samplePage: string): number {
   const workerCached =
@@ -101,7 +103,8 @@ function htmlLifetimeSeconds(cacheControl: string, samplePage: string): number {
     ? Math.max(seconds(cacheControl, "max-age"), ZONE_BROWSER_TTL_S)
     : seconds(cacheControl, "max-age");
   return (
-    (workerCached ? sMaxAge : 0) + Math.max(sMaxAge + stale, browser + stale)
+    (workerCached ? sMaxAge + EDGE_CACHE_STALE_S : 0) +
+    Math.max(sMaxAge + stale, browser + stale)
   );
 }
 
@@ -134,7 +137,9 @@ describe("HTML cache lifetime", () => {
 
   it("adds the Worker cache layer for pages behind it", () => {
     const cc = "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
-    expect(htmlLifetimeSeconds(cc, "/?lang=en")).toBe(300 + 14_400 + 600);
+    expect(htmlLifetimeSeconds(cc, "/?lang=en")).toBe(
+      300 + EDGE_CACHE_STALE_S + 14_400 + 600
+    );
     expect(htmlLifetimeSeconds(cc, "/date/2026-01-01?lang=en")).toBe(900);
   });
 });
