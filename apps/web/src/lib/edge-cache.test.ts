@@ -3,7 +3,6 @@ import {
   bareLocalizedCacheLang,
   cachedLocaleResponse,
   cachedSsrResponse,
-  EDGE_CACHE_FRESH_MAX_S,
   EDGE_CACHE_HEADER,
   EDGE_CACHE_STALE_S,
   edgeCacheKey,
@@ -360,6 +359,29 @@ describe("stale-while-revalidate", () => {
     expect(again.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
     expect(await again.text()).toBe("<html>v1</html>");
     expect(render).toHaveBeenCalledTimes(2);
+    await Promise.all(pending);
+  });
+
+  // Defect: a settled day archive (`s-maxage=86400`) staying fresh in the
+  // Worker for a day, so Worker + CDN lifetime outlives the /assets/* chunks
+  // its HTML names (issue #702).
+  it("caps the fresh window at an hour whatever s-maxage the page declares", async () => {
+    const { ctx, pending } = setup();
+    const settled = async () =>
+      page({
+        "cache-control":
+          "public, max-age=3600, s-maxage=86400, stale-while-revalidate=43200",
+      });
+    await cachedSsrResponse(get(EXT), ctx, settled);
+    await Promise.all(pending);
+    expect(store.values().next().value?.headers.get("cache-control")).toBe(
+      "s-maxage=7200"
+    );
+    advance(3601);
+    const render = vi.fn(settled);
+    const out = await cachedSsrResponse(get(EXT), ctx, render);
+    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("STALE");
+    expect(render).toHaveBeenCalledOnce();
     await Promise.all(pending);
   });
 

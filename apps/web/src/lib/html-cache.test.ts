@@ -109,8 +109,7 @@ function htmlLifetimeSeconds(cacheControl: string, samplePage: string): number {
   return (
     (workerCached
       ? Math.min(sMaxAge, EDGE_CACHE_FRESH_MAX_S) + EDGE_CACHE_STALE_S
-      : 0) +
-    Math.max(sMaxAge + stale, browser + stale)
+      : 0) + Math.max(sMaxAge + stale, browser + stale)
   );
 }
 
