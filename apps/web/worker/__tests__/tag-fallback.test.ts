@@ -33,6 +33,9 @@ const KNOWN = new Map<string, string>([
     "memory",
     "sales",
     "gpt",
+    "uk",
+    "ukraine",
+    "world-labs",
   ].map((name) => [name, name] as const),
   ["aws", "amazon"],
   ["vit", "vit"],
@@ -52,6 +55,19 @@ describe("fallbackTags", () => {
       "samsung",
       "chips",
     ]);
+  });
+
+  it("names a country or lab Jev's lists lack", () => {
+    // Each published untagged in the week to 2026-10-16 (#770).
+    expect(
+      tags("Baroness Campbell Uses AI Voice for first UK Parliament Speech")
+    ).toEqual(["uk"]);
+    expect(
+      tags("Russian Bot Traffic Plummets After Ukraine Hits Yandex Data Hubs")
+    ).toEqual(["ukraine"]);
+    expect(
+      tags("World Labs Releases First Atlas Beta for Camera Management")
+    ).toEqual(["world-labs"]);
   });
 
   it("reads a company's other name and tags the company once", () => {
