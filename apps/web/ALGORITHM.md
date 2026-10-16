@@ -543,6 +543,44 @@ no fill-in from the other language.
 - `/llms.txt` lists the entry points; `/llms-full.txt` appends today's
   homepage Markdown.
 
+### Usage counters (Analytics Engine)
+
+`src/lib/usage.ts` writes one data point per request to the `USAGE` binding
+(dataset `aidr_usage`, `[[analytics_engine_datasets]]` in `wrangler.toml`).
+`src/server.ts` records RSS (`/feed.xml`, `/rss.xml`, `/feed.json`),
+`llms.txt`, `llms-full.txt`, the Markdown twins (including `Accept:
+text/markdown` negotiation) and the public `/api/public`, `/api/feed`,
+`/api/story/{id}`, `/api/week/{week}` routes. `worker/admin/mcp.ts` records one
+point per MCP `tools/call`. Routes outside that allowlist are not counted, so
+scanners cannot grow the dataset. Layout: `blob1` surface, `blob2` route
+template (ids, dates and weeks replaced, no query), `blob3` MCP tool (or empty),
+`blob4` client bucket (`mcp-client`, `feed-reader`, `browser`, `bot`, `other`),
+`double1` 1, `double2` HTTP status, `index1` surface. No IP, user agent or
+query string is stored. Without the binding the code is a no-op, and a
+`writeDataPoint` error is swallowed. A negotiated Markdown response counts only
+for the negotiable pages (`/`, a story id, `/date/:date`, `/week/:week`); any
+other path that answers `text/markdown`, such as a 404, writes nothing.
+
+The counts are a floor, not request totals. Workers Cache (`[cache] enabled`)
+answers `/api/public`, `/api/feed`, `/api/story/{id}` and `llms.txt` before the
+Worker runs, so those count about once per cache TTL per key per location.
+`/feed.xml` is served from the Worker's own `cachedLocaleResponse` inside the
+wrapper, so feed hits do count. Compare surfaces week over week, not as
+absolute traffic.
+
+There is no read endpoint yet: querying needs an account API token secret that
+the Worker does not hold. Weekly totals, run against the Analytics Engine SQL
+API (`POST /client/v4/accounts/{id}/analytics_engine/sql`):
+
+```sql
+SELECT toStartOfWeek(timestamp) AS week, blob1 AS surface, blob2 AS route,
+       blob3 AS tool, blob4 AS client, SUM(_sample_interval * double1) AS hits
+FROM aidr_usage
+WHERE timestamp > NOW() - INTERVAL '90' DAY
+GROUP BY week, surface, route, tool, client
+ORDER BY week DESC, hits DESC
+```
+
 ## Ops pitfalls
 
 - `LLM_STEP` and `BACKFILL_TRANSLATE_STEP` use `retries: 0` and a 5-minute

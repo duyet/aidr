@@ -16,6 +16,7 @@ import {
   validateLatestAiNews,
   validateSearchNews,
 } from "../../src/lib/public-read-tools.js";
+import { clientBucket, recordUsage } from "../../src/lib/usage.js";
 import {
   ADMIN_MCP_TOOLS,
   type AdminMcpToolName,
@@ -295,39 +296,64 @@ export async function handleMcpRequest(
   }
 
   if (method === "tools/call" || method === "resources/read") {
-    // Resolve AND validate before charging the window. The limiter exists
-    // to bound database work, and a rejected argument or an unknown tool
-    // name never reaches the database — so it must not cost a caller one
-    // of their 60. This ordering is also what makes "a rejected argument
-    // touches no D1" true of the limiter itself, not just the query.
-    const prepared =
-      method === "tools/call"
-        ? await prepareToolCall(env, auth, id, params)
-        : prepareResourceRead(env, id, params);
-    if (!prepared.ok) return prepared.response;
-    if (prepared.chargeDatabase && auth.kind === "anonymous") {
-      const allowed = await checkAnonymousMcpReadLimit(request, env.DB);
-      if (!allowed.ok) {
-        return rpcError(
-          id,
-          RATE_LIMITED,
-          RATE_LIMIT_MESSAGE,
-          {
-            ...mcpReadLimitHeaders(0),
-            "Retry-After": String(allowed.retryAfterSec),
-          },
-          429
-        );
-      }
-      return withRateHeaders(
-        await prepared.run(),
-        mcpReadLimitHeaders(allowed.remaining)
-      );
+    const response = await dispatchCall(request, env, auth, id, method, params);
+    if (method === "tools/call") {
+      const name = params?.name ?? "";
+      recordUsage(env, {
+        surface: "mcp",
+        route: "/api/mcp",
+        tool:
+          isPublicReadToolName(name) || isAdminMcpToolName(name)
+            ? name
+            : "unknown",
+        status: response.status,
+        client: clientBucket(request.headers.get("User-Agent")),
+      });
     }
-    return await prepared.run();
+    return response;
   }
 
   return rpcError(id, -32601, "Method not found");
+}
+
+async function dispatchCall(
+  request: Request,
+  env: Env,
+  auth: McpAuthState,
+  id: unknown,
+  method: string,
+  params: JsonRpcRequest["params"]
+): Promise<Response> {
+  // Resolve AND validate before charging the window. The limiter exists
+  // to bound database work, and a rejected argument or an unknown tool
+  // name never reaches the database — so it must not cost a caller one
+  // of their 60. This ordering is also what makes "a rejected argument
+  // touches no D1" true of the limiter itself, not just the query.
+  const prepared =
+    method === "tools/call"
+      ? await prepareToolCall(env, auth, id, params)
+      : prepareResourceRead(env, id, params);
+  if (!prepared.ok) return prepared.response;
+  if (prepared.chargeDatabase && auth.kind === "anonymous") {
+    const allowed = await checkAnonymousMcpReadLimit(request, env.DB);
+    if (!allowed.ok) {
+      return rpcError(
+        id,
+        RATE_LIMITED,
+        RATE_LIMIT_MESSAGE,
+        {
+          ...mcpReadLimitHeaders(0),
+          "Retry-After": String(allowed.retryAfterSec),
+        },
+        429
+      );
+    }
+    return withRateHeaders(
+      await prepared.run(),
+      mcpReadLimitHeaders(allowed.remaining)
+    );
+  }
+  return await prepared.run();
 }
 
 /**

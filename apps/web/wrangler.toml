@@ -75,6 +75,12 @@ namespace_id = "8220"
   limit = 1
   period = 60
 
+# Aggregate request counts (src/lib/usage.ts): surface, route template, MCP
+# tool, client bucket and status. No IP, user agent or query string.
+[[analytics_engine_datasets]]
+binding = "USAGE"
+dataset = "aidr_usage"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "aidr"

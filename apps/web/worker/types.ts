@@ -13,6 +13,10 @@ export interface Env {
   /** One `POST /api/read` count per IP, story and kind a minute
    *  (`[[ratelimits]]`). Optional so node tests can omit it. */
   READ_LIMITER?: RateLimit;
+  /** Analytics Engine dataset `aidr_usage` (`[[analytics_engine_datasets]]`):
+   *  one aggregate data point per RSS, API, MCP, llms and markdown request.
+   *  Optional so tests and local dev skip it. */
+  USAGE?: AnalyticsEngineDataset;
   ANYROUTER_BASE_URL: string;
   /** One model id, or a comma-separated fallback chain tried in order. */
   ANYROUTER_MODEL: string;
