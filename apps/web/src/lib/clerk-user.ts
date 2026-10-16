@@ -62,6 +62,41 @@ export function useClerkModule(): ClerkModuleState {
   return useContext(ClerkModuleContext);
 }
 
+/**
+ * Client-side twin of the server's `hasAuthSignal` cookie rule
+ * (edge-cache.ts): a Clerk session cookie means the visitor may be signed in,
+ * so the SDK is worth loading. Clerk writes `__client_uat=0` for signed-out
+ * visitors, which must not count.
+ */
+export function hasClerkSessionCookie(cookie: string): boolean {
+  for (const part of cookie.split(";")) {
+    const eq = part.indexOf("=");
+    const name = (eq === -1 ? part : part.slice(0, eq)).trim();
+    const value = eq === -1 ? "" : part.slice(eq + 1).trim();
+    if (name.startsWith("__session") || name.startsWith("__clerk")) return true;
+    if (name.startsWith("__client_uat") && value !== "0" && value !== "") {
+      return true;
+    }
+  }
+  return false;
+}
+
+const CLERK_ROUTE_PREFIXES = [
+  "/sign-in",
+  "/sign-up",
+  "/contribute",
+  "/mail",
+  "/data",
+];
+
+/** Routes that mount Clerk UI for a signed-out visitor (sign-in, sign-up,
+ * contribute modal) or gate on useAdmin (mail, data). */
+export function routeNeedsClerk(pathname: string): boolean {
+  return CLERK_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 /** Sync env read — lets the root render before the Clerk chunk arrives. */
 export function getClerkPublishableKey(): string | undefined {
   const env =

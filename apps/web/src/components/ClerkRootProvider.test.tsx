@@ -10,16 +10,36 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { loadClerkModule } from "../lib/clerk-user";
 import { resolveLocale } from "../lib/lang";
 import { LangContext } from "../lib/lang-context";
 import type { Lang } from "../lib/types";
-import { clerkProviderLocaleOptions } from "./ClerkRootProvider";
+import {
+  ClerkRootProvider,
+  clerkProviderLocaleOptions,
+} from "./ClerkRootProvider";
 import { SubmitForm } from "./submit/SubmitForm";
+
+const routerState = { pathname: "/" };
+
+vi.mock("../lib/clerk-user", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/clerk-user")>();
+  return {
+    ...actual,
+    getClerkPublishableKey: () => "pk_test_gate",
+    loadClerkModule: vi.fn(() => new Promise(() => {})),
+  };
+});
 
 vi.mock("@tanstack/react-router", async () => {
   const React = await import("react");
   return {
+    useRouterState: ({
+      select,
+    }: {
+      select: (s: { location: { pathname: string } }) => string;
+    }) => select({ location: { pathname: routerState.pathname } }),
     Link: ({
       children,
       hash,
@@ -109,6 +129,63 @@ function appWithClerkLifecycle(lang: Lang) {
 afterEach(() => {
   cleanup();
   SingletonClerkHarness.instances.length = 0;
+});
+
+describe("ClerkRootProvider load gate", () => {
+  const load = vi.mocked(loadClerkModule);
+
+  function setCookie(value: string) {
+    // biome-ignore lint/suspicious/noDocumentCookie: the provider reads document.cookie synchronously; the async Cookie Store cannot seed it before mount.
+    document.cookie = value;
+  }
+
+  beforeEach(() => {
+    load.mockClear();
+    routerState.pathname = "/";
+    setCookie("__client_uat=0");
+  });
+
+  function mount() {
+    return render(
+      <ClerkRootProvider>
+        <span>reader</span>
+      </ClerkRootProvider>
+    );
+  }
+
+  it("does not download the SDK for a signed-out homepage visit with no interaction", () => {
+    mount();
+    expect(screen.getByText("reader")).not.toBeNull();
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("loads for a __client_uat session cookie so a signed-in reader sees their UserButton", () => {
+    setCookie("__client_uat=1757000000");
+    mount();
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats __client_uat=0 as signed out and keeps the SDK off", () => {
+    setCookie("__client_uat=0");
+    mount();
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("loads on /sign-in so the sign-in form can mount without a session", () => {
+    routerState.pathname = "/sign-in";
+    mount();
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads once after the first pointerdown so modal sign-in buttons work on tap", () => {
+    mount();
+    expect(load).not.toHaveBeenCalled();
+    fireEvent.pointerDown(window);
+    expect(load).toHaveBeenCalledTimes(1);
+    fireEvent.pointerDown(window);
+    fireEvent.keyDown(window, { key: "a" });
+    expect(load).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("Clerk locale options", () => {

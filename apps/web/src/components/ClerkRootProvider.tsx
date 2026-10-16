@@ -1,11 +1,14 @@
 import { ErrorBoundary } from "@aidr/ui";
+import { useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { resolveClerkProxyUrl } from "../lib/clerk-proxy-config";
 import {
   type ClerkModule,
   ClerkModuleContext,
   getClerkPublishableKey,
+  hasClerkSessionCookie,
   loadClerkModule,
+  routeNeedsClerk,
 } from "../lib/clerk-user";
 import { useLang } from "../lib/lang-context";
 import { withLang } from "../lib/locale-url";
@@ -33,9 +36,11 @@ export function clerkProviderLocaleOptions(lang: Lang) {
 
 /**
  * Mounts the ONE app-wide <ClerkProvider> (deferred — the Clerk SDK is
- * dynamically imported after first paint so its ~160KB chunk stays off the
- * critical path and out of SSR). Children render immediately with
- * `mod: null`; every consumer handles that fallback. When the import
+ * dynamically imported only once something can need it: a session cookie,
+ * a route that mounts Clerk UI, or the visitor's first pointer/key
+ * interaction. Most readers are signed out and never interact, so they skip
+ * the ~330KB gzip SDK entirely; it stays out of SSR). Children render
+ * immediately with `mod: null`; every consumer handles that fallback. When the import
  * resolves the provider is inserted above children, which remounts the
  * subtree — consumers then see the shared module via ClerkModuleContext.
  * A second <ClerkProvider> crashes the app; if Clerk fails, ErrorBoundary
@@ -47,9 +52,27 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
   const localeOptions = clerkProviderLocaleOptions(navigationLang);
   const proxyUrl = resolveClerkProxyUrl(import.meta.env.CLERK_PROXY_URL);
   const [mod, setMod] = useState<ClerkModule | null>(null);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [wanted, setWanted] = useState(false);
 
   useEffect(() => {
-    if (!publishableKey) return;
+    if (!publishableKey || wanted) return;
+    if (hasClerkSessionCookie(document.cookie) || routeNeedsClerk(pathname)) {
+      setWanted(true);
+      return;
+    }
+    const arm = () => setWanted(true);
+    const opts = { once: true, passive: true } as const;
+    window.addEventListener("pointerdown", arm, opts);
+    window.addEventListener("keydown", arm, opts);
+    return () => {
+      window.removeEventListener("pointerdown", arm);
+      window.removeEventListener("keydown", arm);
+    };
+  }, [publishableKey, pathname, wanted]);
+
+  useEffect(() => {
+    if (!publishableKey || !wanted) return;
     let cancelled = false;
     loadClerkModule()
       .then((m) => {
@@ -61,7 +84,7 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [publishableKey]);
+  }, [publishableKey, wanted]);
 
   const withoutProvider = (
     <ClerkModuleContext.Provider value={{ mod: null, publishableKey }}>
