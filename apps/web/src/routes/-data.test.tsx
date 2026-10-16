@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { SystemPage } from "../components/system/SystemPage";
 import { LangContext } from "../lib/lang-context";
-import { Route, SystemPage } from "./data";
+import { Route } from "./data";
 
 vi.mock("../lib/admin", () => ({
   useAdmin: () => ({
