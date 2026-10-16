@@ -469,6 +469,6 @@ net.
 pnpm --filter @aidr/web d1:migrate
 ```
 
-`ensureMailSchema` also creates the 0015 tables on first mail/subscribe
-use, so the composer works before that command if D1 create-table is
-allowed.
+The 0015 mail tables and the `mail_format` column come from migrations only.
+`ensureMailSchema` just adds the remaining `subscribers` columns, so run the
+command above before the mail composer or subscribe flow is used.
