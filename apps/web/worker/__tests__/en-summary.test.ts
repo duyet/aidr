@@ -11,16 +11,34 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildMissingEnSummaryQuery,
+  EN_SUMMARY_NO_TEXT_COUNT_SQL,
   EN_SUMMARY_UPDATE_SQL,
   enSummaryIssues,
   enSummaryPrompt,
   enSummarySql,
   sanitizeEnSummaryResults,
 } from "../en-summary.js";
+import { backfillEnSummaries } from "../ingest/backfill-en-summary.js";
+import type { IngestContext } from "../ingest/context.js";
 import { PIPELINE_STEPS } from "../ingest/mode.js";
+import { summarizeEnglish } from "../llm.js";
+import type { RunStepInfo } from "../run-stats.js";
+import { llmStep } from "../workflow-step.js";
+
+// The real `sentSource` decides what the model would see; only the model
+// call is stubbed.
+vi.mock("../llm.js", async (original) => ({
+  ...(await original<typeof import("../llm.js")>()),
+  summarizeEnglish: vi.fn(),
+}));
+vi.mock("../workflow-step.js", () => {
+  const run = async (...args: unknown[]) =>
+    (args.find((a) => typeof a === "function") as () => unknown)();
+  return { safeStep: vi.fn(run), llmStep: vi.fn(run) };
+});
 
 const migrations = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -192,12 +210,158 @@ describe("backfill-en-summary candidates", () => {
     expect(ids).toEqual(["new", "teaser", "stale", "old"]);
   });
 
+  it("keeps a row marked as having no text out of the queue until its source changes", () => {
+    const sqlite = db();
+    insert(sqlite, { id: "byline", summary: "By Jane Doe / Fortune." });
+    writeEn(sqlite, "byline", "");
+    expect(sqlite.prepare(buildMissingEnSummaryQuery(10)).all()).toEqual([]);
+    sqlite
+      .prepare(
+        "UPDATE items SET summary = 'Full story text.' WHERE id = 'byline'"
+      )
+      .run();
+    expect(
+      (
+        sqlite.prepare(buildMissingEnSummaryQuery(10)).all() as { id: string }[]
+      ).map((r) => r.id)
+    ).toEqual(["byline"]);
+  });
+
   it("is a selectable pipeline step that runs before tldr, email and notify", () => {
     const at = (step: string) =>
       PIPELINE_STEPS.indexOf(step as (typeof PIPELINE_STEPS)[number]);
     expect(at("backfill-en-summary")).toBeGreaterThan(at("backfill-content"));
     expect(at("backfill-en-summary")).toBeLessThan(at("tldr"));
     expect(at("backfill-en-summary")).toBeLessThan(at("notify"));
+  });
+});
+
+/** Minimal D1 over node:sqlite, as in backfill-content.test.ts. */
+function sqliteD1(sqlite: DatabaseSync) {
+  type Input = null | number | bigint | string | NodeJS.ArrayBufferView;
+  return {
+    prepare(sql: string) {
+      const statement = sqlite.prepare(sql);
+      let args: Input[] = [];
+      const prepared = {
+        bind: (...next: unknown[]) => {
+          args = next as Input[];
+          return prepared;
+        },
+        all: async () => ({ results: statement.all(...args) as unknown[] }),
+        run: async () => ({
+          meta: { changes: Number(statement.run(...args).changes) },
+        }),
+      };
+      return prepared;
+    },
+  } as unknown as D1Database;
+}
+
+describe("backfillEnSummaries", () => {
+  const summarize = vi.mocked(summarizeEnglish);
+
+  beforeEach(() => summarize.mockReset());
+
+  async function run(sqlite: DatabaseSync): Promise<RunStepInfo> {
+    const steps: RunStepInfo[] = [];
+    await backfillEnSummaries({
+      step: {},
+      env: { DB: sqliteD1(sqlite) },
+      runId: "run",
+      steps,
+    } as unknown as IngestContext);
+    const note = steps.find((s) => s.name === "backfill-en-summary");
+    if (!note) throw new Error("no backfill-en-summary step note");
+    return note;
+  }
+
+  // Production row 657a40d5 (techmeme, 2026-10-13): the raw summary is only
+  // the byline, which boilerplate stripping empties, so the model never saw
+  // it and the row was loaded again on each of 143 runs.
+  it("marks a byline-only row once instead of re-queuing it every run", async () => {
+    const sqlite = db();
+    sqlite
+      .prepare(
+        "INSERT INTO items (id, title, summary, status, source_lang, published_at) VALUES (?, ?, ?, 'published', 'en', 1)"
+      )
+      .run(
+        "657a40d556f5ba7b",
+        "Delaware-based Causa Prima, which develops an agent-to-agent AI platform for managing B2B payments, resolving billing disputes, and more, raised a $20M seed (Camila Grigera Naón/Fortune)",
+        "By Camila Grigera Naón / Fortune."
+      );
+
+    const first = await run(sqlite);
+    expect(first.action).toBe("skipped 1 with no text");
+    expect(first.reason).toBe("no text after boilerplate: 657a40d5");
+    expect(summarize).not.toHaveBeenCalled();
+    expect(sqlite.prepare(EN_SUMMARY_NO_TEXT_COUNT_SQL).get()).toEqual({
+      n: 1,
+    });
+    // The display still falls back to the raw summary.
+    expect(displayed(sqlite, "657a40d556f5ba7b")).toBe(
+      "By Camila Grigera Naón / Fortune."
+    );
+
+    expect((await run(sqlite)).action).toBe("0 candidates");
+  });
+
+  it("names each rejected row and why in the step note", async () => {
+    const sqlite = db();
+    insert(sqlite, {
+      id: "aaaaaaaa-ok",
+      summary: "Alpha shipped 3 models.",
+      publishedAt: 2,
+    });
+    insert(sqlite, {
+      id: "bbbbbbbb-bad",
+      summary: "Beta raised funds.",
+      publishedAt: 1,
+    });
+    summarize.mockResolvedValue({
+      results: [{ i: 0, summary: "Alpha shipped 3 models." }],
+      rejected: [{ i: 1, issues: ["number not in source: 50"] }],
+      tokens: 10,
+    });
+
+    const note = await run(sqlite);
+    expect(note.action).toBe("wrote 1/2 English summaries");
+    expect(note.reason).toBe("rejected bbbbbbbb: number not in source: 50");
+  });
+
+  // A deploy mid-run replays finished steps from their cached output, which
+  // predates `rejected`; the run must still reach tldr, email and notify.
+  it("accepts a slice output cached before rejections were recorded", async () => {
+    const sqlite = db();
+    insert(sqlite, { id: "aaaaaaaa-ok", summary: "Alpha shipped 3 models." });
+    vi.mocked(llmStep).mockResolvedValueOnce({ count: 1, tokens: 10 });
+
+    const note = await run(sqlite);
+    expect(note.action).toBe("wrote 1/1 English summaries");
+    expect(note.reason).toBeUndefined();
+  });
+
+  it("keeps the no-usable-rows reason beside the no-text note when the call returns nothing", async () => {
+    const sqlite = db();
+    insert(sqlite, {
+      id: "aaaaaaaa-ok",
+      summary: "Alpha shipped 3 models.",
+      publishedAt: 2,
+    });
+    insert(sqlite, {
+      id: "bbbbbbbb-by",
+      summary: "By Jane Doe / Fortune.",
+      publishedAt: 1,
+    });
+    summarize.mockResolvedValue({ results: [], rejected: [], tokens: 0 });
+
+    const note = await run(sqlite);
+    expect(note.action).toBe(
+      "wrote 0/1 English summaries, skipped 1 with no text"
+    );
+    expect(note.reason).toBe(
+      "no text after boilerplate: bbbbbbbb; summarizeEnglish returned no usable rows; raw summaries stay on screen"
+    );
   });
 });
 
@@ -251,7 +415,7 @@ describe("sanitizeEnSummaryResults", () => {
     { i: 1, title: "B", summary: "Beta raised funds." },
   ];
 
-  it("keeps requested, guard-passing rows once and drops the rest", () => {
+  it("keeps requested, guard-passing rows once and rejects the rest with the reason", () => {
     const out = sanitizeEnSummaryResults(
       {
         results: [
@@ -263,7 +427,24 @@ describe("sanitizeEnSummaryResults", () => {
       },
       batch
     );
-    expect(out).toEqual([{ i: 0, summary: "Alpha shipped 3 models." }]);
+    expect(out).toEqual({
+      results: [{ i: 0, summary: "Alpha shipped 3 models." }],
+      rejected: [
+        {
+          i: 1,
+          issues: ["chrome or teaser: \\bread more\\b", "unfinished sentence"],
+        },
+      ],
+    });
+  });
+
+  it("reports a row the model left out as missing", () => {
+    expect(
+      sanitizeEnSummaryResults(
+        { results: [{ i: 0, summary: "Alpha shipped 3 models." }] },
+        batch
+      ).rejected
+    ).toEqual([{ i: 1, issues: ["missing"] }]);
   });
 });
 
@@ -285,7 +466,7 @@ describe("sanitizeEnSummaryResults output shapes", () => {
     [{ summaries: [{ i: 0, summary: "Alpha shipped." }] }],
     [{ items: [{ summary: "Alpha shipped." }] }],
   ])("parses %j", (raw) => {
-    expect(sanitizeEnSummaryResults(raw, batch)).toEqual([
+    expect(sanitizeEnSummaryResults(raw, batch).results).toEqual([
       { i: 0, summary: "Alpha shipped." },
     ]);
   });

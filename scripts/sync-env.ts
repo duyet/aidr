@@ -69,6 +69,10 @@ const WORKER_OPTIONAL = [
   // and a fine-grained PAT (issues:write) for aidr-alert GitHub issues.
   "TELEGRAM_OWNER_CHAT_ID",
   "GITHUB_ALERT_TOKEN",
+  // Account Analytics: Read, for hourly traffic in the health check and
+  // /api/admin/diagnostics. Not CLOUDFLARE_API_TOKEN: the Worker gets a
+  // read-only token, never the deploy one.
+  "CF_ANALYTICS_API_TOKEN",
   // Facebook Page for this install. Empty in git. The hourly post uses the
   // Page id and Page token. The app id and secret stay local; they only mint a replacement token.
   // Graph version and SITE_URL are optional public overrides.

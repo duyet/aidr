@@ -8,8 +8,8 @@ import { isProviderFailure } from "./bugsink.js";
 import { chunk } from "./chunk.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import {
+  type EnSummaryBatchResult,
   type EnSummaryInput,
-  type EnSummaryResult,
   enSummaryPrompt,
   sanitizeEnSummaryResults,
 } from "./en-summary.js";
@@ -2055,7 +2055,7 @@ const EN_SUMMARY_MAX_TOKENS = 2048;
 export async function summarizeEnglish(
   env: Env,
   items: { i: number; title: string; summary: string }[]
-): Promise<{ results: EnSummaryResult[]; tokens: number }> {
+): Promise<EnSummaryBatchResult & { tokens: number }> {
   const batch: EnSummaryInput[] = items
     .map((item) => ({
       i: item.i,
@@ -2063,7 +2063,7 @@ export async function summarizeEnglish(
       summary: sentSource({ ...item, sourceLang: "en" }, false).summary ?? "",
     }))
     .filter((item) => item.summary.length > 0);
-  if (batch.length === 0) return { results: [], tokens: 0 };
+  if (batch.length === 0) return { results: [], rejected: [], tokens: 0 };
   const { content, tokens } = await callAnyrouter(
     env,
     [{ role: "user", content: enSummaryPrompt(batch) }],
@@ -2078,17 +2078,16 @@ export async function summarizeEnglish(
       maxTokens: EN_SUMMARY_MAX_TOKENS,
       accept: (raw) => {
         try {
-          return sanitizeEnSummaryResults(parseJson(raw), batch).length > 0;
+          return (
+            sanitizeEnSummaryResults(parseJson(raw), batch).results.length > 0
+          );
         } catch {
           return false;
         }
       },
     }
   );
-  return {
-    results: sanitizeEnSummaryResults(parseJson(content), batch),
-    tokens,
-  };
+  return { ...sanitizeEnSummaryResults(parseJson(content), batch), tokens };
 }
 
 export interface TldrItem {

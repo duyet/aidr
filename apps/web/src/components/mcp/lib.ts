@@ -44,6 +44,8 @@ export const ADMIN_TOOL_VI: Record<string, string> = {
   delete_source: "Xóa một nguồn tin theo id.",
   trigger_ingest: "Kích hoạt một lượt thu thập tin tức mới.",
   get_status: "Xem 10 lượt chạy gần nhất và số lượng tin theo trạng thái.",
+  get_diagnostics:
+    "Chỉ đọc: đánh giá độ mới của lượt thu thập, lượt chạy gần nhất, lưu lượng so với 7 ngày trước, hàng bị kẹt và cảnh báo đang mở.",
   preview_ranking:
     "Chỉ đọc: các tin đứng đầu hiện tại và dữ liệu tính điểm xếp hạng.",
   preview_tldr: "Xem trước TL;DR từ dữ liệu hiện tại mà không xuất bản.",

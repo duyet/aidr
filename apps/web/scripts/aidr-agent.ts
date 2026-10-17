@@ -5,6 +5,9 @@
  *
  * Usage (from repo root):
  *   pnpm --filter @aidr/web agent audit [--run <id>] [--runs N]
+ *   pnpm --filter @aidr/web agent diagnose
+ *     (GET /api/admin/diagnostics: verdicts on ingest, the last run,
+ *     traffic against its 7-day baseline, stuck rows and open alerts)
  *   pnpm --filter @aidr/web agent ranking [--limit N]
  *   pnpm --filter @aidr/web agent tldr-preview
  *   pnpm --filter @aidr/web agent tldr-regenerate [--date YYYY-MM-DD]
@@ -61,6 +64,7 @@ import type {
   UnmergeResult,
 } from "../worker/admin/handlers";
 import { clusterPrompt } from "../worker/dedupe";
+import type { DiagnosticsReport } from "../worker/diagnostics";
 import {
   evaluateImageCoverage,
   formatCoverage,
@@ -319,6 +323,21 @@ async function audit(args: Args): Promise<void> {
   print(
     result,
     `audit: ${runs.length} runs, latest ${target?.id ?? "none"} (${target ? (isFinished(target) ? "finished" : "running") : "-"}), ${result.attempts?.calls.length ?? 0} LLM attempts, ${failed} failed, ${collapsed.length} sources with collapsed image coverage`
+  );
+}
+
+async function diagnose(): Promise<void> {
+  const report = await api<DiagnosticsReport>("/api/admin/diagnostics", {
+    admin: true,
+  });
+  const { verdicts, ingest, traffic } = report;
+  const latest = traffic.status === "ok" ? traffic.hours.at(-1) : undefined;
+  const trafficNote = latest
+    ? `${verdicts.traffic} (${latest.hour.slice(11, 13)}h ${latest.requests} req vs median ${latest.baseline.requests})`
+    : `${verdicts.traffic}${traffic.status === "ok" ? "" : `: ${traffic.reason}`}`;
+  print(
+    report,
+    `diagnose: ingest ${verdicts.ingest}${ingest.stuckRun ? ` (${ingest.stuckRun.id} open ${ingest.stuckRun.ageMin}m)` : ingest.newestFinishedAgeMin === null ? "" : ` (last finished ${ingest.newestFinishedAgeMin}m ago)`}, last run ${verdicts.lastRun}, traffic ${trafficNote}, ${verdicts.stuckRows} stuck rows, open alerts: ${verdicts.openAlerts.join(", ") || "none"}`
   );
 }
 
@@ -807,6 +826,8 @@ async function main(): Promise<void> {
   switch (command) {
     case "audit":
       return audit(args);
+    case "diagnose":
+      return diagnose();
     case "ranking":
       return ranking(args);
     case "tldr-preview":
@@ -830,7 +851,7 @@ async function main(): Promise<void> {
       return backfillTags(args);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --dangling [decisions.json] --model-check [--confirm-llm] [--max-calls N] | unmerge --undo <batchId> [--canonical <id,...>] [--apply] | backfill-tags [--apply]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | diagnose | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --dangling [decisions.json] --model-check [--confirm-llm] [--max-calls N] | unmerge --undo <batchId> [--canonical <id,...>] [--apply] | backfill-tags [--apply]"
       );
   }
 }
