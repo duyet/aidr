@@ -162,4 +162,8 @@ export interface Env {
   TELEGRAM_OWNER_CHAT_ID?: string;
   /** Fine-grained PAT (issues:write on duyet/aidr, duyet/anyrouter) for alert issues. Unset: no issues. */
   GITHUB_ALERT_TOKEN?: string;
+  /** Cloudflare API token with Account Analytics: Read, for the hourly
+   *  traffic in the health check and `/api/admin/diagnostics`. Unset: traffic
+   *  is `unconfigured` and its alerts are off. */
+  CF_ANALYTICS_API_TOKEN?: string;
 }

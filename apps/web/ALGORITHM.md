@@ -719,6 +719,38 @@ ORDER BY week DESC, hits DESC
   `/api/system/sources`) and counts the ones that would alert now. The
   7-day share includes the 24h being judged, so a total collapse of a
   high-volume source barely moves its own baseline.
+- Traffic and response time (`worker/traffic.ts`, same step, no model call):
+  one Cloudflare GraphQL read of `workersInvocationsAdaptive` (script `aidr`,
+  hourly, by invocation status) over the last 48 settled hours plus the 7
+  days before them. An hour is read once it ended 10 minutes ago
+  (`TRAFFIC_SETTLE_MS`), so ingestion lag cannot look like a quiet hour; an
+  hour with no row is 0 requests. Each hour's baseline is the median of the
+  same UTC hour on the 7 days before. `traffic-low` fires when each of the
+  last 3 settled hours has under 40% of its baseline's requests;
+  `traffic-slow` when each has a response p99 (`requestDurationP99`, time to
+  deliver the response) over 2x its baseline's. Hours whose baseline is under
+  300 requests never fire. Warning, routed to `duyet/aidr`, once per key per
+  24h like `translation-english`. Needs the `CF_ANALYTICS_API_TOKEN` secret
+  (Account Analytics: Read); unset or refused, the check logs one
+  `health-check traffic skipped` line per run and raises nothing.
+  Baseline, read in 9-day windows like the check's own read (the counts
+  are sampled estimates: a 30-day read rounds them to tens and moved one
+  hour's median from 969 to 770): 23,024 to 37,574 requests a UTC day from
+  10-09 to 10-16. On 10-16 22:00 to 10-17 05:00 UTC each hour ran 450 to
+  707 against same-hour medians of 809 to 1,274, a low of 40% at 22:00 and
+  44% and 49% after it, so the 40% rule stays quiet on that dip and a 50%
+  rule would have fired once. Over the 273 hours from 2026-10-02 17:00 to
+  10-17 05:00 UTC with a full baseline of at least 300: 5 single hours were
+  under 40% and no 3-hour run was (0 alerts); at 50%, 15 hours and 1 run;
+  at 60%, 34 hours and 4 runs. Response p99 passed 2x in 6 hours and fired
+  once, 10-05 16:00 to 18:00 (4.3 to 4.5 s against about 2.2 s, on 250 to
+  310 requests an hour). Wall-time p99 is not used: it counts `waitUntil`
+  work and the ingest Workflow's steps (hourly wall p99 up to 275 s against
+  a 3.3 s median), passed 2x in 24 hours, and would have fired 3 times. What this cannot see: bots
+  and agents are not separated from readers; the counts include Workflow
+  and Durable Object alarm invocations and leave out pages Workers Cache
+  answers before the Worker runs; and a Worker that cannot run cannot raise
+  this alert (external monitors on `GET /api/health` cover that).
 - Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
   `TELEGRAM_OWNER_CHAT_ID` DMs each freshly fired alert (same 6h cooldown)
   with evidence and the run link, plus one daily summary in the first run
