@@ -38,6 +38,9 @@ export function enSummarySql(alias = "i"): string {
  * English-source published items with a summary but no current LLM English
  * summary: visible teaser excerpts first, then newest first. The teaser rows (`[…]`, "Read more") are a subset:
  * once backfill-content replaces a teaser, the revision bump re-queues it.
+ * A row marked `summary_en = ''` at its current revision had no text left
+ * after boilerplate stripping (`EN_SUMMARY_NO_TEXT`), so it stays out until
+ * the source changes.
  */
 export function buildMissingEnSummaryQuery(
   limit = BACKFILL_EN_SUMMARY_CAP
@@ -46,8 +49,7 @@ export function buildMissingEnSummaryQuery(
           WHERE status = 'published'
             AND source_lang = 'en'
             AND summary IS NOT NULL AND TRIM(summary) != ''
-            AND (summary_en IS NULL OR summary_en = ''
-                 OR summary_en_revision IS NOT source_revision)
+            AND (summary_en IS NULL OR summary_en_revision IS NOT source_revision)
           ORDER BY (summary LIKE '%[…]' OR summary LIKE '%[...]' OR summary LIKE '%[&#8230;]'
                     OR summary LIKE '%Read more' OR summary LIKE '%Continue reading') DESC,
                    published_at DESC
@@ -59,6 +61,18 @@ export function buildMissingEnSummaryQuery(
 export const EN_SUMMARY_UPDATE_SQL = `UPDATE items
   SET summary_en = ?, summary_en_revision = ?
   WHERE id = ? AND source_revision = ?`;
+
+/** `summary_en` value for "nothing to summarize at this revision". A summary
+ * that is only a byline ("By Jane Doe / Fortune.") strips to nothing, so the
+ * row never reaches the model and was otherwise re-queued every run.
+ * `enSummarySql` shows the raw summary for it. */
+export const EN_SUMMARY_NO_TEXT = "";
+
+/** Published English rows marked `EN_SUMMARY_NO_TEXT` at their current
+ * revision: the rows the backfill skips. */
+export const EN_SUMMARY_NO_TEXT_COUNT_SQL = `SELECT COUNT(*) AS n FROM items
+  WHERE status = 'published' AND source_lang = 'en'
+    AND summary_en = '' AND summary_en_revision = source_revision`;
 
 const TEASER_PATTERNS: readonly RegExp[] = [
   /\[\s*(?:…|\.\.\.)\s*\]/,
@@ -156,24 +170,48 @@ function resultRows(raw: unknown): unknown[] | undefined {
   return undefined;
 }
 
+/** A batch row with no usable summary: the `enSummaryIssues` of the first
+ * answer for it, or `missing` when the model returned none. */
+export interface EnSummaryRejection {
+  i: number;
+  issues: string[];
+}
+
+export interface EnSummaryBatchResult {
+  results: EnSummaryResult[];
+  rejected: EnSummaryRejection[];
+}
+
 /** Keep only requested indexes, once each, with a summary that passes
  * `enSummaryIssues` against its own source. Rows without `i` are matched by
- * position only when the array lines up with the batch. */
+ * position only when the array lines up with the batch. Every other batch
+ * row comes back in `rejected` with the reason. */
 export function sanitizeEnSummaryResults(
   raw: unknown,
   batch: readonly EnSummaryInput[]
-): EnSummaryResult[] {
-  const rows = resultRows(raw);
-  if (!rows) return [];
+): EnSummaryBatchResult {
   const byIndex = new Map(batch.map((item) => [item.i, item]));
   const seen = new Set<number>();
+  const firstIssues = new Map<number, string[]>();
   const out: EnSummaryResult[] = [];
+  const rejected = (): EnSummaryRejection[] =>
+    batch
+      .filter((item) => !seen.has(item.i))
+      .map((item) => ({
+        i: item.i,
+        issues: firstIssues.get(item.i) ?? ["missing"],
+      }));
+  const rows = resultRows(raw);
+  if (!rows) return { results: [], rejected: rejected() };
   const take = (i: number, e: Record<string, unknown>) => {
     const item = byIndex.get(i);
     if (!item || seen.has(i)) return;
     const summary = typeof e.summary === "string" ? e.summary.trim() : "";
-    if (enSummaryIssues(`${item.title}\n${item.summary}`, summary).length > 0)
+    const issues = enSummaryIssues(`${item.title}\n${item.summary}`, summary);
+    if (issues.length > 0) {
+      if (!firstIssues.has(i)) firstIssues.set(i, issues);
       return;
+    }
     seen.add(i);
     out.push({ i, summary });
   };
@@ -186,5 +224,5 @@ export function sanitizeEnSummaryResults(
     if (hasIndex) take(Number(e.i), e);
     else if (rows.length === batch.length) take(batch[position].i, e);
   });
-  return out;
+  return { results: out, rejected: rejected() };
 }

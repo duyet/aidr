@@ -1830,7 +1830,18 @@ stripped, clipped source the Vietnamese translator sees (`sentSource`), so
 both languages carry the same facts. `worker/en-summary.ts` rejects output
 with `[…]`, "Read more", a trailing ellipsis, links, counters, an unfinished
 sentence, or a number the source lacks; a rejected row keeps the raw text
-and is retried next run. `summary_en_revision` stores the
+and is retried next run. The step note names up to three rejected rows (id
+prefix) with their reasons, or `missing` when the model returned no row for
+one. A row whose summary strips to nothing (a bare byline such as
+"By Jane Doe / Fortune.") never reaches the model: the step stores
+`summary_en = ''` at its current revision, which `enSummarySql` treats as
+absent and the queue skips until the source changes. Before this, one such
+techmeme row was loaded again on each of 143 runs (2026-10-13 to 10-17);
+it cost no model calls, since an empty source is dropped before the call,
+but it held a queue slot and wrote "wrote 0/1" notes.
+There is no per-row attempt cap: a row whose model output keeps failing the
+guard is retried every run.
+`summary_en_revision` stores the
 `items.source_revision` it was written from; the 0023 trigger bumps that on
 any title/summary change (re-ingest, backfill-content replacing a teaser,
 admin push), so a stale rewrite stops showing and the row is queued again.
