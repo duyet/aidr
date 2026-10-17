@@ -14,6 +14,7 @@ import {
   decideTranslationKnowledge,
   deleteDayVideo,
   deleteSource,
+  getDiagnostics,
   getLlmCalls,
   getStatus,
   isHandlerError,
@@ -411,6 +412,14 @@ async function handle(
   if (method === "GET" && segments.length === 1 && segments[0] === "status") {
     const result = await getStatus(env);
     return Response.json(result);
+  }
+
+  if (
+    method === "GET" &&
+    segments.length === 1 &&
+    segments[0] === "diagnostics"
+  ) {
+    return Response.json(await getDiagnostics(env));
   }
 
   // One-shot Clerk account backfill into D1 so the /data signup total is real

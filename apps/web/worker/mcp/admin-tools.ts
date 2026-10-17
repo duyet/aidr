@@ -117,6 +117,12 @@ export const ADMIN_MCP_TOOLS = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "get_diagnostics",
+    description:
+      "Read-only: verdicts on ingest freshness, the last run, traffic against its 7-day baseline, stuck backfill rows and open alerts, with the recent runs, 48h alert history, source streaks and hourly traffic behind them.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "preview_ranking",
     description:
       "Read-only: current top published items (last 24h) with their rank score inputs.",

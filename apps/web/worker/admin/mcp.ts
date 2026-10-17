@@ -42,6 +42,7 @@ import {
 import {
   deleteDayVideo,
   deleteSource,
+  getDiagnostics,
   getStatus,
   isHandlerError,
   listSources,
@@ -151,6 +152,8 @@ async function callAdminTool(
       });
     case "get_status":
       return getStatus(env);
+    case "get_diagnostics":
+      return getDiagnostics(env);
     case "preview_ranking":
       return previewRanking(env, args.limit);
     case "preview_tldr":

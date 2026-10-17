@@ -751,6 +751,21 @@ ORDER BY week DESC, hits DESC
   and Durable Object alarm invocations and leave out pages Workers Cache
   answers before the Worker runs; and a Worker that cannot run cannot raise
   this alert (external monitors on `GET /api/health` cover that).
+- `GET /api/admin/diagnostics` (MCP `get_diagnostics`, `agent diagnose`,
+  `worker/diagnostics.ts`) is the one read for "why is it slow or quiet":
+  verdicts plus the last 10 live runs, 48h of `stats.alerts`, source
+  streaks, `traffic` (above) and `stuck` counts. `stuck.enSummaryNoText`
+  counts the rows the English summary step skips for having no text;
+  `enSummaryOver24h`, `translateOver24h` and `unscoredOver24h` count rows
+  still in each backfill queue 24h after they were first fetched, from the
+  step's own SELECT (newest 1,000 rows each). None of the three queues has
+  a per-row attempt cap, so a row the model keeps refusing shows up there.
+  `verdicts.stuckRows` sums those three; the no-text rows are settled and
+  left out. `ingest.stuckRun` is the newest run
+  when it is still unfinished past the 25-minute coalesce window; the
+  longest closed run over 2026-10-14 to 10-17 took 17 minutes. Recovery
+  stays with the GitHub Actions watchdog (Scheduling & coalesce); the
+  report only makes a stuck run visible.
 - Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
   `TELEGRAM_OWNER_CHAT_ID` DMs each freshly fired alert (same 6h cooldown)
   with evidence and the run link, plus one daily summary in the first run
@@ -1872,7 +1887,8 @@ techmeme row was loaded again on each of 143 runs (2026-10-13 to 10-17);
 it cost no model calls, since an empty source is dropped before the call,
 but it held a queue slot and wrote "wrote 0/1" notes.
 There is no per-row attempt cap: a row whose model output keeps failing the
-guard is retried every run.
+guard is retried every run. `GET /api/admin/diagnostics` counts both kinds
+(`stuck.enSummaryNoText`, `stuck.enSummaryOver24h`).
 `summary_en_revision` stores the
 `items.source_revision` it was written from; the 0023 trigger bumps that on
 any title/summary change (re-ingest, backfill-content replacing a teaser,
