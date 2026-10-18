@@ -1,0 +1,1023 @@
+{
+  "source": "#790: merged rows fetched 2026-09-16 to 10-14 whose title shares no evidenceTokens token with the canonical's, hand-labelled. Only pairs of unrelated stories are listed. Same-topic-different-event pairs and correct merges are not wrong merges and are not listed.",
+  "canonicals": 51,
+  "pairs": [
+    {
+      "canonicalId": "0bf65300a2ecec704f2100c23ea05122dd9d062aed356f647051e4f1e47df75c",
+      "mergedId": "d1e512dab3854dc0079a01499cd095ecdf8c54eba36099bcec2ed22adc80ae33",
+      "group": "d1e512dab3854dc0079a01499cd095ecdf8c54eba36099bcec2ed22adc80ae33",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] OpenAI \"rogue\" agent activities found on Wikimedia projects",
+      "merged": "[simonwillison] Quoting Victoria Kim"
+    },
+    {
+      "canonicalId": "0d2724db03627379638a76663e59690b4ec04d66b1805247596f1d3c9d2bba8e",
+      "mergedId": "30aa7c0acfe7f3809f1c0c2e3d8197e23f507daa6c3cae8fb2a05da2a018d4df",
+      "group": "30aa7c0acfe7f3809f1c0c2e3d8197e23f507daa6c3cae8fb2a05da2a018d4df",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[the-decoder] Google's new Flash TTS models let you design AI voices from scratch using text descriptions",
+      "merged": "[hf-blog] How to Use NVIDIA Warp and MjWarp to Accelerate Robotics Simulation and Learning Workflows"
+    },
+    {
+      "canonicalId": "0de5978e2c8eb330727552555dd92287898576f39bdc369c091283980a63afed",
+      "mergedId": "019b8d88a570a342cd2865b0827d069bb9802d29fa61329d15aba59f12d46156",
+      "group": "019b8d88a570a342cd2865b0827d069bb9802d29fa61329d15aba59f12d46156",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[techcrunch-ai] Google releases Gemini 4 Argon, called its most powerful model yet",
+      "merged": "[hn] Decision models like Jev don't beat LLM-as-a-judge or traditional classifiers"
+    },
+    {
+      "canonicalId": "0de5978e2c8eb330727552555dd92287898576f39bdc369c091283980a63afed",
+      "mergedId": "6b1161959faf3f0ca6a9e2a507f96a083146638442f6d9e4478f722765924ae8",
+      "group": "6b1161959faf3f0ca6a9e2a507f96a083146638442f6d9e4478f722765924ae8",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[techcrunch-ai] Google releases Gemini 4 Argon, called its most powerful model yet",
+      "merged": "[hn] One month coding with GLM 5.3 Flash"
+    },
+    {
+      "canonicalId": "0de5978e2c8eb330727552555dd92287898576f39bdc369c091283980a63afed",
+      "mergedId": "8b7eafda898be1bd8a3dd9ec3b75f415f775b280cde8589e5fb4004b17c1de99",
+      "group": "8b7eafda898be1bd8a3dd9ec3b75f415f775b280cde8589e5fb4004b17c1de99",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[techcrunch-ai] Google releases Gemini 4 Argon, called its most powerful model yet",
+      "merged": "[hn] Show HN: Offrun – manage every coding agent from one workspace"
+    },
+    {
+      "canonicalId": "0de5978e2c8eb330727552555dd92287898576f39bdc369c091283980a63afed",
+      "mergedId": "d1197eeb7fe974d05f89ed1ad9b67b387fa0ffa3dbfc5adf2926b7aec049b609",
+      "group": "d1197eeb7fe974d05f89ed1ad9b67b387fa0ffa3dbfc5adf2926b7aec049b609",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[techcrunch-ai] Google releases Gemini 4 Argon, called its most powerful model yet",
+      "merged": "[hn] What if AI worked at 1.000.000 tokens per seconds?"
+    },
+    {
+      "canonicalId": "0de5978e2c8eb330727552555dd92287898576f39bdc369c091283980a63afed",
+      "mergedId": "da35dffa72d7422a7386f0fa1453b328e5aaba747c5b387d34a378f7ce03921a",
+      "group": "da35dffa72d7422a7386f0fa1453b328e5aaba747c5b387d34a378f7ce03921a",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[techcrunch-ai] Google releases Gemini 4 Argon, called its most powerful model yet",
+      "merged": "[lobsters] The Era of Programming Languages Exploration is upon Us"
+    },
+    {
+      "canonicalId": "0fc71ead9e60d33d3cda83ce28b7f7e7f3d6c7c788ad54940dea4ec9a50a5634",
+      "mergedId": "15e05cc93b8e2e3f0d33f7e529ea6ceb3678a3ae1d3609d01f4a5815f3624d0d",
+      "group": "15e05cc93b8e2e3f0d33f7e529ea6ceb3678a3ae1d3609d01f4a5815f3624d0d",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Launch HN: Coverage Cat (YC S22) – Umbrella insurance via your personal agent",
+      "merged": "[aws-ml] Evaluate skill-equipped agents with Strands Evals and Amazon Bedrock AgentCore"
+    },
+    {
+      "canonicalId": "11e95e729ef8fa908a6a7fd3e4ff9cc232ef7e75a1b560b29654e0cdfb4192c1",
+      "mergedId": "138e2724244b3ee3e9fb14f79c28b9e34a66a76d3f88eb0181c1b46f897e6d55",
+      "group": "138e2724244b3ee3e9fb14f79c28b9e34a66a76d3f88eb0181c1b46f897e6d55",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[arxiv-research] Transferability and operational reliability of a Prithvi crop classification foundation model under phenological and geographic shift across three continents",
+      "merged": "[arxiv-research] The Cost of Long Memory: State, Context, and Stability Complexity in Sequence Models"
+    },
+    {
+      "canonicalId": "11e95e729ef8fa908a6a7fd3e4ff9cc232ef7e75a1b560b29654e0cdfb4192c1",
+      "mergedId": "60a8ab192f3f8b657c13b1646e03dc4c632d727e015b1b8bfd5f5c1f13b7d181",
+      "group": "60a8ab192f3f8b657c13b1646e03dc4c632d727e015b1b8bfd5f5c1f13b7d181",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[arxiv-research] Transferability and operational reliability of a Prithvi crop classification foundation model under phenological and geographic shift across three continents",
+      "merged": "[arxiv-research] Route-Verify-Vote: Procedure-Conditioned Self-Consistency for Mixed-Domain Reasoning"
+    },
+    {
+      "canonicalId": "11e95e729ef8fa908a6a7fd3e4ff9cc232ef7e75a1b560b29654e0cdfb4192c1",
+      "mergedId": "a0821a112fddb7bf9d6dee1364d34608d1a82ea13c6af14d169845930ae8407b",
+      "group": "a0821a112fddb7bf9d6dee1364d34608d1a82ea13c6af14d169845930ae8407b",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[arxiv-research] Transferability and operational reliability of a Prithvi crop classification foundation model under phenological and geographic shift across three continents",
+      "merged": "[arxiv-research] Task-Oriented Key-Layer KV Communication for Efficient Latent Multi-Agent Collaboration"
+    },
+    {
+      "canonicalId": "11e95e729ef8fa908a6a7fd3e4ff9cc232ef7e75a1b560b29654e0cdfb4192c1",
+      "mergedId": "c17a3ef2e1c9afce7f76878370577d0f074c39bc349f3a3aa8bbaac0c90b9112",
+      "group": "c17a3ef2e1c9afce7f76878370577d0f074c39bc349f3a3aa8bbaac0c90b9112",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[arxiv-research] Transferability and operational reliability of a Prithvi crop classification foundation model under phenological and geographic shift across three continents",
+      "merged": "[arxiv-research] Just for FUNS: LLM-Guided Spatio-Temporal Graph Node Generation for Forecasting Unobserved Node States"
+    },
+    {
+      "canonicalId": "11e95e729ef8fa908a6a7fd3e4ff9cc232ef7e75a1b560b29654e0cdfb4192c1",
+      "mergedId": "f068f0dab6b3f3584825444ef90bf6ce14206fa5ff1b47cc0362b793b68fbf22",
+      "group": "f068f0dab6b3f3584825444ef90bf6ce14206fa5ff1b47cc0362b793b68fbf22",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[arxiv-research] Transferability and operational reliability of a Prithvi crop classification foundation model under phenological and geographic shift across three continents",
+      "merged": "[arxiv-research] Bounded Autonomy and Verifiable Safety for Agentic AI Enabled Automation"
+    },
+    {
+      "canonicalId": "12c7c4b93f1e3a449874069b9582785fa6a140290dd9946bd4dcebb519c16b4d",
+      "mergedId": "21383916b09a54e90fa63d36bdb700ccfda43af1a9bcfcd94328263d071f9092",
+      "group": "slug:027b8f87",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] AI Web Text Hits 31% and Harms Language Model Training",
+      "merged": "[marketbrief] 70% of Teens Use AI for Schoolwork With Plunging Test Scores"
+    },
+    {
+      "canonicalId": "12c7c4b93f1e3a449874069b9582785fa6a140290dd9946bd4dcebb519c16b4d",
+      "mergedId": "dedd98f1c0b3fa18d84edbdb2ed3ac2f11f5b211a095819bb93e894df3256af4",
+      "group": "slug:027b8f87",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] AI Web Text Hits 31% and Harms Language Model Training",
+      "merged": "[huggingnews] 70% of Teens Use AI for Schoolwork With Plunging Test Scores"
+    },
+    {
+      "canonicalId": "14980e1ac0c5991aff1b636e7212373d6d922b91d59cf9b4a743433f0f91c32e",
+      "mergedId": "36527f27d66f5ea212be88c775e852824d7c2442c1eceb5115a48c3558ac17b2",
+      "group": "slug:9da879fd",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] Meta Patches Zero Day That Let Attackers Hijack Muse AI and Track iPhones",
+      "merged": "[huggingnews] Boston Disables All Flock AI Cameras After Data Exposure"
+    },
+    {
+      "canonicalId": "14980e1ac0c5991aff1b636e7212373d6d922b91d59cf9b4a743433f0f91c32e",
+      "mergedId": "4f3cfd2a507658de301b30291ccbe6c6f144ce0e0e7822d2b1db0a6a463b5c98",
+      "group": "slug:9da879fd",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] Meta Patches Zero Day That Let Attackers Hijack Muse AI and Track iPhones",
+      "merged": "[marketbrief] Boston Disables All Flock AI Cameras After Data Exposure"
+    },
+    {
+      "canonicalId": "1571ca1612392c36b1aaf5a0399994f96952158631f6b1f442226e3b97f80eea",
+      "mergedId": "14b81786a9c7ab84042d77b0957876206c2af2daf48f23a2bedce1b4f121b17b",
+      "group": "14b81786a9c7ab84042d77b0957876206c2af2daf48f23a2bedce1b4f121b17b",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Trump and Xi Summit in Washington as 17 Senators Urge AI Pause",
+      "merged": "[aws-ml] Use open weight models as your AI coding agent with Amazon Bedrock"
+    },
+    {
+      "canonicalId": "1571ca1612392c36b1aaf5a0399994f96952158631f6b1f442226e3b97f80eea",
+      "mergedId": "3bf3a05e5f7925d3df1e407dfee509095270e1e211478a16078306ea87265c3d",
+      "group": "3bf3a05e5f7925d3df1e407dfee509095270e1e211478a16078306ea87265c3d",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Trump and Xi Summit in Washington as 17 Senators Urge AI Pause",
+      "merged": "[aws-ml] Agentic conversational video intelligence built on AWS"
+    },
+    {
+      "canonicalId": "1571ca1612392c36b1aaf5a0399994f96952158631f6b1f442226e3b97f80eea",
+      "mergedId": "a0388b22709d1c7a79d698d23fd12f6308697cafc4bd59b96ecf82e0d55ada2f",
+      "group": "a0388b22709d1c7a79d698d23fd12f6308697cafc4bd59b96ecf82e0d55ada2f",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Trump and Xi Summit in Washington as 17 Senators Urge AI Pause",
+      "merged": "[aws-ml] From portal-hopping to instant answers: HEMA’s journey with MCP and Amazon Bedrock"
+    },
+    {
+      "canonicalId": "1e34837754cb2e82bc2d6462c252f6afa5f7cf1c1536602a4ec08d8ac4ec1e86",
+      "mergedId": "568be0a9a594325d14157c3fc11608d5418640e745b1692930808361a8d57b7f",
+      "group": "slug:a7dd3ed1",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Aikido Releases First Open Weight Security Model Altar 1 Based on GLM 5.3",
+      "merged": "[marketbrief] Rigel 2.3B Model Matches Llama-3.2-3B Performance With <1% Pretraining Compute"
+    },
+    {
+      "canonicalId": "1e34837754cb2e82bc2d6462c252f6afa5f7cf1c1536602a4ec08d8ac4ec1e86",
+      "mergedId": "fe2d32a0457328333c18eadd1e13b63b7ae7e7299a4edb66192e988ae1d2e10b",
+      "group": "slug:a7dd3ed1",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Aikido Releases First Open Weight Security Model Altar 1 Based on GLM 5.3",
+      "merged": "[huggingnews] Rigel 2.3B Model Matches Llama-3.2-3B Performance With <1% Pretraining Compute"
+    },
+    {
+      "canonicalId": "2581be1fe72f349edbea3cf1ef8c2d273272ef1cc13aef7267b158f874847ab0",
+      "mergedId": "bf77158656aaf23fcb56c8cc84ad9f358a30bf81d983237232584f0043e44024",
+      "group": "bf77158656aaf23fcb56c8cc84ad9f358a30bf81d983237232584f0043e44024",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[lobsters] The Age of Wonders and Terrors",
+      "merged": "[hn] Two parallel neural ectoderm progenitors contribute to the developing brain"
+    },
+    {
+      "canonicalId": "25c53dbddd71c5056464e63228c7d4385fe3a14b1fd491ec0a3fa6ed925d4dd8",
+      "mergedId": "7bc6744b97b1328554d951d37607f3ca901f4b1538e4f669f9057b35ea4efc4f",
+      "group": "7bc6744b97b1328554d951d37607f3ca901f4b1538e4f669f9057b35ea4efc4f",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[the-decoder] Anthropic engineer explains why Claude's writing got worse although the model got smarter",
+      "merged": "[marktechpost] Contrastive-LM Releases CLM-8B: An Open System One Model That Scores Agent Actions Up to 9× Faster Than Jev"
+    },
+    {
+      "canonicalId": "25c53dbddd71c5056464e63228c7d4385fe3a14b1fd491ec0a3fa6ed925d4dd8",
+      "mergedId": "81a1f5d85185bc89b38682fae16faa70bb84dc64b0dc5b9f575a454eb8a2d8bb",
+      "group": "81a1f5d85185bc89b38682fae16faa70bb84dc64b0dc5b9f575a454eb8a2d8bb",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[the-decoder] Anthropic engineer explains why Claude's writing got worse although the model got smarter",
+      "merged": "[marktechpost] A Coding Guide to TypeSafe AI Jev: Typed Decisions, Calibrated Confidence, and Speculative Fan-Out with a System One Model"
+    },
+    {
+      "canonicalId": "27b87015ba182b73bf352b7f1ca5f836395c4e2efa14ced7c4e72b5f34f2cd72",
+      "mergedId": "00ab27d7367e91153871471d6358fc8077aca6a67e599c3da8e9fa5d7d658c30",
+      "group": "slug:8a5499a5",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Trump and Senator Thune Plan Data Center Power Cuts After 417-3 House Vote",
+      "merged": "[huggingnews] $18 Billion Oracle Project Jupiter Loans Slide to 89 Cents on Dollar After Build Delays"
+    },
+    {
+      "canonicalId": "27b87015ba182b73bf352b7f1ca5f836395c4e2efa14ced7c4e72b5f34f2cd72",
+      "mergedId": "05b7ca194d171c0e7be1e2ed024603ebcd946ffd61563a58be7e12bea193f489",
+      "group": "slug:8a5499a5",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Trump and Senator Thune Plan Data Center Power Cuts After 417-3 House Vote",
+      "merged": "[marketbrief] $18 Billion Oracle Project Jupiter Loans Slide to 89 Cents on Dollar After Build Delays"
+    },
+    {
+      "canonicalId": "2a1e7f42ef17b46a91ef40e540dc59eccc965b3388da1884b4ddbfd1d44df45b",
+      "mergedId": "b58e66ef92f7ea2966e20c4570fd9143b32430e6e4175dc7811cb8d43c4dfc3f",
+      "group": "b58e66ef92f7ea2966e20c4570fd9143b32430e6e4175dc7811cb8d43c4dfc3f",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[aws-ml] Bring more intelligence to everyday work with GPT-6 Sol and GPT-6 Luna on Amazon Bedrock",
+      "merged": "[hn] Unreal Agent"
+    },
+    {
+      "canonicalId": "345b03ac54d91ebef7b044f7399550fe42672a0477b0472369887dd5c912a2d6",
+      "mergedId": "7d30d83910bdbbbb92522ecb7b15e5d80e45ee8f42e33546d01f6aed2b2b44e8",
+      "group": "7d30d83910bdbbbb92522ecb7b15e5d80e45ee8f42e33546d01f6aed2b2b44e8",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] Nvidia’s $13B Hugging Face Buyout Follows OpenAI Bid",
+      "merged": "[the-decoder] Meta dodges billions in US taxes by calling its AI data centers experiments"
+    },
+    {
+      "canonicalId": "38c32af152f6e098a6595d2656c6acf62dc549dc8da9ab3618f5499f897a10fd",
+      "mergedId": "8451e6726f367367721594694680bf0bf18e837560d1c7a5a0a32fb8f9a2fcf8",
+      "group": "8451e6726f367367721594694680bf0bf18e837560d1c7a5a0a32fb8f9a2fcf8",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Show HN: Radix – Visual UI for agentic programming",
+      "merged": "[google-research] Automating coherent long-form video generation"
+    },
+    {
+      "canonicalId": "38c32af152f6e098a6595d2656c6acf62dc549dc8da9ab3618f5499f897a10fd",
+      "mergedId": "ad285f3619010e87dcae7522c266a4747323e11c428c9e5e98aa698cd012c9d6",
+      "group": "ad285f3619010e87dcae7522c266a4747323e11c428c9e5e98aa698cd012c9d6",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Show HN: Radix – Visual UI for agentic programming",
+      "merged": "[the-decoder] Top AI experts badly underestimated how fast the field is moving, study finds"
+    },
+    {
+      "canonicalId": "38c32af152f6e098a6595d2656c6acf62dc549dc8da9ab3618f5499f897a10fd",
+      "mergedId": "ecd0b874c870d7b6e5121f09aae2f2256d997c72dfa86b6d296da719be9a6f61",
+      "group": "ecd0b874c870d7b6e5121f09aae2f2256d997c72dfa86b6d296da719be9a6f61",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Show HN: Radix – Visual UI for agentic programming",
+      "merged": "[the-decoder] Google's \"Call for Me\" lets Gemini phone businesses for you"
+    },
+    {
+      "canonicalId": "38d6b6f15cfc66e9cb60ef50af54d53c6bafaa5f69ce8d8ca7c707ff87651393",
+      "mergedId": "bc937539f4106521fc5b5f566f4a950f68b038f618d1a3cb539bcb5a09d87701",
+      "group": "bc937539f4106521fc5b5f566f4a950f68b038f618d1a3cb539bcb5a09d87701",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[lobsters] AI Has No Wisdom and Neither Will You",
+      "merged": "[lastweekin-ai] LWiAI Podcast #257 - GPT 6 Astra, AI Extinction, Security Incidents"
+    },
+    {
+      "canonicalId": "3c93c11303b90f3e0dd5b532990cbb52416eabb0256fd50adebca736ab7b47f0",
+      "mergedId": "5d6deb5100d8fe5af2a4e61be788ca0a871e94f29bd37f970e5ad227b319fe65",
+      "group": "5d6deb5100d8fe5af2a4e61be788ca0a871e94f29bd37f970e5ad227b319fe65",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[theverge-ai] OpenAI’s new agent is a shot at Meta — but can it compete with free?",
+      "merged": "[marktechpost] A Coding Guide to Google Research’s Kauldron: Configs That Are Plain Data, Components Wired by String, and a JAX Trainer You Can Read End to End"
+    },
+    {
+      "canonicalId": "3c94f6131f9c7c6c13f32b327dc30ba962c11d7831ba9fa761010621ead66cfc",
+      "mergedId": "1064792613823f7b1e2c397f347d1fc40f6561251a1803e9ff296e6dcf784ca8",
+      "group": "slug:bbd8f21f",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] Pocket FM Hits $500 Million ARR Using Sherpa AI to Scale Content 1,200%",
+      "merged": "[marketbrief] Microsoft Director Calls AI Data Scraping Theft in Unsealed NYT Case"
+    },
+    {
+      "canonicalId": "3c94f6131f9c7c6c13f32b327dc30ba962c11d7831ba9fa761010621ead66cfc",
+      "mergedId": "c10d4331a56d1a08d6116e6a5d789b7ade1b4359706337d31e65c1178b6bbef7",
+      "group": "slug:bbd8f21f",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] Pocket FM Hits $500 Million ARR Using Sherpa AI to Scale Content 1,200%",
+      "merged": "[huggingnews] Microsoft Director Calls AI Data Scraping Theft in Unsealed NYT Case"
+    },
+    {
+      "canonicalId": "3f28d9d5e20e9c48902aeb61c52fe4ac2a2963c2a9db1deded41c74fbdc7d2fb",
+      "mergedId": "660fc420468ba0a23ef4a1a37d3d87bf1b8ae60d083540a9921df5b1c730543e",
+      "group": "660fc420468ba0a23ef4a1a37d3d87bf1b8ae60d083540a9921df5b1c730543e",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] 10.000 drone đang sử dụng tại Đồng bằng sông Cửu Long",
+      "merged": "[marktechpost] AWS Strands Labs Releases Strands Decider 2B: An Open Source Decision Model That Picks Options in About 115 ms"
+    },
+    {
+      "canonicalId": "4c6e95532e0e57579af3457c9f839143118811919a86e1633a6722b6a861705c",
+      "mergedId": "1b2938828d3e37d77886df8ecdf7486a9c3d622723edd419f38d6c9e49b0d2bc",
+      "group": "1b2938828d3e37d77886df8ecdf7486a9c3d622723edd419f38d6c9e49b0d2bc",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hf-papers] Harness^2: Recursive Agent Harnessing for an Open World",
+      "merged": "[hf-papers] Urbex: Agentic Spatial Grounding for City-Scale 3D Scenes"
+    },
+    {
+      "canonicalId": "4e56c7312349a760a0edf744bd151f1352583693dfaa6156b9b09ca8e15ad634",
+      "mergedId": "ef1b3a4772eab8370f467eb49319d91c1c1642fda763a0cf8c75d29f7c5a5328",
+      "group": "ef1b3a4772eab8370f467eb49319d91c1c1642fda763a0cf8c75d29f7c5a5328",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[openai] Ringg’s AI agents resolve up to 65% of customer calls with OpenAI",
+      "merged": "[hn] Claude discovers a novel enzyme system with CRISPR-like repeats"
+    },
+    {
+      "canonicalId": "5a91e99e9146b9533392a7e359e602395b5e3bd32decad6a736772e9ea26913b",
+      "mergedId": "e9d583f9b4736248e9e0a73f0bb477757d79a0d10f409ff494dfde128f044d23",
+      "group": "e9d583f9b4736248e9e0a73f0bb477757d79a0d10f409ff494dfde128f044d23",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[wired-ai] AI Models Can Be Easily Modified to Assist Terrorist and Extremist Activity",
+      "merged": "[techmeme] US law enforcement and intel agency docs: since 2021, the FBI, DHS, and NYPD have viewed AI as both a facilitator of violent extremism and a target for attacks (The Guardian)"
+    },
+    {
+      "canonicalId": "5abcd11803083fe364aaff443266fef5117c58322e22139d840b0261190791dc",
+      "mergedId": "7223a333bbaaecaf687bceb7f4825eeaf129baeee4c3fcfc4d7c13219bee1efa",
+      "group": "slug:89ca94e3",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[mit-tr-ai] Don’t be fooled by this summer of AI hype",
+      "merged": "[marketbrief] StepFun Open Sources onPanda to Cut LLM Annotation Time by 52%"
+    },
+    {
+      "canonicalId": "5abcd11803083fe364aaff443266fef5117c58322e22139d840b0261190791dc",
+      "mergedId": "d2da57be2d2862ab8d607133b54cf4b17f2367b40ef616c1096ed7ceff2ca520",
+      "group": "slug:89ca94e3",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[mit-tr-ai] Don’t be fooled by this summer of AI hype",
+      "merged": "[huggingnews] StepFun Open Sources onPanda to Cut LLM Annotation Time by 52%"
+    },
+    {
+      "canonicalId": "5b4ff4084829112aa4b426aa770d94a6beb46d3d86561604effe44bce3b792cf",
+      "mergedId": "0e99e7dfa52d1389997734381616a47e35333d2c6867cf411d84617f0d451ef2",
+      "group": "slug:d6720277",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] OpenAI Seeks $30B Bridge Round at $1.4 Trillion Valuation",
+      "merged": "[marketbrief] Trump Launches AI Tool to Simplify Government Online Services"
+    },
+    {
+      "canonicalId": "5b4ff4084829112aa4b426aa770d94a6beb46d3d86561604effe44bce3b792cf",
+      "mergedId": "3466b072f4c7fa1d5ae7c4b2b510d96760c72088182314363a99598987f90ff0",
+      "group": "slug:2232b208",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] OpenAI Seeks $30B Bridge Round at $1.4 Trillion Valuation",
+      "merged": "[huggingnews] Trump Denies Bill Gates Warning of 1 Billion AI Deaths"
+    },
+    {
+      "canonicalId": "5b4ff4084829112aa4b426aa770d94a6beb46d3d86561604effe44bce3b792cf",
+      "mergedId": "3cc118a60c92825022128f632da9b79dd56458167c835ba633358e6ff3950459",
+      "group": "slug:d6720277",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] OpenAI Seeks $30B Bridge Round at $1.4 Trillion Valuation",
+      "merged": "[huggingnews] Trump Launches AI Tool to Simplify Government Online Services"
+    },
+    {
+      "canonicalId": "5b4ff4084829112aa4b426aa770d94a6beb46d3d86561604effe44bce3b792cf",
+      "mergedId": "69ef42aa5c8ec85ef631e660ed767f65cda227f6f167d63ea80694273ff3ce08",
+      "group": "slug:e513cebc",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] OpenAI Seeks $30B Bridge Round at $1.4 Trillion Valuation",
+      "merged": "[huggingnews] Trump Backs AI Self-Regulation After Two-Hour White House Lunch With Tech CEOs"
+    },
+    {
+      "canonicalId": "5b4ff4084829112aa4b426aa770d94a6beb46d3d86561604effe44bce3b792cf",
+      "mergedId": "9af40a28406701e202215df0a835c28a261369915fe24fe3018a6b19b22bd0a9",
+      "group": "slug:2232b208",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] OpenAI Seeks $30B Bridge Round at $1.4 Trillion Valuation",
+      "merged": "[marketbrief] Trump Denies Bill Gates Warning of 1 Billion AI Deaths"
+    },
+    {
+      "canonicalId": "5b4ff4084829112aa4b426aa770d94a6beb46d3d86561604effe44bce3b792cf",
+      "mergedId": "df1370c6c6c83cb3912f92daf6f367d903078dad2cdfd7071261f069d3fdf808",
+      "group": "slug:e513cebc",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] OpenAI Seeks $30B Bridge Round at $1.4 Trillion Valuation",
+      "merged": "[marketbrief] Trump Backs AI Self-Regulation After Two-Hour White House Lunch With Tech CEOs"
+    },
+    {
+      "canonicalId": "601acf9e780259f4573c324243bed8606318cce9d00397d194d3b8a50edd57b5",
+      "mergedId": "3037599665b3b7c6a5ffce702b8e318c4e236a1b2df17dab7c602ede1a159d16",
+      "group": "slug:482c4813",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] Deel Launches Akai AI Tool That Added $140 Million ARR in 90 Days",
+      "merged": "[marketbrief] Snorkel AI Raises $350 Million at $3.5 Billion Valuation After 18x Growth"
+    },
+    {
+      "canonicalId": "601acf9e780259f4573c324243bed8606318cce9d00397d194d3b8a50edd57b5",
+      "mergedId": "9673d30e9fb2d58b58d5e1333b8db9cb40f3ec05cebdea7727375dcdaa0e4f17",
+      "group": "slug:482c4813",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] Deel Launches Akai AI Tool That Added $140 Million ARR in 90 Days",
+      "merged": "[huggingnews] Snorkel AI Raises $350 Million at $3.5 Billion Valuation After 18x Growth"
+    },
+    {
+      "canonicalId": "61020cdda2cdcf26cc62f2dcabb69e84d856e492f43ca7612c29ccea49f8ddcb",
+      "mergedId": "452f271f38d239eef4684f830b176b850f27baac3e3e0ae859347a210364e450",
+      "group": "452f271f38d239eef4684f830b176b850f27baac3e3e0ae859347a210364e450",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] SGLang AI Beats Level 9 Fox in Super Smash Bros Melee",
+      "merged": "[the-decoder] Nearly half of test subjects mistook Tavus' AI video avatar for a real person on a one-minute call"
+    },
+    {
+      "canonicalId": "657305816d45b9045b06a718e193d2375e7b38315a439e5e79908e96c8962643",
+      "mergedId": "0a38e0e242639a014a0c5e9ac689da588e7b087ed0dc01557aca119ac0e91ba0",
+      "group": "slug:0aed1b00",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] Nscale Files for NYSE IPO With Contract Value Jumping From $38 Billion to $103.4 Billion",
+      "merged": "[huggingnews] SoftBank Seeks $11 Billion Junk Bond Sale to Top 2026 Borrowers"
+    },
+    {
+      "canonicalId": "657305816d45b9045b06a718e193d2375e7b38315a439e5e79908e96c8962643",
+      "mergedId": "8fa221fc7b945fca25c3dd25f07c30b10036bd919d09e54325e64a16cf977ab7",
+      "group": "slug:0aed1b00",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] Nscale Files for NYSE IPO With Contract Value Jumping From $38 Billion to $103.4 Billion",
+      "merged": "[marketbrief] SoftBank Seeks $11 Billion Junk Bond Sale to Top 2026 Borrowers"
+    },
+    {
+      "canonicalId": "689d78c6e007ab8e2c4f1996bb4d798c0801548871029acd469c087e5a6afc90",
+      "mergedId": "2e8a5e66791ed5074d009359fcc09ca327b7a3f2fc03d1c0a4e95d5767d68e5d",
+      "group": "2e8a5e66791ed5074d009359fcc09ca327b7a3f2fc03d1c0a4e95d5767d68e5d",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hf-blog] Transformers now runs llama.cpp quants",
+      "merged": "[simonwillison] llm 0.36"
+    },
+    {
+      "canonicalId": "689d78c6e007ab8e2c4f1996bb4d798c0801548871029acd469c087e5a6afc90",
+      "mergedId": "8f820c2b26f6994aca7606233df23ee20770a9fa98ce92d099dc3f765615eb5a",
+      "group": "8f820c2b26f6994aca7606233df23ee20770a9fa98ce92d099dc3f765615eb5a",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hf-blog] Transformers now runs llama.cpp quants",
+      "merged": "[simonwillison] llm-anthropic 0.29"
+    },
+    {
+      "canonicalId": "6c37fbb22f2f9770be74218f5ed13267ebefbbbdf49a9fbea0a20f792a49a114",
+      "mergedId": "13813cfa83d5e542ae54c7e17eb1452fa7f0de3fc50f2a7d65ea2577a0feceec",
+      "group": "slug:aab0d92c",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Mistral Large 4",
+      "merged": "[marketbrief] FLUX 3 Beats Gemini and Sora 2 on Google Physics-IQ Benchmark"
+    },
+    {
+      "canonicalId": "6c37fbb22f2f9770be74218f5ed13267ebefbbbdf49a9fbea0a20f792a49a114",
+      "mergedId": "14766ead31ae3076c23483f187995ad1a0dd4b8ef85a582e38a07e5cb394da56",
+      "group": "slug:70a6705b",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Mistral Large 4",
+      "merged": "[huggingnews] OpenAI and Atlassian Deploy GPT-6 Models Across Enterprise Suite"
+    },
+    {
+      "canonicalId": "6c37fbb22f2f9770be74218f5ed13267ebefbbbdf49a9fbea0a20f792a49a114",
+      "mergedId": "43c49d050161150f18dbc40f870353b30c43402f502546af65f1678cba05bac3",
+      "group": "slug:10018391",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Mistral Large 4",
+      "merged": "[marketbrief] Anthropic Offers $45,000 in Partner Credits to Expand Claude Startups Program"
+    },
+    {
+      "canonicalId": "6c37fbb22f2f9770be74218f5ed13267ebefbbbdf49a9fbea0a20f792a49a114",
+      "mergedId": "55a1ed4e86f0bbc759cee1cda1ec6cbfb101340023d6d9dd7bb702e40046d926",
+      "group": "slug:aab0d92c",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Mistral Large 4",
+      "merged": "[huggingnews] FLUX 3 Beats Gemini and Sora 2 on Google Physics-IQ Benchmark"
+    },
+    {
+      "canonicalId": "6c37fbb22f2f9770be74218f5ed13267ebefbbbdf49a9fbea0a20f792a49a114",
+      "mergedId": "58f342c113733a11cbdd14522d4bcbd4074315340bee7b63cbd9c2d56cf01b0c",
+      "group": "slug:70a6705b",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Mistral Large 4",
+      "merged": "[marketbrief] OpenAI and Atlassian Deploy GPT-6 Models Across Enterprise Suite"
+    },
+    {
+      "canonicalId": "6c37fbb22f2f9770be74218f5ed13267ebefbbbdf49a9fbea0a20f792a49a114",
+      "mergedId": "8b06dd8ec42ede358323ee07ddce4d0baefbbb41e73090781894440409f1e09d",
+      "group": "slug:10018391",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Mistral Large 4",
+      "merged": "[huggingnews] Anthropic Offers $45,000 in Partner Credits to Expand Claude Startups Program"
+    },
+    {
+      "canonicalId": "6c37fbb22f2f9770be74218f5ed13267ebefbbbdf49a9fbea0a20f792a49a114",
+      "mergedId": "8d7522b62101f716c9b5bb526e92ae023b4929dc813b37b80dd7ffdbf6875f7f",
+      "group": "slug:94d3ff15",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Mistral Large 4",
+      "merged": "[huggingnews] Trymelius Raises $25M for Generative AI Creative Lab"
+    },
+    {
+      "canonicalId": "6c37fbb22f2f9770be74218f5ed13267ebefbbbdf49a9fbea0a20f792a49a114",
+      "mergedId": "b603dce027c897a82b26dbdbe108f14a2f2f076c1843e94d4854502d2107f9e8",
+      "group": "slug:94d3ff15",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Mistral Large 4",
+      "merged": "[marketbrief] Trymelius Raises $25M for Generative AI Creative Lab"
+    },
+    {
+      "canonicalId": "6c37fbb22f2f9770be74218f5ed13267ebefbbbdf49a9fbea0a20f792a49a114",
+      "mergedId": "efc5b42bf1815ca866b1b3512fadd574e43fb7b9c3de602942256dab7b809cf8",
+      "group": "efc5b42bf1815ca866b1b3512fadd574e43fb7b9c3de602942256dab7b809cf8",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Mistral Large 4",
+      "merged": "[marktechpost] Google DeepMind Releases EmbeddingGemma 2, a 740M Open Multimodal Embedding Model Built on Gemma 4"
+    },
+    {
+      "canonicalId": "6ced8738ec2cb6dd8eee697a5c3e5e2ee9769b3d11650cab2baf3e9729453151",
+      "mergedId": "194357cc7601270b801bdf5b0c2ed555e837456e099ad0d17df8ef0cbbb4be30",
+      "group": "slug:4528b37b",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] VSCode's SSH Agent Is Bananas",
+      "merged": "[marketbrief] Stealth AI Model Space Bunny Debuts With 1M Context Window"
+    },
+    {
+      "canonicalId": "6ced8738ec2cb6dd8eee697a5c3e5e2ee9769b3d11650cab2baf3e9729453151",
+      "mergedId": "7afcf10194a316ef48527aa14c4e47c667a6d7fe12c3ca70de6b772ce05a4e44",
+      "group": "slug:4528b37b",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] VSCode's SSH Agent Is Bananas",
+      "merged": "[huggingnews] Stealth AI Model Space Bunny Debuts With 1M Context Window"
+    },
+    {
+      "canonicalId": "8357f00c0ea4d6ae0a2c87492d4411d2465d8e0f0e7cf3b8fdf297ab803cc9e5",
+      "mergedId": "674ea9154a9102159b172402c8814fd73e15739f8e8b6bf3900821a81484efd4",
+      "group": "slug:a4275595",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Cybersecurity Stocks Fall After Google Unveils Gemini 4 Argon",
+      "merged": "[marketbrief] Tesla Registers 43 Cybercabs in 18 Hours to Expand Texas Fleet"
+    },
+    {
+      "canonicalId": "8357f00c0ea4d6ae0a2c87492d4411d2465d8e0f0e7cf3b8fdf297ab803cc9e5",
+      "mergedId": "81bf858ecfad0b045fa6f84bb7f4749ebda9a8e786c4ba2f0b80338ae48d4619",
+      "group": "slug:75e00560",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Cybersecurity Stocks Fall After Google Unveils Gemini 4 Argon",
+      "merged": "[huggingnews] US Military Used Gov Grok for Target Strikes in Iran War"
+    },
+    {
+      "canonicalId": "8357f00c0ea4d6ae0a2c87492d4411d2465d8e0f0e7cf3b8fdf297ab803cc9e5",
+      "mergedId": "8507063add246073fea1903f8d2a6332e9baeb3e1bf563a6675855dd3a10a61c",
+      "group": "slug:75e00560",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Cybersecurity Stocks Fall After Google Unveils Gemini 4 Argon",
+      "merged": "[marketbrief] US Military Used Gov Grok for Target Strikes in Iran War"
+    },
+    {
+      "canonicalId": "8357f00c0ea4d6ae0a2c87492d4411d2465d8e0f0e7cf3b8fdf297ab803cc9e5",
+      "mergedId": "8ca7d88ab07bfa99fa963dd6cad3fb22fd1f9782006eec0a0dbd18fe1d4510f6",
+      "group": "slug:a4275595",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Cybersecurity Stocks Fall After Google Unveils Gemini 4 Argon",
+      "merged": "[huggingnews] Tesla Registers 43 Cybercabs in 18 Hours to Expand Texas Fleet"
+    },
+    {
+      "canonicalId": "85db442dc335f1c839fc8743c9b8cd8701f3eb17c71a80b7db3a27132fa7ab7d",
+      "mergedId": "78d28a6f741bffd1e1f38f1fe0dbbea1d67e4578601df7800a810e99909d95f0",
+      "group": "78d28a6f741bffd1e1f38f1fe0dbbea1d67e4578601df7800a810e99909d95f0",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[theverge-ai] Our minds aren’t equipped to handle AI",
+      "merged": "[lobsters] A new, bespoke static site generator to replace Jekyll"
+    },
+    {
+      "canonicalId": "86262bbecac1125c89b79f80f1e5d34028215d2c9c7f39ccecf1d249d5d13b41",
+      "mergedId": "b9c21ef0e3f58c4a574995353e33b7961d212fa1ce3c5d526e4f8859339b211a",
+      "group": "b9c21ef0e3f58c4a574995353e33b7961d212fa1ce3c5d526e4f8859339b211a",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Google Gemini Breaches 3 Companies in First Known Google AI Breakout",
+      "merged": "[hn] AI-generated posters don’t have to be horrible"
+    },
+    {
+      "canonicalId": "87989fe56a40c11f60e882bc769b878f9c5c833771350857ee8db7ca0f833e61",
+      "mergedId": "773c0a0a407fba832dbe73fbef3dff34a7607559b6e9d631dfe3a9f48ce66348",
+      "group": "773c0a0a407fba832dbe73fbef3dff34a7607559b6e9d631dfe3a9f48ce66348",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Dấu ấn Mark Zuckerberg trong thỏa thuận AI của Nhà Trắng",
+      "merged": "[vnexpress-tech] Người dùng AI tạo sinh vượt mốc 700 triệu tại Trung Quốc"
+    },
+    {
+      "canonicalId": "8f7327ee80b1efed001b75ab9922b77dc056a6f0c094467dc7ef9f988e109dfa",
+      "mergedId": "26d0d97385bdc3629e451adf76d1939ce103ef4bb53040a2fc8bfd149cbde57b",
+      "group": "26d0d97385bdc3629e451adf76d1939ce103ef4bb53040a2fc8bfd149cbde57b",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[techcrunch-ai] Instinct’s new product recommendations are giving some users the ick",
+      "merged": "[the-decoder] Google drops Gems for Skills, joining OpenAI and Anthropic in the shift to agent-ready prompt formats"
+    },
+    {
+      "canonicalId": "92109352b960229a5f7ee49ec8132a381ba0e111ea8bd226fb52013485109cea",
+      "mergedId": "63bb7bdea763e07aa2d86d4d5d969aaf4e74028269f382925ea0c90e92041077",
+      "group": "slug:5b050c53",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] OpenAI Cancels GPT-6 Astra 1 Day Before Developer Conference",
+      "merged": "[marketbrief] SGLang Qwen3.8-27B Model Beats Pokemon Champion With Sub 100 ms Response"
+    },
+    {
+      "canonicalId": "92109352b960229a5f7ee49ec8132a381ba0e111ea8bd226fb52013485109cea",
+      "mergedId": "8075e79f208693f670461535a7663d5371f18a39fd63cd370bcb1af8e3c71bd6",
+      "group": "slug:5b050c53",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] OpenAI Cancels GPT-6 Astra 1 Day Before Developer Conference",
+      "merged": "[huggingnews] SGLang Qwen3.8-27B Model Beats Pokemon Champion With Sub 100 ms Response"
+    },
+    {
+      "canonicalId": "94e89ccf4902b086e68aaac63657570ce6d91725e8cbaa5fe77d8e0d87649a25",
+      "mergedId": "91d78050a212bbdb6cb88b062c656e36c363d1e297654f2a352140317797e187",
+      "group": "91d78050a212bbdb6cb88b062c656e36c363d1e297654f2a352140317797e187",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] DeepSeek Harness Desktop for macOS and Windows",
+      "merged": "[marktechpost] Inside NVIDIA’s IsaacTeleop: From Hand and Controller Tracking to Robot Actions with the Graph-Based Retargeting Engine"
+    },
+    {
+      "canonicalId": "9e3ed547b6b0c99709e69d2e46b205c8bf64dba9349d557bfea728da815a9eb4",
+      "mergedId": "81e7666d1f667d9611856c4eed090834af4541c3e54d3498f2d4fdd658395073",
+      "group": "81e7666d1f667d9611856c4eed090834af4541c3e54d3498f2d4fdd658395073",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Training a model to identify AI-generated web content from structure alone",
+      "merged": "[google-dev] Colab is now part of your Google AI plan"
+    },
+    {
+      "canonicalId": "aefc181709ea32c59fc7b04f603b3f9c19fa7f7bdc6e301357cae7f2c91d95e8",
+      "mergedId": "b970452c48541c570fbf4947f06f6a4073e5ccb9255a13c55027daafbe41bb54",
+      "group": "b970452c48541c570fbf4947f06f6a4073e5ccb9255a13c55027daafbe41bb54",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[lobsters] Goodbye Google",
+      "merged": "[lobsters] Lobsters: Rename vibecoding to llms (Greasemonkey script)"
+    },
+    {
+      "canonicalId": "b550c2c38c720869aebd6d49a32d26378eb1a257453b4a933bf5c808e6da89da",
+      "mergedId": "5ec4e61a2a5169ebbf2e4ee08dac2281185ad73ad1169c3035a9c4aa6624eba7",
+      "group": "5ec4e61a2a5169ebbf2e4ee08dac2281185ad73ad1169c3035a9c4aa6624eba7",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Anthropic Opens Bay Area Wet Lab to Shift AI From Simulations to Biology",
+      "merged": "[anthropic] Partnering with Accenture on embedded evaluation"
+    },
+    {
+      "canonicalId": "b550c2c38c720869aebd6d49a32d26378eb1a257453b4a933bf5c808e6da89da",
+      "mergedId": "9edac29570ddcdf6baa7306fe078e6c1ab9f592f286e0cf9fc07c4d1eb595e02",
+      "group": "slug:289a5835",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Anthropic Opens Bay Area Wet Lab to Shift AI From Simulations to Biology",
+      "merged": "[marketbrief] DepthFirst Researchers Use AI to Seize TikTok Camera and Photos Before Patch"
+    },
+    {
+      "canonicalId": "b550c2c38c720869aebd6d49a32d26378eb1a257453b4a933bf5c808e6da89da",
+      "mergedId": "e5133957bb1d7bad4f65f0b5f75b845cd2df3fa72c771143b5d042210908b3a2",
+      "group": "slug:289a5835",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Anthropic Opens Bay Area Wet Lab to Shift AI From Simulations to Biology",
+      "merged": "[huggingnews] DepthFirst Researchers Use AI to Seize TikTok Camera and Photos Before Patch"
+    },
+    {
+      "canonicalId": "c0a0a5f5affd26928d0fd340f88982d915a498730c34226ffd0e46dc16ea882a",
+      "mergedId": "d86f0911f497c5d524c164eafc28688dc73f6d1d8b8743aa454ac139616e4591",
+      "group": "slug:4db7df88",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Clef: Open-weight decision models, and new RL fine-tuning platform",
+      "merged": "[marketbrief] Cloudflare First In House AI Runs 13x Faster Than Jev"
+    },
+    {
+      "canonicalId": "c0a0a5f5affd26928d0fd340f88982d915a498730c34226ffd0e46dc16ea882a",
+      "mergedId": "ed68526f7a15f49a5107c6c991e1e0e04bdad645e6c78fbf8669552aead13fa6",
+      "group": "ed68526f7a15f49a5107c6c991e1e0e04bdad645e6c78fbf8669552aead13fa6",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Clef: Open-weight decision models, and new RL fine-tuning platform",
+      "merged": "[hn] RIP, vector database"
+    },
+    {
+      "canonicalId": "c0a0a5f5affd26928d0fd340f88982d915a498730c34226ffd0e46dc16ea882a",
+      "mergedId": "f0acbb7e427ef8e22cd10ab4fd379a4b7d592096b98999f3ea2687272a6d7f6b",
+      "group": "slug:4db7df88",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] Clef: Open-weight decision models, and new RL fine-tuning platform",
+      "merged": "[huggingnews] Cloudflare First In House AI Runs 13x Faster Than Jev"
+    },
+    {
+      "canonicalId": "c73ce5cce8b47dd98b598434c09ae46cc564f62276189b953b3ca5b5ce86a58a",
+      "mergedId": "b62a94f3911c0d7f348c85d6177e8777279ce1dc296e893e902479849ac43bc3",
+      "group": "b62a94f3911c0d7f348c85d6177e8777279ce1dc296e893e902479849ac43bc3",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] Google DeepMind Deploys AI Agents to Automate Model Training",
+      "merged": "[hn] There are no \"rogue\" AI agents"
+    },
+    {
+      "canonicalId": "c85b01426cb915527459c6e0a8747b4de85fd711f7944a57f057b1fd8006e1a8",
+      "mergedId": "1ccf342131e2aeec4f4fe8c75573cce60b5b683832736c876a4b4efd9246c890",
+      "group": "1ccf342131e2aeec4f4fe8c75573cce60b5b683832736c876a4b4efd9246c890",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[google-dev] Introducing Support for Local AI Models in the Antigravity SDK",
+      "merged": "[google-ai] Google Beam expands with new regions, partners, and customers"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "02956433a9ad692aeb00b2830d0994ec8841f3100960d27350153132e750e5ef",
+      "group": "02956433a9ad692aeb00b2830d0994ec8841f3100960d27350153132e750e5ef",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[hn] Anthropic tried to persuade Pope that AI could be conscious being"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "a7fae1f07f2174486054be2023e7df064f869c72996535d67930d60a5b39f6a3",
+      "group": "a7fae1f07f2174486054be2023e7df064f869c72996535d67930d60a5b39f6a3",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[the-decoder] Deepmind researchers propose \"Artificial Symbiotic Intelligence\" as an alternative to the singularity"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "d64b462befcdd83137948b1ffdc2da868c7bcfb5f37fbf65711b5efbd752dd96",
+      "group": "d64b462befcdd83137948b1ffdc2da868c7bcfb5f37fbf65711b5efbd752dd96",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[vnexpress-tech] Bắt đầu Ngày hội Đổi mới sáng tạo quốc gia 2026"
+    },
+    {
+      "canonicalId": "c8680b9d2b675eae8ce1dfff7c51a17c77a391322e476081f0208a91732dd462",
+      "mergedId": "e5addb39494bae718b67970c4fe02cbf92ddebf25a2ee34a9f50c485feed9bdf",
+      "group": "e5addb39494bae718b67970c4fe02cbf92ddebf25a2ee34a9f50c485feed9bdf",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[vnexpress-tech] Google ra Gemini 4 Argon mạnh nhất của công ty",
+      "merged": "[mit-tr-ai] Don’t be fooled—LLMs don’t reason"
+    },
+    {
+      "canonicalId": "d008db02a93ccbe56825e495d23e4b6ed2c304c2df78d5955055397a208112d1",
+      "mergedId": "66832bb1106d6e1984963be4c3a99d719287d1474845c107ff5d560cfb0ecc41",
+      "group": "slug:31040d8d",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] SoftBank Launches $11 Billion Junk Bond Sale for OpenAI in One of Biggest Ever Deals",
+      "merged": "[marketbrief] Microsoft Pledges $10B Gulf Investment in First Update Since Iran War"
+    },
+    {
+      "canonicalId": "d008db02a93ccbe56825e495d23e4b6ed2c304c2df78d5955055397a208112d1",
+      "mergedId": "94ed9fb32f29e4857f36e528d0a9e8cbe16544436abb7122286c940a0548e8f3",
+      "group": "slug:31040d8d",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[huggingnews] SoftBank Launches $11 Billion Junk Bond Sale for OpenAI in One of Biggest Ever Deals",
+      "merged": "[huggingnews] Microsoft Pledges $10B Gulf Investment in First Update Since Iran War"
+    },
+    {
+      "canonicalId": "d22fa48862e8ee7698be6b5355a56fac1a4d47c44c10b8595bdc397e8a8f2103",
+      "mergedId": "90249c2a3882c6d31b88e7cea8a85045e4eeb6a0a24ec30e6774300a2c2f9921",
+      "group": "90249c2a3882c6d31b88e7cea8a85045e4eeb6a0a24ec30e6774300a2c2f9921",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[techcrunch-ai] Anthropic’s prospectus details losses, growth, and, yes, a warning that its AI could end humanity",
+      "merged": "[openai] Disrupting a coordinated model-distillation campaign"
+    },
+    {
+      "canonicalId": "d35c7bfffe978d42aca6a196fcb78f0fbdde4d6e6054c3b5c52ad30381c9184c",
+      "mergedId": "c8f712e43736d037a1281f41e1f9f40df16a66f5995df0d40bd75871d2f9ed6b",
+      "group": "c8f712e43736d037a1281f41e1f9f40df16a66f5995df0d40bd75871d2f9ed6b",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] The Implications of Linguistic Illegibility for LLM Security",
+      "merged": "[hn] Why MCP Was Always a Bad Idea?"
+    },
+    {
+      "canonicalId": "d6ce794b09dfb314f2782b6acad47891fe08c6faf7bb6e2b43954fce60fcebdf",
+      "mergedId": "be90b2713db02c241583abe108182005535a4d829309d538cd55819aa51856e5",
+      "group": "be90b2713db02c241583abe108182005535a4d829309d538cd55819aa51856e5",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[marketbrief] Nvidia Hires Former OpenAI Data Center Head Chris Malone as VP",
+      "merged": "[the-decoder] Anthropic signs $11.6 billion cloud deal with Akamai, pushing its compute spending past $500 billion in under a year"
+    },
+    {
+      "canonicalId": "e2cc67e2ab197d0765423cdaa6f903b4f607c85909a61aff5438e3108ca5f0f7",
+      "mergedId": "75a6432e60265ec2da6bf0cdcad0f4323faa1cb2f9650efa610ee2bc9442713c",
+      "group": "slug:dd4782ce",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[aws-ml] The new AgentCore runtime: Elastic, optimized, and consistently fast starts",
+      "merged": "[marketbrief] Plugin4Shell Zero Click RCE Hits 4 AI Agents in First AI Supply Chain Flaw"
+    },
+    {
+      "canonicalId": "e2cc67e2ab197d0765423cdaa6f903b4f607c85909a61aff5438e3108ca5f0f7",
+      "mergedId": "776c174e87851d5126bdaa39cac74e2ab53549101bb3c3da8f7f946b7aac905c",
+      "group": "slug:dd4782ce",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[aws-ml] The new AgentCore runtime: Elastic, optimized, and consistently fast starts",
+      "merged": "[huggingnews] Plugin4Shell Zero Click RCE Hits 4 AI Agents in First AI Supply Chain Flaw"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "0f83c2d1d5b8034398fa197cb21ab94eb16e3e53194622dd25cffa64f10899a4",
+      "group": "0f83c2d1d5b8034398fa197cb21ab94eb16e3e53194622dd25cffa64f10899a4",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[google-research] The future of practice: Enabling teachers to create learning interactives with generative UI"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "24a3040cf90151105b2e24bd4ea1acbc5697de35ff710a92056ad5a2d5d54c71",
+      "group": "24a3040cf90151105b2e24bd4ea1acbc5697de35ff710a92056ad5a2d5d54c71",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[the-decoder] AI training built on fair use looks shaky when the companies' own people call it \"astonishing theft\""
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "2f3ad60c2c0a3950de5a8f4f812efa44deb07d29180652b28961a5b320d9a0b3",
+      "group": "2f3ad60c2c0a3950de5a8f4f812efa44deb07d29180652b28961a5b320d9a0b3",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[the-decoder] 42 leading mathematicians warn that AI existential risk is real and urgent"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "3925d4d7e18c98c30c714b8e053c81b052d65e342b343411acb5cf0fea0cc7b4",
+      "group": "3925d4d7e18c98c30c714b8e053c81b052d65e342b343411acb5cf0fea0cc7b4",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[the-decoder] Anthropic keeps pushing Claude Code toward autonomous coding with new parallel agent workflows"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "55668e9d93e2c01a24454cad95c9a8b9293df597c5acdcbdd50848b54f5339f4",
+      "group": "55668e9d93e2c01a24454cad95c9a8b9293df597c5acdcbdd50848b54f5339f4",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[simonwillison] The Creative Spirit of Who Framed Roger Rabbit"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "6383024b1d85fd7f90e767a8a8936638a3f6ce4fd106e3fe45feecf3a314330a",
+      "group": "6383024b1d85fd7f90e767a8a8936638a3f6ce4fd106e3fe45feecf3a314330a",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[the-decoder] US and China experts push for shared rules banning AI control over nuclear weapons"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "6533bdcc0f6c39c58db72a36dcc4ea5f47fb71c83f0de0ec9d56c7dabd14a369",
+      "group": "6533bdcc0f6c39c58db72a36dcc4ea5f47fb71c83f0de0ec9d56c7dabd14a369",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[simonwillison] Self-generated prompt injections in compaction summaries"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "93f17fa46ff0fbef1769b845d77e98b4f7b6d1fa860c1075f9e0e6274dffc8f8",
+      "group": "93f17fa46ff0fbef1769b845d77e98b4f7b6d1fa860c1075f9e0e6274dffc8f8",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[the-decoder] OpenAI takes aim at the legal market with Astra for Law"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "a2f038ddf6ba57e05116c8cdf19b1fd4ae735beb6e13800ed2534e7af24aed5d",
+      "group": "a2f038ddf6ba57e05116c8cdf19b1fd4ae735beb6e13800ed2534e7af24aed5d",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[mit-news-ai] A new chapter for MIT Reads"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "aa32917c59c88df5d73e0ad1bed6d1cf27d8939239f79745b9930e0a7f94e613",
+      "group": "aa32917c59c88df5d73e0ad1bed6d1cf27d8939239f79745b9930e0a7f94e613",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[the-decoder] OpenAI reportedly closes in on solving the Hodge conjecture, its second Millennium Prize Problem"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "b491d63c1a336d842dd6e3be33432ff3966c5bf20ce96c21e3ee95b3d4ebf211",
+      "group": "b491d63c1a336d842dd6e3be33432ff3966c5bf20ce96c21e3ee95b3d4ebf211",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[mit-tr-ai] Could AI really kill us all? Your questions, answered."
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "bc4d0502f5df3de5bbea6ea13f611532a5a0961ea70c898c812811656fdeff0d",
+      "group": "bc4d0502f5df3de5bbea6ea13f611532a5a0961ea70c898c812811656fdeff0d",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[the-decoder] Visible chains of thought are a safety advantage for AI, but that transparency is slipping away"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "c40a1cd0e489d7260baeb1d432bf2236d69ebb03893acf4d8560cd920a46b990",
+      "group": "c40a1cd0e489d7260baeb1d432bf2236d69ebb03893acf4d8560cd920a46b990",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[simonwillison] Be alert: targeted attacks on prominent Rustaceans"
+    },
+    {
+      "canonicalId": "e972903bf96dd67c3f65b46bdb7fce5912b905ce797044f1b5abd34723ccd5bc",
+      "mergedId": "eed67d86f88e63f94a7c003e8af218cb21250937d0f7048b2e14c22e55e2598b",
+      "group": "eed67d86f88e63f94a7c003e8af218cb21250937d0f7048b2e14c22e55e2598b",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[hn] How to Write with an LLM",
+      "merged": "[the-decoder] Anthropic wants you to know Claude leads a quarter of its research, but \"lead\" doesn't mean what you think"
+    },
+    {
+      "canonicalId": "eb9dbe434cc03499ff07b99b0b0b575ea0f1d1d2c1d23f57d8f7084a25c3c019",
+      "mergedId": "4531aaeb11d6a46bc2567ac4f44dafb27caa2da19e0a9534a8bfe121e6b5b22e",
+      "group": "4531aaeb11d6a46bc2567ac4f44dafb27caa2da19e0a9534a8bfe121e6b5b22e",
+      "why": "labelled",
+      "distinct": true,
+      "canonical": "[techmeme] Anthropic is setting up a \"presidential engagement\" program for the 2028 US elections that will offer AI policy education to candidates in both parties (Emily Forlini/Fortune)",
+      "merged": "[simonwillison] ttok 1.0"
+    }
+  ]
+}
