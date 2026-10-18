@@ -301,6 +301,20 @@ curl -X POST https://aidr.today/api/admin/ingest \
 Other routes: `GET /api/admin/sources`, `PUT /api/admin/sources/:id`,
 `DELETE /api/admin/sources/:id`, `GET /api/admin/status`.
 
+`GET /api/admin/diagnostics` answers "why is the site slow or quiet" in one
+read. `verdicts` gives ingest freshness (`fresh`, `late`, `stuck`, `none`),
+the newest finished run (`ok`, `degraded`, `failed`, `none`), traffic
+(`normal`, `low`, `slow`, `unconfigured`, `error`), the stuck backfill row
+count and the alert keys fired in the last 24h. The rest is the evidence:
+the last 10 live runs with failed steps, 48h of `stats.alerts`, source
+streaks, the `stuck` counts, and `traffic`, 48 settled hours of requests,
+errors, wall p50/p99 and response p99 with same-hour 7-day medians. Traffic
+needs the `CF_ANALYTICS_API_TOKEN` Worker secret (Account Analytics: Read);
+without it `traffic` is `{ "status": "unconfigured", "reason": … }`, never
+zeros. `ingest.stuckRun` names the newest run when it is still unfinished
+past the 25-minute coalesce window. `pnpm --filter @aidr/web agent diagnose`
+prints it with a one-line summary.
+
 Translation review operators can inspect the durable human queue and resolve
 an item without exposing provider responses:
 
@@ -331,8 +345,8 @@ Item fields: `url`, `title` (required), `summary`, `source_id` (defaults to
 ### MCP server
 
 `POST /api/mcp` speaks JSON-RPC 2.0 and exposes `push_items`,
-`list_sources`, `upsert_source`, `delete_source`, `trigger_ingest`, and
-`get_status` as tools. Every request is authenticated with the same bearer
+`list_sources`, `upsert_source`, `delete_source`, `trigger_ingest`,
+`get_status`, and `get_diagnostics` as tools. Every request is authenticated with the same bearer
 token (no session state).
 
 MCP client config:

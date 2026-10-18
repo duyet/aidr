@@ -1340,6 +1340,7 @@ describe("MCP server", () => {
       "delete_source",
       "trigger_ingest",
       "get_status",
+      "get_diagnostics",
     ]) {
       expect(names).toContain(adminTool);
     }

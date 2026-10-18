@@ -32,6 +32,7 @@ import {
 import type { RunStepInfo } from "./run-stats.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "./time.js";
+import { evaluateTraffic, fetchTraffic } from "./traffic.js";
 import {
   evaluateViEnglish,
   mergeViEnglish,
@@ -81,7 +82,7 @@ export const ALERT_COOLDOWN_MS = 6 * 3600 * 1000;
 /** Previous runs read for the TL;DR streak and the cooldown. */
 const HISTORY_RUNS = 12;
 /** `stats.alerts` keys that record a finished check, not a problem. */
-const MARKER_PREFIXES = ["daily-summary:", DAY_VIDEO_CONFIRMED_PREFIX];
+export const MARKER_PREFIXES = ["daily-summary:", DAY_VIDEO_CONFIRMED_PREFIX];
 
 const FAILURE_RE = /\b(fail(ed|ure|s)?|errors?)\b/i;
 /** Steps with their own rule, or bookkeeping, excluded from "step failed". */
@@ -564,14 +565,20 @@ export async function runHealthCheck(
   if (input.dryRun) return [];
   try {
     const nowMs = Date.now();
-    const [history, telegramLastPostMs, llm, window, imageCoverage] =
+    const [history, telegramLastPostMs, llm, window, imageCoverage, traffic] =
       await Promise.all([
         readHistory(env, input.runId),
         readTelegramLastPost(env),
         readLlmCounts(env, input.runId),
         readRateWindow(env, input.runId, nowMs),
         readImageCoverage(env),
+        fetchTraffic(env, nowMs),
       ]);
+    if (traffic.status !== "ok") {
+      console.warn(
+        `health-check traffic skipped: ${traffic.status} (${traffic.reason})`
+      );
+    }
     const local = getLocalHourAndDate(nowMs, AUDIENCE_TIMEZONE);
     const issues = evaluateHealth({
       nowMs,
@@ -590,7 +597,8 @@ export async function runHealthCheck(
         mergeClusterGate(window.clusterGate, input.clusterGate ?? {}),
         window.alerted
       ),
-      ...evaluateImageCoverage(imageCoverage, window.alerted)
+      ...evaluateImageCoverage(imageCoverage, window.alerted),
+      ...evaluateTraffic(traffic, window.alerted)
     );
     const markers: string[] = [];
     if (shouldCheckDayVideo(local.hour, local.date, history, nowMs)) {

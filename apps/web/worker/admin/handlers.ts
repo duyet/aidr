@@ -6,12 +6,32 @@ import {
   isDayVideoPostChannel,
   parseYoutubeId,
 } from "../../src/lib/day-video.js";
+import { loadSystemSources } from "../../src/lib/system-queries.js";
 import type { Lang } from "../../src/lib/types.js";
+import {
+  buildMissingTranslationQuery,
+  buildUnscoredItemsQuery,
+} from "../backfill.js";
 import {
   prepareItemContentChangeLog,
   prepareLoggedTranslationUpsert,
   prepareTranslationQaInvalidation,
 } from "../d1-bind.js";
+import {
+  buildDiagnosticsReport,
+  DIAGNOSTICS_ALERT_RUNS_SQL,
+  DIAGNOSTICS_ALERT_WINDOW_MS,
+  DIAGNOSTICS_RUNS_SQL,
+  type DiagnosticsReport,
+  type RunRow,
+  STUCK_AGE_SEC,
+  STUCK_SCAN_LIMIT,
+  stuckQueueCountSql,
+} from "../diagnostics.js";
+import {
+  buildMissingEnSummaryQuery,
+  EN_SUMMARY_NO_TEXT_COUNT_SQL,
+} from "../en-summary.js";
 import { sha256Hex } from "../hash.js";
 import { validateIngestMode } from "../ingest/mode.js";
 import { tickIngest } from "../ingest-schedule.js";
@@ -57,6 +77,7 @@ import {
 } from "../tldr.js";
 import { captureAndLearnTopics } from "../topic-learning.js";
 import { normalizeTopics, type ScoredStoryTags } from "../topics.js";
+import { fetchTraffic } from "../traffic.js";
 import type { Env } from "../types.js";
 import { applyUnmerge, type BatchResult } from "../unmerge/apply.js";
 import {
@@ -776,6 +797,47 @@ export async function getStatus(env: Env) {
     latestTldr: latestTldr ?? null,
     notifications,
   };
+}
+
+async function countRows(env: Env, sql: string, ...binds: unknown[]) {
+  const row = await env.DB.prepare(sql)
+    .bind(...binds)
+    .first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
+export async function getDiagnostics(env: Env): Promise<DiagnosticsReport> {
+  const nowMs = Date.now();
+  const stuckCutoff = Math.floor(nowMs / 1000) - STUCK_AGE_SEC;
+  const [runs, alertRuns, sources, traffic, ...counts] = await Promise.all([
+    env.DB.prepare(DIAGNOSTICS_RUNS_SQL).all<RunRow>(),
+    env.DB.prepare(DIAGNOSTICS_ALERT_RUNS_SQL)
+      .bind(Math.floor((nowMs - DIAGNOSTICS_ALERT_WINDOW_MS) / 1000))
+      .all<RunRow>(),
+    loadSystemSources(env.DB),
+    fetchTraffic(env, nowMs),
+    countRows(env, EN_SUMMARY_NO_TEXT_COUNT_SQL),
+    ...[
+      buildMissingEnSummaryQuery(STUCK_SCAN_LIMIT),
+      buildMissingTranslationQuery(STUCK_SCAN_LIMIT),
+      buildUnscoredItemsQuery(STUCK_SCAN_LIMIT),
+    ].map((sql) => countRows(env, stuckQueueCountSql(sql), stuckCutoff)),
+  ]);
+  const [enSummaryNoText, enSummaryOver24h, translateOver24h, unscoredOver24h] =
+    counts;
+  return buildDiagnosticsReport({
+    nowMs,
+    runs: runs.results ?? [],
+    alertRuns: alertRuns.results ?? [],
+    sources,
+    stuck: {
+      enSummaryNoText,
+      enSummaryOver24h,
+      translateOver24h,
+      unscoredOver24h,
+    },
+    traffic,
+  });
 }
 
 export async function listNotifications(env: Env) {
