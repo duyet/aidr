@@ -814,3 +814,265 @@ describe("translationDraftIssues robotics calques", () => {
     ).toEqual([]);
   });
 });
+
+// Real lines from 400 stored rows of 2026-10-12..19 that four raters read.
+describe("translationDraftIssues garbled words", () => {
+  const item = (en: string, vi: string) =>
+    translationDraftIssues(
+      { title: "", summary: en },
+      { title: "", summary: vi },
+      [],
+      false
+    );
+
+  it("flags a word no Vietnamese spelling allows", () => {
+    // Prod e64024cc, 4756ce2b.
+    expect(
+      item(
+        "Harvey plans to integrate the capability into its platform.",
+        "Harvey dự định tích hợp khả năng này vào nền tảp của công ty."
+      )
+    ).toEqual(['"tảp" is not a Vietnamese word; fix the spelling']);
+    expect(
+      item(
+        "but try putting that doubt aside.",
+        "nhưng hãy thử đặặt nghi ngờ sang một bên."
+      )
+    ).toEqual(['"đặặt" is not a Vietnamese word; fix the spelling']);
+  });
+
+  it("flags a Chinese character inside a Vietnamese word", () => {
+    // Prod a8f3f9ff.
+    expect(
+      item(
+        "This expansion includes a strategic partnership with Mistral AI.",
+        "Sự mở rộng này bao gồm một đối tác chiến略 với Mistral AI."
+      )
+    ).toEqual(['"chiến略" is not a Vietnamese word; fix the spelling']);
+  });
+
+  it("passes loanwords, acronyms, and names the source writes", () => {
+    // Prod a583c383, rated 4/3: "nơron" is a standard spelling.
+    expect(
+      item(
+        "Neural networks may be much easier to read than researchers assumed.",
+        "Mạng nơron có thể dễ đọc hơn so với các nhà nghiên cứu từng nghĩ."
+      )
+    ).toEqual([]);
+    expect(
+      item(
+        "Nvidia's chief met President Emmanuel Macron at the Élysée Palace. The board approved it.",
+        "CEO Nvidia gặp Tổng thống Emmanuel Macron tại điện Élysée. HĐQT đã thông qua."
+      )
+    ).toEqual([]);
+  });
+});
+
+describe("translationDraftIssues number format", () => {
+  const item = (en: string, vi: string) =>
+    translationDraftIssues(
+      { title: "", summary: en },
+      { title: "", summary: vi },
+      [],
+      false
+    );
+
+  it("flags a decimal point kept from the source in an amount", () => {
+    // Prod f8248405.
+    expect(
+      item(
+        "Google's Gemini 4 Argon recorded a 55.4% score, ahead of GPT-6-Astra at 53.6%.",
+        "Gemini 4 Argon của Google đạt điểm 55.4%, dẫn trước GPT-6-Astra với 53.6%."
+      )
+    ).toEqual([
+      '"55.4" uses a decimal point; write "55,4"',
+      '"53.6" uses a decimal point; write "53,6"',
+    ]);
+  });
+
+  it("passes a thousands point, a version, and a model size", () => {
+    expect(
+      item(
+        "Mistral AI used 4,000 Grace Blackwell chips. Claude Opus 5.5 leads; the 2.4B model scores 90.4 points on LIBERO-Plus.",
+        "Mistral AI đã dùng 4.000 chip Grace Blackwell. Claude Opus 5.5 dẫn đầu; mô hình 2.4B đạt 90.4 điểm trên LIBERO-Plus."
+      )
+    ).toEqual(['"90.4" uses a decimal point; write "90,4"']);
+  });
+
+  it("flags a dollar figure left unconverted", () => {
+    // Prod 457c1a52, 521e2a33, f5ceb2a3.
+    expect(
+      translationDraftIssues(
+        {
+          title:
+            "NYC Comptroller Demands Pause of Anthropic's $2T IPO Over AI Safety",
+          summary: "",
+        },
+        {
+          title:
+            "Thành viên NYC yêu cầu tạm dừng IPO $2T của Anthropic vì an toàn AI",
+          summary: "",
+        },
+        [],
+        true
+      )
+    ).toEqual(['"$2T" must be "2 nghìn tỷ USD"']);
+    expect(
+      item(
+        "Reach Security raised a $50M+ Series B. Democrats asked about Meta's $6.6 billion federal tax credit.",
+        "Reach Security huy động hơn $50M trong vòng Series B. Các thượng nghị sĩ hỏi về khoản tín dụng thuế liên bang $6,6 tỷ của Meta."
+      )
+    ).toEqual([
+      '"$50M" must be "50 triệu USD"',
+      '"$6,6 tỷ" must be "6,6 tỷ USD"',
+    ]);
+  });
+
+  it("passes another currency written with a dollar sign", () => {
+    // Prod 0e939dd0: New Taiwan dollars.
+    expect(
+      item(
+        "Micron will invest NT$1.4 trillion in the park.",
+        "Micron sẽ đầu tư 1,4 nghìn tỷ Đài tệ (tương đương NT$1,4 nghìn tỷ) vào khu này."
+      )
+    ).toEqual([]);
+  });
+});
+
+describe("translationDraftIssues English headline", () => {
+  it("flags a headline sentence returned in English", () => {
+    // Prod 0dd91801: the summary is Vietnamese, the title is not.
+    expect(
+      translationDraftIssues(
+        {
+          title: "Meta shakes up the frontiers, open and closed",
+          summary: "US open weights are back!",
+        },
+        {
+          title: "Meta shakes up the frontiers, open and closed",
+          summary: "Các mô hình open-weight của Mỹ đã trở lại!",
+        },
+        [],
+        false
+      )
+    ).toEqual([
+      "the title is still the English headline; write it in Vietnamese and keep only names in English",
+    ]);
+  });
+
+  it("passes a release or product name kept as the title", () => {
+    // Prod f1cb07a7 and 83a753b4, rated 5/4 and 4/3.
+    for (const title of ["DeepSeek V4.1 Flash 1017 (Max)", "vLLM v0.32.0"]) {
+      expect(
+        translationDraftIssues(
+          { title, summary: "" },
+          { title, summary: "" },
+          [],
+          true
+        )
+      ).toEqual([]);
+    }
+  });
+});
+
+describe("translationDraftIssues AI-term calques", () => {
+  const bullet = (en: string, vi: string) => tldrBulletIssues(en, vi, []);
+
+  it("flags the stored calques", () => {
+    // Prod 5502bd27, 8c1bc843, 9732b276, 55849128, da92b803.
+    expect(
+      bullet(
+        "It handles OCR and visual reasoning over images.",
+        "Nó hỗ trợ OCR và lý luận hình ảnh trên ảnh."
+      )
+    ).toEqual([
+      '"reasoning" must not be rendered as "lý luận"; use "suy luận"',
+    ]);
+    expect(
+      bullet(
+        "A Multimodal Decision Model That Scores 65",
+        "Một decision model đa dạng nhận điểm 65"
+      )
+    ).toEqual([
+      '"multimodal" must not be rendered as "đa dạng"; use "đa phương thức"',
+    ]);
+    expect(
+      bullet(
+        "How Itaú is building generative AI for its entire customer base",
+        "Itaú xây dựng AI sinh tạo cho toàn bộ khách hàng"
+      )
+    ).toEqual([
+      '"generative" must not be rendered as "sinh tạo"; use "tạo sinh"',
+    ]);
+    expect(
+      bullet(
+        "It fits this threshold on the agent's own trajectories.",
+        "Nó đặt ngưỡng này trên các quỹ đường đi của agent."
+      )
+    ).toEqual([
+      '"trajectories" must not be rendered as "quỹ đường"; use "quỹ đạo"',
+    ]);
+    expect(
+      bullet(
+        "The method requires no access to model weights.",
+        "Phương pháp này không cần truy cập trọng lượng mô hình."
+      )
+    ).toEqual([
+      '"weights" must not be rendered as "trọng lượng"; use "trọng số"',
+    ]);
+  });
+
+  it("flags local, frontier, and pipeline calques", () => {
+    // Prod 0902dfba, f8d97139, 4472cef5.
+    expect(
+      bullet(
+        "PrismML Releases Bonsai 2 Local AI Models",
+        "PrismML ra mắt Bonsai 2 mô hình AI địa phương"
+      )
+    ).toEqual(['"local" must not be rendered as "địa phương"; use "cục bộ"']);
+    expect(
+      bullet(
+        "They explored forming a private group to vet frontier AI models.",
+        "Họ tính lập một nhóm riêng để kiểm định các mô hình AI tiên phong."
+      )
+    ).toEqual([
+      '"frontier" must not be rendered as "tiên phong"; use "frontier"',
+    ]);
+    expect(
+      bullet(
+        "Our automated pipeline constructs 3D objects.",
+        "Đường ống tự động của chúng tôi xây dựng các vật thể 3D."
+      )
+    ).toEqual([
+      '"pipeline" must not be rendered as "đường ống"; use "pipeline"',
+    ]);
+  });
+
+  it("passes the same words where the source licenses them", () => {
+    // Prod 895a3776: local roads are "đường địa phương".
+    expect(
+      bullet(
+        "It will enable partially automated driving on local roads.",
+        "Hệ thống cho phép lái bán tự động trên các con đường địa phương."
+      )
+    ).toEqual([]);
+    expect(
+      bullet(
+        "A multimodal model trained on diverse data.",
+        "Một mô hình đa phương thức huấn luyện trên dữ liệu đa dạng."
+      )
+    ).toEqual([]);
+    expect(
+      bullet(
+        "The judge rejected the company's legal reasoning.",
+        "Thẩm phán bác lập luận pháp lý của công ty."
+      )
+    ).toEqual([]);
+    expect(
+      bullet(
+        "Students use generative AI, and the students create videos.",
+        "Học sinh dùng AI tạo sinh, và học sinh tạo ra video."
+      )
+    ).toEqual([]);
+  });
+});

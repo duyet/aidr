@@ -1510,7 +1510,8 @@ each non-AI "FBI agents" licenses one "đặc vụ"), wrong magnitude words
 0.6× the source length (sources ≥ 200 chars), and an English echo: a
 summary with no Vietnamese diacritics when the source summary has ≥ 6
 words (the issue names the title too when it is English as well). A title
-alone is not judged, since paper titles and product names stay English on
+alone is judged only when it is a sentence (see the headline check below),
+since product and release names stay English on
 purpose. In 60 days to 2026-10-15 this flags 4 of 4,480 rows (8eb3e0ba,
 669d8cd0, 1af7ebf2, f924232d); every kept-English summary it spares is a
 name of ≤ 4 words. A repair that echoes again is rejected, so the English
@@ -1535,6 +1536,59 @@ it flags one, the Timestral bullet. The Telegram caption rewrite
 (`captionSummaryFor`) is not checked. "Model family", in
 any source form including "a family of X models", is also a keep-English
 term.
+
+Four raters read 400 stored rows of 2026-10-12..19 (72 rated fidelity
+and naturalness ≥ 4, "clean"). From them the gate gained five checks.
+`scripts/vi-audit.ts` replays the gate over stored rows (read-only) and
+counts rows per check; the numbers below come from it.
+
+- Calques seen in ≥ 3 rated rows join `CALQUES`: "lý luận"/"lập luận" for
+  reasoning (use "suy luận"), "đa dạng (thức)" for multimodal, "sinh tạo"
+  for generative, "quỹ đường" for trajectories, "trọng lượng" for model
+  weights, "cục bản"/"địa phương" for local AI, "tiên phong"/"biên giới"
+  for frontier (keep "frontier"), "đường ống" for a pipeline. Each has a
+  license: diverse/various for "đa dạng", argument/legal/court for "lập
+  luận", kg/weighs for "trọng lượng", local roads/news/government for
+  "địa phương", oil/gas for "đường ống". On the 400 rows they make 55
+  term hits in 43 rows; the rater named the same phrase in 41, and the
+  rest read as the AI sense. Two clean rows hit: 9d2417f4 "token lý luận" and
+  9732b276 "AI sinh tạo". The table also gates TL;DR bullets: over 30
+  days (475 bullets) the new entries flag 10, all the AI sense (7 of them
+  "tiên phong" for frontier).
+- Garbled words (`worker/vi-syllable.ts`): a word in another script
+  ("t合成", "lầnแรก") or a marked word that no Vietnamese spelling allows
+  ("vượ", "nền tảp", "đặặt"). The rime table accepts 144,706 of 144,977
+  marked syllables in Viet74K; it rejects loanword clusters ("đrô") and the
+  list's own typos. ASCII words, acronyms, words the source writes, and a
+  toneless loanword ("nơron", "ximăng") pass. 400 rows: 24 flagged, all
+  real garbles, 0 of 72 clean rows. 30 days (2,980 rows): 79 flagged, 3
+  wrong ("hécta" and "kilômét" are loanwords with a tone, "José" is a name
+  the source spells without the accent). The raters' notes put a
+  corrupted word in about 60 rows (an estimate, not a hand count); the
+  check flags 24 of them. The rest are near misses built from real
+  syllables ("rời rạp", "sụp đảo", "kỹ sĩ"), which no syllable check sees.
+- Decimal point: a number the source writes with a decimal point, kept that
+  way in the Vietnamese before %, USD, a magnitude, "lần", "x" or "điểm",
+  or after "$". A Vietnamese thousands point ("23.000" for "23,000") is not
+  in the source, and a version has no amount after it. 400 rows: 18, one
+  clean (1448cfb4 "0.15 USD", which its rater listed). 30 days: 49, all
+  amounts.
+- Dollar figure: "$2T", "$50M", "$6,6 tỷ" left in the Vietnamese (house
+  style "2 nghìn tỷ USD"). A letter before "$" is another currency
+  ("NT$"). 400 rows: 5, each listed by its rater. 30 days: 12.
+- English headline: the title returned unchanged when it has ≥ 2 English
+  function words (a closed list), so "vLLM v0.32.0" and "DeepSeek V4.1
+  Flash 1017 (Max)" pass. Paper titles that are sentences are flagged too
+  ("Trust but Verify: …"); the issue asks to keep only names in English.
+  400 rows: 13, all flagged by raters (8 news, 5 paper titles); 8 more
+  rater-flagged titles have < 2 function words and pass. 30 days: 23.
+
+Dry run of 2026-10-19 (`vi-audit --days 7`): 782 rows; the gate before
+these checks sends 37 back for repair, the gate after sends 132 (calque
+58, garble 26, decimal 24, keep 19, echo 18, stutter 16, dollar 7). Over
+30 days: 229 before, 436 after. Each flagged batch costs one repair call.
+Only fresh drafts are judged: backfill re-selects stored rows by length,
+not by this gate, so stored rows are not translated again.
 Flagged items in a batch get
 one repair call with their issues as a `fix` list; a repaired row replaces
 the draft only when it has fewer issues, and the repair is skipped under

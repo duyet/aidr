@@ -149,7 +149,7 @@ NEVER translate word-by-word (calque). Read the whole sentence, then restate the
 
 Prefer everyday Vietnamese over stiff Sino-Vietnamese formalese when both exist and mean the same thing: "dùng" over "sử dụng" where it reads naturally, "hãng" or "công ty" over "tập đoàn" for an ordinary company, "mở" over "tiến hành mở". Formal Sino-Vietnamese isn't wrong, but reach for it only when the everyday word would sound too casual for the fact being reported.
 
-Numbers and units follow Vietnamese press style: "2,5 tỷ USD" not "2.5 billion USD", "300 triệu người dùng" not "300 million users" — translate the unit word, keep the digits, use Vietnamese decimal comma. Magnitudes map exactly: B / bn / billion = tỷ, M / mn / million = triệu, T / trillion = nghìn tỷ. "$20B" is "20 tỷ USD", never "20 triệu USD". A model size such as "7B" or "235B" stays as written.
+Numbers and units follow Vietnamese press style: "2,5 tỷ USD" not "2.5 billion USD", "300 triệu người dùng" not "300 million users" — translate the unit word, keep the digits, use Vietnamese decimal comma. Magnitudes map exactly: B / bn / billion = tỷ, M / mn / million = triệu, T / trillion = nghìn tỷ. "$20B" is "20 tỷ USD", never "20 triệu USD" or "$20B". "55.4%" is "55,4%". A model size such as "7B" or "235B" stays as written.
 
 Keep sentence subjects light: drop a pronoun or restated noun where Vietnamese naturally omits it across clauses (don't repeat "công ty này" every clause when context already carries it).
 
@@ -195,6 +195,12 @@ Never calque these (bad → good):
 - "Has GPT-6-Astra Achieved Embodied Intelligence?" ("nhân quả" means causal) → "GPT-6-Astra đã đạt được trí tuệ nhân quả?" ✗ → "GPT-6-Astra đã đạt được trí tuệ hiện thân chưa?" ✓
 - "tabletop manipulation, humanoids, mobile platforms, and dexterous hands" → "thao tác bàn, con người, nền tảng di động và tay xoay tay" ✗ → "thao tác trên mặt bàn, robot hình người, nền tảng robot di động và bàn tay khéo léo" ✓
 - "improving the generality of ICL" ("chung chung" means vague) → "cải thiện tính chung chung chung của ICL" ✗ → "cải thiện tính tổng quát của ICL" ✓
+- "visual reasoning over images" ("lý luận" means theory) → "lý luận hình ảnh trên ảnh" ✗ → "suy luận hình ảnh trên ảnh" ✓
+- "a multimodal decision model" ("đa dạng" means diverse) → "một decision model đa dạng" ✗ → "một decision model đa phương thức" ✓
+- "generative models" → "các mô hình sinh tạo" ✗ → "các mô hình tạo sinh" ✓
+- "frontier AI models" ("tiên phong" means pioneer) → "các mô hình AI tiên phong" ✗ → "các mô hình AI frontier" ✓
+- "Local AI Models" → "mô hình AI địa phương" ✗ → "mô hình AI cục bộ" ✓
+- "an automated pipeline" ("đường ống" is a pipe) → "đường ống tự động" ✗ → "pipeline tự động" ✓
 - A named conjecture, theorem, or paper title you cannot render with certainty stays in English: "Unique Games Conjecture" → "phó bản đồ Độc nhất về cho phép" ✗ → "Unique Games Conjecture" ✓
 
 Write only Vietnamese plus the English terms the rules above keep. Never a word from a third language, and never an English word that has a plain Vietnamese equivalent (bad → good):
@@ -202,7 +208,7 @@ Write only Vietnamese plus the English terms the rules above keep. Never a word 
 - "senators" → "các senators" ✗ → "các thượng nghị sĩ" ✓
 - "AI-powered chip design tools" → "công cụ thiết kế chip AI-powered" ✗ → "công cụ thiết kế chip dùng AI" ✓
 
-Proofread every Vietnamese word: no misspelled or invented words ("thỏa thúc", "công tắt", "địch chính trị" for "địa chính trị", "gây trái"), no word written twice ("thỏa thỏa thuận", "285 triệu triệu USD"), and no English words left half-translated.
+Proofread every Vietnamese word: no misspelled or invented words ("thỏa thúc", "công tắt", "địch chính trị" for "địa chính trị", "gây trái", "vượ quá" for "vượt quá", "nền tảp" for "nền tảng"), no Chinese character ("đối tác chiến略" for "đối tác chiến lược"), no word written twice ("thỏa thỏa thuận", "285 triệu triệu USD"), and no English words left half-translated.
 
 Titles: concise headline style, viết hoa chữ cái đầu câu như báo chí Việt Nam, never ALL CAPS.
 Summaries: complete, natural sentences.`;

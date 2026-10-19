@@ -20,6 +20,7 @@ import {
   mentionsModelFamily,
   missingProtectedTerms,
 } from "./translation-terms.js";
+import { garbledWords } from "./vi-syllable.js";
 
 /** Below this the source is too short for a length ratio to mean much. */
 const MIN_SOURCE_CHARS_FOR_RATIO = 200;
@@ -37,24 +38,63 @@ function wordCount(text: string): number {
   return text.split(/\s+/).filter((word) => /\p{L}/u.test(word)).length;
 }
 
+/** English function words, a closed class. A product or release name has
+ * none ("vLLM v0.32.0", "Chirp Pong"); a headline sentence has several. */
+const ENGLISH_FUNCTION_WORDS = new Set(
+  (
+    "a an the and or but nor so yet of to in on at by for with from into onto over under about after before " +
+    "between through during without within against toward towards than as via up out off " +
+    "is are was were be been being has have had do does did will would can could may might must shall should " +
+    "it its they their them we our us you your he his him she her i my me this that these those " +
+    "who whom whose which what when where why how while if because not no"
+  ).split(" ")
+);
+const MIN_ECHO_TITLE_FUNCTION_WORDS = 2;
+
+const normalizedTitle = (title: string) =>
+  title.normalize("NFC").replace(/\s+/g, " ").trim().toLowerCase();
+
+/** The draft kept the English headline word for word, and that headline
+ * is a sentence, not a name: it has at least two English function words. */
+function isEnglishTitleEcho(sourceTitle: string, viTitle: string): boolean {
+  if (
+    !viTitle.trim() ||
+    normalizedTitle(viTitle) !== normalizedTitle(sourceTitle)
+  )
+    return false;
+  const words = sourceTitle.toLowerCase().match(/[a-z]+(?:['’][a-z]+)?/g) ?? [];
+  return (
+    words.filter((word) => ENGLISH_FUNCTION_WORDS.has(word)).length >=
+    MIN_ECHO_TITLE_FUNCTION_WORDS
+  );
+}
+
 /** The draft returned the English instead of translating it: a prose
  * summary with no Vietnamese diacritics, the same test the English-in-VI
- * alert counts (translation-english.ts). A title alone is never judged:
- * the prompt keeps paper titles and product names in English. When the
+ * alert counts (translation-english.ts), or the English headline unchanged.
+ * A headline that is only a name ("llm-echo 0.5") is not judged. When the
  * title is English too, the issue names it, because the repair fixes only
  * what the issue lists. */
 function englishEchoIssues(
   source: TranslationText,
   candidate: TranslationText
 ): string[] {
-  if (wordCount(source.summary) < MIN_ECHO_SOURCE_WORDS) return [];
-  if (!candidate.summary.trim() || looksVietnamese(candidate.summary))
-    return [];
-  return [
-    looksVietnamese(candidate.title)
-      ? "the summary is still English; translate it into Vietnamese"
-      : "the title and summary are still the English source; translate both into Vietnamese",
-  ];
+  if (
+    wordCount(source.summary) >= MIN_ECHO_SOURCE_WORDS &&
+    candidate.summary.trim() &&
+    !looksVietnamese(candidate.summary)
+  ) {
+    return [
+      looksVietnamese(candidate.title)
+        ? "the summary is still English; translate it into Vietnamese"
+        : "the title and summary are still the English source; translate both into Vietnamese",
+    ];
+  }
+  return isEnglishTitleEcho(source.title, candidate.title)
+    ? [
+        "the title is still the English headline; write it in Vietnamese and keep only names in English",
+      ]
+    : [];
 }
 
 function pairOf(source: TranslationText, candidate: TranslationText) {
@@ -127,6 +167,76 @@ const CALQUES: readonly Calque[] = [
     licensedBy: /\b(?:vague\w*|generic\w*|too general|overly general)\b/i,
     bad: /chung chung/giu,
     use: "tính tổng quát",
+  },
+  // The rest come from 400 stored rows of 2026-10-12..19, each seen in at
+  // least three. "Đa dạng" is diverse: 9 rows used it for multimodal.
+  {
+    term: "multimodal",
+    inSource: (text) => /\bmulti-?modal/i.test(text),
+    licensedBy: /\b(?:divers\w*|variet\w*|various|varied|wide range)\b/i,
+    bad: /đa dạng(?:\s+thức)?/giu,
+    use: "đa phương thức",
+  },
+  // 17 rows; "lý luận" is theory, "lập luận" is argument.
+  {
+    term: "reasoning",
+    inSource: (text) => /\breasoning\b/i.test(text),
+    licensedBy:
+      /\b(?:argu\w*|theor\w*|legal|court|judges?|ruling|justif\w*)\b/i,
+    bad: /lý luận|lập luận/giu,
+    use: "suy luận",
+  },
+  {
+    term: "generative",
+    inSource: (text) => /\bgenerative\b/i.test(text),
+    // "học sinh tạo ra" is "students create".
+    bad: /sinh tạo(?!\s+(?:ra|nên|thành|lập))/giu,
+    use: "tạo sinh",
+  },
+  {
+    term: "trajectories",
+    inSource: (text) => /\btrajector(?:y|ies)\b/i.test(text),
+    bad: /quỹ đường/giu,
+    use: "quỹ đạo",
+  },
+  // Model weights, not mass.
+  {
+    term: "weights",
+    inSource: (text) => /\bweights\b/i.test(text),
+    licensedBy:
+      /\b(?:weighs?|weighing|kg|kilograms?|lbs?|pounds|tons?|tonnes|heav\w*)\b/i,
+    bad: /trọng lượng/giu,
+    use: "trọng số",
+  },
+  // "Cục bản" is not a word; "địa phương" is right for local roads and
+  // local news, so only AI that runs on one's own machine counts.
+  {
+    term: "local",
+    inSource: (text) =>
+      /\blocal\s+(?:AI|artificial|LLMs?|models?|inference|agent\w*|hardware|machines?|compute|devices?|workloads?)\b|\blocally\b/i.test(
+        text
+      ),
+    licensedBy:
+      /\blocal\s+(?:roads?|governments?|authorit\w*|officials?|communit\w*|news|elections?|police|residents?|businesses|media|councils?|courts?|markets?)\b/i,
+    bad: /cục bản|địa phương/giu,
+    use: "cục bộ",
+  },
+  // "Frontier model" is a keep term, but "frontier AI models", "frontier
+  // LLM" and "frontier labs" became "tiên phong" (pioneer) in 8 rows.
+  {
+    term: "frontier",
+    inSource: (text) => /\bfrontier\b/i.test(text),
+    licensedBy: /\b(?:pioneer\w*|vanguard|borders?)\b/i,
+    bad: /tiên phong|biên giới/giu,
+    use: "frontier",
+  },
+  // A data pipeline is not a pipe.
+  {
+    term: "pipeline",
+    inSource: (text) => /\bpipelines?\b/i.test(text),
+    licensedBy: /\b(?:oil|gas|water|fuel|crude|pipes?)\b/i,
+    bad: /đường ống/giu,
+    use: "pipeline",
   },
 ];
 
@@ -391,6 +501,67 @@ function stutterIssues(viText: string): string[] {
   return issues;
 }
 
+/** "vượ quá", "nền tảp", "t合成": words no Vietnamese spelling allows. A
+ * near miss built from real syllables ("rời rạp", "sụp đảo") passes. */
+function garbleIssues(sourceText: string, viText: string): string[] {
+  const words = garbledWords(viText, sourceText);
+  return words.length === 0
+    ? []
+    : [
+        `${words.map((word) => `"${word}"`).join(", ")} ${words.length === 1 ? "is not a Vietnamese word" : "are not Vietnamese words"}; fix the spelling`,
+      ];
+}
+
+/** A decimal written as an amount: before %, a currency, a magnitude, or
+ * a multiplier, or after "$". */
+const VI_DECIMAL_POINT_RE =
+  /(?<![\p{L}\p{N}.,-])(\$?)(\d+\.\d+)(?![\p{N}]|[.,]\p{N}|\s*(?:[TBMK]|tn|bn|mn)(?![\p{L}\p{N}]))(?=(\s*(?:%|USD|lần|x|điểm|nghìn|ngàn|tỷ|tỉ|triệu)(?![\p{L}\p{M}]))?)/gu;
+
+/** "55.4%" kept from the source where Vietnamese writes "55,4%". The same
+ * "a.b" must be in the source, so a Vietnamese thousands point ("23.000"
+ * for "23,000") never counts, and a version ("Opus 5.5", "iOS 27.3") has no
+ * amount after it. */
+function decimalPointIssues(sourceText: string, viText: string): string[] {
+  const issues = new Set<string>();
+  for (const match of viText.normalize("NFC").matchAll(VI_DECIMAL_POINT_RE)) {
+    const [, dollar, number, unit] = match;
+    if (!dollar && !unit) continue;
+    // "$1.5 tỷ" is the dollar check's issue.
+    if (dollar && unit && !/%|USD|lần|x|điểm/.test(unit)) continue;
+    if (
+      !new RegExp(`(?<![\\p{N}.])${escapeRegex(number)}(?!\\p{N})`, "u").test(
+        sourceText
+      )
+    )
+      continue;
+    issues.add(
+      `"${number}" uses a decimal point; write "${number.replace(".", ",")}"`
+    );
+  }
+  return [...issues];
+}
+
+const VI_DOLLAR_MAGNITUDE_RE =
+  /(?<![\p{L}\p{N}])\$\s?(\d+(?:[.,]\d+)?)\s*(trillion|billion|million|nghìn tỷ|ngàn tỷ|tỷ|tỉ|triệu|tn|bn|mn|[TBM])(?![\p{L}\p{N}])/giu;
+
+/** "$2T", "$50M" or "$6,6 tỷ" left in the Vietnamese: house style is
+ * "2 nghìn tỷ USD". A letter before "$" is another currency ("NT$"). */
+function dollarIssues(viText: string): string[] {
+  const issues = new Set<string>();
+  for (const match of viText
+    .normalize("NFC")
+    .matchAll(VI_DOLLAR_MAGNITUDE_RE)) {
+    const [whole, digits, unit] = match;
+    const magnitude = /^[a-z]{1,2}$|^(?:trillion|billion|million)$/i.test(unit)
+      ? magnitudeOf(unit)
+      : viMagnitude(unit);
+    issues.add(
+      `"${whole.trim()}" must be "${digits.replace(".", ",")} ${VI_WORD[magnitude]} USD"`
+    );
+  }
+  return [...issues];
+}
+
 const VI_WORD_RE = /[\p{L}\p{M}][\p{L}\p{M}\p{N}'’-]*/gu;
 const NON_ASCII_RE = /\P{ASCII}/u;
 
@@ -419,46 +590,77 @@ export function isTitleCaseVi(viTitle: string, sourceTitle: string): boolean {
   return capitalized >= 3 && capitalized === vietnamese;
 }
 
-/** Issues in one translated item, as instructions for the repair prompt.
+export type DraftCheck =
+  | "echo"
+  | "keep"
+  | "avoid"
+  | "calque"
+  | "magnitude"
+  | "version"
+  | "gloss"
+  | "stutter"
+  | "garble"
+  | "decimal"
+  | "dollar"
+  | "titleCase"
+  | "length";
+
+/** Issues in one translated item per check, in repair-prompt order.
  * `source` must be what the generator was sent (stripped and clipped). */
+export function draftIssuesByCheck(
+  source: TranslationText,
+  candidate: TranslationText,
+  rules: KnowledgeRule[],
+  titlesOnly: boolean
+): Record<DraftCheck, string[]> {
+  const src = titlesOnly ? { title: source.title, summary: "" } : source;
+  const cand = titlesOnly ? { title: candidate.title, summary: "" } : candidate;
+  const missing = missingProtectedTerms(src, cand).jargon;
+  const sourceText = `${src.title}\n${src.summary}`;
+  const viText = `${cand.title}\n${cand.summary}`;
+  return {
+    echo: englishEchoIssues(src, cand),
+    keep:
+      missing.length > 0
+        ? [
+            `keep these terms in English: ${missing.map(keepTermLabel).join(", ")}`,
+          ]
+        : [],
+    avoid: avoidIssues(src, cand, rules),
+    calque: calqueIssues(sourceText, viText),
+    magnitude: magnitudeIssues(sourceText, viText),
+    version: versionIssues(src, cand),
+    gloss: glossIssues(viText),
+    stutter: stutterIssues(viText),
+    garble: garbleIssues(sourceText, viText),
+    decimal: decimalPointIssues(sourceText, viText),
+    dollar: dollarIssues(viText),
+    titleCase: isTitleCaseVi(cand.title, src.title)
+      ? [
+          "the title is in Title Case; use Vietnamese sentence case (capitalize only the first word and proper names)",
+        ]
+      : [],
+    length:
+      !titlesOnly &&
+      src.summary.length >= MIN_SOURCE_CHARS_FOR_RATIO &&
+      cand.summary.length / src.summary.length < MIN_VI_EN_LENGTH_RATIO
+        ? [
+            `the summary is ${Math.round((cand.summary.length / src.summary.length) * 100)}% of the source length; translate every sentence, do not condense`,
+          ]
+        : [],
+  };
+}
+
+/** Issues in one translated item, as instructions for the repair prompt. */
 export function translationDraftIssues(
   source: TranslationText,
   candidate: TranslationText,
   rules: KnowledgeRule[],
   titlesOnly: boolean
 ): string[] {
-  const src = titlesOnly ? { title: source.title, summary: "" } : source;
-  const cand = titlesOnly ? { title: candidate.title, summary: "" } : candidate;
-  const issues = englishEchoIssues(src, cand);
-  const missing = missingProtectedTerms(src, cand).jargon;
-  if (missing.length > 0) {
-    issues.push(
-      `keep these terms in English: ${missing.map(keepTermLabel).join(", ")}`
-    );
-  }
-  issues.push(...avoidIssues(src, cand, rules));
-  const sourceText = `${src.title}\n${src.summary}`;
-  const viText = `${cand.title}\n${cand.summary}`;
-  issues.push(...calqueIssues(sourceText, viText));
-  issues.push(...magnitudeIssues(sourceText, viText));
-  issues.push(...versionIssues(src, cand));
-  issues.push(...glossIssues(viText));
-  issues.push(...stutterIssues(viText));
-  if (isTitleCaseVi(cand.title, src.title)) {
-    issues.push(
-      "the title is in Title Case; use Vietnamese sentence case (capitalize only the first word and proper names)"
-    );
-  }
-  if (
-    !titlesOnly &&
-    src.summary.length >= MIN_SOURCE_CHARS_FOR_RATIO &&
-    cand.summary.length / src.summary.length < MIN_VI_EN_LENGTH_RATIO
-  ) {
-    issues.push(
-      `the summary is ${Math.round((cand.summary.length / src.summary.length) * 100)}% of the source length; translate every sentence, do not condense`
-    );
-  }
-  return issues;
+  return Object.values(
+    draftIssuesByCheck(source, candidate, rules, titlesOnly)
+  ).flat();
 }
 
 /** Issues in one Vietnamese TL;DR bullet against the items it cites. A
