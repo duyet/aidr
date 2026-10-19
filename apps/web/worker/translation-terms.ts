@@ -37,7 +37,26 @@ export const KEEP_ENGLISH_TERMS = [
   "chatbot",
   "swarm",
   "embedding",
+  "model famil",
 ] as const;
+
+/** "Model Family", "model families", "a family of time-series foundation
+ * models". The Vietnamese keeps "model family" for each (prod 8e8bf17f
+ * shipped "gia đình mô hình"). */
+const MODEL_FAMILY_RE =
+  /(?<![\p{L}\p{N}])(?:model[- ]?famil(?:y|ies)|famil(?:y|ies) of (?:[\p{L}\p{N}-]+ ){0,4}models?)(?![\p{L}\p{N}])/iu;
+
+export function mentionsModelFamily(text: string): boolean {
+  return MODEL_FAMILY_RE.test(text);
+}
+
+/** The form a stem is written in a prompt or an issue. */
+export function keepTermLabel(term: string): string {
+  if (term === "fine-tun") return "fine-tune";
+  if (term === "red-team") return "red-teaming";
+  if (term === "model famil") return "model family";
+  return term;
+}
 
 /** Matched as whole words (plural allowed), not stems: the verb forms
  * "harnessing" and "exploited" are ordinary English a journalist translates. */
@@ -45,7 +64,7 @@ const WHOLE_WORD_TERMS = new Set<string>(["harness", "exploit"]);
 
 /** Prose form used in VI_STYLE. */
 export const KEEP_ENGLISH_PROSE =
-  "fine-tune, benchmark, agent, agentic, token, open-weights, decision model, reasoning model, foundation model, world model, reinforcement learning (or RL), context window, guardrail, jailbreak, harness, hyperscaler, rollout, exploit, kill switch, red-teaming, sandbox, frontier model, MoE, prompt, chatbot, embedding, LLM, GPU, AI, swarm, multi-agent";
+  "fine-tune, benchmark, agent, agentic, token, open-weights, decision model, reasoning model, foundation model, world model, reinforcement learning (or RL), context window, guardrail, jailbreak, harness, hyperscaler, rollout, exploit, kill switch, red-teaming, sandbox, frontier model, MoE, prompt, chatbot, embedding, LLM, GPU, AI, swarm, multi-agent, model family";
 
 /** Capitalized words a Vietnamese journalist correctly translates: places,
  * demonyms, calendar words, and English function words that open a sentence
@@ -877,11 +896,13 @@ export function extractProtectedTerms(source: {
   const text = `${source.title}\n${summary}`;
   // "Federal agents" are people, not AI agents.
   const jargon = KEEP_ENGLISH_TERMS.filter((term) =>
-    hasWord(
-      term === "agent" ? text.replace(NON_AI_AGENT_RE, "") : text,
-      term,
-      !WHOLE_WORD_TERMS.has(term)
-    )
+    term === "model famil"
+      ? mentionsModelFamily(text)
+      : hasWord(
+          term === "agent" ? text.replace(NON_AI_AGENT_RE, "") : text,
+          term,
+          !WHOLE_WORD_TERMS.has(term)
+        )
   );
   return {
     names: nameCandidates(source.title, summary),
@@ -944,10 +965,5 @@ export function keepVerbatimList(source: {
   summary: string;
 }): string[] {
   const terms = extractProtectedTerms(source);
-  return [
-    ...terms.names,
-    ...terms.jargon.map((t) =>
-      t === "fine-tun" ? "fine-tune" : t === "red-team" ? "red-teaming" : t
-    ),
-  ];
+  return [...terms.names, ...terms.jargon.map(keepTermLabel)];
 }

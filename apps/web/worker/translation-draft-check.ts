@@ -15,7 +15,7 @@ import {
   knowledgeViolations,
 } from "./translation-knowledge.js";
 import type { TranslationText } from "./translation-review.js";
-import { missingProtectedTerms } from "./translation-terms.js";
+import { keepTermLabel, missingProtectedTerms } from "./translation-terms.js";
 
 /** Below this the source is too short for a length ratio to mean much. */
 const MIN_SOURCE_CHARS_FOR_RATIO = 200;
@@ -359,9 +359,7 @@ export function translationDraftIssues(
   const missing = missingProtectedTerms(src, cand).jargon;
   if (missing.length > 0) {
     issues.push(
-      `keep these terms in English: ${missing
-        .map((t) => (t === "fine-tun" ? "fine-tune" : t))
-        .join(", ")}`
+      `keep these terms in English: ${missing.map(keepTermLabel).join(", ")}`
     );
   }
   issues.push(...avoidIssues(src, cand, rules));
