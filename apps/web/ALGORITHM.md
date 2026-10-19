@@ -2756,6 +2756,24 @@ run 23b4ed50 (2026-10-13) the old fail-open re-sent each item's full chain
 after the first wave, 225 translate 429s in 88 s. 5xx and timeouts never
 skip.
 
+The skip maps live in the isolate, not D1, and that is measured to be
+enough. A cross-run breaker (open a task+model after 3 failures in a row
+or over half of its last 10 attempts with at least 5, skip it for 15
+minutes, then send one probe) was replayed over prod `llm_calls` on
+2026-10-19 with `pnpm --filter @aidr/web llm-breaker-replay`. From 10-15
+to 10-19 it would have skipped 18 chat-chain attempts. 12 of them were
+served. It would have saved 280 s in 4.5 days. Over all 7 days the chat
+chains would have saved 4,251 s, and 3,472 s of that on ids that #655 and #663 had
+removed or paused by 10-14: glm-4.6 and space-bunny review (space-bunny
+served 0 of 224, and 143 of those attempts were 404s), and gemini-3-flash
+and gemma-4-31b translate. The 10-13 21:00-24:00 UTC 429 window is outside
+the replay, because the 2-minute map already covers 429s. After 10-14
+02:43 UTC a chain id got one 404 (gemma-latest, an `unmerge-dup-check`
+on 10-16), and no `call_id` sent the same id twice. Rerun the
+replay before adding persisted skip state. A chain that keeps failing
+is better fixed by removing the id, and `KNOWN_DEAD` in
+`schedule.test.ts` keeps a removed id off every chain.
+
 A failed `llm_calls` row keeps `response_snippet`, a JSON descriptor built
 from allowlisted fields, never response text. A provider error keeps the
 HTTP status and, from a JSON body, `error.code`, `type`, `status`, `param`
