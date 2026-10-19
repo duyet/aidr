@@ -6,8 +6,11 @@ import {
   type HealthInput,
   type PriorRun,
   parsePriorRun,
+  SOURCE_FAILING_RUNS,
+  sourceFailingKey,
   TELEGRAM_QUIET_MS,
 } from "../health.js";
+import { emptySourceHealth } from "../source-health.js";
 
 const NOW = Date.UTC(2026, 8, 29, 7, 0, 0);
 const HOUR = 3600 * 1000;
@@ -39,6 +42,26 @@ const tldrFailedRun: PriorRun = {
 describe("evaluateHealth", () => {
   it("is quiet for a healthy run", () => {
     expect(keys({})).toEqual([]);
+  });
+
+  it("flags a source whose fetch failed 3 runs in a row, and only that source", () => {
+    const failing = (failedRuns: number) => ({
+      ...emptySourceHealth(),
+      skipReason: "fetch_failed" as const,
+      failedRuns,
+    });
+    expect(SOURCE_FAILING_RUNS).toBe(3);
+    const sourceHealth = {
+      "release-ollama": failing(3),
+      "release-vllm": failing(2),
+      hn: emptySourceHealth(),
+    };
+    const issues = evaluateHealth(input({ sourceHealth }));
+    expect(issues.map((i) => i.key)).toEqual([
+      sourceFailingKey("release-ollama"),
+    ]);
+    expect(issues[0].detail).toContain("3 runs in a row");
+    expect(keys({ sourceHealth: undefined })).toEqual([]);
   });
 
   // A silent channel went unnoticed: every run "succeeded". The bar is a

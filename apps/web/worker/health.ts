@@ -30,6 +30,7 @@ import {
   shouldSendDailySummary,
 } from "./owner-alerts.js";
 import type { RunStepInfo } from "./run-stats.js";
+import type { SourceRunHealth } from "./source-health.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "./time.js";
 import { evaluateTraffic, fetchTraffic } from "./traffic.js";
@@ -77,6 +78,12 @@ export function llmTaskFailingKey(task: string): string {
 export const LLM_MIN_CALLS = 4;
 /** TL;DR failed this many runs in a row (this run included). */
 export const TLDR_FAIL_STREAK = 3;
+/** A source's fetch step failed this many runs in a row (this run included). */
+export const SOURCE_FAILING_RUNS = 3;
+/** Per-source key, so each source keeps its own cooldown. */
+export function sourceFailingKey(id: string): string {
+  return `source-failing:${id}`;
+}
 /** The same alert key does not fire again within this window. */
 export const ALERT_COOLDOWN_MS = 6 * 3600 * 1000;
 /** Previous runs read for the TL;DR streak and the cooldown. */
@@ -130,6 +137,9 @@ export interface HealthInput {
   };
   /** Previous runs, newest first, excluding this one. */
   history: PriorRun[];
+  /** This run's per-source health, streaks carried in. Absent when the run
+   *  ended before the fetch outcome was settled. */
+  sourceHealth?: Record<string, SourceRunHealth>;
 }
 
 function tldrFailed(steps: RunStepInfo[]): boolean | null {
@@ -156,6 +166,16 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
       detail: failedSteps
         .map((s) => `${s.name}: ${s.action}${s.reason ? ` (${s.reason})` : ""}`)
         .join("; "),
+    });
+  }
+
+  for (const [id, health] of Object.entries(input.sourceHealth ?? {})) {
+    if (health.failedRuns < SOURCE_FAILING_RUNS) continue;
+    issues.push({
+      key: sourceFailingKey(id),
+      severity: "warning",
+      title: "Source fetch failing",
+      detail: `${id}: fetch failed ${health.failedRuns} runs in a row`,
     });
   }
 
@@ -557,6 +577,8 @@ export async function runHealthCheck(
     viEnglish?: ViEnglishTally;
     /** This run's LLM cluster links per model; absent when it made none. */
     clusterGate?: ClusterGateTally;
+    /** This run's per-source health; absent when the run ended early. */
+    sourceHealth?: Record<string, SourceRunHealth>;
     dryRun?: boolean;
   }
 ): Promise<string[]> {
@@ -587,6 +609,7 @@ export async function runHealthCheck(
       telegramLastPostMs,
       llm,
       history,
+      sourceHealth: input.sourceHealth,
     });
     issues.push(
       ...evaluateViEnglish(
