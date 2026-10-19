@@ -3,6 +3,7 @@ import {
   extractProtectedTerms,
   KEEP_ENGLISH_PROSE,
   KEEP_ENGLISH_TERMS,
+  keepTermLabel,
   keepVerbatimList,
   missingProtectedTerms,
   stripSourceBoilerplate,
@@ -625,6 +626,52 @@ describe("protected English terms", () => {
     expect(KEEP_ENGLISH_TERMS.join(" ")).not.toMatch(/open-source/);
     expect(KEEP_ENGLISH_PROSE).not.toMatch(/open-source/);
     expect(KEEP_ENGLISH_PROSE).toContain("fine-tune");
+  });
+
+  // The generator reads the prose and the guard enforces the list; a term
+  // in only one of them is either never asked for or never checked.
+  it("names every keep term in the VI_STYLE prose", () => {
+    for (const term of KEEP_ENGLISH_TERMS.map(keepTermLabel)) {
+      expect(KEEP_ENGLISH_PROSE).toContain(term);
+    }
+  });
+
+  // Prod 8e8bf17f: "Forecasting Model Family" became "gia đình mô hình".
+  it("keeps model family in English in every source form", () => {
+    for (const title of [
+      "Mistral AI Releases Timestral: A 209M Forecasting Model Family",
+      "Mistral released a time series foundation model family",
+      "Qwen ships two new model families",
+      "Mistral released a family of time-series foundation models",
+    ]) {
+      expect(keepVerbatimList({ title, summary: "" })).toContain(
+        "model family"
+      );
+    }
+    expect(
+      extractProtectedTerms({
+        title: "A family of four sued over the chatbot",
+        summary: "",
+      }).jargon
+    ).not.toContain("model famil");
+    expect(
+      missingProtectedTerms(
+        {
+          title: "Mistral releases a 209M forecasting model family",
+          summary: "",
+        },
+        { title: "Mistral ra mắt gia đình mô hình dự báo 209M", summary: "" }
+      ).jargon
+    ).toContain("model famil");
+    expect(
+      missingProtectedTerms(
+        {
+          title: "Mistral releases a family of forecasting models",
+          summary: "",
+        },
+        { title: "Mistral ra mắt model family dự báo", summary: "" }
+      ).jargon
+    ).toEqual([]);
   });
 
   it("gives the generator a readable keep list", () => {

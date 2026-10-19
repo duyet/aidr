@@ -2367,6 +2367,18 @@ describe("VI_STYLE", () => {
     expect(VI_STYLE).toContain('"các senators" ✗ → "các thượng nghị sĩ" ✓');
   });
 
+  // The owner's Telegram screenshot, 2026-10-19 (prod 8e8bf17f, 7beb3e30).
+  it("shows the model-family and robotics calques with their fixes", () => {
+    expect(VI_STYLE).toContain('"model family dự báo" ✓');
+    expect(VI_STYLE).toContain(
+      '"một model family gồm các foundation model chuỗi thời gian" ✓'
+    );
+    expect(VI_STYLE).toContain('trí tuệ hiện thân chưa?" ✓');
+    expect(VI_STYLE).toContain("robot hình người");
+    expect(VI_STYLE).toContain('bàn tay khéo léo" ✓');
+    expect(VI_STYLE).toContain('"cải thiện tính tổng quát của ICL" ✓');
+  });
+
   it("covers over-formal Sino-Vietnamese, passive voice, and sentence-splitting failure modes", () => {
     expect(VI_STYLE).toContain("Tập đoàn");
     expect(VI_STYLE).toContain("được huấn luyện bởi");

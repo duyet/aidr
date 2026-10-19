@@ -190,6 +190,11 @@ Never calque these (bad → good):
 - "a mismatch between the two versions" → "sự bất đối xứng giữa hai phiên bản" ✗ → "hai phiên bản không khớp nhau" ✓
 - "the departure" (a person leaving) → "sự chuyển đi này" ✗ → "việc rời đi này" ✓
 - "enterprise growth" (the business-customer segment) → "tăng trưởng doanh nghiệp" ✗ → "tăng trưởng mảng doanh nghiệp" ✓
+- "Forecasting Model Family" → "gia đình mô hình dự báo" ✗ → "model family dự báo" ✓
+- "a time series foundation model family" → "một gia đình foundation model chuỗi thời gian" ✗ → "một model family gồm các foundation model chuỗi thời gian" ✓
+- "Has GPT-6-Astra Achieved Embodied Intelligence?" ("nhân quả" means causal) → "GPT-6-Astra đã đạt được trí tuệ nhân quả?" ✗ → "GPT-6-Astra đã đạt được trí tuệ hiện thân chưa?" ✓
+- "tabletop manipulation, humanoids, mobile platforms, and dexterous hands" → "thao tác bàn, con người, nền tảng di động và tay xoay tay" ✗ → "thao tác trên mặt bàn, robot hình người, nền tảng robot di động và bàn tay khéo léo" ✓
+- "improving the generality of ICL" ("chung chung" means vague) → "cải thiện tính chung chung chung của ICL" ✗ → "cải thiện tính tổng quát của ICL" ✓
 - A named conjecture, theorem, or paper title you cannot render with certainty stays in English: "Unique Games Conjecture" → "phó bản đồ Độc nhất về cho phép" ✗ → "Unique Games Conjecture" ✓
 
 Write only Vietnamese plus the English terms the rules above keep. Never a word from a third language, and never an English word that has a plain Vietnamese equivalent (bad → good):

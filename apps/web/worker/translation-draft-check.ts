@@ -15,7 +15,11 @@ import {
   knowledgeViolations,
 } from "./translation-knowledge.js";
 import type { TranslationText } from "./translation-review.js";
-import { missingProtectedTerms } from "./translation-terms.js";
+import {
+  keepTermLabel,
+  mentionsModelFamily,
+  missingProtectedTerms,
+} from "./translation-terms.js";
 
 /** Below this the source is too short for a length ratio to mean much. */
 const MIN_SOURCE_CHARS_FOR_RATIO = 200;
@@ -74,6 +78,76 @@ function avoidIssues(
         .map((bad) => `"${bad}"`)
         .join(" or ")}${rule.vi_term ? `; use "${rule.vi_term}"` : ""}`
   );
+}
+
+/** A wrong Vietnamese reading of an English term, from prod. Each fires
+ * only when the source has the term, no source word licenses the bad
+ * phrase, and no Vietnamese text carries a right rendering. */
+interface Calque {
+  term: string;
+  inSource: (text: string) => boolean;
+  licensedBy?: RegExp;
+  bad: RegExp;
+  rightVi?: RegExp;
+  use: string;
+}
+
+const CALQUES: readonly Calque[] = [
+  // Prod 8e8bf17f: "gia đình mô hình", "gia đình foundation model". "Họ mô
+  // hình hóa" is "they model".
+  {
+    term: "model family",
+    inSource: mentionsModelFamily,
+    bad: /(?<![\p{L}\p{M}])(?:gia đình(?:\s+[\p{L}\p{M}\p{N}-]+){0,2}?\s+(?:mô hình|model)|họ\s+(?:mô hình|model)(?!\s+(?:hóa|hoá)))(?![\p{L}\p{M}])/giu,
+    use: "model family",
+  },
+  // Prod 7beb3e30: "trí tuệ nhân quả" (causal) for embodied intelligence.
+  {
+    term: "embodied",
+    inSource: (text) => /\bembodied\b/i.test(text),
+    licensedBy: /\bcaus/i,
+    bad: /nhân quả/giu,
+    use: "trí tuệ hiện thân",
+  },
+  // Prod 7beb3e30: "humanoids" as "con người" (people) in a list of robots.
+  {
+    term: "humanoid",
+    inSource: (text) => /\bhumanoids?\b/i.test(text),
+    licensedBy: /\b(?:humans?|humanity|humankind|mankind|people|persons?)\b/i,
+    bad: /con người/giu,
+    rightVi: /hình người|humanoid/iu,
+    use: "robot hình người",
+  },
+  // Prod 7beb3e30: "tính chung chung chung" (vague) for "the generality".
+  // The stutter check misses it: "chung" has no diacritics.
+  {
+    term: "generality",
+    inSource: (text) =>
+      /\bgenerali(?:ty|ties|[sz](?:e|es|ed|ing|ation|ations))\b/i.test(text),
+    licensedBy: /\b(?:vague\w*|generic\w*|too general|overly general)\b/i,
+    bad: /chung chung/giu,
+    use: "tính tổng quát",
+  },
+];
+
+function calqueIssues(sourceText: string, viText: string): string[] {
+  const vi = viText.normalize("NFC");
+  const issues: string[] = [];
+  for (const calque of CALQUES) {
+    if (!calque.inSource(sourceText)) continue;
+    if (calque.licensedBy?.test(sourceText)) continue;
+    if (calque.rightVi?.test(vi)) continue;
+    const found = [
+      ...new Set([...vi.matchAll(calque.bad)].map((m) => m[0].toLowerCase())),
+    ];
+    if (found.length === 0) continue;
+    issues.push(
+      `"${calque.term}" must not be rendered as ${found
+        .map((bad) => `"${bad}"`)
+        .join(" or ")}; use "${calque.use}"`
+    );
+  }
+  return issues;
 }
 
 const EN_MAGNITUDE_RE =
@@ -359,14 +433,14 @@ export function translationDraftIssues(
   const missing = missingProtectedTerms(src, cand).jargon;
   if (missing.length > 0) {
     issues.push(
-      `keep these terms in English: ${missing
-        .map((t) => (t === "fine-tun" ? "fine-tune" : t))
-        .join(", ")}`
+      `keep these terms in English: ${missing.map(keepTermLabel).join(", ")}`
     );
   }
   issues.push(...avoidIssues(src, cand, rules));
+  const sourceText = `${src.title}\n${src.summary}`;
   const viText = `${cand.title}\n${cand.summary}`;
-  issues.push(...magnitudeIssues(`${src.title}\n${src.summary}`, viText));
+  issues.push(...calqueIssues(sourceText, viText));
+  issues.push(...magnitudeIssues(sourceText, viText));
   issues.push(...versionIssues(src, cand));
   issues.push(...glossIssues(viText));
   issues.push(...stutterIssues(viText));
@@ -399,6 +473,7 @@ export function tldrBulletIssues(
   const candidate = { title: "", summary: bullet };
   return [
     ...avoidIssues(source, candidate, rules),
+    ...calqueIssues(sourceText, bullet),
     ...magnitudeIssues(sourceText, bullet),
     ...glossIssues(bullet),
     ...stutterIssues(bullet),

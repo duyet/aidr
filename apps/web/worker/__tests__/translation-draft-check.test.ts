@@ -655,3 +655,162 @@ describe("translationDraftIssues version numbers", () => {
     expect(issues).toEqual([]);
   });
 });
+
+// Prod 8e8bf17f (2026-10-19): the English source as stored. The owner's
+// Telegram screenshot showed "gia đình" (a household) for "model family".
+const TIMESTRAL_EN = {
+  title:
+    "Mistral AI Releases Timestral: A 209M Forecasting Model Family That Outperforms Google’s TimesFM-3",
+  summary:
+    "Mistral released Timestral, a time series foundation model family ranging from 5M to 209M parameters, with the 209M model leading GIFT-Eval, TIME and fev-bench among zero-shot models and running on CPU.",
+};
+const TIMESTRAL_VI_SUMMARY_TAIL =
+  "Mô hình 209M dẫn đầu GIFT-Eval, TIME và fev-bench trong số các mô hình zero-shot và chạy trên CPU.";
+
+// Prod 7beb3e30 (2026-10-19): sentences of the arXiv abstract.
+const ASTRA_EN = {
+  title: "Has GPT-6-Astra Achieved Embodied Intelligence?",
+  summary:
+    "GPT-6-Astra demonstrates a level of competence in robotic manipulation and navigation that challenges the conventional paradigm of building specialized models for individual tasks and embodiments. We conduct a large-scale evaluation across 12 representative benchmarks spanning tabletop manipulation, humanoids, mobile platforms, and dexterous hands. Future research may focus on improving 1) the generality of ICL 2) cost and execution time, 3) physical-state verification, 4) recovery from irreversible failures, and 5) long-horizon preservation of progress.",
+};
+const astraVi = (title: string, spanning: string, generality: string) => ({
+  title,
+  summary: `GPT-6-Astra cho thấy năng lực thao tác robot và điều hướng đủ để thách thức mô hình quen thuộc là xây dựng các model chuyên biệt cho từng tác vụ và từng dạng robot. Nhóm đánh giá trên 12 benchmark tiêu biểu, gồm ${spanning}. Nghiên cứu tiếp theo có thể tập trung cải thiện 1) ${generality} của ICL, 2) chi phí và thời gian thực thi, 3) xác minh trạng thái vật lý, 4) phục hồi sau các thất bại không thể đảo ngược, và 5) giữ tiến độ trong tác vụ dài hạn.`,
+});
+
+describe("translationDraftIssues model family", () => {
+  it("flags 'gia đình' for a model family in the title and the summary", () => {
+    const issues = translationDraftIssues(
+      TIMESTRAL_EN,
+      {
+        title: "Mistral AI ra mắt Timestral: gia đình mô hình dự báo 209M",
+        summary: `Mistral ra mắt Timestral, một gia đình foundation model chuỗi thời gian từ 5M đến 209M tham số. ${TIMESTRAL_VI_SUMMARY_TAIL}`,
+      },
+      [],
+      false
+    );
+    expect(issues).toContain("keep these terms in English: model family");
+    expect(issues).toContain(
+      `"model family" must not be rendered as "gia đình mô hình" or "gia đình foundation model"; use "model family"`
+    );
+  });
+
+  // The keep check passes once any field says "model family"; only the
+  // calque check sees the title.
+  it("flags a calqued title when the summary keeps the term", () => {
+    const issues = translationDraftIssues(
+      TIMESTRAL_EN,
+      {
+        title: "Mistral AI ra mắt Timestral: họ mô hình dự báo 209M",
+        summary: `Mistral ra mắt Timestral, một time series foundation model family từ 5M đến 209M tham số. ${TIMESTRAL_VI_SUMMARY_TAIL}`,
+      },
+      [],
+      false
+    );
+    expect(issues).toEqual([
+      `"model family" must not be rendered as "họ mô hình"; use "model family"`,
+    ]);
+  });
+
+  it("passes the stored translation that keeps model family", () => {
+    expect(
+      translationDraftIssues(
+        TIMESTRAL_EN,
+        {
+          title:
+            "Mistral AI ra mắt Timestral: model family dự báo 209M vượt Google TimesFM-3",
+          summary: `Mistral ra mắt Timestral, một time series foundation model family từ 5M đến 209M tham số. ${TIMESTRAL_VI_SUMMARY_TAIL}`,
+        },
+        [],
+        false
+      )
+    ).toEqual([]);
+  });
+
+  it("does not read 'họ mô hình hóa' (they model) as a calque", () => {
+    expect(
+      tldrBulletIssues(
+        "Researchers model the family of reasoning models as one system.",
+        "Họ mô hình hóa model family reasoning model như một hệ thống.",
+        []
+      )
+    ).toEqual([]);
+  });
+
+  // Live TL;DR bullet on 2026-10-19.
+  it("flags the calque in a TL;DR bullet", () => {
+    expect(
+      tldrBulletIssues(
+        "Mistral released Timestral, a 5M–209M-parameter time-series foundation model family.",
+        "Mistral ra mắt Timestral, gia đình foundation model chuỗi thời gian có 5M–209M tham số.",
+        []
+      )
+    ).toEqual([
+      `"model family" must not be rendered as "gia đình foundation model"; use "model family"`,
+    ]);
+  });
+});
+
+describe("translationDraftIssues robotics calques", () => {
+  // The owner's screenshot: "nhân quả" is causal, "con người" is people,
+  // and "chung chung" is vague (written three times).
+  it("flags the screenshot lines", () => {
+    const issues = translationDraftIssues(
+      ASTRA_EN,
+      astraVi(
+        "GPT-6-Astra đã đạt được trí tuệ nhân quả?",
+        "thao tác bàn, con người, nền tảng di động và tay xoay tay",
+        "tính chung chung chung"
+      ),
+      [],
+      false
+    );
+    expect(issues).toEqual([
+      `"embodied" must not be rendered as "nhân quả"; use "trí tuệ hiện thân"`,
+      `"humanoid" must not be rendered as "con người"; use "robot hình người"`,
+      `"generality" must not be rendered as "chung chung"; use "tính tổng quát"`,
+    ]);
+  });
+
+  it("passes the stored translation", () => {
+    expect(
+      translationDraftIssues(
+        ASTRA_EN,
+        astraVi(
+          "GPT-6-Astra đã đạt được embodied intelligence chưa?",
+          "thao tác trên bàn, robot hình người, nền tảng di động và bàn tay khéo léo",
+          "tính tổng quát"
+        ),
+        [],
+        false
+      )
+    ).toEqual([]);
+  });
+
+  it("allows 'con người' when the source also writes about humans", () => {
+    expect(
+      tldrBulletIssues(
+        "Figure says its humanoids now work next to humans on the line.",
+        "Figure cho biết robot hình người của hãng đã làm việc cạnh con người trên dây chuyền.",
+        []
+      )
+    ).toEqual([]);
+    expect(
+      tldrBulletIssues(
+        "Figure says its humanoids work next to people.",
+        "Figure cho biết robot của hãng làm việc cạnh con người.",
+        []
+      )
+    ).toEqual([]);
+  });
+
+  it("allows 'nhân quả' when the source is about causality", () => {
+    expect(
+      tldrBulletIssues(
+        "An embodied agent learns causal models of its world.",
+        "Một embodied agent học mô hình nhân quả về thế giới của nó.",
+        []
+      )
+    ).toEqual([]);
+  });
+});
