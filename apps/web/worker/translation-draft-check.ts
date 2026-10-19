@@ -168,6 +168,76 @@ const CALQUES: readonly Calque[] = [
     bad: /chung chung/giu,
     use: "tính tổng quát",
   },
+  // The rest come from 400 stored rows of 2026-10-12..19, each seen in at
+  // least three. "Đa dạng" is diverse: 9 rows used it for multimodal.
+  {
+    term: "multimodal",
+    inSource: (text) => /\bmulti-?modal/i.test(text),
+    licensedBy: /\b(?:divers\w*|variet\w*|various|varied|wide range)\b/i,
+    bad: /đa dạng(?:\s+thức)?/giu,
+    use: "đa phương thức",
+  },
+  // 17 rows; "lý luận" is theory, "lập luận" is argument.
+  {
+    term: "reasoning",
+    inSource: (text) => /\breasoning\b/i.test(text),
+    licensedBy:
+      /\b(?:argu\w*|theor\w*|legal|court|judges?|ruling|justif\w*)\b/i,
+    bad: /lý luận|lập luận/giu,
+    use: "suy luận",
+  },
+  {
+    term: "generative",
+    inSource: (text) => /\bgenerative\b/i.test(text),
+    // "học sinh tạo ra" is "students create".
+    bad: /sinh tạo(?!\s+(?:ra|nên|thành|lập))/giu,
+    use: "tạo sinh",
+  },
+  {
+    term: "trajectories",
+    inSource: (text) => /\btrajector(?:y|ies)\b/i.test(text),
+    bad: /quỹ đường/giu,
+    use: "quỹ đạo",
+  },
+  // Model weights, not mass.
+  {
+    term: "weights",
+    inSource: (text) => /\bweights\b/i.test(text),
+    licensedBy:
+      /\b(?:weighs?|weighing|kg|kilograms?|lbs?|pounds|tons?|tonnes|heav\w*)\b/i,
+    bad: /trọng lượng/giu,
+    use: "trọng số",
+  },
+  // "Cục bản" is not a word; "địa phương" is right for local roads and
+  // local news, so only AI that runs on one's own machine counts.
+  {
+    term: "local",
+    inSource: (text) =>
+      /\blocal\s+(?:AI|artificial|LLMs?|models?|inference|agent\w*|hardware|machines?|compute|devices?|workloads?)\b|\blocally\b/i.test(
+        text
+      ),
+    licensedBy:
+      /\blocal\s+(?:roads?|governments?|authorit\w*|officials?|communit\w*|news|elections?|police|residents?|businesses|media|councils?|courts?|markets?)\b/i,
+    bad: /cục bản|địa phương/giu,
+    use: "cục bộ",
+  },
+  // "Frontier model" is a keep term, but "frontier AI models", "frontier
+  // LLM" and "frontier labs" became "tiên phong" (pioneer) in 8 rows.
+  {
+    term: "frontier",
+    inSource: (text) => /\bfrontier\b/i.test(text),
+    licensedBy: /\b(?:pioneer\w*|vanguard|borders?)\b/i,
+    bad: /tiên phong|biên giới/giu,
+    use: "frontier",
+  },
+  // A data pipeline is not a pipe.
+  {
+    term: "pipeline",
+    inSource: (text) => /\bpipelines?\b/i.test(text),
+    licensedBy: /\b(?:oil|gas|water|fuel|crude|pipes?)\b/i,
+    bad: /đường ống/giu,
+    use: "pipeline",
+  },
 ];
 
 function calqueIssues(sourceText: string, viText: string): string[] {

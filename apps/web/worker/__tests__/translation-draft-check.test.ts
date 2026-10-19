@@ -974,3 +974,105 @@ describe("translationDraftIssues English headline", () => {
     }
   });
 });
+
+describe("translationDraftIssues AI-term calques", () => {
+  const bullet = (en: string, vi: string) => tldrBulletIssues(en, vi, []);
+
+  it("flags the stored calques", () => {
+    // Prod 5502bd27, 8c1bc843, 9732b276, 55849128, da92b803.
+    expect(
+      bullet(
+        "It handles OCR and visual reasoning over images.",
+        "Nó hỗ trợ OCR và lý luận hình ảnh trên ảnh."
+      )
+    ).toEqual([
+      '"reasoning" must not be rendered as "lý luận"; use "suy luận"',
+    ]);
+    expect(
+      bullet(
+        "A Multimodal Decision Model That Scores 65",
+        "Một decision model đa dạng nhận điểm 65"
+      )
+    ).toEqual([
+      '"multimodal" must not be rendered as "đa dạng"; use "đa phương thức"',
+    ]);
+    expect(
+      bullet(
+        "How Itaú is building generative AI for its entire customer base",
+        "Itaú xây dựng AI sinh tạo cho toàn bộ khách hàng"
+      )
+    ).toEqual([
+      '"generative" must not be rendered as "sinh tạo"; use "tạo sinh"',
+    ]);
+    expect(
+      bullet(
+        "It fits this threshold on the agent's own trajectories.",
+        "Nó đặt ngưỡng này trên các quỹ đường đi của agent."
+      )
+    ).toEqual([
+      '"trajectories" must not be rendered as "quỹ đường"; use "quỹ đạo"',
+    ]);
+    expect(
+      bullet(
+        "The method requires no access to model weights.",
+        "Phương pháp này không cần truy cập trọng lượng mô hình."
+      )
+    ).toEqual([
+      '"weights" must not be rendered as "trọng lượng"; use "trọng số"',
+    ]);
+  });
+
+  it("flags local, frontier, and pipeline calques", () => {
+    // Prod 0902dfba, f8d97139, 4472cef5.
+    expect(
+      bullet(
+        "PrismML Releases Bonsai 2 Local AI Models",
+        "PrismML ra mắt Bonsai 2 mô hình AI địa phương"
+      )
+    ).toEqual(['"local" must not be rendered as "địa phương"; use "cục bộ"']);
+    expect(
+      bullet(
+        "They explored forming a private group to vet frontier AI models.",
+        "Họ tính lập một nhóm riêng để kiểm định các mô hình AI tiên phong."
+      )
+    ).toEqual([
+      '"frontier" must not be rendered as "tiên phong"; use "frontier"',
+    ]);
+    expect(
+      bullet(
+        "Our automated pipeline constructs 3D objects.",
+        "Đường ống tự động của chúng tôi xây dựng các vật thể 3D."
+      )
+    ).toEqual([
+      '"pipeline" must not be rendered as "đường ống"; use "pipeline"',
+    ]);
+  });
+
+  it("passes the same words where the source licenses them", () => {
+    // Prod 895a3776: local roads are "đường địa phương".
+    expect(
+      bullet(
+        "It will enable partially automated driving on local roads.",
+        "Hệ thống cho phép lái bán tự động trên các con đường địa phương."
+      )
+    ).toEqual([]);
+    expect(
+      bullet(
+        "A multimodal model trained on diverse data.",
+        "Một mô hình đa phương thức huấn luyện trên dữ liệu đa dạng."
+      )
+    ).toEqual([]);
+    expect(
+      bullet(
+        "The judge rejected the company's legal reasoning.",
+        "Thẩm phán bác lập luận pháp lý của công ty."
+      )
+    ).toEqual([]);
+    expect(
+      bullet(
+        "Students use generative AI, and the students create videos.",
+        "Học sinh dùng AI tạo sinh, và học sinh tạo ra video."
+      )
+    ).toEqual([]);
+  });
+});

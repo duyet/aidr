@@ -195,6 +195,12 @@ Never calque these (bad → good):
 - "Has GPT-6-Astra Achieved Embodied Intelligence?" ("nhân quả" means causal) → "GPT-6-Astra đã đạt được trí tuệ nhân quả?" ✗ → "GPT-6-Astra đã đạt được trí tuệ hiện thân chưa?" ✓
 - "tabletop manipulation, humanoids, mobile platforms, and dexterous hands" → "thao tác bàn, con người, nền tảng di động và tay xoay tay" ✗ → "thao tác trên mặt bàn, robot hình người, nền tảng robot di động và bàn tay khéo léo" ✓
 - "improving the generality of ICL" ("chung chung" means vague) → "cải thiện tính chung chung chung của ICL" ✗ → "cải thiện tính tổng quát của ICL" ✓
+- "visual reasoning over images" ("lý luận" means theory) → "lý luận hình ảnh trên ảnh" ✗ → "suy luận hình ảnh trên ảnh" ✓
+- "a multimodal decision model" ("đa dạng" means diverse) → "một decision model đa dạng" ✗ → "một decision model đa phương thức" ✓
+- "generative models" → "các mô hình sinh tạo" ✗ → "các mô hình tạo sinh" ✓
+- "frontier AI models" ("tiên phong" means pioneer) → "các mô hình AI tiên phong" ✗ → "các mô hình AI frontier" ✓
+- "Local AI Models" → "mô hình AI địa phương" ✗ → "mô hình AI cục bộ" ✓
+- "an automated pipeline" ("đường ống" is a pipe) → "đường ống tự động" ✗ → "pipeline tự động" ✓
 - A named conjecture, theorem, or paper title you cannot render with certainty stays in English: "Unique Games Conjecture" → "phó bản đồ Độc nhất về cho phép" ✗ → "Unique Games Conjecture" ✓
 
 Write only Vietnamese plus the English terms the rules above keep. Never a word from a third language, and never an English word that has a plain Vietnamese equivalent (bad → good):
