@@ -419,46 +419,71 @@ export function isTitleCaseVi(viTitle: string, sourceTitle: string): boolean {
   return capitalized >= 3 && capitalized === vietnamese;
 }
 
-/** Issues in one translated item, as instructions for the repair prompt.
+export type DraftCheck =
+  | "echo"
+  | "keep"
+  | "avoid"
+  | "calque"
+  | "magnitude"
+  | "version"
+  | "gloss"
+  | "stutter"
+  | "titleCase"
+  | "length";
+
+/** Issues in one translated item per check, in repair-prompt order.
  * `source` must be what the generator was sent (stripped and clipped). */
+export function draftIssuesByCheck(
+  source: TranslationText,
+  candidate: TranslationText,
+  rules: KnowledgeRule[],
+  titlesOnly: boolean
+): Record<DraftCheck, string[]> {
+  const src = titlesOnly ? { title: source.title, summary: "" } : source;
+  const cand = titlesOnly ? { title: candidate.title, summary: "" } : candidate;
+  const missing = missingProtectedTerms(src, cand).jargon;
+  const sourceText = `${src.title}\n${src.summary}`;
+  const viText = `${cand.title}\n${cand.summary}`;
+  return {
+    echo: englishEchoIssues(src, cand),
+    keep:
+      missing.length > 0
+        ? [
+            `keep these terms in English: ${missing.map(keepTermLabel).join(", ")}`,
+          ]
+        : [],
+    avoid: avoidIssues(src, cand, rules),
+    calque: calqueIssues(sourceText, viText),
+    magnitude: magnitudeIssues(sourceText, viText),
+    version: versionIssues(src, cand),
+    gloss: glossIssues(viText),
+    stutter: stutterIssues(viText),
+    titleCase: isTitleCaseVi(cand.title, src.title)
+      ? [
+          "the title is in Title Case; use Vietnamese sentence case (capitalize only the first word and proper names)",
+        ]
+      : [],
+    length:
+      !titlesOnly &&
+      src.summary.length >= MIN_SOURCE_CHARS_FOR_RATIO &&
+      cand.summary.length / src.summary.length < MIN_VI_EN_LENGTH_RATIO
+        ? [
+            `the summary is ${Math.round((cand.summary.length / src.summary.length) * 100)}% of the source length; translate every sentence, do not condense`,
+          ]
+        : [],
+  };
+}
+
+/** Issues in one translated item, as instructions for the repair prompt. */
 export function translationDraftIssues(
   source: TranslationText,
   candidate: TranslationText,
   rules: KnowledgeRule[],
   titlesOnly: boolean
 ): string[] {
-  const src = titlesOnly ? { title: source.title, summary: "" } : source;
-  const cand = titlesOnly ? { title: candidate.title, summary: "" } : candidate;
-  const issues = englishEchoIssues(src, cand);
-  const missing = missingProtectedTerms(src, cand).jargon;
-  if (missing.length > 0) {
-    issues.push(
-      `keep these terms in English: ${missing.map(keepTermLabel).join(", ")}`
-    );
-  }
-  issues.push(...avoidIssues(src, cand, rules));
-  const sourceText = `${src.title}\n${src.summary}`;
-  const viText = `${cand.title}\n${cand.summary}`;
-  issues.push(...calqueIssues(sourceText, viText));
-  issues.push(...magnitudeIssues(sourceText, viText));
-  issues.push(...versionIssues(src, cand));
-  issues.push(...glossIssues(viText));
-  issues.push(...stutterIssues(viText));
-  if (isTitleCaseVi(cand.title, src.title)) {
-    issues.push(
-      "the title is in Title Case; use Vietnamese sentence case (capitalize only the first word and proper names)"
-    );
-  }
-  if (
-    !titlesOnly &&
-    src.summary.length >= MIN_SOURCE_CHARS_FOR_RATIO &&
-    cand.summary.length / src.summary.length < MIN_VI_EN_LENGTH_RATIO
-  ) {
-    issues.push(
-      `the summary is ${Math.round((cand.summary.length / src.summary.length) * 100)}% of the source length; translate every sentence, do not condense`
-    );
-  }
-  return issues;
+  return Object.values(
+    draftIssuesByCheck(source, candidate, rules, titlesOnly)
+  ).flat();
 }
 
 /** Issues in one Vietnamese TL;DR bullet against the items it cites. A
