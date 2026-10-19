@@ -31,6 +31,7 @@ export interface RunStepInfo {
  *  stay in step. */
 export type SourceSkipReason =
   | "fetch_failed"
+  | "blocked"
   | "parse_failed"
   | "empty"
   | "all_rejected_below_relevance"
@@ -38,6 +39,7 @@ export type SourceSkipReason =
 
 export const SOURCE_SKIP_REASONS: readonly SourceSkipReason[] = [
   "fetch_failed",
+  "blocked",
   "parse_failed",
   "empty",
   "all_rejected_below_relevance",

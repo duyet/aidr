@@ -308,6 +308,7 @@ describe("fetch-failure streak", () => {
   it("advances only on fetch_failed and resets on anything else", () => {
     expect(nextFailedRuns(0, "fetch_failed")).toBe(1);
     expect(nextFailedRuns(47, "fetch_failed")).toBe(48);
+    expect(nextFailedRuns(2, "blocked")).toBe(3);
     expect(nextFailedRuns(47, "parse_failed")).toBe(0);
     expect(nextFailedRuns(47, "empty")).toBe(0);
     expect(nextFailedRuns(47, "")).toBe(0);

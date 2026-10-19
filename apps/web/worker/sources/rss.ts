@@ -6,6 +6,7 @@ import {
   primaryThumbnailUrl,
 } from "../media.js";
 import { lastSentenceEnd } from "../sentences.js";
+import { blockedBy } from "./block.js";
 import { isEventPromo } from "./event-promo.js";
 import { parseFeedDate, parseUtcOffset } from "./feed-date.js";
 import { KEYWORD_FILTERS } from "./keywords.js";
@@ -31,10 +32,12 @@ import type { FetchedItem, SourceAdapter, SourceLanguage } from "./types.js";
  * quietly become an HTML error page is visible on the dashboard the next hour
  * instead of after a week of silence.
  */
-export class SourceFetchError extends Error {
-  readonly reason: "fetch_failed" | "parse_failed";
+export type SourceFailureReason = "fetch_failed" | "parse_failed" | "blocked";
 
-  constructor(reason: "fetch_failed" | "parse_failed", message: string) {
+export class SourceFetchError extends Error {
+  readonly reason: SourceFailureReason;
+
+  constructor(reason: SourceFailureReason, message: string) {
     super(message);
     this.name = "SourceFetchError";
     this.reason = reason;
@@ -46,16 +49,23 @@ export class SourceFetchError extends Error {
  * the thrown error, so the catch receives a plain object: `instanceof
  * SourceFetchError` is false and only `.message` survives
  * (`SourceFetchError: <message>`, same read as `interruptionText`).
- * The HTML-document message is `parse_failed`; an HTTP status or any other
+ * The HTML-document message is `parse_failed`; a message ending
+ * `(blocked: …)` is `blocked`; an HTTP status or any other
  * `SourceFetchError` message is `fetch_failed`.
  */
 export function sourceFetchFailureReason(
   error: unknown
-): "fetch_failed" | "parse_failed" | null {
+): SourceFailureReason | null {
   if (error instanceof SourceFetchError) return error.reason;
   const reason = (error as { reason?: unknown } | null)?.reason;
-  if (reason === "fetch_failed" || reason === "parse_failed") return reason;
+  if (
+    reason === "fetch_failed" ||
+    reason === "parse_failed" ||
+    reason === "blocked"
+  )
+    return reason;
   const text = interruptionText(error);
+  if (/\(blocked: [^)]+\)/.test(text)) return "blocked";
   if (text.includes("rss feed returned an HTML document"))
     return "parse_failed";
   if (
@@ -434,27 +444,37 @@ export const rssAdapter: SourceAdapter = {
       );
     }
     if (!res.ok) {
+      const blocked = blockedBy(res.status, res.headers);
       throw new SourceFetchError(
-        "fetch_failed",
-        `rss feed returned ${res.status}`
+        blocked ? "blocked" : "fetch_failed",
+        `rss feed returned ${res.status}${blocked ? ` (blocked: ${blocked})` : ""}`
       );
     }
     const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
     const xml = await res.text();
     // A 200 that is really an HTML error/challenge page is the most common
-    // way a feed rots silently. Treat it as unparseable rather than empty so
-    // the dashboard says why.
+    // way a feed rots silently. A challenge page is the host refusing the
+    // Worker (`blocked`); any other HTML is unparseable. Either way it is not
+    // an empty feed, so the dashboard says why.
     if (contentType.includes("text/html") && !/<(?:item|entry)\b/i.test(xml)) {
+      const blocked = blockedBy(res.status, res.headers, xml);
+      if (blocked)
+        throw new SourceFetchError(
+          "blocked",
+          `rss feed returned an HTML document (blocked: ${blocked})`
+        );
       throw new SourceFetchError(
         "parse_failed",
         "rss feed returned an HTML document"
       );
     }
     const sinceMs = sinceEpochSec * 1000;
-    const inWindow = parseRssItems(xml, {
-      utcOffsetMinutes: parseUtcOffset(config.timezone),
-    }).filter(
-      (item) => Number.isFinite(item.publishedAt) && item.publishedAt >= sinceMs
+    const inWindow = inSinceWindow(
+      parseRssItems(xml, {
+        utcOffsetMinutes: parseUtcOffset(config.timezone),
+      }),
+      sinceMs,
+      Date.now()
     );
     const sourceLang = sourceLangOf(config);
     return applyFloodGate(inWindow, config).map((item) => ({
@@ -463,6 +483,36 @@ export const rssAdapter: SourceAdapter = {
     }));
   },
 };
+
+/** Items kept from a feed that carries no dates at all. Such a feed lists the
+ *  newest first; the dedupe pass drops what an earlier run already stored. */
+export const UNDATED_FEED_MAX_ITEMS = 3;
+
+/**
+ * Items inside the since-window. In a feed where some items have a date, an
+ * undated item has an unknown age and is dropped. A feed where no item has one
+ * used to lose every item, which silenced developers.googleblog.com/rss/ (20
+ * items, no date tag, 0 ingested for 13 days while the source read as
+ * healthy). Its first `UNDATED_FEED_MAX_ITEMS` take `nowMs`.
+ */
+export function inSinceWindow(
+  items: FetchedItem[],
+  sinceMs: number,
+  nowMs: number
+): FetchedItem[] {
+  if (items.length > 0 && items.every((i) => !Number.isFinite(i.publishedAt)))
+    return items.slice(0, UNDATED_FEED_MAX_ITEMS).map((item) => ({
+      ...item,
+      publishedAt: nowMs,
+      sources: item.sources?.map((s) => ({
+        ...s,
+        postedAt: Math.floor(nowMs / 1000),
+      })),
+    }));
+  return items.filter(
+    (item) => Number.isFinite(item.publishedAt) && item.publishedAt >= sinceMs
+  );
+}
 
 /** Only the two languages the pipeline can actually score and translate.
  *  Anything else is ignored rather than trusted — a typo in a config must

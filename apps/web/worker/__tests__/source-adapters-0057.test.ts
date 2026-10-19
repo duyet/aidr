@@ -105,14 +105,21 @@ describe("githubreleases", () => {
     expect(items[0].title).toBe("Ollama v0.41.0");
   });
 
-  it("throws fetch_failed on a rate-limit 403", async () => {
+  it("throws blocked on a rate-limit 403", async () => {
     stubFetch("rate limited", { status: 403 });
     await expect(
       githubReleasesAdapter.fetchItems({ repo: "ollama/ollama" }, 0)
     ).rejects.toMatchObject({
       name: "SourceFetchError",
-      reason: "fetch_failed",
+      reason: "blocked",
     });
+  });
+
+  it("throws fetch_failed on a 500", async () => {
+    stubFetch("oops", { status: 500 });
+    await expect(
+      githubReleasesAdapter.fetchItems({ repo: "ollama/ollama" }, 0)
+    ).rejects.toMatchObject({ reason: "fetch_failed" });
   });
 
   it("rejects a repo that is not owner/name before any request", async () => {

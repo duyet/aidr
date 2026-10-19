@@ -18,6 +18,7 @@ import { TAB_PANEL } from "./tab-spacing";
 
 const SKIP_REASON_TEXT: Record<string, string> = {
   fetch_failed: "fetch failed",
+  blocked: "blocked by the host",
   parse_failed: "feed unparseable",
   empty: "no items in window",
   all_rejected_below_relevance: "all rejected below relevance",

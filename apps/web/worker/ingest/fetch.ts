@@ -4,6 +4,7 @@ import { emptySourceHealth, type SourceRunHealth } from "../source-health.js";
 import { adapters } from "../sources/registry.js";
 import {
   describeFetchError,
+  type SourceFailureReason,
   sourceFetchFailureReason,
 } from "../sources/rss.js";
 import { ensureVendorBlogSources } from "../sources/seed.js";
@@ -18,7 +19,7 @@ import {
 /** Sources fetched in parallel per group; bounds concurrent subrequests. */
 export const SOURCE_FETCH_GROUP = 4;
 
-export type FetchFailureReason = "fetch_failed" | "parse_failed";
+export type FetchFailureReason = SourceFailureReason;
 
 export interface FetchedSource {
   source: SourceRow;

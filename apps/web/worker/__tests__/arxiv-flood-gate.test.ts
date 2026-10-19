@@ -241,10 +241,17 @@ describe("flood gate ordering", () => {
 
 describe("rss fetch failures are visible", () => {
   it("throws a typed fetch_failed for a non-2xx", async () => {
-    stubFeed("nope", 403);
+    stubFeed("nope", 500);
     await expect(
       rssAdapter.fetchItems(ARXIV_CONFIG, SINCE)
     ).rejects.toMatchObject({ reason: "fetch_failed" });
+  });
+
+  it("throws a typed blocked for a 403, which is the host refusing the Worker", async () => {
+    stubFeed("nope", 403);
+    await expect(
+      rssAdapter.fetchItems(ARXIV_CONFIG, SINCE)
+    ).rejects.toMatchObject({ reason: "blocked" });
   });
 
   it("throws a typed parse_failed for a 200 that is really an HTML page", async () => {

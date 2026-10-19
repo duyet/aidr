@@ -383,6 +383,7 @@ describe("skip-reason enum", () => {
   it("covers exactly the reasons #230 asked for", () => {
     expect([...SOURCE_SKIP_REASONS].sort()).toEqual([
       "all_rejected_below_relevance",
+      "blocked",
       "disabled",
       "empty",
       "fetch_failed",
