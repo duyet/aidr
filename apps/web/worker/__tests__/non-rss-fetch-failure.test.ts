@@ -11,6 +11,7 @@ import { huggingNewsAdapter } from "../sources/huggingnews.js";
 import { lobstersAdapter } from "../sources/lobsters.js";
 import { marketBriefAdapter } from "../sources/marketbrief.js";
 import { openRouterAdapter } from "../sources/openrouter.js";
+import { describeFetchError } from "../sources/rss.js";
 import type { SourceAdapter } from "../sources/types.js";
 import { xaiAdapter } from "../sources/xai.js";
 
@@ -100,6 +101,57 @@ describe("non-RSS non-2xx is fetch_failed, not an empty feed", () => {
     expect(fetchFailures.get("hn")).toBe("fetch_failed");
     expect(sourceHealth.hn.skipReason).toBe("fetch_failed");
     expect(sourceHealth.hn.fetched).toBe(0);
+  });
+
+  it("logs the cause of a failed fetch step, from the structured-cloned error", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("nope", { status: 503 }))
+    );
+    const plainObjectStep = {
+      do: async (
+        _name: string,
+        _options: unknown,
+        callback: () => Promise<unknown>
+      ) => {
+        try {
+          return await callback();
+        } catch (error) {
+          const { name, message } = error as Error;
+          throw { name, message };
+        }
+      },
+    } as unknown as WorkflowStep;
+    const ctx = {
+      step: plainObjectStep,
+      env: {},
+      runId: "fetch-log",
+      steps: [],
+      mode: { dryRun: true, steps: null },
+    } as unknown as IngestContext;
+
+    await fetchSources(
+      ctx,
+      [source("hn", "hn")],
+      { hn: emptySourceHealth() },
+      {}
+    );
+
+    expect(errorLog).toHaveBeenCalledWith(
+      "fetch-hn step failed:",
+      expect.stringMatching(/^SourceFetchError: .*503/)
+    );
+  });
+
+  it("describeFetchError keeps the cause and drops URL query strings", () => {
+    expect(
+      describeFetchError({
+        name: "TypeError",
+        message: "fetch to https://x.test/a/b?token=abc#frag failed",
+      })
+    ).toBe("TypeError: fetch to https://x.test/a/b failed");
+    expect(describeFetchError("boom")).toBe("Error: boom");
   });
 
   it("keeps a real empty 200 as empty", async () => {
