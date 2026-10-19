@@ -300,7 +300,7 @@ export async function waitForReel({
  * Upload and publish one Reel. `onVideoId(id)` runs right after `start` so the caller can save it:
  * a rerun with `resumeVideoId` only polls status, it never starts a second session for the same post.
  */
-export async function postReel({
+async function runReel({
   file,
   description,
   pageId,
@@ -412,6 +412,34 @@ export async function postReel({
   return { videoId, status };
 }
 
+/**
+ * `runReel`, plus one fallback: Graph answers code 100 ("object does not exist
+ * or missing permissions") for a Reel's status read even after the Reel is
+ * public (10-19: the Reel was on the Page, the job failed, and every rerun
+ * polled the same unreadable id). The Page's own Reel list is the truth the
+ * dedupe already trusts, so a Reel whose description holds `marker` counts as
+ * posted. Without a marker, or with no such Reel, the error stands.
+ */
+export async function postReel({ marker, ...args }) {
+  try {
+    return await runReel(args);
+  } catch (e) {
+    if (e.code !== 100 || !marker) throw e;
+    const found = await findReel({
+      pageId: args.pageId,
+      token: args.token,
+      version: args.version,
+      fetchImpl: args.fetchImpl,
+      marker,
+    });
+    if (!found) throw e;
+    console.warn(
+      `! ${e.message}; reel ${found.id} is on the Page, counting it as posted`
+    );
+    return { videoId: found.id, status: null, listed: true };
+  }
+}
+
 /** Gate a Reel file: problems from ffprobe + caption lint. */
 export function reelProblems(file, description) {
   return [
@@ -476,6 +504,7 @@ if (resolve(process.argv[1] ?? "") === import.meta.filename) {
     ...cfg,
     file: copy,
     description,
+    marker,
     onVideoId: (id) => console.log(`  video_id ${id}`),
   });
   console.log(`✓ reel ${out.videoId} published\nID=${out.videoId}`);
