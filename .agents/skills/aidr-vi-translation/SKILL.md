@@ -48,7 +48,9 @@ Change the smallest of these, then the test that locks it:
 | Voice, examples, calques | `VI_STYLE` in `llm.ts` | `llm.test.ts` |
 | The short card the model sees | `RULES_OVERVIEW` in `llm.ts` | the exact-string assertion in `llm.test.ts` |
 | A term that must survive in English | `translation-terms.ts` | `translation-terms.test.ts` |
-| What counts as a bad draft (calque, magnitude, gloss, Title Case, doubled word, length) | `translation-draft-check.ts` | `translation-draft-check.test.ts` |
+| What counts as a bad draft (calque, magnitude, gloss, Title Case, doubled word, garbled word, decimal point, `$` figure, English headline, length) | `translation-draft-check.ts`, `vi-syllable.ts` | `translation-draft-check.test.ts`, `vi-syllable.test.ts` |
+
+Before a new check ships, count what it would send back for repair: `pnpm exec tsx scripts/vi-audit.ts --days 7` (from `apps/web`, read-only D1) prints rows per check.
 | How TL;DR VI bullets relate to the EN ones | `tldrPrompt` in `llm.ts` | `llm.test.ts` |
 | Which model translates | `wrangler.toml` chains, locked by `schedule.test.ts` | probe first |
 
@@ -87,8 +89,8 @@ Do not rewrite stored production translations or write production D1 unless the 
 ## Verify
 
 ```bash
-pnpm --filter @aidr/web exec vitest run worker/__tests__/llm.test.ts worker/__tests__/translation-terms.test.ts worker/__tests__/translation-draft-check.test.ts
-pnpm exec biome check apps/web/worker/llm.ts apps/web/worker/translation-terms.ts apps/web/worker/translation-draft-check.ts
+pnpm --filter @aidr/web exec vitest run worker/__tests__/llm.test.ts worker/__tests__/translation-terms.test.ts worker/__tests__/translation-draft-check.test.ts worker/__tests__/vi-syllable.test.ts
+pnpm exec biome check apps/web/worker/llm.ts apps/web/worker/translation-terms.ts apps/web/worker/translation-draft-check.ts apps/web/worker/vi-syllable.ts
 ```
 
 Run `schedule.test.ts` as well when the model chain changes. Do not run the full `@aidr/web` suite. Do not `wrangler deploy`. A push to `master` deploys.
