@@ -938,3 +938,39 @@ describe("translationDraftIssues number format", () => {
     ).toEqual([]);
   });
 });
+
+describe("translationDraftIssues English headline", () => {
+  it("flags a headline sentence returned in English", () => {
+    // Prod 0dd91801: the summary is Vietnamese, the title is not.
+    expect(
+      translationDraftIssues(
+        {
+          title: "Meta shakes up the frontiers, open and closed",
+          summary: "US open weights are back!",
+        },
+        {
+          title: "Meta shakes up the frontiers, open and closed",
+          summary: "Các mô hình open-weight của Mỹ đã trở lại!",
+        },
+        [],
+        false
+      )
+    ).toEqual([
+      "the title is still the English headline; write it in Vietnamese and keep only names in English",
+    ]);
+  });
+
+  it("passes a release or product name kept as the title", () => {
+    // Prod f1cb07a7 and 83a753b4, rated 5/4 and 4/3.
+    for (const title of ["DeepSeek V4.1 Flash 1017 (Max)", "vLLM v0.32.0"]) {
+      expect(
+        translationDraftIssues(
+          { title, summary: "" },
+          { title, summary: "" },
+          [],
+          true
+        )
+      ).toEqual([]);
+    }
+  });
+});

@@ -38,24 +38,63 @@ function wordCount(text: string): number {
   return text.split(/\s+/).filter((word) => /\p{L}/u.test(word)).length;
 }
 
+/** English function words, a closed class. A product or release name has
+ * none ("vLLM v0.32.0", "Chirp Pong"); a headline sentence has several. */
+const ENGLISH_FUNCTION_WORDS = new Set(
+  (
+    "a an the and or but nor so yet of to in on at by for with from into onto over under about after before " +
+    "between through during without within against toward towards than as via up out off " +
+    "is are was were be been being has have had do does did will would can could may might must shall should " +
+    "it its they their them we our us you your he his him she her i my me this that these those " +
+    "who whom whose which what when where why how while if because not no"
+  ).split(" ")
+);
+const MIN_ECHO_TITLE_FUNCTION_WORDS = 2;
+
+const normalizedTitle = (title: string) =>
+  title.normalize("NFC").replace(/\s+/g, " ").trim().toLowerCase();
+
+/** The draft kept the English headline word for word, and that headline
+ * is a sentence, not a name: it has at least two English function words. */
+function isEnglishTitleEcho(sourceTitle: string, viTitle: string): boolean {
+  if (
+    !viTitle.trim() ||
+    normalizedTitle(viTitle) !== normalizedTitle(sourceTitle)
+  )
+    return false;
+  const words = sourceTitle.toLowerCase().match(/[a-z]+(?:['’][a-z]+)?/g) ?? [];
+  return (
+    words.filter((word) => ENGLISH_FUNCTION_WORDS.has(word)).length >=
+    MIN_ECHO_TITLE_FUNCTION_WORDS
+  );
+}
+
 /** The draft returned the English instead of translating it: a prose
  * summary with no Vietnamese diacritics, the same test the English-in-VI
- * alert counts (translation-english.ts). A title alone is never judged:
- * the prompt keeps paper titles and product names in English. When the
+ * alert counts (translation-english.ts), or the English headline unchanged.
+ * A headline that is only a name ("llm-echo 0.5") is not judged. When the
  * title is English too, the issue names it, because the repair fixes only
  * what the issue lists. */
 function englishEchoIssues(
   source: TranslationText,
   candidate: TranslationText
 ): string[] {
-  if (wordCount(source.summary) < MIN_ECHO_SOURCE_WORDS) return [];
-  if (!candidate.summary.trim() || looksVietnamese(candidate.summary))
-    return [];
-  return [
-    looksVietnamese(candidate.title)
-      ? "the summary is still English; translate it into Vietnamese"
-      : "the title and summary are still the English source; translate both into Vietnamese",
-  ];
+  if (
+    wordCount(source.summary) >= MIN_ECHO_SOURCE_WORDS &&
+    candidate.summary.trim() &&
+    !looksVietnamese(candidate.summary)
+  ) {
+    return [
+      looksVietnamese(candidate.title)
+        ? "the summary is still English; translate it into Vietnamese"
+        : "the title and summary are still the English source; translate both into Vietnamese",
+    ];
+  }
+  return isEnglishTitleEcho(source.title, candidate.title)
+    ? [
+        "the title is still the English headline; write it in Vietnamese and keep only names in English",
+      ]
+    : [];
 }
 
 function pairOf(source: TranslationText, candidate: TranslationText) {
