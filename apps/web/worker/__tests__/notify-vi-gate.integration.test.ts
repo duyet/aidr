@@ -329,4 +329,35 @@ describe("Vietnamese trending gate", () => {
 
     expect(trendingPosts("telegram")).toEqual([CLEAN.id]);
   });
+
+  it("withholds a teaser with no clean rewrite and posts the next story", async () => {
+    // The model is unreachable here, so the teaser gets no rewrite.
+    const teaser = {
+      ...CLEAN,
+      id: "teaser",
+      rank: 11,
+      summaryVi:
+        "Các nhà phân tích cho rằng chi phí điện cho AI đang tăng nhanh tại nhiều bang, điều mà nhiều công ty Mỹ...",
+    };
+    addStory(teaser);
+    addStory({ ...CLEAN, id: "next", rank: 10 });
+
+    const report = await dispatchStoryNotifications(env);
+
+    expect(trendingPosts("telegram")).toEqual(["next"]);
+    expect(viText()).not.toContain("nhiều công ty Mỹ...");
+    expect(report.reasons.telegram?.trending).toBe("sent");
+    expect(
+      sqlite
+        .prepare(
+          "SELECT status, attempts, last_error FROM notifications WHERE channel = 'telegram' AND item_id = 'teaser'"
+        )
+        .get()
+    ).toEqual({
+      status: "failed",
+      attempts: 1,
+      last_error:
+        "withheld: the summary reads as source copy and has no clean rewrite",
+    });
+  });
 });

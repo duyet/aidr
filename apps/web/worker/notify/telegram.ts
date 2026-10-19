@@ -18,7 +18,7 @@ import { escapeHtml } from "./alert.js";
 import { digestPage } from "./day-card.js";
 import { fitText, fitWords } from "./fit-text.js";
 import { withoutRestatedHeadline } from "./headline-repeat.js";
-import { captionSummaryFor } from "./story-summary.js";
+import { captionSummaryFor, readsAsSourceCopy } from "./story-summary.js";
 import {
   checkTelegramMedia,
   imageVerdict,
@@ -850,6 +850,18 @@ function telegramChannel(options: {
         payload,
         storySummaryBudget(payload, albumLinkReserve(payload.lang))
       );
+      if (
+        !caption_summary &&
+        payload.lang === "vi" &&
+        readsAsSourceCopy(payload.summary ?? "", "vi")
+      ) {
+        return {
+          ok: false,
+          withheld: true,
+          error:
+            "withheld: the summary reads as source copy and has no clean rewrite",
+        };
+      }
       const story = caption_summary ? { ...payload, caption_summary } : payload;
       const caption = buildStoryCaption(story);
       const replyMarkup = buildStoryReplyMarkup(story);

@@ -337,6 +337,7 @@ export type ChannelCopy<T extends ChannelCopyRow> = Omit<
   title: string;
   summary: string | null;
   lang: Lang;
+  translation_source?: StoryPayload["translation_source"];
 };
 
 /**
@@ -429,6 +430,7 @@ function postableCopy<T extends ChannelCopyRow>(
     // The translation is of the raw upstream summary, so a Techmeme byline
     // comes with it. The English channel reads the cleaned `summary_en`.
     if (copy.summary) copy.summary = stripLeadingByline(copy.summary);
+    copy.translation_source = gate.source;
   }
   const verdict = postability(copy);
   return verdict.ok ? { ok: true, copy } : verdict;
@@ -797,7 +799,9 @@ export async function sendDigestHighlight(
     return { skipped: pick };
   }
   await recordDelivery(env, notifier.id, target, key, result);
-  if (!result.ok && !result.budgetExhausted) {
+  if (result.withheld) {
+    console.warn(`notify(${notifier.id}) highlight ${result.error}`);
+  } else if (!result.ok && !result.budgetExhausted) {
     const message = `${notifier.id} highlight ${failureLabel(result)}: ${result.error ?? "unknown"}`;
     console.error(`notify(${message})`);
     if (pick) {
@@ -1245,7 +1249,10 @@ export async function dispatchStoryNotifications(
       if (afterQuery) {
         trendingReason = afterQuery;
       } else {
-        for (const story of candidates.slice(0, budget)) {
+        // A withheld story posted nothing, so its slot goes to the next one.
+        let slots = budget;
+        for (const story of candidates) {
+          if (slots === 0) break;
           if (budgetSpent) {
             trendingReason = "send_failed";
             break;
@@ -1253,11 +1260,21 @@ export async function dispatchStoryNotifications(
           if (!(await claimDelivery(env, notifier.id, target, story.id))) {
             // Another dispatch claimed this story first.
             trendingReason = "none_unposted";
+            slots--;
             continue;
           }
           const result = await attemptSend(() =>
             notifier.sendStory(env, story)
           );
+          if (result.withheld) {
+            trendingReason = "none_unposted";
+            console.warn(
+              `notify(${notifier.id}) trending ${story.id} ${result.error}`
+            );
+            await recordDelivery(env, notifier.id, target, story.id, result);
+            continue;
+          }
+          slots--;
           if (result.budgetExhausted) {
             budgetSpent = true;
             trendingReason = "send_failed";

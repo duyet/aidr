@@ -1,5 +1,6 @@
 import type { Lang } from "../../src/lib/types.js";
 import type { MediaManifest } from "../media.js";
+import type { TranslationText } from "../translation-review.js";
 import type { Env } from "../types.js";
 
 /** A trending story posted individually. Title and summary are already
@@ -14,6 +15,9 @@ export interface StoryPayload {
    *  stored in `notify_summaries`. Set at send time, never read from D1 rows
    *  of another language. */
   caption_summary?: string | null;
+  /** Vietnamese channel only: the English the translation was made from
+   *  (`sentSource`), so a caption rewrite gets the same draft check. */
+  translation_source?: TranslationText;
   image_url: string | null;
   /** Typed candidates. Image URLs (and video posters) ride a Telegram album
    * when there is more than one. Video files stay deferred. */
@@ -65,6 +69,13 @@ export interface SendResult {
    *  instance spent its subrequest budget earlier in the run. Nothing left
    *  the isolate, so it is safe to send again, and it costs no attempt. */
   budgetExhausted?: boolean;
+  /** Set when the story was not sent because its copy failed a check that
+   *  only runs at send time (a Vietnamese summary that reads as source copy
+   *  and has no clean rewrite). Nothing left the isolate. It is not a
+   *  delivery failure: no owner alert, and trending tries its next story.
+   *  The attempt still counts, so a story is withheld at most
+   *  NOTIFY_MAX_ATTEMPTS times. */
+  withheld?: boolean;
 }
 
 /** The runtime's error when a Worker or Workflow instance is out of
