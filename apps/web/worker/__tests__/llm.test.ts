@@ -40,6 +40,7 @@ import {
 } from "../llm.js";
 import { servedByJev } from "../systemone.js";
 import { providerErrorSnippet, sanitizeError } from "../telemetry-safe.js";
+import { tldrBulletIssues } from "../translation-draft-check.js";
 import type { Env } from "../types.js";
 import { API_KEY, fakeSkKey } from "./fake-secrets.js";
 
@@ -2377,6 +2378,27 @@ describe("VI_STYLE", () => {
     expect(VI_STYLE).toContain("robot hình người");
     expect(VI_STYLE).toContain('bàn tay khéo léo" ✓');
     expect(VI_STYLE).toContain('"cải thiện tính tổng quát của ICL" ✓');
+  });
+
+  // The prompt and the draft gate must agree: each example's bad line is
+  // what the gate flags, and its good line passes.
+  it("shows AI-term calques the draft gate flags, with fixes it passes", () => {
+    for (const en of [
+      "visual reasoning over images",
+      "a multimodal decision model",
+      "generative models",
+      "frontier AI models",
+      "Local AI Models",
+      "an automated pipeline",
+    ]) {
+      const line = VI_STYLE.split("\n").find((l) => l.startsWith(`- "${en}"`));
+      const [, bad, good] = line?.match(/→ "([^"]+)" ✗ → "([^"]+)" ✓$/) ?? [];
+      expect([en, tldrBulletIssues(en, bad ?? "", []).length > 0]).toEqual([
+        en,
+        true,
+      ]);
+      expect([en, tldrBulletIssues(en, good ?? "", [])]).toEqual([en, []]);
+    }
   });
 
   it("covers over-formal Sino-Vietnamese, passive voice, and sentence-splitting failure modes", () => {
