@@ -766,6 +766,26 @@ ORDER BY week DESC, hits DESC
   longest closed run over 2026-10-14 to 10-17 took 17 minutes. Recovery
   stays with the GitHub Actions watchdog (Scheduling & coalesce); the
   report only makes a stuck run visible.
+- Source fetch failing (`worker/health.ts`, same step, no model call):
+  `fetch-<id> step failed` is one line per failed source step, carrying the
+  error name and message with URL query strings dropped
+  (`describeFetchError`, not `sanitizeError`, which turns every non-LLM
+  message into "Provider request failed"). A source whose
+  `sourceHealth.failedRuns` reaches 3 (its fetch step failed in 3 runs in a
+  row, this one included) raises `source-failing:<id>` (warning, kind
+  `health`, so Bugsink triage treats it as worker-owned). The 6h cooldown
+  applies, so one source reports at most 4 times a day. The streak is the one
+  the dashboard's 48-run `failing` flag reads; only the threshold differs.
+  Baseline, Workers Logs 2026-10-19, per 24h (48 runs): the four `release-*`
+  rows each failed 6 to 15 runs; `cloudflare-blog`, `hf-papers`, `hf-blog`,
+  `genk-ai` and `hf-models-*` a few. False positives, an estimate that
+  assumes failures are independent (clustering would make it worse): at 6 of
+  48 runs a source completes a 3-run streak about 0.08 times a day, at 15 of
+  48 about once a day. So until the release rows stop failing, the worst one
+  can alert roughly daily; a few failures a day on the other sources almost
+  never do. A source that fails once and recovers never alerts. Disabled and
+  `push` rows hold `failedRuns` at 0. A run that ended before its fetch
+  outcome settled passes no source health and raises nothing.
 - Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
   `TELEGRAM_OWNER_CHAT_ID` DMs each freshly fired alert (same 6h cooldown)
   with evidence and the run link, plus one daily summary in the first run
@@ -890,7 +910,13 @@ Decisions behind the table:
   `"<project> <tag>"` (a bare tag gives the scorer nothing); the body is the
   summary. llama.cpp is not added (its tags are build numbers such as
   `b11552`, so no minor release can be told apart) and neither is Claude Code
-  (`2.1.N`, a minor bump almost never happens).
+  (`2.1.N`, a minor bump almost never happens). The four `release-*` rows
+  (vllm, transformers, ollama, codex) logged `fetch-<id> step failed` 6 to 15
+  times each in 24h (Workers Logs, 2026-10-19). The likely cause is the
+  unauthenticated API limit (60 requests an hour per egress IP) because
+  `GITHUB_ALERT_TOKEN` is not set on the Worker. That is unverified: the old
+  log line kept no error text. The line now carries it; a `returned 403` or
+  `returned 429` there confirms it, and setting the token fixes it.
 - **Shared hosts.** `sourceSpecForUrl` maps a link to the registry row whose
   `homepage` or `feed` host serves it. The github, huggingface and openrouter
   rows therefore carry no `feed` or `homepage` (they use `repo`, `author`),
