@@ -495,12 +495,17 @@ describe("a Vietnamese story against an English one on the Vietnamese channel", 
   const youtuberViEnglish =
     "YouTuber says Meta's AI assistant leaked his home address to a stranger";
 
+  /** A Vietnamese row needs Vietnamese text: an English summary under a
+   *  Vietnamese title is an untranslated draft the channel refuses. */
+  const SUMMARY_VI =
+    "Báo cáo cho biết hai công ty đang đàm phán ở giai đoạn đầu, và thỏa thuận có thể đạt được trong vài tuần nếu cơ quan quản lý không phản đối.";
+
   function translate(itemId: string, lang: "en" | "vi", title: string) {
     sqlite
       .prepare(
         "INSERT INTO translations (item_id, lang, title, summary) VALUES (?, ?, ?, ?)"
       )
-      .run(itemId, lang, title, SUMMARY);
+      .run(itemId, lang, title, lang === "vi" ? SUMMARY_VI : SUMMARY);
   }
 
   function postedOnTelegram(itemId: string) {

@@ -189,6 +189,11 @@ describe("notifications delivery idempotency", () => {
         CREATE TABLE translations (
           item_id TEXT, lang TEXT, title TEXT, summary TEXT
         );
+        CREATE TABLE translation_review_state (
+          item_id TEXT, lang TEXT, source_revision INTEGER,
+          candidate_title TEXT, candidate_summary TEXT,
+          terminal INTEGER, decision TEXT
+        );
       `);
       const now = Date.now();
       const insert = s.sqlite.prepare(
