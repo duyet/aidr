@@ -20,6 +20,7 @@ import {
   mentionsModelFamily,
   missingProtectedTerms,
 } from "./translation-terms.js";
+import { garbledWords } from "./vi-syllable.js";
 
 /** Below this the source is too short for a length ratio to mean much. */
 const MIN_SOURCE_CHARS_FOR_RATIO = 200;
@@ -391,6 +392,17 @@ function stutterIssues(viText: string): string[] {
   return issues;
 }
 
+/** "vượ quá", "nền tảp", "t合成": words no Vietnamese spelling allows. A
+ * near miss built from real syllables ("rời rạp", "sụp đảo") passes. */
+function garbleIssues(sourceText: string, viText: string): string[] {
+  const words = garbledWords(viText, sourceText);
+  return words.length === 0
+    ? []
+    : [
+        `${words.map((word) => `"${word}"`).join(", ")} ${words.length === 1 ? "is not a Vietnamese word" : "are not Vietnamese words"}; fix the spelling`,
+      ];
+}
+
 const VI_WORD_RE = /[\p{L}\p{M}][\p{L}\p{M}\p{N}'’-]*/gu;
 const NON_ASCII_RE = /\P{ASCII}/u;
 
@@ -428,6 +440,7 @@ export type DraftCheck =
   | "version"
   | "gloss"
   | "stutter"
+  | "garble"
   | "titleCase"
   | "length";
 
@@ -458,6 +471,7 @@ export function draftIssuesByCheck(
     version: versionIssues(src, cand),
     gloss: glossIssues(viText),
     stutter: stutterIssues(viText),
+    garble: garbleIssues(sourceText, viText),
     titleCase: isTitleCaseVi(cand.title, src.title)
       ? [
           "the title is in Title Case; use Vietnamese sentence case (capitalize only the first word and proper names)",

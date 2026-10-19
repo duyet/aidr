@@ -202,7 +202,7 @@ Write only Vietnamese plus the English terms the rules above keep. Never a word 
 - "senators" → "các senators" ✗ → "các thượng nghị sĩ" ✓
 - "AI-powered chip design tools" → "công cụ thiết kế chip AI-powered" ✗ → "công cụ thiết kế chip dùng AI" ✓
 
-Proofread every Vietnamese word: no misspelled or invented words ("thỏa thúc", "công tắt", "địch chính trị" for "địa chính trị", "gây trái"), no word written twice ("thỏa thỏa thuận", "285 triệu triệu USD"), and no English words left half-translated.
+Proofread every Vietnamese word: no misspelled or invented words ("thỏa thúc", "công tắt", "địch chính trị" for "địa chính trị", "gây trái", "vượ quá" for "vượt quá", "nền tảp" for "nền tảng"), no Chinese character ("đối tác chiến略" for "đối tác chiến lược"), no word written twice ("thỏa thỏa thuận", "285 triệu triệu USD"), and no English words left half-translated.
 
 Titles: concise headline style, viết hoa chữ cái đầu câu như báo chí Việt Nam, never ALL CAPS.
 Summaries: complete, natural sentences.`;

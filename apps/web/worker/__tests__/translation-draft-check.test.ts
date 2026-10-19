@@ -814,3 +814,56 @@ describe("translationDraftIssues robotics calques", () => {
     ).toEqual([]);
   });
 });
+
+// Real lines from 400 stored rows of 2026-10-12..19 that four raters read.
+describe("translationDraftIssues garbled words", () => {
+  const item = (en: string, vi: string) =>
+    translationDraftIssues(
+      { title: "", summary: en },
+      { title: "", summary: vi },
+      [],
+      false
+    );
+
+  it("flags a word no Vietnamese spelling allows", () => {
+    // Prod e64024cc, 4756ce2b.
+    expect(
+      item(
+        "Harvey plans to integrate the capability into its platform.",
+        "Harvey dự định tích hợp khả năng này vào nền tảp của công ty."
+      )
+    ).toEqual(['"tảp" is not a Vietnamese word; fix the spelling']);
+    expect(
+      item(
+        "but try putting that doubt aside.",
+        "nhưng hãy thử đặặt nghi ngờ sang một bên."
+      )
+    ).toEqual(['"đặặt" is not a Vietnamese word; fix the spelling']);
+  });
+
+  it("flags a Chinese character inside a Vietnamese word", () => {
+    // Prod a8f3f9ff.
+    expect(
+      item(
+        "This expansion includes a strategic partnership with Mistral AI.",
+        "Sự mở rộng này bao gồm một đối tác chiến略 với Mistral AI."
+      )
+    ).toEqual(['"chiến略" is not a Vietnamese word; fix the spelling']);
+  });
+
+  it("passes loanwords, acronyms, and names the source writes", () => {
+    // Prod a583c383, rated 4/3: "nơron" is a standard spelling.
+    expect(
+      item(
+        "Neural networks may be much easier to read than researchers assumed.",
+        "Mạng nơron có thể dễ đọc hơn so với các nhà nghiên cứu từng nghĩ."
+      )
+    ).toEqual([]);
+    expect(
+      item(
+        "Nvidia's chief met President Emmanuel Macron at the Élysée Palace. The board approved it.",
+        "CEO Nvidia gặp Tổng thống Emmanuel Macron tại điện Élysée. HĐQT đã thông qua."
+      )
+    ).toEqual([]);
+  });
+});
