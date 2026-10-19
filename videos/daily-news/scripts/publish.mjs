@@ -582,6 +582,7 @@ if (steps.includes("facebook")) {
           ...cfg,
           file: copy,
           description,
+          marker,
           resumeVideoId: target.facebook?.video_id,
           onVideoId: (id) => {
             target.facebook = { video_id: id, published: false };

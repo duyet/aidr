@@ -221,7 +221,7 @@ export async function translateScreen({
         const p = fieldProblems(key, en, vi, edition);
         if (p.length) {
           fix[key] = `${JSON.stringify(vi ?? null)}: ${p.join("; ")}`;
-          bad.push(...p);
+          bad.push(...p.map((x) => `${x} (got ${JSON.stringify(vi ?? null)})`));
         } else out[key] = { en, vi, from: model };
       }
     } catch (e) {

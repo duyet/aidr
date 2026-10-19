@@ -264,6 +264,94 @@ test("a resumed post whose upload failed starts a new session", async () => {
   assert.equal(out.videoId, "77");
 });
 
+const unreadable = () => ({
+  ok: false,
+  status: 400,
+  text: async () =>
+    JSON.stringify({
+      error: {
+        code: 100,
+        message: "Unsupported get request. Object with ID '987' does not exist",
+      },
+    }),
+});
+
+test("an unreadable status for a Reel that is on the Page counts as posted", async () => {
+  const f = fakeFetch([
+    ok({ video_id: "987", upload_url: "https://rupload.facebook.com/x" }),
+    ok({ success: true }),
+    ok({ success: true }),
+    unreadable(),
+    ok({
+      data: [
+        {
+          id: "987",
+          description: "https://aidr.today/date/2026-10-19?utm_source=facebook",
+        },
+      ],
+    }),
+  ]);
+  const out = await postReel({
+    ...cfg,
+    file: tmpFile("x"),
+    description: "d",
+    marker: "aidr.today/date/2026-10-19",
+    fetchImpl: f,
+    wait: { sleep: async () => {} },
+  });
+  assert.equal(out.videoId, "987");
+  assert.equal(out.listed, true);
+  assert.match(f.calls[4].url, /\/123456\/video_reels\?/);
+});
+
+test("a rerun whose saved id is unreadable finds the Reel on the Page", async () => {
+  const f = fakeFetch([
+    unreadable(),
+    ok({ data: [{ id: "987", description: "x aidr.today/date/2026-10-19" }] }),
+  ]);
+  const out = await postReel({
+    ...cfg,
+    file: "/nope",
+    description: "d",
+    marker: "aidr.today/date/2026-10-19",
+    resumeVideoId: "987",
+    fetchImpl: f,
+  });
+  assert.equal(out.videoId, "987");
+});
+
+test("an unreadable status with no matching Reel on the Page still fails", async () => {
+  const f = fakeFetch([
+    unreadable(),
+    ok({ data: [{ id: "1", description: "other day" }] }),
+  ]);
+  await assert.rejects(
+    postReel({
+      ...cfg,
+      file: "/nope",
+      description: "d",
+      marker: "aidr.today/date/2026-10-19",
+      resumeVideoId: "987",
+      fetchImpl: f,
+    }),
+    /Facebook status: 100/
+  );
+});
+
+test("an unreadable status without a marker still fails", async () => {
+  const f = fakeFetch([unreadable()]);
+  await assert.rejects(
+    postReel({
+      ...cfg,
+      file: "/nope",
+      description: "d",
+      resumeVideoId: "987",
+      fetchImpl: f,
+    }),
+    /Facebook status: 100/
+  );
+});
+
 test("findReel matches the day link in a Reel description", async () => {
   const f = fakeFetch([
     ok({
