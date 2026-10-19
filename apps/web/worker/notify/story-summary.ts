@@ -48,8 +48,19 @@ const SOURCE_COPY = [
   /(?<![\p{L}])(?:chúng tôi|tôi|bạn)(?![\p{L}])/iu,
 ];
 
-function readsAsSourceCopy(summary: string): boolean {
-  return SOURCE_COPY.some((pattern) => pattern.test(summary));
+/** A feed teaser cut off mid-thought ("…mà nhiều công ty Mỹ..."). The
+ *  Vietnamese channel translates the raw upstream summary, so it gets the
+ *  teaser; the English channel reads the rewritten `summary_en`. */
+const VI_SOURCE_COPY = [
+  /(?:…|\.\.\.)\s*["'”’)\]]*\s*$/u,
+  /\[\s*(?:…|\.\.\.)\s*\]/u,
+  /(?:Đọc thêm|Xem thêm|Read more|Continue reading)\s*(?:»|→|>)?\s*$/iu,
+];
+
+export function readsAsSourceCopy(summary: string, lang: Lang): boolean {
+  const patterns =
+    lang === "vi" ? [...SOURCE_COPY, ...VI_SOURCE_COPY] : SOURCE_COPY;
+  return patterns.some((pattern) => pattern.test(summary));
 }
 
 function parseSummary(raw: string): string | null {
@@ -108,7 +119,9 @@ export async function captionSummaryFor(
 ): Promise<string | null> {
   const source = normalizeSpace(story.summary ?? "");
   if (!source || budget < MIN_BUDGET) return null;
-  if (source.length <= budget && !readsAsSourceCopy(source)) return null;
+  if (source.length <= budget && !readsAsSourceCopy(source, story.lang)) {
+    return null;
+  }
   const hash = dayCardVersion([source]);
   try {
     const cached = fitCaptionSummary(

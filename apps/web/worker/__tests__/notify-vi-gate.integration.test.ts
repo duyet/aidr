@@ -308,6 +308,19 @@ describe("Vietnamese trending gate", () => {
     expect(trendingPosts("telegram")).toEqual([CLEAN.id]);
   });
 
+  it.each(["Kashmir Hill / New York Times :", "Matt Marshall / VentureBeat:"])(
+    "drops the byline %s from the Vietnamese summary",
+    async (byline) => {
+      addStory({ ...CLEAN, summaryVi: `${byline} ${CLEAN.summaryVi}` });
+
+      await dispatchStoryNotifications(env);
+
+      expect(trendingPosts("telegram")).toEqual([CLEAN.id]);
+      expect(viText()).toContain(CLEAN.summaryVi);
+      expect(viText()).not.toContain(byline.split(" /")[0]);
+    }
+  );
+
   it("posts when the QA reviewer failed to run", async () => {
     addStory(CLEAN);
     reviewDecision(CLEAN, "review_failed");

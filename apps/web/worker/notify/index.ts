@@ -28,6 +28,7 @@ import { stripEmbeddedChrome } from "../translation-terms.js";
 import type { Env } from "../types.js";
 import { loadDayCard } from "./day-card.js";
 import { facebookEnNotifier } from "./facebook.js";
+import { stripLeadingByline } from "./headline-repeat.js";
 import {
   countSuppression,
   dedupReason,
@@ -425,6 +426,9 @@ function postableCopy<T extends ChannelCopyRow>(
   if (gate) {
     const verdict = translationPostability(gate, rules);
     if (!verdict.ok) return verdict;
+    // The translation is of the raw upstream summary, so a Techmeme byline
+    // comes with it. The English channel reads the cleaned `summary_en`.
+    if (copy.summary) copy.summary = stripLeadingByline(copy.summary);
   }
   const verdict = postability(copy);
   return verdict.ok ? { ok: true, copy } : verdict;

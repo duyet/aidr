@@ -325,6 +325,31 @@ describe("captionSummaryFor", () => {
     expect(completeJson).toHaveBeenCalledTimes(defective.length);
   });
 
+  it("rewrites a Vietnamese teaser that ends in an ellipsis; English is unchanged", async () => {
+    const teasers = [
+      "Các nhà phân tích cho rằng chi phí điện đang tăng nhanh, điều mà nhiều công ty Mỹ...",
+      "Các nhà phân tích cho rằng chi phí điện đang tăng nhanh tại nhiều bang của Mỹ […]",
+      "Các nhà phân tích cho rằng chi phí điện đang tăng nhanh tại nhiều bang. Đọc thêm",
+    ];
+    for (const summary of teasers) {
+      completeJson.mockResolvedValueOnce(
+        JSON.stringify({ summary: "Chi phí điện đang tăng nhanh." })
+      );
+      expect(
+        await captionSummaryFor(env, story({ summary, lang: "vi" }), budget)
+      ).toBe("Chi phí điện đang tăng nhanh.");
+    }
+    expect(completeJson).toHaveBeenCalledTimes(teasers.length);
+
+    completeJson.mockClear();
+    const english =
+      "Analysts say power costs are rising fast, which many US...";
+    expect(
+      await captionSummaryFor(env, story({ summary: english }), budget)
+    ).toBeNull();
+    expect(completeJson).not.toHaveBeenCalled();
+  });
+
   it("reuses the stored summary without a second model call", async () => {
     const first = "Stored summary, finished.";
     completeJson.mockResolvedValue(JSON.stringify({ summary: first }));
