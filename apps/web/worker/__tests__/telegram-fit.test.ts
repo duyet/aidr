@@ -143,15 +143,38 @@ describe("story caption fits without mid-word cuts", () => {
     expect(caption).not.toContain("OpenAI");
   });
 
-  it("shortens a long title at a word boundary", () => {
+  const titleOf = (title: string) =>
+    (
+      visible(buildStoryCaption(story({ title, summary: "" }))).split(
+        "\n\n"
+      )[0] ?? ""
+    ).replace("🔥 ", "");
+
+  it("shortens a long title with no clause break at a word boundary", () => {
     const source = "Breaking news about everything ".repeat(30).trim();
-    const caption = buildStoryCaption(story({ title: source, summary: "" }));
-    const title = (visible(caption).split("\n\n")[0] ?? "").replace("🔥 ", "");
-    expect(title.length).toBeLessThanOrEqual(300);
+    const title = titleOf(source);
+    expect(title.length).toBeLessThanOrEqual(140);
     expect(title.endsWith("…")).toBe(true);
     const kept = title.slice(0, -1);
     expect(source.startsWith(kept)).toBe(true);
     expect(source[kept.length]).toBe(" ");
+  });
+
+  it("cuts a long title at its last clause break within 140 characters", () => {
+    const head =
+      "OpenAI signs a $10B deal with Broadcom for custom AI chips, the first it designed in house";
+    const source = `${head}, as it races to secure compute for the models it plans to train through 2030 and beyond`;
+    expect(source.length).toBeGreaterThan(140);
+    expect(titleOf(source)).toBe(head);
+  });
+
+  it("drops a trailing credit sentence from the title", () => {
+    expect(titleOf("Nvidia invests $5B in Intel. From Bloomberg.")).toBe(
+      "Nvidia invests $5B in Intel."
+    );
+    expect(
+      titleOf("OpenAI ký thỏa thuận chip 10 tỷ USD với Broadcom. Theo Reuters.")
+    ).toBe("OpenAI ký thỏa thuận chip 10 tỷ USD với Broadcom.");
   });
 });
 
@@ -421,9 +444,26 @@ describe("story caption never restates its headline", () => {
   });
 
   it("drops a summary that only repeats the headline", () => {
+    const title =
+      "Nvidia's AI chip shipments in China fell 44% YoY to 678K in H1 2026 (Reuters)";
+    const caption = visible(
+      buildStoryCaption({
+        ...nvidia,
+        title,
+        summary:
+          "Nvidia's AI chip shipments in China fell 44% YoY to 678K in H1 2026.",
+      })
+    );
+    expect(caption.split("\n\n")).toEqual([`🔥 ${title}`, "#Chips  ·  ▲ 2"]);
+  });
+
+  it("keeps the summary when the title is cut to its first clause", () => {
+    // 164 characters: the caption shows the clause before ", as its market
+    // share slid", so the summary is the only place the 34% share appears.
     const caption = visible(buildStoryCaption(nvidia));
     expect(caption.split("\n\n")).toEqual([
-      `🔥 ${nvidia.title}`,
+      "🔥 IDC: Nvidia's AI chip shipments in China fell 44% YoY to 678K in H1 2026",
+      nvidia.summary,
       "#Chips  ·  ▲ 2",
     ]);
   });
@@ -745,26 +785,39 @@ describe("story caption never restates its headline", () => {
       "en",
     ],
     [
-      "98a28302 en",
-      "Anthropic launches the Critical Infrastructure Defense Program to provide AI models, threat research, and on-site support, starting with CrowdStrike and others (Sam Sabin/Axios)",
-      "Anthropic launched the Critical Infrastructure Defense Program to provide AI models, threat research, and on-site support, starting with CrowdStrike and others.",
-      "en",
-    ],
-    [
-      "6860d785 en",
-      "A US Senate investigation led by Senators Warren, Van Hollen, and Blumenthal says some hyperscalers misled the public about AI data centers' costs and benefits (Nik Popli/Time)",
-      "A US Senate investigation led by Senators Warren, Van Hollen, and Blumenthal says some hyperscalers misled the public about the costs and benefits of AI data centers.",
-      "en",
-    ],
-    [
       "606e8d69 vi",
       "OpenAI vừa công bố 700 bản in trước chứa các chứng minh toán học và phản ví dụ",
       "OpenAI vừa công bố 700 bản in trước chứa các chứng minh toán học và phản ví dụ.",
       "vi",
     ],
   ])("drops a summary that adds no word (%s)", (_id, title, summary, lang) => {
-    expect(summaryOf(story({ title, summary, lang }))).toBeNull();
+    expect(summaryOf(story({ title, summary, lang }))).toBe(null);
   });
+
+  // Over 140 characters the headline is cut to its leading clauses, so a
+  // summary that restates all of it is the only place the rest still shows.
+  it.each<[string, string, string, string]>([
+    [
+      "98a28302 en",
+      "Anthropic launches the Critical Infrastructure Defense Program to provide AI models, threat research, and on-site support, starting with CrowdStrike and others (Sam Sabin/Axios)",
+      "Anthropic launched the Critical Infrastructure Defense Program to provide AI models, threat research, and on-site support, starting with CrowdStrike and others.",
+      "starting with CrowdStrike",
+    ],
+    [
+      "6860d785 en",
+      "A US Senate investigation led by Senators Warren, Van Hollen, and Blumenthal says some hyperscalers misled the public about AI data centers' costs and benefits (Nik Popli/Time)",
+      "A US Senate investigation led by Senators Warren, Van Hollen, and Blumenthal says some hyperscalers misled the public about the costs and benefits of AI data centers.",
+      "costs and benefits",
+    ],
+  ])(
+    "keeps a restating summary when the headline is cut (%s)",
+    (_id, title, summary, cutFact) => {
+      const caption = visible(buildStoryCaption(story({ title, summary })));
+      const [shown] = caption.split("\n\n");
+      expect(shown).not.toContain(cutFact);
+      expect(summaryOf(story({ title, summary }))).toBe(summary);
+    }
+  );
 
   const decart =
     "Sources: Amazon is in talks to buy AI startup Decart in a deal that could value it at ~$7B; Anthropic had decided against acquiring Decart in September (Wall Street Journal)";

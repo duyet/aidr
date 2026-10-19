@@ -12,12 +12,16 @@ import {
   primaryThumbnailUrl,
 } from "../media.js";
 import { TELEGRAM_IV_LIMITS } from "../telegram-iv.js";
+import { stripTrailingAttribution } from "../translation-terms.js";
 import type { Env } from "../types.js";
 import { digestCampaign, STORY_CAMPAIGN, withUtm } from "../utm.js";
 import { escapeHtml } from "./alert.js";
 import { digestPage } from "./day-card.js";
-import { fitText, fitWords } from "./fit-text.js";
-import { withoutRestatedHeadline } from "./headline-repeat.js";
+import { fitClauses, fitText, fitWords } from "./fit-text.js";
+import {
+  stripLeadingByline,
+  withoutRestatedHeadline,
+} from "./headline-repeat.js";
 import { captionSummaryFor, readsAsSourceCopy } from "./story-summary.js";
 import {
   checkTelegramMedia,
@@ -470,19 +474,24 @@ export async function editStoryCaption(
   return sendFailure(res);
 }
 
-/** Headlines are one bounded line in the feed; clip before the caption cap. */
-const CAPTION_TITLE_CAP = 300;
+/** A headline reads as one line or two in the feed. Longer ones were wire
+ *  headlines with a dek run in, and pushed the summary out of the caption. */
+const CAPTION_TITLE_CAP = 140;
 /** Gallery photos a story post tries one by one before dropping to text. */
 const GALLERY_PHOTO_ATTEMPTS = 3;
 
-/** The caption title: whole, else whole words. A headline with no space to cut
- *  at (a pasted URL) is the one place a hard cut is the only option. */
-function captionTitle(title: string): string {
-  const clean = title.replace(/\s+/g, " ").trim();
-  return (
+/** The caption title without a trailing credit sentence ("From Bloomberg.",
+ *  "Theo Reuters."; the meta line names the source): whole, else its leading
+ *  clauses, else whole words. A headline with no space to cut at (a pasted
+ *  URL) is the one place a hard cut is the only option. */
+function captionTitle(title: string): { text: string; cut: boolean } {
+  const spaced = title.replace(/\s+/g, " ").trim();
+  const clean = stripTrailingAttribution(spaced) || spaced;
+  const text =
+    fitClauses(clean, CAPTION_TITLE_CAP) ||
     fitWords(clean, CAPTION_TITLE_CAP) ||
-    `${clean.slice(0, CAPTION_TITLE_CAP - 1)}…`
-  );
+    `${clean.slice(0, CAPTION_TITLE_CAP - 1)}…`;
+  return { text, cut: text !== clean };
 }
 
 /** Characters left for the summary: the 1024 caption cap minus the title,
@@ -493,7 +502,7 @@ export function storySummaryBudget(
   story: StoryPayload,
   reservedVisible = 0
 ): number {
-  const title = `<b>🔥 ${escapeHtml(captionTitle(story.title))}</b>`;
+  const title = `<b>🔥 ${escapeHtml(captionTitle(story.title).text)}</b>`;
   const meta = storyMetaLine(story);
   const used =
     title.length + (meta ? 2 + meta.length : 0) + 2 + reservedVisible;
@@ -508,19 +517,22 @@ export function storySummaryBudget(
  *  `captionSummaryFor`) when present, else the channel's own summary cut at a
  *  sentence boundary, else at a word boundary. Leading clauses that only
  *  repeat the title and add no fact are dropped first
- *  (`withoutRestatedHeadline`). Raw text is cut first and escaped
- *  after, so an entity is never split. */
+ *  (`withoutRestatedHeadline`). A summary that only restates a headline the
+ *  caption had to cut stays whole: it is the one place the cut clauses
+ *  still show. Raw text is cut first and escaped after, so an entity is
+ *  never split. */
 export function buildStoryCaption(
   story: StoryPayload,
   reservedVisible = 0
 ): string {
-  const parts = [`<b>🔥 ${escapeHtml(captionTitle(story.title))}</b>`];
+  const title = captionTitle(story.title);
+  const parts = [`<b>🔥 ${escapeHtml(title.text)}</b>`];
   const meta = storyMetaLine(story);
   const summaryCap = storySummaryBudget(story, reservedVisible);
-  const source = withoutRestatedHeadline(
-    story.title,
-    story.caption_summary || story.summary || ""
-  );
+  const text = story.caption_summary || story.summary || "";
+  const source =
+    withoutRestatedHeadline(story.title, text) ||
+    (title.cut ? stripLeadingByline(text) : "");
   if (source && summaryCap > 1) {
     const summary = fitText(source, summaryCap);
     if (summary) parts.push(escapeHtml(summary));
