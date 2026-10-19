@@ -2,7 +2,10 @@ import { chunk } from "../chunk.js";
 import { recordSourceHealth, recordStep } from "../run-stats.js";
 import { emptySourceHealth, type SourceRunHealth } from "../source-health.js";
 import { adapters } from "../sources/registry.js";
-import { sourceFetchFailureReason } from "../sources/rss.js";
+import {
+  describeFetchError,
+  sourceFetchFailureReason,
+} from "../sources/rss.js";
 import { ensureVendorBlogSources } from "../sources/seed.js";
 import type { FetchedItem } from "../sources/types.js";
 import { safeStep } from "../workflow-step.js";
@@ -110,7 +113,10 @@ export async function fetchSources(
             // step as `empty`, i.e. a quiet feed. `sanitizeError` is
             // applied at write time, so the raw error never reaches D1 or
             // an API response.
-            console.error(`fetch-${source.id} step failed:`, error);
+            console.error(
+              `fetch-${source.id} step failed:`,
+              describeFetchError(error)
+            );
             const reason = sourceFetchFailureReason(error) ?? "fetch_failed";
             fetchFailures.set(source.id, reason);
             return [] as FetchedItem[];

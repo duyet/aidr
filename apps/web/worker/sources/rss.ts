@@ -67,6 +67,26 @@ export function sourceFetchFailureReason(
   return null;
 }
 
+/**
+ * One log line for a failed source fetch: error name and message, with the
+ * query string and fragment dropped from any URL in it. Not `sanitizeError`:
+ * that maps every non-LLM message to "Provider request failed", which would
+ * lose the cause ("github releases returned 403") this line exists to carry.
+ * Source adapter messages hold a status or a runtime transport error, never a
+ * response body. The Workflow engine hands the error back structured-cloned,
+ * and logging that object gives Workers Logs stack frames only, so the text
+ * is read off `name` and `message`.
+ */
+export function describeFetchError(error: unknown): string {
+  const record = (error ?? {}) as { name?: unknown; message?: unknown };
+  const name = typeof record.name === "string" ? record.name : "Error";
+  const message =
+    typeof record.message === "string" ? record.message : String(error);
+  return `${name}: ${message}`
+    .replace(/(https?:\/\/[^\s?#]*)[?#]\S*/g, "$1")
+    .slice(0, 300);
+}
+
 const XML_NAMED_REFS: Record<string, string> = {
   nbsp: " ",
   rsquo: "\u2019",

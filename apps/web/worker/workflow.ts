@@ -407,6 +407,7 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
             steps,
             viEnglish,
             clusterGate,
+            sourceHealth: sourceHealthComplete ? sourceHealth : undefined,
             dryRun: mode.dryRun,
           }),
         { steps }
