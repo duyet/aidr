@@ -43,6 +43,8 @@ import {
 export type SourceSkipReason =
   /** The fetch itself failed: non-2xx, timeout, or a thrown transport error. */
   | "fetch_failed"
+  /** The host refused the Worker: 401/403/429/451 or a challenge page. */
+  | "blocked"
   /** 2xx with a feed-shaped content type, but nothing parseable came out. */
   | "parse_failed"
   /** Parsed fine; simply nothing inside the ingest since-window. */
@@ -54,6 +56,7 @@ export type SourceSkipReason =
 
 export const SOURCE_SKIP_REASONS: readonly SourceSkipReason[] = [
   "fetch_failed",
+  "blocked",
   "parse_failed",
   "empty",
   "all_rejected_below_relevance",
@@ -196,7 +199,7 @@ export function nextFailedRuns(
   previous: number,
   skipReason: SourceSkipReason | ""
 ): number {
-  if (skipReason !== "fetch_failed") return 0;
+  if (skipReason !== "fetch_failed" && skipReason !== "blocked") return 0;
   return Math.max(0, Math.floor(previous)) + 1;
 }
 
@@ -213,7 +216,7 @@ export function nextFailedRuns(
  * too noisy for this product" rather than "this source is broken".
  */
 export function resolveSkipReason(input: {
-  failure?: "fetch_failed" | "parse_failed";
+  failure?: "fetch_failed" | "blocked" | "parse_failed";
   fetched: number;
   newItems: number;
   rejected: number;
@@ -308,6 +311,8 @@ export function describeSkipReason(reason: SourceSkipReason | ""): string {
       return "";
     case "fetch_failed":
       return "fetch failed";
+    case "blocked":
+      return "blocked by the host";
     case "parse_failed":
       return "feed unparseable";
     case "empty":

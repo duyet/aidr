@@ -1,4 +1,5 @@
 import { fetchWithSafeRedirects } from "../enrich.js";
+import { blockedBy } from "./block.js";
 import { SourceFetchError } from "./rss.js";
 
 const SOURCE_USER_AGENT = "Mozilla/5.0 (compatible; duyet-news-bot/1.0)";
@@ -31,9 +32,10 @@ export async function fetchSourceJson(
     );
   }
   if (!res.ok) {
+    const blocked = blockedBy(res.status, res.headers);
     throw new SourceFetchError(
-      "fetch_failed",
-      `${label} returned ${res.status}`
+      blocked ? "blocked" : "fetch_failed",
+      `${label} returned ${res.status}${blocked ? ` (blocked: ${blocked})` : ""}`
     );
   }
   try {

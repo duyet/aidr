@@ -7,6 +7,7 @@ import {
   type PriorRun,
   parsePriorRun,
   SOURCE_FAILING_RUNS,
+  sourceBlockedKey,
   sourceFailingKey,
   TELEGRAM_QUIET_MS,
 } from "../health.js";
@@ -42,6 +43,20 @@ const tldrFailedRun: PriorRun = {
 describe("evaluateHealth", () => {
   it("is quiet for a healthy run", () => {
     expect(keys({})).toEqual([]);
+  });
+
+  it("names a source the host refuses, under its own key", () => {
+    const sourceHealth = {
+      "google-ai": {
+        ...emptySourceHealth(),
+        skipReason: "blocked" as const,
+        failedRuns: 3,
+      },
+    };
+    const issues = evaluateHealth(input({ sourceHealth }));
+    expect(issues.map((i) => i.key)).toEqual([sourceBlockedKey("google-ai")]);
+    expect(issues[0].title).toBe("Source blocking the Worker");
+    expect(issues[0].detail).toContain("3 runs in a row");
   });
 
   it("flags a source whose fetch failed 3 runs in a row, and only that source", () => {

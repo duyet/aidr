@@ -84,6 +84,10 @@ export const SOURCE_FAILING_RUNS = 3;
 export function sourceFailingKey(id: string): string {
   return `source-failing:${id}`;
 }
+/** A source whose latest failure is the host refusing the Worker. */
+export function sourceBlockedKey(id: string): string {
+  return `source-blocked:${id}`;
+}
 /** The same alert key does not fire again within this window. */
 export const ALERT_COOLDOWN_MS = 6 * 3600 * 1000;
 /** Previous runs read for the TL;DR streak and the cooldown. */
@@ -171,6 +175,15 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
 
   for (const [id, health] of Object.entries(input.sourceHealth ?? {})) {
     if (health.failedRuns < SOURCE_FAILING_RUNS) continue;
+    if (health.skipReason === "blocked") {
+      issues.push({
+        key: sourceBlockedKey(id),
+        severity: "warning",
+        title: "Source blocking the Worker",
+        detail: `${id}: the host refused the fetch (HTTP refusal or challenge page) ${health.failedRuns} runs in a row`,
+      });
+      continue;
+    }
     issues.push({
       key: sourceFailingKey(id),
       severity: "warning",

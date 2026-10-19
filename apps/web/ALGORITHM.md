@@ -773,7 +773,9 @@ ORDER BY week DESC, hits DESC
   message into "Provider request failed"). A source whose
   `sourceHealth.failedRuns` reaches 3 (its fetch step failed in 3 runs in a
   row, this one included) raises `source-failing:<id>` (warning, kind
-  `health`, so Bugsink triage treats it as worker-owned). The 6h cooldown
+  `health`, so Bugsink triage treats it as worker-owned). When the latest
+  failure is `blocked` the key is `source-blocked:<id>` and the title reads
+  "Source blocking the Worker", so a wall is told apart from an outage. The 6h cooldown
   applies, so one source reports at most 4 times a day. The streak is the one
   the dashboard's 48-run `failing` flag reads; only the threshold differs.
   Baseline, Workers Logs 2026-10-19, per 24h (48 runs): the four `release-*`
@@ -1038,13 +1040,26 @@ runtime through `upsert_source` with no deploy — see
   never inferred from diacritics.
 - A source that returns a non-2xx, or a 200 that is really an HTML page,
   throws a typed `SourceFetchError` so the run records `fetch_failed` /
-  `parse_failed` rather than reporting a quiet feed.
+  `parse_failed` / `blocked` rather than reporting a quiet feed. `blocked`
+  (`worker/sources/block.ts`) is the host refusing the Worker: HTTP 401, 403,
+  429 or 451, a `cf-mitigated` header, or an HTML answer that reads as a
+  challenge page ("Just a moment", captcha). The message ends
+  `(blocked: <why>)`, which is how the reason survives the Workflow's
+  structured clone. The GitHub releases 403 (the unauthenticated rate limit
+  behind the `fetch-release-*` failures) is a `blocked`.
+- A feed where no item has a date used to lose every item: an undated item is
+  dropped because its age is unknown. `developers.googleblog.com/rss/` is
+  one (20 items, no date tag), and `google-dev` fetched nothing for 646 runs
+  (13 days) while `failedRuns` stayed 0. Such a feed now keeps its first 3
+  items (newest first) stamped with the fetch time (`inSinceWindow`); dedupe
+  drops what an earlier run stored. In a feed with some dated items an
+  undated one is still dropped.
 
 ### 1b. Per-source health + staleness
 
 Every source row gets a record in
 `workflow_runs.stats.sourceHealth`: `fetched` / `scored` / `accepted` /
-`rejected` / `merged`, a structured skip reason (`fetch_failed`,
+`rejected` / `merged`, a structured skip reason (`fetch_failed`, `blocked`,
 `parse_failed`, `empty`, `all_rejected_below_relevance`, `disabled` — a
 closed enum, never free text or a URL), and a count of consecutive
 zero-item runs. The streak is **carried forward** from the previous run's
@@ -1064,7 +1079,7 @@ never `stale` — off is a decision, not a fault. This is observability
 only: it changes no ranking, no prompt, and no LLM budget.
 
 A second, shorter alarm covers broken fetches. `sourceHealth.failedRuns`
-counts consecutive runs whose skip reason is `fetch_failed` (carried forward
+counts consecutive runs whose skip reason is `fetch_failed` or `blocked` (carried forward
 like `emptyRuns`, reset by any other outcome). At **48 consecutive runs** (one
 day; `FETCH_FAILED_ALERT_RUNS` in `worker/sources/catalog.ts`) the source is
 listed in `failing` beside `stale` in `/api/system/sources`, flagged `failing`

@@ -25,6 +25,11 @@ function cloningStep(): WorkflowStep {
       if (name === "fetch-marktechpost") {
         throw new Error("SourceFetchError: rss feed returned an HTML document");
       }
+      if (name === "fetch-walled") {
+        throw new Error(
+          "SourceFetchError: rss feed returned 403 (blocked: access refused)"
+        );
+      }
       if (name === "fetch-quiet") return [];
       throw new Error("something else broke");
     },
@@ -41,6 +46,7 @@ describe("fetchSources records a cloned SourceFetchError", () => {
     const sourceHealth = {
       "arstechnica-ai": emptySourceHealth(),
       marktechpost: emptySourceHealth(),
+      walled: emptySourceHealth(),
       quiet: emptySourceHealth(),
       other: emptySourceHealth(),
     };
@@ -57,6 +63,7 @@ describe("fetchSources records a cloned SourceFetchError", () => {
       [
         source("arstechnica-ai"),
         source("marktechpost"),
+        source("walled"),
         source("quiet"),
         source("other"),
       ],
@@ -66,12 +73,14 @@ describe("fetchSources records a cloned SourceFetchError", () => {
 
     expect(fetchFailures.get("arstechnica-ai")).toBe("fetch_failed");
     expect(fetchFailures.get("marktechpost")).toBe("parse_failed");
+    expect(fetchFailures.get("walled")).toBe("blocked");
     expect(fetchFailures.has("quiet")).toBe(false);
     expect(fetchFailures.get("other")).toBe("fetch_failed");
 
     resolveSkipReasons(sourceHealth, fetchFailures);
     expect(sourceHealth["arstechnica-ai"].skipReason).toBe("fetch_failed");
     expect(sourceHealth.marktechpost.skipReason).toBe("parse_failed");
+    expect(sourceHealth.walled.skipReason).toBe("blocked");
     expect(sourceHealth.quiet.skipReason).toBe("empty");
     expect(sourceHealth.other.skipReason).toBe("fetch_failed");
   });

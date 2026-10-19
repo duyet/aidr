@@ -229,6 +229,88 @@ describe("rssAdapter", () => {
   });
 });
 
+describe("a feed with no dates", () => {
+  const item = (n: number) =>
+    `<item><title>Post ${n}</title><link>https://example.com/p${n}</link></item>`;
+  const feed = `<?xml version="1.0"?><rss><channel>${[1, 2, 3, 4, 5].map(item).join("")}</channel></rss>`;
+
+  it("keeps the newest few stamped with the fetch time instead of silencing the source", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(feed, { status: 200 }))
+    );
+    const before = Date.now();
+    const items = await rssAdapter.fetchItems(
+      { feed: "https://example.com/feed.xml" },
+      Math.floor(before / 1000) - 3600
+    );
+    expect(items.map((i) => i.url)).toEqual([
+      "https://example.com/p1",
+      "https://example.com/p2",
+      "https://example.com/p3",
+    ]);
+    expect(items.every((i) => i.publishedAt >= before)).toBe(true);
+    expect(items[0].sources?.[0].postedAt).toBe(
+      Math.floor(items[0].publishedAt / 1000)
+    );
+  });
+});
+
+describe("a host that refuses the Worker", () => {
+  const fetchFeed = (res: Response) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => res)
+    );
+    return rssAdapter.fetchItems({ feed: "https://example.com/feed.xml" }, 0);
+  };
+
+  it.each([401, 403, 429, 451])("HTTP %i is blocked", async (status) => {
+    await expect(
+      fetchFeed(new Response("no", { status }))
+    ).rejects.toMatchObject({ reason: "blocked" });
+  });
+
+  it("a Cloudflare challenge on a 503 is blocked", async () => {
+    await expect(
+      fetchFeed(
+        new Response("<html>x</html>", {
+          status: 503,
+          headers: { "cf-mitigated": "challenge" },
+        })
+      )
+    ).rejects.toMatchObject({
+      reason: "blocked",
+      message: expect.stringContaining("Cloudflare challenge"),
+    });
+  });
+
+  it("a 200 HTML challenge page is blocked, not unparseable", async () => {
+    await expect(
+      fetchFeed(
+        new Response("<title>Just a moment...</title>", {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        })
+      )
+    ).rejects.toMatchObject({ reason: "blocked" });
+  });
+
+  it("an ordinary 500 or a plain HTML page is not blocked", async () => {
+    await expect(
+      fetchFeed(new Response("boom", { status: 500 }))
+    ).rejects.toMatchObject({ reason: "fetch_failed" });
+    await expect(
+      fetchFeed(
+        new Response("<html><body>moved</body></html>", {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        })
+      )
+    ).rejects.toMatchObject({ reason: "parse_failed" });
+  });
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
   resetRssHostQueues();
