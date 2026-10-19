@@ -403,6 +403,56 @@ function garbleIssues(sourceText: string, viText: string): string[] {
       ];
 }
 
+/** A decimal written as an amount: before %, a currency, a magnitude, or
+ * a multiplier, or after "$". */
+const VI_DECIMAL_POINT_RE =
+  /(?<![\p{L}\p{N}.,-])(\$?)(\d+\.\d+)(?![\p{N}]|[.,]\p{N}|\s*(?:[TBMK]|tn|bn|mn)(?![\p{L}\p{N}]))(?=(\s*(?:%|USD|lần|x|điểm|nghìn|ngàn|tỷ|tỉ|triệu)(?![\p{L}\p{M}]))?)/gu;
+
+/** "55.4%" kept from the source where Vietnamese writes "55,4%". The same
+ * "a.b" must be in the source, so a Vietnamese thousands point ("23.000"
+ * for "23,000") never counts, and a version ("Opus 5.5", "iOS 27.3") has no
+ * amount after it. */
+function decimalPointIssues(sourceText: string, viText: string): string[] {
+  const issues = new Set<string>();
+  for (const match of viText.normalize("NFC").matchAll(VI_DECIMAL_POINT_RE)) {
+    const [, dollar, number, unit] = match;
+    if (!dollar && !unit) continue;
+    // "$1.5 tỷ" is the dollar check's issue.
+    if (dollar && unit && !/%|USD|lần|x|điểm/.test(unit)) continue;
+    if (
+      !new RegExp(`(?<![\\p{N}.])${escapeRegex(number)}(?!\\p{N})`, "u").test(
+        sourceText
+      )
+    )
+      continue;
+    issues.add(
+      `"${number}" uses a decimal point; write "${number.replace(".", ",")}"`
+    );
+  }
+  return [...issues];
+}
+
+const VI_DOLLAR_MAGNITUDE_RE =
+  /(?<![\p{L}\p{N}])\$\s?(\d+(?:[.,]\d+)?)\s*(trillion|billion|million|nghìn tỷ|ngàn tỷ|tỷ|tỉ|triệu|tn|bn|mn|[TBM])(?![\p{L}\p{N}])/giu;
+
+/** "$2T", "$50M" or "$6,6 tỷ" left in the Vietnamese: house style is
+ * "2 nghìn tỷ USD". A letter before "$" is another currency ("NT$"). */
+function dollarIssues(viText: string): string[] {
+  const issues = new Set<string>();
+  for (const match of viText
+    .normalize("NFC")
+    .matchAll(VI_DOLLAR_MAGNITUDE_RE)) {
+    const [whole, digits, unit] = match;
+    const magnitude = /^[a-z]{1,2}$|^(?:trillion|billion|million)$/i.test(unit)
+      ? magnitudeOf(unit)
+      : viMagnitude(unit);
+    issues.add(
+      `"${whole.trim()}" must be "${digits.replace(".", ",")} ${VI_WORD[magnitude]} USD"`
+    );
+  }
+  return [...issues];
+}
+
 const VI_WORD_RE = /[\p{L}\p{M}][\p{L}\p{M}\p{N}'’-]*/gu;
 const NON_ASCII_RE = /\P{ASCII}/u;
 
@@ -441,6 +491,8 @@ export type DraftCheck =
   | "gloss"
   | "stutter"
   | "garble"
+  | "decimal"
+  | "dollar"
   | "titleCase"
   | "length";
 
@@ -472,6 +524,8 @@ export function draftIssuesByCheck(
     gloss: glossIssues(viText),
     stutter: stutterIssues(viText),
     garble: garbleIssues(sourceText, viText),
+    decimal: decimalPointIssues(sourceText, viText),
+    dollar: dollarIssues(viText),
     titleCase: isTitleCaseVi(cand.title, src.title)
       ? [
           "the title is in Title Case; use Vietnamese sentence case (capitalize only the first word and proper names)",

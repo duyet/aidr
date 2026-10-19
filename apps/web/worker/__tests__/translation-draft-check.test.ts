@@ -867,3 +867,74 @@ describe("translationDraftIssues garbled words", () => {
     ).toEqual([]);
   });
 });
+
+describe("translationDraftIssues number format", () => {
+  const item = (en: string, vi: string) =>
+    translationDraftIssues(
+      { title: "", summary: en },
+      { title: "", summary: vi },
+      [],
+      false
+    );
+
+  it("flags a decimal point kept from the source in an amount", () => {
+    // Prod f8248405.
+    expect(
+      item(
+        "Google's Gemini 4 Argon recorded a 55.4% score, ahead of GPT-6-Astra at 53.6%.",
+        "Gemini 4 Argon của Google đạt điểm 55.4%, dẫn trước GPT-6-Astra với 53.6%."
+      )
+    ).toEqual([
+      '"55.4" uses a decimal point; write "55,4"',
+      '"53.6" uses a decimal point; write "53,6"',
+    ]);
+  });
+
+  it("passes a thousands point, a version, and a model size", () => {
+    expect(
+      item(
+        "Mistral AI used 4,000 Grace Blackwell chips. Claude Opus 5.5 leads; the 2.4B model scores 90.4 points on LIBERO-Plus.",
+        "Mistral AI đã dùng 4.000 chip Grace Blackwell. Claude Opus 5.5 dẫn đầu; mô hình 2.4B đạt 90.4 điểm trên LIBERO-Plus."
+      )
+    ).toEqual(['"90.4" uses a decimal point; write "90,4"']);
+  });
+
+  it("flags a dollar figure left unconverted", () => {
+    // Prod 457c1a52, 521e2a33, f5ceb2a3.
+    expect(
+      translationDraftIssues(
+        {
+          title:
+            "NYC Comptroller Demands Pause of Anthropic's $2T IPO Over AI Safety",
+          summary: "",
+        },
+        {
+          title:
+            "Thành viên NYC yêu cầu tạm dừng IPO $2T của Anthropic vì an toàn AI",
+          summary: "",
+        },
+        [],
+        true
+      )
+    ).toEqual(['"$2T" must be "2 nghìn tỷ USD"']);
+    expect(
+      item(
+        "Reach Security raised a $50M+ Series B. Democrats asked about Meta's $6.6 billion federal tax credit.",
+        "Reach Security huy động hơn $50M trong vòng Series B. Các thượng nghị sĩ hỏi về khoản tín dụng thuế liên bang $6,6 tỷ của Meta."
+      )
+    ).toEqual([
+      '"$50M" must be "50 triệu USD"',
+      '"$6,6 tỷ" must be "6,6 tỷ USD"',
+    ]);
+  });
+
+  it("passes another currency written with a dollar sign", () => {
+    // Prod 0e939dd0: New Taiwan dollars.
+    expect(
+      item(
+        "Micron will invest NT$1.4 trillion in the park.",
+        "Micron sẽ đầu tư 1,4 nghìn tỷ Đài tệ (tương đương NT$1,4 nghìn tỷ) vào khu này."
+      )
+    ).toEqual([]);
+  });
+});

@@ -149,7 +149,7 @@ NEVER translate word-by-word (calque). Read the whole sentence, then restate the
 
 Prefer everyday Vietnamese over stiff Sino-Vietnamese formalese when both exist and mean the same thing: "dùng" over "sử dụng" where it reads naturally, "hãng" or "công ty" over "tập đoàn" for an ordinary company, "mở" over "tiến hành mở". Formal Sino-Vietnamese isn't wrong, but reach for it only when the everyday word would sound too casual for the fact being reported.
 
-Numbers and units follow Vietnamese press style: "2,5 tỷ USD" not "2.5 billion USD", "300 triệu người dùng" not "300 million users" — translate the unit word, keep the digits, use Vietnamese decimal comma. Magnitudes map exactly: B / bn / billion = tỷ, M / mn / million = triệu, T / trillion = nghìn tỷ. "$20B" is "20 tỷ USD", never "20 triệu USD". A model size such as "7B" or "235B" stays as written.
+Numbers and units follow Vietnamese press style: "2,5 tỷ USD" not "2.5 billion USD", "300 triệu người dùng" not "300 million users" — translate the unit word, keep the digits, use Vietnamese decimal comma. Magnitudes map exactly: B / bn / billion = tỷ, M / mn / million = triệu, T / trillion = nghìn tỷ. "$20B" is "20 tỷ USD", never "20 triệu USD" or "$20B". "55.4%" is "55,4%". A model size such as "7B" or "235B" stays as written.
 
 Keep sentence subjects light: drop a pronoun or restated noun where Vietnamese naturally omits it across clauses (don't repeat "công ty này" every clause when context already carries it).
 
