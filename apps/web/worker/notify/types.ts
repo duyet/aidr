@@ -76,6 +76,20 @@ export interface SendResult {
    *  The attempt still counts, so a story is withheld at most
    *  NOTIFY_MAX_ATTEMPTS times. */
   withheld?: boolean;
+  /** A sent story post: how it went out and the caption it carried
+   *  (`notify_posts`). */
+  post?: StoryPost;
+}
+
+/** How a story post was sent. `photo` and `video` carry the caption and the
+ *  Read button, `album` carries the Read link in its caption, `text` is a
+ *  `sendMessage`. Each needs its own edit call. */
+export type StoryPostKind = "photo" | "video" | "album" | "text";
+
+export interface StoryPost {
+  kind: StoryPostKind;
+  /** Telegram HTML as sent. */
+  caption: string;
 }
 
 /** The runtime's error when a Worker or Workflow instance is out of

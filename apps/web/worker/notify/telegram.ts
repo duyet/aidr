@@ -634,7 +634,13 @@ async function sendVideoStory(
       parse_mode: "HTML",
       reply_markup: replyMarkup,
     });
-    if (res.ok) return { ok: true, messageId: telegramMessageId(res.result) };
+    if (res.ok) {
+      return {
+        ok: true,
+        messageId: telegramMessageId(res.result),
+        post: { kind: "video", caption },
+      };
+    }
     if (res.ambiguous || res.budgetExhausted) return sendFailure(res);
     fallback.push(`sendVideo:${res.description ?? "unknown"}`);
     console.error(
@@ -642,9 +648,10 @@ async function sendVideoStory(
     );
     return null;
   }
+  const albumCaption = buildAlbumCaption(story);
   const res = await callTelegram("story", token, "sendMediaGroup", {
     chat_id: chatId,
-    media: buildVideoAlbumMedia(plan.items, buildAlbumCaption(story)),
+    media: buildVideoAlbumMedia(plan.items, albumCaption),
   });
   if (res.ambiguous || res.budgetExhausted) return sendFailure(res);
   if (!res.ok) {
@@ -654,7 +661,11 @@ async function sendVideoStory(
     );
     return null;
   }
-  return { ok: true, messageId: telegramMessageId(res.result) };
+  return {
+    ok: true,
+    messageId: telegramMessageId(res.result),
+    post: { kind: "album", caption: albumCaption },
+  };
 }
 
 /** `sendMessage` answers once Telegram stores the text. */
@@ -938,7 +949,11 @@ function telegramChannel(options: {
           for (const photoUrl of gallery.slice(0, GALLERY_PHOTO_ATTEMPTS)) {
             const photo = await sendOne(photoUrl);
             if (photo.ok) {
-              return { ok: true, messageId: telegramMessageId(photo.result) };
+              return {
+                ok: true,
+                messageId: telegramMessageId(photo.result),
+                post: { kind: "photo", caption },
+              };
             }
             if (photo.ambiguous || photo.budgetExhausted) {
               return sendFailure(photo);
@@ -967,7 +982,11 @@ function telegramChannel(options: {
             ),
           });
           if (album.ok) {
-            return { ok: true, messageId: telegramMessageId(album.result) };
+            return {
+              ok: true,
+              messageId: telegramMessageId(album.result),
+              post: { kind: "album", caption: albumCaption },
+            };
           }
           // Each fallback below runs only after a definite rejection. An
           // ambiguous result may already be in the channel, so it ends the send.
@@ -1006,7 +1025,11 @@ function telegramChannel(options: {
           link_preview_options: preview,
         });
         if (!msg.ok) return sendFailure(msg);
-        return { ok: true, messageId: telegramMessageId(msg.result) };
+        return {
+          ok: true,
+          messageId: telegramMessageId(msg.result),
+          post: { kind: "text", caption },
+        };
       }
     },
   };

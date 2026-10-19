@@ -1229,10 +1229,15 @@ describe("telegramNotifier gating", () => {
         tgEnv,
         story({ media_manifest: twoImages })
       );
-      expect(result).toEqual({ ok: true, messageId: "7" });
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMediaGroup");
       const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+      // The album caption, Read link included, is what an edit must rebuild.
+      expect(result).toEqual({
+        ok: true,
+        messageId: "7",
+        post: { kind: "album", caption: body.media[0].caption },
+      });
       expect(body.reply_markup).toBeUndefined();
       expect(body.media[0].caption).toContain("<a href=");
       expect(body.media[0].caption).toContain("utm_source=telegram");

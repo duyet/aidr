@@ -245,6 +245,34 @@ describe("digest highlight", () => {
     expect(row("telegram-en", `digest:${TODAY}:top`)).toBeUndefined();
   });
 
+  it("records the highlight's story and the caption it carried", async () => {
+    await dispatchStoryNotifications(env);
+
+    const story = callsTo("@vi")[1];
+    expect(
+      sqlite
+        .prepare(
+          "SELECT story_id, message_id FROM notifications WHERE channel = 'telegram' AND item_id = ?"
+        )
+        .get(`digest:${TODAY}:top`)
+    ).toEqual({ story_id: TOP.id, message_id: "102" });
+    const post = sqlite
+      .prepare(
+        "SELECT message_id, kind, caption, caption_hash FROM notify_posts WHERE channel = 'telegram' AND item_id = ?"
+      )
+      .get(TOP.id) as Record<string, string>;
+    expect(post).toMatchObject({
+      message_id: "102",
+      kind: "photo",
+      caption: story.body.caption,
+    });
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(String(story.body.caption))
+    );
+    expect(post.caption_hash).toBe(Buffer.from(digest).toString("hex"));
+  });
+
   it("does not post the highlight after an ambiguous digest", async () => {
     // Vietnamese digest times out (it may be in the channel); English sends.
     respond = (call) => {

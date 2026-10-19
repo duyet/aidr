@@ -42,6 +42,7 @@ import {
   digestItemIds,
   loadPostedEvents,
   recordDigestItems,
+  recordStoryPost,
 } from "./posted-events.js";
 import {
   editDigestReplyMarkup,
@@ -799,6 +800,7 @@ export async function sendDigestHighlight(
     return { skipped: pick };
   }
   await recordDelivery(env, notifier.id, target, key, result);
+  if (pick) await recordStoryPost(env, notifier.id, key, pick.story.id, result);
   if (result.withheld) {
     console.warn(`notify(${notifier.id}) highlight ${result.error}`);
   } else if (!result.ok && !result.budgetExhausted) {
@@ -1295,6 +1297,7 @@ export async function dispatchStoryNotifications(
             trendingReason = "sent";
           }
           await recordDelivery(env, notifier.id, target, story.id, result);
+          await recordStoryPost(env, notifier.id, story.id, story.id, result);
           if (result.ok) sent[notifier.id]++;
         }
       }

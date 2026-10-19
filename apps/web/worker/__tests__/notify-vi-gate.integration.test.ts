@@ -330,6 +330,21 @@ describe("Vietnamese trending gate", () => {
     expect(trendingPosts("telegram")).toEqual([CLEAN.id]);
   });
 
+  it("records the caption of a trending post sent as text", async () => {
+    addStory(CLEAN);
+
+    await dispatchStoryNotifications(env);
+
+    const sentText = sendBodies.find((body) => body.chat_id === "@vi")?.text;
+    expect(
+      sqlite
+        .prepare(
+          "SELECT message_id, kind, caption FROM notify_posts WHERE channel = 'telegram' AND item_id = ?"
+        )
+        .get(CLEAN.id)
+    ).toEqual({ message_id: "7", kind: "text", caption: sentText });
+  });
+
   it("withholds a teaser with no clean rewrite and posts the next story", async () => {
     // The model is unreachable here, so the teaser gets no rewrite.
     const teaser = {
