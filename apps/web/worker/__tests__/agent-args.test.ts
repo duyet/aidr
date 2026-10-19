@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   type Args,
   parseArgs,
+  parseStoryCaptionCommand,
   parseUnmergeCommand,
   undoScopeMismatch,
 } from "../../scripts/agent-args.js";
@@ -25,6 +26,40 @@ const unmerge = (argv: string[]) => {
   const parsed = parseArgs(["unmerge", ...argv]);
   return "error" in parsed ? parsed : parseUnmergeCommand(parsed);
 };
+
+describe("parseStoryCaptionCommand", () => {
+  const storyCaption = (argv: string[]) => {
+    const parsed = parseArgs(["story-caption", ...argv]);
+    return "error" in parsed ? parsed : parseStoryCaptionCommand(parsed);
+  };
+
+  it("is a dry run unless --apply is passed", () => {
+    expect(storyCaption([A, "--channel", "telegram"])).toEqual({
+      itemId: A,
+      channel: "telegram",
+      apply: false,
+    });
+    expect(storyCaption([A, "--channel", "telegram-en", "--apply"])).toEqual({
+      itemId: A,
+      channel: "telegram-en",
+      apply: true,
+    });
+  });
+
+  it("needs one story id and a Telegram channel", () => {
+    expect(storyCaption(["--channel", "telegram"])).toHaveProperty("error");
+    expect(storyCaption([A, B, "--channel", "telegram"])).toHaveProperty(
+      "error"
+    );
+    expect(storyCaption([A])).toHaveProperty("error");
+    expect(storyCaption([A, "--channel", "facebook-en"])).toHaveProperty(
+      "error"
+    );
+    expect(storyCaption([A, "--channel", "telegram", "--force"])).toEqual({
+      error: expect.stringContaining("--force"),
+    });
+  });
+});
 
 describe("parseArgs", () => {
   it("refuses a flag the command does not read", () => {

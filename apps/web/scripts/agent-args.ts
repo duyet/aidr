@@ -41,6 +41,7 @@ const COMMAND_FLAGS: Record<string, readonly string[]> = {
     "max-calls",
   ],
   "backfill-tags": ["apply"],
+  "story-caption": ["channel", "apply"],
 };
 
 /** Flags that take the next argument as their value. */
@@ -178,6 +179,28 @@ export function parseUnmergeCommand(
   }
   if (file === undefined) return { error: "unmerge needs a pairs JSON file" };
   return { kind: "pairs", file, apply };
+}
+
+export interface StoryCaptionCommand {
+  itemId: string;
+  channel: "telegram" | "telegram-en";
+  /** False is the dry run, the default. */
+  apply: boolean;
+}
+
+/** `story-caption <item-id> --channel telegram|telegram-en [--apply]`. */
+export function parseStoryCaptionCommand(
+  args: Args
+): StoryCaptionCommand | { error: string } {
+  const [, itemId, ...rest] = args.positional;
+  if (!itemId || rest.length > 0) {
+    return { error: "story-caption takes one story id" };
+  }
+  const channel = args.flags.get("channel");
+  if (channel !== "telegram" && channel !== "telegram-en") {
+    return { error: "--channel telegram|telegram-en is required" };
+  }
+  return { itemId, channel, apply: args.flags.has("apply") };
 }
 
 /** Why a deployed endpoint's undo dry run does not cover exactly the

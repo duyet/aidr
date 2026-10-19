@@ -42,8 +42,19 @@ import {
   withLlmCallContext,
 } from "../llm.js";
 import { createD1LlmCallLogger, flushLlmCallWrites } from "../llm-call-log.js";
-import { forceSendDigest, syncDigestVideoButton } from "../notify/index.js";
-import { sendDayVideoToTelegram, telegramChatId } from "../notify/telegram.js";
+import {
+  forceSendDigest,
+  loadPostableStory,
+  syncDigestVideoButton,
+} from "../notify/index.js";
+import {
+  editStoryCaption,
+  prepareStoryPost,
+  sendDayVideoToTelegram,
+  storyPostCaption,
+  telegramChatId,
+} from "../notify/telegram.js";
+import type { StoryPostKind } from "../notify/types.js";
 import {
   RANK_SIGNAL_COLUMNS,
   RANK_SIGNAL_JOIN,
@@ -875,6 +886,133 @@ export async function retryTelegramDigest(env: Env) {
   const result = await forceSendDigest(env);
   await writeAudit(env, "notify.digest", result.reason);
   return result;
+}
+
+const STORY_CAPTION_CHANNELS: Record<string, Lang> = {
+  telegram: "vi",
+  "telegram-en": "en",
+};
+
+export interface StoryCaptionResult {
+  dryRun: boolean;
+  /** False when the rebuilt caption is the one already posted. */
+  changed: boolean;
+  /** True only when Telegram took the edit. */
+  edited: boolean;
+  channel: string;
+  itemId: string;
+  messageId: string;
+  kind: StoryPostKind;
+  before: string;
+  after: string;
+}
+
+/**
+ * Rebuilds a sent Telegram story post's caption from current D1 text,
+ * through the same gates and caption path as a send, and edits the post in
+ * place. A dry run (the default: only `dryRun: false` edits) returns the
+ * old and new caption and calls nothing. The message comes from the `sent`
+ * `notifications` row (a trending row, or the highlight row naming the story
+ * in `story_id`) and must match the `notify_posts` row, which says how the
+ * post was sent. A post sent before `notify_posts` existed is refused. An
+ * edit writes `admin_audit` (`telegram.edit_caption`).
+ */
+export async function reviseStoryCaption(
+  env: Env,
+  input: { channel?: unknown; itemId?: unknown; dryRun?: unknown }
+): Promise<StoryCaptionResult | HandlerError> {
+  const channel = typeof input.channel === "string" ? input.channel : "";
+  const lang = STORY_CAPTION_CHANNELS[channel];
+  if (!lang) {
+    return { error: "channel must be telegram or telegram-en", status: 400 };
+  }
+  const itemId = typeof input.itemId === "string" ? input.itemId.trim() : "";
+  if (!itemId || itemId.length > 128) {
+    return { error: "itemId required", status: 400 };
+  }
+  const dryRun = input.dryRun !== false;
+
+  const sent = await env.DB.prepare(
+    `SELECT target, message_id FROM notifications
+     WHERE channel = ? AND status = 'sent' AND message_id IS NOT NULL
+       AND message_id != '' AND (item_id = ? OR story_id = ?)
+     ORDER BY posted_at DESC LIMIT 1`
+  )
+    .bind(channel, itemId, itemId)
+    .first<{ target: string; message_id: string }>();
+  if (!sent) {
+    return { error: `no sent ${channel} post of ${itemId}`, status: 404 };
+  }
+  const post = await env.DB.prepare(
+    `SELECT message_id, kind, caption, caption_hash FROM notify_posts
+     WHERE channel = ? AND item_id = ?`
+  )
+    .bind(channel, itemId)
+    .first<{
+      message_id: string;
+      kind: StoryPostKind;
+      caption: string;
+      caption_hash: string;
+    }>();
+  if (!post || post.message_id !== sent.message_id) {
+    return {
+      error: `message ${sent.message_id} has no recorded caption (sent before notify_posts); edit it by hand`,
+      status: 409,
+    };
+  }
+
+  const story = await loadPostableStory(env, itemId, lang);
+  if (typeof story === "string") {
+    return { error: `refused: ${story}`, status: 409 };
+  }
+  const prepared = await prepareStoryPost(env, story);
+  if ("withheld" in prepared) {
+    return { error: `refused: ${prepared.withheld}`, status: 409 };
+  }
+  const after = storyPostCaption(post.kind, prepared);
+  const hash = await sha256Hex(after);
+  const result: StoryCaptionResult = {
+    dryRun,
+    changed: hash !== post.caption_hash,
+    edited: false,
+    channel,
+    itemId,
+    messageId: sent.message_id,
+    kind: post.kind,
+    before: post.caption,
+    after,
+  };
+  if (dryRun || !result.changed) return result;
+
+  const edit = await editStoryCaption(
+    env,
+    sent.target,
+    sent.message_id,
+    post.kind,
+    prepared
+  );
+  if (!edit.ok) {
+    return { error: `edit failed: ${edit.error ?? "unknown"}`, status: 502 };
+  }
+  await env.DB.prepare(
+    `UPDATE notify_posts SET caption = ?, caption_hash = ?
+     WHERE channel = ? AND item_id = ?`
+  )
+    .bind(after, hash, channel, itemId)
+    .run();
+  await writeAudit(
+    env,
+    "telegram.edit_caption",
+    JSON.stringify({
+      channel,
+      itemId,
+      messageId: sent.message_id,
+      kind: post.kind,
+      before: post.caption_hash,
+      after: hash,
+    })
+  );
+  return { ...result, edited: true };
 }
 
 const DEFAULT_LLM_CALLS_LIMIT = 100;

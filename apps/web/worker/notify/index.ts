@@ -714,8 +714,26 @@ function postableCardStory(
   const gate = postableCopy(row, lang, rules);
   if (!gate) return `story ${id} has no ${lang} copy`;
   if (gate.ok) return gate.copy;
-  logGateRefusal(`highlight-${lang}`, id, gate);
-  return `story ${id} gate:${gate.reason}`;
+  const issues = gate.issues?.length ? ` (${gate.issues.join("; ")})` : "";
+  return `story ${id} gate:${gate.reason}${issues}`;
+}
+
+/** One story as a post in `lang` would carry it now: current D1 text,
+ *  through the same gates as a send, or why it may not post. */
+export async function loadPostableStory(
+  env: Env,
+  id: string,
+  lang: Lang
+): Promise<StoryPayload | string> {
+  const copy = storyCopySql(lang);
+  const row = await env.DB.prepare(
+    `SELECT ${copy.columns} FROM items i ${copy.join} WHERE i.id = ?`
+  )
+    .bind(id)
+    .first<CardStoryRow>();
+  const rules = row ? await gateRules(env, [row], lang) : [];
+  const story = postableCardStory(id, row ?? undefined, lang, rules);
+  return typeof story === "string" ? story : hydrateStory(story);
 }
 
 /**

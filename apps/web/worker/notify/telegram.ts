@@ -32,6 +32,7 @@ import {
   type Notifier,
   type SendResult,
   type StoryPayload,
+  type StoryPostKind,
 } from "./types.js";
 import { buildVideoAlbumMedia, planVideoDelivery } from "./video.js";
 
@@ -374,6 +375,97 @@ export async function editDigestReplyMarkup(
   });
   if (res.ok || /message is not modified/i.test(res.description ?? "")) {
     return { ok: true, messageId };
+  }
+  return sendFailure(res);
+}
+
+/** A story post's text as `sendStory` sends it: the story with its caption
+ *  summary, the caption and the Read button. */
+export interface PreparedStoryPost {
+  story: StoryPayload;
+  caption: string;
+  replyMarkup: object;
+}
+
+/**
+ * Builds the post for `payload`, or says why it is withheld: a Vietnamese
+ * summary that reads as source copy (a teaser, a byline, "chúng tôi") and
+ * has no clean rewrite is not posted raw.
+ */
+export async function prepareStoryPost(
+  env: Env,
+  payload: StoryPayload
+): Promise<PreparedStoryPost | { withheld: string }> {
+  // The album caption has the least room (it carries the Read link), so
+  // one summary written to that budget fits the photo and text posts too.
+  const caption_summary = await captionSummaryFor(
+    env,
+    payload,
+    storySummaryBudget(payload, albumLinkReserve(payload.lang))
+  );
+  if (
+    !caption_summary &&
+    payload.lang === "vi" &&
+    readsAsSourceCopy(payload.summary ?? "", "vi")
+  ) {
+    return {
+      withheld:
+        "withheld: the summary reads as source copy and has no clean rewrite",
+    };
+  }
+  const story = caption_summary ? { ...payload, caption_summary } : payload;
+  return {
+    story,
+    caption: buildStoryCaption(story),
+    replyMarkup: buildStoryReplyMarkup(story),
+  };
+}
+
+/** The caption a post of `kind` carries: an album has no buttons, so its
+ *  Read link is in the caption. */
+export function storyPostCaption(
+  kind: StoryPostKind,
+  post: PreparedStoryPost
+): string {
+  return kind === "album" ? buildAlbumCaption(post.story) : post.caption;
+}
+
+/**
+ * Rewrites a sent story post's caption in place with the call its kind
+ * needs: `editMessageText` for a text post (its preview pinned again, as
+ * the send pinned it), `editMessageCaption` otherwise. The Read button is
+ * sent again, because an edit without `reply_markup` removes it; an album
+ * has none. Telegram's "message is not modified" means the caption already
+ * matches, so it is a success.
+ */
+export async function editStoryCaption(
+  env: Env,
+  chatId: string,
+  messageId: string,
+  kind: StoryPostKind,
+  post: PreparedStoryPost
+): Promise<SendResult> {
+  const token = env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
+  if (!token) return { ok: false, error: "TELEGRAM_BOT_TOKEN is not set" };
+  const target = { chat_id: chatId, message_id: Number(messageId) };
+  const caption = storyPostCaption(kind, post);
+  const res =
+    kind === "text"
+      ? await callTelegram("story", token, "editMessageText", {
+          ...target,
+          text: caption,
+          parse_mode: "HTML",
+          reply_markup: post.replyMarkup,
+          link_preview_options: storyTextLinkPreview(post.story),
+        })
+      : await callTelegram("story", token, "editMessageCaption", {
+          ...target,
+          caption,
+          parse_mode: "HTML",
+          ...(kind === "album" ? {} : { reply_markup: post.replyMarkup }),
+        });
+  if (res.ok || /message is not modified/i.test(res.description ?? "")) {
+    return { ok: true, messageId, post: { kind, caption } };
   }
   return sendFailure(res);
 }
@@ -854,28 +946,11 @@ function telegramChannel(options: {
     async sendStory(env: Env, payload: StoryPayload): Promise<SendResult> {
       const token = env.TELEGRAM_BOT_TOKEN as string;
       const chatId = options.chatId(env);
-      // The album caption has the least room (it carries the Read link), so
-      // one summary written to that budget fits the photo and text posts too.
-      const caption_summary = await captionSummaryFor(
-        env,
-        payload,
-        storySummaryBudget(payload, albumLinkReserve(payload.lang))
-      );
-      if (
-        !caption_summary &&
-        payload.lang === "vi" &&
-        readsAsSourceCopy(payload.summary ?? "", "vi")
-      ) {
-        return {
-          ok: false,
-          withheld: true,
-          error:
-            "withheld: the summary reads as source copy and has no clean rewrite",
-        };
+      const prepared = await prepareStoryPost(env, payload);
+      if ("withheld" in prepared) {
+        return { ok: false, withheld: true, error: prepared.withheld };
       }
-      const story = caption_summary ? { ...payload, caption_summary } : payload;
-      const caption = buildStoryCaption(story);
-      const replyMarkup = buildStoryReplyMarkup(story);
+      const { story, caption, replyMarkup } = prepared;
       const { gallery, dropped } = resolveStoryMedia(story);
 
       const fallback = dropped.map((reason) => `gallery:${reason}`);
