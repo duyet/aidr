@@ -1526,7 +1526,9 @@ counts rows per check; the numbers below come from it.
   "địa phương", oil/gas for "đường ống". On the 400 rows they make 55
   term hits in 43 rows; the rater named the same phrase in 41, and the
   rest read as the AI sense. Two clean rows hit: 9d2417f4 "token lý luận" and
-  9732b276 "AI sinh tạo".
+  9732b276 "AI sinh tạo". The table also gates TL;DR bullets: over 30
+  days (475 bullets) the new entries flag 10, all the AI sense (7 of them
+  "tiên phong" for frontier).
 - Garbled words (`worker/vi-syllable.ts`): a word in another script
   ("t合成", "lầnแรก") or a marked word that no Vietnamese spelling allows
   ("vượ", "nền tảp", "đặặt"). The rime table accepts 144,706 of 144,977
@@ -1535,8 +1537,9 @@ counts rows per check; the numbers below come from it.
   toneless loanword ("nơron", "ximăng") pass. 400 rows: 24 flagged, all
   real garbles, 0 of 72 clean rows. 30 days (2,980 rows): 79 flagged, 3
   wrong ("hécta" and "kilômét" are loanwords with a tone, "José" is a name
-  the source spells without the accent). Of about 60 rated rows with a
-  corrupted word it flags 24; the rest are near misses built from real
+  the source spells without the accent). The raters' notes put a
+  corrupted word in about 60 rows (an estimate, not a hand count); the
+  check flags 24 of them. The rest are near misses built from real
   syllables ("rời rạp", "sụp đảo", "kỹ sĩ"), which no syllable check sees.
 - Decimal point: a number the source writes with a decimal point, kept that
   way in the Vietnamese before %, USD, a magnitude, "lần", "x" or "điểm",
@@ -1558,6 +1561,8 @@ Dry run of 2026-10-19 (`vi-audit --days 7`): 782 rows; the gate before
 these checks sends 37 back for repair, the gate after sends 132 (calque
 58, garble 26, decimal 24, keep 19, echo 18, stutter 16, dollar 7). Over
 30 days: 229 before, 436 after. Each flagged batch costs one repair call.
+Only fresh drafts are judged: backfill re-selects stored rows by length,
+not by this gate, so stored rows are not translated again.
 Flagged items in a batch get
 one repair call with their issues as a `fix` list; a repaired row replaces
 the draft only when it has fewer issues, and the repair is skipped under
