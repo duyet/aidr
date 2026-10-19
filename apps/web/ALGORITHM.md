@@ -2756,8 +2756,13 @@ run 23b4ed50 (2026-10-13) the old fail-open re-sent each item's full chain
 after the first wave, 225 translate 429s in 88 s. 5xx and timeouts never
 skip.
 
-The skip maps live in the isolate, not D1, and that is measured to be
-enough. A cross-run breaker (open a task+model after 3 failures in a row
+The skip maps live in the isolate, not D1, and they did not stop a dead
+id. From 10-12 to 10-14, a later call in the same run hit the same 404
+within 2 minutes 82 times on space-bunny review and 11 times on glm-4.6
+review, all inside the 15-minute skip. Why is not checked: a fresh isolate
+per step, or the 404 fail-open when every review id was skipped, are both
+guesses. Removing space-bunny (#655) is what stopped it. On the chains
+since then, a persisted breaker would save little. A cross-run breaker (open a task+model after 3 failures in a row
 or over half of its last 10 attempts with at least 5, skip it for 15
 minutes, then send one probe) was replayed over prod `llm_calls` on
 2026-10-19 with `pnpm --filter @aidr/web llm-breaker-replay`. From 10-15

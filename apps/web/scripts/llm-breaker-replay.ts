@@ -14,6 +14,11 @@
  * While open its attempts are skipped; the first one after the cooldown is
  * the probe. 429 rows are left out: the 2-minute 429 skip already covers
  * them and never fails open.
+ *
+ * KNOWN BIAS. Each skipped attempt is scored on its own: the replay does
+ * not know what the next hop would have answered or how long it took, so
+ * "saved" is an upper bound. "served" counts working attempts the breaker
+ * would have bypassed, not calls that would have failed.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
