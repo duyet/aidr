@@ -2451,8 +2451,19 @@ deliberately non-spammy.
   a `sendVideo` thumbnail; a poster that fails is left out and the video
   still goes. Gallery photos (`sendPhoto`, album photos) are not
   preflighted for reachability or size: Telegram fetches them and answers
-  with a definite rejection, and if it rejects one the post tries the next
-  gallery image (at most 3 photos, in order), then text.
+  with a definite rejection. When that rejection is about the URL or its
+  size (`failed to get HTTP URL content`, `WEBPAGE_CURL_FAILED`, `wrong type
+  of the web page content`, `file is too big`), the Worker downloads the
+  image itself (`telegram-photo-upload.ts`: the same safe-redirect fetch as
+  enrichment, 10 s timeout, at most 10 MB, JPEG/PNG/WebP by `content-type`)
+  and uploads it as multipart `sendPhoto`. Only then, or when the download or
+  upload is refused, does the post try the next gallery image (at most 3
+  photos, in order), then text. The reasons are `upload:download_failed`,
+  `upload:download_http_<status>`, `upload:not_a_photo`, `upload:too_large`,
+  `upload:empty` and `sendPhoto(upload):<d>`. They are fixed codes: no image
+  URL, query string or fetch error text reaches `last_error`, the logs or
+  Bugsink. An upload with no JSON answer is ambiguous like any other send and
+  ends the post, so a story is never posted twice.
 - **Ambiguous sends are never repeated.** Only a JSON answer from Telegram
   is a definite outcome. `ok: false` posted nothing, so the next transport
   may run and the row is `failed` (retried up to 3 attempts). A timeout, a
