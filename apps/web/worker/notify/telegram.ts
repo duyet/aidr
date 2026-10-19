@@ -6,6 +6,7 @@ import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
 import { reportDeliveryFailure } from "../bugsink.js";
+import { redactUrlForLog } from "../enrich.js";
 import {
   canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
@@ -25,6 +26,7 @@ import {
   previewVerdict,
   type TelegramPostKind,
 } from "./telegram-media-guard.js";
+import { downloadPhoto, isUrlFetchRejection } from "./telegram-photo-upload.js";
 import {
   type DailyDigest,
   type DigestBullet,
@@ -733,14 +735,44 @@ async function callTelegram(
     );
     return { ok: false, description: `media guard: ${verdict.reason}` };
   }
+  return postToTelegram(token, method, {
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+    timeoutMs,
+  });
+}
+
+/** One `sendPhoto` carrying the image bytes, for a photo Telegram could not
+ *  fetch by URL. Same outcome rules as `callTelegram`. */
+function uploadTelegramPhoto(
+  token: string,
+  fields: Record<string, unknown>,
+  photo: { blob: Blob; filename: string }
+): Promise<TelegramResponse> {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    form.set(key, typeof value === "string" ? value : JSON.stringify(value));
+  }
+  form.set("photo", photo.blob, photo.filename);
+  return postToTelegram(token, "sendPhoto", {
+    body: form,
+    timeoutMs: TELEGRAM_MEDIA_TIMEOUT_MS,
+  });
+}
+
+async function postToTelegram(
+  token: string,
+  method: string,
+  request: { headers?: HeadersInit; body: BodyInit; timeoutMs: number }
+): Promise<TelegramResponse> {
   let status: number;
   let raw: string;
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(timeoutMs),
+      headers: request.headers,
+      body: request.body,
+      signal: AbortSignal.timeout(request.timeoutMs),
     });
     status = res.status;
     raw = await res.text();
@@ -919,6 +951,36 @@ function telegramChannel(options: {
             link_preview_options: STORY_PHOTO_LINK_PREVIEW,
           });
 
+        // Telegram's fetcher was refused, the Worker may not be: download the
+        // image and upload the bytes. Called only after a definite rejection,
+        // so the story is not in the channel yet. An upload with no clean
+        // answer ends the send like any other ambiguous call.
+        async function uploadOne(photoUrl: string): Promise<SendResult | null> {
+          const image = await downloadPhoto(photoUrl);
+          if (!image.ok) {
+            fallback.push(image.reason);
+            return image.budgetExhausted
+              ? { ok: false, budgetExhausted: true, error: image.reason }
+              : null;
+          }
+          const sent = await uploadTelegramPhoto(
+            token,
+            {
+              chat_id: chatId,
+              caption,
+              parse_mode: "HTML",
+              reply_markup: replyMarkup,
+            },
+            image
+          );
+          if (sent.ok) {
+            return { ok: true, messageId: telegramMessageId(sent.result) };
+          }
+          if (sent.ambiguous || sent.budgetExhausted) return sendFailure(sent);
+          fallback.push(`sendPhoto(upload):${sent.description ?? "unknown"}`);
+          return null;
+        }
+
         // One dead or hotlink-hostile lead must not cost the post its real
         // photos: try the first few in order. Returns null when every
         // definite rejection was absorbed; the text post follows.
@@ -933,8 +995,12 @@ function telegramChannel(options: {
             }
             fallback.push(`sendPhoto:${photo.description ?? "unknown"}`);
             console.error(
-              `telegram sendPhoto failed for ${story.id} ${photoUrl}: ${photo.description}`
+              `telegram sendPhoto failed for ${story.id} ${redactUrlForLog(photoUrl)}: ${photo.description}`
             );
+            if (isUrlFetchRejection(photo.description)) {
+              const uploaded = await uploadOne(photoUrl);
+              if (uploaded) return uploaded;
+            }
           }
           return null;
         }

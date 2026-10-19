@@ -141,7 +141,7 @@ describe("clusterSimilar", () => {
         chatResponse(
           JSON.stringify({
             clusters: [
-              { new: [0, 1], existing: ["22", "abc123", "x"] },
+              { new: [0, 1], existing: ["22", "abc123", existingAlias(0)] },
               { new: [2], existing: ["22"] },
             ],
           })

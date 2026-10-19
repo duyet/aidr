@@ -1127,8 +1127,9 @@ describe("telegramNotifier gating", () => {
 
   it("posts once as text when the story image is over Telegram's photo cap", async () => {
     // Gallery photos are not preflighted: Telegram fetches the URL and refuses
-    // a photo over its 5 MB URL limit. That refusal is a definite answer, so
-    // the text fallback is safe, and the Worker itself never downloads the file.
+    // a photo over its 5 MB URL limit. That refusal is a definite answer. The
+    // Worker then tries to download it for an upload, and a file over the
+    // 10 MB upload limit ends in the text fallback.
     const big = "https://img.example/huge-12mb.jpg";
     const fetchMock = vi
       .fn()
@@ -1143,6 +1144,15 @@ describe("telegramNotifier gating", () => {
         )
       )
       .mockResolvedValueOnce(
+        new Response(null, {
+          status: 200,
+          headers: {
+            "content-type": "image/jpeg",
+            "content-length": String(12 * 1024 * 1024),
+          },
+        })
+      )
+      .mockResolvedValueOnce(
         new Response(JSON.stringify({ ok: true, result: { message_id: 41 } }), {
           status: 200,
         })
@@ -1155,13 +1165,10 @@ describe("telegramNotifier gating", () => {
     );
     expect(result).toMatchObject({ ok: true, messageId: "41" });
     expect(result.error).toMatch(/^fallback ok: sendPhoto:/);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(
-      fetchMock.mock.calls.every((call) =>
-        String(call[0]).startsWith("https://api.telegram.org/")
-      )
-    ).toBe(true);
-    expect(fetchMock.mock.calls[1]?.[0]).toContain("/sendMessage");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(big);
+    expect(fetchMock.mock.calls[2]?.[0]).toContain("/sendMessage");
+    expect(result.error).toContain("upload:too_large");
     expect(JSON.stringify(fetchMock.mock.calls)).not.toMatch(/api\/og/);
   });
 

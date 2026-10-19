@@ -766,6 +766,26 @@ ORDER BY week DESC, hits DESC
   longest closed run over 2026-10-14 to 10-17 took 17 minutes. Recovery
   stays with the GitHub Actions watchdog (Scheduling & coalesce); the
   report only makes a stuck run visible.
+- Source fetch failing (`worker/health.ts`, same step, no model call):
+  `fetch-<id> step failed` is one line per failed source step, carrying the
+  error name and message with URL query strings dropped
+  (`describeFetchError`, not `sanitizeError`, which turns every non-LLM
+  message into "Provider request failed"). A source whose
+  `sourceHealth.failedRuns` reaches 3 (its fetch step failed in 3 runs in a
+  row, this one included) raises `source-failing:<id>` (warning, kind
+  `health`, so Bugsink triage treats it as worker-owned). The 6h cooldown
+  applies, so one source reports at most 4 times a day. The streak is the one
+  the dashboard's 48-run `failing` flag reads; only the threshold differs.
+  Baseline, Workers Logs 2026-10-19, per 24h (48 runs): the four `release-*`
+  rows each failed 6 to 15 runs; `cloudflare-blog`, `hf-papers`, `hf-blog`,
+  `genk-ai` and `hf-models-*` a few. False positives, an estimate that
+  assumes failures are independent (clustering would make it worse): at 6 of
+  48 runs a source completes a 3-run streak about 0.08 times a day, at 15 of
+  48 about once a day. So until the release rows stop failing, the worst one
+  can alert roughly daily; a few failures a day on the other sources almost
+  never do. A source that fails once and recovers never alerts. Disabled and
+  `push` rows hold `failedRuns` at 0. A run that ended before its fetch
+  outcome settled passes no source health and raises nothing.
 - Owner alerts (`worker/owner-alerts.ts`, same durable step, both optional):
   `TELEGRAM_OWNER_CHAT_ID` DMs each freshly fired alert (same 6h cooldown)
   with evidence and the run link, plus one daily summary in the first run
@@ -890,7 +910,13 @@ Decisions behind the table:
   `"<project> <tag>"` (a bare tag gives the scorer nothing); the body is the
   summary. llama.cpp is not added (its tags are build numbers such as
   `b11552`, so no minor release can be told apart) and neither is Claude Code
-  (`2.1.N`, a minor bump almost never happens).
+  (`2.1.N`, a minor bump almost never happens). The four `release-*` rows
+  (vllm, transformers, ollama, codex) logged `fetch-<id> step failed` 6 to 15
+  times each in 24h (Workers Logs, 2026-10-19). The likely cause is the
+  unauthenticated API limit (60 requests an hour per egress IP) because
+  `GITHUB_ALERT_TOKEN` is not set on the Worker. That is unverified: the old
+  log line kept no error text. The line now carries it; a `returned 403` or
+  `returned 429` there confirms it, and setting the token fixes it.
 - **Shared hosts.** `sourceSpecForUrl` maps a link to the registry row whose
   `homepage` or `feed` host serves it. The github, huggingface and openrouter
   rows therefore carry no `feed` or `homepage` (they use `repo`, `author`),
@@ -2515,8 +2541,19 @@ deliberately non-spammy.
   a `sendVideo` thumbnail; a poster that fails is left out and the video
   still goes. Gallery photos (`sendPhoto`, album photos) are not
   preflighted for reachability or size: Telegram fetches them and answers
-  with a definite rejection, and if it rejects one the post tries the next
-  gallery image (at most 3 photos, in order), then text.
+  with a definite rejection. When that rejection is about the URL or its
+  size (`failed to get HTTP URL content`, `WEBPAGE_CURL_FAILED`, `wrong type
+  of the web page content`, `file is too big`), the Worker downloads the
+  image itself (`telegram-photo-upload.ts`: the same safe-redirect fetch as
+  enrichment, 10 s timeout, at most 10 MB, JPEG/PNG/WebP by `content-type`)
+  and uploads it as multipart `sendPhoto`. Only then, or when the download or
+  upload is refused, does the post try the next gallery image (at most 3
+  photos, in order), then text. The reasons are `upload:download_failed`,
+  `upload:download_http_<status>`, `upload:not_a_photo`, `upload:too_large`,
+  `upload:empty` and `sendPhoto(upload):<d>`. They are fixed codes: no image
+  URL, query string or fetch error text reaches `last_error`, the logs or
+  Bugsink. An upload with no JSON answer is ambiguous like any other send and
+  ends the post, so a story is never posted twice.
 - **Ambiguous sends are never repeated.** Only a JSON answer from Telegram
   is a definite outcome. `ok: false` posted nothing, so the next transport
   may run and the row is `failed` (retried up to 3 attempts). A timeout, a
@@ -2819,6 +2856,29 @@ or a timeout streak are tried again, so a dashboard fix lands at once. A
 run 23b4ed50 (2026-10-13) the old fail-open re-sent each item's full chain
 after the first wave, 225 translate 429s in 88 s. 5xx and timeouts never
 skip.
+
+The skip maps live in the isolate, not D1, and they did not stop a dead
+id. From 10-12 to 10-14, a later call in the same run hit the same 404
+within 2 minutes 82 times on space-bunny review and 11 times on glm-4.6
+review, all inside the 15-minute skip. Why is not checked: a fresh isolate
+per step, or the 404 fail-open when every review id was skipped, are both
+guesses. Removing space-bunny (#655) is what stopped it. On the chains
+since then, a persisted breaker would save little. A cross-run breaker (open a task+model after 3 failures in a row
+or over half of its last 10 attempts with at least 5, skip it for 15
+minutes, then send one probe) was replayed over prod `llm_calls` on
+2026-10-19 with `pnpm --filter @aidr/web llm-breaker-replay`. From 10-15
+to 10-19 it would have skipped 18 chat-chain attempts. 12 of them were
+served. It would have saved 280 s in 4.5 days. Over all 7 days the chat
+chains would have saved 4,251 s, and 3,472 s of that on ids that #655 and #663 had
+removed or paused by 10-14: glm-4.6 and space-bunny review (space-bunny
+served 0 of 224, and 143 of those attempts were 404s), and gemini-3-flash
+and gemma-4-31b translate. The 10-13 21:00-24:00 UTC 429 window is outside
+the replay, because the 2-minute map already covers 429s. After 10-14
+02:43 UTC a chain id got one 404 (gemma-latest, an `unmerge-dup-check`
+on 10-16), and no `call_id` sent the same id twice. Rerun the
+replay before adding persisted skip state. A chain that keeps failing
+is better fixed by removing the id, and `KNOWN_DEAD` in
+`schedule.test.ts` keeps a removed id off every chain.
 
 A failed `llm_calls` row keeps `response_snippet`, a JSON descriptor built
 from allowlisted fields, never response text. A provider error keeps the
