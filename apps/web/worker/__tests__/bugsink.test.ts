@@ -42,6 +42,10 @@ describe("reportPipelineException", () => {
       "durable object code updated",
     ],
     [
+      "Internal error in Durable Object storage caused object to be reset; reference = gc6hmvt97vn36209m3h7n1g8",
+      "durable object storage reset",
+    ],
+    [
       "Attempt failed due to internal workflows error",
       "internal workflows error",
     ],
