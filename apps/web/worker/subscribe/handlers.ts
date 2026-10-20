@@ -335,11 +335,12 @@ export async function confirmSubscription(
   }
   if (row.confirmed === 1) return { ok: true, token };
 
-  await env.DB.prepare(
-    "UPDATE subscribers SET confirmed = 1 WHERE unsubscribe_token = ?"
+  const claimed = await env.DB.prepare(
+    "UPDATE subscribers SET confirmed = 1 WHERE unsubscribe_token = ? AND confirmed = 0"
   )
     .bind(token)
     .run();
+  if (claimed.meta.changes === 0) return { ok: true, token };
   const email = row.email;
   const normalizedLang = row.lang === "en" ? "en" : "vi";
   const normalizedSource = normalizeSource(row.source);
