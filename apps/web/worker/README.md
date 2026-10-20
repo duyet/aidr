@@ -1,6 +1,6 @@
 # worker/
 
-Ingestion backend for the news app. One hourly `NewsIngestWorkflow` consumes
+Ingestion backend for the news app. One 30-minute `NewsIngestWorkflow` consumes
 sources, ranks items, and publishes the daily edition. Primary store is D1
 (`aidr`). The step-by-step contract is [`../ALGORITHM.md`](../ALGORITHM.md).
 `apps/web/src/**` (frontend) is separate territory.

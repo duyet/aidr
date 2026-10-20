@@ -1,29 +1,27 @@
 # @aidr/web
 
-Hourly pipeline (consume → rank → publish) and ranking design: see [ALGORITHM.md](./ALGORITHM.md). Publish rules for email and Telegram are also under [Publish](#publish) below.
+The 30-minute pipeline (consume → rank → publish) and ranking design: see [ALGORITHM.md](./ALGORITHM.md). Publish rules for email and Telegram are also under [Publish](#publish) below.
 Locale selection, canonical URLs, and caching: see [LOCALE_URLS.md](./LOCALE_URLS.md).
 
 ## Migration gate
 
-The media manifest migration is intentionally ordered after #158's
-`0023_translation_reviews.sql`. Before deploying the Worker:
+The deploy refuses to upload a Worker unless the target D1 ledger has every
+file in `migrations/` from `0023` up, in numeric order. The gate derives the
+list from the directory, so a new migration is covered without editing the
+gate (`worker/migration-gate.ts`, `scripts/check-migrations.ts`).
 
-1. Merge/apply `0023_translation_reviews.sql` first.
-2. Run `pnpm --filter @aidr/web d1:migrate`. This checks the local migration
-   order and the read-only remote ledger before applying pending migrations.
-3. Run `pnpm --filter @aidr/web check:migrations`. This is a read-only remote
-   probe; it does not apply migrations.
-4. Use `pnpm --filter @aidr/web deploy` (or `cf:deploy:prod`), which runs the
-   same hard gate before building/deploying. Do not bypass it with a direct
-   `wrangler deploy` command.
+| Command | What it does |
+|---|---|
+| `pnpm --filter @aidr/web check:migration-order` | Checks file names only. No network. |
+| `pnpm --filter @aidr/web check:migrations` | Also reads the remote ledger and fails if a required migration is missing or out of order. Applies nothing. |
+| `pnpm --filter @aidr/web d1:migrate` | Checks the ledger order, then applies pending migrations. |
+| `pnpm --filter @aidr/web deploy` or `cf:deploy:prod` | Runs `check:migrations` before the build. Do not bypass it with a direct `wrangler deploy`. |
 
-The gate fails closed if either migration is absent from the target D1
-migration ledger or if `items.media_manifest` is missing. The ingest write,
-backfill, and notification paths also probe the column and record a failed
-workflow instead of treating a missing schema as a successful no-op. The
-schema change is additive; rollback means redeploying the previous Worker while
-leaving the column in place, not dropping it. This PR does not apply remote
-migrations or deploy.
+`.github/workflows/migrate-d1.yml` runs `d1:migrate` on a push to `main` or
+`master` that touches `apps/web/migrations/**`, and by hand through
+`workflow_dispatch`. Migrations only move forward. Rollback means redeploying
+the previous Worker and leaving the schema in place. See
+[`docs/decisions/migration-rollback.md`](../../docs/decisions/migration-rollback.md).
 
 ## Public read API
 
@@ -382,7 +380,7 @@ A bilingual human-readable version of this section is also published at
 
 ## Publish
 
-After the `tldr` step, the same hourly `NewsIngestWorkflow` publishes one
+After the `tldr` step, the same 30-minute `NewsIngestWorkflow` publishes one
 edition per language (`worker/digest/edition.ts`). `bullets_en` and
 `bullets_vi` are never substituted for each other. The full consume → rank
 → publish contract is [ALGORITHM.md](./ALGORITHM.md).
