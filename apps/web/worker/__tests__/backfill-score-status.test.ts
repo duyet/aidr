@@ -63,12 +63,16 @@ function harness(statuses: Record<string, string>) {
       return {
         all: async () => ({ results: rows }),
         bind: (...args: unknown[]) => ({
+          all: async () => ({ results: [] }),
           run: async () => {
             sqlite.prepare(sql).run(...(args as never[]));
             return { success: true };
           },
         }),
       };
+    },
+    batch: async (statements: { run: () => Promise<unknown> }[]) => {
+      for (const statement of statements) await statement.run();
     },
   };
   const ctx = {

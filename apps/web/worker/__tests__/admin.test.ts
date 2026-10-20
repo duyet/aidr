@@ -313,6 +313,8 @@ class FakeD1 {
         category,
         tags,
         rank_score,
+        gateRelevance,
+        threshold,
         id,
       ] = args;
       const row = this.items.get(id as string);
@@ -325,6 +327,12 @@ class FakeD1 {
           tags,
           rank_score,
         });
+        if (
+          row.status === "published" &&
+          (gateRelevance as number) < (threshold as number)
+        ) {
+          row.status = "rejected";
+        }
       }
       return { success: true };
     }
@@ -1008,6 +1016,30 @@ describe("reprocessToday", () => {
     const row = db.items.get("item-1");
     expect(row?.llm_importance).toBe(8);
     expect(row?.category).toBe("Models");
+  });
+
+  it("hides a story the rescore finds below the relevance threshold", async () => {
+    const env = makeEnv();
+    const todaySec = Math.floor(Date.now() / 1000);
+    seedPublished(env, "keep", todaySec);
+    seedPublished(env, "drop", todaySec);
+    vi.spyOn(llm, "scoreItems").mockImplementation(async (_env, items) =>
+      items.map(({ i }) => ({
+        i,
+        relevance: i === 0 ? 0.9 : 0.1,
+        importance: 6,
+        quality: 6,
+        category: "Models",
+        tags: [],
+        tokens: 1,
+      }))
+    );
+
+    await reprocessToday(env, { steps: ["score"] });
+
+    const db = env.DB as unknown as FakeD1;
+    expect(db.items.get("keep")?.status).toBe("published");
+    expect(db.items.get("drop")?.status).toBe("rejected");
   });
 
   it("upserts translations by item id via reprocess without duplicates", async () => {
