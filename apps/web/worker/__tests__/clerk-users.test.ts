@@ -28,7 +28,7 @@ const migrationFile = (name: string) =>
     "utf8"
   );
 // 0040 adds clerk_users.email_verified, which the upsert writes.
-const migration = `${migrationFile("0026_clerk_users.sql")}\n${migrationFile("0040_email_contributions.sql")}\n${migrationFile("0041_clerk_verified_emails.sql")}`;
+const migration = `${migrationFile("0026_clerk_users.sql")}\n${migrationFile("0040_email_contributions.sql")}\n${migrationFile("0041_clerk_verified_emails.sql")}\n${migrationFile("0072_clerk_sync_attempts.sql")}`;
 
 type SqliteInput = null | number | bigint | string | NodeJS.ArrayBufferView;
 
@@ -77,7 +77,14 @@ class SqliteD1 {
 
   async batch(statements: Array<{ run: () => Promise<unknown> }>) {
     const results: unknown[] = [];
-    for (const statement of statements) results.push(await statement.run());
+    this.db.exec("BEGIN");
+    try {
+      for (const statement of statements) results.push(await statement.run());
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
     return results as Array<{ meta: { changes: number } }>;
   }
 }
@@ -548,7 +555,7 @@ describe("syncClerkUserById", () => {
     expect(
       await syncClerkUserById(
         env,
-        "user_abc",
+        "user_def",
         vi.fn(async () => new Response("{}", { status: 500 })) as never
       )
     ).toBe("error");
@@ -558,6 +565,176 @@ describe("syncClerkUserById", () => {
     expect(
       t.db.db.prepare("SELECT COUNT(*) AS c FROM clerk_verified_emails").get()
     ).toEqual({ c: 0 });
+    t.close();
+  });
+});
+
+describe("syncClerkUserById hardening (#946)", () => {
+  const clerkUser = (over: Record<string, unknown> = {}) => ({
+    id: "user_abc",
+    created_at: 1_700_000_000_000,
+    updated_at: 1_700_000_100_000,
+    primary_email_address_id: "idn_1",
+    email_addresses: [
+      {
+        id: "idn_1",
+        email_address: "me@example.com",
+        verification: { status: "verified" },
+      },
+    ],
+    ...over,
+  });
+  const respond = (body: unknown) =>
+    vi.fn(
+      async () => new Response(JSON.stringify(body))
+    ) as unknown as typeof fetch;
+
+  it("keeps earlier addresses and the old list when a later insert fails", async () => {
+    const t = makeDb();
+    await upsertClerkUser(t.db as unknown as D1Database, {
+      id: "user_abc",
+      email: "keep@example.com",
+      verifiedEmails: ["keep@example.com"],
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    t.db.db.exec(
+      "INSERT INTO clerk_users (id, email, created_at, updated_at, deleted_at) VALUES ('user_live', 'x@example.com', 1, 1, NULL)"
+    );
+    t.db.db.exec(
+      "INSERT INTO clerk_verified_emails (user_id, email) VALUES ('user_live', 'taken@example.com')"
+    );
+    await expect(
+      upsertClerkUser(t.db as unknown as D1Database, {
+        id: "user_abc",
+        email: "new@example.com",
+        verifiedEmails: ["new@example.com", "taken@example.com"],
+        createdAt: 1,
+        updatedAt: 5,
+      })
+    ).rejects.toThrow();
+    const stored = t.db.db
+      .prepare(
+        "SELECT email FROM clerk_verified_emails WHERE user_id = 'user_abc'"
+      )
+      .all();
+    expect(stored.map((r: any) => r.email)).toEqual(["keep@example.com"]);
+    t.close();
+  });
+
+  it("takes an address over from a soft-deleted account in the same write", async () => {
+    const t = makeDb();
+    const db = t.db as unknown as D1Database;
+    await upsertClerkUser(db, {
+      id: "user_old",
+      email: "shared@example.com",
+      verifiedEmails: ["shared@example.com"],
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await softDeleteClerkUser(db, "user_old", 2);
+    await upsertClerkUser(db, {
+      id: "user_new",
+      email: "shared@example.com",
+      verifiedEmails: ["shared@example.com", "second@example.com"],
+      createdAt: 3,
+      updatedAt: 3,
+    });
+    const stored = t.db.db
+      .prepare(
+        "SELECT user_id, email FROM clerk_verified_emails ORDER BY email"
+      )
+      .all();
+    expect(stored.map((r: any) => [r.user_id, r.email])).toEqual([
+      ["user_new", "second@example.com"],
+      ["user_new", "shared@example.com"],
+    ]);
+    t.close();
+  });
+
+  it("does not take an address from a live account", async () => {
+    const t = makeDb();
+    const db = t.db as unknown as D1Database;
+    await upsertClerkUser(db, {
+      id: "user_live",
+      email: "shared@example.com",
+      verifiedEmails: ["shared@example.com"],
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await expect(
+      upsertClerkUser(db, {
+        id: "user_new",
+        email: "shared@example.com",
+        verifiedEmails: ["shared@example.com"],
+        createdAt: 3,
+        updatedAt: 3,
+      })
+    ).rejects.toThrow();
+    expect(
+      t.db.db.prepare("SELECT user_id FROM clerk_verified_emails").all()
+    ).toEqual([{ user_id: "user_live" }]);
+    t.close();
+  });
+
+  it("stamps the row with Clerk's updated_at so a delete after the read wins", async () => {
+    const t = makeDb();
+    const db = t.db as unknown as D1Database;
+    const clerkUpdatedSec = 1_700_000_100;
+    await upsertClerkUser(db, {
+      id: "user_abc",
+      email: "me@example.com",
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await softDeleteClerkUser(db, "user_abc", clerkUpdatedSec + 50);
+    const status = await syncClerkUserById(
+      { DB: db, CLERK_SECRET_KEY: "k" },
+      "user_abc",
+      respond(clerkUser())
+    );
+    expect(status).toBe("ok");
+    expect(
+      t.db.db
+        .prepare(
+          "SELECT updated_at, deleted_at FROM clerk_users WHERE id = 'user_abc'"
+        )
+        .get()
+    ).toEqual({
+      updated_at: clerkUpdatedSec,
+      deleted_at: clerkUpdatedSec + 50,
+    });
+    expect(
+      t.db.db.prepare("SELECT COUNT(*) AS c FROM clerk_verified_emails").get()
+    ).toEqual({ c: 0 });
+    t.close();
+  });
+
+  it("throttles repeat syncs per user and skips the Clerk request", async () => {
+    const t = makeDb();
+    const env = { DB: t.db as unknown as D1Database, CLERK_SECRET_KEY: "k" };
+    const fetcher = respond(clerkUser());
+    expect(await syncClerkUserById(env, "user_abc", fetcher)).toBe("ok");
+    expect(await syncClerkUserById(env, "user_abc", fetcher)).toBe("throttled");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(
+      await syncClerkUserById(
+        env,
+        "user_other",
+        respond(
+          clerkUser({
+            id: "user_other",
+            email_addresses: [
+              {
+                id: "idn_1",
+                email_address: "other@example.com",
+                verification: { status: "verified" },
+              },
+            ],
+          })
+        )
+      )
+    ).toBe("ok");
     t.close();
   });
 });
