@@ -674,6 +674,22 @@ describe("protected English terms", () => {
     ).toEqual([]);
   });
 
+  it("keeps inference engine in English", () => {
+    expect(
+      keepVerbatimList({
+        title: "Mercury 3 ships a new inference engine",
+        summary: "",
+      })
+    ).toContain("inference engine");
+    expect(KEEP_ENGLISH_PROSE).toContain("inference engine");
+    expect(
+      missingProtectedTerms(
+        { title: "A new inference engine", summary: "" },
+        { title: "Một khung suy diễn mới", summary: "" }
+      ).jargon
+    ).toContain("inference engine");
+  });
+
   it("gives the generator a readable keep list", () => {
     expect(
       keepVerbatimList({

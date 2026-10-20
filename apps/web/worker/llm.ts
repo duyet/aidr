@@ -192,6 +192,7 @@ Never calque these (bad → good):
 - "enterprise growth" (the business-customer segment) → "tăng trưởng doanh nghiệp" ✗ → "tăng trưởng mảng doanh nghiệp" ✓
 - "Forecasting Model Family" → "gia đình mô hình dự báo" ✗ → "model family dự báo" ✓
 - "a time series foundation model family" → "một gia đình foundation model chuỗi thời gian" ✗ → "một model family gồm các foundation model chuỗi thời gian" ✓
+- "a faster inference engine" → "một khung suy diễn nhanh hơn" ✗ → "một inference engine nhanh hơn" ✓
 - "Has GPT-6-Astra Achieved Embodied Intelligence?" ("nhân quả" means causal) → "GPT-6-Astra đã đạt được trí tuệ nhân quả?" ✗ → "GPT-6-Astra đã đạt được trí tuệ hiện thân chưa?" ✓
 - "tabletop manipulation, humanoids, mobile platforms, and dexterous hands" → "thao tác bàn, con người, nền tảng di động và tay xoay tay" ✗ → "thao tác trên mặt bàn, robot hình người, nền tảng robot di động và bàn tay khéo léo" ✓
 - "improving the generality of ICL" ("chung chung" means vague) → "cải thiện tính chung chung chung của ICL" ✗ → "cải thiện tính tổng quát của ICL" ✓

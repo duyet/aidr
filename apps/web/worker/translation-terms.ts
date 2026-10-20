@@ -38,6 +38,7 @@ export const KEEP_ENGLISH_TERMS = [
   "swarm",
   "embedding",
   "model famil",
+  "inference engine",
 ] as const;
 
 /** "Model Family", "model families", "a family of time-series foundation
@@ -64,7 +65,7 @@ const WHOLE_WORD_TERMS = new Set<string>(["harness", "exploit"]);
 
 /** Prose form used in VI_STYLE. */
 export const KEEP_ENGLISH_PROSE =
-  "fine-tune, benchmark, agent, agentic, token, open-weights, decision model, reasoning model, foundation model, world model, reinforcement learning (or RL), context window, guardrail, jailbreak, harness, hyperscaler, rollout, exploit, kill switch, red-teaming, sandbox, frontier model, MoE, prompt, chatbot, embedding, LLM, GPU, AI, swarm, multi-agent, model family";
+  "fine-tune, benchmark, agent, agentic, token, open-weights, decision model, reasoning model, foundation model, world model, reinforcement learning (or RL), context window, guardrail, jailbreak, harness, hyperscaler, rollout, exploit, kill switch, red-teaming, sandbox, frontier model, MoE, prompt, chatbot, embedding, LLM, GPU, AI, swarm, multi-agent, model family, inference engine";
 
 /** Capitalized words a Vietnamese journalist correctly translates: places,
  * demonyms, calendar words, and English function words that open a sentence
