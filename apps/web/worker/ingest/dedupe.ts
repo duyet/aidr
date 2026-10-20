@@ -14,9 +14,47 @@ import {
 } from "./context.js";
 import type { FetchedSource } from "./fetch.js";
 import { headlineOf } from "./merge.js";
+import {
+  WRITE_D1_MAX_STATEMENTS,
+  WRITE_D1_MAX_STATEMENTS_PER_ROW,
+} from "./write.js";
 
 /** Max ids per `SELECT ... WHERE id IN (...)` (D1 bound-parameter limit). */
 export const DEDUPE_IN_CHUNK = 50;
+
+/** New rows one run carries into scoring and `write-d1`. Sized so the
+ * worst case per row stays under `WRITE_D1_MAX_STATEMENTS`. The rest are
+ * still absent from `items`, so the next run picks them up. */
+export const MAX_NEW_ROWS_PER_RUN = Math.floor(
+  WRITE_D1_MAX_STATEMENTS / WRITE_D1_MAX_STATEMENTS_PER_ROW
+);
+
+/** Up to `limit` rows, newest first within each source, taken one source at
+ * a time so a flooded source cannot starve the others during a backlog. */
+export function shareAcrossSources(
+  rows: readonly NewRow[],
+  limit: number
+): NewRow[] {
+  const bySource = new Map<string, NewRow[]>();
+  for (const row of rows) {
+    const queue = bySource.get(row.source.id) ?? [];
+    queue.push(row);
+    bySource.set(row.source.id, queue);
+  }
+  const queues = [...bySource.values()].map((queue) =>
+    queue.sort((a, b) => b.item.publishedAt - a.item.publishedAt)
+  );
+  const out: NewRow[] = [];
+  for (let i = 0; out.length < limit; i++) {
+    const round = queues.filter((queue) => i < queue.length);
+    if (round.length === 0) break;
+    for (const queue of round) {
+      if (out.length === limit) break;
+      out.push(queue[i]);
+    }
+  }
+  return out;
+}
 
 /** An `items` row still at `status = 'new'`. */
 export interface PendingNewRow {
@@ -213,6 +251,7 @@ export async function dedupeNewRows(
   itemsFetched: number
 ): Promise<NewRow[]> {
   const { step, env, steps } = ctx;
+  let deferred = 0;
   const newRows = await safeStep(step, "dedupe", [] as NewRow[], async () => {
     const candidates = collapseSameUrl(await toCandidates(fetchedBySource));
 
@@ -248,17 +287,27 @@ export async function dedupeNewRows(
                   published_at, points, comments, image_url, source_lang, media_manifest
            FROM items WHERE status = 'new'`
     ).all<PendingNewRow>();
-    for (const row of pendingNew ?? []) {
-      rows.push(pendingRowToNewRow(row, sources));
-    }
-
-    return rows;
+    const pending = (pendingNew ?? []).map((row) =>
+      pendingRowToNewRow(row, sources)
+    );
+    const fetchedBudget = Math.max(MAX_NEW_ROWS_PER_RUN - pending.length, 0);
+    const kept = [...shareAcrossSources(rows, fetchedBudget), ...pending].slice(
+      0,
+      MAX_NEW_ROWS_PER_RUN
+    );
+    deferred = rows.length + pending.length - kept.length;
+    return kept;
   });
   recordStep(
     steps,
     "dedupe",
     `${newRows.length} new`,
-    `${Math.max(itemsFetched - newRows.length, 0)} already in db`
+    [
+      `${Math.max(itemsFetched - newRows.length - deferred, 0)} already in db`,
+      deferred > 0 ? `${deferred} deferred to the next run` : null,
+    ]
+      .filter(Boolean)
+      .join(", ")
   );
   return newRows;
 }

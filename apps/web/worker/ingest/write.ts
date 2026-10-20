@@ -298,6 +298,17 @@ async function rerankRecentStatements(
   return [env.DB.prepare(RERANK_UPDATE_SQL).bind(JSON.stringify(scores))];
 }
 
+/** D1 counts every batch statement toward its 1,000 queries per
+ * invocation. This leaves room for the run's other reads and writes. */
+export const WRITE_D1_MAX_STATEMENTS = 800;
+
+/** Worst case for one published row: content log and item upsert (2), vi
+ * translation logs and upsert (3), source delete and inserts, and the
+ * demoted canonical it replaces (5 writes, 1 vote read). A merged row
+ * costs less: 2 writes plus its canonical update. */
+export const WRITE_D1_MAX_STATEMENTS_PER_ROW =
+  2 + 3 + 1 + MAX_SOURCES_PER_ITEM + 6;
+
 /** Writes every new row, applies merges to existing canonicals, and
  * re-ranks the last 72h, all in one D1 batch. Rethrows so a failed write surfaces
  * as the run's error instead of a silently empty edition. */
