@@ -7,7 +7,12 @@
  * puts `[]` back. A rerun finds only the stories still untagged.
  */
 import { RANK_RECOMPUTE_WINDOW_SEC } from "./ingest/context.js";
-import { fallbackTags, type KnownTopics } from "./tag-fallback.js";
+import {
+  fallbackTags,
+  KNOWN_TOPICS_SQL,
+  type KnownTopics,
+  knownTopicsFromRows,
+} from "./tag-fallback.js";
 import {
   applyChangeSets,
   type BatchResult,
@@ -25,8 +30,6 @@ import {
 export const UNTAGGED_STORIES_SQL = `SELECT id, title, source_id, published_at, ${ROW_STATE_COLUMNS.join(", ")}
   FROM items WHERE status = 'published' AND tags = '[]'
   ORDER BY published_at`;
-
-export const KNOWN_TOPICS_SQL = "SELECT name, canonical FROM topics";
 
 export interface UntaggedStory {
   id: ItemId;
@@ -54,12 +57,7 @@ export async function loadTagBackfill(select: SelectRows): Promise<{
   known: KnownTopics;
 }> {
   const rows = await select(UNTAGGED_STORIES_SQL);
-  const known = new Map(
-    (await select(KNOWN_TOPICS_SQL)).map((row) => [
-      String(row.name),
-      String(row.canonical),
-    ])
-  );
+  const known = knownTopicsFromRows(await select(KNOWN_TOPICS_SQL));
   return { rows, known };
 }
 

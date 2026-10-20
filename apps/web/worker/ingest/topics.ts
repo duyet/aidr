@@ -1,6 +1,10 @@
-import { fallbackTags, type KnownTopics } from "../tag-fallback.js";
+import {
+  type KnownTopics,
+  loadKnownTopics,
+  scoredOrFallbackTags,
+} from "../tag-fallback.js";
 import { captureAndLearnTopics } from "../topic-learning.js";
-import { dedupeNormalized, normalizeTopics } from "../topics.js";
+import { normalizeTopics } from "../topics.js";
 import { jsonMap, mapEntries } from "../workflow-run.js";
 import { llmStep, safeStep } from "../workflow-step.js";
 import { type IngestContext, LLM_STEP, type NewRow } from "./context.js";
@@ -52,31 +56,31 @@ export async function normalizeNewRowTopics(
   // (as backfill-score does) rather than storing the row untagged. A story
   // with none gets the deterministic fallback, so no path stores `[]` where
   // `fallbackTags` would name something.
-  let known: KnownTopics | undefined;
-  for (const row of newRows) {
-    if (canonical.has(row.id)) continue;
-    const scoredTags = dedupeNormalized(scored.get(row.id)?.tags ?? []);
-    if (scoredTags.length > 0) {
-      canonical.set(row.id, scoredTags);
-      continue;
+  const pending = newRows.filter((row) => !canonical.has(row.id));
+  if (pending.length > 0) {
+    const known = await loadKnownTopicsOrEmpty(env);
+    for (const row of pending) {
+      canonical.set(
+        row.id,
+        scoredOrFallbackTags(
+          {
+            tags: scored.get(row.id)?.tags ?? [],
+            title: row.item.title,
+            sourceId: row.source.id,
+          },
+          known
+        )
+      );
     }
-    known ??= await loadKnownTopics(env);
-    canonical.set(
-      row.id,
-      fallbackTags({ title: row.item.title, sourceId: row.source.id }, known)
-    );
   }
   return canonical;
 }
 
-async function loadKnownTopics(
+async function loadKnownTopicsOrEmpty(
   env: IngestContext["env"]
 ): Promise<KnownTopics> {
   try {
-    const { results } = await env.DB.prepare(
-      "SELECT name, canonical FROM topics"
-    ).all<{ name: string; canonical: string }>();
-    return new Map((results ?? []).map((r) => [r.name, r.canonical]));
+    return await loadKnownTopics(env.DB);
   } catch (error) {
     console.error("fallback tags: reading topics failed:", error);
     return new Map();

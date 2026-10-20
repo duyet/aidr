@@ -16,8 +16,8 @@ import {
   buildRerankQuery,
   type RankSignalRow,
   rankScore,
+  rankScoreForRow,
   rankSignals,
-  rowRankSignals,
   storyCategory,
 } from "../ranking.js";
 import type { FetchedItemSource } from "../sources/types.js";
@@ -292,15 +292,7 @@ async function rerankRecentStatements(
     .filter((row) => !writtenIds.has(row.id))
     .map((row) => ({
       id: row.id,
-      r: rankScore({
-        importance: row.llm_importance ?? 5,
-        quality: row.llm_quality ?? 5,
-        // row.published_at is stored as epoch seconds; rankScore expects ms.
-        publishedAt: row.published_at * 1000,
-        now,
-        ...rowRankSignals(row),
-        category: storyCategory(row.category),
-      }),
+      r: rankScoreForRow(row, now),
     }));
   if (scores.length === 0) return [];
   return [env.DB.prepare(RERANK_UPDATE_SQL).bind(JSON.stringify(scores))];

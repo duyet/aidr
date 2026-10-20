@@ -12,7 +12,8 @@
  * hand-labelled production rows showed it right (ALGORITHM.md, "Fallback
  * tags").
  */
-import { normalizeTopicName } from "./topics.js";
+import { dedupeNormalized, normalizeTopicName } from "./topics.js";
+import type { Env } from "./types.js";
 
 /** `topics.name` → `topics.canonical`. */
 export type KnownTopics = ReadonlyMap<string, string>;
@@ -156,4 +157,27 @@ export function fallbackTags(
     if (known.get(topic) === topic && !tags.includes(topic)) tags.push(topic);
   }
   return tags;
+}
+
+/** The scorer's tags, deduped, or the deterministic fallback when it gave
+ * none, so no story is stored untagged where `fallbackTags` names something. */
+export function scoredOrFallbackTags(
+  story: TaggableStory & { tags: readonly string[] },
+  known: KnownTopics
+): string[] {
+  const scored = dedupeNormalized(story.tags);
+  return scored.length > 0 ? scored : fallbackTags(story, known);
+}
+
+export const KNOWN_TOPICS_SQL = "SELECT name, canonical FROM topics";
+
+export function knownTopicsFromRows(
+  rows: readonly Record<string, unknown>[]
+): KnownTopics {
+  return new Map(rows.map((row) => [String(row.name), String(row.canonical)]));
+}
+
+export async function loadKnownTopics(db: Env["DB"]): Promise<KnownTopics> {
+  const { results } = await db.prepare(KNOWN_TOPICS_SQL).all();
+  return knownTopicsFromRows(results ?? []);
 }
