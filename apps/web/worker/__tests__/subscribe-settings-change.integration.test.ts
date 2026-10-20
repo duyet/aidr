@@ -286,6 +286,24 @@ describe("subscription mails outlive the response (#626)", () => {
   });
 });
 
+describe("confirm link opened twice at once (#978)", () => {
+  it("sends one welcome mail when a scanner prefetch races the click", async () => {
+    sqlite
+      .prepare("UPDATE subscribers SET confirmed = 0 WHERE email = ?")
+      .run(EMAIL);
+    const results = await Promise.all([
+      confirmSubscription(env, "tok-confirmed", undefined, schedule),
+      confirmSubscription(env, "tok-confirmed", undefined, schedule),
+    ]);
+    expect(results).toEqual([
+      { ok: true, token: "tok-confirmed" },
+      { ok: true, token: "tok-confirmed" },
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sent.map((mail) => mail.to)).toEqual([EMAIL]);
+  });
+});
+
 describe("unsubscribe, then subscribe again (#723)", () => {
   const ADDRESS = "again@aidr-test.dev";
   const signUp = async () => {
