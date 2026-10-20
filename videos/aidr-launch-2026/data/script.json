@@ -1,0 +1,14 @@
+{
+  "$comment": "Voiceover, one line per scene. `say` is what the voice engine reads (AI;DR is written 'AI DR' so it is read as four quick letters); `text` is the caption form. Hosts alternate, opener and closer differ (videos/brand/voices.json). Every claim is sourced in data/claims.md.",
+  "speed": 1.06,
+  "lines": [
+    { "id": "l1", "scene": "hook", "host": "Alex", "text": "AI news never stops. The same story shows up everywhere, under new headlines." },
+    { "id": "l2", "scene": "title", "host": "Allison", "text": "AI;DR is a machine that reads it for you.", "say": "AI DR is a machine that reads it for you." },
+    { "id": "l3", "scene": "sources", "host": "Alex", "text": "Every 30 minutes, it pulls from Hacker News, Hugging Face, GitHub releases, Lobsters and RSS feeds.", "say": "Every thirty minutes, it pulls from Hacker News, Hugging Face, GitHub releases, Lobsters, and RSS feeds." },
+    { "id": "l4", "scene": "dedupe", "host": "Allison", "text": "It merges duplicates into one story. Then it scores each one." },
+    { "id": "l5", "scene": "rank", "host": "Alex", "text": "No editor picks the order. The ranking is plain code, and the rules are public." },
+    { "id": "l6", "scene": "tldr", "host": "Allison", "text": "The top stories of the last 24 hours become one edition. Up to 16 bullets, in English and in Vietnamese.", "say": "The top stories of the last twenty-four hours become one edition. Up to sixteen bullets, in English, and in Vietnamese." },
+    { "id": "l7", "scene": "channels", "host": "Alex", "text": "Read it on the site. By email from 7 a.m., your time. On Telegram, on Facebook, and as a daily video.", "say": "Read it on the site. By email from seven a.m., your time. On Telegram, on Facebook, and as a daily video." },
+    { "id": "l8", "scene": "end", "host": "Allison", "text": "Every story links to the original. AI;DR. What's happening in AI today?", "say": "Every story links to the original. AI DR. What's happening in AI today?" }
+  ]
+}

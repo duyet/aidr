@@ -1,0 +1,291 @@
+{
+  "viewBox": [
+    4000,
+    1800
+  ],
+  "stations": {
+    "st-sources": {
+      "center": [
+        759.7,
+        473.4
+      ],
+      "bbox": [
+        458.9,
+        201.8,
+        601.6,
+        543.2
+      ]
+    },
+    "st-fetch": {
+      "center": [
+        1190.4,
+        592.7
+      ],
+      "bbox": [
+        905.6,
+        305.6,
+        569.7,
+        574.1
+      ]
+    },
+    "st-dedupe": {
+      "center": [
+        1605.2,
+        785
+      ],
+      "bbox": [
+        1320.3,
+        555.6,
+        569.7,
+        458.8
+      ]
+    },
+    "st-score": {
+      "center": [
+        2019.9,
+        878.5
+      ],
+      "bbox": [
+        1735.1,
+        607.9,
+        569.7,
+        541.1
+      ]
+    },
+    "st-rank": {
+      "center": [
+        2430.7,
+        950.1
+      ],
+      "bbox": [
+        2141.8,
+        616.4,
+        577.7,
+        667.2
+      ]
+    },
+    "st-tldr": {
+      "center": [
+        2853.4,
+        1095.6
+      ],
+      "bbox": [
+        2564.6,
+        770.2,
+        577.7,
+        650.8
+      ]
+    },
+    "st-dispatch": {
+      "center": [
+        3276.1,
+        1315.2
+      ],
+      "bbox": [
+        2987.3,
+        1072.2,
+        577.7,
+        486.1
+      ]
+    }
+  },
+  "pivots": {
+    "needle-clock": [
+      1215.1,
+      453.3
+    ],
+    "needle-score": [
+      2003.2,
+      819.6
+    ]
+  },
+  "needleFrames": {
+    "needle-clock": "matrix(0.798 0.259 0 0.824 1215.104 453.26)",
+    "needle-score": "matrix(0.798 0.259 0 0.824 2003.159 819.568)"
+  },
+  "moves": {
+    "plunger-score": [
+      0,
+      11.5
+    ],
+    "rank-carriage": [
+      0,
+      -18.1
+    ],
+    "ram-tldr": [
+      0,
+      49.4
+    ]
+  },
+  "belt": [
+    [
+      1062.6,
+      643.1
+    ],
+    [
+      1222.1,
+      694.9
+    ],
+    [
+      1381.7,
+      746.7
+    ],
+    [
+      1541.2,
+      798.5
+    ],
+    [
+      1700.7,
+      850.3
+    ],
+    [
+      1860.2,
+      902.1
+    ],
+    [
+      2019.7,
+      953.9
+    ],
+    [
+      2179.3,
+      1005.7
+    ],
+    [
+      2338.8,
+      1057.5
+    ],
+    [
+      2498.3,
+      1109.3
+    ],
+    [
+      2657.8,
+      1161.1
+    ],
+    [
+      2817.3,
+      1212.9
+    ],
+    [
+      2976.8,
+      1264.7
+    ]
+  ],
+  "hoppers": [
+    [
+      608,
+      314.3
+    ],
+    [
+      687.8,
+      340.2
+    ],
+    [
+      767.5,
+      366.1
+    ],
+    [
+      847.3,
+      392
+    ],
+    [
+      927,
+      417.9
+    ]
+  ],
+  "ports": {
+    "web": [
+      3082.6,
+      1361
+    ],
+    "email": [
+      3146.4,
+      1381.7
+    ],
+    "telegram": [
+      3210.2,
+      1402.4
+    ],
+    "facebook": [
+      3274,
+      1423.2
+    ],
+    "youtube": [
+      3337.8,
+      1443.9
+    ]
+  },
+  "rankSlots": [
+    [
+      2480.6,
+      779.5
+    ],
+    [
+      2480.6,
+      797.6
+    ],
+    [
+      2480.6,
+      815.8
+    ],
+    [
+      2480.6,
+      833.9
+    ],
+    [
+      2480.6,
+      852
+    ],
+    [
+      2480.6,
+      870.1
+    ],
+    [
+      2480.6,
+      888.2
+    ],
+    [
+      2480.6,
+      906.4
+    ],
+    [
+      2480.6,
+      924.5
+    ],
+    [
+      2480.6,
+      942.6
+    ],
+    [
+      2480.6,
+      960.7
+    ],
+    [
+      2480.6,
+      978.8
+    ],
+    [
+      2480.6,
+      997
+    ],
+    [
+      2480.6,
+      1015.1
+    ],
+    [
+      2480.6,
+      1033.2
+    ],
+    [
+      2480.6,
+      1051.3
+    ]
+  ],
+  "solids": 348,
+  "notes": {
+    "needles": "needle-clock and needle-score are drawn flat in their dial's plane: the parent <g> carries the face matrix (needleFrames). Set transform=rotate(deg) on the needle group itself; 0 points at 12 o'clock, positive is clockwise. pivots are the screen points of the hubs.",
+    "moves": "Screen vectors in viewBox units. ram-tldr: full press stroke down. plunger-score: stroke down onto a card. rank-carriage: one slot step up (rest is at slot 16, the bottom tray).",
+    "rankSlots": "Index 0 is slot 1 (top tray), index 15 is slot 16 (bottom tray); each point is the centre of the tray's front lip.",
+    "rollers": "roller-a and roller-b are static groups (rotation about the world y axis cannot be a screen transform)."
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "chime": {
+    "peak": 0.415,
+    "duration": 2.5
+  },
+  "click-soft": {
+    "peak": 0.052,
+    "duration": 0.366
+  },
+  "impact-bass-1": {
+    "peak": 0.06,
+    "duration": 2.116
+  },
+  "key-press": {
+    "peak": 0.072,
+    "duration": 0.4
+  },
+  "pop": {
+    "peak": 0.117,
+    "duration": 0.72
+  },
+  "riser": {
+    "peak": 3.035,
+    "duration": 10.032
+  },
+  "whoosh-cinematic": {
+    "peak": 0.302,
+    "duration": 1
+  },
+  "whoosh-short": {
+    "peak": 0.15,
+    "duration": 0.575
+  },
+  "whoosh": {
+    "peak": 0.15,
+    "duration": 0.575
+  }
+}
