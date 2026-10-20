@@ -32,6 +32,10 @@ const SCRIPT_MODEL = "openai/gpt-5.6-luna";
 const MIN_STORIES = 3;
 /** Screen text length in words, [min, max]; the visub cut checks its Vietnamese screen text against it too. */
 export const WORD_LIMITS = { kicker: [1, 6], headline: [3, 12] };
+/** Spoken pacing in words. A story opens on a short sentence a viewer takes in at once; no sentence runs past one
+ *  breath; the intro is a single beat. Only model copy is held to it: the template copies bullet sentences and is
+ *  the fallback when every model misses. */
+export const PACING = { first: 12, sentence: 18, intro: 14, hook: [3, 7] };
 
 /** Today in Asia/Ho_Chi_Minh, the zone the Worker dates editions in. */
 export const vnToday = (now = new Date()) =>
@@ -120,6 +124,26 @@ export const VOICED_FACTOR = 1.1;
 const GREETING =
   /^\s*(?:this is (?:ai\b|aidr|ai;dr)|welcome\b|hello\b|hi[,!.]|hi (?:there|everyone|all|folks)\b|good (?:morning|evening|afternoon)\b|here(?:'s| is) (?:ai\b|aidr|ai;dr))/i;
 
+/** Problems with a model script's spoken pacing and cover hook (empty = paced). */
+export function pacingProblems(script) {
+  const p = [];
+  for (const s of script.stories) {
+    const sents = s.voice.flatMap((v) => sentencesOf(v.text));
+    const first = words(sents[0]).length;
+    if (first > PACING.first)
+      p.push(`story ${s.rank}: first sentence has ${first} words`);
+    for (const t of sents.slice(1))
+      if (words(t).length > PACING.sentence)
+        p.push(`story ${s.rank}: a sentence has ${words(t).length} words`);
+  }
+  const intro = words(script.intro.voice.at(-1)?.text).length;
+  if (intro > PACING.intro) p.push(`intro line has ${intro} words`);
+  const hook = words(script.thumb?.hook).length;
+  const [min, max] = PACING.hook;
+  if (hook < min || hook > max) p.push(`thumb.hook has ${hook} words`);
+  return p;
+}
+
 /** Estimated length (s): build.mjs's per-segment lead/tail, reading speed, the breath between parts
  *  (config.voice.gap), scaled by VOICED_FACTOR. */
 export function estimateSeconds(script, config) {
@@ -192,6 +216,7 @@ export function validateScript(script, edition) {
   const post = script.post ?? {};
   for (const [label, text] of [
     ["intro", introLine],
+    ["thumb.hook", script.thumb?.hook],
     ...["hook", "facebook", "tiktok", "youtubeTitle", "shortsTitle"].map(
       (k) => [`post.${k}`, post[k]]
     ),
@@ -319,6 +344,7 @@ export function assemble({
   introLine,
   focus,
   thumbRank,
+  thumbHook,
   hostKeys,
 }) {
   const date = edition.date;
@@ -363,7 +389,7 @@ export function assemble({
   return {
     date,
     dateline: `${DOW}, ${MON} ${d.getUTCDate()}, ${d.getUTCFullYear()}`,
-    thumb: { story: thumbRank, hook: copy[thumbRank].kicker },
+    thumb: { story: thumbRank, hook: thumbHook ?? copy[thumbRank].kicker },
     post,
     intro: {
       voice: [{ anchor: intro[0], text: introLine }],
@@ -438,6 +464,7 @@ export function promptFor(edition) {
     source: s.source,
     title: s.title,
     bullet: s.text,
+    image: s.images.length > 0,
   }));
   return [
     {
@@ -447,7 +474,7 @@ export function promptFor(edition) {
     },
     {
       role: "user",
-      content: `Stories:\n${JSON.stringify(stories, null, 1)}\n\nReturn JSON:\n{\n "stories": [{ "rank": <rank>, "kicker": "2-5 words, who or what", "headline": "5-9 words, the news itself, with *2-4 words* in stars", "stat": "the one number or state that sums the story, e.g. $60B or Public beta", "statLabel": "3-8 words explaining the stat", "statWord": "the first spoken word of the stat as it appears in voice, e.g. 60", "voice": ["first sentence, opens on the subject and verb", "optional second sentence"] }],\n "introLine": "one line that opens straight on today's top news, naming one or two stories; no greeting, no show name, no date",\n "focus": [{ "rank": <rank>, "word": "a word from introLine that names that story" }],\n "thumbRank": <rank of the most surprising story>,\n "post": { "hook": "one sentence", "facebook": "1-2 sentences naming the top stories", "tiktok": "<=150 chars, ends with a question", "youtubeTitle": "<=100 chars: lead story, & more, the date", "shortsTitle": "<=80 chars", "hashtags": ["AI", "AINews", "...companies, 5-8 total, no #"] }\n}\nEvery story's voice is 15-22 words in total. Date: ${edition.date}.`,
+      content: `Stories:\n${JSON.stringify(stories, null, 1)}\n\nReturn JSON:\n{\n "stories": [{ "rank": <rank>, "kicker": "2-5 words, who or what", "headline": "5-9 words, the news itself, with *2-4 words* in stars", "stat": "the one number or state that sums the story, e.g. $60B or Public beta", "statLabel": "3-8 words explaining the stat", "statWord": "the first spoken word of the stat as it appears in voice, e.g. 60", "voice": ["first sentence: the news in at most ${PACING.first} words, subject and verb first", "second sentence: why it matters or the one detail that makes it land, at most ${PACING.sentence} words"] }],\n "introLine": "at most ${PACING.intro} words, opens straight on today's top news, naming one or two stories; no greeting, no show name, no date",\n "focus": [{ "rank": <rank>, "word": "a word from introLine that names that story" }],\n "thumbRank": <rank of the most surprising story, preferring one with image true>,\n "thumbHook": "${PACING.hook.join("-")} words for the thumbnail: the surprising fact of the thumbRank story, concrete (a name, a number, an action), not a topic label like 'AI safety research', no question",\n "post": { "hook": "one sentence", "facebook": "1-2 sentences naming the top stories", "tiktok": "<=150 chars, ends with a question", "youtubeTitle": "<=100 chars: lead story, & more, the date", "shortsTitle": "<=80 chars", "hashtags": ["AI", "AINews", "...companies, 5-8 total, no #"] }\n}\nEvery story's voice is 14-24 words in total, written to be heard: one fact per sentence, at most one number per sentence, contractions are fine, no lists of three. Date: ${edition.date}.`,
     },
   ];
 }
@@ -550,6 +577,7 @@ export function fromModel(text, edition, hostKeys) {
     copy,
     hostKeys,
     thumbRank: ranks.includes(json.thumbRank) ? json.thumbRank : ranks[0],
+    thumbHook: ranks.includes(json.thumbRank) ? json.thumbHook : undefined,
     introLine: json.introLine,
     focus: (json.focus ?? []).filter((f) => ranks.includes(f.rank)).slice(0, 2),
     post: {
@@ -579,7 +607,8 @@ export function fitLength(edition, maxSeconds, make, config) {
 }
 
 /**
- * The day's script: each model in the chain, then the template. Returns { script, source, problems }.
+ * The day's script: the first model answer that is valid and paced; else the first valid one (a long sentence
+ * still beats the bullet-copy template); else the template. Returns { script, source, problems }.
  * `llm(edition)` returns the raw model text for one model; injected for tests.
  */
 export async function writeScript({
@@ -598,6 +627,7 @@ export async function writeScript({
     (ed) => templateScript(ed, hostKeys),
     config
   );
+  let unpaced = null;
   for (const model of models) {
     try {
       const script = fromModel(
@@ -610,14 +640,19 @@ export async function writeScript({
       // The model may run long; a little over the budget still fits the 90 s Reel.
       if (est > maxSeconds + 5)
         problems.push(`~${est.toFixed(0)}s is over the ${maxSeconds}s budget`);
-      if (!problems.length) return { script, source: model, problems: [] };
+      const pacing = pacingProblems(script);
+      if (!problems.length && !pacing.length)
+        return { script, source: model, problems: [] };
+      if (!problems.length) unpaced ??= { script, source: model, problems: [] };
+      const all = [...problems, ...pacing];
       log(
-        `! ${model}: ${problems.length} problem(s): ${problems.slice(0, 4).join("; ")}`
+        `! ${model}: ${all.length} problem(s): ${all.slice(0, 4).join("; ")}`
       );
     } catch (e) {
       log(`! ${model}: ${e.message}`);
     }
   }
+  if (unpaced) return unpaced;
   return {
     script: fit.script,
     source: "template",

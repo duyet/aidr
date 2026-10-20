@@ -8,6 +8,7 @@ import {
   complete,
   estimateSeconds,
   fromModel,
+  pacingProblems,
   speakable,
   statSpoken,
   templateScript,
@@ -177,6 +178,93 @@ test("a valid model answer is used; anchors come from the cast, not the model", 
   assert.equal(script.thumb.story, 2);
   assert.ok(
     script.stories.every((s) => s.voice.every((v) => hosts.includes(v.anchor)))
+  );
+});
+
+const three = { ...edition, stories: edition.stories.slice(0, 3) };
+const answerWith = ({ voice, thumbHook }) => ({
+  stories: three.stories.map((s) => ({
+    rank: s.rank,
+    kicker: "AI news",
+    headline: "*A real headline* for this story",
+    stat: "Today",
+    statLabel: "the state of play",
+    statWord: "This",
+    voice,
+  })),
+  introLine: "Stocks slide today.",
+  thumbRank: 2,
+  thumbHook,
+  post: {
+    hook: "Hook.",
+    facebook: "Today in AI.",
+    youtubeTitle: "AI News Today | Oct 10, 2026",
+    shortsTitle: "AI today",
+    tiktok: "What do you think?",
+    hashtags: ["AI", "AINews", "OpenAI"],
+  },
+});
+const paced = answerWith({
+  voice: ["This story is in the bullet.", "It matters for builders."],
+  thumbHook: "Chips slide in one day",
+});
+const breathless = answerWith({
+  voice: [
+    "This story is in the bullet and it keeps going with clause after clause until nobody can follow it.",
+  ],
+  thumbHook: "AI news",
+});
+
+test("a story opens on a short sentence, the intro is one beat, and the cover hook is a phrase, not a label", () => {
+  const ok = fromModel(JSON.stringify(paced), three, hosts);
+  assert.deepEqual(pacingProblems(ok), []);
+  assert.equal(ok.thumb.hook, "Chips slide in one day");
+  const bad = fromModel(JSON.stringify(breathless), three, hosts);
+  bad.intro.voice[0].text =
+    "Stocks slide today as chips fall, rates rise, and every lab ships a model at once.";
+  const problems = pacingProblems(bad).join();
+  assert.match(problems, /story 1: first sentence has 19 words/);
+  assert.match(problems, /intro line has 16 words/);
+  assert.match(problems, /thumb.hook has 2 words/);
+});
+
+test("a paced model answer beats an earlier one that is valid but breathless", async () => {
+  const answers = { m1: breathless, m2: paced };
+  const { script, source } = await writeScript({
+    edition: three,
+    config,
+    hostKeys: hosts,
+    maxSeconds: 200,
+    models: ["m1", "m2"],
+    llm: async (m) => JSON.stringify(answers[m]),
+    log: quiet,
+  });
+  assert.equal(source, "m2");
+  assert.equal(script.thumb.hook, "Chips slide in one day");
+});
+
+test("a valid but breathless model answer still beats the bullet-copy template", async () => {
+  const { source } = await writeScript({
+    edition: three,
+    config,
+    hostKeys: hosts,
+    maxSeconds: 200,
+    models: ["m1", "m2"],
+    llm: async (m) => (m === "m1" ? JSON.stringify(breathless) : "not json"),
+    log: quiet,
+  });
+  assert.equal(source, "m1");
+});
+
+test("a cover hook with a number the stories lack is rejected", () => {
+  const s = fromModel(
+    JSON.stringify({ ...paced, thumbHook: "Chips slide 99 percent" }),
+    three,
+    hosts
+  );
+  assert.match(
+    validateScript(s, three).join(),
+    /thumb.hook: number 99 is not in the stories/
   );
 });
 
