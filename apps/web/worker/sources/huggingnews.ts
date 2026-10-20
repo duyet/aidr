@@ -1,5 +1,6 @@
 import { fetchWithSafeRedirects } from "../enrich.js";
 import { toEpochSeconds } from "../time.js";
+import { fetchSourceJson } from "./http.js";
 import { SourceFetchError } from "./rss.js";
 import type { FetchedItem, FetchedItemSource, SourceAdapter } from "./types.js";
 
@@ -154,14 +155,9 @@ function storyToRawStory(story: Record<string, unknown>): RawStory | null {
 }
 
 async function fetchRawStories(): Promise<RawStory[]> {
-  const res = await fetch(DATA_URL, { signal: AbortSignal.timeout(10_000) });
-  if (!res.ok) {
-    throw new SourceFetchError(
-      "fetch_failed",
-      `huggingnews feed returned ${res.status}`
-    );
-  }
-  const payload = (await res.json()) as { nodes?: unknown[] };
+  const payload = (await fetchSourceJson(DATA_URL, "huggingnews feed")) as {
+    nodes?: unknown[];
+  };
   const nodes = payload.nodes ?? [];
 
   const stories: RawStory[] = [];
@@ -384,22 +380,25 @@ export const huggingNewsAdapter: SourceAdapter = {
   type: "huggingnews",
 
   async fetchItems(_config, sinceEpochSec) {
+    const sitemapItemsSince = async () =>
+      (await fetchFromSitemap()).filter(
+        (item) => item.publishedAt >= sinceEpochSec
+      );
+    let freshStories: RawStory[];
     try {
-      const stories = await fetchRawStories();
-      const freshStories = stories.filter(
+      freshStories = (await fetchRawStories()).filter(
         (raw) => raw.item.publishedAt >= sinceEpochSec
       );
-      if (freshStories.length > 0) return enrichWithDetail(freshStories);
-
-      // Sitemap fallback carries no slug/topic split usable for the detail
-      // fetch (URL is already assembled), so these items are never enriched.
-      const sitemapItems = await fetchFromSitemap();
-      return sitemapItems.filter((item) => item.publishedAt >= sinceEpochSec);
     } catch (error) {
-      // Network failures stay an empty list. A typed fetch failure must not.
-      if (error instanceof SourceFetchError) throw error;
-      console.error("huggingnews adapter failed:", error);
-      return [];
+      if (!(error instanceof SourceFetchError)) throw error;
+      return sitemapItemsSince().catch(() => {
+        throw error;
+      });
     }
+    if (freshStories.length > 0) return enrichWithDetail(freshStories);
+
+    // Sitemap fallback carries no slug/topic split usable for the detail
+    // fetch (URL is already assembled), so these items are never enriched.
+    return sitemapItemsSince();
   },
 };
