@@ -231,7 +231,6 @@ describe("digest message", () => {
     expect(msg).toContain("OpenAI &lt;ships&gt; GPT-6 &amp; more");
     expect(msg).toContain("lang=vi&amp;utm_source=telegram");
     expect(msg).toContain("No-link bullet");
-    // Each bullet leads with a topic icon, not a dot.
     expect(msg).not.toContain("•");
   });
 
@@ -247,7 +246,6 @@ describe("digest message", () => {
       inline_keyboard: { text: string; url: string }[][];
     };
     expect(markup.inline_keyboard[0][0].text).toContain("full digest");
-    // The button opens that day's page, not the live homepage.
     expect(markup.inline_keyboard[0][0].url).toBe(
       "https://aidr.today/date/2026-08-17?lang=en&utm_source=telegram&utm_medium=social&utm_campaign=digest-2026-08-17&utm_content=button"
     );
@@ -305,7 +303,6 @@ describe("trending story message", () => {
       story({ summary: "Alpha beta gamma delta. ".repeat(200) })
     );
     expect(caption.length).toBeLessThan(1024);
-    // Whole sentences, so no ellipsis at all.
     expect(caption).not.toContain("…");
     expect(caption).toContain("Alpha beta gamma delta.\n\n#llm");
   });
@@ -317,8 +314,6 @@ describe("trending story message", () => {
   });
 
   it("keeps a long title plus a long summary inside the 1024-char caption cap", () => {
-    // The title is part of the same caption, so a headline-heavy story used
-    // to be the one shape that could blow the limit.
     const caption = buildStoryCaption(
       story({ title: "T".repeat(5_000), summary: "s".repeat(5_000) })
     );
@@ -616,9 +611,6 @@ describe("telegram channels", () => {
     }));
 
   it("sends one message: the six card stories under the versioned card as a large preview", async () => {
-    // The digest used to be a 1024-char photo caption plus a second message
-    // for the leftovers. Now it is one sendMessage, and the preview is the
-    // day card image itself, so Telegram never shows a cached day-page card.
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true, result: { message_id: 41 } }), {
         status: 200,
@@ -1267,8 +1259,6 @@ describe("telegramNotifier gating", () => {
     });
 
     it("sends a photo album as one message and does not send a follow-up", async () => {
-      // A second reply used to time out after the album was already in the
-      // channel, and the next hourly run posted the album again.
       const fetchMock = vi.fn().mockImplementationOnce(ok);
       vi.stubGlobal("fetch", fetchMock);
 
@@ -1421,7 +1411,6 @@ describe("telegramNotifier gating", () => {
       { lang: "vi", date: "2026-08-17", bullets: [] }
     );
     const digestBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
-    // The digest is a text message with its preview pinned above the text.
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMessage");
     expect(digestBody.link_preview_options).toMatchObject({
       prefer_large_media: true,
@@ -1806,7 +1795,6 @@ describe("channelCopy", () => {
     expect(channelCopy(vi, "vi")?.title).toBe("Dấu ấn Mark Zuckerberg");
     expect(channelCopy(vi, "en")).toBeNull();
     expect(channelCopy(en, "en")?.lang).toBe("en");
-    // No English fallback on the Vietnamese channel.
     expect(channelCopy(en, "vi")).toBeNull();
   });
 

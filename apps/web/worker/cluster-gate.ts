@@ -33,7 +33,6 @@ import { looksVietnamese } from "./tldr-lang.js";
  *  fails until it is bumped. */
 export const CLUSTER_GATE_VERSION = 1;
 
-/** What the gate reads of one item in a proposed link. */
 export interface GateHeadline {
   title: string;
   sourceId: string;
@@ -228,7 +227,6 @@ export interface ModelClusterGate {
   rejected: number;
 }
 
-/** Served cluster model id -> counts. */
 export type ClusterGateTally = Record<string, ModelClusterGate>;
 
 /** Below this many proposed links in 24h a rate is noise. A day carries
@@ -267,7 +265,6 @@ function add(into: ClusterGateTally, model: string, counts: ModelClusterGate) {
   };
 }
 
-/** This run's tally: empty when the model linked nothing to an existing id. */
 export function tallyClusterGate(
   model: string | null,
   gated: Pick<GatedClusters, "proposed" | "rejected">
@@ -319,7 +316,6 @@ function pct(m: ModelClusterGate): string {
   return `${Math.round((m.rejected / m.proposed) * 100)}%`;
 }
 
-/** "model: rejected/proposed (pct)", busiest model first. */
 export function clusterGateLines(tally: ClusterGateTally): string[] {
   return Object.entries(tally)
     .sort((a, b) => b[1].proposed - a[1].proposed)

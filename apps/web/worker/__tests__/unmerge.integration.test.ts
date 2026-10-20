@@ -442,11 +442,9 @@ describe("unmerge", () => {
     const result = await unmergeItems(env, { pairs, dryRun: false });
     if ("error" in result) throw new Error(result.error);
 
-    // The canonical is what ingest wrote before the merge.
     expect(shape(db, C)).toEqual(preMerge.shape);
     expect(sources(db, C)).toEqual(preMerge.sources);
 
-    // The twins are what ingest writes for them with no canonical to join.
     const oracle = migratedDb();
     await writeCanonical(oracle, canonical, OLD + 600);
     await writeCluster(oracle, twins(OLD + 8000), null, OLD + 9000);
@@ -472,7 +470,6 @@ describe("unmerge", () => {
     const audit = db
       .prepare("SELECT action, detail FROM admin_audit ORDER BY id")
       .all() as { action: string; detail: string }[];
-    // One row per write target, then the canonical's summary.
     expect(audit.map((a) => a.action)).toEqual([
       UNMERGE_AUDIT_ROW,
       UNMERGE_AUDIT_ROW,
@@ -828,13 +825,11 @@ describe("unmerge", () => {
       });
       if ("error" in undone) throw new Error(undone.error);
       expect(undone.applied).toMatchObject({ canonicals: 1, stale: [] });
-      // C2's rows are back as they were before the apply...
       expect(rowsOf([C2, HIDDEN])).toEqual(preApply.slice(3));
       expect(shape(db, HIDDEN)).toMatchObject({
         status: "merged",
         duplicate_of: C2,
       });
-      // ...and C's restore is untouched.
       expect(rowsOf([C, HUG, MB])).toEqual(afterApply.slice(0, 3));
       const undoAudit = db
         .prepare(
@@ -854,7 +849,6 @@ describe("unmerge", () => {
       expect(again.plan.canonicals.map((c) => c.state)).toEqual(["noop"]);
       expect(again.applied).toMatchObject({ canonicals: 0 });
 
-      // The rest of the batch still undoes on its own.
       const rest = await undoUnmerge(env, { batchId, dryRun: false });
       if ("error" in rest) throw new Error(rest.error);
       expect(
@@ -1458,8 +1452,6 @@ describe("unmerge of dangling merges (#791)", () => {
     for (const rowId of [TRIO_HUG, TRIO_MB, TRIO_VERGE, LONE, LOW, UNSCORED]) {
       expect(shape(db, rowId)).toEqual(shape(oracle, rowId));
     }
-    // The first run's sources fit under the 8-row cap, so each row gets its
-    // own back.
     for (const rowId of [TRIO_HUG, TRIO_MB, TRIO_VERGE, LONE]) {
       expect(sources(db, rowId)).toEqual(sources(oracle, rowId));
     }
@@ -1673,7 +1665,6 @@ describe("unmerge of dangling merges (#791)", () => {
       // No canonical to be distinct from: it would judge nothing.
       [{ mergedId: SIM, distinct: true }],
       [{ mergedId: SIM }],
-      // A typo'd id names no item.
       [{ mergedId: id(0xdead), sameAs: SIM_LIVE }],
       [
         { mergedId: SIM, sameAs: SIM_LIVE },

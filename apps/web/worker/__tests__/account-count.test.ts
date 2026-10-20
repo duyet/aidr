@@ -5,7 +5,6 @@ import {
 } from "../account-count.js";
 import { CLERK_USERS_COUNT_SQL } from "../clerk-users.js";
 
-/** Minimal D1 stand-in: one COUNT statement, explicit row or failure. */
 function fakeDb(options: {
   rows?: { c: number }[];
   failOn?: Error;

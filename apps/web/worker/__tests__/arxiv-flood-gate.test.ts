@@ -33,10 +33,6 @@ import {
   SourceFetchError,
 } from "../sources/rss.js";
 
-/** Build an arXiv-shaped Atom document. The real API returns `<entry>` blocks
- *  with `rel="alternate"` links, `<published>`/`<updated>` stamps, and a
- *  `<summary>` — this reproduces that shape so the test exercises the same
- *  parser branch production does. */
 function arxivAtom(count: number, opts: { aiEvery?: number } = {}): string {
   const aiEvery = opts.aiEvery ?? 2;
   const entries: string[] = [];

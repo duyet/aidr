@@ -87,12 +87,7 @@ export function digestSizeFor(value: unknown): 3 | 5 | 10 {
 export const DIGEST_LOCAL_HOUR = 7;
 
 /** A snapshot is usable for a digest once it has bullets in at least one
- * language — no longer gated on `sent_at`, which is per-run/global and
- * can't express "has this specific subscriber, in their timezone, been
- * sent today's digest yet." That gate is now per-subscriber; see
- * `shouldSendForSubscriber`. `sent_at` is still stamped as a legacy
- * "this snapshot has been processed at least once" signal, but nothing
- * reads it to decide whether to send. */
+ * language. */
 export function snapshotHasBullets(
   snapshot: Pick<TldrSnapshotRow, "bullets_en" | "bullets_vi">
 ): boolean {
@@ -203,7 +198,6 @@ export interface DigestExtras {
   weekly?: WeeklyMailMeta;
 }
 
-/** Builds the plain-text and HTML bodies for a subscriber's daily digest email. */
 export function buildDigestEmail(
   date: string,
   bullets: DigestBullet[],

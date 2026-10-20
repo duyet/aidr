@@ -68,7 +68,6 @@ const T0 = NOW_SEC - 20 * 86_400;
 const DAY = 86_400;
 
 const id = (n: number) => n.toString(16).padStart(64, "0");
-/** Dangling restore candidates. */
 const DSEC = id(0xa1);
 const MERCURY = id(0xb1);
 const NVIDIA = id(0xc1);

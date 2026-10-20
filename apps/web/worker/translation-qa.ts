@@ -1115,7 +1115,6 @@ export interface TranslationQaStats {
   englishCandidates: number;
   stale: number;
   error?: string;
-  /** Review was off (`TRANSLATION_REVIEW_ENABLED`); nothing was reviewed. */
   paused?: boolean;
 }
 

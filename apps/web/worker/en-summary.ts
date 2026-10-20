@@ -18,7 +18,6 @@
 /** Rows per run. The step runs every 30 minutes and covers fresh items too
  * (it runs after `write`), so 24 drains ~1,100 rows a day. */
 export const BACKFILL_EN_SUMMARY_CAP = 24;
-/** Stories per LLM call. */
 export const EN_SUMMARY_BATCH_SIZE = 4;
 /** Hard ceiling on a generated summary. 2–4 sentences fit well under this. */
 export const EN_SUMMARY_MAX_CHARS = 700;

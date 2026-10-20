@@ -222,12 +222,10 @@ describe("planMerges cluster gate (#733)", () => {
     expect(plan.canonicalUpdates.has("6cdf64e4")).toBe(false);
     expect(plan.merged.get("bio-hn")?.duplicateOf).not.toBe("6cdf64e4");
     expect(plan.merged.get("bio-mb")?.duplicateOf).not.toBe("6cdf64e4");
-    // The twins still fold into each other.
     expect(plan.merged.size).toBe(1);
   });
 
   it("records an alias the prompt never sent as a near miss and merges nothing on it", async () => {
-    // Only the first row was sent.
     modelAnswers([{ new: [0, 1], existing: [existingAlias(1)] }]);
 
     const { plan, clusterGate, clusterRefs } = await planMerges(
@@ -238,7 +236,6 @@ describe("planMerges cluster gate (#733)", () => {
       NOW
     );
 
-    // The twins still fold into each other; the typo links no live story.
     expect(plan.canonicalUpdates.has("c696e8b1")).toBe(false);
     expect(plan.merged.size).toBe(1);
     expect(clusterGate).toEqual({});

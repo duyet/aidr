@@ -36,7 +36,6 @@ export const NEWS_FROM = {
  *  the PNG stays the public brand asset other surfaces link to. */
 export const MAIL_LOGO_URL = `${SITE_URL}/logo-icon.png`;
 
-/** Channel links shown under the stories. */
 export const TELEGRAM_URL: Record<MailLang, string> = {
   en: "https://t.me/aidr_today",
   vi: "https://t.me/aihomnay",
@@ -218,10 +217,6 @@ export function weeklySubjectLine(
     head.length > room ? `${head.slice(0, room - 1).trimEnd()}…` : head;
   return `${tag} — ${cut}`;
 }
-
-/* ------------------------------------------------------------------ */
-/* Copy                                                               */
-/* ------------------------------------------------------------------ */
 
 const WEEKDAYS: Record<MailLang, string[]> = {
   en: [
@@ -466,10 +461,6 @@ export function digestPreheader(
  *  inbox preview. Raw markup — never pass it through escapeHtml. */
 const PREHEADER_PAD = "&zwnj;&nbsp;".repeat(90);
 
-/* ------------------------------------------------------------------ */
-/* Shell                                                              */
-/* ------------------------------------------------------------------ */
-
 const HEAD_STYLE = `
   :root { color-scheme: light; supported-color-schemes: light; }
   body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
@@ -536,10 +527,6 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;m
 </body>
 </html>`;
 }
-
-/* ------------------------------------------------------------------ */
-/* Blocks                                                             */
-/* ------------------------------------------------------------------ */
 
 function link(
   href: string,
@@ -982,7 +969,6 @@ interface FooterOpts {
   weekly?: boolean;
 }
 
-/** One line of links. */
 export function footerBlock(o: FooterOpts): string {
   const vi = o.lang === "vi";
   const style = `color:${MUTED};text-decoration:underline`;
@@ -1025,10 +1011,6 @@ function footerText(o: FooterOpts): string {
   ];
   return parts.filter(Boolean).join("\n");
 }
-
-/* ------------------------------------------------------------------ */
-/* Note mail (confirm, welcome, settings change, campaigns)           */
-/* ------------------------------------------------------------------ */
 
 export function renderNoteEmail(input: NoteEmailInput): {
   html: string;
@@ -1077,13 +1059,8 @@ export function renderNoteEmail(input: NoteEmailInput): {
   return { html, text: textParts.join("\n\n") };
 }
 
-/* ------------------------------------------------------------------ */
-/* Digest                                                             */
-/* ------------------------------------------------------------------ */
-
 const TEXT_RULE = "-".repeat(32);
 
-/** Greedy word wrap at 76 columns; every line starts with `indent`. */
 function wrapText(text: string, indent: string, width = 76): string {
   const lines: string[] = [];
   let line = "";

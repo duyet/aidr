@@ -1,6 +1,5 @@
 import { nn } from "./d1-bind.js";
 
-/** One field the reviewer changed for a suggestion. */
 export interface AppliedChange {
   lang: "vi" | "en";
   field: "title" | "summary";
@@ -51,7 +50,6 @@ export interface Contribution {
   /** `auto` for a free-form suggestion; null for a submission. */
   field: "title" | "summary" | "auto" | null;
   lang: "vi" | "en" | null;
-  /** What the reader wrote. */
   text: string;
   /** First applied field's text (kept for older clients). */
   applied_text: string | null;

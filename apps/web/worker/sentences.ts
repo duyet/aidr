@@ -134,7 +134,6 @@ function isAbbreviationPeriod(
   );
 }
 
-/** Index just past each sentence end, in one pass. */
 export function sentenceEnds(value: string): number[] {
   const ends: number[] = [];
   for (let i = 0; i < value.length; i++) {

@@ -96,7 +96,7 @@ describe("parseTopicMappingResponse", () => {
       ["llms"],
       ["llm", "open-source"]
     );
-    expect(result.get("llms")).toBe("llms"); // still defaulted to itself
+    expect(result.get("llms")).toBe("llms");
     expect(result.has("unasked")).toBe(false);
   });
 
@@ -227,7 +227,7 @@ describe("normalizeTopics", () => {
     );
 
     expect(result.get("item1")).toEqual(["llm"]);
-    expect(fetchMock).not.toHaveBeenCalled(); // no unseen variants
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("calls the LLM only for genuinely unseen normalized names", async () => {
@@ -312,7 +312,7 @@ describe("topRankedTopics", () => {
               results: [
                 { tags: JSON.stringify(["llm", "openai"]) },
                 { tags: JSON.stringify(["llm"]) },
-                { tags: "not json" }, // skipped defensively
+                { tags: "not json" },
               ],
             }),
           }),

@@ -124,7 +124,6 @@ export function isScheduledRun(mode: IngestMode): boolean {
   return !mode.dryRun && !mode.steps;
 }
 
-/** Why a step will not run, or null when it runs. */
 export function stepSkipReason(
   mode: IngestMode,
   name: PipelineStep

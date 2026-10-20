@@ -56,7 +56,6 @@ export function shareAcrossSources(
   return out;
 }
 
-/** An `items` row still at `status = 'new'`. */
 export interface PendingNewRow {
   id: string;
   source_id: string;
@@ -172,7 +171,6 @@ export function collapseSameUrl(rows: readonly NewRow[]): NewRow[] {
   return collapsed;
 }
 
-/** A merged row plus the published canonical it was merged into. */
 export interface MergedOfficialRow extends PendingNewRow {
   llm_relevance: number | null;
   canonical_source_id: string;

@@ -21,7 +21,6 @@ export function safeHref(raw: string): string | null {
   }
 }
 
-/** Rewrites each link href, e.g. to add UTM params. */
 export type HrefTagger = (href: string) => string;
 
 function inline(text: string, tagHref: HrefTagger): string {
@@ -81,7 +80,6 @@ function listHtml(
   return `<${tag} style="margin:0 0 20px;padding:0 0 0 22px;color:#0a0a0a;font-size:14px;line-height:1.6">${items}</${tag}>`;
 }
 
-/** Turns campaign markdown into table-safe email HTML fragments. */
 export function markdownToEmailHtml(
   md: string,
   tagHref: HrefTagger = (href) => href

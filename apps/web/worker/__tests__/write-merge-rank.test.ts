@@ -10,7 +10,6 @@ import {
 import { rankScore, rankSignals } from "../ranking.js";
 import type { Env } from "../types.js";
 
-/** Minimal D1 over node:sqlite: statements run lazily, `batch` in order. */
 function d1(db: DatabaseSync) {
   return {
     prepare(sql: string) {

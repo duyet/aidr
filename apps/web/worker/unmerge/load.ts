@@ -88,7 +88,6 @@ function itemLinksSql(ids: readonly ItemId[]): string {
  * a longer one is treated as having no published root. */
 const MAX_ROOT_HOPS = 4;
 
-/** Reads rows into one snapshot's maps. */
 function snapshotReader(select: SelectRows) {
   const items = new Map<string, UnmergeItemRow>();
   const sources = new Map<string, StoredSource[]>();

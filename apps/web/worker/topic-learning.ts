@@ -673,7 +673,6 @@ export async function promoteEmergingTopics(
     yesterday: string;
     nowMs: number;
     runCounts: ReadonlyMap<string, number>;
-    /** Minimum today's count to consider promotion. */
     minToday?: number;
     /** Minimum today/yesterday ratio when yesterday > 0. */
     minGrowthRatio?: number;
@@ -781,7 +780,6 @@ export function topicDailyCountsStmt(
     .bind(day);
 }
 
-/** Active learned keywords for title highlight / trending fallback. */
 export async function loadLearnedKeywords(
   db: DbReader,
   limit = 80

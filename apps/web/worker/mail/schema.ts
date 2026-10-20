@@ -21,9 +21,7 @@ export async function ensureMailSchema(db: D1Database): Promise<void> {
   ]) {
     try {
       await db.prepare(sql).run();
-    } catch {
-      // Column already present.
-    }
+    } catch {}
   }
   schemaReady = true;
 }

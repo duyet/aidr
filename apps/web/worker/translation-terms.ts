@@ -464,7 +464,6 @@ const EMBEDDED_CHROME_RE = new RegExp(
   "gi"
 );
 
-/** True when the text carries page chrome at its start or anywhere inside. */
 export function hasSourceChrome(text: string): boolean {
   return (
     LEADING_CHROME_RE.test(text) ||
@@ -484,7 +483,6 @@ export function stripEmbeddedChrome(text: string): string {
   );
 }
 
-/** Strips every leading chrome segment, however many are chained. */
 function stripLeadingChrome(text: string): string {
   let out = text;
   for (let next = out.replace(LEADING_CHROME_RE, ""); next !== out; ) {
@@ -866,7 +864,6 @@ function isAttributionSentence(sentence: string): boolean {
   });
 }
 
-/** The Techmeme "see the page" pointer, English or Vietnamese. */
 const CONTEXT_LINK_SENTENCE_RE =
   /^(?:View the full context on|Xem [^.]{0,40}? trên) Techmeme\.?$/;
 
@@ -909,7 +906,6 @@ export interface ProtectedTerms {
   jargon: string[];
 }
 
-/** Terms in an English source that the Vietnamese must keep verbatim. */
 export function extractProtectedTerms(source: {
   title: string;
   summary: string;
@@ -974,7 +970,6 @@ function keepsTerm(text: string, term: string): boolean {
   return modifier !== undefined && hasWord(text, `mô hình ${modifier}`, true);
 }
 
-/** Source terms missing from the candidate, in source order. */
 export function missingProtectedTerms(
   source: { title: string; summary: string },
   candidate: { title: string; summary: string }
@@ -987,7 +982,6 @@ export function missingProtectedTerms(
   };
 }
 
-/** Flat keep-verbatim list for the translate prompt. */
 export function keepVerbatimList(source: {
   title: string;
   summary: string;

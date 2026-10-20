@@ -51,11 +51,8 @@ import { ratePendingTranslations } from "../translation-qa.js";
 import { QA_MAX_CALLS } from "../translation-review.js";
 import type { Env } from "../types.js";
 
-/** A scored story with these raw tags and a headline that names nothing. */
 const story = (tags: string[]) => ({ tags, title: "", sourceId: "hn" });
 
-/** A non-streaming chat body as the SSE stream callAnyrouter reads:
- *  each choice's `message` becomes a `delta`. */
 function asStream(body: {
   choices?: { message?: { content?: string } }[];
 }): Response {
@@ -272,8 +269,6 @@ describe("Telegram caps per run", () => {
   });
 });
 
-/** Fake D1 for the review loops: serves `rows` for the pending-queue query
- *  and honors its `LIMIT n`, so an oversized queue only yields the cap. */
 function reviewQueueDb(
   queueTable: string,
   rows: unknown[],
@@ -407,7 +402,6 @@ describe("translation QA caps per run", () => {
     "utf8"
   );
 
-  /** Minimal D1 over node:sqlite; same shape as translation-qa.integration. */
   function sqliteD1(sqlite: DatabaseSync) {
     type Input = null | number | bigint | string | NodeJS.ArrayBufferView;
     return {
@@ -535,7 +529,6 @@ describe("JEV panel caps per run", () => {
     expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(
       items.length * seats * (1 + JEV_PANEL_MAX_DEBATE_ROUNDS)
     );
-    // The bound is reached, not just respected: debate did run.
     expect(fetchMock.mock.calls.length).toBeGreaterThan(items.length * seats);
     resetJevScoreReviewMemo();
   });
@@ -593,7 +586,6 @@ describe("JEV panel caps per run", () => {
     const worstCasePerStep =
       JEV_PANEL_MAX_ITEMS_PER_STEP * seats * (1 + JEV_PANEL_MAX_DEBATE_ROUNDS);
     expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(worstCasePerStep);
-    // The bound is reached: debate ran for the capped items.
     expect(fetchMock.mock.calls.length).toBeGreaterThan(
       JEV_PANEL_MAX_ITEMS_PER_STEP * seats
     );
@@ -671,7 +663,6 @@ describe("dedupe and topics caps per run", () => {
     expect(shown.map((item) => item.i)).toEqual(
       Array.from({ length: cap }, (_, i) => i)
     );
-    // Below the cap clustering is unchanged; overflow items stay on their own.
     expect(clusters).toEqual([{ new: [cap - 2, cap - 1], existing: [] }]);
     expect(cap).toBe(100);
   });
@@ -755,7 +746,6 @@ describe("dedupe and topics caps per run", () => {
       /New candidates:\n(\[.*\])/.exec(prompts[0])?.[1] ?? "[]"
     ) as string[];
     expect(asked).toEqual(Array.from({ length: cap }, (_, i) => `fresh-${i}`));
-    // Below the cap mapping is unchanged.
     expect(canonical.get("item-0")).toEqual(["llm"]);
     expect(canonical.get(`item-${cap - 1}`)).toEqual([`fresh-${cap - 1}`]);
     // Past the cap: identity, even when the model names the tag anyway.

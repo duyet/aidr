@@ -931,7 +931,6 @@ export interface CanonicalUpdate {
   /** The new items merged into the canonical this run, for `rankSignals`.
    * Optional: a plan replayed from before this field existed has none. */
   members?: RankMember[];
-  /** Validated media candidates to merge into the canonical item. */
   extraMedia?: MediaAsset[];
   /** Legacy image fallbacks from non-canonical candidates. */
   extraImageUrls?: string[];

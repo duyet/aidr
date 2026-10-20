@@ -159,7 +159,6 @@ function isTonelessCompound(base: string): boolean {
   return from(0);
 }
 
-/** True when `word` (letters only) can be written Vietnamese. */
 export function isVietnameseSpelling(word: string): boolean {
   const { base, tones, foreign } = spell(word);
   if (foreign) return true;

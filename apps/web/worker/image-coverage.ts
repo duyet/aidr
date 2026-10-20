@@ -26,7 +26,6 @@ export const IMAGE_COVERAGE_MIN_BASELINE = 0.6;
 export const IMAGE_COVERAGE_MIN_BASELINE_ITEMS = 21;
 /** 24h items needed before the share means anything. */
 export const IMAGE_COVERAGE_MIN_ITEMS = 4;
-/** Alert when the 24h share is under this fraction of the 7-day share. */
 export const IMAGE_COVERAGE_COLLAPSE_RATIO = 0.5;
 
 export const IMAGE_COVERAGE_KEY_PREFIX = "image-coverage:";

@@ -194,13 +194,6 @@ function extractMetaContent(
   );
 }
 
-/**
- * Pure HTML parsing: extracts og:image (absolute http(s) URLs only — a
- * relative or non-http(s) value is dropped rather than resolved, since we
- * don't reliably know the page's base URL) and a description from
- * og:description, falling back to <meta name="description">. HTML
- * entities in the description and og:image URL are decoded.
- */
 /** A publisher blurb cut off with an ellipsis, not a finished sentence.
  * WordPress-style RSS excerpts end in "[…]" or a "Read more" link; they are
  * teasers too, and must make enrich/backfill fetch the article body. */
@@ -253,6 +246,13 @@ function clipAtSentence(text: string, max: number): string {
   return (space > 200 ? slice.slice(0, space) : slice).trim();
 }
 
+/**
+ * Pure HTML parsing: extracts og:image (absolute http(s) URLs only — a
+ * relative or non-http(s) value is dropped rather than resolved, since we
+ * don't reliably know the page's base URL) and a description from
+ * og:description, falling back to <meta name="description">. HTML
+ * entities in the description and og:image URL are decoded.
+ */
 export function parseOgTags(html: string, pageUrl?: string): OgData {
   const manifest = buildMediaManifest(parseMediaMetadata(html), {
     articleUrls: [pageUrl],

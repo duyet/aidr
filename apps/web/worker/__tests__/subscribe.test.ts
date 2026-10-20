@@ -354,7 +354,6 @@ describe("buildDigestEmail", () => {
       "tok"
     ).html;
     expect(card).not.toContain("/api/og/date/");
-    // The one CTA goes to the day page.
     expect(card).toContain('href="https://aidr.today/date/2026-08-16?lang=en');
     expect(card).toContain("See all stories on aidr.today");
     expect(card).not.toContain("Read more");

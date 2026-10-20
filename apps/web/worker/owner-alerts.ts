@@ -156,7 +156,6 @@ function suggestion(issue: HealthIssue): string {
   return "Open the run page and check the failed step's reason.";
 }
 
-/** Short HTML DM for newly fired alerts. */
 export function formatAlertDm(
   issues: HealthIssue[],
   ctx: AlertContext,
@@ -523,7 +522,6 @@ export function dailySummaryKey(date: string): string {
   return `daily-summary:${date}`;
 }
 
-/** True when this run should send today's summary (once per local day). */
 export function shouldSendDailySummary(
   localHour: number,
   date: string,

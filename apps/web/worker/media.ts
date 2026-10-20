@@ -25,7 +25,6 @@ export type MediaType = "image" | "video";
 export interface MediaCandidate {
   type: MediaType;
   url: string;
-  /** A video's single poster/thumbnail URL, if present. */
   poster_url?: string;
   /** Lower values sort first. Never persisted. */
   priority?: number;
@@ -382,7 +381,6 @@ function memoized(
   return value;
 }
 
-/** Validate and normalize one external media URL for storage/display. */
 export function canonicalizeMediaUrl(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   return memoized(canonicalMediaUrls, raw, () => computeCanonicalMediaUrl(raw));
@@ -1189,7 +1187,6 @@ function videoTagCandidates(html: string): MediaCandidate[] {
   return candidates;
 }
 
-/** Extract bounded media candidates from common article metadata formats. */
 export function parseMediaMetadata(html: string): MediaCandidate[] {
   const candidates: MediaCandidate[] = [];
   const metaTags = html.match(/<meta\b[^>]*>/gi) ?? [];

@@ -113,7 +113,6 @@ export interface LinkPreviewOptions {
  * not the photo, not a retry, not the text preview. It is a text graphic,
  * and `checkTelegramMedia` rejects it on every story call.
  */
-/** Day page for the digest date, e.g. `/date/2026-10-03?lang=vi`. */
 export function digestDayUrl(
   digest: Pick<DailyDigest, "date" | "lang">,
   content: TelegramSlot = "button"
@@ -193,7 +192,6 @@ export function withTelegramUtm(
   });
 }
 
-/** Canonical story permalink with the Telegram channel's selected locale. */
 export function storyUrl(
   story: Pick<StoryPayload, "id">,
   lang: Lang = DEFAULT_LANG
@@ -219,8 +217,7 @@ export function digestCardUrl(
 const MIN_HIGHLIGHT_CHARS = 32;
 
 /** Fit every story into `cap` visible characters; lines that fit stay whole.
- *  Dropping the tail used to leave stories on the image that the text never
- *  named. Cut in this order, so no line ends mid-sentence:
+ *  Cut in this order, so no line ends mid-sentence:
  *  (1) drop whole summary clauses, longest first, keeping the headline;
  *  (2) only if the headlines alone still overflow, shorten the longest
  *  headlines at a word boundary. */
@@ -301,7 +298,6 @@ const CATEGORY_MARKS: Record<string, string> = {
   tools: "🛠️",
 };
 
-/** Story-specific mark: the model's emoji, else the category's, else 📰. */
 export function digestMark(bullet: DigestBullet): string {
   if (bullet.emoji) return bullet.emoji;
   const key = bullet.category?.trim().toLowerCase() ?? "";
@@ -484,7 +480,6 @@ export async function editStoryCaption(
 /** A headline reads as one line or two in the feed. Longer ones were wire
  *  headlines with a dek run in, and pushed the summary out of the caption. */
 const CAPTION_TITLE_CAP = 140;
-/** Gallery photos a story post tries one by one before dropping to text. */
 const GALLERY_PHOTO_ATTEMPTS = 3;
 
 /** The caption title without a trailing credit sentence ("From Bloomberg.",
@@ -714,7 +709,6 @@ async function sendVideoStory(
   story: StoryPayload,
   caption: string,
   replyMarkup: object,
-  /** Why video was not posted, when the story had video. */
   fallback: string[] = []
 ): Promise<SendResult | null> {
   if (!story.media_manifest?.assets?.some((asset) => asset.type === "video")) {
@@ -815,7 +809,6 @@ function telegramMessageId(result: TelegramResponse["result"]): string {
   return String(message?.message_id ?? "");
 }
 
-/** A failed call as a SendResult, keeping the ambiguous mark. */
 function sendFailure(res: TelegramResponse): SendResult {
   return {
     ok: false,
@@ -915,9 +908,7 @@ async function postToTelegram(
   try {
     const parsed = JSON.parse(raw) as TelegramResponse | null;
     if (typeof parsed?.ok === "boolean") return parsed;
-  } catch {
-    // Not JSON: handled below.
-  }
+  } catch {}
   return {
     ok: false,
     ambiguous: true,

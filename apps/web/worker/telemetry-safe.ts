@@ -173,7 +173,6 @@ function redactValue(value: unknown, key = ""): unknown {
   return value;
 }
 
-/** Larger JSON strings are not parsed; they are redacted outright. */
 const MAX_JSON_INPUT = 64 * 1024;
 
 const FIT_JSON_PASSES: ReadonlyArray<{ text: number; items: number }> = [
@@ -225,7 +224,6 @@ function fitJson(value: unknown, maxLength: number): string {
   return marker.length <= maxLength ? marker : "null";
 }
 
-/** Safe, bounded text for step reasons, notification metadata, and labels. */
 export function sanitizeText(
   value: unknown,
   maxLength = MAX_TEXT_LENGTH
@@ -267,7 +265,6 @@ function statusFromError(value: string): number | null {
   return status >= 100 && status <= 599 ? status : null;
 }
 
-/** Classify provider failures without returning the provider's raw message. */
 export function sanitizeError(value: unknown): SafeError | null {
   if (value == null) return null;
   const raw = typeof value === "string" ? value : String(value);
@@ -339,7 +336,6 @@ export function safeErrorStatus(value: unknown): number | null {
     : null;
 }
 
-/** Convert an arbitrary stats object into a JSON-safe, redacted value. */
 export function sanitizeRunStats(value: unknown): unknown {
   return redactValue(value);
 }
@@ -512,45 +508,37 @@ const JSON_PARSE = /^(?:ok|not-json|error|error at pos \d{1,9})$/;
 /** Root keys of the JSON answers the prompts and validators in `worker/`
  *  ask for. Any other key name is the model's own text. */
 const SCHEMA_KEYS: ReadonlySet<string> = new Set([
-  // score, translate, English summary
   "results",
   "translations",
   "summaries",
   "items",
-  // TL;DR and its repair
   "bullets",
   "bullets_en",
   "bullets_vi",
   "en",
   "vi",
-  // weekly edition
   "intro_en",
   "intro_vi",
   "stories",
-  // cluster, topics
   "clusters",
   "mappings",
-  // submission and suggestion review
   "relevance",
   "note",
   "valid",
   "rating",
   "edits",
   "translation",
-  // translation knowledge
   "reusable",
   "kind",
   "source_term",
   "vi_term",
   "bad_vi",
-  // Jev panel
   "vote",
   "confidence",
   "score",
   "category",
   "claims",
   "rationale",
-  // translation review and repair
   "schema_version",
   "direction",
   "verdict",
@@ -561,7 +549,6 @@ const SCHEMA_KEYS: ReadonlySet<string> = new Set([
   "back_translation",
   "title",
   "summary",
-  // mail wrap
   "subject",
   "preheader",
   "body_md",

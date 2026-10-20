@@ -47,7 +47,6 @@ async function loadRankRow(
   return db.prepare(RANK_ROW_SQL).bind(itemId).first<RankRow>();
 }
 
-/** Clicking the current vote clears it. Clicking the other one replaces it. */
 export function nextVote(
   current: VoteValue | null,
   clicked: VoteValue
@@ -123,7 +122,6 @@ export interface ReaderVoteView {
 
 const MAX_VOTE_LOOKUP = 90;
 
-/** The signed-in user's own votes, plus the public net, for a page of ids. */
 export async function listReaderVotes(
   db: D1Database,
   userId: string,

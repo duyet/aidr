@@ -92,7 +92,6 @@ function base64Url(input: string | ArrayBuffer): string {
     .replace(/=+$/, "");
 }
 
-/** Strip the PEM armour and return PKCS#8 DER bytes for `importKey`. */
 function pkcs8FromPem(pem: string): Uint8Array {
   const body = pem
     .replace(/-----BEGIN [^-]+-----/, "")

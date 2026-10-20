@@ -1,11 +1,6 @@
 /**
  * Runtime seed for the `sources` table.
  *
- * Previously this file hand-copied every row out of migrations 0018, 0020,
- * 0021 and 0022, and its own header said so ("Mirrors migrations/… so ingest
- * can seed before `wrangler d1 migrations apply`"). That duplication was the
- * drift the issue was filed about.
- *
  * The SQL is now *derived* from the single declarative list in
  * `./catalog.ts` — the same list `migrations/0027_source_registry.sql` is
  * generated from — so ingest can still seed before migrations are applied,

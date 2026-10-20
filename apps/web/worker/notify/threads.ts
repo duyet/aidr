@@ -65,7 +65,6 @@ function clipLine(value: string, cap: number): string {
   return `${clean.slice(0, Math.max(1, cap - 1)).trimEnd()}…`;
 }
 
-/** One local day's edition: the bullet list plus this site's day card. */
 export function buildThreadsDaily(digest: DailyDigest): ThreadsDailyPayload {
   const heading =
     digest.lang === "en"

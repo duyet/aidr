@@ -157,7 +157,6 @@ export interface EventSource {
   englishTitle: string | null;
 }
 
-/** One title as `sameEvent` reads it. */
 export interface TitleKey {
   /** The title in NFC, the same text on both sides of a compare. */
   title: string;
@@ -171,7 +170,6 @@ export interface TitleKey {
   wordStarts: ReadonlyMap<string, readonly number[]>;
 }
 
-/** A story's source title, keyed. */
 export interface EventKey extends TitleKey {
   /** The publisher's article id (`articleId`), shared by an article and its
    *  live page. */
@@ -330,7 +328,6 @@ export function sameEvent(a: EventKey, b: EventKey): boolean {
 
 export type PostedKind = "digest" | "trending";
 
-/** One story a channel has already put in front of its readers. */
 export interface PostedEvent {
   /** The notifier id (`telegram`, `telegram-en`, `facebook-en`). */
   channelGroup: string;
@@ -372,7 +369,6 @@ export function dedupReason(
 
 export type SuppressionReason = `dedup:${DedupReason}` | `gate:${GateReason}`;
 
-/** Per-reason counts of the candidates a run dropped before sending. */
 export type SuppressionCounts = Partial<Record<SuppressionReason, number>>;
 
 export function countSuppression(

@@ -166,9 +166,7 @@ describe("huggingNewsAdapter", () => {
       quote: "licensed under Apache 2.0",
       url: "https://x.com/alibaba_cloud/status/2088282795638394986",
     });
-    // tweetedAt 1786720391000 ms -> 1786720391 seconds
     expect(alibabaItem?.sources?.[0].postedAt).toBe(1786720391);
-    // second tweet in the fixture has label "Support"
     expect(alibabaItem?.sources?.[1]).toMatchObject({ kind: "support" });
   });
 

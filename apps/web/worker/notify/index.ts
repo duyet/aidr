@@ -111,9 +111,7 @@ export function assertNotifyConfig(env: Env): void {
 export const DIGEST_TIMEZONE = AUDIENCE_TIMEZONE;
 /** Digests only go out from this local hour onward — no 3am posts. */
 export const DIGEST_LOCAL_HOUR = 8;
-/** TL;DR bullets per digest. */
 export const DIGEST_MAX_BULLETS = 8;
-/** Give up on a send for a channel after this many failed attempts. */
 export const NOTIFY_MAX_ATTEMPTS = 3;
 /** The digest highlight goes out within this long of its digest, retries
  *  included (3 attempts at the 30-minute cadence). Past it, a digest sent
@@ -135,9 +133,7 @@ export const TRENDING_RANK_FLOOR = 3;
  *  qualified and the channels went silent after the morning digest
  *  (2026-10-01). The rank bar and the daily cap/gap still keep it rare. */
 export const TRENDING_MIN_IMPORTANCE = 7;
-/** At most this many trending posts per channel per local day. */
 export const TRENDING_MAX_PER_DAY = 3;
-/** Minimum spacing between any two posts on a channel. */
 export const TRENDING_MIN_GAP_SEC = 3 * 60 * 60;
 /** Defined in ./types.ts so webhook.ts can use it without an import cycle. */
 export { TRENDING_BURST_MIN_IMPORTANCE } from "./types.js";
@@ -150,7 +146,6 @@ export const TRENDING_BURST_MIN_GAP_SEC = 60 * 60;
 export const TRENDING_MAX_PER_FAMILY = familyCapFor(TRENDING_MAX_PER_DAY);
 /** Ranked qualifiers read so the family cap has other stories to pick. */
 const TRENDING_CANDIDATE_LIMIT = 3 * TRENDING_BURST_MAX_PER_DAY;
-/** Only consider stories published in the last 24h. */
 const WINDOW_SEC = 24 * 60 * 60;
 
 /** The `notifications.item_id` sentinel for a day's digest. */
@@ -189,7 +184,6 @@ export interface NotifyChannelReason {
   digest: DigestSkipReason;
   trending: TrendingSkipReason;
   maxRank: number | null;
-  /** The relative rank bar this run used (`trendingRankBar`). */
   rankBar: number;
   budget: number;
   localHour: number;
@@ -255,7 +249,6 @@ export function hydrateStory(row: StoryRow): StoryPayload {
   };
 }
 
-/** Why today's digest will not go out, or null if it should send. */
 export function classifyDigestSkip(
   existing: NotificationRow | null,
   localHour: number
@@ -280,7 +273,6 @@ export function classifyDigestSkip(
     : "already_sent";
 }
 
-/** Why trending will not post, or null if a candidate may be sent. */
 export function classifyTrendingSkip(
   maxRank: number | null,
   budget: number,
@@ -1075,7 +1067,6 @@ export async function dispatchStoryNotifications(
     let budget = 0;
     const suppressed: SuppressionCounts = {};
 
-    // --- 1. Daily TL;DR digest (once per local day) ---
     const existing = await env.DB.prepare(
       "SELECT status, attempts, posted_at FROM notifications WHERE channel = ? AND item_id = ?"
     )
@@ -1142,7 +1133,6 @@ export async function dispatchStoryNotifications(
       }
     }
 
-    // --- 1b. The digest's top story, after a digest that surely posted ---
     // A recent `sent` digest from an earlier run counts, so a failed
     // highlight retries; an older one gets no late highlight.
     let highlight: NotifyChannelReason["highlight"];
@@ -1171,7 +1161,6 @@ export async function dispatchStoryNotifications(
       }
     }
 
-    // --- 2. Trending stories (algo-detected, rate-limited) ---
     const stats = await env.DB.prepare(trendingGapSql)
       .bind(dayStartMs, notifier.id)
       .first<{ sent_today: number | null; last_posted_at: number | null }>();

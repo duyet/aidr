@@ -62,7 +62,6 @@ import {
  *  exceptional story), so a fault is "more than a day", with slack for a
  *  late digest. A shorter window fired on normal days. */
 export const TELEGRAM_QUIET_MS = 26 * 3600 * 1000;
-/** LLM attempt failure rate in one run above which we alert. */
 export const LLM_FAILURE_RATE = 0.5;
 /** Provider 429s in one run at which the owner is told the quota is spent. */
 export const LLM_RATE_LIMIT_BURST = 5;
@@ -76,9 +75,7 @@ export function llmTaskFailingKey(task: string): string {
 }
 /** Below this many attempts the rate is noise. */
 export const LLM_MIN_CALLS = 4;
-/** TL;DR failed this many runs in a row (this run included). */
 export const TLDR_FAIL_STREAK = 3;
-/** A source's fetch step failed this many runs in a row (this run included). */
 export const SOURCE_FAILING_RUNS = 3;
 /** Per-source key, so each source keeps its own cooldown. */
 export function sourceFailingKey(id: string): string {
@@ -88,9 +85,7 @@ export function sourceFailingKey(id: string): string {
 export function sourceBlockedKey(id: string): string {
   return `source-blocked:${id}`;
 }
-/** The same alert key does not fire again within this window. */
 export const ALERT_COOLDOWN_MS = 6 * 3600 * 1000;
-/** Previous runs read for the TL;DR streak and the cooldown. */
 const HISTORY_RUNS = 12;
 /** `stats.alerts` keys that record a finished check, not a problem. */
 export const MARKER_PREFIXES = ["daily-summary:", DAY_VIDEO_CONFIRMED_PREFIX];
@@ -122,13 +117,11 @@ export interface LlmTaskCount {
   total: number;
   ok: number;
   rateLimited: number;
-  /** This task's attempts per model this run. */
   models: ModelStat[];
 }
 
 export interface HealthInput {
   nowMs: number;
-  /** Local audience hour (0-23). */
   localHour: number;
   steps: RunStepInfo[];
   /** Newest successful post per Telegram channel, epoch ms. */
@@ -262,7 +255,6 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
   return issues;
 }
 
-/** Drop issues whose key already fired within the cooldown window. */
 export function applyCooldown(
   issues: HealthIssue[],
   history: PriorRun[],

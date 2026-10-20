@@ -19,11 +19,6 @@ import * as llm from "../llm.js";
 import { tldrSnapshotDate } from "../tldr.js";
 import type { Env } from "../types.js";
 
-/**
- * Minimal in-memory D1 fake, tailored to the exact statements
- * worker/admin/handlers.ts issues. Not a general SQL engine — routes on
- * the fixed set of query shapes used by this module.
- */
 class FakeD1 {
   items = new Map<string, Record<string, unknown>>();
   sources = new Map<string, Record<string, unknown>>();
@@ -871,7 +866,7 @@ describe("getLlmCalls", () => {
     for (let i = 0; i < n; i++) {
       db.llmCalls.push({
         id: i + 1,
-        ts: i, // ascending insert order, oldest first
+        ts: i,
         task: "score",
         model: "test-model",
         ok: 1,
@@ -1379,7 +1374,6 @@ describe("MCP server", () => {
     const res = await handleMcpRequest(req, env);
     const json = (await res.json()) as any;
     const names: string[] = json.result.tools.map((t: any) => t.name);
-    // The six operator tools are unchanged since the registry split (#227).
     for (const adminTool of [
       "push_items",
       "list_sources",
@@ -1391,7 +1385,6 @@ describe("MCP server", () => {
     ]) {
       expect(names).toContain(adminTool);
     }
-    // An admin additionally gets the anonymous read surface, once each.
     for (const readTool of [
       "latest_ai_news",
       "search_news",
