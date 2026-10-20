@@ -470,7 +470,7 @@ function storyHtml(seg, i) {
       s.images
         .map(
           (src, k) =>
-            `<div class="frame"><div class="fill" style="background-image:url(&quot;${esc(src)}&quot;)"></div><img id="s${s.rank}-img${k}" src="${esc(src)}" data-ar="${aspectOf(src)}" alt="" /></div>`
+            `<div class="frame"><div class="fill" style="background-image:url(&quot;${esc(src)}&quot;)"></div><div class="pic"><img id="s${s.rank}-img${k}" src="${esc(src)}" data-ar="${aspectOf(src)}" alt="" /></div></div>`
         )
         .join("") +
       `<div class="shade"></div><div class="credit">${esc(source)}</div>`;

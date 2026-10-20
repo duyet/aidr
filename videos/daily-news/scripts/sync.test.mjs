@@ -44,9 +44,9 @@ function buildPage(theme) {
 }
 
 // A DOM stand-in rich enough for the page's measuring helpers: every element answers with fixed sizes, a story's
-// media box is the 16:9 split layout's 1050 x 640, and each image has the aspect `page.ar`.
+// media box (and its picture box) is the 16:9 split layout's 1050 x 640, and each image has the aspect `page.ar`.
 function element(sel, n, page) {
-  const media = sel.endsWith(" .media");
+  const media = sel.endsWith(" .media") || sel.endsWith(" .media .pic");
   const el = {
     sel,
     style: {},

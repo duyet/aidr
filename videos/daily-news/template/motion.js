@@ -193,9 +193,11 @@
 
       // An image far from its box's shape (a wide social card in a narrower box) shows whole over a blurred copy
       // of itself: a cover crop plus the drift would cut through the text baked into it.
-      const media = $(".media", sc);
-      const box = measured(media, () => media.offsetWidth / media.offsetHeight);
       const frames = $$(".media .frame", sc);
+      const pic = $(".media .pic", sc);
+      const box = pic
+        ? measured(pic, () => pic.offsetWidth / pic.offsetHeight)
+        : 1;
       frames.forEach((fr) => {
         const ar = parseFloat($("img", fr).dataset.ar);
         if (ar && Math.min(ar / box, box / ar) < 0.9) fr.classList.add("fit");
