@@ -97,6 +97,18 @@ describe("blockedByOpenRun", () => {
     ).toBe(false);
   });
 
+  it("does not wait on a row closed with an error at the same second", () => {
+    const startSec = 1_700_000_000;
+    expect(
+      blockedByOpenRun(
+        startSec,
+        startSec,
+        startSec * 1000 + 60_000,
+        "create failed"
+      )
+    ).toBe(false);
+  });
+
   it("stops waiting after the open-run cap so a crashed row cannot stall ingest", () => {
     const startSec = 1_700_000_000;
     expect(
@@ -287,8 +299,45 @@ describe("tickIngest", () => {
         } as unknown as DurableObjectNamespace,
       })
     ).rejects.toThrow(/workflow create rejected/);
-    expect(order).toEqual(["persist", "verify-last", "create"]);
+    expect(order).toEqual(["persist", "verify-last", "create", "persist"]);
     expect(markStarted).not.toHaveBeenCalled();
+  });
+
+  it("closes the persisted run when create() rejects so the next tick is not blocked", async () => {
+    const rows = new Map<string, unknown[]>();
+    let lastId = "";
+    const db: D1Runner = {
+      prepare: (sql: string) => {
+        const read = () => ({ results: [{ id: lastId }], id: lastId });
+        return {
+          bind: (...args: unknown[]) => ({
+            run: async () => {
+              if (sql === UPSERT_WORKFLOW_RUN_SQL) {
+                rows.set(args[0] as string, args);
+                lastId = args[0] as string;
+              }
+              return { success: true, meta: { changes: 1 } };
+            },
+            first: async <T>() => read() as T,
+          }),
+          all: async () => read(),
+        };
+      },
+    };
+    const create = vi.fn().mockRejectedValue(new Error("workflows 503"));
+    await expect(
+      tickIngest({ DB: db, NEWS_INGEST: { create } as unknown as Workflow })
+    ).rejects.toThrow(/workflows 503/);
+    const [, startedAt, finishedAt, , , error] = rows.get(lastId) ?? [];
+    expect(error).toEqual(expect.any(String));
+    expect(
+      blockedByOpenRun(
+        startedAt as number,
+        finishedAt as number,
+        (startedAt as number) * 1000 + 60_000,
+        error as string
+      )
+    ).toBe(false);
   });
 
   it("rethrows markStarted failures after create so POST is not SUCCESS", async () => {

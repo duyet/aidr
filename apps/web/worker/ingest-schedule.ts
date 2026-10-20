@@ -7,8 +7,10 @@ import {
 import { toEpochSeconds } from "./time.js";
 import {
   type D1Runner,
+  openedWorkflowRun,
   persistOpenedWorkflowRun,
   persistOpenedWorkflowRunVerified,
+  persistWorkflowRun,
 } from "./workflow-run.js";
 
 /** Coalescing rules for news ingest triggers (GitHub Actions, admin POST,
@@ -115,8 +117,13 @@ async function startCreatedIngest(
   const result: IngestTickResult = { id, skipped: false };
   await persistCreatedIngestRunVerified(env.DB, result);
   const params = ingestModePayload(mode);
-  // A normal run keeps the bare `create({ id })` shape.
-  await env.NEWS_INGEST.create(params ? { id, params } : { id });
+  try {
+    // A normal run keeps the bare `create({ id })` shape.
+    await env.NEWS_INGEST.create(params ? { id, params } : { id });
+  } catch (error) {
+    await closeFailedCreate(env.DB, id, error);
+    throw error;
+  }
   if (stub) {
     await markStartedOrThrow(stub, id);
   }
@@ -143,6 +150,27 @@ async function markStartedOrThrow(
   throw lastError instanceof Error
     ? lastError
     : new Error("ingest scheduler markStarted failed");
+}
+
+/** A run row whose `create()` rejected never gets a Workflow to close it,
+ * so close it here. Otherwise `previousRunStillOpen` blocks every tick
+ * until `INGEST_OPEN_RUN_MAX_MS`. */
+export async function closeFailedCreate(
+  db: D1Runner | undefined,
+  id: string,
+  error: unknown
+): Promise<void> {
+  if (!db) return;
+  const now = toEpochSeconds(Date.now());
+  const message = error instanceof Error ? error.message : String(error);
+  try {
+    await persistWorkflowRun(db, {
+      ...openedWorkflowRun(id, now, "create"),
+      error: `create failed: ${message}`,
+    });
+  } catch (closeError) {
+    console.error("create failure d1 close failed:", closeError);
+  }
 }
 
 /** Best-effort upsert after the Durable Object alarm `create()`. HTTP
@@ -195,8 +223,10 @@ export const INGEST_OPEN_RUN_MAX_MS = 90 * 60 * 1000;
 export function blockedByOpenRun(
   startedAt: number | null,
   finishedAt: number | null,
-  nowMs: number
+  nowMs: number,
+  error: string | null = null
 ): boolean {
+  if (error) return false;
   if (startedAt == null || finishedAt == null) return false;
   const startSec = toEpochSeconds(startedAt);
   const endSec = toEpochSeconds(finishedAt);
