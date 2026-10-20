@@ -608,60 +608,90 @@ export async function sendEmailLane(
     const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
     if (!shouldSendForSubscriber(sub, hour, localDate)) continue;
 
-    const size = digestSizeFor(sub.digest_size);
-    const format = normalizeMailFormat(sub.mail_format);
-    const cacheKey = `${localDate}:${lang}:${size}`;
-    let edition = editions.get(cacheKey);
-    if (edition === undefined) {
-      edition = await loadEdition(env, localDate, lang, size);
-      editions.set(cacheKey, edition);
+    try {
+      const size = digestSizeFor(sub.digest_size);
+      const format = normalizeMailFormat(sub.mail_format);
+      const cacheKey = `${localDate}:${lang}:${size}`;
+      let edition = editions.get(cacheKey);
+      if (edition === undefined) {
+        edition = await loadEdition(env, localDate, lang, size);
+        editions.set(cacheKey, edition);
+      }
+      if (!edition) continue;
+      const videoKey = `${edition.date}:${lang}`;
+      let video = videos.get(videoKey);
+      if (video === undefined) {
+        video = await loadDailyVideo(env, edition.date, lang);
+        videos.set(videoKey, video);
+      }
+      const { subject, html, text } = await renderEditionEmail(
+        env,
+        edition,
+        sub.unsubscribe_token,
+        size,
+        format,
+        video,
+        normalizeMailFont(sub.mail_font)
+      );
+      const stamp = {
+        column: "last_sent_date",
+        email: sub.email,
+        from: sub.last_sent_date,
+        to: localDate,
+      } as const;
+      if (!(await claimStamp(env, stamp))) continue;
+      const ok = await sendSubscriberEmail(env, {
+        to: sub.email,
+        from: digestFrom(env),
+        subject,
+        html,
+        text,
+        unsubscribeToken: sub.unsubscribe_token,
+        lang,
+        replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
+      });
+      if (ok) {
+        await recordMailStat(env.DB, "sent", lang, now);
+        sent++;
+        stampedDate = edition.date;
+        continue;
+      }
+      await releaseStamp(env, stamp);
+    } catch (error) {
+      console.error("daily digest send failed:", error);
     }
-    if (!edition) continue;
-    const videoKey = `${edition.date}:${lang}`;
-    let video = videos.get(videoKey);
-    if (video === undefined) {
-      video = await loadDailyVideo(env, edition.date, lang);
-      videos.set(videoKey, video);
-    }
-    const { subject, html, text } = await renderEditionEmail(
-      env,
-      edition,
-      sub.unsubscribe_token,
-      size,
-      format,
-      video,
-      normalizeMailFont(sub.mail_font)
-    );
-
-    const ok = await sendSubscriberEmail(env, {
-      to: sub.email,
-      from: digestFrom(env),
-      subject,
-      html,
-      text,
-      unsubscribeToken: sub.unsubscribe_token,
-      lang,
-      replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
-    });
-    if (!ok) {
-      failed++;
-      await recordMailStat(env.DB, "failed", lang, now);
-      continue;
-    }
-
-    // Count only when the stamp moves: a retry that finds it already set
-    // (or a duplicate row) must not add a second `sent`.
-    const stamp = await env.DB.prepare(
-      "UPDATE subscribers SET last_sent_date = ? WHERE email = ? AND last_sent_date IS NOT ?"
-    )
-      .bind(localDate, sub.email, localDate)
-      .run();
-    if (stamp.meta?.changes) await recordMailStat(env.DB, "sent", lang, now);
-    sent++;
-    stampedDate = edition.date;
+    failed++;
+    await recordMailStat(env.DB, "failed", lang, now);
   }
   return { sent, failed, stampedDate };
 }
+
+interface SendStamp {
+  column: "last_sent_date" | "last_weekly_sent";
+  email: string;
+  from: string | null;
+  to: string;
+}
+
+async function swapStamp(
+  env: Pick<Env, "DB">,
+  { column, email }: SendStamp,
+  expected: string | null,
+  next: string | null
+): Promise<boolean> {
+  const result = await env.DB.prepare(
+    `UPDATE subscribers SET ${column} = ? WHERE email = ? AND ${column} IS ?`
+  )
+    .bind(next, email, expected)
+    .run();
+  return result.meta.changes === 1;
+}
+
+const claimStamp = (env: Pick<Env, "DB">, stamp: SendStamp) =>
+  swapStamp(env, stamp, stamp.from, stamp.to);
+
+const releaseStamp = (env: Pick<Env, "DB">, stamp: SendStamp) =>
+  swapStamp(env, stamp, stamp.to, stamp.from);
 
 /** One weekly digest in one language, as digest bullets. */
 export interface WeeklyMail {
@@ -827,8 +857,6 @@ export async function sendWeeklyLane(
     ) {
       continue;
     }
-    // One subscriber's render or send error must not stop the others.
-    let ok = false;
     try {
       let videos = weekVideos.get(key);
       if (videos === undefined) {
@@ -849,7 +877,14 @@ export async function sendWeeklyLane(
         videos,
         normalizeMailFont(sub.mail_font)
       );
-      ok = await sendSubscriberEmail(env, {
+      const stamp = {
+        column: "last_weekly_sent",
+        email: sub.email,
+        from: sub.last_weekly_sent ?? null,
+        to: end,
+      } as const;
+      if (!(await claimStamp(env, stamp))) continue;
+      const ok = await sendSubscriberEmail(env, {
         to: sub.email,
         from: digestFrom(env),
         subject,
@@ -859,21 +894,17 @@ export async function sendWeeklyLane(
         lang,
         replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
       });
+      if (ok) {
+        await recordMailStat(env.DB, "sent", lang, now);
+        sent++;
+        continue;
+      }
+      await releaseStamp(env, stamp);
     } catch (error) {
       console.error("weekly digest send failed:", error);
     }
-    if (!ok) {
-      failed++;
-      await recordMailStat(env.DB, "failed", lang, now);
-      continue;
-    }
-    const stamp = await env.DB.prepare(
-      "UPDATE subscribers SET last_weekly_sent = ? WHERE email = ? AND last_weekly_sent IS NOT ?"
-    )
-      .bind(end, sub.email, end)
-      .run();
-    if (stamp.meta?.changes) await recordMailStat(env.DB, "sent", lang, now);
-    sent++;
+    failed++;
+    await recordMailStat(env.DB, "failed", lang, now);
   }
   return { sent, failed };
 }
