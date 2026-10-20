@@ -17,9 +17,9 @@ gate (`worker/migration-gate.ts`, `scripts/check-migrations.ts`).
 | `pnpm --filter @aidr/web d1:migrate` | Checks the ledger order, then applies pending migrations. |
 | `pnpm --filter @aidr/web deploy` or `cf:deploy:prod` | Runs `check:migrations` before the build. Do not bypass it with a direct `wrangler deploy`. |
 
-`.github/workflows/migrate-d1.yml` runs `d1:migrate` on a push to `main` or
-`master` that touches `apps/web/migrations/**`, and by hand through
-`workflow_dispatch`. Migrations only move forward. Rollback means redeploying
+`.github/workflows/migrate-d1.yml` runs `d1:migrate`. `deploy-web.yml` calls it
+as its first job (`needs`), so a push that adds a migration applies it, then
+deploys, in one run. It also runs by hand through `workflow_dispatch`. Migrations only move forward. Rollback means redeploying
 the previous Worker and leaving the schema in place. See
 [`docs/decisions/migration-rollback.md`](../../docs/decisions/migration-rollback.md).
 

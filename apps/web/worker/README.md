@@ -219,7 +219,7 @@ Two writers keep that table current:
 the UI says "Unavailable" instead of rendering a fabricated `0`.
 
 Apply the migration before deploying the code that reads it — the same command
-`apps/web/README.md` documents, and the same one CI runs on `master` via
+`apps/web/README.md` documents, and the same one CI runs before every deploy via
 `.github/workflows/migrate-d1.yml`:
 
 ```sh

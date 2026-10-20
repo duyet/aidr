@@ -95,7 +95,7 @@ CI, all in `.github/workflows/`:
 | `ci.yml` | Lint, tests, and types on pushes and PRs to `main`/`master`. |
 | `validate.yml` | `validate:deploy-artifact` (a production build and Worker checks) on PRs and on pushes that touch app code. |
 | `deploy-web.yml` | Deploys the Worker on a push to `main`/`master` that touches `apps/web`, `apps/extension`, `packages`, `package.json`, `pnpm-workspace.yaml`, or the lockfile. |
-| `migrate-d1.yml` | Applies D1 migrations on a push that touches `apps/web/migrations`. |
+| `migrate-d1.yml` | Applies pending D1 migrations. `deploy-web.yml` calls it as its first job, and it also runs by hand. No push trigger. |
 | `ingest.yml` | Watchdog for the 30-minute ingest (see Ingest). |
 | `release-please.yml` | Opens release PRs and attaches the extension zips. |
 | `live-budget.yml`, `daily-reel.yml`, `secret-scan.yml` | Live performance budget, the daily video, and Gitleaks. |
