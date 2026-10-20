@@ -70,7 +70,16 @@
     const vertical = D.fmt === "9x16";
     // The day's variants (looks/, serialized by build.mjs) get the timeline, their data and these helpers.
     const L = window.__LOOK;
+    // A hit element turns fully legible on its hit key: a linear fade of D.fade from its start (choreography.mjs FADE).
+    const fadeIn = (el, at) =>
+      tl.fromTo(
+        el,
+        { opacity: 0 },
+        { opacity: 1, duration: D.fade, ease: "none" },
+        at
+      );
     const H = {
+      fadeIn,
       $,
       $$,
       fit,
@@ -242,15 +251,16 @@
       });
       tl.fromTo(
         $(".stat", sc),
-        { y: 40, opacity: 0, scale: 0.92 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: LAND },
-        S.statAt
+        { y: 40, scale: 0.92 },
+        { y: 0, scale: 1, duration: 0.6, ease: LAND },
+        S.statIn
       );
+      fadeIn($(".stat", sc), S.statIn);
       tl.fromTo(
         $(".stat-label", sc),
         { y: 24, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.5, ease: LAND },
-        S.statAt + 4 * F
+        S.statIn + 4 * F
       );
       // The credit is left out when the story has no source.
       if ($(".src", sc))
@@ -258,7 +268,7 @@
           $(".src", sc),
           { opacity: 0 },
           { opacity: 1, duration: 0.5, ease: "power1.out" },
-          S.statAt + 0.4
+          S.statIn + 0.4
         );
     });
 
@@ -273,10 +283,11 @@
     );
     tl.fromTo(
       $(".biglogo", outro),
-      { scale: 0.6, opacity: 0 },
-      { scale: 1, opacity: 1, duration: 0.6, ease: LAND },
-      O.hit
+      { scale: 0.6 },
+      { scale: 1, duration: 0.6, ease: LAND },
+      O.logoIn
     );
+    fadeIn($(".biglogo", outro), O.logoIn);
     tl.fromTo(
       $(".title", outro),
       { y: 50, opacity: 0 },

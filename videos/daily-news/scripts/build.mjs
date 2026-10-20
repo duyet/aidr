@@ -25,6 +25,7 @@ import {
 import { join, resolve } from "node:path";
 import { cutFor, cutOf, formatsOf } from "./lang.mjs";
 import { coverStory, resolveLook, thumbStory } from "./look.mjs";
+import { FADE } from "./looks/choreography.mjs";
 import { entry, lookCss, lookScript } from "./looks/index.mjs";
 import {
   bedStartFor,
@@ -257,11 +258,12 @@ const norm = (t) =>
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, "");
 
-// The stat lands on its spoken word (script: statWord), else 40% into the line.
+// The stat starts 0.15 s before its spoken word (script: statWord), else 40% into the line, and is legible by
+// the word.
 for (const seg of storySegs) {
   const key = seg.story.statWord && norm(seg.story.statWord);
   const hit = key && seg.words.find((w) => norm(w.text).startsWith(key));
-  seg.statAt =
+  seg.statIn =
     seg.voiceStart +
     (hit ? Math.max(0.6, hit.start - 0.15) : Math.min(2.4, seg.voiceDur * 0.4));
 }
@@ -417,11 +419,13 @@ const aspectOf = (src) => {
   return size ? (size.width / size.height).toFixed(3) : "";
 };
 
-// Wrap *starred* phrases in the yellow marker; default marks the whole headline.
-const marked = (h) =>
-  h.includes("*")
-    ? esc(h).replace(/\*(.+?)\*/g, '<span class="mk">$1</span>')
-    : `<span class="mk">${esc(h)}</span>`;
+// Wrap the one *starred* phrase in the yellow marker, kept on one line so it reads as one focal point.
+const marked = (h) => {
+  const spans = h.match(/\*(.+?)\*/g) ?? [];
+  if (spans.length > 1)
+    throw new Error(`headline marks ${spans.length} spans, not one: "${h}"`);
+  return esc(h).replace(/\*(.+?)\*/g, '<span class="mk">$1</span>');
+};
 
 // What an intro variant's markup and cues read (looks/intro.mjs).
 const introCtx = {
@@ -517,18 +521,21 @@ const wipes = segs.slice(1).map((seg) => ({
   hit: r3(seg.start - STINGER.in / 2),
   label: seg.kind === "story" ? String(seg.story.rank) : ";",
 }));
-const rankAfterCut = entry("choreography", look.choreography).rankAt;
+const rankAfterCut = entry("choreography", look.choreography).rankIn;
 const stories = storySegs.map((s) => ({
   start: r3(s.start),
   dur: r3(s.dur),
   layout: look.layouts[s.story.rank],
-  statAt: r3(s.statAt),
-  rankAt: r3(s.start + rankAfterCut),
+  statIn: r3(s.statIn),
+  statAt: r3(s.statIn + FADE),
+  rankIn: r3(s.start + rankAfterCut),
+  rankAt: r3(s.start + rankAfterCut + FADE),
 }));
 const outroTimes = {
   start: r3(outro.start),
   dur: r3(outro.dur),
-  hit: r3(outro.start + 0.3),
+  logoIn: r3(outro.start + 0.3),
+  hit: r3(outro.start + 0.3 + FADE),
 };
 function wipesHtml() {
   return wipes
@@ -765,6 +772,7 @@ for (const fmt of formatsOf(cut, config)) {
     outro: outroTimes,
     wipes,
     stinger: STINGER,
+    fade: FADE,
     caps: config.captions.burn
       ? burnCaps.map((c) => ({
           start: r3(c.start),

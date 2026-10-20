@@ -161,6 +161,26 @@ export function estimateSeconds(script, config) {
   return raw * VOICED_FACTOR;
 }
 
+/** Above this share of the headline's words in the first voice sentence, the screen only repeats the voice. */
+export const HEADLINE_OVERLAP = 0.7;
+
+// Lowercase word stems: "open-sources" and "open-sourced" both give "open", "source".
+const stems = (t) =>
+  String(t ?? "")
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .map((w) => w.replace(/(ing|ed|es|s|e)$/, "") || w);
+
+/** The share of the headline's distinct word stems that the sentence also says. */
+export function headlineOverlap(headline, sentence) {
+  const head = new Set(stems(headline));
+  const said = new Set(stems(sentence));
+  return head.size
+    ? [...head].filter((w) => said.has(w)).length / head.size
+    : 0;
+}
+
 /** Problems with a script against its edition (empty = valid). */
 export function validateScript(script, edition) {
   const p = [];
@@ -186,6 +206,15 @@ export function validateScript(script, edition) {
       const n = words(String(s[k] ?? "").replace(/\*/g, "")).length;
       if (n < min || n > max) p.push(`story ${s.rank}: ${k} has ${n} words`);
     }
+    const spans = String(s.headline ?? "").match(/\*[^*]+\*/g) ?? [];
+    if (spans.length !== 1)
+      p.push(`story ${s.rank}: headline marks ${spans.length} spans, not one`);
+    const first = voiceWords(s.voice).split(/(?<=[.!?])\s/)[0];
+    const overlap = headlineOverlap(s.headline, first);
+    if (overlap > HEADLINE_OVERLAP)
+      p.push(
+        `story ${s.rank}: headline repeats the first voice sentence (${Math.round(overlap * 100)}% of its words)`
+      );
     // The stat sits under the category label and the kicker; one that repeats either says nothing new.
     const bare = (t) =>
       String(t ?? "")
@@ -313,15 +342,21 @@ export function templateStory(s) {
   const title = (s.title ?? s.text).replace(/\s*\([^)]*\)\s*$/, "");
   const tw = words(title);
   const kicker = phrase(tw, 4);
-  const head = words(phrase(tw, 9));
-  const headline =
-    head.length > 3
-      ? `*${head.slice(0, 3).join(" ")}* ${head.slice(3).join(" ")}`
-      : `*${head.join(" ")}*`;
   const sents = sentencesOf(s.text);
   const voice = [sents[0]];
   if (sents[1] && words(sents[0]).length + words(sents[1]).length <= 30)
     voice.push(sents[1]);
+  // A title the first sentence already says gives way to the bullet's next sentence, so the screen adds to it.
+  const fromTitle = words(phrase(tw, 9));
+  const head =
+    headlineOverlap(fromTitle.join(" "), sents[0]) > HEADLINE_OVERLAP &&
+    sents[1]
+      ? words(phrase(words(sents[1]), 9))
+      : fromTitle;
+  const headline =
+    head.length > 3
+      ? `*${head.slice(0, 3).join(" ")}* ${head.slice(3).join(" ")}`
+      : `*${head.join(" ")}*`;
   const m = money(s.text);
   return {
     kicker,
@@ -486,7 +521,7 @@ export function promptFor(edition) {
     },
     {
       role: "user",
-      content: `Stories:\n${JSON.stringify(stories, null, 1)}\n\nReturn JSON:\n{\n "stories": [{ "rank": <rank>, "kicker": "2-5 words, who or what", "headline": "5-9 words, the news itself, with *2-4 words* in stars", "stat": "the one number or state that sums the story, e.g. $60B or Public beta, never the kicker or the category", "statLabel": "3-8 words explaining the stat", "statWord": "the first spoken word of the stat as it appears in voice, e.g. 60", "voice": ["first sentence: the news in at most ${PACING.first} words, subject and verb first", "second sentence: why it matters or the one detail that makes it land, at most ${PACING.sentence} words"] }],\n "introLine": "at most ${PACING.intro} words, opens straight on today's top news, naming one or two stories; no greeting, no show name, no date",\n "focus": [{ "rank": <rank>, "word": "a word from introLine that names that story" }],\n "thumbRank": <rank of the most surprising story, preferring one with image true>,\n "thumbHook": "${PACING.hook.join("-")} words for the thumbnail: the surprising fact of the thumbRank story, concrete (a name, a number, an action), not a topic label like 'AI safety research', no question",\n "post": { "hook": "one sentence", "facebook": "1-2 sentences naming the top stories", "tiktok": "<=150 chars, ends with a question", "youtubeTitle": "<=100 chars: lead story, & more, the date", "shortsTitle": "<=80 chars", "hashtags": ["AI", "AINews", "...companies, 5-8 total, no #"] }\n}\nEvery story's voice is 14-24 words in total, written to be heard: one fact per sentence, at most one number per sentence, contractions are fine, no lists of three. Date: ${edition.date}.`,
+      content: `Stories:\n${JSON.stringify(stories, null, 1)}\n\nReturn JSON:\n{\n "stories": [{ "rank": <rank>, "kicker": "2-5 words, who or what", "headline": "5-9 words, the news itself, with one run of *2-4 words* in stars; it adds to the first voice sentence instead of repeating it: at most ${Math.round(HEADLINE_OVERLAP * 100)}% of its words may be in that sentence", "stat": "the one number or state that sums the story, e.g. $60B or Public beta, never the kicker or the category", "statLabel": "3-8 words explaining the stat", "statWord": "the first spoken word of the stat as it appears in voice, e.g. 60", "voice": ["first sentence: the news in at most ${PACING.first} words, subject and verb first", "second sentence: why it matters or the one detail that makes it land, at most ${PACING.sentence} words"] }],\n "introLine": "at most ${PACING.intro} words, opens straight on today's top news, naming one or two stories; no greeting, no show name, no date",\n "focus": [{ "rank": <rank>, "word": "a word from introLine that names that story" }],\n "thumbRank": <rank of the most surprising story, preferring one with image true>,\n "thumbHook": "${PACING.hook.join("-")} words for the thumbnail: the surprising fact of the thumbRank story, concrete (a name, a number, an action), not a topic label like 'AI safety research', no question",\n "post": { "hook": "one sentence", "facebook": "1-2 sentences naming the top stories", "tiktok": "<=150 chars, ends with a question", "youtubeTitle": "<=100 chars: lead story, & more, the date", "shortsTitle": "<=80 chars", "hashtags": ["AI", "AINews", "...companies, 5-8 total, no #"] }\n}\nEvery story's voice is 14-24 words in total, written to be heard: one fact per sentence, at most one number per sentence, contractions are fine, no lists of three. Date: ${edition.date}.`,
     },
   ];
 }

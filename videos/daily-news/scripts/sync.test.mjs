@@ -92,6 +92,7 @@ async function tweensOf(html, ar = 1.6) {
       dur: vars.duration ?? 0,
       ease: vars.ease ?? "power1.out",
       repeat: vars.repeat ?? 0,
+      fades: "opacity" in vars,
     });
     return tl;
   };
@@ -128,22 +129,51 @@ function hitOf({ at, dur, ease, repeat }) {
   return at + dur * { out: 0, inOut: 0.5, in: 1 }[kind];
 }
 
+// The fraction of a tween's duration at which its progress first reaches p, for the eases a fade-in uses.
+function timeTo(ease, p) {
+  if (ease === "none") return p;
+  if (ease === "expo.out") return -Math.log2(1 - p) / 10;
+  const power = ease.match(/^power(\d)\.out$/);
+  if (power) return 1 - (1 - p) ** (1 / (Number(power[1]) + 1));
+  throw new Error(`timeTo: no inverse for ease ${ease}`);
+}
+
+// A viewer hears a hit as on time when its element is first legible: its fade-in reaches 90% opacity.
+const LEGIBLE = 0.9;
+const legibleAt = ({ at, dur, ease }) => at + dur * timeTo(ease, LEGIBLE);
+
+// The element each cue's effect belongs to. Its hit key is that element's legible frame; a wipe's is its mid-cover
+// (hitOf). The intro's own cues keep hitOf over any tween.
+const CUE_TARGET = { rankHit: ".rank", statHit: ".stat", outro: ".biglogo" };
+
+function hitsFor(tweens, cue, intro) {
+  const target = !intro && CUE_TARGET[cue];
+  if (!target) return tweens.map(hitOf).filter((h) => h !== null);
+  return tweens
+    .filter((t) => t.fades && t.target.endsWith(target))
+    .map(legibleAt);
+}
+
 function misses(tweens, cues) {
-  const hits = tweens.map(hitOf).filter((h) => h !== null);
   return cues
     .filter(([cue]) => cue !== "open")
-    .filter(([, at]) => !hits.some((h) => Math.abs(h - at) <= FRAME + 1e-6))
+    .filter(
+      ([cue, at, , intro]) =>
+        !hitsFor(tweens, cue, intro).some(
+          (h) => Math.abs(h - at) <= FRAME + 1e-6
+        )
+    )
     .map(([cue, at]) => `${cue} at ${at}`);
 }
 
-const cuesOf = (D) =>
-  cuesFor(
-    D,
-    entry("intro", D.intro.variant).cues({
-      stories: D.stories,
-      focus: D.intro.focus,
-    })
-  );
+// Each cue as [cue, at, gain, intro]: an intro cue animates the intro's own elements, not a story's.
+const cuesOf = (D) => {
+  const intro = entry("intro", D.intro.variant).cues({
+    stories: D.stories,
+    focus: D.intro.focus,
+  });
+  return cuesFor(D, intro).map((c) => [...c, intro.includes(c)]);
+};
 
 // A peak placed on the cue is only the hit if nothing in the file outside one frame of it is louder: notification's
 // second note, 5 frames after its first, or a swell's crest 5 frames after a peak taken on its rise, sounds late.
@@ -205,12 +235,20 @@ test("every effect peaks within one frame of a visual hit, in every variant", as
 
 test("the sync check catches an effect two frames off its hit", async () => {
   const { D, tweens } = await tweensOf(buildPage({}));
-  const late = cuesOf(D).map(([cue, at, g]) =>
-    cue === "statHit" ? [cue, at + 2 * FRAME, g] : [cue, at, g]
+  const late = cuesOf(D).map(([cue, at, g, i]) =>
+    cue === "statHit" ? [cue, at + 2 * FRAME, g, i] : [cue, at, g, i]
   );
   const m = misses(tweens, late);
   assert.equal(m.length, D.stories.length);
   assert.ok(m.every((x) => x.startsWith("statHit")));
+});
+
+test("the sync check rejects an effect on a hit element's start key, before it is legible", async () => {
+  const { D, tweens } = await tweensOf(buildPage({}));
+  const byStart = cuesOf(D).map(([cue, at, g, i]) =>
+    cue === "rankHit" && !i ? [cue, at - D.fade, g, i] : [cue, at, g, i]
+  );
+  assert.equal(misses(tweens, byStart).length, D.stories.length);
 });
 
 test("an image far from its box's shape is shown whole; one close to it fills the box", async () => {
