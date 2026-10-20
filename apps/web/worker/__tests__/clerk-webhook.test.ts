@@ -66,6 +66,11 @@ function fakeDb(options: { failOn?: Error } = {}) {
       };
       return statement;
     },
+    async batch(prepared: Array<{ run: () => Promise<unknown> }>) {
+      const results: unknown[] = [];
+      for (const statement of prepared) results.push(await statement.run());
+      return results;
+    },
   };
   return { db: db as unknown as D1Database, statements };
 }
@@ -133,6 +138,19 @@ class SqliteMirror {
       all: async () => ({ results: statement.all(...args) }),
     };
     return prepared;
+  }
+
+  async batch(statements: Array<{ run: () => Promise<unknown> }>) {
+    const results: unknown[] = [];
+    this.db.exec("BEGIN");
+    try {
+      for (const statement of statements) results.push(await statement.run());
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
+    return results;
   }
 }
 

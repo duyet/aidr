@@ -288,6 +288,18 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0072_clerk_sync_attempts.sql
+
+- Change: new table `clerk_sync_attempts` (`user_id` primary key, `last_at`
+  epoch seconds), the per-user throttle for `syncClerkUserById`. Nothing is
+  seeded.
+- Order: the migration must land before the new Worker. Without the table
+  every on-demand sync returns `error` and the contribute form shows
+  `synced:false`. The webhook and backfill paths do not read it.
+- Rollback: roll the Worker back first, then
+  `DROP TABLE IF EXISTS clerk_sync_attempts;`. The rows are throttle state
+  only, so nothing needs exporting.
+
 ## 0071_subscriber_mail_font.sql
 
 - Change: adds `subscribers.mail_font TEXT NOT NULL DEFAULT 'sans'`, the
