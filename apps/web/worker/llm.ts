@@ -419,6 +419,8 @@ interface StreamEvent {
   metadata?: { usage?: Usage };
   /** `model` is the catalog model a preset/router resolved to. */
   anyrouter_metadata?: { usage?: Usage; model?: string; requestId?: string };
+  /** An upstream failure after the 200 headers went out. */
+  error?: { code?: unknown; message?: unknown };
 }
 
 /** What actually served an attempt: the requested id, then each id a
@@ -646,6 +648,13 @@ async function streamCompletion(
       return; // keep-alives and other noise
     }
     sawEvent = true;
+    if (event.error) {
+      const code = Number(event.error.code);
+      throw new ProviderHttpError(
+        code >= 400 && code <= 599 ? code : 502,
+        payload
+      );
+    }
     if (isQueued(event)) queued = true;
     if (opts.trace) {
       const resolved = routeHop(event.anyrouter_metadata?.model);

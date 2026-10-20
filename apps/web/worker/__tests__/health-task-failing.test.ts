@@ -174,12 +174,13 @@ describe("whole-chain task failure alert through the health check", () => {
     resetOwnerDmRejections();
   });
 
-  /** Rows for `GROUP BY task, model, ok, error_status`. */
+  /** Rows for `GROUP BY task, model, ok, error_status, error_code`. */
   type CallRow = {
     task: string;
     model: string;
     ok: number;
     status: number | null;
+    code?: string | null;
     n: number;
   };
 
@@ -197,7 +198,7 @@ describe("whole-chain task failure alert through the health check", () => {
     const runWide = (): Omit<CallRow, "task">[] => {
       const byKey = new Map<string, Omit<CallRow, "task">>();
       for (const { task: _task, ...r } of rows) {
-        const key = `${r.model}|${r.ok}|${r.status}`;
+        const key = `${r.model}|${r.ok}|${r.status}|${r.code}`;
         const seen = byKey.get(key);
         byKey.set(key, { ...r, n: (seen?.n ?? 0) + r.n });
       }
@@ -237,6 +238,45 @@ describe("whole-chain task failure alert through the health check", () => {
     expect(dms[0]).toContain(`${REVIEW_CHAIN[0]}: 0/5 ok (error×5)`);
     expect(dms[0]).toContain(`${REVIEW_CHAIN[1]}: 0/3 ok (504×3)`);
     expect(dms[0]).not.toContain("x/a");
+  });
+
+  // #670 (AIDR-17): the alert named four dead hops but not why each failed.
+  it("names each hop's failure cause in the alert detail", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    const { env } = setup([
+      { task: "score", model: "x/a", ok: 1, status: null, n: 20 },
+      { task: "other", model: "@preset/aidr", ok: 0, status: 502, n: 1 },
+      {
+        task: "other",
+        model: "anyrouter/auto",
+        ok: 0,
+        status: null,
+        code: "timeout",
+        n: 1,
+      },
+      {
+        task: "other",
+        model: "google/gemma-latest",
+        ok: 0,
+        status: null,
+        code: "invalid_response",
+        n: 1,
+      },
+      {
+        task: "other",
+        model: "z-ai/glm-latest",
+        ok: 0,
+        status: null,
+        code: null,
+        n: 1,
+      },
+    ]);
+    await runHealthCheck(env, { runId: "r1", steps: [] });
+    const { reportHealthAlert } = await import("../bugsink.js");
+    const alert = vi.mocked(reportHealthAlert).mock.calls.at(-1)?.[1];
+    expect(JSON.stringify(alert)).toContain(
+      "@preset/aidr: 502×1, anyrouter/auto: timeout×1, google/gemma-latest: invalid_response×1, z-ai/glm-latest: error×1"
+    );
   });
 
   it("stays quiet when every task has a success", async () => {

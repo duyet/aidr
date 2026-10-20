@@ -230,6 +230,34 @@ describe("llm_calls failure snippets", () => {
       );
     });
 
+    // #933: AnyRouter forwards an upstream failure after the 200 headers as
+    // an SSE `error` frame. Read as an empty stream, Sonnet's spent usage
+    // limit was logged as invalid_response with no snippet.
+    it("logs a mid-stream error frame as the provider error it carries", async () => {
+      const [entry] = await attempts(async () =>
+        sseResponse([
+          {
+            error: { code: 400, message: "You have reached your usage limits" },
+            object: "chat.completion.chunk",
+            model: "anthropic/claude-sonnet-5-5",
+          },
+        ])
+      );
+      expect(entry?.error).toBe("anyrouter request failed: 400");
+      expect(JSON.parse(entry?.responseSnippet ?? "null")).toMatchObject({
+        kind: "provider_error",
+        status: 400,
+        error: { message: "You have reached your usage limits" },
+      });
+    });
+
+    it("falls back to 502 for a frame without an HTTP code", async () => {
+      const [entry] = await attempts(async () =>
+        sseResponse([{ error: { code: "upstream_exhausted" } }])
+      );
+      expect(entry?.error).toBe("anyrouter request failed: 502");
+    });
+
     it("stores no snippet for a transport failure", async () => {
       const [entry] = await attempts(async () => {
         throw new TypeError(`fetch failed for ${API_KEY}=hunter2`);

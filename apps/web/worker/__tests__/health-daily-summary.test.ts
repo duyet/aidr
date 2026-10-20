@@ -16,7 +16,7 @@ function envWith(runs: { id: string; stats: object; itemsNew: number }[]) {
   db.exec(`CREATE TABLE workflow_runs (id TEXT, started_at INTEGER,
       error TEXT, items_new INTEGER, stats TEXT);
     CREATE TABLE notifications (channel TEXT, status TEXT, posted_at INTEGER);
-    CREATE TABLE llm_calls (model TEXT, ok INTEGER, error_status INTEGER, ts INTEGER);`);
+    CREATE TABLE llm_calls (model TEXT, ok INTEGER, error_status INTEGER, error_code TEXT, ts INTEGER);`);
   for (const run of runs)
     db.prepare("INSERT INTO workflow_runs VALUES (?, ?, NULL, ?, ?)").run(
       run.id,
