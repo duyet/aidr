@@ -548,8 +548,9 @@ function stutterIssues(viText: string): string[] {
   return issues;
 }
 
-/** "vượ quá", "nền tảp", "t合成": words no Vietnamese spelling allows. A
- * near miss built from real syllables ("rời rạp", "sụp đảo") passes. */
+/** "vượ quá", "nền tảp", "t合成", "phòng nghiễn": words no Vietnamese
+ * spelling or word allows. A near miss built from real syllables ("rời
+ * rạp", "sụp đảo", "giả thuyền") passes. */
 function garbleIssues(sourceText: string, viText: string): string[] {
   const words = garbledWords(viText, sourceText);
   return words.length === 0
@@ -711,8 +712,8 @@ export function translationDraftIssues(
 }
 
 /** Issues in one Vietnamese TL;DR bullet against the items it cites. A
- * bullet is a digest: calques, magnitudes, parenthetical glosses, and
- * doubled words. */
+ * bullet is a digest: calques, magnitudes, parenthetical glosses, doubled
+ * words, and garbled words. */
 export function tldrBulletIssues(
   sourceText: string,
   bullet: string,
@@ -726,6 +727,7 @@ export function tldrBulletIssues(
     ...magnitudeIssues(sourceText, bullet),
     ...glossIssues(bullet, sourceText),
     ...stutterIssues(bullet),
+    ...garbleIssues(sourceText, bullet),
   ];
 }
 

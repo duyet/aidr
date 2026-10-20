@@ -48,7 +48,7 @@ Change the smallest of these, then the test that locks it:
 | Voice, examples, calques | `VI_STYLE` in `llm.ts` | `llm.test.ts` |
 | The short card the model sees | `RULES_OVERVIEW` in `llm.ts` | the exact-string assertion in `llm.test.ts` |
 | A term that must survive in English | `translation-terms.ts` | `translation-terms.test.ts` |
-| What counts as a bad draft (calque, magnitude, gloss, Title Case, doubled word, garbled word, decimal point, `$` figure, English headline, length) | `translation-draft-check.ts`, `vi-syllable.ts` | `translation-draft-check.test.ts`, `vi-syllable.test.ts` |
+| What counts as a bad draft (calque, magnitude, gloss, Title Case, doubled word, garbled word, decimal point, `$` figure, English headline, length) | `translation-draft-check.ts`, `vi-syllable.ts`, `vi-lexicon.ts` (regenerate with `scripts/gen-vi-lexicon.ts`) | `translation-draft-check.test.ts`, `vi-syllable.test.ts` |
 
 Before a new check ships, count what it would send back for repair: `pnpm exec tsx scripts/vi-audit.ts --days 7` (from `apps/web`, read-only D1) prints rows per check.
 | How TL;DR VI bullets relate to the EN ones | `tldrPrompt` in `llm.ts` | `llm.test.ts` |

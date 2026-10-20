@@ -7,8 +7,10 @@
  * Viet74K (github.com/duyet/vietnamese-wordlist, 73,901 entries): it accepts
  * 144,706 of the 144,977 marked syllables there. The 271 it rejects are
  * loanwords with a consonant cluster ("đrô", "prô", "xtơ") and typos in the
- * list ("cưỡì", "ngườí"). The list itself is not shipped.
+ * list ("cưỡì", "ngườí"). Its marked syllables ship as `VI_MARKED_SYLLABLES`.
  */
+
+import { VI_MARKED_SYLLABLES } from "./vi-lexicon.js";
 
 /** Combining marks by code point. The formatter turns escapes in string
  * literals into the invisible marks themselves. */
@@ -173,11 +175,15 @@ const ASCII_RE = /^\p{ASCII}*$/u;
 const isAcronym = (word: string) =>
   /\p{Lu}/u.test(word) && word === word.toUpperCase();
 
+/** Lowercase, so a name the lexicon lacks ("Hồng Kông") passes. */
+const isUnknownSyllable = (word: string) =>
+  word === word.toLowerCase() && !VI_MARKED_SYLLABLES.has(word);
+
 /** Words in a Vietnamese draft that no Vietnamese spelling allows: another
- * script ("t合成", "chiến略", "lầnแรก") or a marked word that is not a
- * syllable ("vượ", "nền tảp", "đặặt", "xây dựers"). ASCII words (English,
- * names, kept terms), acronyms, "đ" (đồng) and words the source writes are
- * skipped. */
+ * script ("t合成", "chiến略", "lầnแรก"), a marked word that is not a
+ * syllable ("vượ", "nền tảp", "đặặt", "xây dựers"), or a lowercase syllable
+ * no word uses ("nghiễn", "triên"). ASCII words (English, names, kept
+ * terms), acronyms, "đ" (đồng) and words the source writes are skipped. */
 export function garbledWords(viText: string, sourceText: string): string[] {
   const source = new Set(
     (sourceText.normalize("NFC").match(WORD_RE) ?? []).map((w) =>
@@ -188,7 +194,7 @@ export function garbledWords(viText: string, sourceText: string): string[] {
   for (const word of viText.normalize("NFC").match(WORD_RE) ?? []) {
     if (ASCII_RE.test(word) || source.has(word.toLowerCase())) continue;
     if (word.length === 1 || isAcronym(word)) continue;
-    if (!isVietnameseSpelling(word)) out.add(word);
+    if (!isVietnameseSpelling(word) || isUnknownSyllable(word)) out.add(word);
   }
   return [...out];
 }

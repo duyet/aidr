@@ -36,6 +36,25 @@ describe("isVietnameseSpelling", () => {
 });
 
 describe("garbledWords", () => {
+  // #927: well-formed syllables that no Vietnamese word uses, from stored rows.
+  it("returns a well-formed syllable that is not in the lexicon", () => {
+    expect(
+      garbledWords(
+        "các phòng nghiễn quốc gia, đang phát triên, The Information đư tin, chuyển đổi giọn nói",
+        ""
+      )
+    ).toEqual(["nghiễn", "triên", "đư", "giọn"]);
+  });
+
+  it("accepts lexicon words and a capitalized name the lexicon lacks", () => {
+    expect(
+      garbledWords(
+        "Nghiên cứu triển khai ở Hồng Kông và Quy Nhơn được tiếp tục",
+        ""
+      )
+    ).toEqual([]);
+  });
+
   it("returns CJK and misspelled words, skipping ASCII and source words", () => {
     expect(
       garbledWords(
