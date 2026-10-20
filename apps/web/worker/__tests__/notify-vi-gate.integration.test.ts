@@ -259,7 +259,9 @@ describe("Vietnamese trending gate", () => {
   );
 
   it("retries a refused story on the next run once its translation is fixed", async () => {
-    const [{ term, bad, good, story }] = CALQUES;
+    // Not the model-family case: the built-in calque check asks for the
+    // English "model family", so a Vietnamese fix there is refused again.
+    const [, { term, bad, good, story }] = CALQUES;
     addStory(story);
     addAvoidRule(term, bad, good);
 
@@ -278,7 +280,7 @@ describe("Vietnamese trending gate", () => {
       .prepare(
         "UPDATE translations SET title = replace(title, ?, ?), summary = replace(summary, ?, ?) WHERE item_id = ?"
       )
-      .run("gia đình mô hình", good, "gia đình mô hình", good, story.id);
+      .run(bad, good, bad, good, story.id);
     await dispatchStoryNotifications(env);
 
     expect(trendingPosts("telegram")).toEqual([story.id]);
