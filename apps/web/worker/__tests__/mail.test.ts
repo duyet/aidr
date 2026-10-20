@@ -197,7 +197,7 @@ describe("renderNoteEmail", () => {
     });
     expect(html).toContain("max-width:600px");
     expect(html).toContain(">AI;DR</span>");
-    expect(html).toContain("AI news, ranked and summarized");
+    expect(html).not.toContain("ranked and summarized");
     expect(html).toContain("<strong>friend</strong>");
     expect(html).toContain(">Read</font>");
     expect(html).toContain("v:roundrect");
@@ -210,9 +210,10 @@ describe("renderNoteEmail", () => {
     // A note has no day page: no date line, no "View in browser".
     expect(html).not.toContain("View in browser");
     expect(html).not.toContain("min read");
+    expect(html).not.toContain("Đọc bằng Tiếng Việt");
   });
 
-  it("uses the Vietnamese tagline and footer labels", () => {
+  it("uses the Vietnamese footer labels", () => {
     const { html } = renderNoteEmail({
       subject: "Chào",
       bodyMd: "Xin chào.",
@@ -220,7 +221,6 @@ describe("renderNoteEmail", () => {
       unsubscribeUrl: UNSUB,
       settingsUrl: SETTINGS,
     });
-    expect(html).toContain("Tin AI, xếp hạng và tóm tắt");
     expect(html).toContain(">Hủy đăng ký</a>");
     expect(html).toContain(">Cài đặt</a>");
     expect(html).toContain('lang="vi"');
@@ -234,13 +234,12 @@ describe("renderNoteEmail", () => {
       unsubscribeUrl: UNSUB,
       settingsUrl: SETTINGS,
     };
-    expect(renderNoteEmail(base).html).not.toContain("AI;DR · ");
     const { html, text } = renderNoteEmail({
       ...base,
       postalAddress: "1 Main St, Springfield",
     });
-    expect(html).toContain("AI;DR · 1 Main St, Springfield");
-    expect(text).toContain("AI;DR · 1 Main St, Springfield");
+    expect(html).not.toContain("Springfield");
+    expect(text).not.toContain("Springfield");
   });
 });
 
@@ -295,17 +294,13 @@ describe("formatMailDate", () => {
 });
 
 describe("renderDigestEmail", () => {
-  it("EN with video: header, lead, video, rows, one CTA, channels, footer in order", () => {
+  it("EN with video: header, lead, video, rows, one CTA, channels, footer in order, no count line", () => {
     const { html, subject } = digest({ video: VIDEO, totalStories: 8 });
     const order = [
       ">AI;DR</span>",
       "Saturday, October 10, 2026",
-      "5 stories · 1 min read",
-      ">Đọc bằng Tiếng Việt</a>",
-      "Lead story",
       "Company 1 ships model 1</span>",
       "Today's video brief",
-      "Also today",
       "Company 5 ships model 5",
       "See all 8 stories on aidr.today",
       "t.me/aidr_today",
@@ -314,6 +309,9 @@ describe("renderDigestEmail", () => {
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(html).toContain(`<title>${subject}</title>`);
+    expect(html).not.toContain("min read");
+    expect(html).not.toContain("Lead story");
+    expect(html).not.toContain("Also today");
     expect(subject).toContain("Company 1 ships model 1");
   });
 
@@ -405,11 +403,10 @@ describe("renderDigestEmail", () => {
     });
     expect(html).toContain('lang="vi"');
     expect(html).toContain("Thứ Bảy, 10 tháng 10, 2026");
-    expect(html).toContain("3 tin · 1 phút đọc");
     expect(html).toContain(">Read in English</a>");
     expect(html).toContain("Video tóm tắt hôm nay");
-    expect(html).toContain("Tin chính");
-    expect(html).toContain("Tin khác hôm nay");
+    expect(html).not.toContain("Tin chính");
+    expect(html).not.toContain("Tin khác hôm nay");
     expect(html).toContain("Xem tất cả tin trên aidr.today");
     expect(html).toContain("t.me/aihomnay");
     expect(html).not.toContain("t.me/aidr_today");
@@ -431,7 +428,8 @@ describe("renderDigestEmail", () => {
       "The launch shows how fast the field moves.</div>\n            </td>"
     );
     expect(html).not.toContain("Read more");
-    expect(html.match(/class="mail-cta"/g)?.length).toBe(1);
+    expect(html).toContain("See all stories on aidr.today →");
+    expect(html).not.toContain('class="mail-cta"');
   });
 
   it("uses the bullet's first sentence as the headline when no title is stored", () => {
@@ -510,16 +508,13 @@ describe("renderDigestEmail", () => {
     expect(mailCategoryLabel("Something New", "vi")).toBe("Something New");
   });
 
-  it("makes a failed image a quiet grey box and crops tall lead photos", () => {
+  it("makes a failed thumbnail a quiet grey box", () => {
     const { html } = digest();
     expect(html).toMatch(
       /<img [^>]*alt="Company 2 ships model 2"[^>]*font-size:11px;line-height:1.35;color:#6b6a64/
     );
     expect(html).toMatch(
-      /class="m-thumb"[\s\S]{0,400}background-color:#ece9e1/
-    );
-    expect(html).toMatch(
-      /max-height:300px;overflow:hidden[^>]*>\s*<img class="mail-lead-image"/
+      /class="m-thumb"[\s\S]{0,400}background-color:#eeeeee/
     );
   });
 
@@ -543,7 +538,6 @@ describe("renderDigestEmail", () => {
       "channel-youtube",
       "channel-chrome",
       "view-in-browser",
-      "lang-switch",
     ]) {
       expect(html).toContain(`utm_content=${content}`);
     }
@@ -556,27 +550,21 @@ describe("renderDigestEmail", () => {
     expect(html).not.toContain('alt=""');
   });
 
-  it("has dark mode, a mobile rule and no 8-digit hex colours", () => {
+  it("is white and light only, with a mobile rule and no 8-digit hex colours", () => {
     const { html } = digest({ video: VIDEO });
-    expect(html).toContain('<meta name="color-scheme" content="light dark">');
-    expect(html).toContain(
-      '<meta name="supported-color-schemes" content="light dark">'
-    );
-    expect(html).toContain("@media (prefers-color-scheme: dark)");
+    expect(html).toContain('<meta name="color-scheme" content="light">');
+    expect(html).not.toContain("prefers-color-scheme: dark");
+    expect(html).toContain("background:#ffffff");
     expect(html).toContain("@media only screen and (max-width: 600px)");
     expect(html).not.toMatch(/#[0-9a-fA-F]{8}\b/);
-    expect(html).toContain("background-color:#f5c518");
   });
 
-  it("keeps the font stacks free of double quotes and loads the webfonts", () => {
+  it("keeps the font stack system-only and free of double quotes", () => {
     const { html } = digest();
-    expect(html).toContain(
-      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond'
-    );
+    expect(html).not.toContain("fonts.googleapis.com");
     expect(html).not.toMatch(/font-family:[^;>]*"[^>]*['\w]/);
     expect(html).not.toContain("&quot;");
-    expect(html).toContain("'Source Sans 3', -apple-system");
-    expect(html).toContain("font-family:'EB Garamond'");
+    expect(html).toContain("font-family:-apple-system");
   });
 
   it("writes a padded preheader instead of story 1's text", () => {
@@ -586,10 +574,9 @@ describe("renderDigestEmail", () => {
     );
   });
 
-  it("prints the postal address only when set", () => {
-    expect(digest().html).not.toContain("AI;DR · ");
-    expect(digest({ postalAddress: "PO Box 1" }).html).toContain(
-      "AI;DR · PO Box 1"
+  it("never prints the postal address", () => {
+    expect(digest({ postalAddress: "PO Box 1" }).html).not.toContain(
+      "PO Box 1"
     );
   });
 
@@ -643,8 +630,6 @@ describe("renderDigestEmail", () => {
         "Oct 5 – 11, 2026",
         'class="m-fg m-quote"',
         "In this issue",
-        "Lead story",
-        "Also this week",
       ].map((needle) => html.indexOf(needle));
       expect(order.every((i) => i >= 0)).toBe(true);
       expect([...order].sort((a, b) => a - b)).toEqual(order);
@@ -688,14 +673,10 @@ describe("renderDigestEmail", () => {
       for (const t of tables) expect(t).toContain('role="presentation"');
     });
 
-    it("gives every image alt text and the dark classes cover the new blocks", () => {
+    it("gives every image alt text", () => {
       const { html } = weekly10();
       for (const img of html.match(/<img\b[^>]*>/g) ?? []) {
         expect(img).toMatch(/\balt="[^"]+"/);
-      }
-      for (const cls of ["m-quote", "m-rule", "m-soft", "m-ph"]) {
-        expect(html).toContain(`.${cls} {`);
-        expect(html).toContain(`[data-ogsc] .${cls} {`);
       }
     });
 
@@ -712,22 +693,51 @@ describe("renderDigestEmail", () => {
     });
   });
 
+  describe("font", () => {
+    it("sans: system font only, no webfont link", () => {
+      const { html } = digest();
+      expect(html).not.toContain("EB Garamond");
+      expect(html).not.toContain("fonts.googleapis.com");
+    });
+
+    it("serif: wordmark and headlines in EB Garamond, text stays sans", () => {
+      const { html } = digest({ font: "serif" });
+      expect(html).toContain("fonts.googleapis.com/css2?family=EB+Garamond");
+      expect(html).toMatch(
+        /font-family:'EB Garamond'[^"]*font-size:20px[^"]*">AI;DR</
+      );
+      expect(html).toMatch(
+        /font-family:'EB Garamond'[^"]*font-size:21px[^>]*>[\s\S]{0,80}Company 1 ships model 1/
+      );
+      expect(html).toMatch(
+        /font-family:'EB Garamond'[^"]*font-size:18px[^>]*>[\s\S]{0,80}Company 2 ships model 2/
+      );
+      expect(html).toMatch(
+        /font-family:-apple-system[^"]*font-size:13px[^>]*>Company 2 shipped/
+      );
+      expect(html).not.toMatch(/font-family:[^;>]*"[^>]*['\w]/);
+    });
+
+    it("an unknown font renders as sans", () => {
+      const { html } = digest({ font: "comic" as never });
+      expect(html).not.toContain("EB Garamond");
+    });
+  });
+
   describe("formats", () => {
     const imageCount = (html: string) =>
       html.match(/cdn\.example\.com\/photo-/g)?.length ?? 0;
 
-    it("design: lead image plus an 84px thumbnail per row", () => {
+    it("design: a 64px thumbnail on the lead and on every row", () => {
       const { html } = digest({ format: "design" });
-      expect(html.match(/class="mail-lead-image"/g)?.length).toBe(1);
-      expect(html.match(/class="m-thumb"/g)?.length).toBe(4);
+      expect(html.match(/class="m-thumb"/g)?.length).toBe(5);
       expect(imageCount(html)).toBe(5);
     });
 
-    it("large: lead image plus a full-width image per row", () => {
+    it("large: a lead thumbnail plus a full-width image per row", () => {
       const { html } = digest({ format: "large" });
-      expect(html.match(/class="mail-lead-image"/g)?.length).toBe(1);
+      expect(html.match(/class="m-thumb"/g)?.length).toBe(1);
       expect(html.match(/class="mail-large"/g)?.length).toBe(4);
-      expect(html).not.toContain('class="m-thumb"');
     });
 
     it("no-images: same layout without any story or video image", () => {
@@ -735,7 +745,6 @@ describe("renderDigestEmail", () => {
       expect(imageCount(html)).toBe(0);
       expect(html).not.toContain("i.ytimg.com");
       expect(html).toContain("Today's video brief");
-      expect(html).toContain("Lead story");
       expect(html).toContain("See all stories on aidr.today");
     });
 
@@ -754,7 +763,7 @@ describe("renderDigestEmail", () => {
           story(2),
         ],
       });
-      expect(html).not.toContain("mail-lead-image");
+      expect(html).not.toContain("/api/og/abc.png");
     });
 
     it("drops non-http(s) image urls", () => {

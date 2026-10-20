@@ -319,7 +319,6 @@ describe("buildDigestEmail", () => {
     expect(html).toContain("Sunday's 3 AI stories in 1 minute.");
     expect(html).not.toContain(`opacity:0;mso-hide:all">${long}`);
     // The lead's image is unsafe, so no lead image; story 3 keeps its photo.
-    expect(html).not.toContain("mail-lead-image");
     expect(html).toContain(`src="${photo}"`);
     expect(html).not.toContain("javascript:");
     expect(html).not.toContain("127.0.0.1");
@@ -338,9 +337,7 @@ describe("buildDigestEmail", () => {
       "en",
       "tok"
     ).html;
-    expect(lead).toContain(
-      'class="mail-lead-image" src="https://cdn.example/photos/claude-stage.jpg"'
-    );
+    expect(lead).toContain('src="https://cdn.example/photos/claude-stage.jpg"');
     const card = buildDigestEmail(
       "2026-08-16",
       [
@@ -356,7 +353,6 @@ describe("buildDigestEmail", () => {
       "en",
       "tok"
     ).html;
-    expect(card).not.toContain("mail-lead-image");
     expect(card).not.toContain("/api/og/date/");
     // The one CTA goes to the day page.
     expect(card).toContain('href="https://aidr.today/date/2026-08-16?lang=en');
@@ -371,7 +367,6 @@ describe("buildDigestEmail", () => {
       "en",
       "tok"
     );
-    expect(html).not.toContain("mail-lead-image");
     expect(html).not.toContain("/api/og/date/");
     expect(html).not.toContain("not a url");
   });
@@ -480,9 +475,7 @@ describe("digestBulletsWithImages", () => {
     expect(hydrated[0]?.image_url).toBe("https://news.example/og/card.png");
     expect(hydrated[1]?.image_url).toBe("https://cdn.example/photos/room.jpg");
     const { html } = buildDigestEmail("2026-09-29", hydrated, "en", "tok");
-    expect(html).not.toContain(
-      'class="mail-lead-image" src="https://news.example/og/'
-    );
+    expect(html).not.toContain('src="https://news.example/og/');
     expect(html).toContain('src="https://cdn.example/photos/room.jpg"');
   });
 });
@@ -854,6 +847,7 @@ describe("note mails share the digest shell", () => {
     timezone: "Asia/Ho_Chi_Minh",
     digest_size: 10,
     mail_format: "large" as const,
+    mail_font: "serif" as const,
     frequency: "weekly" as const,
     weekly_day: 3 as const,
   };
@@ -886,12 +880,11 @@ describe("note mails share the digest shell", () => {
       const { html, text, from } = sent[0]!;
       expect(from.name).toBe("AI;DR");
       expect(html).toContain(">AI;DR</span>");
-      expect(html).toContain("AI news, ranked and summarized");
       expect(html).toContain("max-width:600px");
       expect(html).toContain("unsubscribe=tok");
-      expect(html).toContain("AI;DR · PO Box 1");
+      expect(html).not.toContain("PO Box 1");
       expect(html).toContain(needle);
-      expect(text).toContain("AI;DR · PO Box 1");
+      expect(text).not.toContain("PO Box 1");
     }
   );
 });

@@ -1,6 +1,7 @@
 import { parseDayVideoRow } from "../../src/lib/feed-queries.js";
 import { categoryLabel } from "../../src/lib/lang.js";
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
+import { type MailFont, normalizeMailFont } from "../../src/lib/mail-font.js";
 import {
   type MailFormat,
   normalizeMailFormat,
@@ -60,6 +61,7 @@ export interface SubscriberRow {
   last_sent_date: string | null;
   digest_size?: number | null;
   mail_format?: string | null;
+  mail_font?: string | null;
   /** `daily` (default) or `weekly`; see src/lib/mail-frequency.ts. */
   frequency?: string | null;
   /** End date (YYYY-MM-DD) of the last weekly digest mailed. */
@@ -197,6 +199,7 @@ export interface DigestExtras {
   video?: DigestVideo | null;
   weekVideos?: DigestVideo[];
   postalAddress?: string;
+  font?: MailFont;
   /** Renders the weekly edition instead of a day (see `renderWeeklyEmail`). */
   weekly?: WeeklyMailMeta;
 }
@@ -231,6 +234,7 @@ export function buildDigestEmail(
     unsubscribeUrl: unsubscribeUrl(unsubscribeToken, mailLang),
     settingsUrl: settingsUrl(unsubscribeToken, mailLang),
     format,
+    font: extras.font,
     video: extras.video,
     weekVideos: extras.weekVideos,
     postalAddress: extras.postalAddress,
@@ -302,6 +306,7 @@ export interface RequestedPrefs {
   timezone: string;
   digest_size: number;
   mail_format: MailFormat;
+  mail_font: MailFont;
   frequency: MailFrequency;
   weekly_day: WeeklyDay;
 }
@@ -317,6 +322,7 @@ export function settingsChangeUrl(
     set_timezone: prefs.timezone,
     set_digest_size: String(prefs.digest_size),
     set_mail_format: prefs.mail_format,
+    set_mail_font: prefs.mail_font,
     set_frequency: prefs.frequency,
     set_weekly_day: String(prefs.weekly_day),
   });
@@ -335,8 +341,8 @@ export async function sendSettingsChangeEmail(
     ? "Xác nhận thay đổi cài đặt AI;DR"
     : "Confirm your AI;DR settings change";
   const settingsList = vi
-    ? `- Ngôn ngữ: ${prefs.lang}\n- Múi giờ: ${prefs.timezone}\n- Tần suất: ${prefs.frequency === "weekly" ? `hằng tuần (${weekdayName(prefs.weekly_day, "vi")})` : "hằng ngày"}\n- Số tin: ${prefs.digest_size}\n- Định dạng: ${prefs.mail_format}\n`
-    : `- Language: ${prefs.lang}\n- Timezone: ${prefs.timezone}\n- Frequency: ${prefs.frequency === "weekly" ? `weekly (${weekdayName(prefs.weekly_day, "en")})` : "daily"}\n- Stories: ${prefs.digest_size}\n- Format: ${prefs.mail_format}\n`;
+    ? `- Ngôn ngữ: ${prefs.lang}\n- Múi giờ: ${prefs.timezone}\n- Tần suất: ${prefs.frequency === "weekly" ? `hằng tuần (${weekdayName(prefs.weekly_day, "vi")})` : "hằng ngày"}\n- Số tin: ${prefs.digest_size}\n- Định dạng: ${prefs.mail_format}\n- Phông tiêu đề: ${prefs.mail_font === "serif" ? "có chân" : "không chân"}\n`
+    : `- Language: ${prefs.lang}\n- Timezone: ${prefs.timezone}\n- Frequency: ${prefs.frequency === "weekly" ? `weekly (${weekdayName(prefs.weekly_day, "en")})` : "daily"}\n- Stories: ${prefs.digest_size}\n- Format: ${prefs.mail_format}\n- Headline font: ${prefs.mail_font}\n`;
   const bodyMd = vi
     ? `Có người vừa đăng ký lại địa chỉ này với các cài đặt sau:\n\n${settingsList}\nBấm nút bên dưới để áp dụng. Nếu không phải bạn, cứ bỏ qua email này — cài đặt hiện tại sẽ giữ nguyên.\n`
     : `Someone just signed up this address again with these settings:\n\n${settingsList}\nClick the button below to apply them. If this wasn't you, ignore this email — your current settings stay as they are.\n`;
@@ -558,7 +564,8 @@ export async function renderEditionEmail(
   unsubscribeToken: string,
   size: number,
   format: MailFormat,
-  preloadedVideo?: DigestVideo | null
+  preloadedVideo?: DigestVideo | null,
+  font?: MailFont
 ): Promise<{ subject: string; html: string; text: string }> {
   const lang = edition.lang === "en" ? "en" : "vi";
   const [bullets, video] = await Promise.all([
@@ -574,7 +581,11 @@ export async function renderEditionEmail(
     unsubscribeToken,
     size,
     format,
-    { video, postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined }
+    {
+      video,
+      font,
+      postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined,
+    }
   );
 }
 
@@ -618,7 +629,8 @@ export async function sendEmailLane(
       sub.unsubscribe_token,
       size,
       format,
-      video
+      video,
+      normalizeMailFont(sub.mail_font)
     );
 
     const ok = await sendSubscriberEmail(env, {
@@ -757,7 +769,8 @@ export async function renderWeeklyEmail(
   lang: "en" | "vi",
   unsubscribeToken: string,
   format: MailFormat,
-  preloadedVideos?: DigestVideo[]
+  preloadedVideos?: DigestVideo[],
+  font?: MailFont
 ): Promise<{ subject: string; html: string; text: string }> {
   const [bullets, videos] = await Promise.all([
     loadBulletDetails(env, mail.bullets, lang),
@@ -773,6 +786,7 @@ export async function renderWeeklyEmail(
     format,
     {
       postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined,
+      font,
       weekly: mail.meta,
       weekVideos: [...videos].reverse(),
     }
@@ -832,7 +846,8 @@ export async function sendWeeklyLane(
         lang,
         sub.unsubscribe_token,
         normalizeMailFormat(sub.mail_format),
-        videos
+        videos,
+        normalizeMailFont(sub.mail_font)
       );
       ok = await sendSubscriberEmail(env, {
         to: sub.email,
@@ -908,7 +923,7 @@ export async function sendDailyTldr(env: Env): Promise<number> {
   await ensureMailSchema(env.DB);
 
   const { results: subscribers } = await env.DB.prepare(
-    "SELECT email, lang, unsubscribe_token, timezone, last_sent_date, digest_size, mail_format, frequency, last_weekly_sent, weekly_day FROM subscribers WHERE confirmed = 1"
+    "SELECT email, lang, unsubscribe_token, timezone, last_sent_date, digest_size, mail_format, mail_font, frequency, last_weekly_sent, weekly_day FROM subscribers WHERE confirmed = 1"
   ).all<SubscriberRow>();
 
   if (!subscribers || subscribers.length === 0) return 0;

@@ -202,18 +202,7 @@ describe("Email UTMs", () => {
     }
   });
 
-  it("tags the plain-text story, CTA and footer links", () => {
-    const urls = digest.text.match(/https:\/\/aidr\.today\S+/g) ?? [];
-    const data = urls.find((u) => u.includes("/data"));
-    const subscribe = urls.find((u) => u.includes("/subscribe?lang"));
-    expect(params(data as string)).toMatchObject({
-      ...edition,
-      utm_content: "footer-data",
-    });
-    expect(params(subscribe as string)).toMatchObject({
-      ...edition,
-      utm_content: "footer-subscribe",
-    });
+  it("tags the plain-text story and CTA links, with no data or subscribe footer links", () => {
     expect(digest.text).toContain("utm_content=lead");
   });
 
@@ -276,11 +265,6 @@ describe("Email UTMs", () => {
     );
     expect(note.text).toContain(`TechCrunch (${THIRD_PARTY})`);
     expect(note.text).toContain(`Settings: ${settings}`);
-    const footerData = note.text.match(/How we rank: (\S+)/)?.[1];
-    expect(params(footerData as string)).toMatchObject({
-      ...expected,
-      utm_content: "footer-data",
-    });
   });
 
   it("digestCampaign is the edition date", () => {

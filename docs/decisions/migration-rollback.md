@@ -288,6 +288,19 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0071_subscriber_mail_font.sql
+
+- Change: adds `subscribers.mail_font TEXT NOT NULL DEFAULT 'sans'`, the
+  headline font a subscriber picks for the digest email (`sans` or `serif`).
+  `ensureMailSchema` runs the same ALTER at runtime and ignores a duplicate
+  column.
+- Order: the new Worker reads and writes the column, so the migration must
+  land with or before it. An older Worker ignores the column.
+- Rollback: roll the Worker back first, then
+  `ALTER TABLE subscribers DROP COLUMN mail_font;`. Rolling back only the
+  Worker needs no SQL: the column keeps its default and nothing reads it.
+  Subscribers who chose `serif` fall back to sans.
+
 ## 0070_notify_posts.sql
 
 - Change: new table `notify_posts` (channel, story id, message id, post
