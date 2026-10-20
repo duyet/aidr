@@ -119,7 +119,9 @@ function installPosthogStub(w: AnalyticsWindow, cfg: PosthogStubConfig): void {
   stub.init(cfg.token, {
     api_host: cfg.host,
     defaults: "2026-05-30",
-    capture_exceptions: true,
+    autocapture: false,
+    capture_exceptions: false,
+    disable_session_recording: true,
     before_send: scrubPosthogEvent,
     session_recording: { maskCapturedNetworkRequestFn: maskRecordedRequest },
   });

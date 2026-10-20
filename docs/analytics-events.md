@@ -47,8 +47,9 @@ These are sent by vendor scripts without a `track()` call, so they are not regis
 | Vendor | Event | Fires | Handling |
 | --- | --- | --- | --- |
 | posthog | `$pageview` | On load and on every history change. | Kept; this is why `page_view` goes to GA4 only. URL properties are sanitized in `before_send`. |
-| posthog | `$autocapture` | On clicks, form changes and submits on interactive elements. | Kept; link hrefs and page URLs are sanitized in `before_send`. |
-| posthog | `$exception` | On uncaught errors and unhandled rejections (`capture_exceptions`). | Kept; page URLs are sanitized in `before_send`. |
+| posthog | `$autocapture` | Never. `autocapture: false` in `stubs.ts`. | Off since #704: it recorded clicks and form changes on every interactive element. `before_send` still sanitizes link hrefs if it is turned back on. |
+| posthog | `$exception` | Never. `capture_exceptions: false` in `stubs.ts`. | Off since #704. Page URLs are sanitized in `before_send` if it is turned back on. |
+| posthog | `$snapshot` | Never. `disable_session_recording: true` in `stubs.ts`. | Session replay is off in code, whatever the PostHog project setting says. The recording scrubbers stay for a future opt-in. |
 | ga4 | `session_start, first_visit, user_engagement` | Sent by gtag.js on its own for every session. | Kept. They carry the sanitized `page_location`. |
 | ga4 | `scroll, click, view_search_results, form_start, form_submit` | Enhanced Measurement: 90% scroll, outbound clicks, site search, form interactions. | Must be off in GA4 Admin, see GA4 Enhanced Measurement below. App code cannot change what they send. |
 | ga4 | `page_view (history change)` | Enhanced Measurement: page changes based on browser history. | Must be off in GA4 Admin. The app sends its own `page_view` on every route change. |

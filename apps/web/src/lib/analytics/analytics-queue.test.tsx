@@ -105,7 +105,9 @@ describe("track() before the vendor scripts load", () => {
         {
           api_host: "https://us.i.posthog.com",
           defaults: "2026-05-30",
-          capture_exceptions: true,
+          autocapture: false,
+          capture_exceptions: false,
+          disable_session_recording: true,
           before_send: scrubPosthogEvent,
           session_recording: {
             maskCapturedNetworkRequestFn: maskRecordedRequest,
