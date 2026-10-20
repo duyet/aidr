@@ -30,7 +30,7 @@ function PrivacyPage() {
       title="Privacy"
       lede={
         <>
-          Effective 4 September 2026. This policy covers{" "}
+          Effective 21 October 2026. This policy covers{" "}
           <a href={SITE_URL}>{SITE_URL}</a> and the aidr Chrome new-tab
           extension. Contact <a href="mailto:me@duyet.net">me@duyet.net</a>.
         </>
@@ -55,31 +55,81 @@ function PrivacyPage() {
           </li>
           <li>
             <strong className="text-foreground">Site traffic totals.</strong>{" "}
-            The website loads Google Analytics 4 to count page views. Once a day
-            we read back page views, daily and monthly active users, top pages,
-            and traffic sources for the Pipeline page. We store only those
-            totals, never IP addresses or visitor IDs. The site also counts, per
-            story and per day, how often a story is opened or its source link
-            clicked. Each count is stored with the channel the visit arrived
-            from (for example Telegram, email, or Facebook, read from the link's{" "}
-            <code>ref</code> or <code>utm_*</code> tag) and no visitor
-            identifier, cookie, or IP address. To count a story once per tab and
-            day, your browser keeps a key per story in{" "}
-            <code>sessionStorage</code>, which it clears when the tab closes.
-            AI;DR never stores your IP address. To stop one client inflating a
-            count, Cloudflare's rate limiter keeps a one-minute counter for your
-            IP address, the story, and the action at the nearest Cloudflare
-            location. These counts change one thing: the order of stories within
-            a day on the homepage. Opens only multiply a story's score by at
-            most 1.03, which can move it a few places and so in or out of the
-            first 30 shown. They never add or remove a story from a day, a feed,
-            the daily edition, or a post. The extension loads no analytics. When
-            you open its new tab, switch language, change a section, or click a
-            follow link on it, it sends one anonymous request to aidr.today, and
-            we add one to a per-day count for that event (and the channel or
-            language, for a click or a switch). The count holds no install ID,
-            cookie, or IP address, and Cloudflare's rate limiter keeps a
-            one-minute counter for your IP address, as above.
+            Once a day we read back page views, daily and monthly active users,
+            top pages, and traffic sources from Google Analytics 4 for the
+            Pipeline page. We store only those totals, never IP addresses or
+            visitor IDs. The site also counts, per story and per day, how often
+            a story is opened or its source link clicked. Each count is stored
+            with the channel the visit arrived from (for example Telegram,
+            email, or Facebook, read from the link's <code>ref</code> or{" "}
+            <code>utm_*</code> tag) and no visitor identifier, cookie, or IP
+            address. To count a story once per tab and day, your browser keeps a
+            key per story in <code>sessionStorage</code>, which it clears when
+            the tab closes. AI;DR never stores your IP address. To stop one
+            client inflating a count, Cloudflare's rate limiter keeps a
+            one-minute counter for your IP address, the story, and the action at
+            the nearest Cloudflare location. These counts change one thing: the
+            order of stories within a day on the homepage. Opens only multiply a
+            story's score by at most 1.03, which can move it a few places and so
+            in or out of the first 30 shown. They never add or remove a story
+            from a day, a feed, the daily edition, or a post. The extension
+            loads no analytics. When you open its new tab, switch language,
+            change a section, or click a follow link on it, it sends one
+            anonymous request to aidr.today, and we add one to a per-day count
+            for that event (and the channel or language, for a click or a
+            switch). The count holds no install ID, cookie, or IP address, and
+            Cloudflare's rate limiter keeps a one-minute counter for your IP
+            address, as above.
+          </li>
+          <li>
+            <strong className="text-foreground">
+              Analytics services on the website.
+            </strong>{" "}
+            There is no consent banner and these load for every visitor a few
+            seconds after the page appears. Each one receives your IP address
+            and browser details with its requests, as any server does.
+            <ul>
+              <li>
+                Google Analytics 4 sets the <code>_ga</code> cookies and counts
+                page views, how long a page stays open, and the events listed
+                below. When the tag gateway is on for the domain, it loads
+                through the Cloudflare Google tag gateway.
+              </li>
+              <li>
+                PostHog sets a cookie and a <code>localStorage</code> entry with
+                a random visitor ID, and records page views and the same events.
+                It also autocaptures clicks and form changes on interactive
+                elements, captures uncaught errors and unhandled rejections, and
+                can record session replays of how you use a page when that is
+                switched on in the PostHog project settings. Link addresses and
+                request URLs are cleaned of search text and tokens before they
+                are sent, and the replay masks request URLs the same way.
+              </li>
+              <li>
+                Jitsu, a collector we run at j.duyet.net, receives one page
+                event per page load with the page path, the referrer, and your
+                browser details.
+              </li>
+              <li>
+                Seline, a page-view counter, runs only when we switch it on.
+              </li>
+            </ul>
+            The events are the pages you open, clicks on navigation and follow
+            links, the story you open or whose source link you click, a topic
+            you pick, the length (not the text) of a search, a setting you
+            change, signup progress, and page load timings (Core Web Vitals,
+            measured in the browser and sent to Google Analytics 4 and PostHog).
+            Search text and subscribe tokens are removed from the page addresses
+            the site hands these services. Google Analytics can still record a
+            search term itself while its site search setting is on. The services
+            keep that data under their own policies. To avoid them, block their
+            cookies and scripts in your browser, or use a content blocker. The
+            site works without them.
+          </li>
+          <li>
+            <strong className="text-foreground">Sign-in.</strong> The sign-in
+            pages, and any page once you hold a session, load Clerk, which sets
+            its own session cookies to keep you signed in.
           </li>
           <li>
             <strong className="text-foreground">
