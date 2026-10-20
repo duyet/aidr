@@ -318,20 +318,18 @@ export async function sendCampaign(
     return { error: "no subscribers", status: 400 };
   }
 
-  const { results: deliveredRows } = await env.DB.prepare(
-    "SELECT email FROM email_sends WHERE campaign_id = ? AND error IS NULL"
-  )
-    .bind(id)
-    .all<{ email: string }>();
-  const delivered = new Set((deliveredRows ?? []).map((row) => row.email));
-  const everyoneAlreadySent = subscribers.every((sub) =>
-    delivered.has(sub.email)
-  );
-
   let sent = 0;
   let failed = 0;
   for (const sub of subscribers) {
-    if (delivered.has(sub.email)) continue;
+    const claim = await env.DB.prepare(
+      `INSERT INTO email_sends (campaign_id, email, sent_at, error)
+       VALUES (?, ?, ?, NULL)
+       ON CONFLICT(campaign_id, email) DO UPDATE SET sent_at = excluded.sent_at, error = NULL
+       WHERE email_sends.error IS NOT NULL`
+    )
+      .bind(id, sub.email, Date.now())
+      .run();
+    if (claim.meta.changes !== 1) continue;
     const rendered = previewCampaign(
       campaign,
       sub.unsubscribe_token,
@@ -346,41 +344,27 @@ export async function sendCampaign(
       unsubscribeToken: sub.unsubscribe_token,
     });
     if (ok) {
-      await env.DB.prepare(
-        `INSERT INTO email_sends (campaign_id, email, sent_at, error)
-         VALUES (?, ?, ?, NULL)
-         ON CONFLICT(campaign_id, email) DO UPDATE SET sent_at = excluded.sent_at, error = NULL`
-      )
-        .bind(id, sub.email, Date.now())
-        .run();
       sent++;
-    } else {
-      failed++;
-      await env.DB.prepare(
-        `INSERT INTO email_sends (campaign_id, email, sent_at, error)
-         VALUES (?, ?, ?, ?)
-         ON CONFLICT(campaign_id, email) DO UPDATE SET error = excluded.error`
-      )
-        .bind(id, sub.email, Date.now(), "email send failed")
-        .run();
+      continue;
     }
+    failed++;
+    await env.DB.prepare(
+      "UPDATE email_sends SET error = ? WHERE campaign_id = ? AND email = ?"
+    )
+      .bind("email send failed", id, sub.email)
+      .run();
   }
 
-  const status =
-    failed > 0 ? "draft" : sent > 0 || everyoneAlreadySent ? "sent" : "draft";
-  // `sent_count` is the campaign's lifetime total, so a retry adds to it: it
-  // mails only the addresses still missing a null-error `email_sends` row, and
-  // each of those flips exactly one row, so no address is counted twice.
-  // Overwriting with the per-run count would drop the earlier run's
-  // deliveries from the row. `failed_count` is the other thing the operator
-  // reads, so it stays this run's failures — the count still owed a retry,
-  // which is what the 409 guard above keys on.
+  // Read from `email_sends`, not this run, so a concurrent run that mailed
+  // nobody cannot clear failures still owed a retry.
   await env.DB.prepare(
     `UPDATE email_campaigns
-     SET status = ?, sent_at = ?, sent_count = sent_count + ?, failed_count = ?, updated_at = ?
-     WHERE id = ?`
+     SET failed_count = (SELECT COUNT(*) FROM email_sends WHERE campaign_id = ?1 AND error IS NOT NULL),
+       status = CASE WHEN EXISTS (SELECT 1 FROM email_sends WHERE campaign_id = ?1 AND error IS NOT NULL) THEN 'draft' ELSE 'sent' END,
+       sent_at = ?2, sent_count = sent_count + ?3, updated_at = ?2
+     WHERE id = ?1`
   )
-    .bind(status, Date.now(), sent, failed, Date.now(), id)
+    .bind(id, Date.now(), sent)
     .run();
 
   return { ok: true, sent, failed };
