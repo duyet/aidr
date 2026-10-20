@@ -129,15 +129,15 @@ export function getLocalHourAndDate(
 }
 
 /** A subscriber gets today's digest once it's at/after their local
- * DIGEST_LOCAL_HOUR and they haven't already received one for this local
- * date. */
+ * DIGEST_LOCAL_HOUR and this local date is later than the last one they
+ * received, so moving to an earlier timezone never resends an edition. */
 export function shouldSendForSubscriber(
   sub: Pick<SubscriberRow, "last_sent_date">,
   localHour: number,
   localDate: string
 ): boolean {
   if (localHour < DIGEST_LOCAL_HOUR) return false;
-  return sub.last_sent_date !== localDate;
+  return sub.last_sent_date === null || localDate > sub.last_sent_date;
 }
 
 /** A title-only fallback digest (the LLM failed) waits until this local
