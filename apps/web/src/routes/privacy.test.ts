@@ -33,10 +33,12 @@ describe("privacy page", () => {
     expect(page).toContain("no consent banner");
   });
 
-  it("matches the PostHog features the config turns off", () => {
-    expect(stubs).toContain("autocapture: false");
-    expect(stubs).toContain("capture_exceptions: false");
-    expect(stubs).toContain("disable_session_recording: true");
-    expect(page).toContain("Autocapture, error capture, and session recording");
+  it("discloses the PostHog features the config leaves on", () => {
+    expect(stubs).not.toContain("autocapture: false");
+    expect(stubs).not.toContain("capture_exceptions: false");
+    expect(stubs).not.toContain("disable_session_recording");
+    expect(page).toContain("autocaptures clicks and form changes");
+    expect(page).toContain("captures uncaught errors");
+    expect(page).toContain("session replays");
   });
 });

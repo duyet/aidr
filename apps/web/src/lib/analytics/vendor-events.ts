@@ -26,23 +26,15 @@ export const VENDOR_EVENTS: readonly VendorEvent[] = [
   {
     vendor: "posthog",
     event: "$autocapture",
-    fires: "Never. `autocapture: false` in `stubs.ts`.",
-    handling:
-      "Off since #704: it recorded clicks and form changes on every interactive element. `before_send` still sanitizes link hrefs if it is turned back on.",
+    fires: "On clicks, form changes and submits on interactive elements.",
+    handling: "Kept; link hrefs and page URLs are sanitized in `before_send`.",
   },
   {
     vendor: "posthog",
     event: "$exception",
-    fires: "Never. `capture_exceptions: false` in `stubs.ts`.",
-    handling:
-      "Off since #704. Page URLs are sanitized in `before_send` if it is turned back on.",
-  },
-  {
-    vendor: "posthog",
-    event: "$snapshot",
-    fires: "Never. `disable_session_recording: true` in `stubs.ts`.",
-    handling:
-      "Session replay is off in code, whatever the PostHog project setting says. The recording scrubbers stay for a future opt-in.",
+    fires:
+      "On uncaught errors and unhandled rejections (`capture_exceptions`).",
+    handling: "Kept; page URLs are sanitized in `before_send`.",
   },
   {
     vendor: "ga4",

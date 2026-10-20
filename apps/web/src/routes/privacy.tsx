@@ -97,7 +97,12 @@ function PrivacyPage() {
               <li>
                 PostHog sets a cookie and a <code>localStorage</code> entry with
                 a random visitor ID, and records page views and the same events.
-                Autocapture, error capture, and session recording are off.
+                It also autocaptures clicks and form changes on interactive
+                elements, captures uncaught errors and unhandled rejections, and
+                can record session replays of how you use a page when that is
+                switched on in the PostHog project settings. Link addresses and
+                request URLs are cleaned of search text and tokens before they
+                are sent, and the replay masks request URLs the same way.
               </li>
               <li>
                 Jitsu, a collector we run at j.duyet.net, receives one page
