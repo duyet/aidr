@@ -3,6 +3,7 @@ import { maybeSyncGa4Insights } from "./ga4/insights.js";
 import {
   armAlarmAt,
   blockedByOpenRun,
+  closeFailedCreate,
   type IngestTickOpts,
   type IngestTickResult,
   nextAlarmAt,
@@ -81,17 +82,19 @@ export class NewsIngestScheduler extends DurableObject<Env> {
     const now = Date.now();
     try {
       await this.env.NEWS_INGEST.create({ id });
-      await this.ctx.storage.put(LAST_STARTED_KEY, now);
-      await this.ctx.storage.setAlarm(nextAlarmAt(now));
-      return { id, skipped: false };
     } catch (error) {
       console.error("ingest scheduler create failed:", error);
+      await closeFailedCreate(this.env.DB, id, error);
       return {
         id,
         skipped: false,
         reason: error instanceof Error ? error.message : String(error),
       };
     }
+    // The run is live from here: a failure below must not mark its row.
+    await this.ctx.storage.put(LAST_STARTED_KEY, now);
+    await this.ctx.storage.setAlarm(nextAlarmAt(now));
+    return { id, skipped: false };
   }
 
   async tick(opts: IngestTickOpts = {}): Promise<IngestTickResult> {
@@ -122,15 +125,19 @@ async function previousRunStillOpen(
   try {
     const row = await db
       .prepare(
-        `SELECT started_at, finished_at FROM workflow_runs
+        `SELECT started_at, finished_at, error FROM workflow_runs
          WHERE ${NOT_DRY_RUN_SQL}
          ORDER BY CASE WHEN started_at > 1000000000000 THEN started_at / 1000 ELSE started_at END DESC, id DESC
          LIMIT 1`
       )
       .bind()
-      .first<{ started_at: number | null; finished_at: number | null }>();
+      .first<{
+        started_at: number | null;
+        finished_at: number | null;
+        error: string | null;
+      }>();
     if (!row) return false;
-    return blockedByOpenRun(row.started_at, row.finished_at, nowMs);
+    return blockedByOpenRun(row.started_at, row.finished_at, nowMs, row.error);
   } catch (error) {
     console.error("open-run check failed:", error);
     return false;
