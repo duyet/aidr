@@ -218,6 +218,13 @@ interface Levers {
   /** A story whose category weighs above 1 earns the breaking boost from
    *  this importance instead. `null` disables. */
   breakingRiseImportance: number | null;
+  /** Quality floor for a story a reader site (HN, Lobsters) brought in;
+   *  0 disables. Jev scores 69% of HN stories quality 0 (#918). Rejected
+   *  2026-10-21 over 14 days on `base+K4`: floor 4 moved rise@10 from
+   *  0.404 to 0.411, but fall@10 rose from 0.076 to 0.080, 5v->top5
+   *  fell from 0.95 to 0.91, and stories over 36 hours old took 0.18 of
+   *  the top 30 instead of 0.16. Floor 5 was worse on fall@10 (0.084). */
+  readerQualityFloor: number;
 }
 
 /** The constants `worker/ranking.ts` carried on 2026-10-16, inline so the
@@ -246,6 +253,7 @@ const BASE_LEVERS: Levers = {
   drama: 1,
   breakingImportance: 8,
   breakingRiseImportance: null,
+  readerQualityFloor: 0,
 };
 
 /** The first table (PR #917 head 8155e75c): Models, Open Source,
@@ -306,6 +314,8 @@ const LEVER_PATCHES: Record<string, Partial<Levers>> = {
   R: { drama: 1.2 },
   B75: { breakingImportance: 7.5 },
   BK: { breakingRiseImportance: 7 },
+  Q4: { readerQualityFloor: 4 },
+  Q5: { readerQualityFloor: 5 },
 };
 
 /** The lever set `worker/ranking.ts` implements today. Update it in the
@@ -320,7 +330,10 @@ function buildLevers(levers: Levers): Formula {
   return (i) => {
     const age = Math.max(0, (i.now - i.publishedAt) / 3_600_000);
     const importance = clamp10(i.importance);
-    const qualityFactor = 0.6 + 0.4 * (clamp10(i.quality) / 10);
+    const quality = i.readerSourced
+      ? Math.max(clamp10(i.quality), levers.readerQualityFloor)
+      : clamp10(i.quality);
+    const qualityFactor = 0.6 + 0.4 * (quality / 10);
     let decay = Math.exp(-age / FROZEN.decayHours);
     if (age > FROZEN.rampStartHours) {
       decay *= Math.exp(-(age - FROZEN.rampStartHours) / FROZEN.rampHours);
