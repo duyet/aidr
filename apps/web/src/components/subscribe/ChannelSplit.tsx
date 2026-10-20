@@ -20,7 +20,6 @@ export function ChannelSplit({
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-12">
       <div className="space-y-6">{controls}</div>
-      {/* Sticky so a long control column scrolls past a preview that stays put. */}
       <div className="min-w-0 lg:sticky lg:top-20">{preview}</div>
     </div>
   );

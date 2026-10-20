@@ -9,7 +9,6 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { HeaderAuth } from "./HeaderAuth";
 
-/** The header as the server renders it at `url`. */
 async function serverHtml(url: string): Promise<string> {
   const rootRoute = createRootRoute({ component: () => <HeaderAuth /> });
   const router = createRouter({

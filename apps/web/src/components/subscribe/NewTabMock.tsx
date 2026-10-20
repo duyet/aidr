@@ -101,7 +101,6 @@ export function NewTabMock({ lang }: { lang: Lang }) {
   return (
     <div className="@container select-none bg-background" aria-hidden="true">
       <div className="text-[length:clamp(12px,4.1cqw,15px)] text-foreground @xl:text-[length:clamp(9px,1.6cqw,13px)]">
-        {/* Header: compact row on a narrow frame, wide row otherwise. */}
         <div className="flex items-center gap-[0.5em] border-b border-border/80 px-[0.75em] py-[0.375em] @xl:gap-[0.75em] @xl:px-[1.5em] @xl:py-[0.75em]">
           <span className="flex shrink-0 items-baseline gap-[0.5em]">
             <span className="font-serif text-[1.125em] font-medium leading-[1.55] tracking-tight">
@@ -163,7 +162,6 @@ export function NewTabMock({ lang }: { lang: Lang }) {
         </div>
 
         <div className="px-[1em] pb-[1.5em] @xl:px-[1.5em]">
-          {/* Category pills */}
           <div className="flex items-center gap-[0.375em] overflow-hidden whitespace-nowrap py-[0.4em]">
             <span className="shrink-0 rounded-full bg-primary px-[0.875em] py-[0.375em] text-primary-foreground">
               <span className="text-[0.875em] font-medium">
@@ -183,7 +181,6 @@ export function NewTabMock({ lang }: { lang: Lang }) {
             ))}
           </div>
 
-          {/* Trending chips */}
           <div className="flex items-center gap-[0.5em] overflow-hidden whitespace-nowrap py-[0.4em]">
             <span className="flex shrink-0 items-center gap-[0.35em] text-muted-foreground">
               <TrendingUp className="size-[0.875em]" />
@@ -207,7 +204,6 @@ export function NewTabMock({ lang }: { lang: Lang }) {
             ))}
           </div>
 
-          {/* AI;DR card */}
           <div className="mt-[0.25em] rounded-[1.25em] border border-border/80 bg-card px-[1.125em] py-[1.25em]">
             <div className="mb-[0.75em] flex items-baseline justify-between gap-[0.75em]">
               <span className="flex items-baseline gap-[0.75em]">

@@ -2,7 +2,6 @@ import { createIsomorphicFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
 import { subscribeLinkToRender } from "./analytics/url-privacy";
 
-/** Raw query state for route head policy, including keys route validators drop. */
 const QUERY_UNAVAILABLE = "__route_query_unavailable";
 
 export function unavailableRouteSearch(): URLSearchParams {

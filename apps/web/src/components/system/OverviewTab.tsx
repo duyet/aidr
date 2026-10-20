@@ -36,7 +36,6 @@ function StatRow({ overview }: { overview: SystemOverview }) {
         value={String(overview.runsToday)}
         sublabel="UTC day"
       />
-      {/* D1 subscribers are email subscriptions, not Clerk accounts. */}
       <StatTile
         icon={Users}
         label="Subscribers"

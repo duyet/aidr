@@ -49,7 +49,6 @@ export function rankingRequestPath(
   return `${url.pathname}${url.search}`;
 }
 
-/** "Why this ranks" / Telegram trending status, loaded when first opened. */
 export function StoryRankingPanel({
   item,
   lang,

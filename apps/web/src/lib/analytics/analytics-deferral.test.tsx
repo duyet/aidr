@@ -24,7 +24,6 @@ type ObserverCallback = (list: { getEntries: () => Entry[] }) => void;
 let emitLcp: (() => void) | undefined;
 let observed: unknown[] = [];
 
-/** Script tags currently in the document, srcs and inline text inlined. */
 function thirdPartyScripts(): string[] {
   return [...document.querySelectorAll("script")].map((el) => {
     const src = el.getAttribute("src") ?? "";
@@ -38,7 +37,6 @@ beforeEach(() => {
   observed = [];
   emitLcp = undefined;
 
-  // A controllable PerformanceObserver for LCP.
   vi.stubGlobal(
     "PerformanceObserver",
     class {
@@ -59,7 +57,6 @@ beforeEach(() => {
     }
   );
 
-  // A controllable requestIdleCallback.
   const idle: (() => void)[] = [];
   vi.stubGlobal("requestIdleCallback", (cb: () => void) => {
     idle.push(cb);

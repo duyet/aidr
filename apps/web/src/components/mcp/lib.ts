@@ -54,7 +54,6 @@ export const ADMIN_TOOL_VI: Record<string, string> = {
   delete_day_video: "Gỡ video và Short khỏi trang một ngày.",
 };
 
-/** Anonymous client config: no credential at all. */
 export const PUBLIC_CLIENT_CONFIG = `{
   "url": "${SITE_URL}/api/mcp"
 }`;

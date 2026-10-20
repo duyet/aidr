@@ -46,8 +46,6 @@ const FEATURES = [
   },
 ] as const;
 
-/** Chrome tab of the deliver page: install CTA and features on the left,
- *  the new-tab mock on the right. */
 export function ChromeChannel({ lang }: { lang: Lang }) {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
   return (

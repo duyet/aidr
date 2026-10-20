@@ -59,7 +59,6 @@ export function startCartesianLoop({
   const duration = state.current.animationDuration
   const current: Record<string, Surface> = {}
 
-  // `reveal` (0–1) sweeps the fill in left-to-right on first paint.
   const paintFill = (intensity: number, reveal: number) => {
     octx.clearRect(0, 0, cols, rows)
     const s = state.current
@@ -112,7 +111,6 @@ export function startCartesianLoop({
     raf = requestAnimationFrame(draw)
     const s = state.current
     if (!s.ready) return
-    // Keep the bloom layer in sync with the crisp canvas while it's active.
     if (bloomCtx) {
       const on =
         s.bloom !== "off" && (!s.bloomOnHover || s.isMouseInChart || s.hovered)
@@ -128,7 +126,6 @@ export function startCartesianLoop({
     if (!animStart) animStart = now
     const prog = animate ? Math.min(1, (now - animStart) / duration) : 1
     const progChanged = prog !== lastProg
-    // Tell the context the reveal is done so DOM markers fade in in sync.
     if (prog >= 1 && !entranceReported) {
       entranceReported = true
       s.markEntranceDone()
@@ -261,7 +258,6 @@ export function startCartesianLoop({
       const starColor = s.seedOf(star.key).fill
       c.fillStyle = rgb(starColor, 1, lift)
       c.fillRect(sx, sy, 1, 1)
-      // At the peak of a wink the star flares into a 4-point glint.
       if (tw > 0.9) {
         c.fillStyle = rgb(starColor, 1, lift * 0.6 * (tw - 0.9) * 10)
         c.fillRect(sx - 1, sy, 1, 1)

@@ -10,7 +10,6 @@
  * declines to answer rather than rejecting valid RPC.
  */
 declare module "#tanstack-start-server-fn-resolver" {
-  /** Throws when the id is absent from the manifest. */
   export function getServerFnById(
     id: string,
     access: { origin: "client" | "server" }

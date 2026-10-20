@@ -1,8 +1,6 @@
 import { AdminSection } from "./AdminSection";
 import { lastRunSteps } from "./lib";
 
-/** Read-only blocks derived from /api/admin/status. */
-
 export function AdminTelegramStatus({ status }: { status: unknown }) {
   return (
     <AdminSection title="Telegram / AI;DR">

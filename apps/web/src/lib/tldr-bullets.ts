@@ -12,7 +12,6 @@ function pushUnique(ids: string[], id: string): void {
   ids.push(id);
 }
 
-/** Hex ids wrapped in `[…]` in bullet text, in order of appearance. */
 export function extractBracketItemIds(text: string): string[] {
   const ids: string[] = [];
   for (const match of text.matchAll(BRACKET_ID_RE)) {
@@ -43,14 +42,11 @@ function idsFromUnknown(value: unknown): string[] {
     try {
       const parsed = JSON.parse(trimmed) as unknown;
       if (Array.isArray(parsed)) return idsFromUnknown(parsed);
-    } catch {
-      // not a JSON array
-    }
+    } catch {}
   }
   return [];
 }
 
-/** Merge `item_ids` / legacy `item_id` / `id` with ids recovered from text. */
 export function collectBulletItemIds(
   raw: Record<string, unknown>,
   text: string

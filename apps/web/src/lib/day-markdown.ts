@@ -36,7 +36,6 @@ export const DAY_MARKDOWN_MAX_TEXT_CHARS = 400;
  * read bound with room for its JSON envelope. Lower-ranked stories past it
  * are counted, not listed. */
 export const DAY_MARKDOWN_MAX_BYTES = 44_000;
-/** Top-ranked stories that also get their one-paragraph summary. */
 export const DAY_MARKDOWN_SUMMARIZED_STORIES = 10;
 
 const DAY_MARKDOWN_PATH_RE = /^\/date\/([^/]*)\.md$/;
@@ -45,7 +44,6 @@ export function isDayMarkdownPath(pathname: string): boolean {
   return DAY_MARKDOWN_PATH_RE.test(pathname);
 }
 
-/** One line of untrusted text, bounded and safe inside Markdown. */
 export function inlineText(value: string): string {
   const flat = value
     // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping them is the point
@@ -63,7 +61,6 @@ export function inlineText(value: string): string {
     );
 }
 
-/** Publisher hostname without `www.`, or null for an unusable URL. */
 export function publisherHost(url: string): string | null {
   try {
     const host = new URL(url).hostname;

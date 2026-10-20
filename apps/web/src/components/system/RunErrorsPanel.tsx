@@ -11,7 +11,6 @@ import {
   type stepFallbackNotes,
 } from "./run-format";
 
-/** Errors panel: run error, model fallbacks, step notes, failed attempts. */
 export function RunErrorsPanel({
   run,
   lang,

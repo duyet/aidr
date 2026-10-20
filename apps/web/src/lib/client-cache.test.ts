@@ -1,14 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fetchJson, getCachedJson } from "./client-cache";
 
-/**
- * The sessionStorage SWR cache exists so a repeat visit paints instantly
- * while the network revalidates. The tests below pin the guardrails that
- * make that safe: stale/private/error data must never be served as fresh,
- * concurrent remounts must share one request, and a failed request must
- * never pin itself in the in-flight map (the next remount retries).
- */
-
 function memStorage() {
   const map = new Map<string, string>();
   return {

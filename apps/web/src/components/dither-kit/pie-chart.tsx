@@ -27,7 +27,6 @@ export type PieChartProps<TData extends Row> = {
   onSelectionChange?: (key: string | null) => void
 }
 
-/** Composable dither **pie / donut** chart. Compose `<Pie>`, `<Legend>`, … inside. */
 export function PieChart<TData extends Row>(props: PieChartProps<TData>) {
   return <PolarRoot chartType="pie" Canvas={PieCanvas} {...props} />
 }

@@ -43,7 +43,6 @@ export function isoWeekOfDate(date: string): string {
   return `${year}-W${String(week).padStart(2, "0")}`;
 }
 
-/** Monday of ISO week 1 of `year`. */
 function isoYearStartMs(year: number): number {
   const jan4 = Date.UTC(year, 0, 4);
   const day = new Date(jan4).getUTCDay() || 7;
@@ -73,7 +72,6 @@ export function weekBounds(
   return dates ? { start: dates[0], end: dates[6] } : null;
 }
 
-/** Shift a week key by `delta` weeks. */
 export function shiftWeek(week: string, delta: number): string | null {
   const dates = weekDates(week);
   if (!dates) return null;
@@ -87,7 +85,6 @@ export function lastClosedWeek(nowMs: number): string {
   return isoWeekOfDate(isoDate(utcMs(today) - 7 * DAY_MS));
 }
 
-/** Weeks between two keys (b - a). */
 function weeksBetween(a: string, b: string): number | null {
   const da = weekDates(a);
   const db = weekDates(b);
@@ -95,7 +92,6 @@ function weeksBetween(a: string, b: string): number | null {
   return Math.round((utcMs(db[0]) - utcMs(da[0])) / (7 * DAY_MS));
 }
 
-/** 1-based issue number, or null before `WEEKLY_FIRST_WEEK`. */
 export function weekIssue(week: string): number | null {
   const diff = weeksBetween(WEEKLY_FIRST_WEEK, week);
   return diff === null || diff < 0 ? null : diff + 1;
@@ -117,7 +113,6 @@ export function parseWeek(raw: unknown, nowMs: number): string | null {
   return week;
 }
 
-/** Week key of a day page date, for the "this week" link. */
 export function weekOfArchiveDate(date: string): string | null {
   return DATE_RE.test(date) && Number.isFinite(utcMs(date))
     ? isoWeekOfDate(date)

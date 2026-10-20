@@ -8,7 +8,6 @@ import { SITE_URL } from "./site";
  */
 export const EXTENSION_VERSION = "0.1.24"; // x-release-please-version
 
-/** Chrome Web Store URL for the extension. */
 export const EXTENSION_STORE_URL =
   "https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg";
 

@@ -165,7 +165,6 @@ function StoryTokenPanel({
   );
 }
 
-/** Right-hand meta column: thumbnail, topics, and the details line. */
 export function StoryMetaAside({
   item,
   lang,

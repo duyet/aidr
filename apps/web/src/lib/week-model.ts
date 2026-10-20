@@ -48,7 +48,6 @@ export function parseJsonArray(raw: unknown): unknown[] {
   }
 }
 
-/** `{item_id, text}` lines keyed by item id; anything malformed is skipped. */
 export function parseStoryLines(raw: unknown): Map<string, string> {
   const out = new Map<string, string>();
   for (const entry of parseJsonArray(raw)) {
@@ -68,7 +67,6 @@ export function weekStoryText(story: WeekStory, lang: Lang): string | null {
   return lang === "vi" ? story.text_vi : story.text_en;
 }
 
-/** Stories that have a line in `lang`, in edition order. */
 export function weekStoriesFor(edition: WeekEdition, lang: Lang): WeekStory[] {
   return edition.stories.filter((s) => weekStoryText(s, lang) !== null);
 }

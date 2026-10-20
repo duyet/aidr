@@ -21,7 +21,6 @@ export function isSiteUrl(value: string): boolean {
   }
 }
 
-/** Add one validated `lang` parameter while preserving every unrelated query. */
 export function withLang(url: string, lang: Lang): string {
   try {
     const absolute = isAbsoluteHttpUrl(url);
@@ -36,7 +35,6 @@ export function withLang(url: string, lang: Lang): string {
   }
 }
 
-/** Localize an aidr.today URL only; publisher/external URLs stay untouched. */
 export function withSiteLang(url: string, lang: Lang): string {
   return isSiteUrl(url) ? withLang(url, lang) : url;
 }
@@ -93,7 +91,6 @@ export function canonicalLocaleRedirect(
   return `${pathname}${normalizedLocaleSearch(search, lang)}${hash}`;
 }
 
-/** Language-neutral pages canonicalize to their bare path, preserving filters. */
 export function neutralLocaleRedirect(
   pathname: string,
   search: string,

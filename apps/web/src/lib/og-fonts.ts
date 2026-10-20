@@ -17,16 +17,13 @@
  */
 import { STORY_OG_HEIGHT, STORY_OG_WIDTH } from "./story-og";
 
-/** Asset paths for the two card weights. Loaded per render request. */
 export const STORY_OG_FONT_SOURCES = {
   medium: "/fonts/be-vietnam-pro-500.ttf",
   bold: "/fonts/be-vietnam-pro-700.ttf",
 } as const;
 
-/** The family name the card's JSX asks for. Must match the loaded fonts. */
 export const STORY_OG_FONT_FAMILY = "Be Vietnam Pro";
 
-/** The complete Vietnamese precomposed inventory: 65 upper + 65 lower. */
 export const VIETNAMESE_ALPHABET =
   "ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠƯ" +
   "ẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼ" +
@@ -76,7 +73,6 @@ export async function loadStoryOgFonts(
   return resolved.filter((font): font is StoryOgFontAsset => font !== null);
 }
 
-/** ImageResponse options shared by the Worker route and the preview script. */
 export interface StoryOgRenderOptions {
   width: number;
   height: number;
@@ -106,7 +102,6 @@ function assetsGet(path: string): Request {
   });
 }
 
-/** Read a font from the Worker ASSETS binding; null on any miss. */
 export async function loadOgFontAsset(
   env: OgAssetEnv | undefined,
   path: string

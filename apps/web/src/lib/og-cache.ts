@@ -57,7 +57,6 @@ export interface OgUnstored {
   store: false;
 }
 
-/** Serve a cached render, else render, store (in the background) and return. */
 export async function cachedOgResponse(
   request: Request,
   ctx: WaitUntil,
@@ -95,7 +94,6 @@ export async function cachedOgResponse(
   const rendered = await render();
   if (!(rendered instanceof Response)) return rendered.response;
   const res = rendered;
-  // Only a rendered PNG is stored; an error or JSON body never is.
   if (!res.ok || !res.headers.get("content-type")?.startsWith("image/png")) {
     return res;
   }

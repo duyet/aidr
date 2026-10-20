@@ -25,7 +25,6 @@ function totals(data: LlmDayTaskCount[]) {
   return { calls, failures, tokens };
 }
 
-/** Stacked daily LLM call chart grouped by task. */
 export function LlmSection({ data, formatTokens }: LlmSectionProps) {
   if (data.length === 0) {
     return (

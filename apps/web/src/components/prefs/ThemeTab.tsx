@@ -71,7 +71,6 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
     prefs.bg === DEFAULT_PREFS.bg &&
     (!mounted || resolvedTheme !== "dark");
 
-  /** Back to the default look; other settings (sections, TL;DR count) stay. */
   const resetAppearance = () => {
     track("prefs_change", { pref: "reset" });
     setPrefs({

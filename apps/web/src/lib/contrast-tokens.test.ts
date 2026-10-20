@@ -39,8 +39,6 @@ const prefsSource = readFileSync(join(here, "prefs.ts"), "utf8");
 const AA_TEXT = 4.5;
 const AA_LARGE_OR_NON_TEXT = 3;
 
-/* ------------------------------------------------------------------ parsing */
-
 type Tokens = Record<string, string>;
 
 /** Custom properties of a CSS block, keyed without the leading `--`. */
@@ -119,8 +117,6 @@ function themeTokens(theme: Theme, background: ReaderBg): Tokens {
   };
 }
 
-/* ------------------------------------------------------------------- colour */
-
 function rgb(hex: string): [number, number, number] {
   const value = hex.replace("#", "");
   return [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16)) as [
@@ -168,8 +164,6 @@ function separation(color: string, background: string): number {
   return Math.abs(relativeLuminance(color) - relativeLuminance(background));
 }
 
-/* ----------------------------------------------------------------- surfaces */
-
 interface Surface {
   name: string;
   background: string;
@@ -207,8 +201,6 @@ function themeFor(background: ReaderBg): Theme {
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
-/* ---------------------------------------------- the assertions under test */
-
 function assertTokenAt(
   tokens: Tokens,
   surface: Surface,
@@ -245,8 +237,6 @@ function code(source: string): string {
 
 const TOPIC_LABEL_PERCENT = topicMixPercent("topic-colored");
 const TOPIC_COUNT_PERCENT = topicMixPercent("topic-muted");
-
-/* -------------------------------------------------------------------- tests */
 
 describe("muted text tokens", () => {
   it("enumerates every reader background the prefs feature supports", () => {

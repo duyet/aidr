@@ -11,7 +11,6 @@ export type PieSlice = {
   mid: number
 }
 
-/** Slice angles from each data row's value under `dataKey`, named by `nameKey`. */
 export function pieSlices(
   data: Row[],
   dataKey: string,
@@ -34,7 +33,6 @@ export function pieSlices(
   })
 }
 
-/** Which slice a pointer angle falls in (or -1). */
 export function sliceAtAngle(slices: PieSlice[], angle: number): number {
   // Normalize so comparisons against [start, end) (which begin at TOP) work.
   let a = angle
@@ -45,7 +43,6 @@ export function sliceAtAngle(slices: PieSlice[], angle: number): number {
 
 export type RadarAxis = { label: string; angle: number }
 
-/** Evenly-spaced spokes, one per data row, labelled by `nameKey`. */
 export function radarAxes(data: Row[], nameKey: string): RadarAxis[] {
   const n = Math.max(data.length, 1)
   return data.map((r, i) => ({
@@ -54,7 +51,6 @@ export function radarAxes(data: Row[], nameKey: string): RadarAxis[] {
   }))
 }
 
-/** Nearest radar spoke to a pointer angle. */
 export function axisAtAngle(axes: RadarAxis[], angle: number): number {
   let best = 0
   let bestD = Infinity
@@ -74,7 +70,6 @@ export const polarX = (cx: number, r: number, angle: number) =>
 export const polarY = (cy: number, r: number, angle: number) =>
   cy + Math.sin(angle) * r
 
-/** Even-odd point-in-polygon test (polygon as flat [x0,y0,x1,y1,…]). */
 export function pointInPolygon(
   px: number,
   py: number,

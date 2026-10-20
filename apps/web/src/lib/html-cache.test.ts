@@ -66,7 +66,6 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/** Any literal that sets a cache lifetime, whichever directive carries it. */
 const LIFETIME_LITERAL =
   /(["'`])([^"'`\n]*(?:max-age|s-maxage|stale-while-revalidate)=\d+[^"'`\n]*)\1/g;
 

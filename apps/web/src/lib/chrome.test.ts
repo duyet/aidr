@@ -88,7 +88,6 @@ describe("mobile header action contracts", () => {
     expect(PHONE_MENU_GRID_CLASS).not.toContain("minmax(");
     expect(PHONE_MENU_GRID_CLASS).toContain("min-h-0");
     expect(PHONE_MENU_GRID_CLASS).toContain("overflow-y-auto");
-    // A tile, not a list row: column layout, icon over label.
     expect(PHONE_MENU_LINK_CLASS).toContain("flex-col");
     expect(PHONE_MENU_LINK_CLASS).toContain("items-center");
     expect(PHONE_MENU_LINK_CLASS).toContain("min-h-24");

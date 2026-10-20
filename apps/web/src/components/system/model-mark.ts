@@ -6,7 +6,6 @@
 export interface ModelMonogram {
   family: string;
   letters: string;
-  /** Tailwind background class. The same family always uses the same chip. */
   tone: string;
 }
 
@@ -117,7 +116,6 @@ function toneFor(family: string): string {
   return FALLBACK_TONE[hash % FALLBACK_TONE.length] ?? FALLBACK_TONE[0];
 }
 
-/** Monogram for any non-empty model id, including ones we have not named. */
 export function modelMonogram(model: string): ModelMonogram | null {
   const id = model.trim().toLowerCase();
   if (!id) return null;

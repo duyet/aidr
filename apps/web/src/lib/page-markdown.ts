@@ -18,7 +18,6 @@ export const PAGE_MARKDOWN_PATHS = [
 
 export type PageMarkdownPath = (typeof PAGE_MARKDOWN_PATHS)[number];
 
-/** How many ingest sources the registry currently ships. */
 export function ingestSourceCount(): number {
   return registrySourceIds().length;
 }

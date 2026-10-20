@@ -10,7 +10,6 @@ import type { DbReader } from "./db";
 /** Audience zone is fixed UTC+7 (see `day-archive.ts`). */
 const AUDIENCE_OFFSET_SEC = 7 * 3600;
 
-/** The lead plus two runner-ups per day. */
 const STORIES_PER_DAY = 3;
 const CATEGORIES_PER_DAY = 3;
 

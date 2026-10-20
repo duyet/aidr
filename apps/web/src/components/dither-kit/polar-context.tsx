@@ -69,7 +69,6 @@ export function usePolarChart() {
   return ctx
 }
 
-/** Boundary guard for polar parts (`<Pie>`, `<Radar>`). */
 export function usePolarPart(part: string, kind: "pie" | "radar") {
   const ctx = use(PolarChartContext)
   if (!ctx) {

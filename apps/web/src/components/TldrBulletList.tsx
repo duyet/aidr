@@ -8,7 +8,6 @@ import { HighlightedText } from "./HighlightedText";
 import { StoryDialog } from "./StoryDialog";
 import { TldrBulletRow } from "./TldrBulletRow";
 
-/** The two-column bullet list plus the story dialog opened from a bullet. */
 export function TldrBulletList({
   shown,
   mid,

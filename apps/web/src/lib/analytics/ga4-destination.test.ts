@@ -1,11 +1,5 @@
 /** @vitest-environment happy-dom */
 
-/**
- * #703: the Cloudflare tag gateway defines `gtag` and configures its own id
- * before the app runs. The stub used to return early when `gtag` existed, so
- * the app's id was never configured and every app event went to the
- * gateway's stream, the one with Enhanced Measurement on.
- */
 import { beforeEach, describe, expect, it } from "vitest";
 import { gaHits, gatewaySnippet } from "../__fixtures__/gtag";
 import { GA_MEASUREMENT_ID } from "./measurement-id";

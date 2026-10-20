@@ -12,7 +12,6 @@ const importMetaEnv =
         | undefined)
     : undefined;
 
-/** PostHog loads only when the project token is configured (env, not code). */
 const POSTHOG_PROJECT_TOKEN = importMetaEnv?.VITE_POSTHOG_PROJECT_TOKEN?.trim();
 const POSTHOG_HOST =
   importMetaEnv?.VITE_POSTHOG_HOST?.trim() || "https://us.i.posthog.com";

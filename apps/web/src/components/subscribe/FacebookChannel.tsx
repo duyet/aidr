@@ -49,8 +49,6 @@ const PAGE_PLUGIN_SRC = `https://www.facebook.com/plugins/page.php?${new URLSear
   }
 ).toString()}`;
 
-/** Facebook tab of the deliver page: features and the follow CTA on the left,
- *  the Page's live timeline (Facebook's Page plugin) on the right. */
 export function FacebookChannel({ lang }: { lang: Lang }) {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
   return (

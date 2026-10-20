@@ -166,7 +166,6 @@ export function StoryRow({
   };
 
   useEffect(() => {
-    // expanded && lazyDetail && !detail: the open row is on Loading.
     if (!(expanded && item.lazyDetail && !detail)) return;
     return loadDetail(lang);
   }, [lang]);

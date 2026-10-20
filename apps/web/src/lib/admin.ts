@@ -4,7 +4,6 @@ import { useClerkModule } from "./clerk-user";
 export interface AdminState {
   isAdmin: boolean;
   loading: boolean;
-  /** Resolves the current Clerk session token, or null if unavailable. */
   getToken: () => Promise<string | null>;
 }
 

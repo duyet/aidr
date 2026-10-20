@@ -6,8 +6,6 @@ import { useLang } from "../../lib/lang-context";
 import { SITE_URL, SUBMIT_EMAIL } from "../../lib/site";
 import { SubmitGate } from "../submit/SubmitGate";
 
-/** Shared /contribute shell: heading, sign-in gating, then either the
- *  reader's contribution history ("list") or the story form ("new"). */
 export function ContributeShell({ mode }: { mode: "list" | "new" }) {
   const lang = useLang();
   const { mod, publishableKey } = useClerkModule();

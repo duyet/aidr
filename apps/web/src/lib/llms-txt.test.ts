@@ -47,11 +47,9 @@ const REACHABLE_AIDR_PATHS = new Set<string>([
   "/news.xml",
   "/sitemaps/static.xml",
   "/sitemaps/days.xml",
-  // Day archive example and its Markdown twin.
   "/date/2026-10-01",
   "/date/2026-10-01.md",
   "/date/2026-10-15.md",
-  // Homepage Markdown twin, weekly edition, and the full-context file.
   "/index.md",
   "/week/2026-W41",
   "/week/2026-W41.md",
@@ -105,7 +103,6 @@ describe("llmsTxt", () => {
     expect(body).toContain("aidr-story-markdown/v1");
     expect(body).toContain("9–64 character prefix");
     expect(body).toContain("both resolve uniquely");
-    // The feed/sitemap surfaces from the RSS work are still here.
     expect(body).toContain("RSS 2.0");
     expect(body).toContain("Google News sitemap");
     expect(body).toContain("does not fetch arbitrary external `.md` files");
@@ -169,7 +166,6 @@ describe("llmsTxt is spec-conformant markdown (#226)", () => {
       "/.well-known/api-catalog",
       SKILL_PATH,
       "/auth.md",
-      // Added alongside the RSS/sitemap work; kept as links, not bare URLs.
       RSS_FEED_PATH,
       RSS_ALIAS_PATH,
       NEWS_SITEMAP_PATH,

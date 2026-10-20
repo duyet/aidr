@@ -186,7 +186,6 @@ describe("StorySources", () => {
     );
     expect(unit?.className).toContain("max-w-full");
     expect(unit?.textContent).toContain(host);
-    // The host is allowed to break internally, so no horizontal overflow.
     expect(unit?.querySelector("a")?.className).toContain(
       "overflow-wrap:anywhere"
     );
@@ -201,7 +200,6 @@ describe("StorySources", () => {
       "Chưa có thông tin chi tiết về nguồn."
     );
     expect(screen.queryByText("SOURCE")).toBeNull();
-    // No empty list is announced.
     expect(within(section).queryByRole("list")).toBeNull();
     expect(container.querySelector("[data-source-meta-unit]")).toBeNull();
   });
@@ -288,7 +286,6 @@ describe("StorySources", () => {
     // are gone, so no label is left stranded without content.
     expect(rows).toHaveLength(1);
     expect(rows[0].textContent).toContain("Anthropic");
-    // The lone-label tell: a label whose row has no other content.
     const labels = within(section)
       .getAllByText(/^(SOURCE|SUPPORT|THẢO LUẬN|DISCUSSION)$/)
       .filter((el) => (el.parentElement?.textContent ?? "") === el.textContent);

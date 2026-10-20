@@ -6,7 +6,6 @@ import { useCommonChart } from "./common-context"
 import { cn } from "./lib"
 import { rgb } from "./palette"
 
-/** Sum of every series in one hovered bucket, including zeroes and dimmed rows. */
 export function tooltipSeriesTotal(
   items: readonly { value: number }[]
 ): number {
@@ -24,11 +23,6 @@ const VARIANT: Record<TooltipVariant, string> = {
   "frosted-glass": "bg-popover/70 backdrop-blur-sm",
 }
 
-/**
- * Floating hover tooltip. Reads the shared common context so it works in every
- * chart family. It glides between points and fades in/out (instead of snapping),
- * and dims unselected series/slices.
- */
 export function Tooltip({
   labelKey,
   valueFormatter,
@@ -39,7 +33,6 @@ export function Tooltip({
   labelKey?: string
   valueFormatter?: (value: number, name: string) => string
   variant?: TooltipVariant
-  /** Extra row: the sum of the series in the hovered bucket. */
   showTotal?: boolean
   totalLabel?: string
 }) {

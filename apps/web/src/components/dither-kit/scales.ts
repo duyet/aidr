@@ -62,7 +62,6 @@ export function computeBands(
   return { bands, max: flat ? 1 : max, min }
 }
 
-/** x positions for each row index, evenly spread across the plot width. */
 export function buildXScale(length: number, plotWidth: number) {
   return scalePoint<number>()
     .domain(Array.from({ length }, (_, i) => i))
@@ -78,7 +77,6 @@ export function buildBandScale(length: number, plotWidth: number) {
     .paddingOuter(0.18)
 }
 
-/** Index of the category whose band a horizontal pixel offset falls in. */
 export function indexAtBand(px: number, length: number, plotWidth: number) {
   if (length <= 0 || plotWidth <= 0) return 0
   const t = Math.max(0, Math.min(0.999, px / plotWidth))
@@ -101,7 +99,6 @@ export function buildYScale(min: number, max: number, plotHeight: number) {
     .range([plotHeight, 0])
 }
 
-/** Index of the row nearest a horizontal pixel offset within the plot. */
 export function nearestIndex(px: number, length: number, plotWidth: number) {
   if (length <= 1 || plotWidth <= 0) return 0
   const t = Math.max(0, Math.min(1, px / plotWidth))

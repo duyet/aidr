@@ -36,7 +36,6 @@ export const Route = createFileRoute("/release/")({
   component: ReleaseIndexPage,
 });
 
-/** How many highlight labels fit on the compact line under the intro. */
 const HIGHLIGHT_PREVIEW = 4;
 
 function ReleaseRow({

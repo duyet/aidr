@@ -66,7 +66,6 @@ function makeDb(stubs: Record<string, Stub>) {
   return { db, directAlls, batches, binds };
 }
 
-/** Each test re-imports so no module-scope state leaks between cases. */
 async function freshQueries() {
   vi.resetModules();
   return import("./system-queries");

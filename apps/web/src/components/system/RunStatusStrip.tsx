@@ -5,7 +5,6 @@ interface RunStatusStripProps {
   emptyLabel: string;
 }
 
-/** Uptime-style strip of run outcomes, oldest to newest, with an error-rate summary. */
 export function RunStatusStrip({ runs, emptyLabel }: RunStatusStripProps) {
   if (runs.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;

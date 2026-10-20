@@ -170,8 +170,6 @@ function ClerkSuggest({
   );
 }
 
-/** Same box as the live control, with nothing to click until Clerk says who
- * the reader is. */
 function PendingSuggest({ lang }: { lang: Lang }) {
   return (
     <button

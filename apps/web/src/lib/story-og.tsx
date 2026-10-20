@@ -19,7 +19,6 @@ export const MAX_STORY_OG_SOURCE_BYTES = 4_000_000;
  *  avatars and icons: a 96px author headshot, upscaled into the panel,
  *  replaced the real hero on live cards. */
 export const MIN_STORY_OG_PHOTO_SIDE = 200;
-/** Longest side the transcoder writes; the card never draws wider. */
 const STORY_OG_TRANSCODE_SIDE = 1200;
 
 export {

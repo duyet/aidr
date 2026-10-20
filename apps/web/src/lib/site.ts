@@ -62,19 +62,15 @@ export const SITE_DESCRIPTION =
 export const SITE_LOGO_PATH = "/logo-sm.png";
 export const SITE_LOGO_URL = `${SITE_URL}${SITE_LOGO_PATH}`;
 
-/** Default Open Graph / Twitter share image (1200×630, editorial brand). */
 export const SITE_OG_IMAGE_PATH = "/og.jpg";
 export const SITE_OG_IMAGE_URL = `${SITE_URL}${SITE_OG_IMAGE_PATH}`;
-/** Homepage-only OG variant (masthead design). */
 export const SITE_OG_HOME_IMAGE_PATH = "/og-home.jpg";
 export const SITE_OG_HOME_IMAGE_URL = `${SITE_URL}${SITE_OG_HOME_IMAGE_PATH}`;
 export const SITE_OG_IMAGE_WIDTH = 1200;
 export const SITE_OG_IMAGE_HEIGHT = 630;
 
-/** Public Vietnamese Telegram channel for digests / alerts. */
 export const TELEGRAM_URL = "https://t.me/aihomnay";
 export const TELEGRAM_HANDLE = "@aihomnay";
-/** Public English Telegram channel. */
 export const TELEGRAM_EN_URL = "https://t.me/aidr_today";
 export const TELEGRAM_EN_HANDLE = "@aidr_today";
 
@@ -82,13 +78,11 @@ export const TELEGRAM_EN_HANDLE = "@aidr_today";
  *  menu, the footer, and any future share surface cannot drift apart. */
 export const FACEBOOK_URL = "https://www.facebook.com/aidr.today/";
 
-/** Public GitHub repository. */
 export const GITHUB_URL = "https://github.com/duyet/aidr";
 /** Canonical ranking/ingest pipeline doc (not the old monorepo apps/news path). */
 export const GITHUB_ALGORITHM_URL = `${GITHUB_URL}/blob/master/apps/web/ALGORITHM.md`;
 export const GITHUB_ALGORITHM_PATH = "apps/web/ALGORITHM.md";
 
-/** Author site (footer More). */
 export const DUYET_URL = "https://duyet.net";
 
 /** AnyRouter gateway. The `ref` param is the partner attribution link, so it

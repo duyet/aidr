@@ -6,7 +6,6 @@ export const LEGACY_LOCALE_QUERY_PARAM = "locale";
 
 export const LANG_COOKIE = "news_lang";
 
-/** Server/client-safe serialization for a validated language preference. */
 export function langCookieHeader(lang: Lang): string {
   return `${LANG_COOKIE}=${lang}; Path=/; Max-Age=31536000; SameSite=Lax`;
 }
@@ -27,7 +26,6 @@ export function langFromCookie(cookieHeader: string | null): Lang | null {
 }
 
 export function readLangFromCookie(cookieHeader: string | null): Lang {
-  // Default to Vietnamese when no explicit choice was made.
   return langFromCookie(cookieHeader) ?? DEFAULT_LANG;
 }
 
@@ -42,7 +40,6 @@ export function langFromQuery(search: string | URLSearchParams): Lang | null {
   return resolution.ok && resolution.explicit ? resolution.lang : null;
 }
 
-/** Highest-quality supported Accept-Language range, or null. */
 export function langFromAcceptLanguage(header: string | null): Lang | null {
   const candidates = (header ?? "")
     .split(",")

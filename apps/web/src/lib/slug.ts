@@ -17,7 +17,6 @@ export function idPrefixFromSlug(slug: string): string | null {
   return m ? m[1] : null;
 }
 
-/** Requested path for `/$slug`. */
 export function requestedStoryPath(slug: string): string {
   return `/${slug}`;
 }

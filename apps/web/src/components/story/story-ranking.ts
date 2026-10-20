@@ -39,7 +39,6 @@ const REASON_COPY = {
   },
 } as const;
 
-/** One human sentence for a channel's trending outcome. */
 export function describeTelegramStatus(
   lang: Lang,
   status: TelegramTrendingStatus,

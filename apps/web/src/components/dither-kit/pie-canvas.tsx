@@ -101,7 +101,6 @@ export function PieCanvas() {
           const selDim = emphasis !== null && emphasis !== slice.name ? 0.3 : 1
           const it = intensity + (active ? 0.4 * popEase : 0)
 
-          // Bright rim on the outer edge — thicker on the hovered slice.
           if (localOuter - r < (active ? 1.4 + popEase : 1.4)) {
             c.fillStyle = rgb(seed.fill, 1, selDim)
             c.fillRect(x, y, 1, 1)
@@ -154,7 +153,6 @@ export function PieCanvas() {
       const easedIt = easeToward(intensity, itTarget, reduce ? 1 : 0.16)
       intensity = easedIt.value
       if (easedIt.moving) needsFill = true
-      // Ease the hovered slice's bulge in (and back out when nothing's hovered).
       const popTarget = s.hoverIndex != null ? 1 : 0
       const easedPop = easeToward(popEase, popTarget, reduce ? 1 : 0.22)
       popEase = easedPop.value

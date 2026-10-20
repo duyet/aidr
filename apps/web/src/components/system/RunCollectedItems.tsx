@@ -17,7 +17,6 @@ function httpUrl(value: string): string | null {
 
 type State = "loading" | "ready" | "empty" | "error";
 
-/** Items first stored during this run: title and the source URL. */
 export function RunCollectedItems({
   runId,
   lang,

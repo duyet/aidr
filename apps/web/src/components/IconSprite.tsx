@@ -19,8 +19,6 @@ export type SpriteIconName = keyof typeof SYMBOLS;
 
 const symbolId = (name: SpriteIconName) => `icon-${name}`;
 
-/** The shared symbols. Rendered once in the root document, so every route
- * that shows feed rows can reference them, including after client nav. */
 export function IconSprite() {
   return (
     <svg

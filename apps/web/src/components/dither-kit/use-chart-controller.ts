@@ -69,8 +69,6 @@ export function useChartController({
   // memoized below; only cheap scalars (bandwidth, ready, plot sizes) are left
   // bare, since they're just recomputed reads, not identities anyone depends on.
 
-  // Memoized: configKeys is the dep that drives `bands`, `common` and the
-  // canvas `targets` memo — a fresh array each render would bust all of them.
   const configKeys = useMemo(() => Object.keys(config), [config])
   const revision = useRevision(data, replayToken)
 
@@ -106,8 +104,6 @@ export function useChartController({
     })
   }, [])
 
-  // Stable so the memoized value keeps its identity; only re-created when the
-  // caller's selection handler does.
   const selectDataKey = useCallback(
     (key: string | null) => {
       setSelectedDataKey(key)
@@ -138,24 +134,17 @@ export function useChartController({
     setEntrance({ revision, done: !animate })
   }
   const entranceDone = entrance.revision === revision ? entrance.done : !animate
-  // Stable across renders at the same revision; the canvas holds this in a ref.
   const markEntranceDone = useCallback(
     () => setEntrance({ revision, done: true }),
     [revision]
   )
 
-  // Memoized: the priciest derivation in the render path — it walks every
-  // row × series to build the stack bands. Hover/cursor state changes must not
-  // recompute it, only a real data/series/stack change.
   const { bands, max, min } = useMemo(
     () => computeBands(data, configKeys, stackType),
     [data, configKeys, stackType]
   )
 
   const isBar = chartType === "bar"
-  // The d3 scale factories are memoized so `y` keeps a stable identity: the
-  // canvas `targets` memo (cartesian-canvas / bar-canvas) deps on ctx.y, and
-  // xCenter/indexAtX/barSlot below close over these.
   const xPoint = useMemo(
     () => buildXScale(data.length, plotWidth),
     [data.length, plotWidth]
@@ -198,14 +187,11 @@ export function useChartController({
     [min, max, plotHeight]
   )
 
-  // Stable so `common` and the value stay stable; re-created only on config.
   const seedOf = useCallback(
     (key: string) => seedOfColor(config[key]?.color ?? "grey"),
     [config]
   )
 
-  // Memoized: this is the value handed to CommonChartContext (Legend/Tooltip),
-  // so it needs its own stable identity independent of the parent value.
   const common: CommonChart = useMemo(() => ({
     names: configKeys,
     labelOf: (n) => config[n]?.label ?? n,
@@ -265,11 +251,6 @@ export function useChartController({
     data,
   ])
 
-  // Memoized: this is the ChartContext value. A fresh object here would
-  // re-render every consumer on every parent render — the whole reason the
-  // pieces above are stabilized. Rebuilds only when a listed input changes
-  // (which is exactly when a consumer needs the update). The useState setters
-  // are listed but never change identity, so they never trigger a rebuild.
   return useMemo<ChartContextValue>(
     () => ({
       chartType,

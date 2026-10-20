@@ -16,8 +16,6 @@ describe("page markdown", () => {
   });
 
   it("points each twin at its HTML page as the canonical", () => {
-    // The twins used to ship with no canonical, so a search engine could index
-    // /about.md as a second copy of /about.
     expect(pageMarkdownResponse("/about.md")?.headers.get("link")).toBe(
       `<${SITE_URL}/about>; rel="canonical"`
     );

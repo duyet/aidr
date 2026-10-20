@@ -31,7 +31,6 @@ function EmptyNote({ label }: { label: string }) {
   return <p className="text-xs text-muted-foreground">{label}</p>;
 }
 
-/** Dithered bar chart of stories published per day. */
 export function ItemsAreaChart({
   data,
   emptyLabel,
@@ -64,7 +63,6 @@ export function ItemsAreaChart({
   );
 }
 
-/** Back-compat alias: Items per day is now a bar chart. */
 export const ItemsBarChart = ItemsAreaChart;
 
 /** One daily series with the axis label that series actually has. The
@@ -110,7 +108,6 @@ export function DailyMetricChart({
   );
 }
 
-/** Dithered bar chart of LLM tokens spent per day. */
 export function TokensLineChart({
   data,
   emptyLabel,
@@ -175,7 +172,6 @@ function burnColor(name: string, series: string[]): DitherColor {
   );
 }
 
-/** Stacked dither bars of LLM tokens per day by task, with call metrics. */
 export function TokenBurnSection({
   data,
   emptyLabel,
@@ -185,7 +181,6 @@ export function TokenBurnSection({
   data: LlmDayTaskCount[];
   emptyLabel: string;
   formatValue?: (n: number) => string;
-  /** What each stacked series is. "model" changes the summary badge. */
   seriesNoun?: "task" | "model";
 }) {
   const view = useMemo(() => buildTokenBurn(data), [data]);
@@ -305,7 +300,6 @@ const PIE_COLORS: DitherColor[] = [
   "red",
 ];
 
-/** Dithered donut of story share by category (top slices). */
 export function CategoryDonut({
   data,
   emptyLabel,

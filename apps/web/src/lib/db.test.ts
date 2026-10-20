@@ -1,14 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { readSession } from "./db";
 
-/**
- * readSession is the seam that routes D1 reads through an unconstrained
- * session: when read replication is on, reads answer from the nearest
- * replica; otherwise the session keeps bookmark consistency. The tests
- * pin the contract that every read path depends on — a session handle
- * when the runtime offers one, the raw binding otherwise.
- */
-
 function fakeReader(tag: string) {
   return {
     prepare: vi.fn((sql: string) => ({ tag, sql })),
@@ -29,7 +21,6 @@ describe("readSession", () => {
     expect(reader).toBe(session);
     expect(db.withSession).toHaveBeenCalledTimes(1);
 
-    // And it is the session — not the raw binding — that serves reads.
     reader.prepare("SELECT 1");
     expect(session.prepare).toHaveBeenCalledWith("SELECT 1");
     expect(raw.prepare).not.toHaveBeenCalled();

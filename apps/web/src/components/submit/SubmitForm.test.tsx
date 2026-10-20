@@ -47,7 +47,6 @@ function renderForm(lang: Lang) {
   );
 }
 
-/** Fill the URL field and press submit; assertions wait for the outcome. */
 function submit(lang: Lang) {
   renderForm(lang);
   fireEvent.change(screen.getByPlaceholderText("https://..."), {

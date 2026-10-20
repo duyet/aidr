@@ -23,7 +23,6 @@ import {
 } from "../lib/week-model";
 import { WeeklySubscribeCta } from "./WeeklySubscribeCta";
 
-/** Masthead name per language. */
 export function weeklyTitle(lang: Lang): string {
   return lang === "vi" ? "AI;DR Tuần" : "AI;DR Weekly";
 }

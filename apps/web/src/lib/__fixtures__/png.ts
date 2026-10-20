@@ -7,7 +7,6 @@ import { inflateSync } from "node:zlib";
 export interface Bitmap {
   width: number;
   height: number;
-  /** RGBA, 4 bytes per pixel. */
   data: Uint8Array;
 }
 
@@ -82,7 +81,6 @@ export function decodePng(bytes: Uint8Array): Bitmap {
     }
     prior = cur;
   }
-  // Normalise every colour type to RGBA.
   const data = new Uint8Array(width * height * 4);
   for (let p = 0; p < width * height; p += 1) {
     const s = p * channels;

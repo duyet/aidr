@@ -25,7 +25,6 @@ function chains(overrides: Partial<ModelChains> = {}): ModelChains {
   };
 }
 
-/** One chain per fallback count, from a direct lead to a deep fallback stack. */
 const CHAIN_CASES = [
   {
     label: "a direct chain with no fallbacks",

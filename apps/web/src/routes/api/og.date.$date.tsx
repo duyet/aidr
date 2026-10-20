@@ -25,7 +25,6 @@ import {
   storyOgLanguage,
 } from "../../lib/story-og";
 
-/** Day card: `/api/og/date/YYYY-MM-DD.png?lang=en|vi`. */
 /** Settled days follow the page; a recent day's card refreshes hourly (the
  * pipeline's own cadence) instead of the page's 5 minutes, since each render
  * fetches up to six remote images. */

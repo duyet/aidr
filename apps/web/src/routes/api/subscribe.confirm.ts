@@ -18,9 +18,7 @@ async function resolveEnv(context: any): Promise<Env | undefined> {
   if (!env?.DB) {
     try {
       env = (await import("cloudflare:workers")).env;
-    } catch {
-      // not running in a workers runtime
-    }
+    } catch {}
   }
   return env as Env | undefined;
 }
@@ -32,8 +30,6 @@ function redirect(location: string): Response {
 
 type HandlerArgs = { request: Request; context: any };
 
-/** Double opt-in landing: the link in the confirmation mail. Confirms, then
- * sends the reader to their settings page. */
 export const Route = createFileRoute("/api/subscribe/confirm")({
   server: {
     handlers: {

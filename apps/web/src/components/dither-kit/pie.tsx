@@ -3,7 +3,6 @@ import type { AreaVariant } from "./chart-context"
 import { usePolarPart } from "./polar-context"
 
 export type PieProps = {
-  /** Fill texture applied to every slice. */
   variant?: AreaVariant
 }
 

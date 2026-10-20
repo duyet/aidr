@@ -13,7 +13,6 @@ import type { StoryOgImage } from "./story-og";
 
 export interface DayCardStory {
   id: string;
-  /** 1-based position in the digest list. */
   rank: number;
   title: string;
   kicker: string;
@@ -23,9 +22,7 @@ export interface DayCardStory {
 export type DayCardLayout =
   /** No story yet. `pending`: today, the first stories are still coming. */
   | { variant: "empty"; pending: boolean }
-  /** One story, as a poster: photo beside it when there is one. */
   | { variant: "single"; lead: DayCardStory }
-  /** Two stories, both with photos, side by side. */
   | { variant: "split"; pair: readonly [DayCardStory, DayCardStory] }
   /** Photos are scarce: the lead with its photo, the rest as a ruled list. */
   | { variant: "lead-list"; lead: DayCardStory; rows: DayCardStory[] }
@@ -42,13 +39,11 @@ export type DayCardLayout =
 
 export type DayCardVariant = DayCardLayout["variant"];
 
-/** What the choice depends on. */
 export interface DayCardShape {
   stories: number;
   /** Leading stories, in order, whose photo loaded. Only this run can take
    *  photo slots without reordering the list. */
   photoRun: number;
-  /** The day is today and may still gain its first stories. */
   today: boolean;
 }
 
@@ -79,7 +74,6 @@ interface VariantRule {
   ) => DayCardLayout;
 }
 
-/** First match wins. */
 export const DAY_CARD_VARIANTS: readonly VariantRule[] = [
   {
     variant: "empty",
@@ -127,11 +121,9 @@ export function chooseDayCardLayout(
 ): DayCardLayout {
   const shape = dayCardShape(stories, today);
   const rule = DAY_CARD_VARIANTS.find((r) => r.when(shape));
-  // The last rule always matches.
   return (rule as VariantRule).assign(stories, shape);
 }
 
-/** Every story on the card, in reading order: lead, tiles, then rows. */
 export function layoutStories(layout: DayCardLayout): DayCardStory[] {
   switch (layout.variant) {
     case "empty":

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-/** Shared look for the prefs panel: one radius, one selected state. */
 export const PREFS_LABEL = "text-xs text-muted-foreground";
 
 export function Segmented<T extends string | number>({

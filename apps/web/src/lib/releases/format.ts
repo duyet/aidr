@@ -6,7 +6,6 @@ export function t(text: Bilingual, lang: Lang): string {
   return lang === "vi" ? text.vi : text.en;
 }
 
-/** "Oct 10, 2026" / "10 thg 10, 2026". */
 export function formatReleaseDate(date: string, lang: Lang): string {
   const d = new Date(`${date}T00:00:00Z`);
   return d.toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", {
@@ -41,7 +40,6 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, Bilingual> = {
   perf: { en: "Performance", vi: "Hiệu năng" },
 };
 
-/** Changes grouped by kind, in `CHANGE_KINDS` order; empty kinds dropped. */
 export function groupChanges(
   changes: ReleaseChange[]
 ): { kind: ChangeKind; items: ReleaseChange[] }[] {
@@ -51,12 +49,10 @@ export function groupChanges(
   })).filter((group) => group.items.length > 0);
 }
 
-/** "AI;DR v0.1.0 — Title". */
 export function releaseDocumentTitle(release: Release, lang: Lang): string {
   return `AI;DR v${release.version} — ${t(release.title, lang)}`;
 }
 
-/** The film to show for a language: the Vietnamese cut when present. */
 export function releaseFilmId(
   release: Release,
   lang: Lang

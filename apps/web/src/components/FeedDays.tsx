@@ -8,8 +8,6 @@ import {
 import type { DayGroup, FeedResponse, Lang } from "../lib/types";
 import { DaySection } from "./DaySection";
 
-/** The "days" feed section: day groups, the older-days pager, and the
- * empty-feed copy when filters hide everything. */
 export function FeedDays({
   feed,
   days,
@@ -27,7 +25,6 @@ export function FeedDays({
   q: string | undefined;
   selectedCategoryCount: number;
   onMergeOlder: (older: FeedResponse) => void;
-  /** Swap in the whole of a day the SSR payload trimmed. */
   onLoadDay: (day: DayGroup) => void;
 }) {
   const [loadingOlder, setLoadingOlder] = useState(false);

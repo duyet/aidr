@@ -13,24 +13,14 @@ export const PHONE_DROPDOWN_ITEM_CLASS = "h-11 min-h-11 min-w-[44px]";
 export const PHONE_LANG_TOGGLE_BUTTON_CLASS =
   "min-h-14 min-w-[44px] rounded-xl px-3 text-base";
 
-/**
- * Segmented control behind the large language buttons: edge-to-edge on a
- * narrow phone and inside the landscape side column.
- */
 export const PHONE_LANG_TOGGLE_CONTAINER_CLASS =
   "grid w-full grid-cols-2 gap-1 rounded-2xl border border-border bg-muted/40 p-1";
 
-/** Full-screen phone navigation uses the browser's default safe viewport. */
 export const PHONE_MENU_DIALOG_CLASS =
   "fixed inset-3 z-50 mx-auto flex max-w-3xl flex-col rounded-3xl border border-border bg-card text-card-foreground shadow-2xl min-[600px]:inset-4";
 
 /**
  * A grid of large tiles, two columns at every phone width.
- *
- * Nine full-width rows made the drawer a long scroll that hid half the links
- * behind a scroll gesture. Two columns of square-ish tiles show more of the
- * menu at once, and each target is comfortably larger than the 44px floor.
- *
  * `auto-rows-min`, not `auto-rows-fr`: a bare `1fr` divides the available
  * height between rows until each row is shorter than its tile, and on a short
  * phone the tiles then overflow their own track and overlap each other
@@ -53,15 +43,12 @@ export const PHONE_MENU_BODY_CLASS =
 export const PHONE_MENU_FOOTER_CLASS =
   "space-y-4 border-t border-border p-4 min-[600px]:w-60 min-[600px]:shrink-0 min-[600px]:border-t-0 min-[600px]:border-l min-[600px]:p-5";
 
-/** Large tile button: icon over label, centered, so the target reads as a menu
- *  cell rather than a list row. */
 export const PHONE_MENU_LINK_CLASS =
   "flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-border/70 bg-background/60 px-2 py-4 text-center text-sm font-medium leading-snug transition-colors hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:outline-none min-[600px]:min-h-28 min-[600px]:gap-2.5 min-[600px]:px-3 min-[600px]:text-[0.9375rem] [&_svg]:size-6 [&_svg]:shrink-0 [&_svg]:text-muted-foreground min-[600px]:[&_svg]:size-7";
 
 /** SiteHeader + desktop HeaderBar — hidden below 640px wide, regardless of height. */
 export const WIDE_CHROME_CLASS = "news-wide-chrome";
 
-/** Combined phone chrome with a visible search field. */
 export const COMPACT_CHROME_CLASS = "news-compact-chrome";
 
 export const WIDE_HEADER_ROW_CLASS = "news-wide-row";

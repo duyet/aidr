@@ -8,7 +8,6 @@ const LABELS: Record<MailFormat, { en: string; vi: string }> = {
   text: { en: "Plain text", vi: "Chỉ chữ" },
 };
 
-/** Digest layout picker, shared by the subscribe form and the settings page. */
 export function MailFormatField({
   lang,
   name,

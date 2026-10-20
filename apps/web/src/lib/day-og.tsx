@@ -91,7 +91,6 @@ export async function dayCardModel(input: {
   return { date, lang, layout: chooseDayCardLayout(stories, input.today) };
 }
 
-/** Day heading parts from a `YYYY-MM-DD` calendar date (no timezone shift). */
 export function dayOgDateParts(
   date: string,
   lang: Lang
@@ -110,7 +109,6 @@ export function dayOgDateParts(
   };
 }
 
-/** Title set as two fixed lines (no orphaned last word), then a note. */
 const EMPTY_COPY: Record<
   Lang,
   Record<"pending" | "quiet", { title: [string, string]; note: string }>
@@ -288,7 +286,6 @@ function photo(image: StoryOgImage, w: number, h: number) {
   );
 }
 
-/** Rank on a photo's corner. */
 function rankFlag(rank: number, size = 44) {
   return (
     <div
@@ -507,7 +504,6 @@ function rowList(rows: readonly DayCardStory[], w: number, h: number) {
   );
 }
 
-/** Lead with no photo: ink panel, the headline as the poster. */
 function typeLead(story: DayCardStory, w: number, h: number) {
   const pad = 32;
   return (
@@ -739,7 +735,6 @@ function empty(lang: Lang, pending: boolean) {
           {note}
         </div>
       </div>
-      {/* The logo's yellow tile and semicolon, the brand's own mark. */}
       <div
         style={{
           display: "flex",
@@ -775,7 +770,6 @@ const BODY: {
   headlines: leadWithList,
 };
 
-/** Pure renderer shared by the Worker route, tests and the preview script. */
 export function dayOgCard(model: DayCardModel): ReactElement {
   const { date, lang, layout } = model;
   const body = (

@@ -7,10 +7,8 @@ import { type DbReader, readSession } from "./db";
 
 export const SYSTEM_CACHE_CONTROL =
   "public, max-age=30, s-maxage=120, stale-while-revalidate=600";
-/** Model chains only change on deploy — safe to cache longer. */
 export const MODELS_CACHE_CONTROL =
   "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
-/** Aggregate account totals change less often than feed stats. */
 export const ACCOUNTS_CACHE_CONTROL =
   "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
 /** Audience stats: the GA4 half is a snapshot that is rewritten at most once
@@ -19,7 +17,6 @@ export const ACCOUNTS_CACHE_CONTROL =
 export const AUDIENCE_CACHE_CONTROL =
   "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
 
-/** Topic trends move once per ingest run (every 30 minutes). */
 export const TRENDS_CACHE_CONTROL =
   "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
 
@@ -53,8 +50,6 @@ export function systemJson(
   });
 }
 
-/** Resolve the DB binding, run the section loader, JSON it — 500s match
- * the existing /api/system behavior. */
 export async function systemHandler(
   context: any,
   tag: string,

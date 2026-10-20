@@ -24,8 +24,6 @@ function HighlightedMatch({
   );
 }
 
-/** The typeahead dropdown — an optional topic/category filter row on top,
- * then the matched story rows. */
 export function SearchResults({
   filterMatch,
   storyMatches,

@@ -9,10 +9,6 @@ import {
   weekdayShort,
 } from "./shared";
 
-/**
- * The month's editions, newest first: serif day number over a mono weekday,
- * the lead headline, the story count, and a thumbnail on the right.
- */
 export function MonthAgenda({
   days,
   lang,

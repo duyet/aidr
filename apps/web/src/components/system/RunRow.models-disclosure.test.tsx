@@ -1,17 +1,3 @@
-/**
- * #189 review — the Models used panel must not assert a cause it cannot
- * know.
- *
- * #197 introduced the pre-identity label, but derived it from `stats.tokens`
- * alone. That meant a run whose attempt lookup had *failed* (`error`),
- * was *unsupported* (`unavailable`), or was still in flight (`loading` /
- * `idle`) was told its calls predate run-id tracking — an invented cause,
- * and a direct contradiction of the Attempts panel below it, which was
- * correctly reporting the real lookup state.
- *
- * These tests pin all five states in EN and VI, and check the two panels
- * never disagree.
- */
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -115,9 +101,7 @@ describe("models disclosure follows the lookup state (#189 review)", () => {
     expect(models).toContain(UNAVAILABLE_EN);
     expect(models).not.toContain("No per-run model data.");
     expect(models).not.toContain("No model data available.");
-    // No cause asserted anywhere.
     expect(en).not.toContain("before per-attempt run identity shipped");
-    // The two panels agree.
     expect(attemptsPanel(en, "en")).toContain(
       "Attempt details are unavailable."
     );
