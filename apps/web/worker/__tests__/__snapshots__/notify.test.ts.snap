@@ -1,0 +1,53 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`telegram channels > a 4 story day > lists every story in the en digest 1`] = `
+"<b>AI news today — 2026-10-04</b>
+
+🔬 English story 0 on a new AI model — This is the full summary of story 0, saying who did what and why it matters. <a>→</a>
+
+🔬 English story 1 on a new AI model — This is the full summary of story 1, saying who did what and why it matters. <a>→</a>
+
+🔬 English story 2 on a new AI model — This is the full summary of story 2, saying who did what and why it matters. <a>→</a>
+
+🔬 English story 3 on a new AI model — This is the full summary of story 3, saying who did what and why it matters. <a>→</a>"
+`;
+
+exports[`telegram channels > a 4 story day > lists every story in the vi digest 1`] = `
+"<b>AI hôm nay có gì — 2026-10-04</b>
+
+🔬 Tin nổi bật số 0 về mô hình AI mới — Đây là câu tóm tắt đầy đủ của tin số 0, nói rõ ai làm gì, khi nào, ở đâu và vì sao điều đó quan trọng với người đọc theo dõi AI hằng ngày. <a>→</a>
+
+🔬 Tin nổi bật số 1 về mô hình AI mới — Đây là câu tóm tắt đầy đủ của tin số 1, nói rõ ai làm gì, khi nào, ở đâu và vì sao điều đó quan trọng với người đọc theo dõi AI hằng ngày. <a>→</a>
+
+🔬 Tin nổi bật số 2 về mô hình AI mới — Đây là câu tóm tắt đầy đủ của tin số 2, nói rõ ai làm gì, khi nào, ở đâu và vì sao điều đó quan trọng với người đọc theo dõi AI hằng ngày. <a>→</a>
+
+🔬 Tin nổi bật số 3 về mô hình AI mới — Đây là câu tóm tắt đầy đủ của tin số 3, nói rõ ai làm gì, khi nào, ở đâu và vì sao điều đó quan trọng với người đọc theo dõi AI hằng ngày. <a>→</a>"
+`;
+
+exports[`telegram channels > a 5 story day > lists every story in the en digest 1`] = `
+"<b>AI news today — 2026-10-04</b>
+
+🔬 English story 0 on a new AI model — This is the full summary of story 0, saying who did what and why it matters. <a>→</a>
+
+🔬 English story 1 on a new AI model — This is the full summary of story 1, saying who did what and why it matters. <a>→</a>
+
+🔬 English story 2 on a new AI model — This is the full summary of story 2, saying who did what and why it matters. <a>→</a>
+
+🔬 English story 3 on a new AI model — This is the full summary of story 3, saying who did what and why it matters. <a>→</a>
+
+🔬 English story 4 on a new AI model — This is the full summary of story 4, saying who did what and why it matters. <a>→</a>"
+`;
+
+exports[`telegram channels > a 5 story day > lists every story in the vi digest 1`] = `
+"<b>AI hôm nay có gì — 2026-10-04</b>
+
+🔬 Tin nổi bật số 0 về mô hình AI mới — Đây là câu tóm tắt đầy đủ của tin số 0, nói rõ ai làm gì, khi nào, ở đâu và vì sao điều đó quan trọng với người đọc theo dõi AI hằng ngày. <a>→</a>
+
+🔬 Tin nổi bật số 1 về mô hình AI mới — Đây là câu tóm tắt đầy đủ của tin số 1, nói rõ ai làm gì, khi nào, ở đâu và vì sao điều đó quan trọng với người đọc theo dõi AI hằng ngày. <a>→</a>
+
+🔬 Tin nổi bật số 2 về mô hình AI mới — Đây là câu tóm tắt đầy đủ của tin số 2, nói rõ ai làm gì, khi nào, ở đâu và vì sao điều đó quan trọng với người đọc theo dõi AI hằng ngày. <a>→</a>
+
+🔬 Tin nổi bật số 3 về mô hình AI mới — Đây là câu tóm tắt đầy đủ của tin số 3, nói rõ ai làm gì, khi nào, ở đâu và vì sao điều đó quan trọng với người đọc theo dõi AI hằng ngày. <a>→</a>
+
+🔬 Tin nổi bật số 4 về mô hình AI mới — Đây là câu tóm tắt đầy đủ của tin số 4, nói rõ ai làm gì, khi nào, ở đâu và vì sao điều đó quan trọng với người đọc theo dõi AI hằng ngày. <a>→</a>"
+`;
