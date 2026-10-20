@@ -3,8 +3,12 @@
 //
 //   yt-upload-api.mjs <mp4> --meta <youtube.md|posts.md|meta.json> --lang en|vi --kind long|short
 //                     [--audio-lang en|vi] [--cover <png>] [--privacy private|unlisted|public]
+//                     [--finish <video id> [--steps thumb,playlist,oembed]]
 //
-// Same args and output as bin/yt-upload (ID=, URL=, OEMBED=), default public.
+// Same args and output as bin/yt-upload (ID=, URL=, OEMBED=), default public. DONE=thumb|playlist|oembed is
+// printed as each step after the upload completes.
+// --finish <id> skips the upload and runs only the listed steps (default all) on that video: the rerun of an
+// upload that failed after ID=.
 // --lang is the metadata language (defaultLanguage), --audio-lang the audio (defaultAudioLanguage, default --lang).
 // Env: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN
 // (mint the token once with bin/yt-oauth.mjs). Metadata comes from bin/yt-meta.py.
@@ -33,7 +37,8 @@ const fail = (step, detail) => {
 
 // --- args ---------------------------------------------------------------
 const argv = process.argv.slice(2);
-let mp4 = "", metaSrc = "", lang = "", audioLang = "", kind = "", cover = "", privacy = "public";
+let mp4 = "", metaSrc = "", lang = "", audioLang = "", kind = "", cover = "", privacy = "public", finishId = "";
+let only = ["thumb", "playlist", "oembed"];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === "--meta") metaSrc = argv[++i];
@@ -42,13 +47,17 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--kind") kind = argv[++i];
   else if (a === "--cover") cover = argv[++i];
   else if (a === "--privacy") privacy = argv[++i];
+  else if (a === "--finish") finishId = argv[++i];
+  else if (a === "--steps") only = argv[++i].split(",");
   else if (a === "-h" || a === "--help" || a.startsWith("-")) usage();
   else mp4 = a;
 }
-if (!(mp4 && existsSync(mp4) && metaSrc && existsSync(metaSrc))) usage();
+if (!(mp4 && (finishId || existsSync(mp4)) && metaSrc && existsSync(metaSrc))) usage();
 audioLang ||= lang;
 if (!["en", "vi"].includes(lang) || !["en", "vi"].includes(audioLang) || !["long", "short"].includes(kind)) usage();
 if (!["private", "unlisted", "public"].includes(privacy)) usage();
+if (only.some((s) => !["thumb", "playlist", "oembed"].includes(s))) usage();
+if (finishId && !/^[\w-]{11}$/.test(finishId)) usage();
 if (cover && !existsSync(cover)) {
   console.error(`cover not found: ${cover}`);
   process.exit(2);
@@ -124,42 +133,45 @@ const CHANNEL = process.env.YOUTUBE_CHANNEL_ID || "UCGDB5uD8znydgMg2XLOj04w";
   log(`channel ${ch.snippet.title} (${ch.id})`);
 }
 
-// --- 2. resumable upload --------------------------------------------------
-const size = statSync(mp4).size;
-log(`upload ${basename(mp4)} (${(size / 1e6).toFixed(1)} MB) as ${privacy}`);
-const resource = {
-  snippet: { title, description: desc, tags, categoryId: "28", defaultLanguage: lang, defaultAudioLanguage: audioLang },
-  // yt-upload answers "No" to the altered/synthetic-content question for AI;DR films.
-  status: { privacyStatus: privacy, selfDeclaredMadeForKids: false, containsSyntheticMedia: false },
-};
-const init = await fetch(`${UPLOAD}/videos?uploadType=resumable&part=snippet,status`, {
-  method: "POST",
-  headers: {
-    authorization: `Bearer ${token}`,
-    "content-type": "application/json; charset=UTF-8",
-    "x-upload-content-length": String(size),
-    "x-upload-content-type": "video/mp4",
-  },
-  body: JSON.stringify(resource),
-});
-if (!init.ok) fail("upload-init", `HTTP ${init.status}: ${errText(await jsonOrText(init))}`);
-const sessionUrl = init.headers.get("location");
-if (!sessionUrl) fail("upload-init", "no Location header");
-const put = await fetch(sessionUrl, {
-  method: "PUT",
-  headers: { "content-length": String(size), "content-type": "video/mp4" },
-  body: Readable.toWeb(createReadStream(mp4)),
-  duplex: "half",
-});
-const video = await jsonOrText(put);
-if (!put.ok || !video?.id) fail("upload", `HTTP ${put.status}: ${errText(video)}`);
-const id = video.id;
-log(`id=${id}`);
+// --- 2. resumable upload (skipped with --finish) ---------------------------
+let id = finishId;
+if (!id) {
+  const size = statSync(mp4).size;
+  log(`upload ${basename(mp4)} (${(size / 1e6).toFixed(1)} MB) as ${privacy}`);
+  const resource = {
+    snippet: { title, description: desc, tags, categoryId: "28", defaultLanguage: lang, defaultAudioLanguage: audioLang },
+    // yt-upload answers "No" to the altered/synthetic-content question for AI;DR films.
+    status: { privacyStatus: privacy, selfDeclaredMadeForKids: false, containsSyntheticMedia: false },
+  };
+  const init = await fetch(`${UPLOAD}/videos?uploadType=resumable&part=snippet,status`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json; charset=UTF-8",
+      "x-upload-content-length": String(size),
+      "x-upload-content-type": "video/mp4",
+    },
+    body: JSON.stringify(resource),
+  });
+  if (!init.ok) fail("upload-init", `HTTP ${init.status}: ${errText(await jsonOrText(init))}`);
+  const sessionUrl = init.headers.get("location");
+  if (!sessionUrl) fail("upload-init", "no Location header");
+  const put = await fetch(sessionUrl, {
+    method: "PUT",
+    headers: { "content-length": String(size), "content-type": "video/mp4" },
+    body: Readable.toWeb(createReadStream(mp4)),
+    duplex: "half",
+  });
+  const video = await jsonOrText(put);
+  if (!put.ok || !video?.id) fail("upload", `HTTP ${put.status}: ${errText(video)}`);
+  id = video.id;
+  log(`id=${id}`);
+}
 const url = kind === "short" ? `https://www.youtube.com/shorts/${id}` : `https://youtu.be/${id}`;
 console.log(`ID=${id}`);
 
 // --- 3. thumbnail (long only) ---------------------------------------------
-if (kind === "long" && cover) {
+if (only.includes("thumb") && kind === "long" && cover) {
   log("thumbnail");
   let file = resolve(cover);
   let tmp = "";
@@ -184,11 +196,12 @@ if (kind === "long" && cover) {
   } finally {
     if (tmp) rmSync(tmp, { recursive: true, force: true });
   }
+  console.log("DONE=thumb");
 }
 
 // --- 4. playlist "AI;DR" ---------------------------------------------------
-log(`playlist ${PLAYLIST}`);
-{
+if (only.includes("playlist")) {
+  log(`playlist ${PLAYLIST}`);
   let pageToken = "";
   let playlistId = "";
   do {
@@ -203,6 +216,7 @@ log(`playlist ${PLAYLIST}`);
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ snippet: { playlistId, resourceId: { kind: "youtube#video", videoId: id } } }),
   });
+  console.log("DONE=playlist");
 }
 
 // --- 5. oEmbed (public only): 200 = public, 403 = private, 401/404 = not visible yet
@@ -211,14 +225,17 @@ if (privacy !== "public") {
   console.log(`OEMBED=skipped (${privacy})`);
   process.exit(0);
 }
+if (!only.includes("oembed")) process.exit(0);
 let code = 0;
 for (let i = 0; i < 6; i++) {
   code = (await fetch(`https://www.youtube.com/oembed?url=https://youtu.be/${id}`)).status;
   if (code === 200) break;
   await new Promise((r) => setTimeout(r, 10_000));
 }
-if (code === 200) console.log("OEMBED=200 public");
-else {
+if (code === 200) {
+  console.log("OEMBED=200 public");
+  console.log("DONE=oembed");
+} else {
   console.log(`OEMBED=${code} (not public yet; 403 means still private)`);
   process.exit(1);
 }

@@ -146,7 +146,12 @@ sets the thumbnail for long cuts (a cover of 2 MB or more is converted to a
 playlist, and prints `ID=`, `URL=`, `OEMBED=`. Errors print `FAIL: <step>`
 and exit 1; after the upload step the message names the uploaded video id so
 nothing is uploaded twice (`publish.mjs` records the printed `ID=` even when
-the run exits 1). `publish.mjs --uploader api|chrome` picks it
+the run exits 1). Each finished step after the upload prints `DONE=thumb`,
+`DONE=playlist` or `DONE=oembed`; `--finish <id> [--steps thumb,playlist,oembed]`
+reruns only those steps on an existing video. `publish.mjs` stores the steps
+still missing as `youtube.pending` and its next `--steps upload` run finishes
+them (api uploader only), so a video never stays public without its thumbnail
+or playlist. `publish.mjs --uploader api|chrome` picks it
 (default `api` when `YOUTUBE_REFRESH_TOKEN` is set).
 
 One-time OAuth setup (owner):

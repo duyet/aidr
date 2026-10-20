@@ -704,6 +704,7 @@ test("visub is uploaded to YouTube with Vietnamese metadata over English audio, 
     id: "VIsub16x9ab",
     url: undefined,
     oembed: undefined,
+    done: [],
     fail: "thumbnail (video VIsub16x9ab is uploaded)",
   });
   visub.youtube = { id: up.id };
@@ -712,6 +713,7 @@ test("visub is uploaded to YouTube with Vietnamese metadata over English audio, 
     id: undefined,
     url: undefined,
     oembed: undefined,
+    done: [],
     fail: "token (HTTP 400: invalid_grant)",
   });
 });
