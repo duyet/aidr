@@ -112,7 +112,8 @@ function AboutPage() {
           stories, including model releases, new kinds of models, and new AI
           labs. JEV and an LLM decide what makes the cut, and AnyRouter runs
           those model calls. The result is one edition on the site, by email,
-          and on Telegram. Every story links to the original post.
+          on Telegram, on Facebook, and over RSS. Every story links to the
+          original post.
         </p>
       </div>
 
