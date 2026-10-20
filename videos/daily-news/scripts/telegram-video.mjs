@@ -16,7 +16,6 @@ const FFPROBE = process.env.FFPROBE || "ffprobe";
 export const TG_LIMIT_BYTES = 49e6;
 const AUDIO_KBPS = 128;
 
-/** An env var from the process, else from the repo .env.local. */
 export function envVar(name) {
   if (process.env[name]) return process.env[name];
   const f = join(REPO, ".env.local");
@@ -76,7 +75,6 @@ export function probeMedia(file) {
   };
 }
 
-/** The Telegram copy of a render: `<name>-tg.mp4` next to it. */
 export const tgCopyPath = (src) => src.replace(/\.mp4$/i, "") + "-tg.mp4";
 
 /** ffmpeg args for the Telegram copy. `kbps` set = target video bitrate (size retry), else CRF. */
@@ -124,7 +122,6 @@ const ff = (args) => {
     );
 };
 
-/** Make (or reuse) the under-50 MB copy. Returns its path. */
 export function makeTelegramCopy(src, fmt) {
   const dst = tgCopyPath(src);
   const { duration } = probeMedia(src);
@@ -291,7 +288,6 @@ export async function sendVideo({
   return { chat_id: json.result.chat.id, message_id: json.result.message_id };
 }
 
-// Standalone test path.
 if (import.meta.url === `file://${process.argv[1]}`) {
   const argv = process.argv.slice(2);
   const flag = (n, d = null) =>

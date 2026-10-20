@@ -69,7 +69,6 @@ const probe = (file) =>
 mkdirSync(join(root, "assets/audio/voice"), { recursive: true });
 cpSync(join(BRAND, "assets/fonts"), join(root, "assets/fonts"), { recursive: true });
 
-// ---------------------------------------------------------------- voice
 // One line per section, voiced with V.provider (default heygen) and cached by provider + voice +
 // speed + text.
 const n = film.scenes.length;
@@ -107,7 +106,6 @@ const voices = lines.map((text, k) => {
   return { wav, words: JSON.parse(readFileSync(words, "utf8")), dur: probe(wav) };
 });
 
-// ---------------------------------------------------------------- timing
 // Without a voice-over: fixed lengths on the 120 BPM bar (2s). With one: each section is as
 // long as its line needs (lead + line + tail), rounded up to the beat (0.5s).
 const fixed = { title: 6, scene: 8, stats: 6, close: 6, ...film.timing };
@@ -144,7 +142,6 @@ const S = {
   ...film.motion,
 };
 
-// ---------------------------------------------------------------- captions
 // Spoken words grouped into short lines (house rule: 4 words, break on punctuation), with the
 // spoken forms swapped for how they are written.
 const REPLACE = [
@@ -244,7 +241,6 @@ caps.forEach((c, i) => {
   c.end = Math.min(c.words.at(-1).e + 0.5, next ? next.start : Infinity, sectionEnd);
 });
 
-// ---------------------------------------------------------------- sound
 // Music: the house "News Theme" (120 BPM), from 16s in where the beat is steady.
 const MUSIC_FROM = 16;
 const MUSIC_VOLUME = film.musicVolume ?? 0.2;
@@ -329,7 +325,6 @@ if (caps.length) {
   );
 }
 
-// ---------------------------------------------------------------- shared html
 const esc = (s) =>
   String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const pad = (i) => String(i).padStart(2, "0");
@@ -392,7 +387,6 @@ const capHtml = caps
   )
   .join("\n      ");
 
-// ---------------------------------------------------------------- formats
 // 9:16 keeps text inside the TikTok / Reels safe zone: x 60–960, y 200–1580. Every language and
 // shape is its own HyperFrames project (one project may hold only one root composition):
 // <v>/ is the English 16:9 master, the others sit next to it (<v>-9x16/, <v>-vi/, <v>-vi-9x16/,

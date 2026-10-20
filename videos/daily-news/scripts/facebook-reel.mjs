@@ -37,7 +37,6 @@ export function graphVersion(raw) {
   return v;
 }
 
-/** Page id + token + version from env/.env.local; throws a clear error when missing. */
 export function reelConfig(get = envVar) {
   const pageId = get("FACEBOOK_PAGE_ID")?.trim() ?? "";
   const token = get("FACEBOOK_PAGE_ACCESS_TOKEN")?.trim() ?? "";
@@ -61,14 +60,12 @@ const reelTag = (date) => ({
   content: "reel",
 });
 
-/** The day page, attributed to the Reel. */
 export function reelLink(date, lang = "en") {
   const u = new URL(`https://aidr.today/date/${date}`);
   if (lang !== "en") u.searchParams.set("lang", lang);
   return siteLink(u.toString(), reelTag(date));
 }
 
-/** The Reel caption: the posts.md Facebook block of a language, every aidr.today link attributed to the Reel. */
 export function reelCaption(postsMd, date, lang = "en") {
   const block = postsMd.match(
     new RegExp(`<!-- posts:${lang} -->[\\s\\S]*?<!-- /posts:${lang} -->`)
@@ -129,7 +126,6 @@ export function reelEncodeArgs(src, dst) {
 
 export const reelCopyPath = (src) => `${src.replace(/\.mp4$/i, "")}-reel.mp4`;
 
-/** Make (or reuse) the Reels copy of a render. */
 export function makeReelCopy(src) {
   const dst = reelCopyPath(src);
   if (existsSync(dst) && statSync(dst).mtimeMs >= statSync(src).mtimeMs)
@@ -187,7 +183,6 @@ async function call(fetchImpl, step, url, init, token) {
   return body;
 }
 
-/** The request for one step. Exported so tests check the exact shape without the network. */
 export function reelRequest(
   step,
   { pageId, token, version, videoId, bytes, description, data }
@@ -243,7 +238,6 @@ export function reelRequest(
   }
 }
 
-/** A Reel on the Page whose description contains `marker`, or null. */
 export async function findReel({
   pageId,
   token,
@@ -259,7 +253,6 @@ export async function findReel({
   return hit ? { id: hit.id, created_time: hit.created_time } : null;
 }
 
-/** Poll until ready + published. Returns the last status; throws on error/expired/timeout. */
 export async function waitForReel({
   token,
   version,
@@ -440,7 +433,6 @@ export async function postReel({ marker, ...args }) {
   }
 }
 
-/** Gate a Reel file: problems from ffprobe + caption lint. */
 export function reelProblems(file, description) {
   return [
     ...gateVideo(probeStreams(file), "reel"),
@@ -448,7 +440,6 @@ export function reelProblems(file, description) {
   ];
 }
 
-// --- CLI -----------------------------------------------------------------
 if (resolve(process.argv[1] ?? "") === import.meta.filename) {
   const argv = process.argv.slice(2);
   const flag = (n) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : null);

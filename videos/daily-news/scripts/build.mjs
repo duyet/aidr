@@ -87,7 +87,6 @@ const noVoice =
   process.argv.includes("--no-voice") ||
   (existsSync(modeFile) && read(modeFile).voice === false);
 
-// Screen and post copy per language (facts and headlines come from the script).
 const UI_BASE = {
   en: {
     locale: "en-US",
@@ -203,7 +202,6 @@ function probe(file) {
   );
 }
 
-// ---------------------------------------------------------------- timeline
 const segs = [
   { id: "intro", kind: "intro", timing: config.timing.intro },
   ...script.stories.map((s) => ({
@@ -283,7 +281,6 @@ const introFocus = (script.intro.focus ?? []).map((f) => {
   };
 });
 
-// ---------------------------------------------------------------- captions
 function captionChunks(segList) {
   const out = [];
   for (const seg of segList) {
@@ -372,7 +369,6 @@ if (cut.subs) {
   );
 const burnCaps = allCaps.filter((c) => c.seg.startsWith("s"));
 
-// ---------------------------------------------------------------- html pieces
 const fontFaces = readFileSync(join(BRAND, "frame.md"), "utf8")
   .split("\n")
   .filter((l) => l.startsWith("@font-face"))
@@ -583,7 +579,6 @@ ${body}
 `;
 }
 
-// ---------------------------------------------------------------- audio
 function buildMix(outFile) {
   const sfxDir = resolve(ROOT, config.sfx.dir);
   const sfxMeta = read(join(sfxDir, "manifest.json"));
@@ -665,7 +660,6 @@ function buildMix(outFile) {
   ]);
 }
 
-// ---------------------------------------------------------------- cover still
 // One story (look.mjs coverStory) gives the cover both its picture and its hook, so they never come from
 // different stories. A stand-in for an image-less thumb story uses its own kicker as the hook.
 const thumb = thumbStory(script);
@@ -676,7 +670,6 @@ if (cover !== thumb && !cut.subs)
   );
 const coverHook =
   cover === thumb ? (script.thumb?.hook ?? cover.kicker) : cover.kicker;
-// The cover intro opens on the cover still's story and hook.
 Object.assign(introCtx, { lead: cover, hook: coverHook });
 
 function coverHtml(fmt) {
@@ -738,7 +731,6 @@ function coverHtml(fmt) {
   return page(fmt, body, 1, `<style>${css}</style>`);
 }
 
-// ---------------------------------------------------------------- write projects
 const outRoot = join(dir, cut.out);
 const mixShared = join(outRoot, "mix.wav");
 mkdirSync(outRoot, { recursive: true });
@@ -831,7 +823,6 @@ if (cut.subs) {
   process.exit(0);
 }
 
-// ---------------------------------------------------------------- timeline + posts
 const mmss = (t) => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}`;
 const { layouts, notes, ...theme } = look;
 writeFileSync(

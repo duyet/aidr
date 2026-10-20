@@ -26,7 +26,6 @@ import { envVar } from "./telegram-video.mjs";
 const ROOT = resolve(import.meta.dirname, "..");
 const WORKER = resolve(ROOT, "../../apps/web/worker");
 
-/** SRT text → [{ start, end, text }] with the timestamps kept as written. */
 export function parseSrt(text) {
   return text
     .trim()
@@ -191,7 +190,6 @@ const flat = (t) =>
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 
-/** Problems with one translated line (empty = fine). */
 export function lineProblems(label, en, vi) {
   if (typeof vi !== "string" || !vi.trim()) return [`${label}: empty`];
   const p = [];
@@ -348,8 +346,6 @@ export async function translateCues({
     })),
   };
 }
-
-// --- YouTube metadata ----------------------------------------------------
 
 /** The English 16:9 title, description and tags from posts.md (the block yt-meta.py --daily reads). */
 export function enPost(postsMd) {
@@ -552,7 +548,6 @@ export async function buildSubs({ date, force = false, chain, root = ROOT }) {
   console.log(`✓ editions/${date}/${cut.subs.srt}`);
 }
 
-// --- CLI -----------------------------------------------------------------
 async function main() {
   const argv = process.argv.slice(2);
   const date = argv[0];

@@ -14,7 +14,6 @@
   const push = (el, from, to, amount = 0.03) =>
     tl.fromTo(el, { scale: 1 }, { scale: 1 + amount, duration: to - from, ease: "none" }, from);
 
-  // ── 1 Hook ────────────────────────────────────────────────────────────────────────────────
   push($("hook-cam"), 0, T.title);
   const wide = [
     [60, 40], [1110, 30], [60, 860], [1110, 880],
@@ -63,7 +62,6 @@
   const reach = (Math.hypot(W, H) / 160) * 1.05;
   tl.fromTo($("hook-wipe"), { scale: 0 }, { scale: reach, duration: 0.8, ease: "power2.inOut" }, T.wipe);
 
-  // ── 2 Title ───────────────────────────────────────────────────────────────────────────────
   push($("title-cam"), T.title, T.machineIn + 0.6, 0.04);
   arrive($("title-logo"), { scale: 1.45, opacity: 0 }, { scale: 1, opacity: 1 }, T.title, 0.5);
   arrive($("title-line"), { y: 34, opacity: 0 }, { y: 0, opacity: 1 }, T.titleLine - 0.3, 0.5);
@@ -71,7 +69,6 @@
   tl.fromTo($("hatch-bottom"), { y: 0 }, { y: H * 0.52, duration: 0.6, ease: "power2.in" }, T.hatch);
   tl.fromTo($("title-cam"), { y: 0 }, { y: -H * 0.52, duration: 0.6, ease: "power2.in" }, T.hatch);
 
-  // ── The machine ───────────────────────────────────────────────────────────────────────────
   const mcam = $("mcam");
   const [vbW, vbH] = machine.viewBox;
   const st = machine.stations;
@@ -133,7 +130,6 @@
     );
   };
 
-  // 3 Sources: the clock turns, each source gets its plate, cards drop in and ride out.
     tl.fromTo("#needle-clock", { attr: { transform: "rotate(0)" } }, { attr: { transform: "rotate(180)" }, duration: 0.7, ease: park(0.7) }, T.clock);
   arrive($("tag-clock"), { opacity: 0, x: -20 }, { opacity: 1, x: 0 }, T.clock + 0.2, 0.45);
   T.labels.forEach((t, i) => {
@@ -160,7 +156,6 @@
   arrive(dataWin, { y: H, opacity: 1 }, { y: 0 }, T.dataIn, 0.9);
   tl.to(dataWin, { y: H, duration: 0.5, ease: "power2.in" }, T.toDedupe - 0.1);
 
-  // 4 Dedupe: two headlines of one story ride in, one card leaves.
   const dd = st["st-dedupe"].center;
   const dir = (() => {
     const i = belt.findIndex((p) => p[0] > dd[0]) || 1;
@@ -189,13 +184,11 @@
   tl.fromTo(one, { x: o0.x - cardW / 2 }, { x: o1.x - cardW / 2, y: o1.y - 60, duration: 1.1, ease: "power2.inOut" }, T.merge + 0.5);
   tl.to(one, { opacity: 0, duration: 0.3, ease: "none" }, T.toScore + 0.3);
 
-  // Score: the plunger presses, the needle reads.
   const mv = machine.moves;
   tl.fromTo("#plunger-score", { x: 0, y: 0 }, { x: mv["plunger-score"][0], y: mv["plunger-score"][1], duration: 0.3, ease: "power2.in" }, T.score);
   tl.to("#plunger-score", { x: 0, y: 0, duration: 0.5, ease: park(0.5) }, T.score + 0.45);
   tl.fromTo("#needle-score", { attr: { transform: "rotate(0)" } }, { attr: { transform: "rotate(74)" }, duration: 0.7, ease: park(0.7) }, T.score + 0.3);
 
-  // 5 Rank: one card per tray on the beat.
   arrive($("rank-line"), { y: 30, opacity: 0 }, { y: 0, opacity: 1 }, T.rankLine, 0.5);
   arrive($("rank-code"), { x: -30, opacity: 0 }, { x: 0, opacity: 1 }, T.rankCode, 0.45);
   T.rankSlots.forEach((t, i) => {
@@ -210,7 +203,6 @@
   for (const id of ["rank-line", "rank-code"]) tl.to($(id), { opacity: 0, duration: 0.3, ease: "power1.out" }, T.toTldr - 0.1);
   tl.to(aboutWin, { x: tall ? 0 : W - aw[0], y: tall ? H - aw[1] : 0, duration: 0.5, ease: "power2.in" }, T.toTldr - 0.1);
 
-  // 6 TL;DR: the press stamps on "edition" and two plates slide out.
   tl.fromTo("#ram-tldr", { x: 0, y: 0 }, { x: mv["ram-tldr"][0], y: mv["ram-tldr"][1], duration: 0.25, ease: "power3.in" }, T.stamp - 0.25);
   tl.to("#ram-tldr", { x: 0, y: 0, duration: 0.45, ease: park(0.45) }, T.stamp + 0.15);
   const tc = st["st-tldr"].center;
@@ -221,7 +213,6 @@
 
   for (const id of ["plate-en", "plate-vi"]) tl.to($(id), { opacity: 0, duration: 0.2, ease: "none" }, T.editionIn + 0.2);
 
-  // ── 6 The edition ─────────────────────────────────────────────────────────────────────────
   push($("edition-cam"), T.editionIn, T.toDispatch + 0.7);
   arrive($("ed-head").firstElementChild, { y: 30, opacity: 0 }, { y: 0, opacity: 1 }, T.editionIn, 0.5);
   arrive($("ed-pill"), { x: 30, opacity: 0 }, { x: 0, opacity: 1 }, T.upTo, 0.45);
@@ -238,7 +229,6 @@
   arrive($("ed-note"), { y: 20, opacity: 0 }, { y: 0, opacity: 1 }, T.viCol + 0.9, 0.5);
   tl.to($("edition-cam"), { y: -H * 0.08, opacity: 0, duration: 0.6, ease: "power2.inOut" }, T.toDispatch);
 
-  // ── 7 Dispatch, then the real screens ────────────────────────────────────────────────────
   ["web", "email", "telegram", "facebook", "youtube"].forEach((id, i) => {
     const p = machine.ports[id];
     const ring = document.createElement("div");
@@ -277,7 +267,6 @@
       tl.to(lab, { y: -24, opacity: 0, duration: 0.3, ease: "power2.in" }, next);
     }
   });
-  // Daily-video thumbnails fan out inside their frame.
   const tw = tall ? 290 : 340;
   [1, 2, 3].forEach((n, i) => {
     const th = $(`thumb-${n}`);
@@ -286,13 +275,11 @@
     Object.assign(th.style, { width: `${tw}px`, height: `${h}px`, left: `${(winBox[2] - 3 * tw - 40) / 2 + i * (tw + 20)}px`, top: `${(winBox[3] - 44 - h) / 2}px` });
     arrive(th, { y: 60, opacity: 0 }, { y: 0, opacity: 1 }, T.channels[4] + i * 3 * F, 0.5);
   });
-  // /subscribe scrolls past.
   const sub = dims[`subscribe-${CFG.form}-full`];
   const imgH = ((tall ? 1 : 1.35) * winBox[2] * sub[1]) / sub[0];
   const travel = Math.max(0, Math.min(imgH - (winBox[3] - 44), imgH * 0.45));
   tl.fromTo($("sub-img"), { y: 0 }, { y: -travel, duration: 3, ease: "expo.inOut" }, T.subscribeIn + 1.2);
 
-  // ── 8 Proof, lockup ──────────────────────────────────────────────────────────────────────
   push($("story-cam"), T.storyIn, T.lockup + 0.4);
   const sw = $("win-story");
   Object.assign(sw.style, { left: `${winBox[0]}px`, top: `${winBox[1]}px`, width: `${winBox[2]}px`, height: `${winBox[3]}px` });

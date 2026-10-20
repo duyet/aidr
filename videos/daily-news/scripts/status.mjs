@@ -205,7 +205,6 @@ export const finishSteps = (r, privacy, exists = existsSync) => [
   ...(privacy === "public" ? ["oembed"] : []),
 ];
 
-/** The steps in `needed` that the uploader did not report done. */
 export const pendingSteps = (needed, up) =>
   needed.filter((s) => !up.done.includes(s));
 

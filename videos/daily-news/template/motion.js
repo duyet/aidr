@@ -93,7 +93,6 @@
   function build() {
     const tl = gsap.timeline({ paused: true });
     const vertical = D.fmt === "9x16";
-    // The day's variants (looks/, serialized by build.mjs) get the timeline, their data and these helpers.
     const L = window.__LOOK;
     // A hit element turns fully legible on its hit key: a linear fade of D.fade from its start (choreography.mjs FADE).
     const fadeIn = (el, at) =>
@@ -118,7 +117,6 @@
       OUT: D.stinger.out,
     };
 
-    // ---------- intro ----------
     const I = D.intro;
     const intro = $("#intro");
     tl.fromTo(
@@ -135,7 +133,6 @@
     );
     L.intro(tl, I, H);
 
-    // ---------- chrome ----------
     tl.fromTo(
       ".bar",
       { y: -30, opacity: 0 },
@@ -158,7 +155,7 @@
     const half = crawl.scrollWidth / 2; // crawl content is written twice for a seamless loop
     if (saved === null) chrome.removeAttribute("style");
     else chrome.setAttribute("style", saved);
-    const speed = vertical ? 150 : 170; // px per second
+    const speed = vertical ? 150 : 170;
     const crawlDur = D.chrome.dur;
     tl.fromTo(
       crawl,
@@ -183,7 +180,6 @@
       0
     );
 
-    // ---------- stories ----------
     D.stories.forEach((S, i) => {
       const sc = $("#story-" + (i + 1));
       const t = S.start;
@@ -229,7 +225,6 @@
         if (ar && Math.min(ar / box, box / ar) < 0.9) fr.classList.add("fit");
       });
 
-      // The day's choreography: media reveal, image drift, rank badge, copy lines.
       L.choreography(tl, S, sc, H);
       frames.forEach((fr, k) => {
         if (k > 0)
@@ -290,7 +285,6 @@
         { y: 0, opacity: 1, duration: 0.5, ease: LAND },
         S.statIn + 4 * F
       );
-      // The credit is left out when the story has no source.
       if ($(".src", sc))
         tl.fromTo(
           $(".src", sc),
@@ -300,7 +294,6 @@
         );
     });
 
-    // ---------- outro ----------
     const O = D.outro;
     const outro = $("#outro");
     tl.fromTo(
@@ -335,10 +328,8 @@
       O.start + 1.0
     );
 
-    // ---------- stingers ----------
     D.wipes.forEach((W, i) => L.transition(tl, $("#wipe-" + i), W, H));
 
-    // ---------- captions: the active word turns ink ----------
     // Yellow belongs to the headline marker alone: a yellow caption word beside it made two focal points.
     D.caps.forEach((C, ci) => {
       const line = $("#cap-" + ci + " .line");

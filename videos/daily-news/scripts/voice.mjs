@@ -42,7 +42,6 @@ const dir = join(ROOT, "editions", date);
 const script = JSON.parse(readFileSync(join(dir, cut.script), "utf8"));
 mkdirSync(join(dir, cut.voice, "parts"), { recursive: true });
 
-// Segments without a named anchor follow the seeded host order.
 const order = hostOrder(Object.keys(cast.hosts), date);
 const segments = [
   { id: "intro", line: script.intro.voice, anchor: script.intro.anchor },
@@ -184,7 +183,6 @@ async function heygenTts(a, text, wav, wordsFile) {
   ]);
 }
 
-// The cast host and the HeyGen anchor that stands in for it, and the cache file of a part.
 function lookup({ anchor, text }) {
   const host = cast.hosts[anchor];
   const hg =
@@ -205,7 +203,6 @@ function lookup({ anchor, text }) {
   return { host, hg, file };
 }
 
-// One part: the cast host via ElevenLabs, else the HeyGen anchor of the same gender.
 async function voicePart(part) {
   const { anchor, text } = part;
   const { host, hg, file } = lookup(part);
@@ -255,7 +252,6 @@ async function voicePart(part) {
   };
 }
 
-// ---- no-voice decision: before any synthesis, and again if a part hits a quota or key error.
 const modeFile = join(dir, cut.voice, "mode.json");
 function setMode(voice, reason) {
   writeFileSync(

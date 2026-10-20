@@ -403,7 +403,6 @@ test("a stat counts as spoken in any equivalent spoken form, but a different num
     assert.equal(statSpoken(voice, stat), false, `${stat} in "${voice}"`);
 });
 
-// 2026-10-16: the video chain was gpt-5.6-luna then gemini-3-flash, and AnyRouter refused gemini (#875).
 test("the video model chain is gpt-5.6-luna, then the Worker's chat chain read from wrangler.toml, paid Claude last", () => {
   const dir = mkdtempSync(join(tmpdir(), "aidr-chain-"));
   try {

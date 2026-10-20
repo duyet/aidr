@@ -137,7 +137,6 @@ const measure = `<script>(async () => {
 
 const GSAP_STUB = `<script>window.__timelines = {}; window.gsap = { timeline: () => new Proxy({}, { get: (_, k, tl) => () => tl }) };</script>`;
 
-/** Builds DATE with story 1 pinned to `layout` and the longest copy; returns where its 9:16 frame lands. */
 function layoutBoxes(layout, { images }) {
   const { dn, cleanup } = scratchRoot();
   cleanups.push(cleanup);

@@ -56,7 +56,6 @@ const day = await fetch(`${SITE}/api/og/date/${DAY}.png`);
 writeFileSync(join(OUT, `daycard-${DAY}.png`), Buffer.from(await day.arrayBuffer()));
 console.log(`fetched daycard-${DAY}`);
 
-// Daily-video thumbnails as posted to the public English Telegram channel.
 const tg = await (await fetch("https://t.me/s/aidr_today")).text();
 const thumbs = [...tg.matchAll(/message_video_thumb" style="background-image:url\('([^']+)'/g)].map((m) => m[1]);
 for (const [i, src] of thumbs.slice(-4).entries()) {

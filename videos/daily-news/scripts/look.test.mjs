@@ -193,7 +193,6 @@ const unpinned = (script) => ({
   theme: undefined,
   stories: script.stories.map(({ layout: _, ...s }) => s),
 });
-/** Layout ids in script order, after checking there is exactly one per story. */
 function layoutIds(script, edition) {
   const { layouts } = resolveLook(script, edition);
   const ranks = script.stories.map((s) => s.rank);
