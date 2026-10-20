@@ -34,6 +34,20 @@ Each folder here is one skill with a `SKILL.md`. `.claude/skills`, `.cursor/skil
 | `aidr-video-review` | Review a rendered video before it ships. |
 | `aidr-motion-designer` | Motion rules for every AI;DR video frame. |
 
+## Review output
+
+Each review skill scores one kind of output out of 10 on a rubric. A script decides the automatic rows from stored data, read-only, and the reviewer judges the rest. Nothing ships below 8. The scripts live in `apps/web/scripts/review/` and share `rubric.ts`.
+
+| Skill | Use it to |
+|---|---|
+| `aidr-digest-review` | Score the TL;DR snapshot and digest bullets, EN and VI. |
+| `aidr-post-review` | Score the Telegram and Facebook posts. |
+| `aidr-email-review` | Score the digest email. |
+| `aidr-vi-translation` | Score stored Vietnamese translations ("Score a translation" section). |
+| `aidr-card-review` | Score the day card and the OG images. |
+| `aidr-copy-review` | Score marketing copy against `docs/marketing/positioning.md`. |
+| `aidr-video-review` | Score a rendered video. |
+
 ## Video tooling (HyperFrames)
 
 These come from the HyperFrames toolchain. Start at `hyperframes`, which routes to the rest.
