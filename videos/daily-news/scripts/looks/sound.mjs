@@ -75,3 +75,19 @@ export function soundFor(dateKey) {
 export function gainFor(cue, name) {
   return 10 ** ((SFX[POOLS[cue][0]].level - SFX[name].level) / 20);
 }
+
+/**
+ * Every effect of a cut as [cue, at, gain], `at` being when the effect peaks. Each `at` is a time the page animates
+ * on too (W.hit, S.rankAt, S.statAt, O.hit, the intro's own cues), so an effect cannot drift off its visual hit.
+ * `open` is the one cue with no visual: it opens the bed over frame 0, the still thumbnail.
+ */
+export function cuesFor({ wipes, stories, outro }, introCues) {
+  return [
+    ["open", 0.25, 1.0],
+    ...wipes.map((w) => ["storyIn", w.hit, 0.8]),
+    ...stories.map((s) => ["rankHit", s.rankAt, 0.55]),
+    ...stories.map((s) => ["statHit", s.statAt, 0.5]),
+    ["outro", outro.hit, 0.8],
+    ...introCues,
+  ];
+}

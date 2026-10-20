@@ -80,8 +80,8 @@
       LAND,
       F,
       vertical,
-      IN: 0.32,
-      OUT: 0.4,
+      IN: D.stinger.in,
+      OUT: D.stinger.out,
     };
 
     // ---------- intro ----------
@@ -182,16 +182,25 @@
         t
       );
 
+      // An image far from its box's shape (a wide social card in a narrower box) shows whole over a blurred copy
+      // of itself: a cover crop plus the drift would cut through the text baked into it.
+      const media = $(".media", sc);
+      const box = measured(media, () => media.offsetWidth / media.offsetHeight);
+      const frames = $$(".media .frame", sc);
+      frames.forEach((fr) => {
+        const ar = parseFloat($("img", fr).dataset.ar);
+        if (ar && Math.min(ar / box, box / ar) < 0.9) fr.classList.add("fit");
+      });
+
       // The day's choreography: media reveal, image drift, rank badge, copy lines.
       L.choreography(tl, S, sc, H);
-      const imgs = $$(".media img", sc);
-      imgs.forEach((img, k) => {
+      frames.forEach((fr, k) => {
         if (k > 0)
           tl.fromTo(
-            img,
+            fr,
             { opacity: 0 },
             { opacity: 1, duration: 0.5, ease: "power1.inOut" },
-            t + (S.dur * k) / imgs.length
+            t + (S.dur * k) / frames.length
           );
       });
       const paper = $(".paper", sc);
@@ -266,7 +275,7 @@
       $(".biglogo", outro),
       { scale: 0.6, opacity: 0 },
       { scale: 1, opacity: 1, duration: 0.6, ease: LAND },
-      O.start + 0.3
+      O.hit
     );
     tl.fromTo(
       $(".title", outro),
