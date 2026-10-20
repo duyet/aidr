@@ -186,6 +186,18 @@ export function validateScript(script, edition) {
       const n = words(String(s[k] ?? "").replace(/\*/g, "")).length;
       if (n < min || n > max) p.push(`story ${s.rank}: ${k} has ${n} words`);
     }
+    // The stat sits under the category label and the kicker; one that repeats either says nothing new.
+    const bare = (t) =>
+      String(t ?? "")
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]/gu, "");
+    if (
+      bare(s.stat) &&
+      [s.kicker, src.category].some((t) => bare(t) === bare(s.stat))
+    )
+      p.push(
+        `story ${s.rank}: stat "${s.stat}" repeats the kicker or category`
+      );
     if (s.statWord && !statSpoken(voiceWords(s.voice), s.statWord))
       p.push(`story ${s.rank}: statWord "${s.statWord}" is not spoken`);
     // Facts: no number on screen or in the voice that the bullet (or its title) does not have.
@@ -314,7 +326,7 @@ export function templateStory(s) {
   return {
     kicker,
     headline,
-    stat: m ?? s.category ?? "Today",
+    stat: m ?? "Today",
     statLabel: s.source ?? "aidr.today",
     statWord: m ? numbers(m)[0] : null,
     voice: voice.map(speakable),
@@ -474,7 +486,7 @@ export function promptFor(edition) {
     },
     {
       role: "user",
-      content: `Stories:\n${JSON.stringify(stories, null, 1)}\n\nReturn JSON:\n{\n "stories": [{ "rank": <rank>, "kicker": "2-5 words, who or what", "headline": "5-9 words, the news itself, with *2-4 words* in stars", "stat": "the one number or state that sums the story, e.g. $60B or Public beta", "statLabel": "3-8 words explaining the stat", "statWord": "the first spoken word of the stat as it appears in voice, e.g. 60", "voice": ["first sentence: the news in at most ${PACING.first} words, subject and verb first", "second sentence: why it matters or the one detail that makes it land, at most ${PACING.sentence} words"] }],\n "introLine": "at most ${PACING.intro} words, opens straight on today's top news, naming one or two stories; no greeting, no show name, no date",\n "focus": [{ "rank": <rank>, "word": "a word from introLine that names that story" }],\n "thumbRank": <rank of the most surprising story, preferring one with image true>,\n "thumbHook": "${PACING.hook.join("-")} words for the thumbnail: the surprising fact of the thumbRank story, concrete (a name, a number, an action), not a topic label like 'AI safety research', no question",\n "post": { "hook": "one sentence", "facebook": "1-2 sentences naming the top stories", "tiktok": "<=150 chars, ends with a question", "youtubeTitle": "<=100 chars: lead story, & more, the date", "shortsTitle": "<=80 chars", "hashtags": ["AI", "AINews", "...companies, 5-8 total, no #"] }\n}\nEvery story's voice is 14-24 words in total, written to be heard: one fact per sentence, at most one number per sentence, contractions are fine, no lists of three. Date: ${edition.date}.`,
+      content: `Stories:\n${JSON.stringify(stories, null, 1)}\n\nReturn JSON:\n{\n "stories": [{ "rank": <rank>, "kicker": "2-5 words, who or what", "headline": "5-9 words, the news itself, with *2-4 words* in stars", "stat": "the one number or state that sums the story, e.g. $60B or Public beta, never the kicker or the category", "statLabel": "3-8 words explaining the stat", "statWord": "the first spoken word of the stat as it appears in voice, e.g. 60", "voice": ["first sentence: the news in at most ${PACING.first} words, subject and verb first", "second sentence: why it matters or the one detail that makes it land, at most ${PACING.sentence} words"] }],\n "introLine": "at most ${PACING.intro} words, opens straight on today's top news, naming one or two stories; no greeting, no show name, no date",\n "focus": [{ "rank": <rank>, "word": "a word from introLine that names that story" }],\n "thumbRank": <rank of the most surprising story, preferring one with image true>,\n "thumbHook": "${PACING.hook.join("-")} words for the thumbnail: the surprising fact of the thumbRank story, concrete (a name, a number, an action), not a topic label like 'AI safety research', no question",\n "post": { "hook": "one sentence", "facebook": "1-2 sentences naming the top stories", "tiktok": "<=150 chars, ends with a question", "youtubeTitle": "<=100 chars: lead story, & more, the date", "shortsTitle": "<=80 chars", "hashtags": ["AI", "AINews", "...companies, 5-8 total, no #"] }\n}\nEvery story's voice is 14-24 words in total, written to be heard: one fact per sentence, at most one number per sentence, contractions are fine, no lists of three. Date: ${edition.date}.`,
     },
   ];
 }

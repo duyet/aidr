@@ -28,7 +28,7 @@ The agent skill for the daily run is `.agents/skills/aidr-daily-news/`. This pag
 | `scripts/lang.mjs` | yes | The cut's language (`--lang vi`) and its file names |
 | `scripts/cast.mjs` | yes | The voice cast: host keys, seeded host order, the "never twice in a row" check |
 | `scripts/look.mjs` | yes | The day's look (intro, transition, background, choreography) from the edition's date, and each story's layout from the images on disk, resolved at build time |
-| `scripts/sound-measure.mjs` | yes | Measures every effect's peak and level and the music bed's phrase starts with ffmpeg; prints the tables `scripts/looks/sound.mjs` holds |
+| `scripts/sound-measure.mjs` | yes | Measures every effect's peak and level and the music bed's phrase starts with ffmpeg; prints the tables `scripts/looks/sound.mjs` holds; `--write` rewrites its SFX table |
 | `scripts/build.mjs` | yes | Timeline, both compositions, audio mix, captions, covers, post copy |
 | `scripts/grid.mjs` | yes | The summary grid's layout per format and story count (1–8): areas, tracks, and the tile type scale, so frame 0 has no empty cell; an odd count gives the lead story a hero tile (with `grid.test.mjs`) |
 | `scripts/render.mjs` | yes | 4K MP4s and cover PNGs |
