@@ -165,6 +165,21 @@ test("a cover whose thumb story has an image keeps it", () => {
   assert.doesNotMatch(stderr, /! cover:/);
 });
 
+// At thumbnail size only the hook and one number read: the cover story's figure goes on its picture, and the
+// story list below never repeats the story the cover is already about.
+test("a cover puts its story's figure on the picture and lists only the other stories", () => {
+  const { page } = build("2026-10-10");
+  for (const fmt of FORMATS) {
+    const html = page(`cover-${fmt}`);
+    assert.ok(html.includes('<div class="stat">$50M</div>'), fmt);
+    const listed = [...html.matchAll(/<li><b>(\d+)<\/b>/g)].map((m) => m[1]);
+    assert.ok(listed.length >= 2, fmt);
+    assert.ok(!listed.includes("5"), `${fmt}: lists ${listed}`);
+  }
+  const wordStat = build("2026-10-13").page("cover-16x9");
+  assert.doesNotMatch(wordStat, /<div class="stat">/);
+});
+
 test("a cover with no story image anywhere shows the thumb story's paper card", () => {
   const { script, page } = build("2026-10-13", (script, edition) => [
     { ...script, stories: script.stories.map((s) => ({ ...s, images: [] })) },
