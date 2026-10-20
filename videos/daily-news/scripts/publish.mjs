@@ -51,8 +51,11 @@ import {
   dayPageIds,
   dayVideoArgs,
   dayVideoPostedArgs,
+  finishSteps,
+  finishTodo,
   needsRender,
   parseUpload,
+  pendingSteps,
   seedIds,
   telegramTodo,
   uploadArgs,
@@ -400,6 +403,11 @@ function showMeta(args) {
 if (steps.includes("upload")) {
   const viPage = await seedFromSite();
   const todo = uploadTodo(rows, langs, viPage);
+  const finishing = finishTodo(rows, langs);
+  if (finishing.length && uploader !== "api")
+    throw new Error(
+      `${finishing.map((r) => r.cut).join(", ")}: on YouTube but missing ${finishing.flatMap((r) => r.youtube.pending).join("/")}; finish them with --uploader api`
+    );
   for (const r of mine.filter(
     (r) => r.lang === "visub" && !r.youtube?.id && !todo.includes(r)
   ))
@@ -408,10 +416,10 @@ if (steps.includes("upload")) {
     uploader === "api"
       ? `upload to YouTube (${privacy}, Data API)`
       : "upload to YouTube (public, owner's Chrome)",
-    todo.map((r) => r.cut)
+    [...finishing, ...todo].map((r) => r.cut)
   );
-  for (const r of todo) {
-    if (!dry && !existsSync(r.path))
+  for (const r of [...finishing, ...todo]) {
+    if (!dry && !r.youtube?.pending && !existsSync(r.path))
       throw new Error(
         `${r.cut}: ${r.path} is not rendered; run --steps render`
       );
@@ -422,6 +430,13 @@ if (steps.includes("upload")) {
       uploader === "api" ? "yt-upload-api.mjs" : "yt-upload"
     );
     if (uploader === "api") args.push("--privacy", privacy);
+    if (r.youtube?.pending)
+      args.push(
+        "--finish",
+        r.youtube.id,
+        "--steps",
+        r.youtube.pending.join(",")
+      );
     let out = "";
     let failed = null;
     try {
@@ -449,6 +464,7 @@ if (steps.includes("upload")) {
     }
     // Record an id even from a failed run: YouTube cannot replace a file, so a rerun must not upload it again.
     const up = parseUpload(out);
+    const needed = r.youtube?.pending ?? finishSteps(r, privacy);
     if (up.id) {
       r.youtube = {
         id: up.id,
@@ -456,13 +472,18 @@ if (steps.includes("upload")) {
         oembed: up.oembed,
       };
       r.state = "uploaded";
+      if (uploader === "api") {
+        const left = pendingSteps(needed, up);
+        if (left.length) r.youtube.pending = left;
+      }
     }
     if (failed || !up.id) {
       const why = up.fail ?? failed?.message ?? "the uploader printed no ID=";
       r.uploadError = { at: new Date().toISOString(), why };
       save();
+      const left = r.youtube?.pending;
       throw new Error(
-        `${r.cut}: upload failed: ${why}${up.id ? ` (video ${up.id} is on YouTube and recorded; a rerun does not upload it again)` : ""}`
+        `${r.cut}: upload failed: ${why}${r.youtube?.id ? ` (video ${r.youtube.id} is on YouTube and recorded; a rerun does not upload it again${left?.length ? ` and retries ${left.join("/")}` : ""})` : ""}`
       );
     }
     delete r.uploadError;

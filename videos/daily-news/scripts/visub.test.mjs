@@ -674,7 +674,7 @@ test("visub is uploaded to YouTube with Vietnamese metadata over English audio, 
   const rows = rowsFor(["en", "visub"]);
   const visub = rows.find((r) => r.lang === "visub");
   assert.deepEqual(uploadTodo(rows, ["visub"]), [visub]);
-  const args = uploadArgs(visub, dir);
+  const args = uploadArgs(visub, dir, () => true);
   const at = (f) => args[args.indexOf(f) + 1];
   assert.equal(args[0], visub.path);
   assert.equal(at("--meta"), join(dir, "youtube.visub.json"));
@@ -686,7 +686,7 @@ test("visub is uploaded to YouTube with Vietnamese metadata over English audio, 
     join(dir, "renders", "cover-2026-10-13-visub-16x9.png")
   ); // its Vietnamese cover is the thumbnail
   // The English cut is unchanged: posts.md, its own language for both.
-  const en = uploadArgs(rows[0], dir);
+  const en = uploadArgs(rows[0], dir, () => true);
   assert.deepEqual(
     [
       en[en.indexOf("--meta") + 1],
@@ -704,6 +704,7 @@ test("visub is uploaded to YouTube with Vietnamese metadata over English audio, 
     id: "VIsub16x9ab",
     url: undefined,
     oembed: undefined,
+    done: [],
     fail: "thumbnail (video VIsub16x9ab is uploaded)",
   });
   visub.youtube = { id: up.id };
@@ -712,6 +713,7 @@ test("visub is uploaded to YouTube with Vietnamese metadata over English audio, 
     id: undefined,
     url: undefined,
     oembed: undefined,
+    done: [],
     fail: "token (HTTP 400: invalid_grant)",
   });
 });
