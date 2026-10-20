@@ -129,8 +129,7 @@ export function getLocalHourAndDate(
 }
 
 /** A subscriber gets today's digest once it's at/after their local
- * DIGEST_LOCAL_HOUR and this local date is later than the last one they
- * received, so moving to an earlier timezone never resends an edition. */
+ * DIGEST_LOCAL_HOUR and this local date is later than their last_sent_date. */
 export function shouldSendForSubscriber(
   sub: Pick<SubscriberRow, "last_sent_date">,
   localHour: number,
