@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.24](https://github.com/duyet/aidr/compare/aidr-v0.1.23...aidr-v0.1.24) (2026-10-20)
+
+
+### ✨ Features
+
+* **extension:** count /api/extension events per day in D1 ([#840](https://github.com/duyet/aidr/issues/840)) ([6d67a8c](https://github.com/duyet/aidr/commit/6d67a8c517ca8ebdbb326175dff3eba4a30e4b53))
+
 ## [0.1.23](https://github.com/duyet/aidr/compare/aidr-v0.1.22...aidr-v0.1.23) (2026-10-12)
 
 
