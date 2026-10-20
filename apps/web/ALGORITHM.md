@@ -1865,7 +1865,9 @@ an earlier statement's result, and the read path never issues DDL or any
 other write (`src/lib/feed-queries.roundtrips.test.ts`). No schema probe
 runs before that batch, even on a cold isolate. The deploy gate
 (`check:migrations`, `worker/migration-gate.ts`) refuses to upload a Worker
-while any migration is missing from the D1 ledger, so feed, story, day and
+while any migration from 0023 up is missing from the D1 ledger (it checks
+no lower number: migrations apply in order, so a ledger with 0023 has 0001
+to 0022), so feed, story, day and
 weekly reads select `llm_tokens`, `image_url`, `media_manifest`, the
 `item_votes` join and the `item_reads` join directly. For those,
 `getFeed`'s `readOrder` sorts each day by:

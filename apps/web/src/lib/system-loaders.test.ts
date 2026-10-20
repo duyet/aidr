@@ -8,8 +8,9 @@ import { describe, expect, it, vi } from "vitest";
  * - every section's reads go through a single db.batch() (statements
  *   awaited outside batch are sequential round-trips; only the size read
  *   and explicit run-id LLM lookups are allowed there), and
- * - no schema probe runs first: the deploy gate guarantees every table and
- *   column, so a probe would only add a round trip per cold isolate.
+ * - no schema probe runs first: the deploy gate requires every migration
+ *   from 0023 up (older ones apply before them), so a probe would only add a
+ *   round trip per cold isolate.
  */
 
 type Stub = {
