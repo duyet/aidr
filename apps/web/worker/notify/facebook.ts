@@ -5,7 +5,12 @@ import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
 import { splitSentences } from "../sentences.js";
 import type { Env } from "../types.js";
-import { digestCampaign, STORY_CAMPAIGN, withUtm } from "../utm.js";
+import {
+  digestCampaign,
+  postContent,
+  STORY_CAMPAIGN,
+  withUtm,
+} from "../utm.js";
 import {
   type DailyDigest,
   isSubrequestLimitError,
@@ -102,11 +107,12 @@ export function facebookSiteOrigin(env: Env): string {
 export function facebookLink(
   url: string,
   lang: Lang,
-  campaign: string
+  campaign: string,
+  content = "post"
 ): string {
   return withUtm(
     withLang(url, lang),
-    { source: "facebook", medium: "social", campaign, content: "post" },
+    { source: "facebook", medium: "social", campaign, content },
     { trustedOrigin: true }
   );
 }
@@ -180,7 +186,8 @@ export function buildFacebookStory(
   const link = facebookLink(
     new URL(storyPath(story, story.lang), origin).toString(),
     story.lang,
-    STORY_CAMPAIGN
+    STORY_CAMPAIGN,
+    postContent("post", story.id)
   );
   return { message: joinParagraphs(paragraphs), link };
 }

@@ -288,6 +288,16 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0073_post_stats.sql
+
+- Change: new table `post_stats` (channel, platform post id, UTC day,
+  impressions, clicks), written once a day by the Facebook insights sync.
+  Nothing is seeded or backfilled.
+- Risk: none for sends or reads. The sync is best effort and runs behind a
+  daily gate; an older Worker never touches the table.
+- Rollback: roll the Worker back first, then `DROP TABLE IF EXISTS post_stats;`.
+  Only the per-post reach history is lost.
+
 ## 0072_clerk_sync_attempts.sql
 
 - Change: new table `clerk_sync_attempts` (`user_id` primary key, `last_at`

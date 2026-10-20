@@ -15,7 +15,12 @@ import {
 import { TELEGRAM_IV_LIMITS } from "../telegram-iv.js";
 import { stripTrailingAttribution } from "../translation-terms.js";
 import type { Env } from "../types.js";
-import { digestCampaign, STORY_CAMPAIGN, withUtm } from "../utm.js";
+import {
+  digestCampaign,
+  postContent,
+  STORY_CAMPAIGN,
+  withUtm,
+} from "../utm.js";
 import { escapeHtml } from "./alert.js";
 import { digestPage } from "./day-card.js";
 import { fitClauses, fitText, fitWords } from "./fit-text.js";
@@ -178,7 +183,7 @@ export function withTelegramUtm(
   url: string,
   lang: Lang,
   campaign: string,
-  content: TelegramSlot
+  content: TelegramSlot | `${TelegramSlot}-${string}`
 ): string {
   return withUtm(withSiteLang(url, lang), {
     source: "telegram",
@@ -562,7 +567,7 @@ export function buildAlbumCaption(story: StoryPayload): string {
       storyUrl(story, story.lang),
       story.lang,
       STORY_CAMPAIGN,
-      "link"
+      postContent("link", story.id)
     )
   );
   const label = escapeHtml(albumReadLabel(story.lang));
@@ -632,7 +637,7 @@ export function buildStoryReplyMarkup(story: StoryPayload): object {
             storyUrl(story, story.lang),
             story.lang,
             STORY_CAMPAIGN,
-            "button"
+            postContent("button", story.id)
           ),
         },
       ],

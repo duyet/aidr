@@ -9,6 +9,7 @@ import {
   persistCreatedIngestRun,
   shouldSkipIngest,
 } from "./ingest-schedule.js";
+import { syncFacebookPostStats } from "./notify/facebook-insights.js";
 import type { Env } from "./types.js";
 import { type D1Runner, NOT_DRY_RUN_SQL } from "./workflow-run.js";
 
@@ -34,6 +35,11 @@ export class NewsIngestScheduler extends DurableObject<Env> {
       await maybeSyncGa4Insights(this.env);
     } catch (error) {
       console.error("ga4 audience sync tick failed:", error);
+    }
+    try {
+      await syncFacebookPostStats(this.env);
+    } catch (error) {
+      console.error("facebook post stats tick failed:", error);
     }
   }
 
