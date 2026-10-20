@@ -157,12 +157,19 @@ unless `EMAIL_REPLY_TO` overrides it. Acks use the same address.
 
 ## Extra addresses
 
-`/contribute` lists the addresses Clerk has already verified for the signed-in
-account (`ContributorEmails`, `fetchContributorEmails`). There is no second
-confirmation mail. The email Worker accepts a non-primary address only when
-`clerk_verified_emails` names exactly one live account. Adding another address
-is done in the Clerk account; the next webhook or `POST /api/admin/clerk-sync`
-rewrites that table.
+`/contribute` lists the addresses Clerk has verified for the signed-in
+account (`ContributorEmails`, `fetchContributorEmails`) and has a form to add
+more. Adding goes through Clerk, not a mail of ours: the form calls
+`user.createEmailAddress`, then `prepareVerification` and
+`attemptVerification` with Clerk's email code. Once Clerk reports the address
+verified, `syncContributorEmails` re-reads the account from Clerk
+(`syncClerkUserById`, `GET /v1/users/{id}`) and rewrites `clerk_users` and
+`clerk_verified_emails`, so the email Worker accepts the address without
+waiting for the webhook. If Clerk cannot be reached the form says so, and the
+webhook or `POST /api/admin/clerk-sync` rewrites the table later. The email
+Worker accepts a non-primary address only when `clerk_verified_emails` names
+exactly one live account. There is still no second confirmation mail and no
+`contributor_emails` use (that table from 0040 stays empty).
 
 ## Prompt injection
 

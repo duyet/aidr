@@ -373,6 +373,48 @@ export function parseClerkUserList(
   return rows;
 }
 
+export type ClerkUserSyncStatus = "ok" | "unconfigured" | "not_found" | "error";
+
+/**
+ * Re-reads one account from Clerk and rewrites its mirrored row and verified
+ * addresses, so an address a signed-in user just verified is accepted by the
+ * email Worker without waiting for the webhook.
+ */
+export async function syncClerkUserById(
+  env: ClerkBackfillEnv,
+  userId: string,
+  fetcher: typeof fetch = fetch
+): Promise<ClerkUserSyncStatus> {
+  const secret = env.CLERK_SECRET_KEY?.trim();
+  if (!secret) return "unconfigured";
+  if (!env.DB || !isClerkUserId(userId)) return "error";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), CLERK_TIMEOUT_MS);
+  try {
+    const response = await fetcher(
+      `${CLERK_USERS_API}/${encodeURIComponent(userId)}`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${secret}`,
+        },
+        signal: controller.signal,
+      }
+    );
+    if (response.status === 404) return "not_found";
+    if (!response.ok) return "error";
+    const payload: unknown = await response.json().catch(() => null);
+    const [row] = parseClerkUserList([payload], toEpochSeconds(Date.now()));
+    if (!row) return "error";
+    await upsertClerkUser(env.DB, row);
+    return "ok";
+  } catch {
+    return "error";
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 /**
  * One-shot backfill so the signup total is real before the first webhook.
  * Admin-gated at the route; read-only against Clerk, write-only into D1.
