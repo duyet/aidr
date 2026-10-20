@@ -98,29 +98,37 @@ export async function adminActor(
   return null;
 }
 
+export type BearerKind = "admin" | "reader" | "invalid";
+
 /**
- * True when the request's bearer token resolves to an admin via either
- * mechanism: the static `NEWS_ADMIN_TOKEN`, or a valid Clerk session JWT
- * belonging to an admin user (see `worker/admin/clerk.ts`).
+ * `admin`: the static `NEWS_ADMIN_TOKEN` or a valid Clerk JWT of an admin
+ * user (see `worker/admin/clerk.ts`). `reader`: a valid Clerk JWT of a
+ * non-admin. `invalid`: absent, or neither of the above.
  */
-export async function isRequestAdmin(
+export async function classifyBearer(
   request: Request,
   env: Env
-): Promise<boolean> {
+): Promise<BearerKind> {
   const token = getBearerToken(request);
-  if (!token) return false;
+  if (!token) return "invalid";
 
   if (
     env.NEWS_ADMIN_TOKEN &&
     timingSafeEqualStrings(token, env.NEWS_ADMIN_TOKEN)
   ) {
-    return true;
+    return "admin";
   }
 
   const payload = await verifyClerkToken(token, env);
-  if (payload && isClerkAdmin(payload, env)) return true;
+  if (!payload) return "invalid";
+  return isClerkAdmin(payload, env) ? "admin" : "reader";
+}
 
-  return false;
+export async function isRequestAdmin(
+  request: Request,
+  env: Env
+): Promise<boolean> {
+  return (await classifyBearer(request, env)) === "admin";
 }
 
 /**
@@ -136,7 +144,8 @@ export async function checkAdminAuth(
 ): Promise<Response | null> {
   const rateLimited = await checkAdminAuthRateLimit(request, env);
   if (rateLimited) return rateLimited;
-  if (await isRequestAdmin(request, env)) return null;
-  await recordAdminAuthFailure(request, env);
+  const kind = await classifyBearer(request, env);
+  if (kind === "admin") return null;
+  if (kind === "invalid") await recordAdminAuthFailure(request, env);
   return Response.json({ error: "unauthorized" }, { status: 401 });
 }

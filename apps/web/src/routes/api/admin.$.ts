@@ -3,7 +3,7 @@ import {
   adminActor,
   checkAdminAuth,
   checkAdminAuthRateLimit,
-  isRequestAdmin,
+  classifyBearer,
   recordAdminAuthFailure,
 } from "../../../worker/admin/auth.js";
 import {
@@ -139,11 +139,11 @@ async function handle(
   if (method === "GET" && segments.length === 1 && segments[0] === "me") {
     const rateLimited = await checkAdminAuthRateLimit(request, env);
     if (rateLimited) return rateLimited;
-    const admin = await isRequestAdmin(request, env);
-    // A wrong bearer here is a failed guess like any other admin route;
-    // without counting it, `/me` is an unthrottled token oracle.
-    if (!admin) await recordAdminAuthFailure(request, env);
-    return Response.json({ admin });
+    const kind = await classifyBearer(request, env);
+    // A bearer that is no valid session is a failed guess like any other
+    // admin route; without counting it, `/me` is an unthrottled token oracle.
+    if (kind === "invalid") await recordAdminAuthFailure(request, env);
+    return Response.json({ admin: kind === "admin" });
   }
 
   const authResponse = await checkAdminAuth(request, env);
