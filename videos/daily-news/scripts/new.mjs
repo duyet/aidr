@@ -108,7 +108,7 @@ const range = weekly ? formatRange(edition.start_date, edition.end_date) : null;
 const order = hostOrder(Object.keys(loadCast(config).hosts), date);
 let turn = 0;
 const host = () => order[turn++ % order.length];
-const introHosts = [host(), host()];
+const introHosts = [host()];
 const money = (t) => t.match(/\$[\d.,]+\s?[BMKT]?/)?.[0];
 const thumb = edition.stories.find((s) => money(s.text)) ?? edition.stories[0];
 
@@ -156,16 +156,11 @@ const draft = {
     voice: [
       {
         anchor: introHosts[0],
-        text: weekly
-          ? `This is AI DR Weekly, issue ${edition.issue}, your week in AI for ${range}.`
-          : `This is AI DR, your AI news for ${DOW}, ${MON} ${d.getUTCDate()}.`,
-      },
-      {
-        anchor: introHosts[1],
+        // Opens straight on the news: no greeting, no show name, no date.
         // Weekly: the Worker's English intro is the starting point; rewrite it for speech.
         text: weekly
-          ? edition.intro_en || "TODO a fresh line about this week"
-          : "TODO a fresh line about today",
+          ? edition.intro_en || "TODO a line that opens on this week's top news"
+          : "TODO a line that opens on today's top news",
       },
     ],
     title: `${["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"][stories.length] ?? stories.length} stories that ${weekly ? "shaped the week" : "matter today"}`,

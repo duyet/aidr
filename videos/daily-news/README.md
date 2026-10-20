@@ -127,7 +127,7 @@ Everything that changes day to day. Facts come only from `edition.json` (the bra
   },
   "thumb": { "story": 4, "hook": "$60B to fund Anthropic's AI chips" },   // cover still
   "post": { "hook": "...", "hashtags": ["AI", "..."], "tiktok": "...", "facebook": "...", "youtubeTitle": "...", "shortsTitle": "..." },
-  "intro": { "voice": [{ "anchor": "ivanna", "text": "This is AI DR, ..." }, { "anchor": "allison", "text": "..." }], "title": "Six stories that matter today",
+  "intro": { "voice": [{ "anchor": "ivanna", "text": "Anthropic lands $60B for chips, and Cloudflare ships Clef." }], "title": "Six stories that matter today",
              "focus": [{ "rank": 1, "word": "twenty" }] },   // the intro lifts that story (others dim) on the spoken word that names it
   "stories": [{
     "rank": 1,

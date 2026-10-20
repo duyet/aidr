@@ -116,6 +116,10 @@ const voiceWords = (v) =>
  *  (timeline.total ÷ estimate with gaps): 2026-10-02 1.04, 10-03 1.02, 10-10 1.09; 1.1 keeps a margin. */
 export const VOICED_FACTOR = 1.1;
 
+/** The intro jumps into the news: no greeting, no "This is AI DR", no date line. */
+const GREETING =
+  /^\s*(?:this is|welcome|hello|hi\b|good (?:morning|evening|afternoon)|here(?:'s| is) ai)/i;
+
 /** Estimated length (s): build.mjs's per-segment lead/tail, reading speed, the breath between parts
  *  (config.voice.gap), scaled by VOICED_FACTOR. */
 export function estimateSeconds(script, config) {
@@ -168,9 +172,13 @@ export function validateScript(script, edition) {
       if (!known.has(n))
         p.push(`story ${s.rank}: number ${n} is not in the bullet`);
   }
-  const line2 = script.intro.voice[1]?.text ?? "";
+  const introLine = script.intro.voice.at(-1)?.text ?? "";
+  if (GREETING.test(introLine))
+    p.push(
+      `intro line opens with a greeting or the show name: "${introLine.slice(0, 40)}"`
+    );
   for (const f of script.intro.focus ?? [])
-    if (!spokenHas(line2, f.word))
+    if (!spokenHas(introLine, f.word))
       p.push(`intro.focus "${f.word}" is not in the intro line`);
   // The intro line and the post copy (the Reel description) may only use numbers from the stories in the
   // video, plus the date ("Oct 10, 2026").
@@ -183,7 +191,7 @@ export function validateScript(script, edition) {
   );
   const post = script.post ?? {};
   for (const [label, text] of [
-    ["intro", line2],
+    ["intro", introLine],
     ...["hook", "facebook", "tiktok", "youtubeTitle", "shortsTitle"].map(
       (k) => [`post.${k}`, post[k]]
     ),
@@ -288,40 +296,6 @@ export function templateStory(s) {
   };
 }
 
-const ORD = [
-  "zeroth",
-  "first",
-  "second",
-  "third",
-  "fourth",
-  "fifth",
-  "sixth",
-  "seventh",
-  "eighth",
-  "ninth",
-  "tenth",
-  "eleventh",
-  "twelfth",
-  "thirteenth",
-  "fourteenth",
-  "fifteenth",
-  "sixteenth",
-  "seventeenth",
-  "eighteenth",
-  "nineteenth",
-  "twentieth",
-  "twenty-first",
-  "twenty-second",
-  "twenty-third",
-  "twenty-fourth",
-  "twenty-fifth",
-  "twenty-sixth",
-  "twenty-seventh",
-  "twenty-eighth",
-  "twenty-ninth",
-  "thirtieth",
-  "thirty-first",
-];
 const COUNT = [
   "Zero",
   "One",
@@ -357,7 +331,7 @@ export function assemble({
   const order = hostOrder(hostKeys, date);
   let turn = 0;
   const host = () => order[turn++ % order.length];
-  const intro = [host(), host()];
+  const intro = [host()];
   const stories = edition.stories.map((s) => {
     const c = copy[s.rank];
     const voice = c.voice.map((text) => ({ anchor: host(), text }));
@@ -392,13 +366,7 @@ export function assemble({
     thumb: { story: thumbRank, hook: copy[thumbRank].kicker },
     post,
     intro: {
-      voice: [
-        {
-          anchor: intro[0],
-          text: `This is AI DR, your AI news for ${DOW}, ${MON} ${ORD[d.getUTCDate()]}.`,
-        },
-        { anchor: intro[1], text: introLine },
-      ],
+      voice: [{ anchor: intro[0], text: introLine }],
       title: `${COUNT[stories.length] ?? stories.length} stories that matter today`,
       ...(focus?.length ? { focus } : {}),
     },
@@ -479,7 +447,7 @@ export function promptFor(edition) {
     },
     {
       role: "user",
-      content: `Stories:\n${JSON.stringify(stories, null, 1)}\n\nReturn JSON:\n{\n "stories": [{ "rank": <rank>, "kicker": "2-5 words, who or what", "headline": "5-9 words, the news itself, with *2-4 words* in stars", "stat": "the one number or state that sums the story, e.g. $60B or Public beta", "statLabel": "3-8 words explaining the stat", "statWord": "the first spoken word of the stat as it appears in voice, e.g. 60", "voice": ["first sentence, opens on the subject and verb", "optional second sentence"] }],\n "introLine": "one fresh line about today naming one or two stories",\n "focus": [{ "rank": <rank>, "word": "a word from introLine that names that story" }],\n "thumbRank": <rank of the most surprising story>,\n "post": { "hook": "one sentence", "facebook": "1-2 sentences naming the top stories", "tiktok": "<=150 chars, ends with a question", "youtubeTitle": "<=100 chars: lead story, & more, the date", "shortsTitle": "<=80 chars", "hashtags": ["AI", "AINews", "...companies, 5-8 total, no #"] }\n}\nEvery story's voice is 15-22 words in total. Date: ${edition.date}.`,
+      content: `Stories:\n${JSON.stringify(stories, null, 1)}\n\nReturn JSON:\n{\n "stories": [{ "rank": <rank>, "kicker": "2-5 words, who or what", "headline": "5-9 words, the news itself, with *2-4 words* in stars", "stat": "the one number or state that sums the story, e.g. $60B or Public beta", "statLabel": "3-8 words explaining the stat", "statWord": "the first spoken word of the stat as it appears in voice, e.g. 60", "voice": ["first sentence, opens on the subject and verb", "optional second sentence"] }],\n "introLine": "one line that opens straight on today's top news, naming one or two stories; no greeting, no show name, no date",\n "focus": [{ "rank": <rank>, "word": "a word from introLine that names that story" }],\n "thumbRank": <rank of the most surprising story>,\n "post": { "hook": "one sentence", "facebook": "1-2 sentences naming the top stories", "tiktok": "<=150 chars, ends with a question", "youtubeTitle": "<=100 chars: lead story, & more, the date", "shortsTitle": "<=80 chars", "hashtags": ["AI", "AINews", "...companies, 5-8 total, no #"] }\n}\nEvery story's voice is 15-22 words in total. Date: ${edition.date}.`,
     },
   ];
 }
