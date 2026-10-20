@@ -288,6 +288,18 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0074_submission_review_attempts.sql
+
+- Change: adds `submissions.review_attempts INTEGER NOT NULL DEFAULT 0`, the
+  count of failed review runs. A row at the cap (5) is no longer selected by
+  the review step.
+- Order: the migration must land before the new Worker. Without the column
+  the review select and the failure update both error. An older Worker
+  ignores the column.
+- Rollback: roll the Worker back first, then
+  `ALTER TABLE submissions DROP COLUMN review_attempts;`. Rows that had hit
+  the cap are picked up by review again.
+
 ## 0073_post_stats.sql
 
 - Change: new table `post_stats` (channel, platform post id, UTC day,

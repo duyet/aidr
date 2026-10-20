@@ -206,7 +206,7 @@ describe("submitSuggestion", () => {
 
 /** Routes `.first()` per query so item-exists / pending-count /
  * daily-count / ip-daily-count checks can each return a distinct value. */
-function makeRoutedDb(route: (sql: string) => unknown) {
+function makeRoutedDb(route: (sql: string) => unknown, insertChanges = 1) {
   const calls: { sql: string; args: unknown[] }[] = [];
   const db = {
     prepare(sql: string) {
@@ -215,7 +215,10 @@ function makeRoutedDb(route: (sql: string) => unknown) {
           calls.push({ sql, args });
           return {
             first: async () => route(sql),
-            run: async () => ({ success: true }),
+            run: async () => ({
+              success: true,
+              meta: { changes: insertChanges },
+            }),
           };
         },
       };
@@ -232,7 +235,7 @@ describe("submitSuggestion — rate limiting", () => {
         return { count: 1 }; // well under pending cap
       if (sql.includes("user_id = ? AND created_at")) return { count: 10 }; // at daily cap
       return null;
-    });
+    }, 0);
 
     const result = await submitSuggestion(db, {
       itemId: "item1",
@@ -249,7 +252,7 @@ describe("submitSuggestion — rate limiting", () => {
       if (sql.includes("FROM items")) return { id: "item1" };
       if (sql.includes("ip_hash = ? AND created_at")) return { count: 20 }; // at ip cap
       return null;
-    });
+    }, 0);
 
     const result = await submitSuggestion(db, {
       itemId: "item1",

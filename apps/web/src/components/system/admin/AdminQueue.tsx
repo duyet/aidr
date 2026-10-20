@@ -1,3 +1,4 @@
+import { MAX_REVIEW_ATTEMPTS } from "../../../lib/submission-review";
 import { AdminSection } from "./AdminSection";
 import {
   adminBtnClass,
@@ -133,6 +134,11 @@ export function AdminQueue({
                     <tr key={row.id} className="border-b border-border/50">
                       <td className="py-1 pr-2 max-w-xs truncate">
                         {row.title}
+                        {row.review_attempts >= MAX_REVIEW_ATTEMPTS && (
+                          <span className="ml-2 rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">
+                            review failed {row.review_attempts} times
+                          </span>
+                        )}
                       </td>
                       <td className="py-1 pr-2 max-w-xs truncate">
                         <a
