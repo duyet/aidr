@@ -1113,7 +1113,9 @@ match for its non-official canonical (see 5). It then takes the story over.
 
 One run carries at most `MAX_NEW_ROWS_PER_RUN` (40) rows, so `write-d1`
 stays under `WRITE_D1_MAX_STATEMENTS` (800) in its single batch. Pending
-`status = 'new'` rows (submissions) keep their place. The rest of a backlog
+`status = 'new'` rows (submissions) keep their place. Fetched rows are taken
+one source at a time, newest first, so one flooded source cannot starve the
+rest. The run line reports the deferred count. The rest of a backlog
 is still missing from `items`, so later runs pick it up while it is inside
 the 26h fetch window.
 

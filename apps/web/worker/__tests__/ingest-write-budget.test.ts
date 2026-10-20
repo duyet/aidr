@@ -88,6 +88,33 @@ describe("ingest write budget", () => {
     expect(rows.map((row) => row.id)).toContain("submitted");
   });
 
+  it("does not let one flooded source starve the others", async () => {
+    const { db } = fakeDb();
+    const quiet = { ...source, id: "quiet" };
+    const rows = await dedupeNewRows(
+      ctxFor(db),
+      [
+        { source, items: fetchedItems(300) },
+        {
+          source: quiet,
+          items: [
+            {
+              url: "https://quiet.example.com/launch",
+              title: "Quiet launch",
+              publishedAt: nowMs / 1000 - 3600,
+              points: 0,
+              comments: 0,
+            },
+          ],
+        },
+      ],
+      [source, quiet],
+      301
+    );
+    expect(rows.length).toBe(MAX_NEW_ROWS_PER_RUN);
+    expect(rows.map((row) => row.source.id)).toContain("quiet");
+  });
+
   it("writes a full run of worst-case rows in one batch under the budget", async () => {
     const { db, batches } = fakeDb();
     const sources = Array.from({ length: 12 }, (_, i) => ({
