@@ -14,7 +14,14 @@ export interface QaStats {
   adjusted: number;
   tokens: number;
   error?: string;
+  reason?: string;
   paused?: boolean;
+}
+
+function qaFailureReason(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/\bD1_|SQLITE_/.test(message)) return "database error";
+  return error instanceof Error ? error.name : "non-Error throw";
 }
 
 export function qaStepSummary(stats: QaStats): string {
@@ -34,7 +41,13 @@ export async function qaTranslations(ctx: IngestContext): Promise<QaStats> {
     env,
     runId,
     "qa-translations",
-    { rated: 0, adjusted: 0, tokens: 0, error: "" } as QaStats,
+    {
+      rated: 0,
+      adjusted: 0,
+      tokens: 0,
+      error: "review failed",
+      reason: "workflow step ended",
+    } as QaStats,
     async (): Promise<QaStats> => {
       try {
         return await ratePendingTranslations(env);
@@ -47,13 +60,20 @@ export async function qaTranslations(ctx: IngestContext): Promise<QaStats> {
             error: "schema missing; apply migration 0023",
           };
         }
-        console.error("qa-translations step failed");
-        return { rated: 0, adjusted: 0, tokens: 0, error: "review failed" };
+        const reason = qaFailureReason(error);
+        console.error(`qa-translations step failed: ${reason}`);
+        return {
+          rated: 0,
+          adjusted: 0,
+          tokens: 0,
+          error: "review failed",
+          reason,
+        };
       }
     },
     { config: LLM_STEP }
   );
-  recordStep(steps, "qa-translations", qaStepSummary(stats));
+  recordStep(steps, "qa-translations", qaStepSummary(stats), stats.reason);
   return stats;
 }
 
