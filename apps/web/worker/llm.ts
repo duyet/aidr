@@ -419,7 +419,6 @@ interface StreamEvent {
   metadata?: { usage?: Usage };
   /** `model` is the catalog model a preset/router resolved to. */
   anyrouter_metadata?: { usage?: Usage; model?: string; requestId?: string };
-  /** An upstream failure after the 200 headers went out. */
   error?: { code?: unknown; message?: unknown };
 }
 

@@ -352,8 +352,6 @@ interface ModelStatRow {
   n: number;
 }
 
-/** Folds (model, ok, status, code) counts into per-model stats, busiest
- *  first. A failure with no HTTP status is keyed by its error code. */
 function foldModelStats(rows: ModelStatRow[]): ModelStat[] {
   const byModel = new Map<string, ModelStat>();
   for (const row of rows) {

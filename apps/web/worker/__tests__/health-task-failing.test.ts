@@ -174,7 +174,6 @@ describe("whole-chain task failure alert through the health check", () => {
     resetOwnerDmRejections();
   });
 
-  /** Rows for `GROUP BY task, model, ok, error_status, error_code`. */
   type CallRow = {
     task: string;
     model: string;
@@ -240,7 +239,6 @@ describe("whole-chain task failure alert through the health check", () => {
     expect(dms[0]).not.toContain("x/a");
   });
 
-  // #670 (AIDR-17): the alert named four dead hops but not why each failed.
   it("names each hop's failure cause in the alert detail", async () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     const { env } = setup([

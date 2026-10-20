@@ -230,9 +230,6 @@ describe("llm_calls failure snippets", () => {
       );
     });
 
-    // #933: AnyRouter forwards an upstream failure after the 200 headers as
-    // an SSE `error` frame. Read as an empty stream, Sonnet's spent usage
-    // limit was logged as invalid_response with no snippet.
     it("logs a mid-stream error frame as the provider error it carries", async () => {
       const [entry] = await attempts(async () =>
         sseResponse([
