@@ -25,8 +25,10 @@ import type { DayCount, NamedCount } from "./system-queries";
  *   `subscriber_sources`, so they are exact at read time and need no
  *   snapshot of their own.
  *
- * The deploy gate guarantees every migrated table, `ga4_insights` (0028) and
- * `subscriber_sources` (0015) included, so neither is probed. The one probe
+ * The deploy gate requires every migration from 0023 up, so `ga4_insights`
+ * (0028) is not probed. `subscriber_sources` (0015) sits below the gate's
+ * floor: migrations apply in order, so a ledger that holds 0023 holds 0015,
+ * and production does. It is not probed either. The one probe
  * left is `subscribers.digest_size`: no migration creates it (0019 is a
  * no-op), only `ensureMailSchema` does, and a D1 `batch()` aborts wholesale
  * on one failing statement.
