@@ -17,7 +17,6 @@ export type UrlsConfig = {
   };
 };
 
-// Track whether a ClerkProvider already exists in the page
 let clerkProviderMounted = false;
 
 type ClerkLike = {

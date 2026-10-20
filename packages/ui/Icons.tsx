@@ -2,7 +2,6 @@ import type * as React from "react";
 
 type IconProps = React.HTMLAttributes<SVGElement>;
 
-/** Empty avatar icon for sign-in button */
 export const UserEmpty = (props: IconProps) => (
   <svg
     viewBox="0 0 24 24"
