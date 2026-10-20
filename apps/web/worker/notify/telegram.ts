@@ -305,8 +305,8 @@ export function digestMark(bullet: DigestBullet): string {
 
 function digestHeadline(digest: Pick<DailyDigest, "date" | "lang">): string {
   return digest.lang === "en"
-    ? `🗞 AI news today — ${digest.date}`
-    : `🗞 AI hôm nay có gì — ${digest.date}`;
+    ? `AI news today — ${digest.date}`
+    : `AI hôm nay có gì — ${digest.date}`;
 }
 
 /** Header + linked story lines. Telegram counts the 4096 limit on visible
@@ -504,7 +504,7 @@ export function storySummaryBudget(
   story: StoryPayload,
   reservedVisible = 0
 ): number {
-  const title = `<b>🔥 ${escapeHtml(captionTitle(story.title).text)}</b>`;
+  const title = `<b>${escapeHtml(captionTitle(story.title).text)}</b>`;
   const meta = storyMetaLine(story);
   const used =
     title.length + (meta ? 2 + meta.length : 0) + 2 + reservedVisible;
@@ -528,7 +528,7 @@ export function buildStoryCaption(
   reservedVisible = 0
 ): string {
   const title = captionTitle(story.title);
-  const parts = [`<b>🔥 ${escapeHtml(title.text)}</b>`];
+  const parts = [`<b>${escapeHtml(title.text)}</b>`];
   const meta = storyMetaLine(story);
   const summaryCap = storySummaryBudget(story, reservedVisible);
   const text = story.caption_summary || story.summary || "";

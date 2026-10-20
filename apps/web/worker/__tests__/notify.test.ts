@@ -255,7 +255,7 @@ describe("digest message", () => {
 
   it("keeps the header plain text; the button opens the day page", () => {
     expect(buildDigestMessage(digest).split("\n")[0]).toBe(
-      "<b>🗞 AI hôm nay có gì — 2026-08-17</b>"
+      "<b>AI hôm nay có gì — 2026-08-17</b>"
     );
   });
 
@@ -293,7 +293,7 @@ describe("digest message", () => {
 describe("trending story message", () => {
   it("escapes HTML and includes title, summary and meta", () => {
     const caption = buildStoryCaption(story());
-    expect(caption).toContain("🔥 GPT-6 &lt;beats&gt; humans &amp; robots");
+    expect(caption).toContain("<b>GPT-6 &lt;beats&gt; humans &amp; robots</b>");
     expect(caption).toContain("A summary.");
     expect(caption).toContain("#llm");
     expect(caption).toContain("▲ 120");

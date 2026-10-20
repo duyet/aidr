@@ -89,8 +89,7 @@ export function TelegramPreview({
               an unnamed `article` would add noise to the landmark list. */}
         <div className="max-w-full rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3 py-2.5 shadow-sm">
           <p className="text-[13px] font-semibold leading-snug text-foreground">
-            <span aria-hidden>🗞</span> {t("AI news today", "AI hôm nay có gì")}{" "}
-            — {copy.date}
+            {t("AI news today", "AI hôm nay có gì")} — {copy.date}
           </p>
           <ul className="mt-1.5 space-y-1.5">
             {copy.bullets.map((b) => (
@@ -116,7 +115,7 @@ export function TelegramPreview({
         {/* Trending post: bold title, summary, meta line, two buttons. */}
         <div className="max-w-full rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3 py-2.5 shadow-sm">
           <p className="text-[13px] font-semibold leading-snug text-foreground">
-            <span aria-hidden>🔥</span> {copy.story.title}
+            {copy.story.title}
           </p>
           <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/90">
             {copy.story.summary}
