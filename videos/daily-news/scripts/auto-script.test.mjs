@@ -42,6 +42,20 @@ test("the template script is valid, fact-checked, and has no draft markers publi
   );
 });
 
+test("a stat that repeats the category label or the kicker is rejected", () => {
+  const s = templateScript(edition, hosts);
+  const story = s.stories[0];
+  const src = edition.stories.find((x) => x.rank === story.rank);
+  for (const stat of [src.category, story.kicker.toUpperCase()]) {
+    s.stories[0] = { ...story, stat };
+    assert.match(
+      validateScript(s, edition).join(),
+      /repeats the kicker or category/,
+      stat
+    );
+  }
+});
+
 test("the intro is one line that opens on the news: no greeting, no show name, no date line", () => {
   const s = templateScript(edition, hosts);
   assert.equal(s.intro.voice.length, 1);

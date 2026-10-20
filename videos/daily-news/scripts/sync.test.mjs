@@ -1,4 +1,5 @@
-// Every effect peaks within one frame of a visual hit. This builds an edition per variant, runs the built page's
+// Every effect peaks within one frame of a visual hit. The mix plays each file so its SFX `peak` lands on the cue,
+// so the first tests check the peak against the file's own audio. The rest build an edition per variant, runs the built page's
 // timeline (template/motion.js and the day's looks) against a recording GSAP, and checks each cue cuesFor returns
 // for that page against the recorded tweens. The same harness checks which story images the page shows whole.
 import assert from "node:assert/strict";
@@ -7,8 +8,9 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 import vm from "node:vm";
 import { AXES, entry } from "./looks/index.mjs";
-import { cuesFor } from "./looks/sound.mjs";
+import { cuesFor, POOLS, SFX } from "./looks/sound.mjs";
 import { ROOT, runBuild, scratchRoot } from "./scratch-root.mjs";
+import { decode, loudness, PEAK_DB } from "./sound-measure.mjs";
 
 const FRAME = 1 / 30;
 const DATE = "2026-10-13";
@@ -142,6 +144,45 @@ const cuesOf = (D) =>
       focus: D.intro.focus,
     })
   );
+
+// A peak placed on the cue is only the hit if nothing in the file outside one frame of it is louder: notification's
+// second note, 5 frames after its first, or a swell's crest 5 frames after a peak taken on its rise, sounds late.
+function louderAway(file, peak) {
+  const frames = loudness(decode(file, 48000), FRAME, 0.005);
+  const near = frames.filter((f) => Math.abs(f.t - peak) <= FRAME + 1e-6);
+  const level = Math.max(...near.map((f) => f.db));
+  return frames.filter(
+    (f) => Math.abs(f.t - peak) > FRAME + 1e-6 && f.db > level + PEAK_DB
+  );
+}
+
+const config = read(join(ROOT, "config.json"));
+const sfxDir = join(ROOT, config.sfx.dir);
+const manifest = read(join(sfxDir, "manifest.json"));
+
+test("every pool file is loudest within one frame of its SFX peak", () => {
+  const late = [];
+  for (const name of new Set(Object.values(POOLS).flat())) {
+    const away = louderAway(join(sfxDir, manifest[name].file), SFX[name].peak);
+    if (away.length)
+      late.push(
+        `${name}: louder at ${away[0].t.toFixed(3)} s than at ${SFX[name].peak} s`
+      );
+  }
+  assert.deepEqual(late, []);
+});
+
+test("the peak check catches a peak taken on a swell's rise and a quieter first note", () => {
+  const file = (n) => join(sfxDir, manifest[n].file);
+  assert.ok(
+    louderAway(file("whoosh-cinematic"), 2.35).length,
+    "the old swell peak"
+  );
+  assert.ok(
+    louderAway(file("notification"), 0.095).length,
+    "notification's first note"
+  );
+});
 
 test("every effect peaks within one frame of a visual hit, in every variant", async () => {
   const intros = AXES.intro.filter((e) => e.auto);

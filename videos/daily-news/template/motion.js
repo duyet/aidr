@@ -299,7 +299,8 @@
     // ---------- stingers ----------
     D.wipes.forEach((W, i) => L.transition(tl, $("#wipe-" + i), W, H));
 
-    // ---------- captions: active word gets the marker ----------
+    // ---------- captions: the active word turns ink ----------
+    // Yellow belongs to the headline marker alone: a yellow caption word beside it made two focal points.
     D.caps.forEach((C, ci) => {
       const line = $("#cap-" + ci + " .line");
       tl.fromTo(
@@ -310,9 +311,9 @@
       );
       $$(".w", line).forEach((w, k) => {
         const W = C.words[k];
-        tl.set(w, { backgroundColor: "#f5c518" }, W.s);
+        tl.set(w, { color: "#0a0a0a" }, W.s);
         if (k < C.words.length - 1)
-          tl.set(w, { backgroundColor: "#f7f7f5" }, C.words[k + 1].s);
+          tl.set(w, { color: "#7a7a7a" }, C.words[k + 1].s);
       });
     });
 
