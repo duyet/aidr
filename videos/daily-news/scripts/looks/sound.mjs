@@ -79,8 +79,9 @@ export function gainFor(cue, name) {
 }
 
 /**
- * Every effect of a cut as [cue, at, gain], `at` being when the effect peaks. Each `at` is a time the page animates
- * on too (W.hit, S.rankAt, S.statAt, O.hit, the intro's own cues), so an effect cannot drift off its visual hit.
+ * Every effect of a cut as [cue, at, gain], `at` being when the effect peaks. Each `at` is a hit key: the frame
+ * its element is first legible (S.rankAt, S.statAt and O.hit end their fade, choreography.mjs FADE), the wipe's
+ * mid-cover (W.hit), or the intro's own cues.
  * `open` is the one cue with no visual: it opens the bed over frame 0, the still thumbnail.
  */
 export function cuesFor({ wipes, stories, outro }, introCues) {

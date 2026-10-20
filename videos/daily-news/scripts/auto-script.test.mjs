@@ -56,6 +56,45 @@ test("a stat that repeats the category label or the kicker is rejected", () => {
   }
 });
 
+test("a headline marks exactly one span, the screen's one focal point", () => {
+  const s = templateScript(edition, hosts);
+  const story = s.stories[0];
+  for (const [headline, n] of [
+    ["OpenAI *softens* on *chip controls*", 2],
+    ["OpenAI softens on chip controls", 0],
+  ]) {
+    s.stories[0] = { ...story, headline };
+    assert.match(
+      validateScript(s, edition).join(),
+      new RegExp(`headline marks ${n} spans, not one`),
+      headline
+    );
+  }
+});
+
+test("a headline that only restates the first voice sentence is rejected; one that adds to it passes", () => {
+  const s = templateScript(edition, hosts);
+  const story = s.stories[0];
+  const voice = [
+    {
+      anchor: story.voice[0].anchor,
+      text: "DeepSeek has open-sourced DeepInfer, its inference engine. It serves DeepSeek models at scale.",
+    },
+  ];
+  const problems = (headline) => {
+    s.stories[0] = { ...story, headline, voice, statWord: null };
+    return validateScript(s, edition).join();
+  };
+  assert.match(
+    problems("DeepSeek *open-sources DeepInfer*, its serving engine"),
+    /headline repeats the first voice sentence/
+  );
+  assert.doesNotMatch(
+    problems("The engine behind *DeepSeek's own chat*"),
+    /headline repeats/
+  );
+});
+
 test("the intro is one line that opens on the news: no greeting, no show name, no date line", () => {
   const s = templateScript(edition, hosts);
   assert.equal(s.intro.voice.length, 1);

@@ -418,8 +418,7 @@ body {
   background-repeat: no-repeat;
   background-position: 0 88%;
   background-size: 0% 38%;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
+  white-space: nowrap;
 }
 .statrow {
   margin-top: 34px;
