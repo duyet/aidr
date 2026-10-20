@@ -842,6 +842,14 @@ ORDER BY week DESC, hits DESC
   missing Telegram post there is posted by hand:
   `node scripts/publish.mjs <date> --lang en --steps telegram --prod`
   (`--lang visub` for the Vietnamese channel), which records it.
+  Each missing target also counts its streak from the same tables (and the
+  Page's Reel captions), six days back: `YouTube Short: not on the day page
+  (missing 3 days in a row)`, `7+` when the whole window is empty. A streak
+  of two or more adds the credentials to check (`YOUTUBE_*`,
+  `FACEBOOK_PAGE_*`, `TELEGRAM_*`), because a rerun cannot fix an expired
+  token: 10-16 to 10-20 raised the same alert five evenings, and the 10-20
+  run log shows a revoked YouTube refresh token and a Facebook permission
+  error.
 - `run()` still upserts at start **before** `pruneLlmCalls` / fetch / LLM.
   Do not wrap `open-run` in `safeStep`.
 - Per-model caps in `worker/llm.ts`: score `SCORE_SLICE_MAX_MS` 70s, TL;DR

@@ -48,6 +48,12 @@ interface World {
   posts: DayVideoPostChannel[] | "down";
   reels: { description: string }[] | { status: number };
   runs: Run[] | "down";
+  /** Earlier days' rows, for the missing streak. */
+  prior?: {
+    date: string;
+    dayVideo: NonNullable<World["dayVideo"]> | null;
+    posts: DayVideoPostChannel[];
+  }[];
   /** Prior Worker runs (`workflow_runs` rows), newest first. */
   history?: { started_at: number; stats: string }[];
 }
@@ -70,13 +76,29 @@ const posted: World = {
 /** D1 with the day video row, the recorded posts and the prior runs; every
  *  other query is empty. */
 function env(world: World, extra: Partial<Env> = {}): Env {
-  const query = (sql: string, args: unknown[]) => ({
+  const query = (sql: string) => ({
     all: async () => {
       if (sql.includes("FROM day_video_posts")) {
         if (world.posts === "down") throw new Error("D1_ERROR: no such table");
+        const days = [
+          { date: DATE, posts: world.posts },
+          ...(world.prior ?? []),
+        ];
         return {
-          results:
-            args[0] === DATE ? world.posts.map((channel) => ({ channel })) : [],
+          results: days.flatMap((day) =>
+            day.posts.map((channel) => ({ date: day.date, channel }))
+          ),
+        };
+      }
+      if (sql.includes("FROM day_videos")) {
+        const days = [
+          { date: DATE, dayVideo: world.dayVideo },
+          ...(world.prior ?? []),
+        ];
+        return {
+          results: days.flatMap((day) =>
+            day.dayVideo ? [{ date: day.date, ...day.dayVideo }] : []
+          ),
         };
       }
       return {
@@ -85,18 +107,13 @@ function env(world: World, extra: Partial<Env> = {}): Env {
           : [],
       };
     },
-    first: async () =>
-      sql.includes("FROM day_videos")
-        ? args[0] === DATE
-          ? world.dayVideo
-          : null
-        : { total: 0, failed: 0 },
+    first: async () => ({ total: 0, failed: 0 }),
   });
   return {
     DB: {
       prepare: (sql: string) => ({
-        ...query(sql, []),
-        bind: (...args: unknown[]) => query(sql, args),
+        ...query(sql),
+        bind: () => query(sql),
       }),
     },
     FACEBOOK_PAGE_ID: "123456",
@@ -249,6 +266,13 @@ describe("checkDayVideo", () => {
       ...posted,
       dayVideo: { ...posted.dayVideo!, youtube_id_vi: null },
       posts: ["telegram-en"],
+      prior: [
+        {
+          date: "2026-10-13",
+          dayVideo: posted.dayVideo,
+          posts: ["telegram-en", "telegram-vi"],
+        },
+      ],
     };
     serve(world);
     const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
@@ -425,6 +449,63 @@ describe("checkDayVideo", () => {
     );
   });
 
+  it("counts how many days a target has stayed missing (the 2026-10-14 evening)", async () => {
+    const ytDay = {
+      youtube_id: "55-XynJImRc",
+      short_id: "yABZuABIHNU",
+      youtube_id_vi: null,
+    };
+    const world: World = {
+      dayVideo: null,
+      posts: ["telegram-en", "telegram-vi"],
+      reels: [
+        { description: "x https://aidr.today/date/2026-10-09?utm=1" },
+        { description: "x https://aidr.today/date/2026-10-11?utm=1" },
+      ],
+      runs: [],
+      prior: [
+        { date: "2026-10-11", dayVideo: ytDay, posts: ["telegram-en"] },
+        { date: "2026-10-12", dayVideo: null, posts: ["telegram-en"] },
+        { date: "2026-10-13", dayVideo: null, posts: ["telegram-en"] },
+      ],
+    };
+    serve(world);
+    const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
+    expect(issue.evidence).toContain(
+      "YouTube 16:9: not on the day page (missing 3 days in a row)"
+    );
+    expect(issue.evidence).toContain(
+      "Facebook Reel: no Page Reel mentions aidr.today/date/2026-10-14 (missing 3 days in a row)"
+    );
+    expect(issue.evidence).toContain(
+      "YouTube (vi): not on the day page (missing 7+ days in a row)"
+    );
+    expect(issue.evidence?.some((e) => e.startsWith("Telegram"))).toBe(false);
+    expect(
+      issue.evidence?.find((e) => e.startsWith("A rerun cannot fix"))
+    ).toContain(
+      "YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN; FACEBOOK_PAGE_ID, FACEBOOK_PAGE_ACCESS_TOKEN"
+    );
+  });
+
+  it("keeps a first missed day as a plain rerun, with no credential line", async () => {
+    const world: World = {
+      ...posted,
+      dayVideo: null,
+      prior: [
+        {
+          date: "2026-10-13",
+          dayVideo: { youtube_id: "a", short_id: "b", youtube_id_vi: "c" },
+          posts: [],
+        },
+      ],
+    };
+    serve(world);
+    const issue = alertOf(await checkDayVideo(env(world), DATE, NOW));
+    expect(issue.evidence?.join("\n")).not.toContain("days in a row");
+    expect(issue.evidence?.join("\n")).not.toContain("A rerun cannot fix");
+  });
+
   it("puts the rerun command in the owner DM", async () => {
     const world: World = { ...posted, dayVideo: null };
     serve(world);
@@ -459,6 +540,27 @@ describe("runHealthCheck", () => {
     });
     expect(keys).toEqual([DAY_VIDEO_ALERT_KEY]);
     expect(dms()).toHaveLength(1);
+    expect(dms()[0]).toContain(rerunCommand(DATE));
+  });
+
+  it("DMs the owner the streak and the credentials to check", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    const world: World = {
+      ...posted,
+      dayVideo: null,
+      prior: [1, 2].map((back) => ({
+        date: `2026-10-${14 - back}`,
+        dayVideo: null,
+        posts: ["telegram-en", "telegram-vi"] as DayVideoPostChannel[],
+      })),
+    };
+    serve(world);
+    await runHealthCheck(env(world, owner), { runId: "run-1", steps: [] });
+    expect(dms()).toHaveLength(1);
+    expect(dms()[0]).toContain(
+      "YouTube Short: not on the day page (missing 7+ days in a row)"
+    );
+    expect(dms()[0]).toContain("YOUTUBE_REFRESH_TOKEN");
     expect(dms()[0]).toContain(rerunCommand(DATE));
   });
 
