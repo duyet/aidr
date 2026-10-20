@@ -48,6 +48,7 @@ import { cutFor, isWeekly, LANGS } from "./lang.mjs";
 import {
   addRows,
   attachTodo,
+  dayPageIds,
   dayVideoArgs,
   dayVideoPostedArgs,
   needsRender,
@@ -325,17 +326,6 @@ if (steps.includes("gate")) {
   console.log("✓ gate");
 }
 
-// The YouTube ids on the live day page of a language: { "16x9", "9x16" } (empty when the page has none).
-async function dayPageIds(l) {
-  const res = await fetch(`https://aidr.today/date/${date}.md?lang=${l}`);
-  if (!res.ok) return {};
-  const md = await res.text();
-  return {
-    "16x9": md.match(/^- YouTube: \S+watch\?v=([\w-]{11})/m)?.[1],
-    "9x16": md.match(/^- YouTube Shorts: \S+\/shorts\/([\w-]{11})/m)?.[1],
-  };
-}
-
 // The Vietnamese title translated with the visub captions (visub.mjs), if any.
 function subsTitle() {
   const file = join(dir, cutFor("visub").subs.json);
@@ -352,9 +342,9 @@ const titleFor = (l) => (l === "visub" ? subsTitle() : ytTitle(l));
 // a second public copy. The Vietnamese page shows one cut (status.mjs viPageCut), which is returned.
 async function seedFromSite() {
   if (weekly) return null; // no weekly day page yet
-  const pages = { en: await dayPageIds("en") };
+  const pages = { en: await dayPageIds(date, "en") };
   if (langs.some((l) => cutFor(l).page === "vi"))
-    pages.vi = await dayPageIds("vi");
+    pages.vi = await dayPageIds(date, "vi");
   for (const l of langs) {
     const ids = seedIds(l, pages, rows);
     for (const r of byLang(l)) {
@@ -670,7 +660,7 @@ if (steps.includes("telegram")) {
     // visub: its own YouTube id, else the English video's (STATUS, else the live day page), and the translated title.
     const youtubeId =
       youtubeIdFor(target, rows) ??
-      (l === "visub" ? (await dayPageIds("en"))["16x9"] : undefined);
+      (l === "visub" ? (await dayPageIds(date, "en"))["16x9"] : undefined);
     const title = titleFor(l);
     const { caption, replyMarkup } = telegramPost({
       date,

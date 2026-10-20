@@ -143,6 +143,23 @@ export function uploadArgs(r, dir) {
   return args;
 }
 
+/** The YouTube ids on the live day page of a language: { "16x9", "9x16" } (undefined ids when the page has none).
+ *  Only 404 means nothing is published ({}); any other failure throws, because an empty answer would upload every
+ *  cut again as a second public video. */
+export async function dayPageIds(date, l, fetchPage = fetch) {
+  const res = await fetchPage(`https://aidr.today/date/${date}.md?lang=${l}`);
+  if (res.status === 404) return {};
+  if (!res.ok)
+    throw new Error(
+      `day page ${date} (${l}): HTTP ${res.status}; cannot tell what is already published, so not uploading`
+    );
+  const md = await res.text();
+  return {
+    "16x9": md.match(/^- YouTube: \S+watch\?v=([\w-]{11})/m)?.[1],
+    "9x16": md.match(/^- YouTube Shorts: \S+\/shorts\/([\w-]{11})/m)?.[1],
+  };
+}
+
 /** What an uploader printed: ID= comes before the thumbnail, playlist and oEmbed steps, so a failed run can still
  *  have made the video. */
 export function parseUpload(out) {
