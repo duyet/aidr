@@ -11,7 +11,7 @@ Telegram Instant View contract and manual checklist: [`docs/decisions/telegram-i
 ## Deploy
 
 - Worker name: `aidr` (`apps/web/wrangler.toml`)
-- Deploy: `pnpm --filter @aidr/web deploy` or `pnpm run cf:deploy:prod`. D1 and Worker secrets use the `cf` CLI. `wrangler deploy` still uploads the Worker: `cf migrate` (cf 1.0.0-beta.5) drops Workflow and Durable Object bindings, which the 30-minute ingest needs. Config stays `apps/web/wrangler.toml`.
+- Deploy: `pnpm --filter @aidr/web deploy` or `pnpm run cf:deploy:prod`. D1 and Worker secrets use the `cf` CLI. `wrangler deploy` still uploads the Worker: `cf migrate` drops Workflow and Durable Object bindings, which the 30-minute ingest needs. That was verified on cf 1.0.0-beta.5. `apps/web` now pins beta.14, so recheck before you rely on it or change it. Config stays `apps/web/wrangler.toml`.
 - Secrets: `pnpm sync-env` (GitHub Actions + Worker) — see `scripts/sync-env.ts`
 - Account / zone IDs: `apps/web/wrangler.toml` + Cloudflare dashboard (not in env docs)
 
