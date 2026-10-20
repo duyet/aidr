@@ -38,8 +38,11 @@ Every item below is in the repo now.
    On master, #936's "model family" check made an unrelated gate test fail
    (fixed in #947). No test ran the combined behavior against real text.
 3. **The new gate had no measured refusal rate.** The #938 reviewer flagged it:
-   one over-broad rule could silence the channel. A replay tool is in progress
-   (branch `fix/telegram-gate-tuning`); the numbers are not in yet.
+   one over-broad rule could silence the channel. #950 added the replay
+   (`apps/web/scripts/telegram-gate-replay.ts`). Over 14 days it showed the gate
+   refusing 42% of EN to VI stories, 17.8% of all stories falsely. After #950
+   it is 33.6% and 11.8%, still above the 5% bar. The number was measured once,
+   by hand, and nothing keeps measuring it.
 4. **Defects are found by people.** Every calque added this month came from the
    owner's screenshot. No path turns a refusal, a QA reject or a reader
    suggestion into a regression test by itself.
@@ -184,7 +187,7 @@ Each step ends in a check, and the next step starts only after it passes.
 
 | Step | Change | Check |
 | --- | --- | --- |
-| 0 | Replay script and baseline refusal rate (in progress) | Every refusal labeled, false positives under 5% |
+| 0 | Replay script and baseline refusal rate (#950 landed it; false positives 11.8%) | Every refusal labeled, false positives under 5% |
 | 1 | Registry, generated prompt list and `CALQUES`, no behavior change | Existing translate and gate tests pass unchanged |
 | 2 | Ledger table, `agent quality`, refusal-rate alert | Replay writes rows, alert fires on a synthetic spike |
 | 3 | Golden set and CI replay | A deliberately conflicting check fails CI |
