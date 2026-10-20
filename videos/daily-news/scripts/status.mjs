@@ -143,21 +143,39 @@ export function uploadArgs(r, dir) {
   return args;
 }
 
+const RETRY_DELAYS_MS = [2000, 6000];
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /** The YouTube ids on the live day page of a language: { "16x9", "9x16" } (undefined ids when the page has none).
  *  Only 404 means nothing is published ({}); any other failure throws, because an empty answer would upload every
- *  cut again as a second public video. */
-export async function dayPageIds(date, l, fetchPage = fetch) {
-  const res = await fetchPage(`https://aidr.today/date/${date}.md?lang=${l}`);
-  if (res.status === 404) return {};
-  if (!res.ok)
-    throw new Error(
-      `day page ${date} (${l}): HTTP ${res.status}; cannot tell what is already published, so not uploading`
-    );
-  const md = await res.text();
-  return {
-    "16x9": md.match(/^- YouTube: \S+watch\?v=([\w-]{11})/m)?.[1],
-    "9x16": md.match(/^- YouTube Shorts: \S+\/shorts\/([\w-]{11})/m)?.[1],
-  };
+ *  cut again as a second public video. A 5xx, a 429 or a network error is tried 3 times (2s, then 6s apart) so one
+ *  blip does not fail the run; a 401 and the like throw at once. */
+export async function dayPageIds(date, l, fetchPage = fetch, sleep = pause) {
+  const url = `https://aidr.today/date/${date}.md?lang=${l}`;
+  for (let attempt = 0; ; attempt++) {
+    let res;
+    try {
+      res = await fetchPage(url);
+    } catch (err) {
+      if (attempt >= RETRY_DELAYS_MS.length) throw err;
+      await sleep(RETRY_DELAYS_MS[attempt]);
+      continue;
+    }
+    if (res.status === 404) return {};
+    if (res.ok) {
+      const md = await res.text();
+      return {
+        "16x9": md.match(/^- YouTube: \S+watch\?v=([\w-]{11})/m)?.[1],
+        "9x16": md.match(/^- YouTube Shorts: \S+\/shorts\/([\w-]{11})/m)?.[1],
+      };
+    }
+    const transient = res.status >= 500 || res.status === 429;
+    if (!transient || attempt >= RETRY_DELAYS_MS.length)
+      throw new Error(
+        `day page ${date} (${l}): HTTP ${res.status}; cannot tell what is already published, so not uploading`
+      );
+    await sleep(RETRY_DELAYS_MS[attempt]);
+  }
 }
 
 /** What an uploader printed: ID= comes before the thumbnail, playlist and oEmbed steps, so a failed run can still
