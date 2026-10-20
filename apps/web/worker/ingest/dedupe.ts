@@ -14,9 +14,20 @@ import {
 } from "./context.js";
 import type { FetchedSource } from "./fetch.js";
 import { headlineOf } from "./merge.js";
+import {
+  WRITE_D1_MAX_STATEMENTS,
+  WRITE_D1_MAX_STATEMENTS_PER_ROW,
+} from "./write.js";
 
 /** Max ids per `SELECT ... WHERE id IN (...)` (D1 bound-parameter limit). */
 export const DEDUPE_IN_CHUNK = 50;
+
+/** New rows one run carries into scoring and `write-d1`. Sized so the
+ * worst case per row stays under `WRITE_D1_MAX_STATEMENTS`. The rest are
+ * still absent from `items`, so the next run picks them up. */
+export const MAX_NEW_ROWS_PER_RUN = Math.floor(
+  WRITE_D1_MAX_STATEMENTS / WRITE_D1_MAX_STATEMENTS_PER_ROW
+);
 
 /** An `items` row still at `status = 'new'`. */
 export interface PendingNewRow {
@@ -248,11 +259,14 @@ export async function dedupeNewRows(
                   published_at, points, comments, image_url, source_lang, media_manifest
            FROM items WHERE status = 'new'`
     ).all<PendingNewRow>();
-    for (const row of pendingNew ?? []) {
-      rows.push(pendingRowToNewRow(row, sources));
-    }
-
-    return rows;
+    const pending = (pendingNew ?? []).map((row) =>
+      pendingRowToNewRow(row, sources)
+    );
+    const fetchedBudget = Math.max(MAX_NEW_ROWS_PER_RUN - pending.length, 0);
+    return [...rows.slice(0, fetchedBudget), ...pending].slice(
+      0,
+      MAX_NEW_ROWS_PER_RUN
+    );
   });
   recordStep(
     steps,
