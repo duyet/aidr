@@ -647,53 +647,58 @@ function coverHtml(fmt) {
   const lead = cover;
   const hook = coverHook;
   const img = firstImage(lead);
+  const stat = /\d/.test(lead.stat ?? "") ? lead.stat : null;
   const list = script.stories
-    .slice(0, fmt === "9x16" ? 4 : 3)
+    .filter((s) => s !== lead)
+    .slice(0, fmt === "9x16" ? 3 : 2)
     .map((s) => `<li><b>${s.rank}</b>${esc(s.kicker)}</li>`)
     .join("");
   const css = `
   .cv{position:absolute;inset:0;background:var(--yellow);overflow:hidden}
   .cv .img{position:absolute;object-fit:cover;display:block}
-  .cv .date{position:absolute;font-family:var(--serif);font-weight:600;line-height:.85;letter-spacing:-.04em}
-  .cv .mon{position:absolute;font-weight:800;letter-spacing:.3em}
-  .cv .hook{position:absolute;font-family:var(--serif);font-weight:500;line-height:1.2;letter-spacing:-.01em}
-  .cv .hook span{background:var(--ink);color:var(--yellow);padding:0 14px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+  .cv .date{position:absolute;font-family:var(--serif);font-weight:600;line-height:.8;letter-spacing:-.04em}
+  .cv .mon{position:absolute;font-weight:800;letter-spacing:.24em}
+  .cv .hook{position:absolute;font-family:var(--serif);font-weight:600;line-height:1.08;letter-spacing:-.02em}
+  .cv .hook span{background:var(--ink);color:var(--yellow);padding:0 18px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+  .cv .stat{position:absolute;font-family:var(--serif);font-weight:600;line-height:1;letter-spacing:-.03em;background:var(--yellow);color:var(--ink);padding:10px 26px 18px;box-shadow:0 10px 0 var(--ink)}
   .cv ul{position:absolute;list-style:none;font-weight:700}
-  .cv li{display:flex;gap:18px;align-items:baseline;border-top:2px solid var(--ink);padding:10px 0}
+  .cv li{display:flex;gap:18px;align-items:baseline;border-top:2px solid var(--ink);padding:8px 0}
   .cv li b{font-family:var(--serif);font-weight:600}
   .cv .brand{position:absolute;display:flex;align-items:center;gap:16px;font-weight:800;letter-spacing:.14em;background:var(--ink);color:var(--paper);padding:12px 22px 12px 12px}
   .cv .brand svg{display:block}
   .cv .panel{position:absolute;background:var(--soft);display:flex;flex-direction:column;justify-content:center;gap:24px}
   .cv .panel span{font-weight:800;letter-spacing:.12em;color:#b31b1b}
   .cv .panel b{font-family:var(--serif);font-weight:500;line-height:1.02;color:var(--ink)}
-  .f-16x9 .cv .img,.f-16x9 .cv .panel{right:0;top:0;width:44%;height:100%}
+  .f-16x9 .cv .img,.f-16x9 .cv .panel{right:0;top:0;width:54%;height:100%}
   .f-16x9 .cv .panel{padding:0 70px}
   .f-16x9 .cv .panel span{font-size:28px}
   .f-16x9 .cv .panel b{font-size:76px}
-  .f-16x9 .cv .date{left:70px;top:60px;font-size:330px}
-  .f-16x9 .cv .mon{left:84px;top:350px;font-size:48px}
-  .f-16x9 .cv .hook{left:70px;top:450px;width:960px;font-size:92px}
-  .f-16x9 .cv ul{left:70px;top:800px;width:960px;font-size:30px}
-  .f-16x9 .cv li{padding:6px 0}
-  .f-16x9 .cv .brand{right:30px;bottom:30px;font-size:28px}
-  .f-16x9 .cv .brand svg{width:56px;height:56px}
-  .f-9x16 .cv .img,.f-9x16 .cv .panel{left:0;top:0;width:100%;height:36%}
+  .f-16x9 .cv .brand{left:70px;top:60px;font-size:26px}
+  .f-16x9 .cv .brand svg{width:52px;height:52px}
+  .f-16x9 .cv .date{left:70px;top:180px;font-size:120px}
+  .f-16x9 .cv .mon{left:220px;top:240px;font-size:30px}
+  .f-16x9 .cv .hook{left:70px;top:350px;width:780px;font-size:116px}
+  .f-16x9 .cv .stat{left:calc(46% + 50px);bottom:70px;font-size:150px}
+  .f-16x9 .cv ul{left:70px;top:880px;width:780px;font-size:28px}
+  .f-9x16 .cv .img,.f-9x16 .cv .panel{left:0;top:0;width:100%;height:48%}
   .f-9x16 .cv .panel{padding:0 60px}
   .f-9x16 .cv .panel span{font-size:32px}
   .f-9x16 .cv .panel b{font-size:80px}
-  .f-9x16 .cv .date{left:60px;top:740px;font-size:360px}
-  .f-9x16 .cv .mon{left:76px;top:1050px;font-size:52px}
-  .f-9x16 .cv .hook{left:60px;top:1150px;width:960px;font-size:96px}
-  .f-9x16 .cv ul{left:60px;top:1520px;width:960px;font-size:34px}
-  .f-9x16 .cv .brand{left:60px;top:620px;font-size:30px}
-  .f-9x16 .cv .brand svg{width:64px;height:64px}`;
+  .f-9x16 .cv .brand{left:60px;top:70px;font-size:30px}
+  .f-9x16 .cv .brand svg{width:64px;height:64px}
+  .f-9x16 .cv .stat{left:60px;top:700px;font-size:150px}
+  .f-9x16 .cv .date{left:60px;top:1000px;font-size:130px}
+  .f-9x16 .cv .mon{left:230px;top:1070px;font-size:34px}
+  .f-9x16 .cv .hook{left:60px;top:1170px;width:960px;font-size:112px}
+  .f-9x16 .cv ul{left:60px;top:1590px;width:960px;font-size:34px}`;
   const body = `<div class="clip cv" id="cover" data-start="0" data-duration="1">
     ${img ? `<img class="img" id="cover-img" src="${esc(img)}" alt="" />` : `<div class="panel"><span>${esc(lead.paper?.venue ?? byRank[lead.rank]?.source ?? "")}</span><b>${esc(lead.paper?.title ?? lead.kicker)}</b></div>`}
+    ${stat ? `<div class="stat">${esc(stat)}</div>` : ""}
     <div class="date">${pad2(DAY)}</div><div class="mon">${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</div>
     <div class="hook"><span>${esc(hook)}</span></div>
     <ul>${list}</ul>
     <div class="brand">${logo("")}${esc(UI.daily)}</div></div>
-    <script>document.fonts.ready.then(()=>{const h=document.querySelector('.hook');let p=parseFloat(getComputedStyle(h).fontSize);while(h.scrollHeight>p*1.0*3+4&&p>40){p-=2;h.style.fontSize=p+'px'}window.__timelines.main=gsap.timeline({paused:true});});</script>`;
+    <script>document.fonts.ready.then(()=>{const h=document.querySelector('.hook');let p=parseFloat(getComputedStyle(h).fontSize);while(h.scrollHeight>p*1.08*3+4&&p>48){p-=2;h.style.fontSize=p+'px'}window.__timelines.main=gsap.timeline({paused:true});});</script>`;
   return page(fmt, body, 1, `<style>${css}</style>`);
 }
 
