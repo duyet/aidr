@@ -118,7 +118,7 @@ function makeEnv(opts: {
               : opts.subscribers,
           };
         },
-        run: async () => ({ success: true }),
+        run: async () => ({ success: true, meta: { changes: 1 } }),
       });
       return {
         ...bound(),
@@ -184,7 +184,7 @@ describe("sendDailyTldr — weekly lane", () => {
     ).toEqual(["2026-W41"]);
     expect(
       updates.find((u) => u.sql.includes("last_weekly_sent"))?.args
-    ).toEqual(["2026-10-11", "w@aidr.today", "2026-10-11"]);
+    ).toEqual(["2026-10-11", "w@aidr.today", null]);
   });
 
   it("mails each subscriber's saved headline font", async () => {
@@ -303,7 +303,7 @@ describe("sendDailyTldr — weekly lane", () => {
     expect(updates).toEqual([]);
   });
 
-  it("a failed send is not stamped and does not stop the others", async () => {
+  it("a failed send moves its stamp back and does not stop the others", async () => {
     vi.setSystemTime(mondayMorning);
     const { env, sent, updates } = makeEnv({
       subscribers: [sub({ email: "bad@aidr.today" }), sub()],
@@ -322,8 +322,12 @@ describe("sendDailyTldr — weekly lane", () => {
     expect(
       updates
         .filter((u) => u.sql.includes("last_weekly_sent"))
-        .map((u) => u.args[1])
-    ).toEqual(["w@aidr.today"]);
+        .map((u) => u.args)
+    ).toEqual([
+      ["2026-10-11", "bad@aidr.today", null],
+      [null, "bad@aidr.today", "2026-10-11"],
+      ["2026-10-11", "w@aidr.today", null],
+    ]);
   });
 });
 

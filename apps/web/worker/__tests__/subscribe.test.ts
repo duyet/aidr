@@ -521,7 +521,7 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
               ? (opts.items ?? [])
               : opts.subscribers,
           }),
-          run: async () => ({ success: true }),
+          run: async () => ({ success: true, meta: { changes: 1 } }),
         });
         return {
           ...bound(),
@@ -623,7 +623,7 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     );
   });
 
-  it("does not stamp last_sent_date when the send fails, so it retries next hour", async () => {
+  it("moves last_sent_date back when the send fails, so it retries next run", async () => {
     const fixedNow = Date.UTC(2026, 7, 16, 3, 0, 0);
     const { env, updates, sentTo } = makeEnv({
       subscribers: [
@@ -641,12 +641,14 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     await sendDailyTldr(env);
 
     expect(sentTo).toEqual([]);
-    const stamp = updates.find(
-      (u) =>
-        u.sql.includes("UPDATE subscribers") &&
-        u.args.includes("fail@example.com")
-    );
-    expect(stamp).toBeUndefined();
+    expect(
+      updates
+        .filter((u) => u.sql.includes("UPDATE subscribers"))
+        .map((u) => u.args)
+    ).toEqual([
+      ["2026-08-16", "fail@example.com", null],
+      [null, "fail@example.com", "2026-08-16"],
+    ]);
   });
 
   it("does not send twice in the same local day (second run same day no-send)", async () => {
@@ -722,7 +724,7 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
             if (sql.startsWith("UPDATE subscribers SET last_sent_date")) {
               subscriber.last_sent_date = args[0] as string;
             }
-            return { success: true };
+            return { success: true, meta: { changes: 1 } };
           },
         });
         return { ...bound([]), bind: (...args: unknown[]) => bound(args) };
@@ -791,7 +793,7 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
           all: async () => ({
             results: sql.includes("FROM items") ? [] : subscribers,
           }),
-          run: async () => ({ success: true }),
+          run: async () => ({ success: true, meta: { changes: 1 } }),
         });
         return {
           ...bound(),

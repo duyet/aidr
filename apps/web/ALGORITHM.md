@@ -2236,7 +2236,12 @@ no fallback to another date: until the local-date row exists the
 subscriber gets nothing, and the next 30-minute run sends it. An
 empty column leaves `last_sent_date` unset so the next run
 retries. Idempotency stays on `subscribers.last_sent_date`, not the
-`notifications` table.
+`notifications` table. The lane claims the stamp before it mails
+(`UPDATE ... SET last_sent_date = ? WHERE email = ? AND last_sent_date IS
+<value it read>`) and mails only when that changed a row, so a failed
+stamp write never leads to a second copy. A failed send moves the stamp
+back so the next run retries. One subscriber's error is counted as
+failed and the lane, and the lanes after it, carry on.
 
 The mail itself (`worker/mail/render.ts`, one function per block): the
 subject leads with the top one or two headlines plus "+N more" (about 60
@@ -2270,14 +2275,11 @@ shared tagger is `worker/utm.ts`; Telegram and Facebook use it too (see
 **Delivery counts.** `mail_daily_stats(date, lang, sent, failed,
 unsubscribed)` (0067, one row per UTC day and language, no address or
 per-subscriber row, no tracking pixel) is written by `recordMailStat`
-(`worker/mail/stats.ts`) as an UPSERT. `sent` is counted only when the
-stamp moves: the lane runs `UPDATE subscribers SET last_sent_date = ? ...
-AND last_sent_date IS NOT ?` (`last_weekly_sent` for the weekly lane) and
-counts only when that changed a row. A send retried for the same
-subscriber and day, such as a run that mailed and died before its own
-bookkeeping, finds the stamp already set and adds nothing (the email can
-still repeat; the count cannot). A crash between the stamp and the UPSERT
-undercounts by one and never overcounts. `failed` counts failed attempts,
+(`worker/mail/stats.ts`) as an UPSERT. `sent` is counted once per
+claimed send: the lane claims `last_sent_date` (`last_weekly_sent` for
+the weekly lane) before mailing, and a retry for the same subscriber and
+day finds the stamp already moved and neither mails nor counts. A crash
+between the send and the UPSERT undercounts by one and never overcounts. `failed` counts failed attempts,
 so a subscriber who fails on three runs adds three; it cannot be deduped
 without storing who failed. `unsubscribed` is counted when the `DELETE`
 removed a row, so a repeated click adds nothing. A write error is logged
@@ -2309,7 +2311,7 @@ legacy `YYYY-Www` value reads as that week's Sunday). A new window may
 overlap the last one by at most 3 days (`WEEKLY_MIN_GAP_DAYS` = 4), so
 moving the send day earlier still mails that week and moving it later in
 the same week waits for the next one. The digest build waits whenever the
-ISO-week build attempted an LLM call in the run, even a failed one. A failed send is not stamped and
+ISO-week build attempted an LLM call in the run, even a failed one. The stamp is claimed before the send; a failed send moves it back and
 retries next run. Preview: `GET /api/subscribe/preview?lang=&n=&format=&freq=weekly`
 (newest digest of either kind).
 

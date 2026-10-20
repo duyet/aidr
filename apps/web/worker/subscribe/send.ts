@@ -608,59 +608,78 @@ export async function sendEmailLane(
     const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
     if (!shouldSendForSubscriber(sub, hour, localDate)) continue;
 
-    const size = digestSizeFor(sub.digest_size);
-    const format = normalizeMailFormat(sub.mail_format);
-    const cacheKey = `${localDate}:${lang}:${size}`;
-    let edition = editions.get(cacheKey);
-    if (edition === undefined) {
-      edition = await loadEdition(env, localDate, lang, size);
-      editions.set(cacheKey, edition);
+    // One subscriber's load, render, or stamp error must not stop the others.
+    try {
+      const size = digestSizeFor(sub.digest_size);
+      const format = normalizeMailFormat(sub.mail_format);
+      const cacheKey = `${localDate}:${lang}:${size}`;
+      let edition = editions.get(cacheKey);
+      if (edition === undefined) {
+        edition = await loadEdition(env, localDate, lang, size);
+        editions.set(cacheKey, edition);
+      }
+      if (!edition) continue;
+      const videoKey = `${edition.date}:${lang}`;
+      let video = videos.get(videoKey);
+      if (video === undefined) {
+        video = await loadDailyVideo(env, edition.date, lang);
+        videos.set(videoKey, video);
+      }
+      const { subject, html, text } = await renderEditionEmail(
+        env,
+        edition,
+        sub.unsubscribe_token,
+        size,
+        format,
+        video,
+        normalizeMailFont(sub.mail_font)
+      );
+      const stamp = { from: sub.last_sent_date, to: localDate };
+      if (!(await moveStamp(env, "last_sent_date", sub.email, stamp))) continue;
+      const ok = await sendSubscriberEmail(env, {
+        to: sub.email,
+        from: digestFrom(env),
+        subject,
+        html,
+        text,
+        unsubscribeToken: sub.unsubscribe_token,
+        lang,
+        replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
+      });
+      if (ok) {
+        await recordMailStat(env.DB, "sent", lang, now);
+        sent++;
+        stampedDate = edition.date;
+        continue;
+      }
+      await moveStamp(env, "last_sent_date", sub.email, {
+        from: stamp.to,
+        to: stamp.from,
+      });
+    } catch (error) {
+      console.error("daily digest send failed:", error);
     }
-    if (!edition) continue;
-    const videoKey = `${edition.date}:${lang}`;
-    let video = videos.get(videoKey);
-    if (video === undefined) {
-      video = await loadDailyVideo(env, edition.date, lang);
-      videos.set(videoKey, video);
-    }
-    const { subject, html, text } = await renderEditionEmail(
-      env,
-      edition,
-      sub.unsubscribe_token,
-      size,
-      format,
-      video,
-      normalizeMailFont(sub.mail_font)
-    );
-
-    const ok = await sendSubscriberEmail(env, {
-      to: sub.email,
-      from: digestFrom(env),
-      subject,
-      html,
-      text,
-      unsubscribeToken: sub.unsubscribe_token,
-      lang,
-      replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
-    });
-    if (!ok) {
-      failed++;
-      await recordMailStat(env.DB, "failed", lang, now);
-      continue;
-    }
-
-    // Count only when the stamp moves: a retry that finds it already set
-    // (or a duplicate row) must not add a second `sent`.
-    const stamp = await env.DB.prepare(
-      "UPDATE subscribers SET last_sent_date = ? WHERE email = ? AND last_sent_date IS NOT ?"
-    )
-      .bind(localDate, sub.email, localDate)
-      .run();
-    if (stamp.meta?.changes) await recordMailStat(env.DB, "sent", lang, now);
-    sent++;
-    stampedDate = edition.date;
+    failed++;
+    await recordMailStat(env.DB, "failed", lang, now);
   }
   return { sent, failed, stampedDate };
+}
+
+/** Moves a subscriber's send stamp only if it still holds `from`. Taken
+ *  before the mail goes out, so a concurrent or retried run that finds it
+ *  moved skips the subscriber; moved back when the send fails. */
+async function moveStamp(
+  env: Pick<Env, "DB">,
+  column: "last_sent_date" | "last_weekly_sent",
+  email: string,
+  stamp: { from: string | null; to: string | null }
+): Promise<boolean> {
+  const result = await env.DB.prepare(
+    `UPDATE subscribers SET ${column} = ? WHERE email = ? AND ${column} IS ?`
+  )
+    .bind(stamp.to, email, stamp.from)
+    .run();
+  return result.meta.changes === 1;
 }
 
 /** One weekly digest in one language, as digest bullets. */
@@ -827,8 +846,7 @@ export async function sendWeeklyLane(
     ) {
       continue;
     }
-    // One subscriber's render or send error must not stop the others.
-    let ok = false;
+    // One subscriber's render, stamp, or send error must not stop the others.
     try {
       let videos = weekVideos.get(key);
       if (videos === undefined) {
@@ -849,7 +867,11 @@ export async function sendWeeklyLane(
         videos,
         normalizeMailFont(sub.mail_font)
       );
-      ok = await sendSubscriberEmail(env, {
+      const stamp = { from: sub.last_weekly_sent, to: end };
+      if (!(await moveStamp(env, "last_weekly_sent", sub.email, stamp))) {
+        continue;
+      }
+      const ok = await sendSubscriberEmail(env, {
         to: sub.email,
         from: digestFrom(env),
         subject,
@@ -859,21 +881,20 @@ export async function sendWeeklyLane(
         lang,
         replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
       });
+      if (ok) {
+        await recordMailStat(env.DB, "sent", lang, now);
+        sent++;
+        continue;
+      }
+      await moveStamp(env, "last_weekly_sent", sub.email, {
+        from: stamp.to,
+        to: stamp.from,
+      });
     } catch (error) {
       console.error("weekly digest send failed:", error);
     }
-    if (!ok) {
-      failed++;
-      await recordMailStat(env.DB, "failed", lang, now);
-      continue;
-    }
-    const stamp = await env.DB.prepare(
-      "UPDATE subscribers SET last_weekly_sent = ? WHERE email = ? AND last_weekly_sent IS NOT ?"
-    )
-      .bind(end, sub.email, end)
-      .run();
-    if (stamp.meta?.changes) await recordMailStat(env.DB, "sent", lang, now);
-    sent++;
+    failed++;
+    await recordMailStat(env.DB, "failed", lang, now);
   }
   return { sent, failed };
 }

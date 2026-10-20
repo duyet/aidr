@@ -111,13 +111,12 @@ describe("mail_daily_stats", () => {
 
   it("does not double-count a retry of the same send (defect: sent counted per attempt)", async () => {
     const { env, rows, stats } = setup();
-    // The first run mailed both, then died before the run recorded anything
-    // else. The retry reads the same pre-stamp rows and mails again, but the
-    // stamp is already set, so it moves nothing and counts nothing.
+    // The retry reads the same pre-stamp rows, but the first run already
+    // moved both stamps, so it mails nothing and counts nothing.
     const stale = rows();
     await sendEmailLane(env, "en", stale, NOW, new Map());
     await sendEmailLane(env, "en", stale, NOW, new Map());
-    expect(sendSubscriberEmail).toHaveBeenCalledTimes(4);
+    expect(sendSubscriberEmail).toHaveBeenCalledTimes(2);
     expect(stats()).toEqual([
       { date: DAY, lang: "en", sent: 2, failed: 0, unsubscribed: 0 },
     ]);
