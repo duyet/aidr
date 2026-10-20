@@ -65,6 +65,31 @@
     });
   }
 
+  // Clamp a block to the whole lines that fit above its clipping parent's bottom padding, so the clip never cuts a
+  // line through; hide it when not one line fits. Offsets, not rects, so a transform on the way in is ignored.
+  function clampLines(el) {
+    if (!el) return;
+    measured(el, () => {
+      const box = el.offsetParent;
+      // A layout that hides the card (a statement) has nothing to clamp.
+      if (!box) return;
+      const lh = parseFloat(getComputedStyle(el).lineHeight);
+      const room =
+        box.clientHeight -
+        parseFloat(getComputedStyle(box).paddingBottom) -
+        el.offsetTop;
+      const lines = Math.floor(room / lh);
+      if (lines < 1) el.style.display = "none";
+      else if (el.offsetHeight > lines * lh + 1)
+        Object.assign(el.style, {
+          display: "-webkit-box",
+          webkitBoxOrient: "vertical",
+          webkitLineClamp: String(lines),
+          overflow: "hidden",
+        });
+    });
+  }
+
   function build() {
     const tl = gsap.timeline({ paused: true });
     const vertical = D.fmt === "9x16";
@@ -167,6 +192,7 @@
       fit($(".stat", sc), 1, 48);
       // A long (often Vietnamese) paper title would push the abstract out of the card.
       fit($(".paper .ptitle", sc), vertical ? 3 : 2, 48);
+      clampLines($(".paper .abs", sc));
 
       tl.fromTo(
         $(".cam", sc),
@@ -193,9 +219,11 @@
 
       // An image far from its box's shape (a wide social card in a narrower box) shows whole over a blurred copy
       // of itself: a cover crop plus the drift would cut through the text baked into it.
-      const media = $(".media", sc);
-      const box = measured(media, () => media.offsetWidth / media.offsetHeight);
       const frames = $$(".media .frame", sc);
+      const pic = $(".media .pic", sc);
+      const box = pic
+        ? measured(pic, () => pic.offsetWidth / pic.offsetHeight)
+        : 1;
       frames.forEach((fr) => {
         const ar = parseFloat($("img", fr).dataset.ar);
         if (ar && Math.min(ar / box, box / ar) < 0.9) fr.classList.add("fit");

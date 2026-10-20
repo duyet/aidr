@@ -12,6 +12,7 @@ import {
   speakable,
   statSpoken,
   templateScript,
+  templateStory,
   validateScript,
   videoModels,
   vnToday,
@@ -93,6 +94,43 @@ test("a headline that only restates the first voice sentence is rejected; one th
     problems("The engine behind *DeepSeek's own chat*"),
     /headline repeats/
   );
+});
+
+test("a topic label is not a stat when the bullet has a figure; a label is fine when it has none", () => {
+  const s = templateScript(edition, hosts);
+  const withFigure = s.stories.findIndex((x) => /\d/.test(x.stat));
+  const without = s.stories.findIndex((x) => !/\d/.test(x.stat));
+  assert.ok(withFigure >= 0 && without >= 0, "the fixture has both kinds");
+  s.stories[withFigure] = { ...s.stories[withFigure], stat: "Policy shift" };
+  assert.match(
+    validateScript(s, edition).join(),
+    /stat "Policy shift" is not a figure, but the bullet has one/
+  );
+  s.stories[withFigure] = templateScript(edition, hosts).stories[withFigure];
+  s.stories[without] = { ...s.stories[without], stat: "Policy shift" };
+  assert.deepEqual(validateScript(s, edition), []);
+});
+
+test("a headline marker that holds the stat's figure is rejected, in any written form of it", () => {
+  const s = templateScript(edition, hosts);
+  const i = s.stories.findIndex((x) => x.stat === "$870M");
+  assert.ok(i >= 0, "the fixture has a $870M story");
+  for (const headline of [
+    "*$870M bet* on AI coding",
+    "A *$870 million* bet on coding",
+  ]) {
+    s.stories[i] = { ...s.stories[i], headline };
+    assert.match(
+      validateScript(s, edition).join(),
+      /headline marker repeats the stat "\$870M"/,
+      headline
+    );
+  }
+  s.stories[i] = {
+    ...s.stories[i],
+    headline: "A *big bet* on $870M of coding",
+  };
+  assert.deepEqual(validateScript(s, edition), []);
 });
 
 test("the intro is one line that opens on the news: no greeting, no show name, no date line", () => {
@@ -195,15 +233,9 @@ test("a model that invents a number is rejected (facts come only from the bullet
 test("a valid model answer is used; anchors come from the cast, not the model", async () => {
   const three = { ...edition, stories: edition.stories.slice(0, 3) };
   const answer = {
-    stories: three.stories.map((s) => ({
-      rank: s.rank,
-      kicker: "AI news",
-      headline: "*A real headline* for this story",
-      stat: "Today",
-      statLabel: "the state of play",
-      statWord: "This",
+    stories: answerWith({
       voice: ["This story is in the bullet.", "It matters for builders."],
-    })),
+    }).stories,
     introLine: "Stocks slide today.",
     focus: [{ rank: 1, word: "stocks" }],
     thumbRank: 2,
@@ -235,16 +267,30 @@ test("a valid model answer is used; anchors come from the cast, not the model", 
 });
 
 const three = { ...edition, stories: edition.stories.slice(0, 3) };
+// The stat is the bullet's figure when it has one (validateScript rejects a label then), spoken in a closing sentence.
+const statOf = (s) => {
+  const { stat } = templateStory(s);
+  return /\d/.test(stat)
+    ? {
+        stat,
+        statWord: stat.match(/\d[\d,.]*/)[0],
+        said: `It says ${speakable(stat)}.`,
+      }
+    : { stat: "Today", statWord: "This", said: "" };
+};
 const answerWith = ({ voice, thumbHook }) => ({
-  stories: three.stories.map((s) => ({
-    rank: s.rank,
-    kicker: "AI news",
-    headline: "*A real headline* for this story",
-    stat: "Today",
-    statLabel: "the state of play",
-    statWord: "This",
-    voice,
-  })),
+  stories: three.stories.map((s) => {
+    const { stat, statWord, said } = statOf(s);
+    return {
+      rank: s.rank,
+      kicker: "AI news",
+      headline: "*A real headline* for this story",
+      stat,
+      statLabel: "the state of play",
+      statWord,
+      voice: said ? [voice[0], said] : voice,
+    };
+  }),
   introLine: "Stocks slide today.",
   thumbRank: 2,
   thumbHook,
