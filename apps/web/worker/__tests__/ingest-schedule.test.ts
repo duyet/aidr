@@ -26,6 +26,7 @@ function trackingDb(
 ): D1Runner {
   const prepare = vi.fn((sql: string) => {
     if (sql.startsWith("INSERT")) order.push("persist");
+    else if (sql.startsWith("UPDATE")) order.push("close");
     else if (sql.includes("ORDER BY")) order.push("verify-last");
     else order.push("verify");
     const row = () => {
@@ -299,7 +300,7 @@ describe("tickIngest", () => {
         } as unknown as DurableObjectNamespace,
       })
     ).rejects.toThrow(/workflow create rejected/);
-    expect(order).toEqual(["persist", "verify-last", "create", "persist"]);
+    expect(order).toEqual(["persist", "verify-last", "create", "close"]);
     expect(markStarted).not.toHaveBeenCalled();
   });
 
@@ -315,6 +316,9 @@ describe("tickIngest", () => {
               if (sql === UPSERT_WORKFLOW_RUN_SQL) {
                 rows.set(args[0] as string, args);
                 lastId = args[0] as string;
+              } else if (sql.startsWith("UPDATE")) {
+                const row = rows.get(args[1] as string);
+                if (row) row[5] = args[0];
               }
               return { success: true, meta: { changes: 1 } };
             },

@@ -82,9 +82,6 @@ export class NewsIngestScheduler extends DurableObject<Env> {
     const now = Date.now();
     try {
       await this.env.NEWS_INGEST.create({ id });
-      await this.ctx.storage.put(LAST_STARTED_KEY, now);
-      await this.ctx.storage.setAlarm(nextAlarmAt(now));
-      return { id, skipped: false };
     } catch (error) {
       console.error("ingest scheduler create failed:", error);
       await closeFailedCreate(this.env.DB, id, error);
@@ -94,6 +91,10 @@ export class NewsIngestScheduler extends DurableObject<Env> {
         reason: error instanceof Error ? error.message : String(error),
       };
     }
+    // The run is live from here: a failure below must not mark its row.
+    await this.ctx.storage.put(LAST_STARTED_KEY, now);
+    await this.ctx.storage.setAlarm(nextAlarmAt(now));
+    return { id, skipped: false };
   }
 
   async tick(opts: IngestTickOpts = {}): Promise<IngestTickResult> {

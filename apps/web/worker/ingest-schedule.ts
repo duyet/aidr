@@ -4,13 +4,12 @@ import {
   isScheduledRun,
   LIVE_FULL_RUN,
 } from "./ingest/mode.js";
+import { sanitizeRunError } from "./telemetry-safe.js";
 import { toEpochSeconds } from "./time.js";
 import {
   type D1Runner,
-  openedWorkflowRun,
   persistOpenedWorkflowRun,
   persistOpenedWorkflowRunVerified,
-  persistWorkflowRun,
 } from "./workflow-run.js";
 
 /** Coalescing rules for news ingest triggers (GitHub Actions, admin POST,
@@ -161,13 +160,14 @@ export async function closeFailedCreate(
   error: unknown
 ): Promise<void> {
   if (!db) return;
-  const now = toEpochSeconds(Date.now());
   const message = error instanceof Error ? error.message : String(error);
   try {
-    await persistWorkflowRun(db, {
-      ...openedWorkflowRun(id, now, "create"),
-      error: `create failed: ${message}`,
-    });
+    // Only set `error`: the row keeps its started_at and stats (mode), which
+    // is what `blockedByOpenRun` and the run history read.
+    await db
+      .prepare("UPDATE workflow_runs SET error = ? WHERE id = ?")
+      .bind(sanitizeRunError(`create failed: ${message}`), id)
+      .run();
   } catch (closeError) {
     console.error("create failure d1 close failed:", closeError);
   }
