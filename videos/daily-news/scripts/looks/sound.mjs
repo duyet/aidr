@@ -23,14 +23,15 @@ export const SFX = {
  * Each cue's pool. The first file is the cue's reference: it plays at gain 1 and the others are trimmed to its
  * level (`gainFor`), so the mix sits where it always did whichever file the day draws. Pool members share a shape
  * (impact, tonal alert, bright chime, tick), so their hits also agree within about 1 dB over a 50 ms window
- * (sound-measure.mjs prints it); a short pop beside a long sparkle would be 11 dB apart. The library leaves two
- * exceptions: the cinematic swell's crest sits 4 dB under the short whoosh at 50 ms, and pop's hit sits 7 dB over
- * ping's. The library has no second tonal alert: notification's louder second note comes 5 frames after its
+ * (sound-measure.mjs prints it); a short pop beside a long sparkle would be 11 dB apart. The library leaves one
+ * exception: pop's hit sits 7 dB over ping's. storyIn is the whoosh alone: the library's other long whoosh, the
+ * cinematic swell, holds a 0.5 s plateau with no peak and reads as a soft hit, and whoosh-short is whoosh byte for
+ * byte. The library has no second tonal alert: notification's louder second note comes 5 frames after its
  * first, so one of the two always misses the stat.
  */
 export const POOLS = {
   open: ["impact-bass-2", "impact-bass-1"],
-  storyIn: ["whoosh", "whoosh-cinematic"],
+  storyIn: ["whoosh"],
   rankHit: ["impact-bass-1", "impact-bass-2"],
   statHit: ["ping", "pop"],
   tick: ["click-soft", "key-press"],

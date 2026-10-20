@@ -37,7 +37,7 @@ export const LAYOUTS = [
   left: 0;
   top: 170px;
   width: 100%;
-  height: 1130px;
+  height: 1300px;
 }
 .l-full .media .shade {
   height: 60%;
@@ -54,7 +54,7 @@ export const LAYOUTS = [
 }
 .f-9x16 .l-full .copy {
   left: 40px;
-  top: 600px;
+  top: 770px;
   width: 1000px;
 }
 .f-16x9 .l-full .rank {
@@ -124,10 +124,10 @@ export const LAYOUTS = [
   left: 40px;
   top: 180px;
   width: 1000px;
-  height: 400px;
+  height: 570px;
 }
 .f-9x16 .l-stat .copy {
-  top: 620px;
+  top: 790px;
 }
 .f-9x16 .l-stat .statrow {
   display: block;
@@ -182,7 +182,7 @@ export const LAYOUTS = [
 }
 .f-9x16 .l-poster .copy {
   left: 0;
-  top: 680px;
+  top: 850px;
   width: 1080px;
   height: 620px;
   padding: 44px 64px 0;
@@ -249,7 +249,7 @@ export const LAYOUTS = [
 }
 .f-9x16 .l-statement .copy {
   left: 64px;
-  top: 400px;
+  top: 490px;
   width: 952px;
 }
 .l-statement .rank {
@@ -265,7 +265,7 @@ export const LAYOUTS = [
 }
 .f-9x16 .l-statement .rank {
   left: 470px;
-  top: 220px;
+  top: 310px;
   width: 140px;
   height: 140px;
   font-size: 140px;
