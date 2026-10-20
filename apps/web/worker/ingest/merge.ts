@@ -158,6 +158,7 @@ export function buildMergeCandidates(
       points: row.item.points ?? 0,
       comments: row.item.comments ?? 0,
       rank,
+      belowBar: (score?.relevance ?? 0.5) < RELEVANCE_THRESHOLD,
       imageUrl: row.item.imageUrl,
       mediaManifest: row.item.mediaManifest,
       official:
