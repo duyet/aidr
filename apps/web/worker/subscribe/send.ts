@@ -608,7 +608,6 @@ export async function sendEmailLane(
     const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
     if (!shouldSendForSubscriber(sub, hour, localDate)) continue;
 
-    // One subscriber's load, render, or stamp error must not stop the others.
     try {
       const size = digestSizeFor(sub.digest_size);
       const format = normalizeMailFormat(sub.mail_format);
@@ -634,8 +633,13 @@ export async function sendEmailLane(
         video,
         normalizeMailFont(sub.mail_font)
       );
-      const stamp = { from: sub.last_sent_date, to: localDate };
-      if (!(await moveStamp(env, "last_sent_date", sub.email, stamp))) continue;
+      const stamp = {
+        column: "last_sent_date",
+        email: sub.email,
+        from: sub.last_sent_date,
+        to: localDate,
+      } as const;
+      if (!(await claimStamp(env, stamp))) continue;
       const ok = await sendSubscriberEmail(env, {
         to: sub.email,
         from: digestFrom(env),
@@ -652,10 +656,7 @@ export async function sendEmailLane(
         stampedDate = edition.date;
         continue;
       }
-      await moveStamp(env, "last_sent_date", sub.email, {
-        from: stamp.to,
-        to: stamp.from,
-      });
+      await releaseStamp(env, stamp);
     } catch (error) {
       console.error("daily digest send failed:", error);
     }
@@ -665,22 +666,32 @@ export async function sendEmailLane(
   return { sent, failed, stampedDate };
 }
 
-/** Moves a subscriber's send stamp only if it still holds `from`. Taken
- *  before the mail goes out, so a concurrent or retried run that finds it
- *  moved skips the subscriber; moved back when the send fails. */
-async function moveStamp(
+interface SendStamp {
+  column: "last_sent_date" | "last_weekly_sent";
+  email: string;
+  from: string | null;
+  to: string;
+}
+
+async function swapStamp(
   env: Pick<Env, "DB">,
-  column: "last_sent_date" | "last_weekly_sent",
-  email: string,
-  stamp: { from: string | null; to: string | null }
+  { column, email }: SendStamp,
+  expected: string | null,
+  next: string | null
 ): Promise<boolean> {
   const result = await env.DB.prepare(
     `UPDATE subscribers SET ${column} = ? WHERE email = ? AND ${column} IS ?`
   )
-    .bind(stamp.to, email, stamp.from)
+    .bind(next, email, expected)
     .run();
   return result.meta.changes === 1;
 }
+
+const claimStamp = (env: Pick<Env, "DB">, stamp: SendStamp) =>
+  swapStamp(env, stamp, stamp.from, stamp.to);
+
+const releaseStamp = (env: Pick<Env, "DB">, stamp: SendStamp) =>
+  swapStamp(env, stamp, stamp.to, stamp.from);
 
 /** One weekly digest in one language, as digest bullets. */
 export interface WeeklyMail {
@@ -846,7 +857,6 @@ export async function sendWeeklyLane(
     ) {
       continue;
     }
-    // One subscriber's render, stamp, or send error must not stop the others.
     try {
       let videos = weekVideos.get(key);
       if (videos === undefined) {
@@ -867,10 +877,13 @@ export async function sendWeeklyLane(
         videos,
         normalizeMailFont(sub.mail_font)
       );
-      const stamp = { from: sub.last_weekly_sent, to: end };
-      if (!(await moveStamp(env, "last_weekly_sent", sub.email, stamp))) {
-        continue;
-      }
+      const stamp = {
+        column: "last_weekly_sent",
+        email: sub.email,
+        from: sub.last_weekly_sent ?? null,
+        to: end,
+      } as const;
+      if (!(await claimStamp(env, stamp))) continue;
       const ok = await sendSubscriberEmail(env, {
         to: sub.email,
         from: digestFrom(env),
@@ -886,10 +899,7 @@ export async function sendWeeklyLane(
         sent++;
         continue;
       }
-      await moveStamp(env, "last_weekly_sent", sub.email, {
-        from: stamp.to,
-        to: stamp.from,
-      });
+      await releaseStamp(env, stamp);
     } catch (error) {
       console.error("weekly digest send failed:", error);
     }

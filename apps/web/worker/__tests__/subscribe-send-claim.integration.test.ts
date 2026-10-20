@@ -1,10 +1,3 @@
-/**
- * #976: the digest lanes claim a subscriber's stamp before mailing, so a
- * failed stamp write can never lead to a second copy of the same edition,
- * and one subscriber's error never stops the rest of the run. Real SQLite
- * and migrations; only the EMAIL binding is stubbed.
- */
-
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
