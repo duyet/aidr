@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`story caption format > en: rewritten summary leads with the news and keeps the numbers 1`] = `
+"<b>Anthropic raises $30B at a $380B valuation</b>
+
+GIC and Coatue led the round. Anthropic said run-rate revenue passed $14B, up from $1B a year ago.
+
+#funding  ·  ▲ 812  ·  💬 344"
+`;
+
+exports[`story caption format > en: summary that only restates the headline is dropped 1`] = `
+"<b>Meta delays its next Llama model</b>
+
+#models  ·  ▲ 120"
+`;
+
+exports[`story caption format > vi: rewritten summary keeps names and numbers 1`] = `
+"<b>Anthropic huy động 30 tỷ USD, định giá 380 tỷ USD</b>
+
+GIC và Coatue dẫn dắt vòng gọi vốn. Anthropic cho biết doanh thu quy năm đã vượt 14 tỷ USD, tăng từ 1 tỷ USD một năm trước.
+
+#funding  ·  ▲ 812  ·  💬 344"
+`;
+
+exports[`story caption format > vi: short channel summary fits and stays whole 1`] = `
+"<b>Meta hoãn mô hình Llama kế tiếp</b>
+
+Meta cho biết mô hình Llama kế tiếp sẽ ra mắt muộn hơn dự kiến vì chất lượng chưa đạt mục tiêu nội bộ.
+
+#models  ·  ▲ 120"
+`;
