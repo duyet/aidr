@@ -1166,9 +1166,13 @@ function videoTagCandidates(html: string): MediaCandidate[] {
     const poster = videoAttributes.poster;
     const add = (url: string | undefined, typeHint: string | undefined) => {
       if (!url) return;
-      const lower = `${typeHint ?? ""} ${url}`.toLowerCase();
+      const hint = typeHint?.trim().toLowerCase() ?? "";
       const type =
-        typeHint === "image" || lower.includes("image") ? "image" : "video";
+        hint === "image" ||
+        hint.startsWith("image/") ||
+        IMAGE_EXTENSION.test(url.split(/[?#]/)[0])
+          ? "image"
+          : "video";
       candidates.push({
         type,
         url,
