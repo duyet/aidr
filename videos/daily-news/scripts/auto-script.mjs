@@ -118,7 +118,7 @@ export const VOICED_FACTOR = 1.1;
 
 /** The intro jumps into the news: no greeting, no "This is AI DR", no date line. */
 const GREETING =
-  /^\s*(?:this is|welcome|hello|hi\b|good (?:morning|evening|afternoon)|here(?:'s| is) ai)/i;
+  /^\s*(?:this is (?:ai\b|aidr|ai;dr)|welcome\b|hello\b|hi[,!.]|hi (?:there|everyone|all|folks)\b|good (?:morning|evening|afternoon)\b|here(?:'s| is) (?:ai\b|aidr|ai;dr))/i;
 
 /** Estimated length (s): build.mjs's per-segment lead/tail, reading speed, the breath between parts
  *  (config.voice.gap), scaled by VOICED_FACTOR. */

@@ -63,13 +63,19 @@ test("a model intro that opens with a greeting or the show name is rejected", ()
       bad
     );
   }
-  s.intro.voice = [
-    { anchor: s.intro.voice[0].anchor, text: "Nvidia leads a busy day." },
-  ];
-  assert.doesNotMatch(
-    validateScript(s, edition).join(),
-    /greeting or the show name/
-  );
+  for (const ok of [
+    "Nvidia leads a busy day.",
+    "This is the biggest week for chips.",
+    "Hi-tech chips lead today.",
+    "Here is Anthropic's new model.",
+  ]) {
+    s.intro.voice = [{ anchor: s.intro.voice[0].anchor, text: ok }];
+    assert.doesNotMatch(
+      validateScript(s, edition).join(),
+      /greeting or the show name/,
+      ok
+    );
+  }
 });
 
 test("a failing model falls back to the template, trimmed to fit the Reel length", async () => {
