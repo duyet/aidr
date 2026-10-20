@@ -1514,7 +1514,8 @@ deterministic pass.
 - Canonical: an official existing item stays canonical. Otherwise an
   official new item that passes relevance and is a rewrite match (rule
   above) for the would-be canonical takes over the cluster. Otherwise the
-  existing item wins, else the highest rank. A takeover demotes the old
+  existing item wins, else the highest-ranked new item that passes
+  relevance; a cluster with none of those merges nothing. A takeover demotes the old
   canonical (`MergePlan.demoted`): it and everything merged into it point
   at the official item, its sources, topics and reader engagement fold in,
   and sent notifications move to the new id so nothing is posted twice. A

@@ -798,8 +798,9 @@ export interface CanonicalPreference {
  * - else the existing item stays canonical;
  * - else the new item with the highest rank in `ranks` (index -> rank).
  * Among several official new items, the highest rank wins. Returns null
- * only if the cluster has no existing id and none of its "new" indices have
- * a known rank (shouldn't happen for a well-formed cluster). */
+ * when the cluster has no existing id and none of its "new" indices has a
+ * rank; `buildMergePlan` leaves items under the relevance bar out of
+ * `ranks`, so such a cluster merges nothing. */
 export function selectCanonical(
   cluster: Cluster,
   ranks: Map<number, number>,
@@ -888,6 +889,9 @@ export interface MergeCandidate {
   points: number;
   comments: number;
   rank: number;
+  /** Scored under the relevance bar, so it is written `rejected` and can
+   * never be its cluster's canonical. */
+  belowBar?: boolean;
   /** Normalized media already collected for this candidate, if any. */
   imageUrl?: string | null;
   mediaManifest?: MediaManifest | null;
@@ -961,7 +965,9 @@ export function buildMergePlan(
   topicCap = sourceCap
 ): MergePlan {
   const byIndex = new Map(candidates.map((c) => [c.i, c]));
-  const ranks = new Map(candidates.map((c) => [c.i, c.rank]));
+  const ranks = new Map(
+    candidates.filter((c) => !c.belowBar).map((c) => [c.i, c.rank])
+  );
 
   const merged = new Map<string, MergePlanEntry>();
   const canonicalUpdates = new Map<string, CanonicalUpdate>();

@@ -20,6 +20,7 @@ import {
 } from "../dedupe.js";
 import type { NewRow, SourceRow } from "../ingest/context.js";
 import { collapseSameUrl } from "../ingest/dedupe.js";
+import { buildMergeCandidates } from "../ingest/merge.js";
 import {
   type LlmCallLogEntry,
   resetUnavailableModels,
@@ -1039,3 +1040,47 @@ function productionChain(): string[] {
   if (!spec) throw new Error("ANYROUTER_MODEL missing from wrangler.toml");
   return spec.split(",").map((id) => id.trim());
 }
+
+describe("buildMergePlan relevance bar", () => {
+  const nowMs = Date.UTC(2026, 9, 21, 6);
+  function row(id: string, sourceId: string, points: number): NewRow {
+    return {
+      id,
+      source: { id: sourceId, type: "rss", config: "{}", enabled: 1 },
+      item: {
+        url: `https://${sourceId}.example.com/${id}`,
+        title: "Same story",
+        publishedAt: nowMs / 1000 - 3600,
+        points,
+      },
+    };
+  }
+  function plan(relevance: Record<string, number>) {
+    const rows = [row("a", "techcrunch-ai", 2), row("b", "hn", 400)];
+    const scored = new Map(
+      rows.map((r) => [
+        r.id,
+        { relevance: relevance[r.id], importance: 6, quality: 6 } as never,
+      ])
+    );
+    const candidates = buildMergeCandidates(rows, scored, new Map(), nowMs);
+    return buildMergePlan(
+      [{ new: candidates.map((c) => c.i), existing: [] }],
+      candidates,
+      new Map(),
+      8
+    );
+  }
+
+  it("never makes a story under the bar the canonical of one above it", () => {
+    const result = plan({ a: 0.45, b: 0.35 });
+    expect(result.merged.get("a")).toBeUndefined();
+    expect(result.merged.get("b")).toEqual({ duplicateOf: "a" });
+  });
+
+  it("merges nothing when no story in the cluster clears the bar", () => {
+    const result = plan({ a: 0.3, b: 0.35 });
+    expect(result.merged.size).toBe(0);
+    expect(result.canonicalUpdates.size).toBe(0);
+  });
+});
