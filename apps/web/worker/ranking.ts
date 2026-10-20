@@ -279,6 +279,36 @@ export function rowRankSignals(row: RankSignalRow) {
   };
 }
 
+/** A stored item read with `RANK_SIGNAL_COLUMNS`, plus its own score
+ *  columns. `published_at` is epoch seconds. */
+export interface RankableRow extends RankSignalRow {
+  published_at: number;
+  llm_importance?: number | null;
+  llm_quality?: number | null;
+  category?: string | null;
+}
+
+/** `rankScore` for a stored row at `nowMs`. `scores` replaces the row's own
+ *  score columns when the caller holds fresher ones (a rescore, a rating). */
+export function rankScoreForRow(
+  row: RankableRow,
+  nowMs: number,
+  scores: {
+    importance?: number;
+    quality?: number;
+    category?: string | null;
+  } = {}
+): number {
+  return rankScore({
+    importance: scores.importance ?? row.llm_importance ?? 5,
+    quality: scores.quality ?? row.llm_quality ?? 5,
+    publishedAt: row.published_at * 1000,
+    now: nowMs,
+    ...rowRankSignals(row),
+    category: storyCategory(scores.category ?? row.category),
+  });
+}
+
 /** Published items from a bound epoch-second start, with every `rankScore`
  *  input the hourly re-rank needs. */
 export function buildRerankQuery(): string {

@@ -59,9 +59,8 @@ import {
   RANK_SIGNAL_COLUMNS,
   RANK_SIGNAL_JOIN,
   type RankSignalRow,
-  rankScore,
+  rankScoreForRow,
   rowRankSignals,
-  storyCategory,
 } from "../ranking.js";
 import { adapters } from "../sources/registry.js";
 import type { SourceLanguage } from "../sources/types.js";
@@ -503,14 +502,7 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
         source_id: row.source_id,
         published_at: row.published_at,
         rank_score: row.rank_score,
-        rank_score_now: rankScore({
-          importance: row.llm_importance ?? 5,
-          quality: row.llm_quality ?? 5,
-          publishedAt: row.published_at * 1000,
-          now,
-          ...signals,
-          category: storyCategory(row.category),
-        }),
+        rank_score_now: rankScoreForRow(row, now),
         inputs: {
           relevance: row.llm_relevance,
           importance: row.llm_importance,
@@ -1189,14 +1181,7 @@ export async function reprocessToday(
         tokens += score.tokens;
         scoredCount++;
         const tags = canonicalTagsByItem.get(row.id) ?? score.tags;
-        const rank = rankScore({
-          importance: score.importance,
-          quality: score.quality,
-          publishedAt: row.published_at * 1000,
-          now: Date.now(),
-          ...rowRankSignals(row),
-          category: storyCategory(score.category),
-        });
+        const rank = rankScoreForRow(row, Date.now(), score);
         statements.push(
           env.DB.prepare(
             `UPDATE items SET
@@ -1358,14 +1343,7 @@ export async function updateItem(
         ? clamp(input.relevance, 0, 1)
         : row.llm_relevance;
 
-    const rank = rankScore({
-      importance,
-      quality,
-      publishedAt: row.published_at * 1000,
-      now: Date.now(),
-      ...rowRankSignals(row),
-      category: storyCategory(row.category),
-    });
+    const rank = rankScoreForRow(row, Date.now(), { importance, quality });
 
     await env.DB.prepare(
       `UPDATE items SET

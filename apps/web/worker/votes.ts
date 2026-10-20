@@ -2,9 +2,8 @@ import {
   RANK_SIGNAL_COLUMNS,
   RANK_SIGNAL_JOIN,
   type RankSignalRow,
-  rankScore,
+  rankScoreForRow,
   rowRankSignals,
-  storyCategory,
 } from "./ranking.js";
 
 /** Story ids are the sha256 hex of the canonical URL. */
@@ -46,17 +45,6 @@ async function loadRankRow(
   itemId: string
 ): Promise<RankRow | null> {
   return db.prepare(RANK_ROW_SQL).bind(itemId).first<RankRow>();
-}
-
-function scoreOf(row: RankRow, nowMs: number): number {
-  return rankScore({
-    importance: row.llm_importance ?? 5,
-    quality: row.llm_quality ?? 5,
-    publishedAt: row.published_at * 1000,
-    now: nowMs,
-    ...rowRankSignals(row),
-    category: storyCategory(row.category),
-  });
 }
 
 /** Clicking the current vote clears it. Clicking the other one replaces it. */
@@ -114,7 +102,7 @@ export async function applyVote(
 
   const after = await loadRankRow(db, input.itemId);
   if (!after) return { ok: false, error: "Story not found" };
-  const rank = scoreOf(after, nowMs);
+  const rank = rankScoreForRow(after, nowMs);
   await db
     .prepare("UPDATE items SET rank_score = ? WHERE id = ?")
     .bind(rank, input.itemId)
