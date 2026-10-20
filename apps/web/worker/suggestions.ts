@@ -16,9 +16,10 @@ import {
 } from "./llm.js";
 import { flushLlmCallWrites, withRunLlmCallLogger } from "./llm-call-log.js";
 import {
-  checkRateLimit,
+  buildInsertLimitGuard,
+  findExceededLimit,
   hashIp,
-  ONE_DAY_SEC,
+  type InsertLimits,
   RATE_LIMIT_MESSAGES,
 } from "./rate-limit.js";
 import {
@@ -134,45 +135,24 @@ export async function submitSuggestion(
     };
   }
 
-  if (input.userId) {
-    const row = await db
-      .prepare(
-        "SELECT COUNT(*) as count FROM translation_suggestions WHERE user_id = ? AND status IN ('pending', 'reviewing')"
-      )
-      .bind(input.userId)
-      .first<{ count: number }>();
-    if (isRateLimited(row?.count ?? 0)) {
-      return { ok: false, error: RATE_LIMIT_MESSAGES.pending };
-    }
-
-    const overDaily = await checkRateLimit(db, {
-      table: "translation_suggestions",
-      column: "user_id",
-      key: input.userId,
-      windowSec: ONE_DAY_SEC,
-      limit: MAX_PER_USER_PER_DAY,
-    });
-    if (overDaily) return { ok: false, error: RATE_LIMIT_MESSAGES.daily };
-  }
-
-  let ipHash: string | null = null;
-  if (input.ip) {
-    ipHash = await hashIp(input.ip);
-    const overIpDaily = await checkRateLimit(db, {
-      table: "translation_suggestions",
-      column: "ip_hash",
-      key: ipHash,
-      windowSec: ONE_DAY_SEC,
-      limit: MAX_PER_IP_PER_DAY,
-    });
-    if (overIpDaily) return { ok: false, error: RATE_LIMIT_MESSAGES.ip };
-  }
+  const ipHash = input.ip ? await hashIp(input.ip) : null;
+  const limits: InsertLimits = {
+    table: "translation_suggestions",
+    pendingStatuses: ["pending", "reviewing"],
+    userId: input.userId ?? null,
+    ipHash,
+    pendingLimit: MAX_PENDING_PER_USER,
+    userDailyLimit: MAX_PER_USER_PER_DAY,
+    ipDailyLimit: MAX_PER_IP_PER_DAY,
+  };
+  const guard = buildInsertLimitGuard(limits);
 
   const id = crypto.randomUUID();
-  await db
+  const inserted = await db
     .prepare(
       `INSERT INTO translation_suggestions (id, item_id, lang, field, suggestion, user_id, user_name, ip_hash, created_at, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending'
+       WHERE ${guard.sql}`
     )
     .bind(
       nn(id),
@@ -183,9 +163,15 @@ export async function submitSuggestion(
       nn(input.userId),
       nn(input.userName),
       nn(ipHash),
-      nn(Date.now())
+      nn(Date.now()),
+      ...guard.params
     )
     .run();
+
+  if (inserted.meta?.changes === 0) {
+    const exceeded = await findExceededLimit(db, limits);
+    return { ok: false, error: RATE_LIMIT_MESSAGES[exceeded ?? "daily"] };
+  }
 
   return { ok: true, id };
 }

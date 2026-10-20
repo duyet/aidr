@@ -14,9 +14,10 @@ import {
 } from "./media.js";
 import { isMediaManifestSchemaError } from "./media-schema.js";
 import {
-  checkRateLimit,
+  buildInsertLimitGuard,
+  findExceededLimit,
   hashIp,
-  ONE_DAY_SEC,
+  type InsertLimits,
   RATE_LIMIT_MESSAGES,
 } from "./rate-limit.js";
 import { USER_SOURCE_ID } from "./sources/catalog.js";
@@ -32,6 +33,8 @@ export const REVIEW_CAP_DEFAULT = 10;
 export const ACCEPT_RATING_THRESHOLD = 0.6;
 export const MIN_TITLE_LENGTH = 5;
 export const MAX_TITLE_LENGTH = 300;
+export const MAX_NOTE_LENGTH = 1000;
+export const MAX_REVIEW_ATTEMPTS = 5;
 
 export function isSubmissionRateLimited(pendingCount: number): boolean {
   return pendingCount >= MAX_PENDING_SUBMISSIONS_PER_USER;
@@ -55,6 +58,15 @@ export function validateSubmissionTitle(title: string): string | null {
   if (trimmed.length === 0) return null;
   if (trimmed.length < MIN_TITLE_LENGTH || trimmed.length > MAX_TITLE_LENGTH) {
     return `title must be ${MIN_TITLE_LENGTH}-${MAX_TITLE_LENGTH} characters`;
+  }
+  return null;
+}
+
+export function validateSubmissionNote(note: unknown): string | null {
+  if (note === undefined || note === null) return null;
+  if (typeof note !== "string") return "note must be text";
+  if (note.length > MAX_NOTE_LENGTH) {
+    return `note must be at most ${MAX_NOTE_LENGTH} characters`;
   }
   return null;
 }
@@ -119,6 +131,8 @@ export async function submitStory(
   const titleError = validateSubmissionTitle(input.title);
   if (titleError) return { ok: false, error: titleError };
   const title = resolveSubmissionTitle(input.title, url);
+  const noteError = validateSubmissionNote(input.note);
+  if (noteError) return { ok: false, error: noteError };
 
   const existingItem = await db
     .prepare("SELECT id FROM items WHERE url = ?")
@@ -134,57 +148,50 @@ export async function submitStory(
     return { ok: false, error: "story already submitted" };
   }
 
-  if (input.userId) {
-    const row = await db
-      .prepare(
-        "SELECT COUNT(*) as count FROM submissions WHERE user_id = ? AND status = 'pending'"
-      )
-      .bind(input.userId)
-      .first<{ count: number }>();
-    if (isSubmissionRateLimited(row?.count ?? 0)) {
-      return { ok: false, error: RATE_LIMIT_MESSAGES.pending };
-    }
-
-    const overDaily = await checkRateLimit(db, {
-      table: "submissions",
-      column: "user_id",
-      key: input.userId,
-      windowSec: ONE_DAY_SEC,
-      limit: MAX_SUBMISSIONS_PER_USER_PER_DAY,
-    });
-    if (overDaily) return { ok: false, error: RATE_LIMIT_MESSAGES.daily };
-  }
-
-  let ipHash: string | null = null;
-  if (input.ip) {
-    ipHash = await hashIp(input.ip);
-    const overIpDaily = await checkRateLimit(db, {
-      table: "submissions",
-      column: "ip_hash",
-      key: ipHash,
-      windowSec: ONE_DAY_SEC,
-      limit: MAX_SUBMISSIONS_PER_IP_PER_DAY,
-    });
-    if (overIpDaily) return { ok: false, error: RATE_LIMIT_MESSAGES.ip };
-  }
+  const ipHash = input.ip ? await hashIp(input.ip) : null;
+  const limits: InsertLimits = {
+    table: "submissions",
+    pendingStatuses: ["pending"],
+    userId: input.userId ?? null,
+    ipHash,
+    pendingLimit: MAX_PENDING_SUBMISSIONS_PER_USER,
+    userDailyLimit: MAX_SUBMISSIONS_PER_USER_PER_DAY,
+    ipDailyLimit: MAX_SUBMISSIONS_PER_IP_PER_DAY,
+  };
+  const guard = buildInsertLimitGuard(limits);
 
   const id = crypto.randomUUID();
-  await db
-    .prepare(
-      `INSERT INTO submissions (id, url, title, note, user_id, user_name, ip_hash, created_at, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
-    )
-    .bind(
-      nn(id),
-      nn(url),
-      nn(title),
-      nn(input.note),
-      nn(input.userId),
-      nn(input.userName),
-      nn(ipHash),
-      nn(Date.now())
-    )
-    .run();
+  let inserted: D1Result;
+  try {
+    inserted = await db
+      .prepare(
+        `INSERT INTO submissions (id, url, title, note, user_id, user_name, ip_hash, created_at, status)
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'pending'
+         WHERE ${guard.sql}`
+      )
+      .bind(
+        nn(id),
+        nn(url),
+        nn(title),
+        nn(input.note),
+        nn(input.userId),
+        nn(input.userName),
+        nn(ipHash),
+        nn(Date.now()),
+        ...guard.params
+      )
+      .run();
+  } catch (error) {
+    if (/UNIQUE constraint failed/i.test(String(error))) {
+      return { ok: false, error: "story already submitted" };
+    }
+    throw error;
+  }
+
+  if (inserted.meta?.changes === 0) {
+    const exceeded = await findExceededLimit(db, limits);
+    return { ok: false, error: RATE_LIMIT_MESSAGES[exceeded ?? "daily"] };
+  }
 
   return { ok: true, id };
 }
@@ -265,7 +272,9 @@ interface PendingSubmissionRow {
  * normal fetch would have produced — for the next ingest run's dedupe
  * step to pick up and run through the ordinary score/translate/enrich
  * pipeline (see ingest/dedupe.ts). Any per-submission failure
- * is logged and leaves that submission pending for a future run.
+ * is logged, counted in `review_attempts`, and leaves that submission pending;
+ * a row at MAX_REVIEW_ATTEMPTS is no longer selected (an admin can still
+ * accept or reject it by hand).
  */
 export interface SubmissionsReviewStats {
   reviewed: number;
@@ -351,8 +360,8 @@ export async function reviewPendingSubmissions(
 ): Promise<SubmissionsReviewStats> {
   const { results } = await env.DB.prepare(
     `SELECT id, url, title, note FROM submissions
-     WHERE status = 'pending'
-     ORDER BY created_at ASC
+     WHERE status = 'pending' AND review_attempts < ${MAX_REVIEW_ATTEMPTS}
+     ORDER BY review_attempts ASC, created_at ASC
      LIMIT ${cap}`
   ).all<PendingSubmissionRow>();
   const pending = results ?? [];
@@ -477,6 +486,11 @@ export async function reviewPendingSubmissions(
         `reviewPendingSubmissions failed for ${submission.id}:`,
         error
       );
+      await env.DB.prepare(
+        "UPDATE submissions SET review_attempts = review_attempts + 1 WHERE id = ?"
+      )
+        .bind(nn(submission.id))
+        .run();
     }
   }
 

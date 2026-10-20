@@ -1,5 +1,5 @@
 import { nn } from "../d1-bind.js";
-import { submitStory } from "../submissions.js";
+import { MAX_NOTE_LENGTH, submitStory } from "../submissions.js";
 import { submitSuggestion } from "../suggestions.js";
 import type { Env } from "../types.js";
 import { quote, sendAck } from "./ack.js";
@@ -111,7 +111,7 @@ async function decide(env: Env, row: InboundRow): Promise<Outcome> {
     const result = await submitStory(db, {
       url: intent.url,
       title: intent.title.length >= 5 ? intent.title.slice(0, 300) : "",
-      note: intent.note || undefined,
+      note: intent.note.slice(0, MAX_NOTE_LENGTH) || undefined,
       userId: row.user_id,
       userName,
     });
