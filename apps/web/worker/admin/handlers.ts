@@ -1392,7 +1392,7 @@ export async function listPendingSubmissions(
     100
   );
   const { results } = await env.DB.prepare(
-    `SELECT id, url, title, note, user_name, rating, created_at, status
+    `SELECT id, url, title, note, user_name, rating, created_at, status, review_attempts
      FROM submissions
      WHERE status = 'pending'
      ORDER BY created_at ASC

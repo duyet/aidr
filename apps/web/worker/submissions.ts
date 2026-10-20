@@ -1,3 +1,4 @@
+import { MAX_REVIEW_ATTEMPTS } from "../src/lib/submission-review.js";
 import { nn } from "./d1-bind.js";
 import { fetchOgData, type OgData } from "./enrich.js";
 import { sha256Hex } from "./hash.js";
@@ -34,7 +35,7 @@ export const ACCEPT_RATING_THRESHOLD = 0.6;
 export const MIN_TITLE_LENGTH = 5;
 export const MAX_TITLE_LENGTH = 300;
 export const MAX_NOTE_LENGTH = 1000;
-export const MAX_REVIEW_ATTEMPTS = 5;
+export { MAX_REVIEW_ATTEMPTS };
 
 export function isSubmissionRateLimited(pendingCount: number): boolean {
   return pendingCount >= MAX_PENDING_SUBMISSIONS_PER_USER;

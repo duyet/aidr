@@ -155,6 +155,22 @@ describe("inbound-email step", () => {
     expect(sent[0].headers?.["In-Reply-To"]).toBe(`<${id}@example.com>`);
   });
 
+  it("truncates note and title without splitting a surrogate pair", async () => {
+    pending({
+      subject: `Fwd: ${"t".repeat(299)}😀`,
+      own_text: `${"a".repeat(999)}😀`,
+      forwarded_links: JSON.stringify(["https://news.example.com/emoji"]),
+      is_forward: 1,
+    });
+    await run();
+    const sub = db.prepare("SELECT title, note FROM submissions").get() as {
+      title: string;
+      note: string;
+    };
+    expect(sub.note).toBe("a".repeat(999));
+    expect(sub.title).toBe("t".repeat(299));
+  });
+
   it("turns a reply about a story into a pending suggestion on that story", async () => {
     pending({
       subject: "Re: AI;DR digest",

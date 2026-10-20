@@ -1,3 +1,4 @@
+import { truncateUtf16 } from "../../src/lib/truncate.js";
 import { nn } from "../d1-bind.js";
 import { MAX_NOTE_LENGTH, submitStory } from "../submissions.js";
 import { submitSuggestion } from "../suggestions.js";
@@ -110,8 +111,8 @@ async function decide(env: Env, row: InboundRow): Promise<Outcome> {
   if (intent.kind === "submission") {
     const result = await submitStory(db, {
       url: intent.url,
-      title: intent.title.length >= 5 ? intent.title.slice(0, 300) : "",
-      note: intent.note.slice(0, MAX_NOTE_LENGTH) || undefined,
+      title: intent.title.length >= 5 ? truncateUtf16(intent.title, 300) : "",
+      note: truncateUtf16(intent.note, MAX_NOTE_LENGTH) || undefined,
       userId: row.user_id,
       userName,
     });

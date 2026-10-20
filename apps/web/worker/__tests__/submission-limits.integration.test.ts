@@ -3,6 +3,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { listPendingSubmissions } from "../admin/handlers.js";
 import { fetchOgData } from "../enrich.js";
 import {
   MAX_NOTE_LENGTH,
@@ -239,5 +240,31 @@ describe("reviewPendingSubmissions with a row that keeps failing", () => {
 
     const reviewed = vi.mocked(fetchOgData).mock.calls.map(([url]) => url);
     expect(reviewed).toEqual([story(2).url]);
+  });
+});
+
+describe("admin pending list", () => {
+  it("exposes review_attempts so parked submissions are distinguishable", async () => {
+    const { raw, d1 } = freshDb();
+    await submitStory(d1, { ...story(1), userId: "user1" });
+    await submitStory(d1, { ...story(2), userId: "user2" });
+    raw
+      .prepare(
+        "UPDATE submissions SET review_attempts = ? WHERE url LIKE '%story-2'"
+      )
+      .run(MAX_REVIEW_ATTEMPTS);
+
+    const { submissions } = await listPendingSubmissions({
+      DB: d1,
+    } as unknown as Env);
+    const attempts = Object.fromEntries(
+      (submissions as Array<{ url: string; review_attempts: number }>).map(
+        (r) => [r.url, r.review_attempts]
+      )
+    );
+    expect(attempts).toEqual({
+      [story(1).url]: 0,
+      [story(2).url]: MAX_REVIEW_ATTEMPTS,
+    });
   });
 });
