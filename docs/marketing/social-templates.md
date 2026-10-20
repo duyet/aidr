@@ -35,7 +35,7 @@ https://aidr.today
 ```
 Title: Show HN: AI;DR, AI news ranked every 30 minutes in English and Vietnamese
 
-AI;DR fetches AI news from HN, Hugging Face, GitHub releases, Lobsters, and RSS every 30 minutes. It dedupes and merges stories, checks that each is about AI, scores it with an LLM, and ranks with pure code (rules in ALGORITHM.md). The top of the last 24 hours becomes a daily edition of up to 16 bullets, with at most 5 per topic family.
+AI;DR fetches AI news from HN, Hugging Face, GitHub releases, Lobsters, and RSS every 30 minutes. It dedupes and merges stories, checks that each is about AI, scores it with an LLM, and ranks with pure code (rules in ALGORITHM.md). The top of the last 24 hours becomes a daily edition of up to 16 bullets, with at most 5 per source family (6 when one is top-tier).
 
 It runs on one Cloudflare Worker with D1. Outputs are the site, email, Telegram, RSS, a Chrome new tab, and a public MCP server whose read tools need no key.
 

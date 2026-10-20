@@ -6,9 +6,9 @@
 
 AI news is spread across Hacker News, Hugging Face, lab blogs, GitHub releases, and a long tail of RSS feeds. The same model release shows up five times with five headlines. I built AI;DR to read all of it and hand back one short list.
 
-Every 30 minutes, a pipeline fetches new stories from its sources, removes duplicates, and merges stories that cover the same event. A JEV check confirms that a story is about AI, and an LLM scores it. Then plain code ranks everything by importance and quality. No person picks the order, and the ranking rules are public in `ALGORITHM.md` on GitHub.
+Every 30 minutes, a pipeline fetches new stories from its sources, removes duplicates, and merges stories that cover the same event. JEV rates each story for AI relevance and quality, and an LLM takes over when JEV is unavailable. Then plain code ranks everything by importance and quality. No person picks the order, and the ranking rules are public in `ALGORITHM.md` on GitHub.
 
-The top stories of the last 24 hours become the day's edition, up to 16 short bullets written once in English and once in Vietnamese. One topic can hold at most 5 of the 16 slots, so a single busy story does not push out the rest. Every bullet links to the original post.
+The top stories of the last 24 hours become the day's edition, up to 16 short bullets written once in English and once in Vietnamese. At most 5 stories from one source family, 6 when one is top-tier, so a single busy source does not push out the rest. Every bullet links to the original post.
 
 You can read the edition where you already are.
 

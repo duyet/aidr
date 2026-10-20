@@ -28,9 +28,9 @@ AI;DR reads AI news sources every 30 minutes, removes duplicates, scores each st
 | Sources include Hacker News, Hugging Face, GitHub releases, Lobsters, RSS | Adapters in `apps/web/worker/sources/` (`hn.ts`, `hfpapers.ts`, `hfmodels.ts`, `hftrending.ts`, `githubreleases.ts`, `lobsters.ts`, `rss.ts`), registered in `registry.ts`. The live list is at https://aidr.today/data?tab=sources |
 | Duplicates are merged | `ALGORITHM.md` §2 Dedupe and §5 Merge |
 | Ranking is pure code | `ALGORITHM.md` §7 Rank, `apps/web/worker/ranking.ts` |
-| A JEV check and an LLM score each story | `ALGORITHM.md` §4 Score, https://aidr.today/about |
+| JEV rates each story, and an LLM scores it when JEV is unavailable | `ALGORITHM.md` §4 Score, https://aidr.today/about |
 | The daily digest is up to 16 bullets per language from the last 24 hours | `ALGORITHM.md` §10 TL;DR, `apps/web/worker/tldr.ts` |
-| One topic family holds at most 5 of the 16 slots | `ALGORITHM.md` §10, `apps/web/worker/digest/select.ts` |
+| At most 5 stories from one source family, 6 when one is top-tier | `ALGORITHM.md` §10, `apps/web/worker/digest/select.ts` |
 | English and Vietnamese never fill in for each other | `CLAUDE.md`, `apps/web/worker/digest/edition.ts` |
 | Email from 07:00 in the reader's timezone, 3, 5, or 10 stories, daily or weekly | `ALGORITHM.md` "Overview" publish notes, `apps/web/worker/subscribe/handlers.ts` (`DIGEST_SIZES`) |
 | Telegram in Vietnamese (@aihomnay) and English (@aidr_today), from 08:00 Vietnam time | `ALGORITHM.md` "Overview" publish notes, `apps/web/src/lib/site.ts` |
