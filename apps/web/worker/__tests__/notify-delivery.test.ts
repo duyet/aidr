@@ -190,9 +190,12 @@ describe("notifications delivery idempotency", () => {
           item_id TEXT, lang TEXT, title TEXT, summary TEXT
         );
         CREATE TABLE translation_review_state (
-          item_id TEXT, lang TEXT, source_revision INTEGER,
-          candidate_title TEXT, candidate_summary TEXT,
+          state_id TEXT, item_id TEXT, lang TEXT, source_revision INTEGER,
+          candidate_hash TEXT, candidate_title TEXT, candidate_summary TEXT,
           terminal INTEGER, decision TEXT
+        );
+        CREATE TABLE translation_review_attempts (
+          state_id TEXT, candidate_hash TEXT, fidelity REAL, decision TEXT
         );
       `);
       const now = Date.now();

@@ -6,6 +6,7 @@ import {
   type PostedEvent,
   postability,
   sameEvent,
+  translationPostability,
 } from "../notify/post-quality.js";
 import { canonicalOf } from "../notify/posted-events.js";
 import { sanitizeRunStatsJson } from "../telemetry-safe.js";
@@ -71,6 +72,56 @@ describe("postability", () => {
     expect(
       hasSourceChrome("It is a 5 min read about how the context was lost.")
     ).toBe(false);
+  });
+});
+
+describe("translationPostability", () => {
+  // Prod 657a40d5: a Techmeme headline with no source summary. The
+  // Vietnamese title is a short form and the summary carries the rest,
+  // "agent-to-agent" included; the post shows both.
+  const source = {
+    title:
+      "Delaware-based Causa Prima, which develops an agent-to-agent AI platform for managing B2B payments, raised a $20M seed (Camila Grigera Naón/Fortune)",
+    summary: "",
+  };
+  const title = "Causa Prima của Delaware huy động 20 triệu USD";
+
+  it("judges the Vietnamese summary when the source has none", () => {
+    expect(
+      translationPostability(
+        {
+          source,
+          candidate: {
+            title,
+            summary:
+              "Causa Prima, công ty tại Delaware phát triển nền tảng AI agent-to-agent để quản lý thanh toán B2B, đã huy động 20 triệu USD vòng seed.",
+          },
+          qaRejected: false,
+        },
+        []
+      )
+    ).toEqual({ ok: true });
+  });
+
+  it("still refuses when no field the post shows keeps the term", () => {
+    expect(
+      translationPostability(
+        {
+          source,
+          candidate: {
+            title,
+            summary:
+              "Causa Prima, công ty tại Delaware phát triển nền tảng AI cho thanh toán B2B, đã huy động 20 triệu USD vòng seed.",
+          },
+          qaRejected: false,
+        },
+        []
+      )
+    ).toEqual({
+      ok: false,
+      reason: "draft",
+      issues: ["keep these terms in English: agent"],
+    });
   });
 });
 

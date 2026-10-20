@@ -41,6 +41,8 @@ export const KEEP_ENGLISH_TERMS = [
   "inference engine",
 ] as const;
 
+type KeepTerm = (typeof KEEP_ENGLISH_TERMS)[number];
+
 /** "Model Family", "model families", "a family of time-series foundation
  * models". The Vietnamese keeps "model family" for each (prod 8e8bf17f
  * shipped "gia đình mô hình"). */
@@ -253,6 +255,25 @@ function hasWord(text: string, word: string, stem: boolean): boolean {
 
 export const NON_AI_AGENT_RE =
   /\b(?:federal|fbi|secret|special|border|customs|immigration|free|travel|real[- ]estate|sports)\s+agents?\b/gi;
+
+/** Where a keep term is the ordinary English word, which a journalist
+ * translates, not the jargon. Each is cut from the source before the term is
+ * looked for. The verbs come from the Vietnamese Telegram gate's refusals of
+ * 2026-10-06..20 (`scripts/telegram-gate-replay.ts`): "we exploit the
+ * backbone's causal structure", "Yelp is embedding numerous new AI
+ * features", "the rout prompted the nation's president". The jargon stays:
+ * "a zero-day exploit", "text embeddings", "few-shot prompting". The object
+ * after a verb is a lowercase word on the same line, so a headline noun
+ * before the summary ("Agent Exploit\nThe flaw …") stays jargon. */
+const ORDINARY_SENSE: Partial<Record<KeepTerm, RegExp>> = {
+  agent: NON_AI_AGENT_RE,
+  exploit:
+    /\b(?:[Tt]o|can|could|may|might|will|would|should|must|that|which|who|[Ww]e|[Tt]hey)\s+[Ee]xploit(?:s|ed|ing)?\b|\b[Ee]xploits?(?=[ \t]+(?:the|a|an|this|that|these|those|its|their|his|her|our|your|any|such|vulnerabilit\w*|weakness\w*|flaws?|bugs?|loopholes?)\b)/g,
+  embedding:
+    /\b(?:is|are|was|were|be|been|[Bb]y|[Aa]fter|[Bb]efore|[Ww]hile|[Ww]ithout)\s+embedding\b|\b[Ee]mbedding(?=[ \t]+(?:the|a|an|its|their|numerous|several|it|them)\b)/g,
+  prompt:
+    /\b[Pp]rompted\b|(?:,|\b(?:is|are|was|were|be|been|has|have|had|which|that|who))\s+[Pp]rompting\b/g,
+};
 
 const WORD_RE = /[A-Za-z][A-Za-z0-9]*(?:[.'’-][A-Za-z0-9]+)*/g;
 
@@ -895,16 +916,15 @@ export function extractProtectedTerms(source: {
 }): ProtectedTerms {
   const summary = stripSourceBoilerplate(source.summary);
   const text = `${source.title}\n${summary}`;
-  // "Federal agents" are people, not AI agents.
-  const jargon = KEEP_ENGLISH_TERMS.filter((term) =>
-    term === "model famil"
-      ? mentionsModelFamily(text)
-      : hasWord(
-          term === "agent" ? text.replace(NON_AI_AGENT_RE, "") : text,
-          term,
-          !WHOLE_WORD_TERMS.has(term)
-        )
-  );
+  const jargon = KEEP_ENGLISH_TERMS.filter((term) => {
+    if (term === "model famil") return mentionsModelFamily(text);
+    const ordinary = ORDINARY_SENSE[term];
+    return hasWord(
+      ordinary ? text.replace(ordinary, "") : text,
+      term,
+      !WHOLE_WORD_TERMS.has(term)
+    );
+  });
   return {
     names: nameCandidates(source.title, summary),
     jargon: [...jargon],
@@ -944,6 +964,16 @@ function coreOfCompound(term: string): string {
   return term === "multi-agent" ? "agent" : term;
 }
 
+/** The English term in the Vietnamese, also in Vietnamese word order: "các
+ * mô hình frontier" keeps "frontier models" (prod 4be1348a, de25b1e6). */
+function keepsTerm(text: string, term: string): boolean {
+  if (hasWord(text, coreOfCompound(term), !WHOLE_WORD_TERMS.has(term))) {
+    return true;
+  }
+  const modifier = /^(.+) model$/.exec(term)?.[1];
+  return modifier !== undefined && hasWord(text, `mô hình ${modifier}`, true);
+}
+
 /** Source terms missing from the candidate, in source order. */
 export function missingProtectedTerms(
   source: { title: string; summary: string },
@@ -953,10 +983,7 @@ export function missingProtectedTerms(
   const text = `${candidate.title}\n${candidate.summary}`;
   return {
     names: terms.names.filter((name) => !hasName(text, coreOfCompound(name))),
-    jargon: terms.jargon.filter(
-      (term) =>
-        !hasWord(text, coreOfCompound(term), !WHOLE_WORD_TERMS.has(term))
-    ),
+    jargon: terms.jargon.filter((term) => !keepsTerm(text, term)),
   };
 }
 

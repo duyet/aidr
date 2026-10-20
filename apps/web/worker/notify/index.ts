@@ -417,7 +417,7 @@ type GatedCopy<T extends ChannelCopyRow> =
 
 /** The channel's copy of a story when it may post, else why not; null when
  *  the story has no copy in the channel's language. */
-function postableCopy<T extends ChannelCopyRow>(
+export function postableCopy<T extends ChannelCopyRow>(
   row: T,
   lang: Lang,
   rules: KnowledgeRule[]
@@ -455,20 +455,29 @@ function logGateRefusal(
   );
 }
 
-/** QA sent this exact translation to human review. `review_failed` is not a
- *  reject: it means the reviewer was down, and counting it would silence the
- *  channel during an outage. */
+/** QA sent this exact translation to human review after a reviewer scored
+ *  it and did not accept it. `review_failed` is not a reject: it means the
+ *  reviewer was down, and counting it would silence the channel during an
+ *  outage. QA also ends in `human_review` when the reviewer failed on every
+ *  attempt and never scored the text, so a scored, not accepted attempt on
+ *  this candidate is required: in the 14 days to 2026-10-20, 129 of 371
+ *  `gate:qa` refusals had none (`scripts/telegram-gate-replay.ts`). */
 const QA_REJECTED_SQL = `EXISTS (
                    SELECT 1 FROM translation_review_state s
+                     JOIN translation_review_attempts a
+                       ON a.state_id = s.state_id
+                      AND a.candidate_hash = s.candidate_hash
                     WHERE s.item_id = i.id AND s.lang = tr.lang
                       AND s.source_revision = i.source_revision
                       AND s.candidate_title = tr.title
                       AND s.candidate_summary = tr.summary
-                      AND s.terminal = 1 AND s.decision = 'human_review')`;
+                      AND s.terminal = 1 AND s.decision = 'human_review'
+                      AND a.fidelity IS NOT NULL
+                      AND a.decision <> 'accepted')`;
 
 /** Story columns for a post, as `ChannelCopyRow` plus `StoryRow`: the
  *  source copy and the channel-language translation (`channelCopy`). */
-function storyCopySql(lang: Lang): { columns: string; join: string } {
+export function storyCopySql(lang: Lang): { columns: string; join: string } {
   const trLang = lang === "en" ? "en" : "vi";
   return {
     columns: `i.id, i.url,

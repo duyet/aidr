@@ -1599,6 +1599,36 @@ counts rows per check; the numbers below come from it.
   400 rows: 13, all flagged by raters (8 news, 5 paper titles); 8 more
   rater-flagged titles have < 2 function words and pass. 30 days: 23.
 
+Four checks read the text more narrowly since the Vietnamese Telegram gate
+replay of 2026-10-20 (`scripts/telegram-gate-replay.ts`, below under
+Notify). Each change fixed a class of false refusals. The calque, garble,
+magnitude, version, decimal and dollar rules are unchanged; the keep-term
+check now matches the jargon sense only.
+
+- Stutter: a doubled syllable is not a stutter when each copy belongs to a
+  neighbour, the first ending a two-syllable word and the second starting
+  one or standing alone (`worker/vi-compounds.ts`: "quy mô mô hình",
+  "bài toán toán học", "thiết bị bị lỗi"). The word table comes from every
+  doubled syllable in 4,819 stored rows of 2026-08-21..10-20: 35 of the 45
+  flagged in the last 14 days were such words. Real stutters still fail
+  ("nguồn cung hẹp hẹp", "các biện biện pháp", "285 triệu triệu USD").
+  On 356 held-out rows (days 61–150) the flags went from 7 to 4; the one
+  word the table lacks ("phân bổ bổ sung") is still flagged. "dần dần"
+  joined the reduplications.
+- Keep-English terms in their plain English sense are not asked for:
+  `ORDINARY_SENSE` cuts the verb uses before matching, the way "FBI
+  agents" already was ("we exploit the backbone", "Yelp is embedding
+  features", "the rout prompted"). The nouns stay ("a zero-day exploit",
+  "text embeddings", "few-shot prompting"). This list also feeds the
+  translate prompt's keep list and the QA terminology guard. Over the
+  3,577 held-out stored rows of days 15–150 it cuts 49 uses (prompt 38,
+  exploit 9, embedding 2), each a verb or a participle ("few-shot
+  prompted to adopt a persona").
+- A "<X> model" keep term is kept in Vietnamese word order too: "các mô
+  hình frontier" keeps "frontier models".
+- Gloss: a parenthetical the source itself writes ("SERA (Self-Evaluating
+  Recursive Agents)") and a list marker ("(ii)") are not glosses.
+
 Dry run of 2026-10-19 (`vi-audit --days 7`): 782 rows; the gate before
 these checks sends 37 back for repair, the gate after sends 132 (calque
 58, garble 26, decimal 24, keep 19, echo 18, stutter 16, dollar 7). Over
@@ -2354,22 +2384,53 @@ deliberately non-spammy.
   - **Vietnamese translation gate** (`translationPostability`, the
     trending candidates and the highlight's card stories): an EN→VI
     translation on a `vi` channel is refused when QA sent that exact text to
-    human review (`gate:qa`: a terminal `human_review` row in
-    `translation_review_state` for the current title, summary and source
-    revision), or when `translationDraftIssues` finds an issue in it now,
-    with the active knowledge rules (`gate:draft`; the issues are logged as
-    one `notify_translation_gate` warning and, for the highlight, kept in
-    `last_error`). The source it checks against is what the translator was
-    sent (`sentSource` of `items.summary`). A missing QA rating is not a
+    human review after a reviewer scored it (`gate:qa`: a terminal
+    `human_review` row in `translation_review_state` for the current title,
+    summary and source revision, with an attempt on that candidate that has
+    a fidelity score and is not `accepted`), or when `translationDraftIssues`
+    finds an issue in it now, with the active knowledge rules (`gate:draft`;
+    the issues are logged as one `notify_translation_gate` warning and, for
+    the highlight, kept in `last_error`). The source it checks against is
+    what the translator was sent (`sentSource` of `items.summary`); the
+    Vietnamese summary is judged whenever it exists, also when the source
+    has none, because the post shows it. A missing QA rating is not a
     reject: in the 2026-10 audit of t.me/s/aihomnay, 21 of 23 Vietnamese
     story posts in a week had none, because posts go out before QA reaches
     them. `review_failed` is
-    not a reject either: it means the reviewer was down. A refused story is
+    not a reject either: it means the reviewer was down. Nor is a terminal
+    `human_review` that QA reached only because the reviewer failed on
+    every attempt: no reviewer scored that text. A refused story is
     never claimed, so it costs no attempt and is judged again next run,
     after a repair or a rule change. English channels and Vietnamese-source
     copy are not judged by it. Then a leading Techmeme byline ("Kashmir Hill
     / New York Times :") is dropped from the Vietnamese summary before the
     postability gate runs.
+  - **Measured refusal rate** (`scripts/telegram-gate-replay.ts`, read-only:
+    it reads D1 through `wranglerSelect` and runs the notifier's own
+    `storyCopySql("vi")` and `postableCopy` over every EN→VI story of the
+    last N days; `--dump`/`--file` freeze the stories, `--ids` re-reads
+    them after a SQL change, `--labels` scores refusals against hand
+    labels). The 1,598 stories of 2026-10-06..20, every refusal read and
+    labeled a defect a Vietnamese reader would call wrong or a false
+    positive:
+
+    | | refused | defect | false positive |
+    |---|---|---|---|
+    | before | 674 (42.2%) | 389 | 285 (17.8% of stories) |
+    | after | 537 (33.6%) | 348 | 189 (11.8%) |
+
+    170 of the 189 left are `gate:qa`: QA's `hard_failures` mixes the
+    reviewer's checks with its deterministic guards, and the name guard
+    reads headline words as names ("Introduces", "Hits", the plural-folded
+    "Bits", the cut "Erd" of Erdős), so a scored verdict cannot be split
+    into "the reviewer found an error" and "a guard misfired" from stored
+    data. 13 are `gate:short` stubs that are informative but under 80
+    characters. 42 stories refused before are defective and now pass the
+    gate (a post also needs the trending bar, the cap and dedup): 32 were
+    held back only by a reviewer outage (no check names their defect), 10
+    only by a stutter or verb misfire. The trending-floor
+    subset (rank ≥ 3, importance ≥ 7) had 31 stories, 3 refused, all
+    defects; the highlight judges card stories outside it.
   - **Why the Vietnamese copy is not retranslated from `summary_en`**:
     the language columns do not fall back to each other, and a send-time
     retranslation is an LLM call per post with no QA behind it. The
