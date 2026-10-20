@@ -111,8 +111,9 @@ function AboutPage() {
           No person picks the order. Every 30 minutes the pipeline collects
           stories, including model releases, new kinds of models, and new AI
           labs. JEV and an LLM decide what makes the cut, and AnyRouter runs
-          those model calls. The result is one edition on the site, by email,
-          and on Telegram. Every story links to the original post.
+          those model calls. The result is one edition on the site, by email, on
+          Telegram, on Facebook, and over RSS. Every story links to the original
+          post.
         </p>
       </div>
 
@@ -137,8 +138,8 @@ function AboutPage() {
       <div className="typeset typeset-page mt-10">
         <PageSection title="Judgment and models">
           <p>
-            JEV checks that a story is really about AI before its score counts.
-            The LLM then scores relevance and writes the digest bullets.{" "}
+            JEV rates each story for AI relevance and quality. An LLM takes over
+            when JEV is unavailable, and it writes the digest bullets.{" "}
             <a
               href={ANYROUTER_URL}
               target="_blank"
