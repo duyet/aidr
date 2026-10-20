@@ -35,7 +35,6 @@ const fail = (step, detail) => {
   process.exit(1);
 };
 
-// --- args ---------------------------------------------------------------
 const argv = process.argv.slice(2);
 let mp4 = "", metaSrc = "", lang = "", audioLang = "", kind = "", cover = "", privacy = "public", finishId = "";
 let only = ["thumb", "playlist", "oembed"];
@@ -64,7 +63,6 @@ if (cover && !existsSync(cover)) {
 }
 mp4 = resolve(mp4);
 
-// --- metadata (same parser as yt-upload) --------------------------------
 let meta;
 try {
   const flag = metaSrc.endsWith(".json") ? "--json" : readFileSync(metaSrc, "utf8").includes("<!-- posts:") ? "--daily" : "--release";
@@ -83,7 +81,6 @@ if (kind === "short" && !/#shorts/i.test(`${title}\n${desc}`)) title = `${title}
 if ([...title].length > 100) fail("metadata", `title is ${[...title].length} chars, max 100`);
 if (Buffer.byteLength(desc) > 5000) fail("metadata", "description over 5000 bytes");
 
-// --- helpers --------------------------------------------------------------
 const missing = ["YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN"].filter((k) => !process.env[k]);
 if (missing.length) fail("env", `missing ${missing.join(", ")}`);
 
@@ -105,7 +102,6 @@ async function call(step, url, init = {}) {
   return body;
 }
 
-// --- 1. refresh token -----------------------------------------------------
 log("refresh token");
 {
   const res = await fetch("https://oauth2.googleapis.com/token", {
@@ -133,7 +129,6 @@ const CHANNEL = process.env.YOUTUBE_CHANNEL_ID || "UCGDB5uD8znydgMg2XLOj04w";
   log(`channel ${ch.snippet.title} (${ch.id})`);
 }
 
-// --- 2. resumable upload (skipped with --finish) ---------------------------
 let id = finishId;
 if (!id) {
   const size = statSync(mp4).size;
@@ -170,7 +165,6 @@ if (!id) {
 const url = kind === "short" ? `https://www.youtube.com/shorts/${id}` : `https://youtu.be/${id}`;
 console.log(`ID=${id}`);
 
-// --- 3. thumbnail (long only) ---------------------------------------------
 if (only.includes("thumb") && kind === "long" && cover) {
   log("thumbnail");
   let file = resolve(cover);
@@ -199,7 +193,6 @@ if (only.includes("thumb") && kind === "long" && cover) {
   console.log("DONE=thumb");
 }
 
-// --- 4. playlist "AI;DR" ---------------------------------------------------
 if (only.includes("playlist")) {
   log(`playlist ${PLAYLIST}`);
   let pageToken = "";
