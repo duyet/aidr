@@ -96,7 +96,7 @@ export function buildMissingTranslationQuery(
  * Merge writes tags onto a canonical and does not set the score columns, so
  * an empty-tags check never sees those rows again. Most-recent first. */
 export function buildUnscoredItemsQuery(limit = BACKFILL_SCORE_CAP): string {
-  return `SELECT id, title, summary, published_at,
+  return `SELECT id, title, summary, published_at, items.tags, fetched_at,
                  ${RANK_SIGNAL_COLUMNS}
           FROM items ${RANK_SIGNAL_JOIN}
           WHERE status = 'published'

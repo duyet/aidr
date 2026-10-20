@@ -36,7 +36,6 @@ import { sha256Hex } from "../hash.js";
 import { validateIngestMode } from "../ingest/mode.js";
 import { tickIngest } from "../ingest-schedule.js";
 import {
-  scoreItems,
   setLlmCallLogger,
   translateItems,
   withLlmCallContext,
@@ -62,6 +61,7 @@ import {
   rankScoreForRow,
   rowRankSignals,
 } from "../ranking.js";
+import { rescoreItems } from "../rescore.js";
 import { adapters } from "../sources/registry.js";
 import type { SourceLanguage } from "../sources/types.js";
 import {
@@ -85,8 +85,6 @@ import {
   type TldrRegenerateResult,
   tldrSnapshotDate,
 } from "../tldr.js";
-import { captureAndLearnTopics } from "../topic-learning.js";
-import { normalizeTopics, type ScoredStoryTags } from "../topics.js";
 import { fetchTraffic } from "../traffic.js";
 import type { Env } from "../types.js";
 import { applyUnmerge, type BatchResult } from "../unmerge/apply.js";
@@ -297,7 +295,7 @@ export async function pushItems(
         item.title,
         summary,
         publishedAt,
-        now,
+        toEpochSeconds(now),
         item.points ?? 0,
         item.comments ?? 0,
         item.relevance ?? null,
@@ -1083,6 +1081,8 @@ interface ReprocessItemRow extends RankSignalRow {
   summary: string | null;
   published_at: number;
   source_lang: "en" | "vi";
+  tags: string | null;
+  fetched_at: number;
 }
 
 /** Epoch seconds for the start of the current UTC day — matches
@@ -1130,8 +1130,8 @@ export async function reprocessToday(
 
     const since = startOfTodayUtcSec();
     const { results } = await env.DB.prepare(
-      `SELECT id, title, summary, published_at, source_lang,
-              ${RANK_SIGNAL_COLUMNS}
+      `SELECT id, title, summary, published_at, source_lang, items.tags,
+              fetched_at, ${RANK_SIGNAL_COLUMNS}
        FROM items ${RANK_SIGNAL_JOIN}
        WHERE status = 'published' AND published_at >= ?`
     )
@@ -1144,62 +1144,11 @@ export async function reprocessToday(
     let tokens = 0;
 
     if (doScore && items.length > 0) {
-      const scoreResults = await withLlmCallContext(operationId, () =>
-        scoreItems(
-          env,
-          items.map((row, i) => ({
-            i,
-            title: row.title,
-            summary: row.summary ?? undefined,
-            source: row.source_id,
-          }))
-        )
+      const rescored = await withLlmCallContext(operationId, () =>
+        rescoreItems(env, items)
       );
-
-      const storiesById = new Map<string, ScoredStoryTags>();
-      const scoreByItemId = new Map<string, (typeof scoreResults)[number]>();
-      for (const result of scoreResults) {
-        const row = items[result.i];
-        if (!row) continue;
-        storiesById.set(row.id, {
-          tags: result.tags,
-          title: row.title,
-          sourceId: row.source_id,
-        });
-        scoreByItemId.set(row.id, result);
-      }
-      const nowMs = Date.now();
-      const canonicalTagsByItem = await withLlmCallContext(operationId, () =>
-        normalizeTopics(env, storiesById, nowMs)
-      );
-      await captureAndLearnTopics(env.DB, canonicalTagsByItem, nowMs);
-
-      const statements: D1PreparedStatement[] = [];
-      for (const row of items) {
-        const score = scoreByItemId.get(row.id);
-        if (!score) continue;
-        tokens += score.tokens;
-        scoredCount++;
-        const tags = canonicalTagsByItem.get(row.id) ?? score.tags;
-        const rank = rankScoreForRow(row, Date.now(), score);
-        statements.push(
-          env.DB.prepare(
-            `UPDATE items SET
-               llm_relevance = ?, llm_importance = ?, llm_quality = ?,
-               category = ?, tags = ?, rank_score = ?
-             WHERE id = ?`
-          ).bind(
-            score.relevance,
-            score.importance,
-            score.quality,
-            score.category || null,
-            JSON.stringify(tags),
-            rank,
-            row.id
-          )
-        );
-      }
-      if (statements.length > 0) await env.DB.batch(statements);
+      scoredCount = rescored.scored;
+      tokens += rescored.tokens;
     }
 
     if (doTranslate && items.length > 0) {

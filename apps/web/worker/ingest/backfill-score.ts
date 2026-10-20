@@ -1,20 +1,17 @@
 import { BACKFILL_SCORE_CAP, buildUnscoredItemsQuery } from "../backfill.js";
-import { scoreItems } from "../llm.js";
-import { type RankSignalRow, rankScoreForRow } from "../ranking.js";
+import type { RankSignalRow } from "../ranking.js";
+import { rescoreItems } from "../rescore.js";
 import { recordStep } from "../run-stats.js";
-import { normalizeTopics, type ScoredStoryTags } from "../topics.js";
 import { llmStep } from "../workflow-step.js";
-import {
-  type IngestContext,
-  LLM_STEP,
-  RELEVANCE_THRESHOLD,
-} from "./context.js";
+import { type IngestContext, LLM_STEP } from "./context.js";
 
 interface UnscoredRow extends RankSignalRow {
   id: string;
   title: string;
   summary: string | null;
   published_at: number;
+  tags: string | null;
+  fetched_at: number;
 }
 
 /** Scores items that never got an LLM score (e.g. the score step failed on
@@ -39,59 +36,9 @@ export async function backfillScores(
         const rows = results ?? [];
         if (rows.length === 0) return { scoredCount, tokens };
 
-        const scoredRows = await scoreItems(
-          env,
-          rows.map((row, i) => ({
-            i,
-            id: row.id,
-            title: row.title,
-            summary: row.summary ?? undefined,
-            source: row.source_id,
-          }))
-        );
-        const storiesById = new Map<string, ScoredStoryTags>();
-        for (const result of scoredRows) {
-          tokens += result.tokens;
-          const row = rows[result.i];
-          if (row) {
-            storiesById.set(row.id, {
-              tags: result.tags,
-              title: row.title,
-              sourceId: row.source_id,
-            });
-          }
-        }
-        const canonical = await normalizeTopics(env, storiesById, Date.now());
-        const now = Date.now();
-        for (const result of scoredRows) {
-          const row = rows[result.i];
-          if (!row) continue;
-          const tags = canonical.get(row.id) ?? result.tags;
-          const rank = rankScoreForRow(row, now, result);
-          await env.DB.prepare(
-            `UPDATE items SET
-                 llm_relevance = ?, llm_importance = ?, llm_quality = ?,
-                 category = ?, tags = ?, rank_score = ?,
-                 status = CASE WHEN status = 'published' AND ? < ?
-                   THEN 'rejected' ELSE status END
-               WHERE id = ?`
-          )
-            .bind(
-              result.relevance,
-              result.importance,
-              result.quality,
-              result.category,
-              JSON.stringify(tags),
-              rank,
-              // A row published unscored (its score batch failed) gets the
-              // same relevance gate as a fresh one (ALGORITHM §4).
-              result.relevance,
-              RELEVANCE_THRESHOLD,
-              row.id
-            )
-            .run();
-          scoredCount++;
-        }
+        const rescored = await rescoreItems(env, rows);
+        scoredCount = rescored.scored;
+        tokens = rescored.tokens;
       } catch (error) {
         console.error("backfill-score step failed:", error);
       }
