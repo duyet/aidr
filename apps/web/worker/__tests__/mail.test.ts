@@ -902,8 +902,8 @@ function mailD1(db: DatabaseSync): D1Database {
           return { results: db.prepare(sql).all(...args) as T[] };
         },
         async run() {
-          db.prepare(sql).run(...args);
-          return { success: true, meta: { changes: 0 } };
+          const result = db.prepare(sql).run(...args);
+          return { success: true, meta: { changes: Number(result.changes) } };
         },
       };
       return stmt;
@@ -1152,6 +1152,38 @@ describe("sendCampaign", () => {
     expect(storedCampaign(db)).toMatchObject({
       status: "sent",
       sent_count: 101,
+      failed_count: 0,
+    });
+  });
+
+  it("mails each reader once when the send is posted twice at once (#975)", async () => {
+    resetMailSchemaCache();
+    const db = seedMailDb();
+    seedCampaign(db);
+    seedSubscriber(db, "a@example.com");
+    seedSubscriber(db, "b@example.com");
+    seedSubscriber(db, "c@example.com");
+    const mailed: string[] = [];
+    const env = campaignEnv(db, async (mail) => {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      mailed.push(mail.to);
+    });
+
+    const [first, second] = await Promise.all([
+      sendCampaign(env, CAMPAIGN_ID),
+      sendCampaign(env, CAMPAIGN_ID),
+    ]);
+    expect(mailed.sort()).toEqual([
+      "a@example.com",
+      "b@example.com",
+      "c@example.com",
+    ]);
+    expect(
+      (first as { sent: number }).sent + (second as { sent: number }).sent
+    ).toBe(3);
+    expect(storedCampaign(db)).toEqual({
+      status: "sent",
+      sent_count: 3,
       failed_count: 0,
     });
   });
