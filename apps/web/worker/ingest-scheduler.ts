@@ -20,10 +20,6 @@ const LAST_STARTED_KEY = "last_started_at";
  * Singleton Durable Object that fires ingest every 30 minutes without a Worker cron
  * trigger (Free accounts are capped at 5 crons). GitHub Actions remains a
  * watchdog; both paths call `tick()` so overlapping POSTs coalesce.
- *
- * HTTP `POST /api/admin/ingest` uses `canStart` + Worker D1 persist +
- * Worker `NEWS_INGEST.create({ id })` + `markStarted`. Alarm `tick()`
- * still creates from this isolate (best-effort persist).
  */
 export class NewsIngestScheduler extends DurableObject<Env> {
   async alarm(): Promise<void> {
@@ -54,8 +50,6 @@ export class NewsIngestScheduler extends DurableObject<Env> {
     const now = Date.now();
     const lastStartedAt = await this.ctx.storage.get<number>(LAST_STARTED_KEY);
     if (opts.scheduled === false) {
-      // Dry / partial runs never move the 30-minute alarm; only make sure
-      // one is armed.
       await this.ensureArmed();
     } else {
       await this.ctx.storage.setAlarm(nextAlarmAt(now));

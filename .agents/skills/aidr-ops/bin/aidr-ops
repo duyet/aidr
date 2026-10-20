@@ -36,8 +36,6 @@ const BROKEN_CLERK_CNAME = "clerk.aidr.today";
 const out = [];
 const log = (s) => out.push(s);
 
-/* ------------------------------------------------------------------ utils */
-
 function mask(value) {
   if (!value) return "";
   if (value.length <= 8) return "****";
@@ -116,8 +114,6 @@ async function fetchWithTimeout(url, init = {}, ms = 15000) {
   }
 }
 
-/* --------------------------------------------------------------- checks */
-
 const checks = [];
 function record(name, status, detail, fix) {
   checks.push({ name, status, detail, fix: fix ?? null });
@@ -160,14 +156,6 @@ async function checkCloudflareAuth(env) {
 }
 
 /**
- * The check that would have prevented this session's near-miss: a publishable
- * key and a secret key from different Clerk instances, or a pk pointing at the
- * CNAME the proxy exists to avoid.
- */
-/**
- * The check that would have prevented this session's near-miss: a publishable
- * key and a secret key from different Clerk instances.
- *
  * Two things that look wrong but are NOT, in this repo:
  *  - CLERK_PUBLISHABLE_KEY may be absent. scripts/sync-env.ts aliases it from
  *    VITE_CLERK_PUBLISHABLE_KEY; they are the same key by design.
@@ -306,8 +294,6 @@ async function checkLiveSurface() {
   }
 }
 
-/* ------------------------------------------------------------- commands */
-
 async function preflight() {
   const env = loadEnvFiles();
   log("preflight — read-only, no writes\n");
@@ -368,8 +354,6 @@ async function verify() {
   const fails = checks.filter((c) => c.status === "fail");
   return { ok: fails.length === 0, checks };
 }
-
-/* ------------------------------------------------------------------ main */
 
 const HELP = `aidr-ops — validate, sync, and deploy aidr.today secrets
 
