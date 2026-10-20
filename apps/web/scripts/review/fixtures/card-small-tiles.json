@@ -1,0 +1,283 @@
+{
+  "date": "2026-10-21",
+  "langs": [
+    {
+      "lang": "en",
+      "items": [
+        {
+          "id": "8ed1599eb95bc766b10165793bb5e4e829601d1922e97e695a52da29fe369d68",
+          "title": "Improving our alignment and security efforts",
+          "title_vi": "Cải thiện nỗ lực căn bản và bảo mật",
+          "image_url": "https://www-cdn.anthropic.com/images/4zrzovbb/website/6d4a0d28992ade92d6fa63646fd9c9d318245c6c-2400x1260.jpg"
+        },
+        {
+          "id": "244c48fc443eebd58da5d18b0fe3cbcc5a90697ef0842bf52698c430d3e7927d",
+          "title": "Anthropic’s cloud partnerships are getting messy",
+          "title_vi": "Các đối tác đám mây của Anthropic ngày càng rối loạn",
+          "image_url": "https://techcrunch.com/wp-content/uploads/2026/10/GettyImages-2295579000.jpg?resize=1200%2C800"
+        },
+        {
+          "id": "e68246067eeddf6e1d69054b26875df87dd7d6bd47ff2b0a5e4c670c0aaa6059",
+          "title": "How Claude’s text watermark works",
+          "title_vi": "Cách thức hoạt động của watermark văn bản Claude",
+          "image_url": "https://www-cdn.anthropic.com/images/4zrzovbb/website/6d4a0d28992ade92d6fa63646fd9c9d318245c6c-2400x1260.jpg"
+        },
+        {
+          "id": "af34a6699219bf32973d4718a4ba002c32a7fcaed001c8d2d7cd54acf80064b8",
+          "title": "ChatGPT now lets you lock your chats",
+          "title_vi": "ChatGPT cho phép khóa trò chuyện của bạn",
+          "image_url": "https://techcrunch.com/wp-content/uploads/2026/09/openai-getty.jpg?resize=1200%2C800"
+        },
+        {
+          "id": "3368e02f484edc23efd1c6136de01b0671f4745cace10562529ff1840597f7fe",
+          "title": "Expanding our support for scientists",
+          "title_vi": "Mở rộng hỗ trợ cho các nhà khoa học",
+          "image_url": "https://www-cdn.anthropic.com/images/4zrzovbb/website/6d4a0d28992ade92d6fa63646fd9c9d318245c6c-2400x1260.jpg"
+        },
+        {
+          "id": "1357a9ae7911e1d557ac7ffa71b9c9e7ae12a960458a027aff8f7f846d93a6f9",
+          "title": "Sign language to text",
+          "title_vi": "Dịch ngôn ngữ chữ ký sang văn bản",
+          "image_url": "https://lh3.googleusercontent.com/8RcynTx1ujudyw8Fs05Pv8WJahe2FQ3z1Y7gNHm-xvOTJLdMp9hNDsIIoQbJsnav6evNLgY1iT9B9ercsyIn0U1N51pzScvSfe6IHk2SjDJx-MaVzQ=w1200-h630-n-nu-rw"
+        }
+      ],
+      "tiles": [
+        "8ed1599eb95bc766b10165793bb5e4e829601d1922e97e695a52da29fe369d68",
+        "244c48fc443eebd58da5d18b0fe3cbcc5a90697ef0842bf52698c430d3e7927d",
+        "e68246067eeddf6e1d69054b26875df87dd7d6bd47ff2b0a5e4c670c0aaa6059",
+        "af34a6699219bf32973d4718a4ba002c32a7fcaed001c8d2d7cd54acf80064b8",
+        "3368e02f484edc23efd1c6136de01b0671f4745cace10562529ff1840597f7fe",
+        "1357a9ae7911e1d557ac7ffa71b9c9e7ae12a960458a027aff8f7f846d93a6f9"
+      ],
+      "headlines": [
+        {
+          "id": "8ed1599eb95bc766b10165793bb5e4e829601d1922e97e695a52da29fe369d68",
+          "text": "Improving our alignment and security efforts",
+          "fontSize": 36
+        },
+        {
+          "id": "244c48fc443eebd58da5d18b0fe3cbcc5a90697ef0842bf52698c430d3e7927d",
+          "text": "Anthropic’s cloud partnerships are…",
+          "fontSize": 18
+        },
+        {
+          "id": "e68246067eeddf6e1d69054b26875df87dd7d6bd47ff2b0a5e4c670c0aaa6059",
+          "text": "How Claude’s text watermark works",
+          "fontSize": 18
+        },
+        {
+          "id": "af34a6699219bf32973d4718a4ba002c32a7fcaed001c8d2d7cd54acf80064b8",
+          "text": "ChatGPT now lets you lock your chats",
+          "fontSize": 18
+        },
+        {
+          "id": "3368e02f484edc23efd1c6136de01b0671f4745cace10562529ff1840597f7fe",
+          "text": "Expanding our support for scientists",
+          "fontSize": 18
+        },
+        {
+          "id": "1357a9ae7911e1d557ac7ffa71b9c9e7ae12a960458a027aff8f7f846d93a6f9",
+          "text": "Sign language to text",
+          "fontSize": 32
+        }
+      ],
+      "images": [
+        {
+          "url": "https://aidr.today/api/og/date/2026-10-21.png?lang=en",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/8ed1599eb95bc766b10165793bb5e4e829601d1922e97e695a52da29fe369d68.png?lang=en",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/244c48fc443eebd58da5d18b0fe3cbcc5a90697ef0842bf52698c430d3e7927d.png?lang=en",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/e68246067eeddf6e1d69054b26875df87dd7d6bd47ff2b0a5e4c670c0aaa6059.png?lang=en",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/af34a6699219bf32973d4718a4ba002c32a7fcaed001c8d2d7cd54acf80064b8.png?lang=en",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/3368e02f484edc23efd1c6136de01b0671f4745cace10562529ff1840597f7fe.png?lang=en",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/1357a9ae7911e1d557ac7ffa71b9c9e7ae12a960458a027aff8f7f846d93a6f9.png?lang=en",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        }
+      ]
+    },
+    {
+      "lang": "vi",
+      "items": [
+        {
+          "id": "8ed1599eb95bc766b10165793bb5e4e829601d1922e97e695a52da29fe369d68",
+          "title": "Improving our alignment and security efforts",
+          "title_vi": "Cải thiện nỗ lực căn bản và bảo mật",
+          "image_url": "https://www-cdn.anthropic.com/images/4zrzovbb/website/6d4a0d28992ade92d6fa63646fd9c9d318245c6c-2400x1260.jpg"
+        },
+        {
+          "id": "244c48fc443eebd58da5d18b0fe3cbcc5a90697ef0842bf52698c430d3e7927d",
+          "title": "Anthropic’s cloud partnerships are getting messy",
+          "title_vi": "Các đối tác đám mây của Anthropic ngày càng rối loạn",
+          "image_url": "https://techcrunch.com/wp-content/uploads/2026/10/GettyImages-2295579000.jpg?resize=1200%2C800"
+        },
+        {
+          "id": "e68246067eeddf6e1d69054b26875df87dd7d6bd47ff2b0a5e4c670c0aaa6059",
+          "title": "How Claude’s text watermark works",
+          "title_vi": "Cách thức hoạt động của watermark văn bản Claude",
+          "image_url": "https://www-cdn.anthropic.com/images/4zrzovbb/website/6d4a0d28992ade92d6fa63646fd9c9d318245c6c-2400x1260.jpg"
+        },
+        {
+          "id": "af34a6699219bf32973d4718a4ba002c32a7fcaed001c8d2d7cd54acf80064b8",
+          "title": "ChatGPT now lets you lock your chats",
+          "title_vi": "ChatGPT cho phép khóa trò chuyện của bạn",
+          "image_url": "https://techcrunch.com/wp-content/uploads/2026/09/openai-getty.jpg?resize=1200%2C800"
+        },
+        {
+          "id": "3368e02f484edc23efd1c6136de01b0671f4745cace10562529ff1840597f7fe",
+          "title": "Expanding our support for scientists",
+          "title_vi": "Mở rộng hỗ trợ cho các nhà khoa học",
+          "image_url": "https://www-cdn.anthropic.com/images/4zrzovbb/website/6d4a0d28992ade92d6fa63646fd9c9d318245c6c-2400x1260.jpg"
+        },
+        {
+          "id": "1357a9ae7911e1d557ac7ffa71b9c9e7ae12a960458a027aff8f7f846d93a6f9",
+          "title": "Sign language to text",
+          "title_vi": "Dịch ngôn ngữ chữ ký sang văn bản",
+          "image_url": "https://lh3.googleusercontent.com/8RcynTx1ujudyw8Fs05Pv8WJahe2FQ3z1Y7gNHm-xvOTJLdMp9hNDsIIoQbJsnav6evNLgY1iT9B9ercsyIn0U1N51pzScvSfe6IHk2SjDJx-MaVzQ=w1200-h630-n-nu-rw"
+        }
+      ],
+      "tiles": [
+        "8ed1599eb95bc766b10165793bb5e4e829601d1922e97e695a52da29fe369d68",
+        "244c48fc443eebd58da5d18b0fe3cbcc5a90697ef0842bf52698c430d3e7927d",
+        "e68246067eeddf6e1d69054b26875df87dd7d6bd47ff2b0a5e4c670c0aaa6059",
+        "af34a6699219bf32973d4718a4ba002c32a7fcaed001c8d2d7cd54acf80064b8",
+        "3368e02f484edc23efd1c6136de01b0671f4745cace10562529ff1840597f7fe",
+        "1357a9ae7911e1d557ac7ffa71b9c9e7ae12a960458a027aff8f7f846d93a6f9"
+      ],
+      "headlines": [
+        {
+          "id": "8ed1599eb95bc766b10165793bb5e4e829601d1922e97e695a52da29fe369d68",
+          "text": "Cải thiện nỗ lực căn bản và bảo mật",
+          "fontSize": 36
+        },
+        {
+          "id": "244c48fc443eebd58da5d18b0fe3cbcc5a90697ef0842bf52698c430d3e7927d",
+          "text": "Các đối tác đám mây của Anthropic ngày càng…",
+          "fontSize": 18
+        },
+        {
+          "id": "e68246067eeddf6e1d69054b26875df87dd7d6bd47ff2b0a5e4c670c0aaa6059",
+          "text": "Cách thức hoạt động của watermark văn bản…",
+          "fontSize": 18
+        },
+        {
+          "id": "af34a6699219bf32973d4718a4ba002c32a7fcaed001c8d2d7cd54acf80064b8",
+          "text": "ChatGPT cho phép khóa trò chuyện của bạn",
+          "fontSize": 18
+        },
+        {
+          "id": "3368e02f484edc23efd1c6136de01b0671f4745cace10562529ff1840597f7fe",
+          "text": "Mở rộng hỗ trợ cho các nhà khoa học",
+          "fontSize": 18
+        },
+        {
+          "id": "1357a9ae7911e1d557ac7ffa71b9c9e7ae12a960458a027aff8f7f846d93a6f9",
+          "text": "Dịch ngôn ngữ chữ ký sang văn bản",
+          "fontSize": 30
+        }
+      ],
+      "images": [
+        {
+          "url": "https://aidr.today/api/og/date/2026-10-21.png?lang=vi",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/8ed1599eb95bc766b10165793bb5e4e829601d1922e97e695a52da29fe369d68.png?lang=vi",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/244c48fc443eebd58da5d18b0fe3cbcc5a90697ef0842bf52698c430d3e7927d.png?lang=vi",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/e68246067eeddf6e1d69054b26875df87dd7d6bd47ff2b0a5e4c670c0aaa6059.png?lang=vi",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/af34a6699219bf32973d4718a4ba002c32a7fcaed001c8d2d7cd54acf80064b8.png?lang=vi",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/3368e02f484edc23efd1c6136de01b0671f4745cace10562529ff1840597f7fe.png?lang=vi",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        },
+        {
+          "url": "https://aidr.today/api/og/1357a9ae7911e1d557ac7ffa71b9c9e7ae12a960458a027aff8f7f846d93a6f9.png?lang=vi",
+          "status": 200,
+          "contentType": "image/png",
+          "width": 1200,
+          "height": 630,
+          "bytes": 289582
+        }
+      ]
+    }
+  ]
+}

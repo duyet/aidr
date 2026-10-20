@@ -1,0 +1,149 @@
+{
+  "date": "2026-10-21",
+  "bullets_en": [
+    {
+      "text": "Anthropic’s draft S-1 says revenue reached $16.3B in 1H 2026, while planned compute spending exceeds $600B. It also reported an $80.7B net loss and seeks a valuation of up to $2T.",
+      "item_ids": [
+        "980d4d8bc9148077256c82894a76a7b8dde09acf4cf51117cf81f26b5b1d4f92"
+      ],
+      "image_url": "https://static.marketbrief.now/story-media/2112629511695090036/HVGQ933WEAAxNdq-large.jpg",
+      "image_item_id": "980d4d8bc9148077256c82894a76a7b8dde09acf4cf51117cf81f26b5b1d4f92"
+    },
+    {
+      "text": "Anthropic and Citrini Research used 300 sub-agents across 300+ GPUs to design over 300,000 protein candidates in 64 hours. Lab tests found 17 binders for scorpion toxins, but none has yet neutralized venom.",
+      "item_ids": [
+        "d4a077554d995768f3946b00b5399d3c62b3a1e2604d72d876c51bcd21b7a28d"
+      ],
+      "image_url": "https://pbs.twimg.com/card_img/2112541077496356864/CMDrvYAI?format=webp&name=medium",
+      "image_item_id": "d4a077554d995768f3946b00b5399d3c62b3a1e2604d72d876c51bcd21b7a28d"
+    },
+    {
+      "text": "DeepSeek open-sourced DeepInfer, a high-performance, large-scale inference framework for DeepSeek models. The release gives developers another inference engine for serving those models.",
+      "item_ids": [
+        "be38b11f937cd76cc2499227cdfa48faa900c375d8ec04e58b2371112dc26656"
+      ],
+      "image_url": "https://opengraph.githubassets.com/89442295a5895bf1d696a5dffd9577500ff32a3c89353249a76de48b87c1d0c8/deepseek-ai/DeepInfer",
+      "image_item_id": "be38b11f937cd76cc2499227cdfa48faa900c375d8ec04e58b2371112dc26656"
+    },
+    {
+      "text": "SpaceX posted $4.4B in Q3 net income on $14.58B revenue, while its Super Intelligence AI division became the largest business with $7.56B in sales. AI growth was driven by cloud deals, Cursor and Grok Bot.",
+      "item_ids": [
+        "3706f14fcbfbfb92b0730f9e21781814b2dc9c2c85395c28177d1deb59577bd8"
+      ],
+      "image_url": "https://techcrunch.com/wp-content/uploads/2026/06/elon-nasdaq-spacex-ipo.jpg?resize=1200%2C801",
+      "image_item_id": "3706f14fcbfbfb92b0730f9e21781814b2dc9c2c85395c28177d1deb59577bd8"
+    },
+    {
+      "text": "Google open-sourced TorchTPU and added native PyTorch backends for vLLM and SGLang on TPUs. The tools aim to help developers move workloads off Nvidia GPUs, with optimized kernels and strong Ironwood TPU benchmarks.",
+      "item_ids": [
+        "5ed7b4468bde462d73cdf9f45a04932656d56fcfc448a24b98d3134ef5fa6851",
+        "61ce75599c83f81b177fcb122ac1adb9d9a9b81ca2b51bb093cb253aee63ca87",
+        "501d1be1d4c9e9d9146e99d572286acdf5e9992cf6757d9d2c2c127bb3b2a34c"
+      ],
+      "image_url": "https://opengraph.githubassets.com/d0e359912ecdda5b2a0d9d83630dd730d1ef298bd58bebfa1a41d47cfc62327f/google-pytorch/torch_tpu",
+      "image_item_id": "5ed7b4468bde462d73cdf9f45a04932656d56fcfc448a24b98d3134ef5fa6851"
+    }
+  ],
+  "bullets_vi": [
+    {
+      "text": "Bản S-1 nháp của Anthropic cho biết doanh thu đạt 16,3 tỷ USD trong nửa đầu 2026, trong khi kế hoạch chi cho compute vượt 600 tỷ USD. Công ty cũng ghi nhận khoản lỗ ròng 80,7 tỷ USD và nhắm mức định giá tối đa 2 nghìn tỷ USD.",
+      "item_ids": [
+        "980d4d8bc9148077256c82894a76a7b8dde09acf4cf51117cf81f26b5b1d4f92"
+      ],
+      "image_url": "https://static.marketbrief.now/story-media/2112629511695090036/HVGQ933WEAAxNdq-large.jpg",
+      "image_item_id": "980d4d8bc9148077256c82894a76a7b8dde09acf4cf51117cf81f26b5b1d4f92"
+    },
+    {
+      "text": "Anthropic và Citrini Research dùng 300 sub-agent trên hơn 300 GPU để thiết kế hơn 300.000 ứng viên protein trong 64 giờ. Thử nghiệm phòng lab tìm thấy 17 chất gắn với độc tố bọ cạp, nhưng chưa chất nào vô hiệu hóa nọc độc.",
+      "item_ids": [
+        "d4a077554d995768f3946b00b5399d3c62b3a1e2604d72d876c51bcd21b7a28d"
+      ],
+      "image_url": "https://pbs.twimg.com/card_img/2112541077496356864/CMDrvYAI?format=webp&name=medium",
+      "image_item_id": "d4a077554d995768f3946b00b5399d3c62b3a1e2604d72d876c51bcd21b7a28d"
+    },
+    {
+      "text": "DeepSeek công bố mã nguồn mở DeepInfer, một inference engine hiệu năng cao cho quy mô lớn dành cho các model DeepSeek. Bản phát hành mang đến cho nhà phát triển thêm một inference engine để phục vụ các model này.",
+      "item_ids": [
+        "be38b11f937cd76cc2499227cdfa48faa900c375d8ec04e58b2371112dc26656"
+      ],
+      "image_url": "https://opengraph.githubassets.com/89442295a5895bf1d696a5dffd9577500ff32a3c89353249a76de48b87c1d0c8/deepseek-ai/DeepInfer",
+      "image_item_id": "be38b11f937cd76cc2499227cdfa48faa900c375d8ec04e58b2371112dc26656"
+    },
+    {
+      "text": "SpaceX báo lãi ròng 4,4 tỷ USD trong Q3 trên doanh thu 14,58 tỷ USD, còn bộ phận Super Intelligence AI trở thành mảng lớn nhất với doanh thu 7,56 tỷ USD. Tăng trưởng AI đến từ các thỏa thuận cloud, Cursor và Grok Bot.",
+      "item_ids": [
+        "3706f14fcbfbfb92b0730f9e21781814b2dc9c2c85395c28177d1deb59577bd8"
+      ],
+      "image_url": "https://techcrunch.com/wp-content/uploads/2026/06/elon-nasdaq-spacex-ipo.jpg?resize=1200%2C801",
+      "image_item_id": "3706f14fcbfbfb92b0730f9e21781814b2dc9c2c85395c28177d1deb59577bd8"
+    },
+    {
+      "text": "Google công bố mã nguồn mở TorchTPU và bổ sung backend PyTorch gốc cho vLLM và SGLang trên TPU. Các công cụ này giúp nhà phát triển chuyển workload khỏi GPU Nvidia, với kernel tối ưu và benchmark mạnh trên Ironwood TPU.",
+      "item_ids": [
+        "5ed7b4468bde462d73cdf9f45a04932656d56fcfc448a24b98d3134ef5fa6851",
+        "61ce75599c83f81b177fcb122ac1adb9d9a9b81ca2b51bb093cb253aee63ca87",
+        "501d1be1d4c9e9d9146e99d572286acdf5e9992cf6757d9d2c2c127bb3b2a34c"
+      ],
+      "image_url": "https://opengraph.githubassets.com/d0e359912ecdda5b2a0d9d83630dd730d1ef298bd58bebfa1a41d47cfc62327f/google-pytorch/torch_tpu",
+      "image_item_id": "5ed7b4468bde462d73cdf9f45a04932656d56fcfc448a24b98d3134ef5fa6851"
+    }
+  ],
+  "stories": [
+    {
+      "id": "980d4d8bc9148077256c82894a76a7b8dde09acf4cf51117cf81f26b5b1d4f92",
+      "url": "https://marketbrief.now/ai/anthropics-draft-ipo-filing-reveals-600b-compute-spending-plan-6fe35ac0",
+      "title": "Anthropic's Draft IPO Filing Reveals $600B Compute Spending Plan",
+      "title_vi": "Tài liệu đăng ký IPO nháp của Anthropic tiết lộ kế hoạch chi tiêu 600 tỷ USD cho compute",
+      "category": "Funding",
+      "image_url": "https://static.marketbrief.now/story-media/2112629511695090036/HVGQ933WEAAxNdq-large.jpg"
+    },
+    {
+      "id": "d4a077554d995768f3946b00b5399d3c62b3a1e2604d72d876c51bcd21b7a28d",
+      "url": "https://huggingnews.com/ai/anthropic-ai-autonomously-designs-17-lab-validated-scorpion-protein-bind-51393416",
+      "title": "Anthropic AI Autonomously Designs 17 Lab Validated Scorpion Protein Binders",
+      "title_vi": "AI của Anthropic tự động thiết kế 17 nhà ràng buộc protein Scorpion được xác nhận trong phòng thí nghiệm",
+      "category": "Research",
+      "image_url": "https://pbs.twimg.com/card_img/2112541077496356864/CMDrvYAI?format=webp&name=medium"
+    },
+    {
+      "id": "be38b11f937cd76cc2499227cdfa48faa900c375d8ec04e58b2371112dc26656",
+      "url": "https://github.com/deepseek-ai/DeepInfer",
+      "title": "DeepSeek just open-sourced its inference engine",
+      "title_vi": "DeepSeek vừa mã nguồn mở engine suy diễn của nó",
+      "category": "Open Source",
+      "image_url": "https://opengraph.githubassets.com/89442295a5895bf1d696a5dffd9577500ff32a3c89353249a76de48b87c1d0c8/deepseek-ai/DeepInfer"
+    },
+    {
+      "id": "3706f14fcbfbfb92b0730f9e21781814b2dc9c2c85395c28177d1deb59577bd8",
+      "url": "https://marketbrief.now/earnings/update-spacex-posts-44b-first-profit-since-ipo-as-q3-revenue-surges-161p-c3ae5a5a",
+      "title": "SpaceX Posts $4.4B First Profit Since IPO as Q3 Revenue Surges 161% to $14.58B on AI Boom",
+      "title_vi": "SpaceX báo lợi nhuận 4,4 tỷ USD đầu tiên kể từ IPO, doanh thu Q3 tăng 161% lên 14,58 tỷ USD nhờ boom AI",
+      "category": "Industry",
+      "image_url": "https://techcrunch.com/wp-content/uploads/2026/06/elon-nasdaq-spacex-ipo.jpg?resize=1200%2C801"
+    },
+    {
+      "id": "5ed7b4468bde462d73cdf9f45a04932656d56fcfc448a24b98d3134ef5fa6851",
+      "url": "https://github.com/google-pytorch/torch_tpu",
+      "title": "Google open-sources TorchTPU, a native PyTorch back end for TPUs",
+      "title_vi": "Google công bố nguồn mở TorchTPU, một backend PyTorch gốc cho TPUs",
+      "category": "Open Source",
+      "image_url": "https://opengraph.githubassets.com/d0e359912ecdda5b2a0d9d83630dd730d1ef298bd58bebfa1a41d47cfc62327f/google-pytorch/torch_tpu"
+    },
+    {
+      "id": "61ce75599c83f81b177fcb122ac1adb9d9a9b81ca2b51bb093cb253aee63ca87",
+      "url": "https://techcrunch.com/2026/10/20/google-has-joined-amazon-in-attacking-nvidias-stronghold-with-ai-app-developers/",
+      "title": "Google has joined Amazon in attacking Nvidia’s stronghold with AI app developers",
+      "title_vi": "Google tham gia cùng Amazon tấn công vị trí mạnh của Nvidia với nhà phát triển ứng dụng AI",
+      "category": "Tools",
+      "image_url": "https://techcrunch.com/wp-content/uploads/2025/05/GettyImages-2215577882.jpg?resize=1200%2C800"
+    },
+    {
+      "id": "501d1be1d4c9e9d9146e99d572286acdf5e9992cf6757d9d2c2c127bb3b2a34c",
+      "url": "https://developers.googleblog.com/announcing-new-vllm-and-sglang-inference-engines-on-tpu/",
+      "title": "Announcing New vLLM and SGLang Inference Engines on TPU",
+      "title_vi": "Ra mắt engine suy luận vLLM và SGLang mới trên TPU",
+      "category": "Frameworks",
+      "image_url": "https://storage.googleapis.com/gweb-developer-goog-blog-assets/images/inferenceblog.2e16d0ba.fill-1200x600.jpg"
+    }
+  ]
+}
