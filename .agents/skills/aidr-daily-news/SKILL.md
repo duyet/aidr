@@ -55,7 +55,7 @@ Only what the story's bullet in `edition.json` says. Reword for the ear; never a
 - **No rank cues and no filler.** Never "Number one", "Two", "Next up", "Let's go", "Moving on". Each story opens on the news itself: the subject and the verb ("Cloudflare is launching Clef…"). Light anchor segues are allowed only as part of the news: "In research, …", "Meanwhile at Microsoft, …", "And finally, …" for the last story.
 - Present tense or present perfect ("is launching", "has released"). Plain words, no hype ("huge", "insane", "game-changing").
 - 18–35 words per story keeps six stories near 70–85 s.
-- Intro: anchor A gives the show and the date ("This is AI DR, your AI news for Friday, October second."); anchor B adds a fresh line about today — the lead story or the day's theme ("Money and models today."). Never reuse yesterday's line.
+- Intro: one line, one anchor, straight into the news. No greeting, no "This is AI DR", no date line (the date is on screen). Name the lead story or the day's theme ("Anthropic lands $60B for chips, and Cloudflare ships Clef."). Never reuse yesterday's line.
 - Outro: the sign-off with "aidr dot today" and a short goodbye. Spoken "AI DR" and "aidr dot today" show as "AI;DR" and "aidr.today" in captions.
 
 ### Screen text

@@ -41,6 +41,43 @@ test("the template script is valid, fact-checked, and has no draft markers publi
   );
 });
 
+test("the intro is one line that opens on the news: no greeting, no show name, no date line", () => {
+  const s = templateScript(edition, hosts);
+  assert.equal(s.intro.voice.length, 1);
+  assert.doesNotMatch(s.intro.voice[0].text, /this is|ai dr|welcome/i);
+  assert.match(s.intro.voice[0].text, /^First up: /);
+});
+
+test("a model intro that opens with a greeting or the show name is rejected", () => {
+  const s = templateScript(edition, hosts);
+  for (const bad of [
+    "This is AI DR, your AI news for Friday.",
+    "Welcome back to AI DR.",
+    "Hello, here is today's AI news.",
+    "Good morning, AI news.",
+  ]) {
+    s.intro.voice = [{ anchor: s.intro.voice[0].anchor, text: bad }];
+    assert.match(
+      validateScript(s, edition).join(),
+      /opens with a greeting or the show name/,
+      bad
+    );
+  }
+  for (const ok of [
+    "Nvidia leads a busy day.",
+    "This is the biggest week for chips.",
+    "Hi-tech chips lead today.",
+    "Here is Anthropic's new model.",
+  ]) {
+    s.intro.voice = [{ anchor: s.intro.voice[0].anchor, text: ok }];
+    assert.doesNotMatch(
+      validateScript(s, edition).join(),
+      /greeting or the show name/,
+      ok
+    );
+  }
+});
+
 test("a failing model falls back to the template, trimmed to fit the Reel length", async () => {
   const llm = async () => {
     throw new Error("anyrouter 503");
