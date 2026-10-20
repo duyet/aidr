@@ -1542,7 +1542,8 @@ versions: c4c7ba8f, 45a86641, b0e46c0d, 7fa80fb0 in the title and
 title whose summary keeps the version, an integer version dropped from a
 title ("Gemini 4"), and a version dropped from a summary are not judged.
 A short table of known calques (`CALQUES`) flags, in items and TL;DR
-bullets, "gia đình mô hình" for a model family, "nhân quả" (causal) for
+bullets, "gia đình mô hình" for a model family, "khung suy diễn" (and
+"công cụ suy luận" and similar) for an inference engine, "nhân quả" (causal) for
 embodied, "con người" for humanoids, and "chung chung" (vague) for
 generality. Each fires only when the source has the term, no source word
 licenses the phrase ("causal", "humans"), and the Vietnamese has no right

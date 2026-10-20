@@ -751,6 +751,69 @@ describe("translationDraftIssues model family", () => {
   });
 });
 
+describe("translationDraftIssues inference engine", () => {
+  const SOURCE = {
+    title: "Mercury 3: Diffusion at scale",
+    summary:
+      "Mercury 3 is a diffusion LLM served by a new inference engine that runs 4 to 8 times faster than autoregressive models.",
+  };
+
+  it("flags 'khung suy diễn' and asks for the English term", () => {
+    const issues = translationDraftIssues(
+      SOURCE,
+      {
+        title: "Mercury 3: Diffusion ở quy mô lớn",
+        summary:
+          "Mercury 3 là diffusion LLM chạy trên một khung suy diễn mới, nhanh hơn 4 đến 8 lần so với mô hình tự hồi quy.",
+      },
+      [],
+      false
+    );
+    expect(issues).toContain("keep these terms in English: inference engine");
+    expect(issues).toContain(
+      `"inference engine" must not be rendered as "khung suy diễn"; use "inference engine"`
+    );
+  });
+
+  it("flags the other Vietnamese renderings in a TL;DR bullet", () => {
+    for (const bad of [
+      "công cụ suy luận",
+      "động cơ suy luận",
+      "khung suy luận",
+    ]) {
+      expect(
+        tldrBulletIssues(
+          "Inception shipped a new inference engine.",
+          `Inception ra mắt ${bad} mới.`,
+          []
+        )
+      ).toEqual([
+        `"inference engine" must not be rendered as "${bad}"; use "inference engine"`,
+      ]);
+    }
+  });
+
+  it("passes a rendering that keeps the English term", () => {
+    expect(
+      tldrBulletIssues(
+        "Inception shipped a new inference engine.",
+        "Inception ra mắt inference engine mới.",
+        []
+      )
+    ).toEqual([]);
+  });
+
+  it("leaves 'suy luận' alone when the source has no inference engine", () => {
+    expect(
+      tldrBulletIssues(
+        "The lab improved reasoning speed.",
+        "Phòng thí nghiệm cải thiện tốc độ suy luận, nhờ công cụ suy luận mới.",
+        []
+      )
+    ).toEqual([]);
+  });
+});
+
 describe("translationDraftIssues robotics calques", () => {
   // The owner's screenshot: "nhân quả" is causal, "con người" is people,
   // and "chung chung" is vague (written three times).

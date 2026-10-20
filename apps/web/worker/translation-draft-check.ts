@@ -141,6 +141,16 @@ const CALQUES: readonly Calque[] = [
     bad: /(?<![\p{L}\p{M}])(?:gia đình(?:\s+[\p{L}\p{M}\p{N}-]+){0,2}?\s+(?:mô hình|model)|họ\s+(?:mô hình|model)(?!\s+(?:hóa|hoá)))(?![\p{L}\p{M}])/giu,
     use: "model family",
   },
+  // "Khung suy diễn" for "inference engine". Vietnamese readers use the
+  // English term; the rendered engine, framework, tool or machine names a
+  // different thing.
+  {
+    term: "inference engine",
+    inSource: (text) => /\binference engines?\b/i.test(text),
+    bad: /(?<![\p{L}\p{M}])(?:khung|framework|công cụ|động cơ|cỗ máy|bộ máy)\s+suy\s+(?:diễn|luận)(?![\p{L}\p{M}])/giu,
+    rightVi: /inference engine/iu,
+    use: "inference engine",
+  },
   // Prod 7beb3e30: "trí tuệ nhân quả" (causal) for embodied intelligence.
   {
     term: "embodied",
