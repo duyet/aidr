@@ -90,7 +90,7 @@ class FakeD1 {
 
     if (
       sql.startsWith(
-        "SELECT id, title, summary, published_at, source_lang, source_id, points, comments, url AS signal_url, COALESCE(merged.members"
+        "SELECT id, title, summary, published_at, source_lang, items.tags, fetched_at, source_id, points, comments, url AS signal_url, COALESCE(merged.members"
       )
     ) {
       const [since] = args as [number];

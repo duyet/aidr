@@ -1278,8 +1278,10 @@ Batches of 5.
   relevance 0.5) gets the same rule when `backfill-score` scores it later:
   a published row under 0.4 becomes `rejected`.
   `backfill-score` and the admin reprocess share one rescore
-  (`worker/rescore.ts`): both apply this rule and record the canonical tags
-  in `topic_daily` and the learned keywords.
+  (`worker/rescore.ts`): both apply this rule. Ingest already counted a
+  row's stored tags and title entities in `topic_daily`, so a rescore counts
+  only the canonical tags it adds, once per story, on the row's ingest
+  (`fetched_at`) day, and never counts titles again.
 - **Optional JEV review panel** (`worker/jev-panel/`), off unless
   `JEV_PANEL_ENABLED` is truthy. When on, two judges from different vendor
   families (`JEV_PANEL_RELEVANCE_MODEL`, `JEV_PANEL_SOURCE_QUALITY_MODEL`)

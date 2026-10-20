@@ -1081,6 +1081,8 @@ interface ReprocessItemRow extends RankSignalRow {
   summary: string | null;
   published_at: number;
   source_lang: "en" | "vi";
+  tags: string | null;
+  fetched_at: number;
 }
 
 /** Epoch seconds for the start of the current UTC day — matches
@@ -1128,8 +1130,8 @@ export async function reprocessToday(
 
     const since = startOfTodayUtcSec();
     const { results } = await env.DB.prepare(
-      `SELECT id, title, summary, published_at, source_lang,
-              ${RANK_SIGNAL_COLUMNS}
+      `SELECT id, title, summary, published_at, source_lang, items.tags,
+              fetched_at, ${RANK_SIGNAL_COLUMNS}
        FROM items ${RANK_SIGNAL_JOIN}
        WHERE status = 'published' AND published_at >= ?`
     )

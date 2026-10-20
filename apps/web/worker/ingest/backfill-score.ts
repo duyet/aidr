@@ -10,6 +10,8 @@ interface UnscoredRow extends RankSignalRow {
   title: string;
   summary: string | null;
   published_at: number;
+  tags: string | null;
+  fetched_at: number;
 }
 
 /** Scores items that never got an LLM score (e.g. the score step failed on

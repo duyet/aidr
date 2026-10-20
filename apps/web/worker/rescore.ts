@@ -1,22 +1,32 @@
 import { RELEVANCE_THRESHOLD } from "./ingest/context.js";
+import { parseTagsJson } from "./ingest/write-plan.js";
 import { scoreItems } from "./llm.js";
 import { type RankableRow, rankScoreForRow } from "./ranking.js";
-import { captureAndLearnTopics } from "./topic-learning.js";
-import { normalizeTopics, type ScoredStoryTags } from "./topics.js";
+import { learningDayKey, recordTopicDaily } from "./topic-learning.js";
+import {
+  normalizeTopicName,
+  normalizeTopics,
+  type ScoredStoryTags,
+} from "./topics.js";
 import type { Env } from "./types.js";
 
 export interface RescoreRow extends RankableRow {
   id: string;
   title: string;
   summary: string | null;
+  /** Stored canonical tags: the ones ingest already counted in topic_daily. */
+  tags: string | null;
+  /** Epoch seconds of the first fetch, the run that counted `tags`. */
+  fetched_at: number;
 }
 
 /**
  * Scores `rows` again and writes the result back by id: the llm_* columns,
  * category, canonical tags and rank_score, with a published row under
- * `RELEVANCE_THRESHOLD` hidden as `rejected` (ALGORITHM §4). The canonical
- * tags also feed `topic_daily` and the learned keywords, so a rescored story
- * counts toward trending like a freshly ingested one. Never inserts a row.
+ * `RELEVANCE_THRESHOLD` hidden as `rejected` (ALGORITHM §4). Ingest already
+ * counted the row's stored tags and title entities in `topic_daily`, so only
+ * the tags this rescore adds are counted, on the row's ingest day. Never
+ * inserts a row.
  */
 export async function rescoreItems(
   env: Env,
@@ -50,11 +60,10 @@ export async function rescoreItems(
 
   const nowMs = Date.now();
   const canonicalTags = await normalizeTopics(env, storiesById, nowMs);
-  await captureAndLearnTopics(
+  await recordAddedTags(
     env.DB,
-    canonicalTags,
-    nowMs,
-    new Map(rows.map((row) => [row.id, row.title]))
+    scored.map(({ row }) => row),
+    canonicalTags
   );
 
   let tokens = 0;
@@ -81,4 +90,38 @@ export async function rescoreItems(
   });
   if (statements.length > 0) await env.DB.batch(statements);
   return { scored: statements.length, tokens };
+}
+
+/** Counts in `topic_daily` each canonical tag a row gained over its stored
+ * tags, on the day the row was fetched. */
+async function recordAddedTags(
+  db: D1Database,
+  rows: readonly RescoreRow[],
+  canonicalTags: ReadonlyMap<string, string[]>
+): Promise<void> {
+  const countsByDay = new Map<string, Map<string, number>>();
+  for (const row of rows) {
+    const counted = new Set(parseTagsJson(row.tags).map(normalizeTopicName));
+    const added = new Set(
+      (canonicalTags.get(row.id) ?? [])
+        .map(normalizeTopicName)
+        .filter((name) => name && !counted.has(name))
+    );
+    if (added.size === 0) continue;
+    const day = learningDayKey(row.fetched_at * 1000);
+    const counts = countsByDay.get(day) ?? new Map<string, number>();
+    for (const name of added) counts.set(name, (counts.get(name) ?? 0) + 1);
+    countsByDay.set(day, counts);
+  }
+  try {
+    for (const [day, counts] of countsByDay) {
+      await recordTopicDaily(
+        db,
+        [...counts].map(([topic, count]) => ({ topic, count })),
+        day
+      );
+    }
+  } catch (error) {
+    console.error("rescore: recording added tags failed:", error);
+  }
 }
