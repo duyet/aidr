@@ -1,0 +1,46 @@
+{
+  "source": "LLM cluster merges of 2026-10-15 to 10-19 that passed the #733 gate: one backing item carried an unrelated one in, or the model joined new items that share no evidence. Hand-labelled different stories; the split gate blocks each.",
+  "canonicals": 4,
+  "pairs": [
+    {
+      "canonicalId": "b0ae928a07c2b935a16a8aa7ef935c9dba5fddc50b4c76fe424876426d6f7ad1",
+      "mergedId": "b4489111a4b0e2dadb1bfa4ec7cdb8da1516e2f2635da82741a250e8c8e178ae",
+      "group": "b4489111a4b0e2dadb1bfa4ec7cdb8da1516e2f2635da82741a250e8c8e178ae",
+      "why": "labelled",
+      "canonical": "[marketbrief] Disney to Pay $210M for Character.AI Staff in Bankruptcy Deal",
+      "merged": "[the-decoder] Anthropic cushions its upcoming IPO with a discretionary fund for workers its models might replace"
+    },
+    {
+      "canonicalId": "d291fb6ec530ce743b28419a6d5f823a85990ae87046189cbdc7b9fb5fdaf9b2",
+      "mergedId": "d6956205925bb28cbaed5f439285c9c3a2abee8a292ab6a4a83ac915a22bb767",
+      "group": "d6956205925bb28cbaed5f439285c9c3a2abee8a292ab6a4a83ac915a22bb767",
+      "why": "labelled",
+      "canonical": "[marketbrief] Bank of America Hires 1,000 Contractors to Patch Anthropic Mythos Flaws",
+      "merged": "[the-decoder] GPT-6-Astra solves 49 of 50 physics research problems at $2.40 apiece"
+    },
+    {
+      "canonicalId": "e64024cc0ad5e01b051e2ab81bfce28029edc1d3302e3658d2972d0c6a424828",
+      "mergedId": "522b66da47ed8dd659931a3b560d5034d1f0cfe816af3e6332622f055382f9b9",
+      "group": "522b66da47ed8dd659931a3b560d5034d1f0cfe816af3e6332622f055382f9b9",
+      "why": "labelled",
+      "canonical": "[huggingnews] Harvey Cuts Legal AI Agent Task Costs by 48% With Context Graphs",
+      "merged": "[huggingnews] Iambic Therapeutics Shares Jump 18% on Debut After $150M IPO"
+    },
+    {
+      "canonicalId": "e64024cc0ad5e01b051e2ab81bfce28029edc1d3302e3658d2972d0c6a424828",
+      "mergedId": "0ac8df09788ecf8a134e8568929eef01326d7f4fd89360e61f7920ec127dcfa1",
+      "group": "522b66da47ed8dd659931a3b560d5034d1f0cfe816af3e6332622f055382f9b9",
+      "why": "labelled",
+      "canonical": "[huggingnews] Harvey Cuts Legal AI Agent Task Costs by 48% With Context Graphs",
+      "merged": "[marketbrief] Iambic Therapeutics Shares Jump 18% on Debut After $150M IPO"
+    },
+    {
+      "canonicalId": "d05f789212e75b03895d891fc48db8d9e1c5820cf5404b274822d199fc0e3772",
+      "mergedId": "c07a9af3c9fccff99bb26417dca2c3173a26b63f87958013c61be04b7c27b336",
+      "group": "c07a9af3c9fccff99bb26417dca2c3173a26b63f87958013c61be04b7c27b336",
+      "why": "labelled",
+      "canonical": "[cloudflare-blog] Cloudflare and OpenAI: making AI discovery better for everyone",
+      "merged": "[theverge-ai] Amazon’s always-listening Bee wearable can now help you buy stuff"
+    }
+  ]
+}
