@@ -1,3 +1,4 @@
+import { isProviderFailure } from "../bugsink.js";
 import { isMediaManifestSchemaError } from "../media-schema.js";
 import { recordStep } from "../run-stats.js";
 import { reviewPendingSubmissions } from "../submissions.js";
@@ -19,7 +20,10 @@ export interface QaStats {
 }
 
 function qaFailureReason(error: unknown): string {
+  if (isProviderFailure(error)) return "reviewer provider failed";
   const message = error instanceof Error ? error.message : String(error);
+  if (/failed strict (?:v\d+ )?validation/.test(message))
+    return "review output invalid";
   if (/\bD1_|SQLITE_/.test(message)) return "database error";
   return error instanceof Error ? error.name : "non-Error throw";
 }
@@ -36,6 +40,7 @@ export function qaStepSummary(stats: QaStats): string {
  * by name so the operator knows which migration to apply. */
 export async function qaTranslations(ctx: IngestContext): Promise<QaStats> {
   const { step, env, runId, steps } = ctx;
+  const from = steps.length;
   const stats: QaStats = await llmStep(
     step,
     env,
@@ -46,7 +51,7 @@ export async function qaTranslations(ctx: IngestContext): Promise<QaStats> {
       adjusted: 0,
       tokens: 0,
       error: "review failed",
-      reason: "workflow step ended",
+      reason: "workflow step failed",
     } as QaStats,
     async (): Promise<QaStats> => {
       try {
@@ -71,9 +76,13 @@ export async function qaTranslations(ctx: IngestContext): Promise<QaStats> {
         };
       }
     },
-    { config: LLM_STEP }
+    { config: LLM_STEP, steps }
   );
-  recordStep(steps, "qa-translations", qaStepSummary(stats), stats.reason);
+  const interrupted = steps
+    .slice(from)
+    .some((s) => s.name === "qa-translations" && s.action === "interrupted");
+  if (!interrupted)
+    recordStep(steps, "qa-translations", qaStepSummary(stats), stats.reason);
   return stats;
 }
 

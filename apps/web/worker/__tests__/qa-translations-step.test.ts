@@ -41,42 +41,44 @@ beforeEach(() => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
-// #592: the alert read "qa-translations: review failed" with nothing to say
-// whether D1, the code, or the Workflow engine ended the step.
-describe("qa-translations failure reason", () => {
-  it("names a D1 failure in the step-failed alert without the SQL", async () => {
-    rate.mockRejectedValue(
+describe("qa-translations failure reason (#592)", () => {
+  it.each([
+    [
+      new Error("anyrouter chain exhausted: all models failed"),
+      "reviewer provider failed",
+    ],
+    [
+      new Error("review output failed strict v4 validation"),
+      "review output invalid",
+    ],
+    [
       new Error(
         "D1_ERROR: no such column: t.qa_source_revision: SQLITE_ERROR SELECT secret"
-      )
-    );
-    const ctx = context(runClosure as never);
-    await qaTranslations(ctx);
-    const detail = alertDetail(ctx.steps);
-    expect(detail).toBe("qa-translations: review failed (database error)");
-  });
-
-  it("names a code fault by its error class", async () => {
-    rate.mockRejectedValue(new TypeError("x is undefined"));
+      ),
+      "database error",
+    ],
+    [new TypeError("x is undefined"), "TypeError"],
+  ])("names %s in the step-failed alert", async (error, reason) => {
+    rate.mockRejectedValue(error);
     const ctx = context(runClosure as never);
     await qaTranslations(ctx);
     expect(alertDetail(ctx.steps)).toBe(
-      "qa-translations: review failed (TypeError)"
+      `qa-translations: review failed (${reason})`
     );
   });
 
-  // The engine ending the step used to fall back to "0 pending translations",
-  // which reads as an empty queue.
-  it("reports a step the Workflow engine ended as failed, not as no work", async () => {
+  it("records an engine interruption once, not as an empty queue or a failure", async () => {
     const ctx = context(() =>
-      Promise.reject(new Error("Workflow step timed out"))
+      Promise.reject(new Error("Step timed out after 300000 ms"))
     );
     await qaTranslations(ctx);
-    expect(ctx.steps).toContainEqual(
-      expect.objectContaining({ name: "qa-translations" })
-    );
-    expect(alertDetail(ctx.steps)).toMatch(
-      /^qa-translations: review failed \(.+\)$/
-    );
+    expect(ctx.steps).toEqual([
+      {
+        name: "qa-translations",
+        action: "interrupted",
+        reason: "step timed out",
+      },
+    ]);
+    expect(alertDetail(ctx.steps)).toBeUndefined();
   });
 });
