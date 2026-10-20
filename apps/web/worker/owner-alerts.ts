@@ -40,7 +40,7 @@ export interface ModelStat {
   model: string;
   total: number;
   failed: number;
-  /** HTTP status of failed attempts -> count. */
+  /** HTTP status, else error code, of failed attempts -> count. */
   statuses: Record<string, number>;
 }
 

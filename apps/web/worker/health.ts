@@ -153,6 +153,11 @@ function tldrFailed(steps: RunStepInfo[]): boolean | null {
   return FAILURE_RE.test(tldr.action) || FAILURE_RE.test(tldr.reason ?? "");
 }
 
+function failureSummary(m: ModelStat): string {
+  const counts = Object.entries(m.statuses).map(([s, n]) => `${s}×${n}`);
+  return `${m.model}: ${counts.join(" ")}`;
+}
+
 /** Pure threshold evaluation. Order is stable so tests can assert keys. */
 export function evaluateHealth(input: HealthInput): HealthIssue[] {
   const issues: HealthIssue[] = [];
@@ -220,7 +225,7 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
       key: llmTaskFailingKey(t.task),
       severity: "error",
       title: `LLM ${t.task} chain down`,
-      detail: `All ${attempts} ${t.task} attempts failed this run (${t.models.map((m) => m.model).join(", ")})`,
+      detail: `All ${attempts} ${t.task} attempts failed this run (${t.models.map(failureSummary).join(", ")})`,
       models: t.models,
     });
   }
@@ -343,10 +348,10 @@ interface ModelStatRow {
   model: string;
   ok: number;
   status: number | null;
+  code: string | null;
   n: number;
 }
 
-/** Folds (model, ok, status) counts into per-model stats, busiest first. */
 function foldModelStats(rows: ModelStatRow[]): ModelStat[] {
   const byModel = new Map<string, ModelStat>();
   for (const row of rows) {
@@ -359,7 +364,7 @@ function foldModelStats(rows: ModelStatRow[]): ModelStat[] {
     m.total += row.n;
     if (!row.ok) {
       m.failed += row.n;
-      const status = row.status === null ? "error" : String(row.status);
+      const status = String(row.status ?? row.code ?? "error");
       m.statuses[status] = (m.statuses[status] ?? 0) + row.n;
     }
     byModel.set(row.model, m);
@@ -374,8 +379,9 @@ async function readLlmCounts(
 ): Promise<HealthInput["llm"]> {
   await flushLlmCallWrites();
   const { results } = await env.DB.prepare(
-    `SELECT task, model, ok, error_status AS status, COUNT(*) AS n
-     FROM llm_calls WHERE run_id = ? GROUP BY task, model, ok, error_status`
+    `SELECT task, model, ok, error_status AS status, error_code AS code,
+     COUNT(*) AS n FROM llm_calls WHERE run_id = ?
+     GROUP BY task, model, ok, error_status, error_code`
   )
     .bind(runId)
     .all<ModelStatRow & { task: string }>();
@@ -490,8 +496,9 @@ async function readModelStats(
   bind: unknown
 ): Promise<ModelStat[]> {
   const { results } = await env.DB.prepare(
-    `SELECT model, ok, error_status AS status, COUNT(*) AS n FROM llm_calls
-     WHERE ${where} GROUP BY model, ok, error_status`
+    `SELECT model, ok, error_status AS status, error_code AS code,
+     COUNT(*) AS n FROM llm_calls
+     WHERE ${where} GROUP BY model, ok, error_status, error_code`
   )
     .bind(bind)
     .all<ModelStatRow>();
