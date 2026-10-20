@@ -24,7 +24,7 @@ export function selectPublishedRows(
   mergePlan: MergePlan
 ): NewRow[] {
   return newRows.filter((row) => {
-    if (mergePlan.merged.has(row.id)) return false; // skip translate for merged items
+    if (mergePlan.merged.has(row.id)) return false;
     const score = scored.get(row.id);
     return !score || score.relevance >= RELEVANCE_THRESHOLD;
   });

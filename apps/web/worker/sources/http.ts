@@ -48,7 +48,6 @@ export async function fetchSourceJson(
   }
 }
 
-/** `config.maxItems` as a positive integer, or no cap. */
 export function configuredMaxItems(config: Record<string, unknown>): number {
   const raw = config.maxItems;
   return typeof raw === "number" && Number.isFinite(raw) && raw > 0

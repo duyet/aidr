@@ -24,7 +24,6 @@ import {
 } from "./clerk-users.js";
 import { toEpochSeconds } from "./time.js";
 
-/** File route that exposes this handler. */
 export const CLERK_WEBHOOK_PATH = "/api/webhooks/clerk";
 
 const SVIX_ID_HEADER = "svix-id";
@@ -55,10 +54,6 @@ export interface ClerkWebhookEnv {
   /** Svix signing secret for the Clerk webhook endpoint. */
   CLERK_WEBHOOK_SECRET?: string;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Signature verification                                                      */
-/* -------------------------------------------------------------------------- */
 
 export type ClerkWebhookVerifyReason =
   | "verified"
@@ -227,10 +222,6 @@ export async function verifyClerkWebhookSignature(args: {
   return { verified: false, reason: "signature_mismatch", id, timestamp: null };
 }
 
-/* -------------------------------------------------------------------------- */
-/* Event parsing                                                               */
-/* -------------------------------------------------------------------------- */
-
 export interface ParsedClerkUserEvent {
   type: ClerkWebhookEventType;
   /** Verified delivery time in epoch seconds — when D1 saw this account. */
@@ -349,10 +340,6 @@ export function parseClerkUserEvent(
     },
   };
 }
-
-/* -------------------------------------------------------------------------- */
-/* Handler                                                                     */
-/* -------------------------------------------------------------------------- */
 
 function json(status: number, body: unknown): Response {
   return Response.json(body, {

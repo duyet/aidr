@@ -7,7 +7,6 @@ import { quote, sendAck } from "./ack.js";
 import { classifyInbound, cleanSubject } from "./classify.js";
 import { contributorName } from "./identity.js";
 
-/** Rows handled per hourly run; the rest wait for the next run. */
 export const INBOUND_BATCH = 25;
 /** A `processing` claim older than this was cut off; hand it back. */
 const STALE_CLAIM_MS = 60 * 60 * 1000;

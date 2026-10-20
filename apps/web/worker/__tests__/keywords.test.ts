@@ -55,8 +55,6 @@ describe("AI title gate", () => {
   });
 
   it("matches inflected stems, not only the bare stem", () => {
-    // Each stem used to end at \\b, so "fine-tuning" and "agents" slipped
-    // through. The Cloudflare Clef post was filtered out in prod this way.
     for (const title of [
       "Introducing Clef: our open-source decision models, and new RL fine-tuning platform",
       "New fine-tuning API",

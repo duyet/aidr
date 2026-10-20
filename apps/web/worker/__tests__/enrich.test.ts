@@ -301,7 +301,6 @@ describe("enrichMissingContent", () => {
     await enrichMissingContent([item]);
 
     expect(item.summary).toBe("Original adapter summary");
-    // imageUrl was still missing, so it's still filled in
     expect(item.imageUrl).toBe("https://example.com/og.png");
   });
 

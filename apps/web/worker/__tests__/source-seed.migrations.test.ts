@@ -14,7 +14,6 @@ const migrationsDir = path.resolve(
   "../../migrations"
 );
 
-/** D1 over node:sqlite with the real migrations. */
 class SqliteD1 {
   constructor(readonly db: DatabaseSync) {}
 

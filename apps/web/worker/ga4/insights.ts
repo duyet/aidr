@@ -42,7 +42,6 @@ import {
  *  to be polled more often than the daily resolution of the data itself. */
 export const GA4_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
-/** The single-row convention: one current snapshot, replaced in place. */
 export const GA4_SNAPSHOT_ID = "current";
 
 export const GA4_SNAPSHOT_SQL = `INSERT INTO ga4_insights (
@@ -79,7 +78,6 @@ export interface Ga4SyncResult {
   reason?: string;
   /** Only on `ok`: when the snapshot was stored, epoch seconds. */
   fetchedAt?: number;
-  /** Only on `ok`. */
   rows?: Ga4RowCounts;
 }
 
@@ -254,7 +252,6 @@ export async function writeGa4Snapshot(
     .run();
 }
 
-/** Last stored snapshot header, or null. Used for the 24-hour gate. */
 export async function readGa4SnapshotFetchedAt(
   db: Pick<D1Database, "prepare">,
   id: string = GA4_SNAPSHOT_ID

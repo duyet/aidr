@@ -734,7 +734,6 @@ describe("buildMergePlan", () => {
     const clusters: Cluster[] = [{ new: [0, 1, 2], existing: [] }];
     const plan = buildMergePlan(clusters, candidates, new Map(), 8);
 
-    // new-b has the highest rank (8)
     expect(plan.merged.get("new-a")).toEqual({ duplicateOf: "new-b" });
     expect(plan.merged.get("new-c")).toEqual({ duplicateOf: "new-b" });
     expect(plan.merged.has("new-b")).toBe(false);

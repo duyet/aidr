@@ -215,10 +215,6 @@ export async function countClerkUsers(
   return Number.isSafeInteger(total) && total >= 0 ? total : 0;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Clerk Backend API (admin-gated backfill)                                   */
-/* -------------------------------------------------------------------------- */
-
 const CLERK_USERS_API = "https://api.clerk.com/v1/users";
 const BACKFILL_PAGE_LIMIT = 100;
 /** Bounded work per request: 20 pages x 100 users = 2000 accounts. */

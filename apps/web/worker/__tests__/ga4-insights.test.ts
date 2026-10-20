@@ -12,8 +12,6 @@ import { parseGa4Snapshot } from "../ga4/snapshot.js";
 const PEM_BEGIN = "-----" + "BEGIN PRIVATE KEY-----";
 const PEM_END = "-----" + "END PRIVATE KEY-----";
 
-/** Minimal D1 stand-in: `prepare` returns an object with the statement text,
- *  the bound args, and the `run`/`first`/`all` methods the module calls. */
 function fakeDb(options: {
   rows?: Record<string, unknown>[];
   onPrepare?: (sql: string) => void;

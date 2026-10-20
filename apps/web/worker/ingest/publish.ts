@@ -215,7 +215,6 @@ export async function generateWeekly(ctx: IngestContext): Promise<{
   return { generated: stats.generated, tokens: stats.tokens };
 }
 
-/** Emails the edition to due subscribers. Never breaks the ingest run. */
 export async function sendEmailDigest(ctx: IngestContext): Promise<number> {
   const { step, env, steps } = ctx;
   if (ctx.mode.dryRun) {

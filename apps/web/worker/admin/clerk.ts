@@ -1,6 +1,5 @@
 import type { Env } from "../types.js";
 
-/** Decoded, signature-verified Clerk session token claims we care about. */
 export interface ClerkPayload {
   sub: string;
   iss: string;
@@ -19,7 +18,7 @@ interface Jwk {
 }
 
 const CLOCK_SKEW_SECONDS = 10;
-const JWKS_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const JWKS_TTL_MS = 10 * 60 * 1000;
 
 // Module-scope JWKS cache, keyed by issuer. Cloudflare Workers reuse the
 // module scope across requests within the same isolate, so this amortizes
@@ -60,13 +59,6 @@ async function fetchJwks(issuer: string): Promise<Jwk[]> {
   return keys;
 }
 
-/**
- * Verifies a Clerk session JWT (RS256) from a raw `Authorization: Bearer`
- * token value. Fetches the issuer's JWKS (cached in module scope) and
- * checks the RS256 signature plus exp/nbf with a small clock-skew
- * allowance. Returns the decoded payload on success, or `null` on any
- * failure (malformed token, wrong issuer, bad signature, expired, etc).
- */
 export async function verifyClerkToken(
   token: string,
   env: Env

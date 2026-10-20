@@ -6,7 +6,6 @@ import { LIVE_FULL_RUN } from "../ingest/mode.js";
 import * as llm from "../llm.js";
 import type { Env } from "../types.js";
 
-/** Runs every step callback inline, as a first (non-replay) run does. */
 const step = {
   do: async (_name: string, ...rest: unknown[]) =>
     (rest.at(-1) as () => Promise<unknown>)(),

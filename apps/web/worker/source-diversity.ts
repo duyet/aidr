@@ -1,6 +1,5 @@
 import { effectiveSourceSpec } from "./sources/catalog.js";
 
-/** At most this share of a top list may come from one source family. */
 export const TOP_LIST_MAX_FAMILY_SHARE = 0.3;
 
 /** Family of a source id: the registry's `family`, else the id itself, so
@@ -55,7 +54,6 @@ export function pickDiverse<T extends { source_id: string }>(
   return [...picked, ...skipped.slice(0, limit - picked.length)];
 }
 
-/** Sum per-source counts into per-family counts (for `initialCounts`). */
 export function familyCounts(
   rows: readonly { source_id: string; n: number }[]
 ): Map<string, number> {

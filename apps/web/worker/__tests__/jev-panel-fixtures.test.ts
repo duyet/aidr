@@ -40,7 +40,6 @@ const RELEVANCE_MODEL = "openai/gpt-5.2";
 const QUALITY_MODEL = "anthropic/claude-opus-4-5";
 const SAFETY_MODEL = "google/gemini-3-pro";
 
-// ---------------------------------------------------------------------------
 // D1 stand-in: node:sqlite behind the subset of the D1 API the audit uses,
 // with the real migration stack applied so the table shape is the shipped one.
 
@@ -87,7 +86,6 @@ function sqliteD1(): { db: D1Database; raw: DatabaseSync } {
   return { db: { prepare } as unknown as D1Database, raw };
 }
 
-// ---------------------------------------------------------------------------
 // Transport fakes (same SSE shape the gateway returns).
 
 function judgeResponse(body: string): Response {
@@ -188,8 +186,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   resetJevScoreReviewMemo();
 });
-
-// ---------------------------------------------------------------------------
 
 describe("safety and translation_fidelity seats", () => {
   it("seats safety as a third scoring judge only when its model is set", () => {

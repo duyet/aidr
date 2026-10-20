@@ -925,7 +925,6 @@ describe("translation QA runtime", () => {
       "fetch",
       vi.fn(async (_input: unknown, init?: RequestInit) => {
         const body = String(init?.body ?? "");
-        // Generator stage succeeds…
         if (body.includes("Translate this explicitly Vietnamese source")) {
           return response(
             '{"title":"English title","summary":"English summary"}'
@@ -937,9 +936,7 @@ describe("translation QA runtime", () => {
     );
     const stats = await ratePendingTranslations({ ...env, DB: db });
 
-    // Nothing was accepted…
     expect(stats.accepted).toBe(0);
-    // …and nothing was quietly replaced: no UPDATE of translations.title.
     expect(
       writes.some(
         (write) =>

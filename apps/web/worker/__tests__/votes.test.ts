@@ -101,7 +101,6 @@ describe("applyVote", () => {
     expect(stored(db, ITEM).rank_score).toBeCloseTo(expected(published, 1), 6);
     expect(stored(db, ITEM).rank_score).toBeGreaterThan(expected(published, 0));
 
-    // The same button again clears the vote and puts the score back.
     const cleared = await applyVote(database, {
       itemId: ITEM,
       userId: "user_a",
@@ -114,7 +113,6 @@ describe("applyVote", () => {
       db.prepare("SELECT COUNT(*) AS n FROM item_votes").get() as { n: number }
     ).toEqual({ n: 0 });
 
-    // Switching replaces the row. It does not add a second vote.
     await applyVote(database, {
       itemId: ITEM,
       userId: "user_a",
@@ -134,7 +132,6 @@ describe("applyVote", () => {
       db.prepare("SELECT value FROM item_votes WHERE user_id = 'user_a'").all()
     ).toEqual([{ value: -1 }]);
 
-    // A second reader is a separate row. The net is the sum.
     const other = await applyVote(database, {
       itemId: ITEM,
       userId: "user_b",

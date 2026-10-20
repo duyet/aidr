@@ -8,7 +8,6 @@ import {
   type SystemOneAnswer,
 } from "../systemone.js";
 
-/** Jev answer with all probability mass spread over level indices. */
 function answer(probabilities: Record<string, number>): {
   importance: SystemOneAnswer;
 } {

@@ -195,7 +195,6 @@ export function toExistingCandidates(
   );
 }
 
-/** Item ids per `IN (...)` read of demoted canonicals' rows. */
 const DEMOTED_READ_CHUNK = 50;
 
 /** Each demoted canonical's `item_sources` and earlier merged items, so the

@@ -81,7 +81,6 @@ export function storyKey(ids: readonly string[]): string {
 
 export type CheckVerdictKind = "clear" | "match";
 
-/** What the planner reads of a stored verdict. */
 export interface StoredCheck {
   story: string;
   version: number;
@@ -188,7 +187,6 @@ export function parseLiveRows(
   });
 }
 
-/** A story the plan would publish once a verdict clears it. */
 export interface CheckCandidate {
   story: string;
   rows: StoryRef[];
@@ -222,7 +220,6 @@ function distinctTitles(rows: readonly StoryRef[]): StoryRef[] {
   return [...new Map(rows.map((row) => [row.title, row])).values()];
 }
 
-/** A candidate and the live rows it is shown. */
 export interface CheckWork {
   candidate: CheckCandidate;
   live: LiveRow[];
@@ -270,7 +267,6 @@ export interface CheckLimits {
   existing: number;
 }
 
-/** Ingest's per-call limits: the new side and the existing side. */
 export const CHECK_LIMITS: CheckLimits = {
   newItems: MAX_NEW_ITEMS_IN_CLUSTER_PROMPT,
   existing: MERGE_CANDIDATE_LIMIT,
@@ -375,7 +371,6 @@ export interface DroppedLink {
   reason: "gate" | "outside-window" | "near-miss";
 }
 
-/** One story's verdict, as `unmerge_checks` stores it. */
 export interface CheckVerdict {
   story: string;
   verdict: CheckVerdictKind;
@@ -495,7 +490,6 @@ export type CheckStop =
 
 export interface CheckRunResult {
   operationId: string;
-  /** Model calls this request made (failed ones too). */
   calls: number;
   /** Verdicts written: decided without a call (no live row shares
    * evidence), clear after a call, and held by a match. */
@@ -505,7 +499,6 @@ export interface CheckRunResult {
   pending: number;
   pendingCalls: number;
   stoppedBy: CheckStop | null;
-  /** The sanitized failure that stopped the request. */
   failure?: string;
   /** How the served answers referenced the prompts' items, summed over
    * this request's calls. */
@@ -516,7 +509,6 @@ export interface CheckRunResult {
  * to the cap. It starts past the chain's 2-minute skip of a 429'd model. */
 export const CHECK_BACKOFF_MS = 150_000;
 export const CHECK_BACKOFF_MAX_MS = 15 * 60_000;
-/** Consecutive 429 stops before the run gives up. */
 export const CHECK_RATE_LIMIT_STOPS = 3;
 
 export interface DriveResult {
@@ -524,7 +516,6 @@ export interface DriveResult {
   calls: number;
   stored: CheckRunResult["stored"];
   refs: ClusterRefCounts;
-  /** No story waits for a verdict. */
   finished: boolean;
   stoppedBy: CheckStop | "budget" | null;
   failure?: string;

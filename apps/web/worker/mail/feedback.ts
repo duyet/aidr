@@ -100,7 +100,6 @@ export async function feedbackCounts(
   }));
 }
 
-/** The small page a feedback click lands on. */
 export function feedbackThankYouHtml(
   lang: MailLang,
   vote: 0 | 1 | null
@@ -126,7 +125,6 @@ export function feedbackThankYouHtml(
 </head><body><main><h1>${escapeHtml(title)}</h1><p>${escapeHtml(body)}</p><a href="${escapeHtml(home)}">${escapeHtml(back)}</a></main></body></html>`;
 }
 
-/** `GET /feedback`: store the vote (if valid) and show the thank-you page. */
 export async function handleFeedbackRequest(
   env: Pick<Env, "DB">,
   url: URL

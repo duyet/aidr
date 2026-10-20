@@ -60,7 +60,6 @@ interface InputMedia {
 
 const SITE_HOSTNAME = new URL(SITE_URL).hostname.replace(/^www\./, "");
 
-/** Any http(s) URL on a public host. */
 function parsePublicUrl(raw: unknown): URL | null {
   if (typeof raw !== "string") return null;
   let url: URL;
@@ -96,14 +95,12 @@ export function isFirstPartyStoryCard(raw: unknown): boolean {
   );
 }
 
-/** The image type a URL declares: its extension, else a `format=` query. */
 function declaredImageType(url: URL): string | undefined {
   const path = url.pathname.replace(/\/+$/, "");
   const ext = path.match(/\.([a-z0-9]{2,5})$/i)?.[1];
   return (ext ?? url.searchParams.get("format") ?? undefined)?.toLowerCase();
 }
 
-/** Whether Telegram can take this URL as the photo of a `kind` post. */
 export function imageVerdict(
   kind: TelegramPostKind,
   raw: unknown
@@ -140,7 +137,6 @@ function inputMediaVerdict(
   return imageVerdict(kind, item.thumbnail);
 }
 
-/** Whether `link_preview_options` on a text post of `kind` is allowed. */
 export function previewVerdict(
   kind: TelegramPostKind,
   options: unknown

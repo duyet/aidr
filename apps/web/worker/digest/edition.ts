@@ -23,7 +23,6 @@ export function primaryItemId(bullet: TldrBulletLike): string | undefined {
   return undefined;
 }
 
-/** Parses and caps a snapshot's bullets JSON column to the top N. */
 export function topBullets(
   bulletsJson: string | null,
   max = 5

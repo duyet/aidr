@@ -3,8 +3,6 @@ import { withSiteLang } from "../../src/lib/locale-url.js";
 import type { Lang } from "../../src/lib/types.js";
 import { withUtm } from "../utm.js";
 
-/** UTM + locale tags for aidr.today links in outgoing mail. */
-
 export type MailUtmKind = "digest" | "welcome" | "notes";
 
 export interface MailUtmOptions {

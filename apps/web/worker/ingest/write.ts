@@ -69,7 +69,6 @@ const UPSERT_ITEM_SQL = `INSERT INTO items (
 export const INSERT_ITEM_SOURCE_SQL = `INSERT INTO item_sources (item_id, position, kind, author, posted_at, quote, url)
                    VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
-/** Replace an item's `item_sources` rows with `sources`, in order. */
 function replaceItemSources(
   env: Env,
   itemId: string,

@@ -39,7 +39,6 @@ function decodeHtml(value: string): string {
     .trim();
 }
 
-/** Parse Anthropic /news listing cards (`<a href="/news/…">` + `<time>` + title). */
 export function parseAnthropicNews(html: string): FetchedItem[] {
   const seen = new Map<string, FetchedItem>();
   const cardRe = /<a[^>]+href="(\/news\/[^"#?]+)"[\s\S]*?<\/a>/gi;

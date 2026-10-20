@@ -119,12 +119,10 @@ export interface Notifier {
    *  half-configured (e.g. chat id without token) so a deploy bug
    *  cannot silently skip sends. */
   enabled(env: Env): boolean;
-  /** Sends the once-a-day TL;DR summary (bullet list + links). */
   sendDigest(env: Env, digest: DailyDigest): Promise<SendResult>;
   /** When set, the dispatcher follows a sent digest with the digest's top
    *  postable story as its own `sendStory` post, once per local day. */
   postsDigestHighlight?: boolean;
-  /** Sends one breaking/trending story as its own post. */
   sendStory(env: Env, story: StoryPayload): Promise<SendResult>;
 }
 

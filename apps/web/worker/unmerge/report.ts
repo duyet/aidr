@@ -32,7 +32,6 @@ function assetUrls(manifest: unknown): string[] {
   }
 }
 
-/** Counts per action for the dry-run summary and the apply response. */
 export function countUnmerge(plan: UnmergePlan): UnmergeCounts {
   const counts: UnmergeCounts = {
     pairs: {},

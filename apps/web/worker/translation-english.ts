@@ -19,13 +19,10 @@ import type { HealthIssue } from "./health.js";
 import { looksVietnamese } from "./tldr-lang.js";
 
 export interface ModelViEnglish {
-  /** EN→VI rows this model wrote. */
   translated: number;
-  /** Of those, rows whose summary has no Vietnamese diacritics. */
   english: number;
 }
 
-/** Served model id -> counts. */
 export type ViEnglishTally = Record<string, ModelViEnglish>;
 
 /** One written EN→VI row. `model` is null for a Vietnamese passthrough. The
