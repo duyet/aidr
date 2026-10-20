@@ -12,7 +12,9 @@ import { isSiteUrl } from "../src/lib/locale-url.js";
  *   `social` for Telegram and Facebook (GA4 groups it as Organic Social),
  *   `feed` for RSS.
  * - `utm_campaign`: the edition (`digest-YYYY-MM-DD`, `weekly-…`) or `story`.
- * - `utm_content`: the slot in the post (`lead`, `button`, `link`, …).
+ * - `utm_content`: the slot in the post (`lead`, `button`, `link`, …). A story
+ *   post's slot is followed by the story id, `button-1a2b3c4d` (`postContent`),
+ *   so a landing names the post it came from.
  *
  * Values stay inside the landing reader's slug alphabet (see
  * `src/lib/analytics/landing.ts`), so `channel_landing` records them as sent.
@@ -35,6 +37,20 @@ export interface UtmOptions {
 }
 
 export const STORY_CAMPAIGN = "story";
+
+/**
+ * `<slot>-<id8>` for a story post. The platform's own post id does not exist
+ * until the post is sent, so the story's 8-character id prefix (the one in
+ * its permalink) is the key; `notifications` maps (channel, story) to the
+ * platform id. 8 hex characters keep the value inside the landing reader's
+ * 64-character slug cut-off.
+ */
+export function postContent<S extends string>(
+  slot: S,
+  storyId: string
+): `${S}-${string}` {
+  return `${slot}-${storyId.slice(0, 8)}`;
+}
 
 export function digestCampaign(date: string): string {
   return `digest-${date}`;

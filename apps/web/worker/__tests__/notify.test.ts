@@ -461,7 +461,7 @@ describe("trending story message", () => {
     expect(row).toHaveLength(1);
     expect(row[0].text).toBe("Đọc bài →");
     expect(row[0].url).toBe(
-      "https://aidr.today/abcdef12?lang=vi&utm_source=telegram&utm_medium=social&utm_campaign=story&utm_content=button"
+      "https://aidr.today/abcdef12?lang=vi&utm_source=telegram&utm_medium=social&utm_campaign=story&utm_content=button-abcdef12"
     );
   });
 
@@ -1012,7 +1012,7 @@ describe("telegramNotifier gating", () => {
         storyUrl({ id: "abcdef1234567890" }, "vi"),
         "vi",
         "story",
-        "link"
+        "link-abcdef12"
       )
     );
     expect(body.media[0].caption).toContain(`<a href="${href}">Đọc bài →</a>`);
