@@ -13,6 +13,7 @@ import {
   parseClerkUserList,
   parseClerkUserTotal,
   softDeleteClerkUser,
+  syncClerkUserById,
   upsertClerkUser,
   upsertClerkUsers,
 } from "../clerk-users.js";
@@ -483,5 +484,80 @@ describe("backfillClerkUsers", () => {
       status: "error",
       error: "D1 binding DB not configured",
     });
+  });
+});
+
+describe("syncClerkUserById", () => {
+  const user = (emails: Array<[string, string]>) => ({
+    id: "user_abc",
+    created_at: 1_700_000_000_000,
+    primary_email_address_id: "idn_1",
+    email_addresses: emails.map(([email_address, status], i) => ({
+      id: `idn_${i + 1}`,
+      email_address,
+      verification: { status },
+    })),
+  });
+
+  it("stores the addresses Clerk now marks verified, and no unverified one", async () => {
+    const t = makeDb();
+    const fetcher = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify(
+            user([
+              ["me@example.com", "verified"],
+              ["Work@Example.com", "verified"],
+              ["pending@example.com", "unverified"],
+            ])
+          )
+        )
+    ) as unknown as typeof fetch;
+    const status = await syncClerkUserById(
+      { DB: t.db as unknown as D1Database, CLERK_SECRET_KEY: "k" },
+      "user_abc",
+      fetcher
+    );
+    expect(status).toBe("ok");
+    expect(String((fetcher as any).mock.calls[0][0])).toBe(
+      "https://api.clerk.com/v1/users/user_abc"
+    );
+    const stored = t.db.db
+      .prepare("SELECT email FROM clerk_verified_emails ORDER BY email")
+      .all();
+    expect(stored.map((r: any) => r.email)).toEqual([
+      "me@example.com",
+      "work@example.com",
+    ]);
+    t.close();
+  });
+
+  it("reports unconfigured, not_found and error without writing", async () => {
+    const t = makeDb();
+    const env = { DB: t.db as unknown as D1Database, CLERK_SECRET_KEY: "k" };
+    expect(
+      await syncClerkUserById({ DB: env.DB }, "user_abc", vi.fn() as never)
+    ).toBe("unconfigured");
+    expect(
+      await syncClerkUserById(
+        env,
+        "user_abc",
+        vi.fn(async () => new Response("{}", { status: 404 })) as never
+      )
+    ).toBe("not_found");
+    expect(
+      await syncClerkUserById(
+        env,
+        "user_abc",
+        vi.fn(async () => new Response("{}", { status: 500 })) as never
+      )
+    ).toBe("error");
+    expect(await syncClerkUserById(env, "../etc", vi.fn() as never)).toBe(
+      "error"
+    );
+    expect(
+      t.db.db.prepare("SELECT COUNT(*) AS c FROM clerk_verified_emails").get()
+    ).toEqual({ c: 0 });
+    t.close();
   });
 });
