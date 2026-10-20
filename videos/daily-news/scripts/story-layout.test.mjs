@@ -93,14 +93,32 @@ const measure = `<script>(async () => {
   for (const c of document.querySelectorAll(".clip"))
     c.style.display = c.id === "story-1" || c.id === "chrome" || c === cap ? "block" : "none";
   const shown = (el) => el.getClientRects().length > 0;
-  const out = { text: {}, box: {}, media: 0 };
+  const out = { text: {}, box: {}, media: 0, clipped: [], picH: 0 };
+  // A clip may only cut below a text block's last line when the block is line-clamped and its own box fits. The
+  // scene's own clip is the frame edge, which the safe-zone check already covers.
+  const clippedBy = (el, bottom) => {
+    for (let a = el.parentElement; a && !a.matches(".scene"); a = a.parentElement) {
+      if (getComputedStyle(a).overflowY === "visible") continue;
+      const r = a.getBoundingClientRect();
+      const inner = r.bottom - parseFloat(getComputedStyle(a).borderBottomWidth);
+      if (bottom <= inner + 1) continue;
+      const clamped = getComputedStyle(el).webkitLineClamp !== "none";
+      if (!clamped || el.getBoundingClientRect().bottom > inner + 1) return a.className || a.tagName;
+    }
+    return null;
+  };
   for (const s of ${JSON.stringify(TEXT)}) {
     const el = document.querySelector("#story-1 " + s);
     if (!el || !shown(el) || !el.textContent.trim()) continue;
     const range = document.createRange();
     range.selectNodeContents(el);
-    out.text[s] = CAM_Y + (range.getBoundingClientRect().bottom - CAM_Y) * CAM_SCALE;
+    const raw = range.getBoundingClientRect().bottom;
+    out.text[s] = CAM_Y + (raw - CAM_Y) * CAM_SCALE;
+    const by = clippedBy(el, raw);
+    if (by) out.clipped.push(s + " by ." + by);
   }
+  const pic = document.querySelector("#story-1 .media .pic") || document.querySelector("#story-1 .media .paper");
+  if (pic && shown(pic)) out.picH = pic.getBoundingClientRect().height;
   for (const s of ${JSON.stringify(BOX)}) {
     const el = document.querySelector(s);
     if (el && shown(el)) out.box[s] = el.getBoundingClientRect().bottom;
@@ -171,6 +189,10 @@ function layoutBoxes(layout, { images }) {
 // Where the non-text visual under the captions, ticker and footer ends: the story media, or a statement's yellow block.
 const FRAME_BOTTOM = 1920;
 
+// Master's split picture was 470px tall; under 480 a 1.91 social card no longer covers the 1000px-wide box and
+// shows letterboxed and smaller.
+const SPLIT_PIC_MIN = 480;
+
 const CASES = [
   ["split", { images: true }],
   ["split", { images: false }],
@@ -191,8 +213,18 @@ for (const [layout, opts] of CASES) {
       .map(([k, v]) => `${k} ${Math.round(v)}`)
       .join(", ");
     console.log(
-      `lowest text edge, ${name}: ${sel} at ${Math.round(bottom)}px; visual ends ${Math.round(m.media)}px; ${row}`
+      `lowest text edge, ${name}: ${sel} at ${Math.round(bottom)}px; visual ends ${Math.round(m.media)}px; picture box ${Math.round(m.picH)}px; ${row}`
     );
+    assert.deepEqual(
+      m.clipped,
+      [],
+      `${name}: an overflow:hidden box cuts through a line of text`
+    );
+    if (layout === "split")
+      assert.ok(
+        m.picH >= SPLIT_PIC_MIN,
+        `${name}: the picture box is ${Math.round(m.picH)}px tall, under ${SPLIT_PIC_MIN}px`
+      );
     for (const [s, b] of Object.entries(edges))
       assert.ok(
         b <= SAFE_BOTTOM,

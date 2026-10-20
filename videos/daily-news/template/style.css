@@ -67,7 +67,7 @@ body {
   --tick: 34px;
 }
 /* 9:16: TikTok, Reels and Shorts cover the bottom 28% (below 1382px) with their own caption, username and buttons.
-   Nothing a viewer must read sits there: the copy ends near 1080px, captions start at 1100px, the ticker runs
+   Nothing a viewer must read sits there: the copy ends near 1100px, captions start at 1100px, the ticker runs
    1240-1324px and the footer chip ends at 1374px. Pictures may go there, so the story media runs to the bottom of
    the frame: the picture sits in the top box (--pic-h) and its blurred copy bleeds down behind the captions, ticker
    and footer, which keeps the picture whole (a poster's yellow panel and a statement's yellow block bleed too).
@@ -82,12 +82,12 @@ body {
   --media-y: 180px;
   --media-w: 1000px;
   --media-h: 1740px;
-  --pic-h: 420px;
+  --pic-h: 480px;
   --rank: 130px;
   --rank-x: 910px;
   --rank-y: 190px;
   --text-x: 64px;
-  --text-y: 640px;
+  --text-y: 692px;
   --text-w: 952px;
   --cat: 30px;
   --kicker: 38px;
@@ -356,7 +356,7 @@ body {
   opacity: 0.3;
 }
 .f-9x16 .media .frame.fit .fill::after {
-  opacity: 0.3;
+  opacity: 0.55;
 }
 .f-9x16 .media {
   background: var(--yellow);
@@ -366,6 +366,7 @@ body {
   height: var(--pic-h);
   overflow: hidden;
   box-sizing: border-box;
+  padding-bottom: 36px;
 }
 .f-9x16 .media .shade {
   top: calc(var(--pic-h) * 0.7);
@@ -380,10 +381,10 @@ body {
 }
 .f-9x16 .copy {
   left: var(--media-x);
-  top: calc(var(--text-y) - 28px);
+  top: calc(var(--text-y) - 20px);
   width: var(--media-w);
   box-sizing: border-box;
-  padding: 28px calc(var(--text-x) - var(--media-x)) 30px;
+  padding: 20px calc(var(--text-x) - var(--media-x)) 22px;
   background: var(--paper);
   border: 1px solid var(--hair);
 }
@@ -513,8 +514,8 @@ body {
   align-items: baseline;
   gap: 24px;
   flex-wrap: wrap;
-  margin-top: 28px;
-  padding-top: 22px;
+  margin-top: 16px;
+  padding-top: 14px;
 }
 .f-9x16 .stat-label {
   margin-top: 0;
@@ -627,6 +628,16 @@ body {
   padding: 2px 10px 6px;
   background: #f7f7f5;
   color: #7a7a7a;
+}
+
+/* 9:16: the words sit on one paper chip, so a line over the copy card's edge never puts grey words on yellow. */
+.f-9x16 .cap .line {
+  left: 0;
+  right: 0;
+  width: fit-content;
+  max-width: var(--cap-w);
+  margin: 0 auto;
+  background: #f7f7f5;
 }
 
 .f-9x16 .src {
