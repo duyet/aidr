@@ -321,8 +321,6 @@ export async function sendCampaign(
   let sent = 0;
   let failed = 0;
   for (const sub of subscribers) {
-    // Claim the address before mailing: a delivered row, or one a concurrent
-    // send already claimed, is left alone and this run skips the address.
     const claim = await env.DB.prepare(
       `INSERT INTO email_sends (campaign_id, email, sent_at, error)
        VALUES (?, ?, ?, NULL)
@@ -357,11 +355,8 @@ export async function sendCampaign(
       .run();
   }
 
-  // `sent_count` is the campaign's lifetime total, so a retry adds to it:
-  // each address is claimed by exactly one run, so none is counted twice.
-  // `failed_count` and `status` come from `email_sends`, not this run, so a
-  // concurrent run that mailed nobody cannot clear failures still owed a
-  // retry, which is what the 409 guard above keys on.
+  // Read from `email_sends`, not this run, so a concurrent run that mailed
+  // nobody cannot clear failures still owed a retry.
   await env.DB.prepare(
     `UPDATE email_campaigns
      SET failed_count = (SELECT COUNT(*) FROM email_sends WHERE campaign_id = ?1 AND error IS NOT NULL),
