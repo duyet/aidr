@@ -182,7 +182,6 @@ export function RunRow({
           ) : null}
         </span>
 
-        {/* Started */}
         <span
           className="font-mono tabular-nums text-foreground"
           title={
@@ -195,7 +194,6 @@ export function RunRow({
           {r.started_at ? timeAgo(r.started_at, Date.now(), lang) : "—"}
         </span>
 
-        {/* Duration */}
         <span className="hidden md:block">
           <span className="font-mono tabular-nums text-foreground">
             {formatDuration(r.started_at, r.finished_at)}
@@ -209,7 +207,6 @@ export function RunRow({
           ) : null}
         </span>
 
-        {/* Items */}
         <span className="col-span-3 min-w-0 md:col-span-1">
           <span className="font-mono tabular-nums text-foreground">
             {r.items_fetched ?? 0}
@@ -248,7 +245,6 @@ export function RunRow({
           ) : null}
         </span>
 
-        {/* Models */}
         <span className="col-span-2 min-w-0 md:col-span-1">
           <RunModelsCell llm={llm} />
         </span>

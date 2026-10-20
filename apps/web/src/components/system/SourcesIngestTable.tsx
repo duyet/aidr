@@ -110,7 +110,6 @@ export function SourcesIngestTable({
 }: {
   sources: IngestSourceRow[];
   lastRunBySource?: Record<string, number>;
-  /** Stored items by source_id (top 10) — the old Volume card, folded in. */
   volume?: NamedCount[];
   /** Per-source outcome from the last run (`/api/system/sources`). */
   health?: Record<string, SourceHealthView>;

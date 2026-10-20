@@ -84,7 +84,6 @@ export function TldrSection({
       className="my-2 overflow-hidden rounded-2xl border border-border/80 bg-card"
       data-aidr-layout={layout}
     >
-      {/* Yellow masthead: the digest heading reads like the day card itself. */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[#f5c518] px-4 py-3 text-[#0a0a0a] sm:px-5">
         <div className="flex items-center gap-3">
           {dateParts ? (
@@ -170,7 +169,6 @@ export function TldrSection({
             warm={cardWarm}
           />
         ) : null}
-        {/* The day card takes the list's place; the footer stays. */}
         <div hidden={preview}>
           <TldrBulletList
             shown={shown}

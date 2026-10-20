@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 export const PAGE_LINK =
   "text-accent underline underline-offset-2 hover:no-underline";
 
-/** Shell for the long-form English pages: about, brand, privacy, terms. */
 export function ContentPage({
   title,
   lede,

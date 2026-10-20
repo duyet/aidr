@@ -37,7 +37,6 @@ function renderFooter() {
   return render(<NewsFooter />);
 }
 
-/** The `More` column, located by its heading rather than by position. */
 function moreColumn() {
   const heading = screen.getByText("More");
   const column = heading.parentElement;

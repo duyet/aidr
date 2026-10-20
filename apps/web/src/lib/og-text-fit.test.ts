@@ -38,10 +38,8 @@ describe("fitText", () => {
     expect(fit.text.endsWith("…")).toBe(true);
     const kept = fit.text.slice(0, -1).split(" ");
     const words = text.split(" ");
-    // Every kept word is a whole source word, in order.
     expect(kept).toEqual(words.slice(0, kept.length));
     expect(kept.length).toBeLessThan(words.length);
-    // And the cut text still fits the lines it was given.
     expect(wrapLines(fit.text.split(" "), BOX.width / 32).length).toBe(2);
   });
 

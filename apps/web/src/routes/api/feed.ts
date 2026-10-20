@@ -28,9 +28,7 @@ export const Route = createFileRoute("/api/feed")({
         if (!env?.DB) {
           try {
             env = (await import("cloudflare:workers")).env;
-          } catch {
-            // not running in a workers runtime
-          }
+          } catch {}
         }
         const db: D1Database | undefined = env?.DB;
         if (!db) {

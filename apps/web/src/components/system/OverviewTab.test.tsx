@@ -64,7 +64,6 @@ const ACTIVITY: SystemActivity = {
   itemsByCategory: [],
 };
 
-/** Route each hook call to the state its endpoint would have produced. */
 function serve(states: Partial<Record<string, unknown>>): void {
   mockUseSystemData.mockImplementation((path: string) => {
     return (states[path] ?? { data: null, error: false }) as never;
@@ -84,7 +83,6 @@ describe("OverviewTab", () => {
 
     expect(screen.getByText("Signups")).toBeTruthy();
     expect(screen.getByText("37")).toBeTruthy();
-    // Stories, tokens, runs, subscribers, signups, last run — one flat row.
     for (const label of [
       "Stories",
       "Tokens",

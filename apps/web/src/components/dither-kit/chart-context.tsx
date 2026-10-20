@@ -5,7 +5,6 @@ import type { BloomInput } from "./dither-paint"
 import type { DitherColor, Seed } from "./palette"
 import type { StackType } from "./scales"
 
-/** Which chart root a part is composed under — drives the boundary guards. */
 export type ChartType = "area" | "bar" | "line" | "pie" | "radar"
 
 export type ChartConfig = Record<string, { label?: string; color: DitherColor }>
@@ -23,8 +22,6 @@ export type AreaVariant = "gradient" | "dotted" | "hatched" | "solid"
 export type StrokeVariant = "solid" | "dashed"
 export type SeriesKind = "area" | "line" | "bar"
 
-/** What each series part (<Area />, <Line />, <Bar />) registers so the canvas
- * knows which series to paint and how. */
 export type SeriesSpec = {
   dataKey: string
   kind: SeriesKind
@@ -33,7 +30,7 @@ export type SeriesSpec = {
 }
 
 export type ChartContextValue = {
-  chartType: ChartType // which root this part is under
+  chartType: ChartType
   config: ChartConfig
   configKeys: string[] // series order — drives stacking + legend
   data: Row[]
@@ -41,7 +38,7 @@ export type ChartContextValue = {
   stackType: StackType
 
   margins: Margins
-  plot: { width: number; height: number } // inner drawing area
+  plot: { width: number; height: number }
   ready: boolean // true once measured (width > 0)
 
   xCenter: (index: number) => number // category centre px within the plot
@@ -53,12 +50,11 @@ export type ChartContextValue = {
     seriesIndex: number,
     seriesCount: number
   ) => { x: number; width: number }
-  y: ScaleLinear<number, number> // value → px within the plot
+  y: ScaleLinear<number, number>
   bands: Record<string, [number, number][]> // per-series [y0, y1] per row
   max: number
   min: number // most-negative value (0 when nothing dips below the baseline)
 
-  // Interaction state, shared by every part.
   selectedDataKey: string | null
   selectDataKey: (key: string | null) => void
   /** Legend-hover spotlight — dims every series but this one while set. */
@@ -73,9 +69,8 @@ export type ChartContextValue = {
   setMouseInChart: (over: boolean) => void
   hovered: boolean // parent-driven hover (e.g. the whole card) — lifts the fill
   bloom: BloomInput // glow on the dither canvas
-  bloomOnHover: boolean // only bloom while hovered
+  bloomOnHover: boolean
 
-  // Series register themselves so the canvas knows what (and how) to paint.
   seriesSpecs: Record<string, SeriesSpec>
   registerSeries: (spec: SeriesSpec) => void
   unregisterSeries: (dataKey: string) => void
@@ -88,9 +83,8 @@ export type ChartContextValue = {
   entranceDone: boolean // true once the entrance has played — gates SVG markers
   markEntranceDone: () => void // the canvas calls this when its reveal completes
 
-  // Helpers.
   seedOf: (key: string) => Seed
-  common: CommonChart // shared surface for <Legend> / <Tooltip>
+  common: CommonChart
 }
 
 const ChartContext = createContext<ChartContextValue | null>(null)
@@ -103,7 +97,6 @@ const ROOT_OF: Record<ChartType, string> = {
   radar: "<RadarChart />",
 }
 
-/** Generic accessor for internal layers (canvas/overlay) that work for any root. */
 export function useChart() {
   const ctx = use(ChartContext)
   if (!ctx) {

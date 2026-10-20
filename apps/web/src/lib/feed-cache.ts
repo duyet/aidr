@@ -59,7 +59,6 @@ export function getCachedFeedFreshness(): number | null {
   return validFreshnessEntry()?.value.lastFetchedAt ?? null;
 }
 
-/** Newest run summary; `undefined` until the slim endpoint has answered. */
 export function getCachedLatestRun(): LatestRunSummary | null | undefined {
   return validFreshnessEntry()?.value.latestRun;
 }
@@ -92,7 +91,6 @@ export function fetchFeedFreshnessOnce(): Promise<number | null> {
   return freshnessInflight;
 }
 
-/** Called by the homepage once it has its own unfiltered (no `q`) fetch. */
 export function setCachedFeed(feed: FeedResponse, lang: Lang): void {
   caches.set(lang, feed);
   setFeedMeta(feed);
@@ -105,7 +103,6 @@ export function setFeedMeta(feed: FeedResponse): void {
   if (feed.learnedKeywords?.length) setLearnedKeywords(feed.learnedKeywords);
 }
 
-/** Fetches once per locale; concurrent callers share the same request. */
 export function fetchFeedOnce(lang: Lang): Promise<FeedResponse | null> {
   const cached = caches.get(lang);
   if (cached) return Promise.resolve(cached);

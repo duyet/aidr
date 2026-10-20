@@ -6,7 +6,6 @@ interface BarListProps {
   emptyLabel: string;
 }
 
-/** Horizontal magnitude bars, single accent hue, direct value labels. */
 export function BarList({ data, emptyLabel }: BarListProps) {
   if (data.length === 0) {
     return <p className="text-xs text-muted-foreground">{emptyLabel}</p>;

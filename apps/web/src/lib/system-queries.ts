@@ -46,7 +46,6 @@ export const SOURCE_SKIP_REASONS: readonly SourceSkipReason[] = [
   "disabled",
 ];
 
-/** One source's outcome in one run, plus the stale verdict derived from it. */
 export interface RunSourceHealth {
   fetched: number;
   scored: number;
@@ -841,7 +840,6 @@ async function loadLlmSummariesForRuns(
   return out;
 }
 
-/** Merge aggregated summaries onto the run rows they belong to. */
 function attachLlmSummariesToRuns(
   runs: WorkflowRunRow[],
   summaries: Map<string, RunLlmSummary>
@@ -869,8 +867,6 @@ export interface RunAttemptsResult {
   truncated: boolean;
 }
 
-/** Overview tiles + catalog: counts, token headline, run recert, digest
- * date — one batch, one round-trip. */
 export interface SystemOverview {
   totals: SystemStats["totals"];
   tokens: { total: number; avgPerItem: number };

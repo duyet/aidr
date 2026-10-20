@@ -11,9 +11,6 @@ function permalink(item: Pick<FeedItem, "id">, lang: Lang): string {
   return new URL(storyPath(item, lang), SITE_URL).toString();
 }
 
-/** Dialog header: title links to the aidr.today permalink, the source URL
- * sits under it. Copy / bilingual / close float right so a long title
- * wraps under them instead of squeezing into a narrow column. */
 export function DialogHeader({
   item,
   title,

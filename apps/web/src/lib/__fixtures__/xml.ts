@@ -13,7 +13,6 @@
  */
 import { execFileSync } from "node:child_process";
 
-/** XML 1.0 name production, restricted to what these documents use. */
 const NAME_RE = /^[A-Za-z_][\w.-]*(?::[A-Za-z_][\w.-]*)?$/;
 const ENTITY_RE = /^&(?:amp|lt|gt|quot|apos|#[0-9]+|#x[0-9A-Fa-f]+);/;
 
@@ -22,11 +21,6 @@ export interface XmlProblem {
   message: string;
 }
 
-/**
- * Scan for the well-formedness errors a lenient parser would let through:
- * unbalanced tags, unquoted attributes, a raw `&` that is not an entity, a
- * `<` in character data, and characters XML 1.0 forbids.
- */
 export function findXmlProblems(xml: string): XmlProblem[] {
   const problems: XmlProblem[] = [];
   const stack: string[] = [];
@@ -97,7 +91,6 @@ export function findXmlProblems(xml: string): XmlProblem[] {
       continue;
     }
     if (raw.endsWith("/")) {
-      // Self-closing: attributes still have to be well quoted.
       checkAttributes(raw.slice(0, -1).trim(), index, problems);
       index = end + 1;
       continue;

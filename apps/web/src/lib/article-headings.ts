@@ -35,7 +35,6 @@ function stripTags(html: string): string {
   return html.replace(/<[^>]+>/g, "");
 }
 
-/** Minimal article chrome — same tags as StoryContent + titleAs=h1. */
 export function articleHeadingMarkup(opts: {
   title: string;
   dateLabel: string;

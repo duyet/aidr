@@ -10,7 +10,6 @@ export function countHtmlTitles(html: string): number {
   return (html.match(/<title\b/gi) ?? []).length;
 }
 
-/** True when the splat 404 route matched and must own the document title. */
 export function splatOwnsDocumentTitle(
   matches: Array<{ routeId?: string; id?: string }>
 ): boolean {

@@ -11,7 +11,6 @@ export interface DayVideo {
   title: string | null;
 }
 
-/** A YouTube video id is exactly 11 URL-safe base64 characters. */
 const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
 const YOUTUBE_HOSTS = new Set([
@@ -23,7 +22,6 @@ const YOUTUBE_HOSTS = new Set([
   "www.youtube-nocookie.com",
 ]);
 
-/** Day video titles are display text; keep them short. */
 export const DAY_VIDEO_TITLE_MAX = 200;
 
 /** Channels whose day video post is recorded in `day_video_posts`. */

@@ -27,16 +27,11 @@ export type HeadMeta =
   | { name: string; content: string }
   | { property: string; content: string };
 
-/**
- * A head `<script>` the router renders into `<head>` during SSR. Only the
- * JSON-LD emitter uses it today.
- */
 export interface HeadScript {
   type: string;
   children?: string;
 }
 
-/** Any value that can appear inside a JSON-LD graph. */
 export type JsonLdValue =
   | string
   | number
@@ -46,13 +41,11 @@ export type JsonLdValue =
   | JsonLdRef
   | JsonLdValue[];
 
-/** One schema.org node. `@type` is required by every node this file emits. */
 export interface JsonLdNode {
   "@type": string;
   [key: string]: JsonLdValue;
 }
 
-/** An `@id` pointer at another node; resolves inside the same `@graph`. */
 export interface JsonLdRef {
   "@id": string;
   "@type"?: string;
@@ -74,7 +67,6 @@ export interface HeadLink {
   href: string;
   type?: string;
   hrefLang?: string;
-  /** `title` on a `rel="alternate"` link is the feed name a reader shows. */
   title?: string;
 }
 
@@ -151,7 +143,6 @@ function jsonLdScript(jsonLd: JsonLdNode[]): HeadScript[] {
   ];
 }
 
-/** The two stable site-level entity ids every page can point at. */
 export const SITE_WEBSITE_ID = `${SITE_URL}/#website`;
 export const SITE_ORGANIZATION_ID = `${SITE_URL}/#organization`;
 
@@ -189,7 +180,6 @@ export function storyUrl(item: { id: string }, lang: Lang): string {
   return absoluteSiteUrl(storyPath(item), lang);
 }
 
-/** The generated first-party story card, locale-suffixed like `og:image`. */
 export function storyCardUrl(item: { id: string }, lang: Lang): string {
   return absoluteSiteUrl(`/api/og/${item.id}.png`, lang);
 }
@@ -203,7 +193,6 @@ export function storyMarkdownUrl(item: { id: string }, lang: Lang): string {
   return absoluteSiteUrl(`/api/story/${item.id.slice(0, 8)}.md`, lang);
 }
 
-/** Robots meta for the active route and its search/facet state. */
 export function routeRobotsMeta(target: RouteIndexabilityInput): HeadMeta {
   return {
     name: "robots",
@@ -256,7 +245,6 @@ export function metaDescription(text: string): string {
 
 const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
-/** Longest prefix of at most `max` UTF-16 units that ends between graphemes. */
 function graphemeSafePrefix(text: string, max: number): string {
   let end = 0;
   for (const { index, segment } of graphemes.segment(text)) {
@@ -273,7 +261,6 @@ function shareTags(opts: {
   type: "website" | "article";
   imageUrl?: string | null;
   lang?: Lang;
-  /** When true, emit og:image width/height (1200×630 cards). */
   siteOgDimensions?: boolean;
 }): HeadMeta[] {
   const twitterCard = opts.imageUrl ? "summary_large_image" : "summary";
@@ -319,7 +306,6 @@ function shareTags(opts: {
   return meta;
 }
 
-/** Absolute canonical URL for a site path (`/` → origin with trailing slash). */
 export function canonicalUrl(path: string): string {
   if (path === "/" || path === "") return `${SITE_URL}/`;
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
@@ -380,7 +366,6 @@ const BRAND_ALTERNATE_NAMES = [
   "aidr.today",
 ] as const;
 
-/** aidr as the publisher of the *site* (not of any individual story). */
 function siteOrganization(): JsonLdNode {
   return {
     "@type": "Organization",
@@ -442,7 +427,6 @@ function staticPageGraph(opts: {
   ];
 }
 
-/** Root crumb label: the site name itself, which is language-neutral. */
 function siteBreadcrumbItem(lang: Lang): { name: string; item: string } {
   return { name: SITE_NAME, item: absoluteSiteUrl("/", lang) };
 }
@@ -557,7 +541,6 @@ function storyPublisher(
     : null;
 }
 
-/** Only absolute http(s) URLs; anything else is not a citable publisher. */
 function safeExternalUrl(value: string | null | undefined): string | null {
   const clean = value?.trim();
   if (!clean) return null;
@@ -636,10 +619,6 @@ function storyDates(item: {
   };
 }
 
-/**
- * Marketing/static page share tags. Each URL must canonical to itself, and
- * each publishes `WebPage` + `BreadcrumbList` for itself.
- */
 export function pageHead(opts: {
   path: string;
   title: string;
@@ -691,10 +670,6 @@ export function localizedPageHead(
   };
 }
 
-/**
- * Homepage Open Graph / Twitter / canonical + hreflang tags, plus the
- * `WebSite` / `Organization` / `ItemList` graph.
- */
 export function homepageHead(
   lang: Lang = "vi",
   opts: {

@@ -34,7 +34,6 @@ const ITEMS = [1, 2, 3, 4, 5].map((n) => ({
   image_url: `https://cdn.example/photo-${n}.jpg`,
 }));
 
-/** Minimal D1: one snapshot row, item images, and a log of bound writes. */
 function fakeDb() {
   const writes: { sql: string; args: unknown[] }[] = [];
   const statement = (sql: string, args: unknown[] = []) => ({

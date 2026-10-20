@@ -8,16 +8,12 @@ const read = (f: string) => readFileSync(join(here, f), "utf8");
 
 describe("algo tab model chains", () => {
   it("renders the four chains in exactly one place on the tab", () => {
-    // The chains used to appear in both RankingCard and the AnyRouter card,
-    // making the tab mostly duplicated text. Ranking keeps them; the AnyRouter
-    // card is a gateway pitch only.
     const algo = read("AlgoTab.tsx");
     for (const key of ["scoring", "translation", "tldr", "decisions"]) {
       expect(algo, key).not.toContain(`.${key}`);
       expect(algo, key).not.toContain(`: models.${key}`);
       expect(algo, key).not.toContain(`models.${key}`);
     }
-    // No per-model links left in the card that dropped them.
     expect(algo).not.toContain("anyrouterModelUrl");
     // The Algo tab must not fetch the *model chains* — they are rendered once,
     // in the Ranking card. (It DOES fetch per-source health, added in #230:
@@ -53,7 +49,6 @@ describe("algo tab model chains", () => {
     // chrome-copy.test.ts already pins the GitHub link and the sources term.
     expect(explainer).toContain("GITHUB_ALGORITHM_URL");
     expect(explainer).toContain("min(sourceCount, 8)");
-    // A separator only existed to split the two duplicate blocks.
     expect(explainer).not.toContain("Separator");
   });
 });

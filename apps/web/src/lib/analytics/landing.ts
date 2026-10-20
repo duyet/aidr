@@ -30,7 +30,6 @@ function clean(value: string | null | undefined): Slug | undefined {
   return parseSlug(trimmed);
 }
 
-/** Parse campaign params from a query string. */
 export function readCampaign(search: string): CampaignAttribution | null {
   const params = new URLSearchParams(search);
   const out: CampaignAttribution = {};

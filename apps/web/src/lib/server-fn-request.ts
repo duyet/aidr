@@ -35,7 +35,6 @@ export function isServerFnPath(pathname: string): boolean {
   return pathname.startsWith(serverFnBase());
 }
 
-/** The bare base, e.g. `/_serverFn`, which carries no function id at all. */
 export function isServerFnBasePath(pathname: string): boolean {
   const base = serverFnBase();
   return pathname === base.slice(0, -1) || pathname === base;
@@ -65,10 +64,6 @@ export function isServerFnRequest(request: Request): boolean {
  */
 const SAFE_SERVER_FN_ID = /^[A-Za-z0-9_-]{1,200}$/;
 
-/**
- * The function id carried by a transport path, or null when the path carries
- * none (the bare base) or more than one (a nested segment).
- */
 export function serverFnIdOf(pathname: string): string | null {
   const base = serverFnBase();
   if (!pathname.startsWith(base)) return null;
@@ -77,7 +72,6 @@ export function serverFnIdOf(pathname: string): string | null {
   return SAFE_SERVER_FN_ID.test(id) ? id : null;
 }
 
-/** A transport path must carry one non-empty, well-shaped function id. */
 export function hasServerFnId(pathname: string): boolean {
   return serverFnIdOf(pathname) !== null;
 }

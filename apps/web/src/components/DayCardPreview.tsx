@@ -3,11 +3,6 @@ import { useState } from "react";
 import { dayArchiveOgPath } from "../lib/day-archive";
 import type { Lang } from "../lib/types";
 
-/**
- * Image | text switch in the digest masthead, styled like the 8 | 12 count
- * pills beside it. "Image" swaps the bullet list for the day card
- * (`DayCardView`); "text" brings the list back.
- */
 export function DayCardViewSwitch({
   lang,
   showImage,
@@ -17,7 +12,6 @@ export function DayCardViewSwitch({
   lang: Lang;
   showImage: boolean;
   onChange: (showImage: boolean) => void;
-  /** Pointer or focus reached the switch: warm the card before the click. */
   onIntent?: () => void;
 }) {
   const views = [

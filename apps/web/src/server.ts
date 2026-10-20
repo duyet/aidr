@@ -122,7 +122,6 @@ const LEGACY_PAGE_REDIRECTS: Record<string, string | undefined> = {
   "/changelog": "/release",
 };
 
-/** The same request at another path, keeping its query and headers. */
 function atPath(request: Request, pathname: string): Request {
   const url = new URL(request.url);
   url.pathname = pathname;

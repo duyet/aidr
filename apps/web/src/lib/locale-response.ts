@@ -127,7 +127,6 @@ export function temporaryLocaleRedirect(
   return localeRedirect(request, target, lang, LOCALE_REDIRECT_STATUS, format);
 }
 
-/** Permanent (308) locale hop; see {@link PERMANENT_LOCALE_REDIRECT_STATUS}. */
 export function permanentLocaleRedirect(
   request: Request,
   target: URL | string,
@@ -296,7 +295,6 @@ function setSafePublicPolicy(headers: Headers, publicControl: string): void {
   }
 }
 
-/** Final response policy for every TanStack SSR/UI response. */
 export function withSsrLocaleResponse(
   request: Request,
   response: Response

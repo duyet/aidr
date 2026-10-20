@@ -57,7 +57,6 @@ export interface Release {
   /** Git refs bounding the release (tags or SHAs) for the compare link. */
   compare: { base: string; head: string };
   title: Bilingual;
-  /** One-paragraph lead. */
   intro: Bilingual;
   stats: ReleaseStat[];
   highlights: ReleaseHighlight[];

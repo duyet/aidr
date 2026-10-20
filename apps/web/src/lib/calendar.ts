@@ -12,7 +12,6 @@ export const CALENDAR_PATH = "/calendar";
 
 const MONTH_RE = /^(\d{4})-(\d{2})$/;
 
-/** A story ranked below the day's lead, shown as a runner-up in the preview. */
 export interface CalendarRunner {
   title: string;
   /** Vietnamese title; null when not translated (no fallback to English). */
@@ -21,14 +20,11 @@ export interface CalendarRunner {
 
 export interface CalendarDay {
   date: string;
-  /** Published stories that day. */
   count: number;
-  /** The day's top-ranked story. */
   title: string;
   /** Vietnamese title; null when not translated (no fallback to English). */
   title_vi: string | null;
   image_url: string | null;
-  /** Top story's tags, for the same keyword highlight as the feed. */
   tags: string[];
   /** Up to 2 stories ranked just below the lead. */
   runners: CalendarRunner[];
@@ -38,11 +34,9 @@ export interface CalendarDay {
 
 export interface CalendarMonth {
   month: string;
-  /** Days with at least one story, ascending. */
   days: CalendarDay[];
   /** Earliest month with a story; null when the archive is empty. */
   firstMonth: string | null;
-  /** Month of today in the audience zone. */
   lastMonth: string;
 }
 
@@ -61,7 +55,6 @@ export function parseMonth(raw: unknown, nowMs: number): string | null {
   return raw;
 }
 
-/** `YYYY-MM` shifted by `delta` months. */
 export function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(Date.UTC(y, m - 1 + delta, 1));
@@ -73,13 +66,11 @@ export function daysInMonth(month: string): number {
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
 }
 
-/** Weekday of the 1st, Monday = 0. */
 export function firstWeekdayMon0(month: string): number {
   const dow = new Date(`${month}-01T00:00:00Z`).getUTCDay();
   return (dow + 6) % 7;
 }
 
-/** Grid cells for a month, Monday first: null pads, then each `YYYY-MM-DD`. */
 export function monthCells(month: string): (string | null)[] {
   return [
     ...Array.from({ length: firstWeekdayMon0(month) }, () => null),

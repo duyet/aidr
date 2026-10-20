@@ -117,7 +117,6 @@ export function shouldMountClerk(pathname: string, cookie: string): boolean {
   return hasClerkSessionCookie(cookie) || routeNeedsClerk(pathname);
 }
 
-/** Sync env read — lets the root render before the Clerk chunk arrives. */
 export function getClerkPublishableKey(): string | undefined {
   const env =
     typeof import.meta !== "undefined"

@@ -18,12 +18,6 @@ import { RelatedList } from "./story-dialog/RelatedList";
 import { useDialogLifecycle } from "./story-dialog/use-dialog-lifecycle";
 import { useStoryItem } from "./story-dialog/use-story-item";
 
-/**
- * Modal that fetches and renders a single story by id prefix. No runtime deps:
- * a fixed overlay + centered panel, Escape/backdrop/× to close, a body
- * scroll lock while open, and focus containment (focuses the panel on
- * open, restores focus to the trigger on close).
- */
 export function StoryDialog({
   idPrefix,
   relatedIds,

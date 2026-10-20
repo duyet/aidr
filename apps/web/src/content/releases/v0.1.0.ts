@@ -185,7 +185,6 @@ export const release: Release = {
     },
   ],
   changes: [
-    // Reading
     {
       kind: "feature",
       scope: "web",
@@ -342,7 +341,6 @@ export const release: Release = {
       commit: "dcfa6bc",
       pr: 240,
     },
-    // Header, menu, language
     {
       kind: "feature",
       scope: "web",
@@ -457,7 +455,6 @@ export const release: Release = {
       },
       commit: "f472129",
     },
-    // Sharing
     {
       kind: "feature",
       scope: "web",
@@ -496,7 +493,6 @@ export const release: Release = {
       commit: "7a71163",
       pr: 192,
     },
-    // Delivery
     {
       kind: "feature",
       scope: "telegram",
@@ -613,7 +609,6 @@ export const release: Release = {
       commit: "639e22d",
       pr: 66,
     },
-    // Extension
     {
       kind: "feature",
       scope: "web",
@@ -671,7 +666,6 @@ export const release: Release = {
       },
       commit: "90004f3",
     },
-    // Open web and agents
     {
       kind: "feature",
       scope: "web",
@@ -731,7 +725,6 @@ export const release: Release = {
       commit: "715e28a",
       pr: 184,
     },
-    // Submit and translation
     {
       kind: "feature",
       scope: "web",
@@ -779,7 +772,6 @@ export const release: Release = {
       commit: "0dbf371",
       pr: 158,
     },
-    // Sources
     {
       kind: "feature",
       scope: "sources",
@@ -829,7 +821,6 @@ export const release: Release = {
       commit: "242c932",
       pr: 294,
     },
-    // Data page
     {
       kind: "feature",
       scope: "web",
@@ -877,7 +868,6 @@ export const release: Release = {
       },
       commit: "542b676",
     },
-    // Speed
     {
       kind: "perf",
       scope: "web",

@@ -68,9 +68,7 @@ export function ClerkRootProvider({ children }: { children: ReactNode }) {
       .then((m) => {
         if (!cancelled) setMod(m);
       })
-      .catch(() => {
-        // Import failed — keep rendering the no-Clerk fallback.
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };

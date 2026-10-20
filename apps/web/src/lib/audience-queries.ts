@@ -42,16 +42,11 @@ export type Ga4AudienceStatus =
 
 export interface Ga4AudienceView {
   status: Ga4AudienceStatus;
-  /** Epoch seconds the stored snapshot was written, when there is one. */
   fetchedAt: number | null;
-  /** Null unless the payload validated — never a partial object. */
   audience: Ga4Audience | null;
   viewsPerDay: DayCount[];
   usersPerDay: DayCount[];
   topPages: NamedCount[];
-  /** GA4 sessions over the same 28 days as the totals, by default channel
-   *  group, by `source / medium`, and by landing page. Distinct from the
-   *  subscriber signup sources below. */
   channels: NamedCount[];
   sourceMedium: NamedCount[];
   landingPages: NamedCount[];
@@ -63,7 +58,6 @@ export interface DigestSizeCount {
 }
 
 export interface SubscriberAudience {
-  /** Confirmed email subscriptions — the audience the digest actually reaches. */
   confirmed: number;
   /** Rows present but not yet confirmed, so the two never silently disagree. */
   unconfirmed: number;
@@ -71,7 +65,6 @@ export interface SubscriberAudience {
   bySource: NamedCount[];
   byLang: NamedCount[];
   byDigestSize: DigestSizeCount[];
-  /** Confirmed signups per day over the trailing window. */
   newPerDay: DayCount[];
   new7d: number;
   new28d: number;
@@ -193,8 +186,6 @@ function ga4View(snapshot: Ga4Snapshot, nowSec: number): Ga4AudienceView {
   };
 }
 
-/** The GA4 half, read on its own so a broken snapshot cannot 500 the
- *  subscriber counts sitting next to it. */
 async function loadGa4Audience(
   db: DbReader,
   nowSec: number
@@ -269,7 +260,6 @@ async function loadSubscribers(
   };
 }
 
-/** One batched D1 read for the whole Audience tab. */
 export async function loadAudienceStats(
   db: DbReader,
   opts: { now?: number } = {}

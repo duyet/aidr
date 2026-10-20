@@ -14,7 +14,6 @@ import {
   type WeekSummary,
 } from "./week-model";
 
-/** Bound on the `/weeks` index. Two years of issues. */
 export const WEEKS_INDEX_LIMIT = 104;
 
 interface WeekRow {

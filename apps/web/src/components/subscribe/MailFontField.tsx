@@ -6,7 +6,6 @@ const LABELS: Record<MailFont, { en: string; vi: string }> = {
   serif: { en: "Serif headlines", vi: "Tiêu đề có chân" },
 };
 
-/** Digest headline font picker, shared by the subscribe form and the settings page. */
 export function MailFontField({
   lang,
   name,

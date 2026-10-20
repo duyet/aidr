@@ -1,7 +1,5 @@
 export type SuggestField = "title" | "summary";
 
-/** Minimal DOM node shape this needs — duck-typed so it's easy to unit
- * test without a jsdom environment. */
 export interface SuggestFieldNode {
   nodeType?: number;
   getAttribute?(name: string): string | null;

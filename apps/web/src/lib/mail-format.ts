@@ -17,7 +17,6 @@ export function normalizeMailFormat(value: unknown): MailFormat {
     : "design";
 }
 
-/** Whether the layout shows story images, so the send path must load them. */
 export function mailFormatHasImages(format: MailFormat): boolean {
   return format === "design" || format === "large";
 }

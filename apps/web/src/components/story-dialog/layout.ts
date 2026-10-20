@@ -33,7 +33,6 @@ const BILINGUAL_MAX_WIDTH_CLASS =
 const SINGLE_MAX_WIDTH_CLASS =
   "max-w-2xl sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl";
 
-/** A preference only enables bilingual mode when this story has Vietnamese text. */
 export function isBilingualDialog(
   preference: boolean,
   hasVi: boolean
@@ -41,7 +40,6 @@ export function isBilingualDialog(
   return preference && hasVi;
 }
 
-/** Keep the two-language reader roomier without changing its content layout. */
 export function storyDialogPanelClass(bilingual: boolean): string {
   return `${STORY_DIALOG_PANEL_CLASS} ${
     bilingual ? BILINGUAL_MAX_WIDTH_CLASS : SINGLE_MAX_WIDTH_CLASS

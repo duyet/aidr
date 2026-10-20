@@ -9,7 +9,6 @@ async function workerEnv(): Promise<Env> {
   return typed;
 }
 
-/** Addresses Clerk has already verified for the signed-in account. */
 export const fetchContributorEmails = createServerFn({ method: "GET" }).handler(
   async (): Promise<string[]> => {
     const { userId } = await requireClerkUser();

@@ -29,7 +29,6 @@ function deletes() {
   return fetchMock.mock.calls.filter(([, init]) => init?.method === "DELETE");
 }
 
-/** Renders the view the subscribe route shows for the current entry. */
 function renderEntry() {
   const link = subscribeLinkOf(history.state);
   if (link?.kind !== "unsubscribe") throw new Error("entry has no link");

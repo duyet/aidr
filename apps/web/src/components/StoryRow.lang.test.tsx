@@ -190,10 +190,6 @@ describe("expanded row language switch", () => {
   });
 });
 
-// Owner request: an open row shows its votes at the top of the media column
-// in the details, not in the header meta line. A closed row keeps them in
-// the header, and the votes never vanish from an open row. Both places use
-// the same single thumbs-up button.
 describe("StoryRow vote placement", () => {
   const voteLinks = (root: Element) =>
     Array.from(root.querySelectorAll('button[aria-label="Upvote"]'));
@@ -220,7 +216,6 @@ describe("StoryRow vote placement", () => {
     const aside = view.container.querySelector("aside") as Element;
     expect(aside).toBeTruthy();
     expect(voteLinks(aside)).toHaveLength(1);
-    // First thing in the column, above any media.
     expect(aside.firstElementChild?.getAttribute("aria-label")).toBe("Upvote");
 
     // A vote click must not close the row.

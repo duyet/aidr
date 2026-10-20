@@ -212,7 +212,6 @@ const STORIES_BY_ID_SQL = STORIES_SQL.replace(
   "i.id IN ({placeholders})"
 ).replace(/\nORDER BY i\.rank_score DESC\nLIMIT \?$/, "");
 
-/** Published rows for the given ids, in the order of `ids`. */
 async function loadStoriesByIds(
   db: DbReader,
   ids: string[]

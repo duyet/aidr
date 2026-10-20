@@ -6,7 +6,6 @@ import { type CartesianChartProps, CartesianRoot } from "./cartesian-root"
 // generic. Internal layers still index rows through their own Row type.
 type Row = object
 
-/** Composable dither **bar** chart — `<Bar>` series, grouped or stacked. */
 export function BarChart<TData extends Row>(props: CartesianChartProps<TData>) {
   return <CartesianRoot chartType="bar" Canvas={BarCanvas} {...props} />
 }

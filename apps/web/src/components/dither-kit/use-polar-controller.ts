@@ -180,7 +180,6 @@ export function usePolarController({
         },
       }
     }
-    // radar
     return {
       names: configKeys,
       tooltipTop,

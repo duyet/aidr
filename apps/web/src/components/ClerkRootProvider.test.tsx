@@ -158,7 +158,6 @@ describe("ClerkRootProvider load gate", () => {
     document.cookie = value;
   }
 
-  /** Resolves `loadClerkModule` with a provider that marks its subtree. */
   function resolveSdk() {
     const ClerkProvider = ({ children }: { children?: ReactNode }) => (
       <div data-testid="clerk-provider">{children}</div>

@@ -13,11 +13,8 @@ import { EDGE_CACHE_STALE_S } from "./edge-cache-window";
  */
 export const GLOBAL_WRITE_INTERVAL_S = 600;
 
-/** A stored entry readable from every colo. Same shape as the Worker cache's. */
 export interface GlobalHtmlCache {
-  /** The stored copy, or null when absent, expired, or the read failed. */
   get(key: Request): Promise<Response | null>;
-  /** Store the entry under this build's key. Never throws. */
   put(key: Request, stored: Response, fresh: number): Promise<void>;
 }
 
@@ -44,7 +41,6 @@ export function isGloballyCachedKey(key: Request): boolean {
   );
 }
 
-/** Null when the KV binding or the version id is absent: the tier is off. */
 export function globalHtmlCache(
   env: GlobalHtmlCacheEnv
 ): GlobalHtmlCache | null {
@@ -72,9 +68,7 @@ export function globalHtmlCache(
         await kv.put(kvKey(key), `${head}\n${await stored.text()}`, {
           expirationTtl: fresh + EDGE_CACHE_STALE_S,
         });
-      } catch {
-        // The local cache already holds this render.
-      }
+      } catch {}
     },
   };
 }

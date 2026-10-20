@@ -20,7 +20,6 @@
  * with no LCP candidate still reports. */
 const LCP_WAIT_CAP_MS = 4000;
 
-/** Idle cap, so a busy main thread does not starve analytics indefinitely. */
 const IDLE_TIMEOUT_MS = 2000;
 
 type IdleWindow = Window &
@@ -45,7 +44,6 @@ interface LargestContentfulPaintEntry extends PerformanceEntry {
   loadTime: number;
 }
 
-/** Resolves on the first LCP candidate, or after `capMs`. Never rejects. */
 function firstLcpPaintSettled(capMs: number): Promise<"lcp" | "cap"> {
   if (
     typeof window === "undefined" ||
@@ -87,7 +85,6 @@ function firstLcpPaintSettled(capMs: number): Promise<"lcp" | "cap"> {
 }
 
 export interface AfterLcpPaintOptions {
-  /** Overridable for tests. */
   capMs?: number;
 }
 

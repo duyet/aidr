@@ -18,14 +18,12 @@ function jsFiles(dir: string): string[] {
   });
 }
 
-/** Files under `serverRoot` that still carry the dev-only Clerk skip. */
 export function devClerkSkipFiles(serverRoot: string): string[] {
   return jsFiles(serverRoot).filter((file) =>
     DEV_CLERK_SKIP.test(readFileSync(file, "utf8"))
   );
 }
 
-/** Failure text for `files` (paths already relative to the web root). */
 export function devBuildMessage(files: string[]): string {
   return `dist/server looks like a dev build: the DEV branch of src/start.ts is compiled in, so it carries the dev-only Clerk skip (${files.join(", ")}). Vite fixes import.meta.env.DEV from the NODE_ENV of the build, not of this check. Rebuild with NODE_ENV=production (or unset) and run this check again.`;
 }

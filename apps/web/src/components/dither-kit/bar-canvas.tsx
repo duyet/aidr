@@ -26,13 +26,6 @@ type Bars = { top: number[]; base: number[] } // per data index, in backing rows
 // own grow window, so the rise sweeps across the chart as a wave.
 const STAGGER = 0.55
 
-/**
- * Dither canvas for bar charts. Each category owns a band; grouped series split
- * it into side-by-side bars, stacked series share its full width and pile in y.
- * Every bar is filled with the shared {@link paintColumn} ordered dither. Bars
- * grow up from their base in a staggered left-to-right wave (eased), and the
- * hovered category lifts while the rest dim.
- */
 export function BarCanvas() {
   const ctx = useChart()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -61,7 +54,6 @@ export function BarCanvas() {
     return out
   }, [ready, configKeys, bands, y, height, rows])
 
-  // The RAF loop reads these through refs so it always sees the latest values.
   const state = useLiveRef(ctx)
   const targetsRef = useLiveRef(targets)
 
@@ -77,7 +69,6 @@ export function BarCanvas() {
     const duration = state.current.animationDuration
     const fx = cols / Math.max(width, 1)
 
-    // Eased grow factor for bar `i` at global progress `prog`.
     const barProgress = (i: number, len: number, prog: number) => {
       if (!animate) return 1
       const start = len > 1 ? (i / (len - 1)) * STAGGER : 0
@@ -169,7 +160,6 @@ export function BarCanvas() {
       intensity = eased.value
       if (eased.moving) needsFill = true
 
-      // Live tweak repaint (variant, stacking) without replaying the wave.
       const paintSig = cartesianPaintSig(s)
       if (paintSig !== lastPaintSig) {
         lastPaintSig = paintSig

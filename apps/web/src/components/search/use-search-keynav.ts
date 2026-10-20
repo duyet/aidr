@@ -1,7 +1,5 @@
 import { type KeyboardEvent, useCallback } from "react";
 
-/** Dropdown keyboard nav for the search typeahead: Escape closes; the arrows
- * wrap through the result rows (filter row first, then story matches). */
 export function useSearchKeyNav({
   showDropdown,
   rowCount,

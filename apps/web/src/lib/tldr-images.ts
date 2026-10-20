@@ -105,7 +105,6 @@ export function imageUrlByItemId(
   return map;
 }
 
-/** Every story id cited by either language's bullets. */
 export function collectTldrItemIds(
   tldr: { bullets_en: TldrBullet[]; bullets_vi: TldrBullet[] } | null
 ): string[] {

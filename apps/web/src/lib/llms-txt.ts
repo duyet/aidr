@@ -23,12 +23,6 @@ import { WEEKS_INDEX_PATH } from "./week";
  * *"llms.txt does not follow recommendations — File does not appear to
  * contain any links"*, because the endpoints were bare `GET https://…` text
  * inside `-` list items. A spec-conformant file is a machine-readable one.
- *
- * Nothing the previous version said is lost. The locale/cache contract, the
- * story-text trust boundary, the ranking formula, and the submit/suggest
- * flows are genuinely valuable agent instructions, and an `llms.txt` that
- * "passes" by dropping them is not an improvement. The feed and news-sitemap
- * entries added alongside the RSS work are kept as links too.
  */
 export function llmsTxt(): string {
   return `# ${SITE_NAME} (aidr.today)

@@ -657,14 +657,7 @@ export function mcpServerCard(): unknown {
       // and never wait for a change notification.
       tools: { listChanged: false },
       resources: { subscribe: false, listChanged: false },
-      // No `prompts` key. The card used to advertise `capabilities.prompts`
-      // with no `prompts/list` implementation behind it; an unimplemented
-      // capability is a broken promise, so the claim is gone rather than
-      // aspirational. #227 removed it deliberately, not by omission.
     },
-    // Named explicitly, with the credential each half needs. The previous
-    // card advertised `capabilities.tools` and a public endpoint with no
-    // auth requirement declared, which is what sent agents into a 401.
     authentication: {
       required: false,
       description:

@@ -15,7 +15,6 @@ import { storyPath } from "./slug";
 import { getStoryCandidates } from "./story-queries";
 import type { FeedItem, Lang } from "./types";
 
-/** Public, versioned Markdown representation of a published story. */
 export const STORY_MARKDOWN_FORMAT = "aidr-story-markdown/v1";
 export const STORY_MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8";
 export const STORY_MARKDOWN_CACHE_CONTROL =
@@ -568,13 +567,11 @@ function sanitizeDecodedComponent(
   return canonical;
 }
 
-/** Reject nested URLs and structured credentials in one bounded component. */
 function sanitizeQueryValue(value: string): string | null {
   const normalized = value.trim();
   return inspectUnsafeText(normalized) ? null : normalized;
 }
 
-/** Keep only allowlisted query keys after one bounded decode/inspect pipeline. */
 function sanitizeSearchParams(
   params: URLSearchParams,
   maxEntries: number,

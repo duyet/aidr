@@ -70,7 +70,6 @@ export function headlineRows(text: string, maxEm: number): string[] {
 export interface FitBox {
   width: number;
   height: number;
-  /** Font sizes to try, largest first. */
   sizes: readonly number[];
   lineHeight: number;
   /** Never more lines than this, even when the box is taller. */
@@ -88,7 +87,6 @@ function linesAt(box: FitBox, size: number): number {
   return Math.max(1, Math.min(box.maxLines ?? byHeight, byHeight));
 }
 
-/** The longest prefix of `word` that, with an ellipsis, fits one row. */
 function clipWord(word: string, maxEm: number): string {
   const chars = [...word];
   while (chars.length > 1 && textWidthEm(`${chars.join("")}…`) > maxEm) {

@@ -49,9 +49,6 @@ const CHANNELS = [
   },
 ] as const;
 
-/** Telegram tab of the deliver page: features and one CTA per channel on the
- *  left, the channel mocks on the right, the mock matching the page language
- *  first. */
 export function TelegramChannel({ lang }: { lang: Lang }) {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
   const channels = [...CHANNELS].sort(

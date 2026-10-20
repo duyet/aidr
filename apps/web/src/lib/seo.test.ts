@@ -45,7 +45,6 @@ function metaContent(tags: HeadMeta[], key: string): string | undefined {
       : undefined;
 }
 
-// --- JSON-LD harness -------------------------------------------------------
 // `HeadTags.jsonLd` is the graph the head builders publish; `HeadTags.scripts`
 // is the single `application/ld+json` element the router renders from it. The
 // tests assert against the *serialized* body as well, because that is what a
@@ -73,7 +72,6 @@ function node<T extends JsonLdNode>(
   return found as T;
 }
 
-/** The indexable route identity every graph test passes to the builders. */
 const INDEXABLE_ROUTE = { pathname: "/", search: { lang: "vi" } };
 const STORY_ROUTE = { pathname: "/abcdef12", search: { lang: "vi" } };
 
@@ -418,14 +416,6 @@ describe("notFoundHead", () => {
     expect(jsonLdScripts(head.scripts)).toEqual([]);
   });
 });
-
-// ---------------------------------------------------------------------------
-// JSON-LD (#224)
-//
-// The site emitted zero `application/ld+json` before this graph. Everything
-// below asserts the values a rich-result / AI-answer extractor reads, and
-// that they agree with the Open Graph / canonical tags already on the page.
-// ---------------------------------------------------------------------------
 
 describe("articleHead JSON-LD (NewsArticle)", () => {
   it("publishes a breadcrumb that ends at the canonical story URL", () => {

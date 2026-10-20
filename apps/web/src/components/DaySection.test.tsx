@@ -124,13 +124,10 @@ describe("dense story table", () => {
     expect(row).toContain(
       "sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.6rem]"
     );
-    // Desktop: one-line title; topic and time have their own columns.
     expect(html).toMatch(/class="story-title[^"]*sm:truncate/);
     expect(html).toMatch(/class="story-topic hidden[^"]*sm:block/);
     expect(html).toMatch(/class="story-time hidden[^"]*sm:block/);
-    // Phone: topic + time sit under the title and hide from 640px up.
     expect(html).toMatch(/class="story-meta-phone[^"]*sm:hidden/);
-    // Score column: one small thumbs-up button, no down vote.
     const score = html.split('class="story-score')[1] ?? "";
     expect(score.match(/aria-label="Upvote"/g)).toHaveLength(1);
     expect(score).not.toContain("lucide-thumbs-down");

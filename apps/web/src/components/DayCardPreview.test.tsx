@@ -1,10 +1,4 @@
-/**
- * The image view swaps the AI;DR bullet list for the day card at the full
- * body width (as the new-tab extension does). It used to sit in an absolute
- * overlay that took the list's height, so the 1200×630 card showed small.
- *
- * @vitest-environment happy-dom
- */
+/** @vitest-environment happy-dom */
 import {
   act,
   cleanup,
@@ -66,13 +60,11 @@ describe("day card image view", () => {
     expect(card.getAttribute("src")).toBe(
       "/api/og/date/2026-10-09.png?lang=en"
     );
-    // In normal flow at full width, not an overlay sized by the list.
     const frame = card.parentElement as HTMLElement;
     expect(frame.hidden).toBe(false);
     expect(frame.className).not.toMatch(/\babsolute\b/);
     expect(card.className).toContain("max-w-full");
     expect(card.className).not.toContain("max-h-full");
-    // The list and its more/less control are out of the page, not covered.
     expect(screen.getByText("Bullet 1").closest("[hidden]")).not.toBeNull();
     expect(screen.queryByRole("button", { name: /Show more/ })).toBeNull();
     expect(screen.getByText(/349 stories/)).toBeTruthy();

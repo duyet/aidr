@@ -75,7 +75,6 @@ export function MonthGrid({
   const tile = page ? TILE_PAGE : TILE;
   const gap = page ? "gap-1 sm:gap-1.5" : size === "lg" ? "gap-1.5" : "gap-1";
 
-  /** Arrow keys, Home and End move focus between edition tiles. */
   const onGridKeyDown = (e: KeyboardEvent<HTMLOListElement>) => {
     const from = (e.target as HTMLElement).dataset?.date;
     if (!from || !ARROWS.has(e.key)) return;

@@ -23,7 +23,6 @@ const DAY_ARCHIVE_SETTLE_DAYS = 3;
  */
 export const DAY_ARCHIVE_SETTLED_CACHE_CONTROL =
   "public, max-age=3600, s-maxage=86400, stale-while-revalidate=43200";
-/** Today and the last few days: ranks and the digest still update hourly. */
 export const DAY_ARCHIVE_RECENT_CACHE_CONTROL =
   "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
 
@@ -33,7 +32,6 @@ export const DAY_ARCHIVE_RECENT_CACHE_CONTROL =
  */
 const AUDIENCE_UTC_OFFSET = "+07:00";
 
-/** Latest date a day page may exist for: today in the audience zone. */
 export function latestArchiveDate(nowMs: number): string {
   return localCalendarDate(nowMs, AUDIENCE_TIMEZONE);
 }
@@ -51,7 +49,6 @@ export function parseArchiveDate(raw: unknown, nowMs: number): string | null {
   return raw;
 }
 
-/** `[start, end)` epoch seconds of the audience-zone day. */
 export function dayBoundsSec(date: string): { start: number; end: number } {
   const start = Math.floor(
     Date.parse(`${date}T00:00:00${AUDIENCE_UTC_OFFSET}`) / 1000
@@ -59,7 +56,6 @@ export function dayBoundsSec(date: string): { start: number; end: number } {
   return { start, end: start + DAY_SEC };
 }
 
-/** Audience-zone date of an epoch-seconds timestamp, or null when unusable. */
 export function archiveDateOfSec(sec: number): string | null {
   const ms = sec * 1000;
   return Number.isFinite(new Date(ms).getTime())
@@ -72,19 +68,16 @@ export function dayArchivePath(date: string, lang?: Lang): string {
   return lang ? withLang(path, lang) : path;
 }
 
-/** Day card image (`/api/og/date/YYYY-MM-DD.png`), see `lib/day-og.tsx`. */
 export function dayArchiveOgPath(date: string, lang?: Lang): string {
   const path = `/api/og/date/${date}.png`;
   return lang ? withLang(path, lang) : path;
 }
 
-/** Markdown twin of a day page: `/date/YYYY-MM-DD.md`. */
 export function dayArchiveMarkdownPath(date: string, lang?: Lang): string {
   const path = `/date/${date}.md`;
   return lang ? withLang(path, lang) : path;
 }
 
-/** True once a day is past the rank-settle window and no longer changes. */
 export function isSettledArchiveDate(date: string, nowMs: number): boolean {
   const settledBefore = localCalendarDate(
     nowMs - DAY_ARCHIVE_SETTLE_DAYS * DAY_SEC * 1000,

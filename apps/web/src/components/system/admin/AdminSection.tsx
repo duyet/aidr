@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-/** One labelled block inside the admin panel — a small muted title with an
- * optional right-aligned action (usually a Refresh button). */
 export function AdminSection({
   title,
   action,

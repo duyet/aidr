@@ -78,7 +78,6 @@ export function loadErrorHeaders(lang: Lang): Record<string, string> {
   };
 }
 
-/** Route `head` for the same render. */
 export function loadErrorHead(subject: LoadErrorSubject, lang: Lang) {
   return {
     meta: [

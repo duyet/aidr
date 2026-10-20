@@ -1,7 +1,6 @@
 import { ArrowLeft, ArrowRight, Lock, Plus, RotateCw, X } from "lucide-react";
 import type { ReactNode } from "react";
 
-/** Decorative browser chrome that frames each delivery-channel preview. */
 export function BrowserFrame({
   tab,
   address,

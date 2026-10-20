@@ -6,7 +6,6 @@ import { tokenBurnModelName } from "./run-format";
 
 export type BurnBy = "task" | "model";
 
-/** Axis tick. The tooltip keeps the full `YYYY-MM-DD` instead. */
 export function chartDayLabel(date: string | null | undefined): string {
   return typeof date === "string" && date.length >= 5 ? date.slice(5) : "—";
 }
@@ -46,7 +45,6 @@ export function rowsForBurn(
 
 export interface TokenBurnDay {
   date: string;
-  /** MM-DD tick. The chart tooltip reads `date`. */
   day: string;
   values: Record<string, number>;
   total: number;
@@ -61,7 +59,6 @@ export interface TokenBurnView {
   totals: Record<string, number>;
 }
 
-/** One stacked day per date. `total` is the sum of every series in that bucket. */
 export function buildTokenBurn(data: LlmDayTaskCount[]): TokenBurnView | null {
   if (data.length === 0) return null;
   const series = [...new Set(data.map((row) => row.task))].sort();
@@ -102,7 +99,6 @@ export function buildTokenBurn(data: LlmDayTaskCount[]): TokenBurnView | null {
   };
 }
 
-/** The day under the pointer, or null when the pointer has left the chart. */
 export function dateAtHover(
   view: TokenBurnView,
   index: number | null
@@ -111,8 +107,6 @@ export function dateAtHover(
   return view.days[index]?.date ?? null;
 }
 
-/** Per-series amounts for the table: one day while hovering, otherwise the
- * whole window. */
 export function amountsForDate(
   view: TokenBurnView,
   date: string | null

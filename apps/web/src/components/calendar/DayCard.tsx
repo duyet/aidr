@@ -10,11 +10,6 @@ import {
   storiesLabel,
 } from "./shared";
 
-/**
- * Desktop preview of one edition day: lead image, mono eyebrow, serif
- * headline, runner-ups, category chips and the link to the day archive.
- * Runner-ups and chips appear only when the day has them.
- */
 export function DayCard({ day, lang }: { day: CalendarDay; lang: Lang }) {
   const vi = lang === "vi";
   const title = dayTitle(day, lang);

@@ -71,7 +71,6 @@ describe("prefs", () => {
       "tldr",
       "days",
     ]);
-    // Persisting a reordered list is honored.
     savePrefs({
       ...DEFAULT_PREFS,
       sectionOrder: ["tldr", "trending", "days", "categories"],
@@ -82,7 +81,6 @@ describe("prefs", () => {
       "days",
       "categories",
     ]);
-    // Saving an order missing a key appends it at the end (future-proof).
     savePrefs({
       ...DEFAULT_PREFS,
       sectionOrder: ["tldr", "trending"],
@@ -93,7 +91,6 @@ describe("prefs", () => {
       "categories",
       "days",
     ]);
-    // Malformed order falls back to defaults.
     localStorage.setItem(
       "news_prefs",
       JSON.stringify({ sectionOrder: "not-an-array" })

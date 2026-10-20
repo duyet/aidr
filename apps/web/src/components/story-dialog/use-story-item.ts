@@ -13,7 +13,6 @@ export type StoryItemState =
   | { status: "missing" }
   | { status: "failed" };
 
-/** Fetches a story by id prefix. `retry` fetches it again. */
 export function useStoryItem(
   activeId: string,
   lang: Lang

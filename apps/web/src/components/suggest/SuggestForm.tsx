@@ -6,7 +6,6 @@ import { fetchSuggestionStatus, submitSuggestion } from "../../lib/suggest-fn";
 import type { Lang } from "../../lib/types";
 import { SuggestionVerdict } from "./SuggestionVerdict";
 
-/** Contributions list for the language the reader is using. */
 export function suggestionTimeoutHref(lang: Lang): string {
   return withLang("/contribute", lang);
 }

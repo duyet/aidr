@@ -21,15 +21,6 @@ import {
   RESOURCES_CALL_EXAMPLE,
 } from "./lib";
 
-/**
- * Anonymous first, operator second.
- *
- * The page used to open with "every request needs a bearer token", which
- * was true and also hid the fact that the site already served a complete
- * read API. Now the read tools lead, the auth boundary is stated exactly
- * once in its own section, and the operator tools are a clearly separated
- * appendix.
- */
 export function ConnectSection() {
   const lang = useLang();
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);

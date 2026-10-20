@@ -10,8 +10,6 @@ function tokens(text: string): string[] {
   return text.split(/(?<=\s)(?=\S)/).filter(Boolean);
 }
 
-/** Word-level diff (LCS) between what the reader wrote and what the reviewer
- *  published. */
 export function wordDiff(before: string, after: string): DiffPart[] {
   const a = tokens(before);
   const b = tokens(after);

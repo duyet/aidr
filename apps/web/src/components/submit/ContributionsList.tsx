@@ -168,9 +168,6 @@ function ContributionDetail({
   );
 }
 
-/** The signed-in reader's own edit suggestions and story submissions as a
- *  compact, filterable list; each row opens its full detail in a dialog, so
- *  the page stays scannable however long the history grows. */
 export function ContributionsList({
   lang,
   getToken,

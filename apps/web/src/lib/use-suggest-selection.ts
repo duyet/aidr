@@ -13,7 +13,6 @@ export interface SuggestSelection {
   pendingSuggestion: { field: SuggestField; text: string } | null;
   /** Increments on every accepted selection, even when the text repeats. */
   suggestionAttempt: number;
-  /** Moves the current selection into the suggestion form. */
   acceptSelection: () => void;
   clearPending: () => void;
 }

@@ -6,13 +6,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { pngBytes } from "../lib/__fixtures__/raster";
 import type { FeedItem } from "../lib/types";
 
-/** Captures the React tree the route handed to satori. */
 let captured: {
   element: ReactElement;
   options: Record<string, unknown>;
 } | null = null;
 
-/** The image URL the route asked the bounded fetcher to load. */
 let fetchedUrls: Array<string | null | undefined> = [];
 
 vi.mock("@cf-wasm/og/workerd", () => ({
@@ -83,7 +81,6 @@ async function call(
   });
 }
 
-/** Markup for the tree the route actually rendered. */
 function markup(): string {
   expect(captured).not.toBeNull();
   return renderToStaticMarkup(captured?.element as ReactElement);

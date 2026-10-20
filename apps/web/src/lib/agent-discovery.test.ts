@@ -185,9 +185,6 @@ describe("the discovery documents describe the real MCP surface (#227)", () => {
 
   it("no longer claims a prompts capability the server never implemented", () => {
     const card = mcpServerCard() as { capabilities: Record<string, unknown> };
-    // The card used to advertise capabilities.prompts with no
-    // prompts/list behind it. An unimplemented capability is a broken
-    // promise, so the claim is removed rather than left aspirational.
     expect(card.capabilities.prompts).toBeUndefined();
     expect(card.capabilities.resources).toBeTruthy();
     expect(JSON.stringify(openApiDocument())).not.toContain("prompts/list");
@@ -211,7 +208,6 @@ describe("the discovery documents describe the real MCP surface (#227)", () => {
       resourceTemplates: string[];
     };
     expect(xMcp.protocolVersion).toBe("2025-06-18");
-    // Still honest that there is no streaming transport.
     expect(xMcp.streaming).toBe(false);
     expect(xMcp.publicTools.map((tool) => tool.name)).toEqual([
       ...PUBLIC_READ_TOOL_NAMES,
@@ -244,7 +240,6 @@ describe("the discovery documents describe the real MCP surface (#227)", () => {
     expect(byId.get("public-digest")?.description).toContain("get_ai_digest");
     expect(byId.get("story-markdown")?.description).toContain("get_story");
     expect(byId.get("mcp-tools")?.description).toContain("require an admin");
-    // Still honest about the transport the server does NOT offer.
     expect(card.capabilities.streaming).toBe(false);
     expect(card.capabilities.pushNotifications).toBe(false);
   });

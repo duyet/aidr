@@ -114,14 +114,6 @@ export function webmcpContext(
   return context && typeof context.registerTool === "function" ? context : null;
 }
 
-/* ------------------------------------------------------------------ *
- * Execution
- *
- * Validation runs FIRST and identically to the MCP transport, so a
- * hostile argument costs one bounded pass and never a network request —
- * the browser-side twin of "rejected arguments touch no D1".
- * ------------------------------------------------------------------ */
-
 type ToolOutcome = { ok: true; value: unknown } | { ok: false; error: string };
 
 async function fetchJson(path: string): Promise<ToolOutcome> {
@@ -318,10 +310,6 @@ export function registerWebmcpTools(
   }
   return registered;
 }
-
-/* ------------------------------------------------------------------ *
- * Form annotations
- * ------------------------------------------------------------------ */
 
 export interface WebMcpFormAnnotation {
   /** Stable form id, mirrored into the DOM as `data-webmcp-form`. */

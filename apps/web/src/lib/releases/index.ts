@@ -4,7 +4,6 @@ import { release as v0_1_13 } from "../../content/releases/v0.1.13";
 import type { Release } from "./types";
 import { releasePathForVersion } from "./versions";
 
-/** Newest first. */
 export const RELEASES: Release[] = [v0_1_13, v0_1_12, v0_1_0];
 
 /** Accepts "v0.1.0" or "0.1.0". */

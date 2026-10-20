@@ -36,11 +36,9 @@ export interface FeedItem {
   sources: ItemSource[];
   llm_tokens: number;
   image_url: string | null;
-  /** Bounded additive media manifest; omitted for a single legacy image. */
   media_manifest?: MediaManifest;
   /** Recent title/summary edits. Set by getStory. Omitted on feed rows. */
   content_log?: ContentLogEntry[];
-  /** Net of signed-in reader votes. 0 when nobody has voted. */
   vote_net?: number;
   /** Set only on SSR feed items, which ship without summary/sources to
    * keep the dehydrated payload small. When true the row lazily refetches
@@ -82,7 +80,6 @@ export interface FeedResponse {
   days: DayGroup[];
   categories: { name: string; count: number }[];
   trending: { tag: string; count: number }[];
-  /** Self-learned entity/model keywords for title highlight. */
   learnedKeywords?: string[];
   totalStories: number;
   updatedAt: number;
@@ -91,7 +88,6 @@ export interface FeedResponse {
    * value. This is an item-level timestamp, not workflow completion.
    */
   lastFetchedAt: number | null;
-  /** True when older published days exist beyond this page. */
   hasMore: boolean;
   /** Homepage SSR only: digest-linked stories that are not in `days`, so
    * the AI;DR rows keep their topic colour and highlights. */

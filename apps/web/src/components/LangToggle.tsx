@@ -12,8 +12,6 @@ export function LangToggle({
   onChange: (lang: Lang) => void;
   disabled?: boolean;
   buttonClassName?: string;
-  /** Lets the phone menu swap the inline pill for a full-width segmented
-   *  control without changing the toggle's own behaviour. */
   containerClassName?: string;
 }) {
   return (

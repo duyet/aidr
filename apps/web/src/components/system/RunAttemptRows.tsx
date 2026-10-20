@@ -65,8 +65,6 @@ function ModelHop({ id }: { id: string }) {
   );
 }
 
-/** One hop of a chain call: the requested id, what it resolved to (the
- *  last route hop), its status, time, and the error code when it failed. */
 function Hop({ hop }: { hop: ChainAttempt }) {
   const route = hop.route?.length ? hop.route : [hop.model];
   const resolved = route.length > 1 ? route[route.length - 1] : null;

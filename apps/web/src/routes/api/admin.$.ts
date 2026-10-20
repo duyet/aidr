@@ -97,7 +97,6 @@ async function parseJsonBody(request: Request) {
   }
 }
 
-/** An optional JSON object body: none (or blank) is `{}`. */
 async function parseOptionalJsonObject(
   request: Request
 ): Promise<

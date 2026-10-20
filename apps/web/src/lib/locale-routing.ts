@@ -70,7 +70,6 @@ export function preserveRootLang<T extends object>(
   return { ...next, lang: current.lang } as T;
 }
 
-/** Run the root locale rule with TanStack's downstream search metadata. */
 export function preserveRootLangFromMiddleware<T extends object>(
   current: T,
   next: (search: T) => T

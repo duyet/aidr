@@ -229,10 +229,6 @@ describe("category accent surfaces", () => {
   });
 
   it("renders the category count with a quiet token, never an opacity", () => {
-    // An opacity fade blended the count toward the surface behind the pill,
-    // so the rendered pair depended on the reader background and no token
-    // declared it. Both states are tokens now, asserted for every reader
-    // background in contrast-tokens.test.ts.
     expect(categoryNavSource).toContain("text-quiet-foreground text-xs");
     expect(categoryNavSource).toContain(
       "text-primary-foreground-quiet text-xs"

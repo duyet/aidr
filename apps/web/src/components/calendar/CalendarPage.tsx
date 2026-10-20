@@ -33,7 +33,6 @@ export function CalendarPage({
 }: {
   cal: CalendarMonth;
   lang: Lang;
-  /** Audience-zone `YYYY-MM-DD` of today. */
   today: string;
 }) {
   const vi = lang === "vi";

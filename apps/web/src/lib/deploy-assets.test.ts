@@ -38,7 +38,6 @@ type Reply =
       status: number;
       type?: string;
       body?: string | Uint8Array;
-      /** Send without a content-length header. */
       chunked?: boolean;
     }
   | "hang";
@@ -278,7 +277,6 @@ describe("writeCarriedAsset", () => {
     expect(readdirSync(join(root, "assets"))).toEqual(["a.js"]);
   });
 
-  // Anything under the hashed name is published as that chunk.
   it("leaves nothing behind when the write fails partway", () => {
     const root = mkdtempSync(join(tmpdir(), "deploy-assets-"));
     mkdirSync(join(root, "assets"));

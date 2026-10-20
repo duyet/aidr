@@ -40,7 +40,6 @@
 
 import { CATEGORY_NAMES } from "./topic-color";
 
-/** Languages the public read surface actually publishes. */
 export const PUBLIC_READ_LANGS = ["en", "vi"] as const;
 export type PublicReadLang = (typeof PUBLIC_READ_LANGS)[number];
 
@@ -48,7 +47,6 @@ export type PublicReadLang = (typeof PUBLIC_READ_LANGS)[number];
 export const PUBLIC_READ_STORY_ID_PATTERN = "^[0-9a-f]{8,64}$";
 const STORY_ID_RE = new RegExp(PUBLIC_READ_STORY_ID_PATTERN);
 
-/** `before` is a calendar date, exactly as `/api/feed` accepts it. */
 export const PUBLIC_READ_BEFORE_PATTERN = "^\\d{4}-\\d{2}-\\d{2}$";
 const BEFORE_RE = new RegExp(PUBLIC_READ_BEFORE_PATTERN);
 

@@ -5,7 +5,6 @@ import { resolveWorkerEnv } from "../lib/system-api";
 
 type HandlerArgs = { request: Request; context: any };
 
-/** One-click "Was today's edition useful?" from the digest mail. */
 export const Route = createFileRoute("/feedback")({
   server: {
     handlers: {

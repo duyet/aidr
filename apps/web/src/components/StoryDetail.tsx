@@ -92,7 +92,6 @@ export function StoryDetail({
   item: FeedItem;
   lang: Lang;
   bilingual?: boolean;
-  /** Votes at the top of the meta column (dialog and expanded feed rows). */
   showVotes?: boolean;
 }) {
   const hasVi = Boolean(item.title_vi || item.summary_vi);

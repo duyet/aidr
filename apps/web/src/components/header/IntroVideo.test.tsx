@@ -68,7 +68,6 @@ describe("IntroVideoButton", () => {
     // Icon only: the accessible name comes from aria-label, not visible text.
     expect(button.textContent).toBe("");
     expect(button.querySelector("svg")).not.toBeNull();
-    // Nothing is requested from YouTube on page load.
     expect(document.querySelector("iframe")).toBeNull();
     expect(track).not.toHaveBeenCalled();
   });
@@ -103,7 +102,6 @@ describe("IntroVideoButton", () => {
     expect(dialog.querySelector("h2")?.className).toContain("sr-only");
     expect(dialog.querySelector("button")).toBeNull();
 
-    // Removing the iframe is what stops playback.
     fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(document.querySelector("iframe")).toBeNull();
