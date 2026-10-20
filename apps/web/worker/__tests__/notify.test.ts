@@ -692,6 +692,46 @@ describe("telegram channels", () => {
     }
   });
 
+  describe.each([4, 5])("a %i story day", (count) => {
+    it.each(["vi", "en"] as const)(
+      "lists every story in the %s digest",
+      async (lang) => {
+        const fetchMock = vi
+          .fn()
+          .mockResolvedValue(
+            new Response(
+              JSON.stringify({ ok: true, result: { message_id: 41 } }),
+              { status: 200 }
+            )
+          );
+        vi.stubGlobal("fetch", fetchMock);
+        const rows = tenStories("ad")
+          .slice(0, count)
+          .map((row, i) => ({
+            ...row,
+            title: `English story ${i} on a new AI model`,
+            summary: `This is the full summary of story ${i}, saying who did what and why it matters.`,
+          }));
+        await telegramNotifier.sendDigest(
+          {
+            TELEGRAM_BOT_TOKEN: "token",
+            TELEGRAM_CHAT_ID: "chat",
+            TELEGRAM_EN_CHAT_ID: "en-chat",
+            DB: dayArchiveDb(rows),
+          } as unknown as Env,
+          { lang, date: "2026-10-04", bullets: [] }
+        );
+        const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+        const stories = (body.text.match(/<a href=/g) ?? []).length;
+        expect(stories).toBe(count);
+        const preview = body.text
+          .replace(/<a href="[^"]*">/g, "<a>")
+          .replace("🗞 ", "");
+        expect(preview).toMatchSnapshot();
+      }
+    );
+  });
+
   it("adds a ▶ YouTube button only when the day has a video in that language", async () => {
     const fetchMock = vi.fn().mockImplementation(
       async () =>

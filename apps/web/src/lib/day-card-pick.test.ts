@@ -26,10 +26,8 @@ describe("pickDayCardItems", () => {
     ]);
   });
 
-  it("keeps the Telegram digest's 6/4/3 story counts for 1 to 8 stories", () => {
-    // The digest lists these stories, and its format changes only after a
-    // staging preview, so a 4 or 5 story day stays at 4.
-    const expected = [1, 2, 3, 4, 4, 6, 6, 6];
+  it("shows every story up to six, so a 4 or 5 story day loses none", () => {
+    const expected = [1, 2, 3, 4, 5, 6, 6, 6];
     const counts = expected.map(
       (_, i) =>
         pickDayCardItems(
