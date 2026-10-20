@@ -12,18 +12,13 @@
 // Usage: node scripts/voice.mjs 2026-10-02 [--lang vi] [--no-voice]
 import { execFile, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { castProblems, hostOrder, loadCast } from "./cast.mjs";
 import { cutOf } from "./lang.mjs";
 import { partsOf, QuotaError, quotaShortfall } from "./novoice.mjs";
+import { isCached, synthesizeAtomic, wordsFor } from "./part-cache.mjs";
 
 const run = promisify(execFile);
 const ROOT = resolve(import.meta.dirname, "..");
@@ -217,13 +212,10 @@ async function voicePart(part) {
   let wav = null;
   if (host && config.voice.provider === "elevenlabs") {
     wav = file("elevenlabs", host.id);
-    if (!existsSync(wav)) {
+    if (!isCached(wav)) {
       try {
-        await elevenlabs(
-          host.id,
-          text,
-          wav,
-          wav.replace(/\.wav$/, ".words.json")
+        await synthesizeAtomic(wav, (tmpWav, tmpWords) =>
+          elevenlabs(host.id, text, tmpWav, tmpWords)
         );
         console.log(`+ ${anchor} (elevenlabs): ${text.slice(0, 60)}`);
       } catch (e) {
@@ -248,16 +240,16 @@ async function voicePart(part) {
         `${anchor}: no ElevenLabs voice for this part and the HeyGen fallback is off (AIDR_NO_HEYGEN/CI)`
       );
     wav = file("heygen", hg.id);
-    if (!existsSync(wav)) {
-      await heygenTts(hg, text, wav, wav.replace(/\.wav$/, ".words.json"));
+    if (!isCached(wav)) {
+      await synthesizeAtomic(wav, (tmpWav, tmpWords) =>
+        heygenTts(hg, text, tmpWav, tmpWords)
+      );
       console.log(`+ ${anchor} (heygen ${hg.name}): ${text.slice(0, 60)}`);
     }
   }
   return {
     wav,
-    words: JSON.parse(
-      readFileSync(wav.replace(/\.wav$/, ".words.json"), "utf8")
-    ),
+    words: JSON.parse(readFileSync(wordsFor(wav), "utf8")),
     dur: probe(wav),
     anchor,
   };
@@ -289,7 +281,7 @@ if (config.voice.provider === "elevenlabs") {
   const todo = new Map();
   for (const part of segments.flatMap((s) => s.parts)) {
     const { host, file } = lookup(part);
-    if (host && !existsSync(file("elevenlabs", host.id)))
+    if (host && !isCached(file("elevenlabs", host.id)))
       todo.set(file("elevenlabs", host.id), part.text.length);
   }
   const needed = [...todo.values()].reduce((a, b) => a + b, 0);
