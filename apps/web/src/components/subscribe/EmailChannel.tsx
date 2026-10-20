@@ -22,6 +22,7 @@ export function EmailChannel({
     lang,
     size: 5,
     format: "design",
+    font: "sans",
     frequency: initialFrequency,
     weeklyDay: DEFAULT_WEEKLY_DAY,
   });
@@ -47,7 +48,7 @@ export function EmailChannel({
       preview={
         <DigestPreview
           lang={lang}
-          src={`/api/subscribe/preview?lang=${prefs.lang}&n=${prefs.size}&format=${prefs.format}&freq=${prefs.frequency}`}
+          src={`/api/subscribe/preview?lang=${prefs.lang}&n=${prefs.size}&format=${prefs.format}&font=${prefs.font}&freq=${prefs.frequency}`}
         />
       }
     />

@@ -65,7 +65,7 @@ let sent: { to: string; subject: string; html: string }[];
 function settings() {
   return sqlite
     .prepare(
-      "SELECT lang, timezone, digest_size, mail_format, confirmed FROM subscribers WHERE email = ?"
+      "SELECT lang, timezone, digest_size, mail_format, mail_font, confirmed FROM subscribers WHERE email = ?"
     )
     .get(EMAIL);
 }
@@ -120,6 +120,7 @@ describe("subscribe with an already-confirmed address (#534)", () => {
       null,
       10,
       "text",
+      "serif",
       undefined,
       undefined,
       schedule
@@ -144,6 +145,7 @@ describe("subscribe with an already-confirmed address (#534)", () => {
       timezone: "Europe/Berlin",
       digest_size: 10,
       mail_format: "text",
+      mail_font: "serif",
       confirmed: 1,
     });
   });
@@ -160,6 +162,7 @@ describe("subscribe with an already-confirmed address (#534)", () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       schedule
     );
     const forNew = await subscribe(
@@ -169,6 +172,7 @@ describe("subscribe with an already-confirmed address (#534)", () => {
       undefined,
       undefined,
       null,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -188,6 +192,7 @@ describe("subscribe with an already-confirmed address (#534)", () => {
       null,
       3,
       "text",
+      "serif",
       undefined,
       undefined,
       schedule
@@ -195,7 +200,7 @@ describe("subscribe with an already-confirmed address (#534)", () => {
     expect(
       sqlite
         .prepare(
-          "SELECT lang, timezone, digest_size, mail_format, confirmed FROM subscribers WHERE email = ?"
+          "SELECT lang, timezone, digest_size, mail_format, mail_font, confirmed FROM subscribers WHERE email = ?"
         )
         .get("new@aidr-test.dev")
     ).toEqual({
@@ -203,6 +208,7 @@ describe("subscribe with an already-confirmed address (#534)", () => {
       timezone: "Europe/Berlin",
       digest_size: 3,
       mail_format: "text",
+      mail_font: "serif",
       confirmed: 0,
     });
     await vi.waitFor(() => expect(sent).toHaveLength(1));
@@ -232,6 +238,7 @@ describe("subscription mails outlive the response (#626)", () => {
       undefined,
       undefined,
       null,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -293,6 +300,7 @@ describe("unsubscribe, then subscribe again (#723)", () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       schedule
     );
     const { unsubscribe_token: token } = sqlite
@@ -328,6 +336,7 @@ describe("signing up again while pending (#723)", () => {
       undefined,
       undefined,
       null,
+      undefined,
       undefined,
       undefined,
       undefined,

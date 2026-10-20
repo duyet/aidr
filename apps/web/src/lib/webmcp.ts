@@ -28,6 +28,7 @@
  *     bundled, never awaited.
  */
 
+import { MAIL_FONTS } from "./mail-font";
 import { MAIL_FORMATS } from "./mail-format";
 import type { PublicDigest } from "./public-queries";
 import {
@@ -403,6 +404,11 @@ export const WEBMCP_FORM_ANNOTATIONS: readonly WebMcpFormAnnotation[] = [
           type: "string",
           enum: [...MAIL_FORMATS],
           default: "design",
+        },
+        mail_font: {
+          type: "string",
+          enum: [...MAIL_FONTS],
+          default: "sans",
         },
         frequency: {
           type: "string",

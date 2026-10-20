@@ -11,6 +11,7 @@ import {
 import type { Env } from "../../../worker/types.js";
 import { resolveApiRequestLocale } from "../../lib/locale-response";
 import { localeCacheControl } from "../../lib/locale-url";
+import { normalizeMailFont } from "../../lib/mail-font";
 import { normalizeMailFormat } from "../../lib/mail-format";
 import { normalizeMailFrequency } from "../../lib/mail-frequency";
 import { resolveWorkerEnv } from "../../lib/system-api";
@@ -54,6 +55,7 @@ export const Route = createFileRoute("/api/subscribe/preview")({
         const url = new URL(request.url);
         const size = digestSizeFor(Number(url.searchParams.get("n")));
         const format = normalizeMailFormat(url.searchParams.get("format"));
+        const font = normalizeMailFont(url.searchParams.get("font"));
         const weekly =
           normalizeMailFrequency(url.searchParams.get("freq")) === "weekly";
 
@@ -76,7 +78,15 @@ export const Route = createFileRoute("/api/subscribe/preview")({
               : null;
             if (mail) {
               html = (
-                await renderWeeklyEmail(env, mail, lang, PREVIEW_TOKEN, format)
+                await renderWeeklyEmail(
+                  env,
+                  mail,
+                  lang,
+                  PREVIEW_TOKEN,
+                  format,
+                  undefined,
+                  font
+                )
               ).html.replace("<head>", '<head><base target="_blank">');
               ready = true;
             }
@@ -100,7 +110,9 @@ export const Route = createFileRoute("/api/subscribe/preview")({
                   { date: snapshot.date, lang, bullets },
                   PREVIEW_TOKEN,
                   size,
-                  format
+                  format,
+                  undefined,
+                  font
                 )
               ).html;
               // Rendered inside an iframe — links must open a real tab.

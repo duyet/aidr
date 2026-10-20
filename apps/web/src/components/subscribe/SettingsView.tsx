@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { subscribeLinkState } from "../../lib/analytics/url-privacy";
 import { withLang } from "../../lib/locale-url";
+import { type MailFont, normalizeMailFont } from "../../lib/mail-font";
 import { type MailFormat, normalizeMailFormat } from "../../lib/mail-format";
 import {
   DEFAULT_WEEKLY_DAY,
@@ -13,6 +14,7 @@ import {
 } from "../../lib/mail-frequency";
 import type { Lang } from "../../lib/types";
 import { FrequencyField } from "./FrequencyField";
+import { MailFontField } from "./MailFontField";
 import { MailFormatField } from "./MailFormatField";
 import { SettingsPreview } from "./SettingsPreview";
 
@@ -27,6 +29,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
   const [prefLang, setPrefLang] = useState<Lang>("en");
   const [digestSize, setDigestSize] = useState<DigestSize>(5);
   const [format, setFormat] = useState<MailFormat>("design");
+  const [font, setFont] = useState<MailFont>("sans");
   const [frequency, setFrequency] = useState<MailFrequency>("daily");
   const [weeklyDay, setWeeklyDay] = useState<WeeklyDay>(DEFAULT_WEEKLY_DAY);
   const [save, setSave] = useState<"idle" | "saving" | "done" | "error">(
@@ -43,6 +46,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
           lang: Lang;
           digest_size: number;
           mail_format?: string;
+          mail_font?: string;
           frequency?: string;
           weekly_day?: number;
         }>;
@@ -57,6 +61,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             : 5
         );
         setFormat(normalizeMailFormat(data.mail_format));
+        setFont(normalizeMailFont(data.mail_font));
         setFrequency(normalizeMailFrequency(data.frequency));
         setWeeklyDay(normalizeWeeklyDay(data.weekly_day));
         setLoad("ready");
@@ -82,6 +87,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
             lang: prefLang,
             digest_size: digestSize,
             mail_format: format,
+            mail_font: font,
             frequency,
             weekly_day: weeklyDay,
           }),
@@ -175,9 +181,15 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
           value={format}
           onChange={setFormat}
         />
+        <MailFontField
+          lang={lang}
+          name="settings-font"
+          value={font}
+          onChange={setFont}
+        />
         <SettingsPreview
           lang={lang}
-          src={`/api/subscribe/preview?lang=${prefLang}&n=${digestSize}&format=${format}&freq=${frequency}`}
+          src={`/api/subscribe/preview?lang=${prefLang}&n=${digestSize}&format=${format}&font=${font}&freq=${frequency}`}
         />
         <Button type="submit" disabled={save === "saving"}>
           {save === "saving" ? t("Saving…", "Đang lưu…") : t("Save", "Lưu")}

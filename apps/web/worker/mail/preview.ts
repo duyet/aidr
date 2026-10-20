@@ -1,3 +1,4 @@
+import { normalizeMailFont } from "../../src/lib/mail-font.js";
 import { normalizeMailFormat } from "../../src/lib/mail-format.js";
 import { loadEdition } from "../digest/edition.js";
 import { DEFAULT_TIMEZONE } from "../subscribe/handlers.js";
@@ -25,6 +26,7 @@ export async function renderDigestPreview(
       : getLocalHourAndDate(Date.now(), DEFAULT_TIMEZONE).date;
   const lang = params.get("lang") === "en" ? "en" : "vi";
   const format = normalizeMailFormat(params.get("format"));
+  const font = normalizeMailFont(params.get("font"));
   const size = digestSizeFor(Number(params.get("n")));
   const edition = await loadEdition(env, date, lang, size);
   if (!edition) {
@@ -38,7 +40,9 @@ export async function renderDigestPreview(
     edition,
     "preview",
     size,
-    format
+    format,
+    undefined,
+    font
   );
   return new Response(html, {
     headers: {

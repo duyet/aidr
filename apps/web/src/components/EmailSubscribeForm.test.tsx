@@ -29,6 +29,7 @@ async function submitWith(fetchImpl: () => Promise<Response>) {
         lang: "en",
         size: 5,
         format: "design",
+        font: "sans",
         frequency: "daily",
         weeklyDay: DEFAULT_WEEKLY_DAY,
       }}

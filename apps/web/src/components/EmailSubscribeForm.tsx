@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { EventParams } from "../lib/analytics/events";
 import { track } from "../lib/analytics/track";
 import { withLang } from "../lib/locale-url";
+import type { MailFont } from "../lib/mail-font";
 import type { MailFormat } from "../lib/mail-format";
 import {
   type MailFrequency,
@@ -12,6 +13,7 @@ import {
 import type { Lang } from "../lib/types";
 import { formAnnotationAttributes, webmcpForm } from "../lib/webmcp";
 import { FrequencyField } from "./subscribe/FrequencyField";
+import { MailFontField } from "./subscribe/MailFontField";
 import { MailFormatField } from "./subscribe/MailFormatField";
 
 const DIGEST_SIZES = [3, 5, 10] as const;
@@ -22,6 +24,7 @@ export interface DigestPrefs {
   lang: Lang;
   size: (typeof DIGEST_SIZES)[number];
   format: MailFormat;
+  font: MailFont;
   frequency: MailFrequency;
   weeklyDay: WeeklyDay;
 }
@@ -74,6 +77,7 @@ export function EmailSubscribeForm({
           source,
           digest_size: prefs.size,
           mail_format: prefs.format,
+          mail_font: prefs.font,
           frequency: prefs.frequency,
           weekly_day: prefs.weeklyDay,
         }),
@@ -213,6 +217,13 @@ export function EmailSubscribeForm({
         name="digest-format"
         value={prefs.format}
         onChange={(format) => onPrefsChange({ ...prefs, format })}
+      />
+
+      <MailFontField
+        lang={lang}
+        name="digest-font"
+        value={prefs.font}
+        onChange={(font) => onPrefsChange({ ...prefs, font })}
       />
 
       <p className="text-xs text-muted-foreground">

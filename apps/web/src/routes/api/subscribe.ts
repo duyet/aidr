@@ -142,6 +142,7 @@ export const Route = createFileRoute("/api/subscribe")({
           clientIp(request),
           body?.digest_size,
           body?.mail_format,
+          body?.mail_font,
           body?.frequency,
           body?.weekly_day,
           await resolveWaitUntil()

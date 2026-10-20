@@ -1,3 +1,4 @@
+import { type MailFont, normalizeMailFont } from "../../src/lib/mail-font.js";
 import {
   type MailFormat,
   normalizeMailFormat,
@@ -146,6 +147,7 @@ export async function subscribe(
   ip: string | null | undefined,
   digestSize: unknown,
   mailFormat: unknown,
+  mailFont: unknown,
   frequency: unknown,
   weeklyDay: unknown,
   schedule: Schedule
@@ -160,6 +162,7 @@ export async function subscribe(
   const normalizedSource = normalizeSource(source);
   const size = normalizeDigestSize(digestSize);
   const format = normalizeMailFormat(mailFormat);
+  const font = normalizeMailFont(mailFont);
   const cadence = normalizeMailFrequency(frequency);
   const day = normalizeWeeklyDay(weeklyDay);
   const token = await deriveUnsubscribeToken(env, email);
@@ -211,6 +214,7 @@ export async function subscribe(
           timezone: normalizedTimezone,
           digest_size: size,
           mail_format: format,
+          mail_font: font,
           frequency: cadence,
           weekly_day: day,
         }
@@ -225,11 +229,12 @@ export async function subscribe(
   }
 
   await env.DB.prepare(
-    `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size, mail_format, frequency, weekly_day)
-     VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+    `INSERT INTO subscribers (email, lang, timezone, created_at, confirmed, unsubscribe_token, digest_size, mail_format, mail_font, frequency, weekly_day)
+     VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(email) DO UPDATE SET
        lang = excluded.lang, timezone = excluded.timezone,
        digest_size = excluded.digest_size, mail_format = excluded.mail_format,
+       mail_font = excluded.mail_font,
        frequency = excluded.frequency, weekly_day = excluded.weekly_day`
   )
     .bind(
@@ -240,6 +245,7 @@ export async function subscribe(
       token,
       size,
       format,
+      font,
       cadence,
       day
     )
@@ -289,6 +295,7 @@ export function settingsChangeFromParams(
     timezone: params.get("set_timezone"),
     digest_size: params.get("set_digest_size") ?? undefined,
     mail_format: params.get("set_mail_format") ?? undefined,
+    mail_font: params.get("set_mail_font") ?? undefined,
     frequency: params.get("set_frequency") ?? undefined,
     weekly_day: params.get("set_weekly_day") ?? undefined,
   };
@@ -413,6 +420,7 @@ export interface SubscriberPrefs {
   timezone: string;
   digest_size: DigestSize;
   mail_format: MailFormat;
+  mail_font: MailFont;
   frequency: MailFrequency;
   weekly_day: WeeklyDay;
 }
@@ -426,7 +434,7 @@ export async function getPrefsByToken(
   }
   await ensureMailSchema(env.DB);
   const row = await env.DB.prepare(
-    "SELECT email, lang, timezone, digest_size, mail_format, frequency, weekly_day FROM subscribers WHERE unsubscribe_token = ?"
+    "SELECT email, lang, timezone, digest_size, mail_format, mail_font, frequency, weekly_day FROM subscribers WHERE unsubscribe_token = ?"
   )
     .bind(token)
     .first<{
@@ -435,6 +443,7 @@ export async function getPrefsByToken(
       timezone: string | null;
       digest_size: number | null;
       mail_format: string | null;
+      mail_font: string | null;
       frequency: string | null;
       weekly_day: number | null;
     }>();
@@ -445,6 +454,7 @@ export async function getPrefsByToken(
     timezone: isValidTimezone(row.timezone) ? row.timezone : DEFAULT_TIMEZONE,
     digest_size: normalizeDigestSize(row.digest_size),
     mail_format: normalizeMailFormat(row.mail_format),
+    mail_font: normalizeMailFont(row.mail_font),
     frequency: normalizeMailFrequency(row.frequency),
     weekly_day: normalizeWeeklyDay(row.weekly_day),
   };
@@ -458,6 +468,7 @@ export async function updatePrefsByToken(
     timezone?: unknown;
     digest_size?: unknown;
     mail_format?: unknown;
+    mail_font?: unknown;
     frequency?: unknown;
     weekly_day?: unknown;
   }
@@ -483,6 +494,8 @@ export async function updatePrefsByToken(
     prefs.mail_format === undefined
       ? null
       : normalizeMailFormat(prefs.mail_format);
+  const font =
+    prefs.mail_font === undefined ? null : normalizeMailFont(prefs.mail_font);
   const cadence =
     prefs.frequency === undefined || prefs.frequency === null
       ? null
@@ -498,11 +511,12 @@ export async function updatePrefsByToken(
        timezone = COALESCE(?, timezone),
        digest_size = COALESCE(?, digest_size),
        mail_format = COALESCE(?, mail_format),
+       mail_font = COALESCE(?, mail_font),
        frequency = COALESCE(?, frequency),
        weekly_day = COALESCE(?, weekly_day)
      WHERE unsubscribe_token = ?`
   )
-    .bind(lang, timezone, size, format, cadence, day, token)
+    .bind(lang, timezone, size, format, font, cadence, day, token)
     .run();
   return { ok: true };
 }
