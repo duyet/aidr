@@ -90,9 +90,10 @@ function PrivacyPage() {
             and browser details with its requests, as any server does.
             <ul>
               <li>
-                Google Analytics 4, through the Cloudflare Google tag gateway,
-                sets the <code>_ga</code> cookies and counts page views, how
-                long a page stays open, and the events listed below.
+                Google Analytics 4, through the Cloudflare Google tag gateway
+                when the tag gateway is on for the domain, sets the{" "}
+                <code>_ga</code> cookies and counts page views, how long a page
+                stays open, and the events listed below.
               </li>
               <li>
                 PostHog sets a cookie and a <code>localStorage</code> entry with
@@ -110,22 +111,20 @@ function PrivacyPage() {
                 browser details.
               </li>
               <li>
-                Cloudflare Web Analytics measures page load timing for the site.
-              </li>
-              <li>
                 Seline, a page-view counter, runs only when we switch it on.
               </li>
             </ul>
             The events are the pages you open, clicks on navigation and follow
             links, the story you open or whose source link you click, a topic
             you pick, the length (not the text) of a search, a setting you
-            change, signup progress, and page load timings. Search text and
-            subscribe tokens are removed from the page addresses the site hands
-            these services. Google Analytics can still record a search term
-            itself while its site search setting is on. The services keep that
-            data under their own policies. To avoid them, block their cookies
-            and scripts in your browser, or use a content blocker. The site
-            works without them.
+            change, signup progress, and page load timings (Core Web Vitals,
+            measured in the browser and sent to Google Analytics 4 and PostHog).
+            Search text and subscribe tokens are removed from the page addresses
+            the site hands these services. Google Analytics can still record a
+            search term itself while its site search setting is on. The services
+            keep that data under their own policies. To avoid them, block their
+            cookies and scripts in your browser, or use a content blocker. The
+            site works without them.
           </li>
           <li>
             <strong className="text-foreground">Sign-in.</strong> The sign-in
