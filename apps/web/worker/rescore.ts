@@ -2,6 +2,7 @@ import { RELEVANCE_THRESHOLD } from "./ingest/context.js";
 import { parseTagsJson } from "./ingest/write-plan.js";
 import { scoreItems } from "./llm.js";
 import { type RankableRow, rankScoreForRow } from "./ranking.js";
+import { toEpochSeconds } from "./time.js";
 import { learningDayKey, recordTopicDaily } from "./topic-learning.js";
 import {
   normalizeTopicName,
@@ -108,7 +109,7 @@ async function recordAddedTags(
         .filter((name) => name && !counted.has(name))
     );
     if (added.size === 0) continue;
-    const day = learningDayKey(row.fetched_at * 1000);
+    const day = learningDayKey(toEpochSeconds(row.fetched_at) * 1000);
     const counts = countsByDay.get(day) ?? new Map<string, number>();
     for (const name of added) counts.set(name, (counts.get(name) ?? 0) + 1);
     countsByDay.set(day, counts);

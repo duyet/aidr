@@ -785,6 +785,21 @@ describe("pushItems", () => {
     }
   });
 
+  it("stores fetched_at as epoch seconds", async () => {
+    const nowMs = 1_786_847_892_625;
+    vi.spyOn(Date, "now").mockReturnValue(nowMs);
+    try {
+      const env = makeEnv();
+      const db = env.DB as unknown as FakeD1;
+      await pushItems(env, { url: "https://example.com/fetched", title: "t" });
+      expect(
+        db.items.get(await sha256Hex("https://example.com/fetched"))?.fetched_at
+      ).toBe(1_786_847_892);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
   it("rejects items missing url or title", async () => {
     const env = makeEnv();
     const result = await pushItems(env, { url: "", title: "no url" });

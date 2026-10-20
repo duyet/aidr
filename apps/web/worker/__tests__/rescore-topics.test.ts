@@ -110,7 +110,7 @@ describe("backfillScores records topics", () => {
       title,
       summary: null,
       published_at: Math.floor(ingestMs / 1000),
-      fetched_at: Math.floor(ingestMs / 1000),
+      fetched_at: id === "b" ? ingestMs : Math.floor(ingestMs / 1000),
       tags: JSON.stringify(["anthropic"]),
       source_id: "hn",
       points: 0,

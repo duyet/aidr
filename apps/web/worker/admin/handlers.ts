@@ -295,7 +295,7 @@ export async function pushItems(
         item.title,
         summary,
         publishedAt,
-        now,
+        toEpochSeconds(now),
         item.points ?? 0,
         item.comments ?? 0,
         item.relevance ?? null,
