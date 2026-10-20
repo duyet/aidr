@@ -32,7 +32,6 @@ const hf = (cwd, ...args) =>
     stdio: ["ignore", "pipe", "pipe"],
   });
 
-// 1. The script must be finished: no TODO left, no draft-only fields.
 const raw = readFileSync(join(dir, cut.script), "utf8");
 const todo = raw
   .split("\n")
@@ -42,7 +41,6 @@ if (todo.length) {
   process.exit(1);
 }
 
-// 2. Voice (cached per sentence), 3. build. HeyGen is the voice fallback, so check its sign-in.
 const config = JSON.parse(readFileSync(join(ROOT, "config.json"), "utf8"));
 // Unattended runs (AIDR_NO_HEYGEN=1 or CI) have no HeyGen fallback, so skip its sign-in check.
 const noHeygen =
@@ -65,7 +63,6 @@ if (cut.subs) {
 } else node("voice.mjs", ...(noVoice ? ["--no-voice"] : []));
 node("build.mjs");
 
-// 4. Lint and snapshot both formats.
 const timeline = JSON.parse(readFileSync(join(dir, cut.timeline), "utf8"));
 const at = [
   0,
@@ -97,7 +94,6 @@ for (const fmt of formatsOf(cut, config)) {
   console.log(`✓ editions/${date}/${cut.snap(fmt)}/contact-sheet.jpg`);
 }
 
-// 5. Render.
 if (process.argv.includes("--render")) node("render.mjs");
 else
   console.log(

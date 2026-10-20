@@ -70,7 +70,6 @@ function rmsEnvelope(x, rate, win, hop) {
   return env;
 }
 
-/** Window centres (s) and dB of an RMS envelope: `win` long, every `hop`, on mono 48 kHz samples. */
 export function loudness(x, win, hop) {
   const env = rmsEnvelope(x, 48000, win, hop);
   return env.map((v, i) => ({ t: i * hop + win / 2, db: db(v) }));

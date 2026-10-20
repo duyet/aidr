@@ -27,7 +27,6 @@ const FPS = 30;
 const TOTAL = 76;
 const round = (t) => Math.round(t * FPS) / FPS;
 
-// ── Voice: where each line starts, and the time of any of its words ──────────────────────────
 const VOICE_AT = { l1: 0.5, l2: 8.4, l3: 12.6, l4: 22.4, l5: 30.4, l6: 38.4, l7: 50.4, l8: 64.5 };
 const words = Object.fromEntries(
   script.lines.map((l) => [l.id, json(`assets/voice/${l.id}.words.json`)]),
@@ -38,7 +37,6 @@ const voiceLength = Object.fromEntries(
     Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", join(ROOT, `assets/voice/${l.id}.wav`)]).toString()),
   ]),
 );
-/** On-screen time of word `n` (0-based) of line `id`, or of the first word starting with `text`. */
 function word(id, key) {
   const list = words[id];
   const w = typeof key === "number" ? list[key] : list.find((x) => x.text.toLowerCase().startsWith(key.toLowerCase()));
@@ -46,7 +44,6 @@ function word(id, key) {
   return round(VOICE_AT[id] + w.start);
 }
 
-// ── Time sheet: every visual hit, named once, used by both the picture and the sound ─────────
 const T = {
   hookCards: [0.5, 1.0, 1.5, 2.0],
   markSame: word("l1", "same"),
@@ -89,7 +86,6 @@ const T = {
   end: TOTAL,
 };
 
-// ── Sound ───────────────────────────────────────────────────────────────────────────────────
 // (effect, visual hit, volume). Each effect is placed so its measured peak lands on the hit.
 const HITS = [
   ...T.hookCards.map((t) => ["click-soft", t + 0.1, 0.5]),
@@ -180,7 +176,6 @@ function captureDims() {
   return out;
 }
 
-// ── Layout per shape ────────────────────────────────────────────────────────────────────────
 const SHAPES = {
   wide: { W: 1920, H: 1080, dir: ROOT, form: "desktop", fps: FPS },
   tall: { W: 1080, H: 1920, dir: VERTICAL, form: "mobile", fps: FPS },
@@ -423,13 +418,11 @@ function css({ W, H }) {
 `;
 }
 
-// ── The paused timeline, shared by both shapes; layout comes from cfg ──────────────────────
 function runtime(cfg) {
   return `const CFG = ${JSON.stringify(cfg)};
 ${readFileSync(join(ROOT, "scripts/timeline.js"), "utf8")}`;
 }
 
-// ── Write ───────────────────────────────────────────────────────────────────────────────────
 buildBed();
 for (const [name, shape] of Object.entries(SHAPES)) {
   mkdirSync(shape.dir, { recursive: true });

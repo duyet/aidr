@@ -97,7 +97,6 @@ test("subtitles keep every English cue and its exact times, with Vietnamese text
     assert.equal(c.en, cues[i].text);
     assert.ok(c.vi.trim(), `cue ${i + 1} is empty`);
   });
-  // A sentence's Vietnamese is split over its own cues, in order, word for word.
   assert.equal(
     out.cues
       .slice(0, 3)
@@ -112,7 +111,6 @@ test("subtitles keep every English cue and its exact times, with Vietnamese text
       .join(" "),
     VI.lines[1]
   );
-  // The written SRT is the English timing with the Vietnamese text.
   const srt = parseSrt(
     formatSrt(out.cues.map((c) => ({ start: c.start, end: c.end, text: c.vi })))
   );
@@ -177,7 +175,6 @@ test("an answer that drops a number or a line goes to the next model; none valid
   );
 });
 
-// 2026-10-16: a valid translation was thrown away for its title alone, and the only fallback was refused (#875).
 const LONG_EN =
   "FTC subpoenas OpenAI and Anthropic over AI safety & more — October 16, 2026";
 const LONG_VI =
@@ -538,7 +535,7 @@ test("burned words share the cue's span in order", () => {
 test("the prompt uses the Worker's Vietnamese house style, read from source", () => {
   const { style: s, overview } = houseStyle();
   assert.match(s, /^HARD RULES/);
-  assert.match(s, /fine-tune, benchmark, agent/); // KEEP_ENGLISH_PROSE filled in
+  assert.match(s, /fine-tune, benchmark, agent/);
   assert.doesNotMatch(s, /\$\{/);
   assert.match(overview, /^Keep every fact/);
 });
@@ -865,7 +862,6 @@ const VI_LINES = {
 const askedLines = (messages) =>
   JSON.parse(messages[1].content.slice(messages[1].content.indexOf("\n\n")))
     .lines;
-// A model that translates the lines it is asked for, from VI_LINES.
 const postModel = (asked) => async (_model, messages) => {
   const lines = askedLines(messages);
   asked.push(...lines);

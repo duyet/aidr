@@ -191,7 +191,6 @@ const row = (over = {}) => ({
   ...over,
 });
 
-// The uploader call a row gets from publish.mjs, with the meta swapped for the test's JSON.
 const rowArgs = (r) => {
   const args = uploadArgs(r, work);
   args[args.indexOf("--meta") + 1] = meta;

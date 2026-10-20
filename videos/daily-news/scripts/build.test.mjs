@@ -15,7 +15,6 @@ after(() => {
   for (const c of cleanups) c();
 });
 
-// Builds a committed edition (no voice, no audio) in a temp root and returns the page reader.
 function build(
   date,
   edit = (script, edition) => [script, edition],

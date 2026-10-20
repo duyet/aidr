@@ -207,7 +207,6 @@ test("a cut too long for the day's bed start moves back to an earlier phrase ins
     assert.ok(at + total <= BED.duration, `${start}+${total} → ${at}`);
     assert.ok(BED.starts.daily.includes(at), `${at} is a phrase start`);
   }
-  // With room, the day's rotation stands.
   for (const start of BED.starts.daily)
     assert.equal(bedStartFor(start, 117), start);
 });

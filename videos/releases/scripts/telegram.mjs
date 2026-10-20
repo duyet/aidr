@@ -102,7 +102,6 @@ const duration =
         Number(probe("-show_entries", "format=duration", "-of", "csv=p=0"))
       );
 
-// Caption: the language's YouTube title from youtube.md.
 const md = readFileSync(join(ROOT, version, "youtube.md"), "utf8");
 const section = md
   .split(/^## /m)

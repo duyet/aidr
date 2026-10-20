@@ -432,7 +432,6 @@ test("applyScreen swaps only screen text: voice, statWord and focus stay English
   );
 });
 
-// --- build.mjs end to end on a scratch edition (no voice, no audio) ------------------------------
 const DATE = EDITION.date;
 const scratch = scratchRoot();
 const DIR = join(scratch.dn, "editions", DATE);

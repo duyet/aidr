@@ -16,8 +16,6 @@ export const CHOREOGRAPHIES = [
     id: "rise",
     auto: true,
     rankIn: 0.2,
-    // The media opens left to right while the images push in and out in turn; the badge turns in; the copy rises
-    // line by line.
     motion: (tl, S, sc, h) => {
       const t = S.start;
       tl.fromTo(
@@ -54,8 +52,6 @@ export const CHOREOGRAPHIES = [
     id: "slide",
     auto: true,
     rankIn: 0.15,
-    // The media drops open from the top while the images pan down the frame; the badge and the copy slide in
-    // from opposite edges.
     motion: (tl, S, sc, h) => {
       const t = S.start;
       tl.fromTo(
@@ -92,8 +88,6 @@ export const CHOREOGRAPHIES = [
     id: "mask",
     auto: true,
     rankIn: 0.3,
-    // The media opens from its centre and the images keep a slow push toward it; the badge settles from slightly
-    // large; each copy line rises out of a mask.
     motion: (tl, S, sc, h) => {
       const t = S.start;
       tl.fromTo(

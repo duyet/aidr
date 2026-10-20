@@ -24,7 +24,6 @@ export const ENGAGEMENT_BAIT =
 
 const FFPROBE = process.env.FFPROBE || "ffprobe";
 
-/** ffprobe facts: duration, size, first video stream (w, h, fps, codec), first audio stream (codec, rate, channels). */
 export function probeStreams(file) {
   const p = spawnSync(
     FFPROBE,
@@ -94,7 +93,6 @@ export function gateVideo(probe, kind = "reel", limits = REEL_LIMITS) {
   return problems;
 }
 
-/** Problems with post or spoken text (empty = pass): engagement bait, leftover TODO, empty. */
 export function lintText(label, text) {
   const t = String(text ?? "").trim();
   if (!t) return [`${label}: empty`];
@@ -107,7 +105,6 @@ export function lintText(label, text) {
   return problems;
 }
 
-/** Every spoken and on-screen line of a script.json, labelled, for lintText. */
 export function scriptTexts(script) {
   const out = [];
   const voice = (label, v) => {

@@ -101,7 +101,6 @@ export const statSpoken = (voice, statWord) => {
   );
 };
 const UNIT = { K: "thousand", M: "million", B: "billion", T: "trillion" };
-/** "$870M" → "$870 million": the screen keeps "$870M" in `stat`, the voice reads the unit. */
 export const speakable = (t) =>
   t
     .replace(/\$([\d.,]+)\s?([KMBT])\b/g, (_, n, u) => `$${n} ${UNIT[u]}`)
@@ -112,7 +111,6 @@ const figure = (t) =>
     /\d[\d,]*(?:\.\d+)?(?:\s?%|\s(?:percent|thousand|million|billion|trillion)\b)/i
   )?.[0] ?? t.match(/\d[\d,]*(?:\.\d+)?/)?.[0];
 const money = (t) => t.match(MONEY)?.[0]?.replace(/\s/g, "");
-/** Digit runs in a text ("$7.5B" → ["7.5"]); the fact check compares these with the bullet. */
 const numbers = (t) =>
   (String(t ?? "").match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) =>
     n.replace(/,/g, "")
@@ -125,11 +123,9 @@ const voiceWords = (v) =>
  *  (timeline.total ÷ estimate with gaps): 2026-10-02 1.04, 10-03 1.02, 10-10 1.09; 1.1 keeps a margin. */
 export const VOICED_FACTOR = 1.1;
 
-/** The intro jumps into the news: no greeting, no "This is AI DR", no date line. */
 const GREETING =
   /^\s*(?:this is (?:ai\b|aidr|ai;dr)|welcome\b|hello\b|hi[,!.]|hi (?:there|everyone|all|folks)\b|good (?:morning|evening|afternoon)\b|here(?:'s| is) (?:ai\b|aidr|ai;dr))/i;
 
-/** Problems with a model script's spoken pacing and cover hook (empty = paced). */
 export function pacingProblems(script) {
   const p = [];
   for (const s of script.stories) {
@@ -177,7 +173,6 @@ const stems = (t) =>
     .filter(Boolean)
     .map((w) => w.replace(/(ing|ed|es|s|e)$/, "") || w);
 
-/** The share of the headline's distinct word stems that the sentence also says. */
 export function headlineOverlap(headline, sentence) {
   const head = new Set(stems(headline));
   const said = new Set(stems(sentence));
@@ -186,7 +181,6 @@ export function headlineOverlap(headline, sentence) {
     : 0;
 }
 
-/** Problems with a script against its edition (empty = valid). */
 export function validateScript(script, edition) {
   const p = [];
   const raw = JSON.stringify(script);
@@ -337,7 +331,6 @@ const DANGLING = new Set([
   "into",
   "other",
 ]);
-/** The first `max` words, cut back so the phrase does not end on a connector or a comma. */
 export function phrase(tw, max) {
   const out = tw.slice(0, max);
   while (
@@ -360,7 +353,6 @@ const listOf = (xs) =>
 const sentencesOf = (t) =>
   t.split(/(?<=[.!?])\s+(?=[A-Z0-9"“$])/).filter(Boolean);
 
-/** Deterministic copy for one story: screen text from the source title, voice from the bullet. */
 export function templateStory(s) {
   const title = (s.title ?? s.text).replace(/\s*\([^)]*\)\s*$/, "");
   const tw = words(title);
@@ -493,7 +485,6 @@ export function assemble({
   };
 }
 
-/** The template script: no model, only the bullets. Always valid unless the edition is broken. */
 export function templateScript(edition, hostKeys) {
   const copy = Object.fromEntries(
     edition.stories.map((s) => [s.rank, templateStory(s)])
@@ -629,7 +620,6 @@ export async function complete({
   return content;
 }
 
-/** Parse a model answer (tolerates a ```json fence) into a script, or throw. */
 export function fromModel(text, edition, hostKeys) {
   const json = JSON.parse(
     text.replace(/^[\s\S]*?(\{)/, "$1").replace(/\}[^}]*$/, "}")
@@ -675,7 +665,6 @@ export function fromModel(text, edition, hostKeys) {
   });
 }
 
-/** Drop stories from the bottom until the estimate fits (never under MIN_STORIES). */
 export function fitLength(edition, maxSeconds, make, config) {
   let ed = edition;
   let script = make(ed);
@@ -743,7 +732,6 @@ export async function writeScript({
   };
 }
 
-// --- CLI -----------------------------------------------------------------
 async function main() {
   const argv = process.argv.slice(2);
   const flag = (n) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : null);
@@ -768,7 +756,6 @@ async function main() {
     await ensureAssets(dir);
     return;
   }
-  // The edition: the committed one for that date, else today's from the public API.
   if (!existsSync(join(dir, "edition.json"))) {
     if (date !== vnToday())
       throw new Error(

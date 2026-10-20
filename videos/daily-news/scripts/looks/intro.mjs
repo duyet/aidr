@@ -64,7 +64,6 @@ export const INTROS = [
   {
     id: "grid",
     auto: true,
-    // The summary grid: every story at once, fully drawn on frame 0 (the auto-thumbnail frame).
     html: (c) => {
       const tiles = c.stories
         .map((s) => {
@@ -82,7 +81,6 @@ export const INTROS = [
       ...c.focus.map((f) => ["tick", f.at, 0.8]),
     ],
     motion: (tl, I, h) => {
-      // Frame 0 is the finished grid (title included). Then each tile is underlined in turn, and the grid drifts.
       tl.fromTo(
         ".tiles",
         { y: 0 },
