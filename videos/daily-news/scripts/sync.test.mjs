@@ -9,8 +9,8 @@ import { after, test } from "node:test";
 import vm from "node:vm";
 import { AXES, entry } from "./looks/index.mjs";
 import { cuesFor, POOLS, SFX } from "./looks/sound.mjs";
-import { decode, loudness, PEAK_DB } from "./sound-measure.mjs";
 import { ROOT, runBuild, scratchRoot } from "./scratch-root.mjs";
+import { decode, loudness, PEAK_DB } from "./sound-measure.mjs";
 
 const FRAME = 1 / 30;
 const DATE = "2026-10-13";
