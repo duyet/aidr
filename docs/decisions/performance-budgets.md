@@ -69,6 +69,6 @@ Revisit when a wall-time measurement exists for either path.
 
 ## Not covered here
 
-- Media enrichment cost inside the hourly run (fetch and probe counts are capped in `call-caps.test.ts`; wall time per run is not measured here).
+- Media enrichment cost inside an ingest run (fetch and probe counts are capped in `call-caps.test.ts`; wall time per run is not measured here).
 - Browser metrics for the story page (LCP, CLS). Use `pnpm --filter @aidr/web run perf:lighthouse`.
 - Multi-region latency. All samples came from one client.

@@ -17,7 +17,7 @@ sender MTA ─▶ Cloudflare Email Routing (submit@aidr.today)
        → account lookup → parse minimal fields → INSERT inbound_emails
        (shared `aidr` D1; no LLM, no review, no outgoing mail)
                  │
-                 ▼  hourly
+                 ▼  every ingest run (30 min)
      aidr Worker (apps/web), pipeline step `inbound-email`
        pending rows → submitStory / submitSuggestion / comment
        → mark processed → acknowledgement from notes@ (send binding)
@@ -30,8 +30,8 @@ sender MTA ─▶ Cloudflare Email Routing (submit@aidr.today)
 - The email Worker cannot do more than write a row. Everything that touches
   the feed or sends mail happens in the existing pipeline, through the same
   functions as the web forms.
-- The cost is latency: a contribution is acted on at the next hourly run,
-  not in seconds.
+- The cost is latency: a contribution is acted on at the next ingest run
+  (every 30 minutes), not in seconds.
 
 ## Sender validation (apps/email)
 

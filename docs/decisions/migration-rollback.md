@@ -26,7 +26,7 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
   only creates rows that were missing. Five rows are new in this migration:
   `vnexpress-tech`, `techcrunch-ai`, `theverge-ai`, `arstechnica-ai`,
   `wired-ai`. The other rows already existed from earlier migrations.
-- Risk: those five sources start fetching on the next hourly run and their
+- Risk: those five sources start fetching on the next ingest run and their
   items enter ranking, email and Telegram.
 - Rollback (preferred, keeps history): switch them off. Ingest respects the
   `enabled` flag and the seed never turns it back on.
@@ -152,7 +152,7 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
   the Clerk webhook and clerk-sync) and creates `contributor_emails` (extra
   sender addresses, pending or confirmed), `contributor_email_sends` (confirmation-mail log for the daily
   cap) and `inbound_emails` (written by the `aidr-email` Worker, consumed by
-  the hourly `inbound-email` step), each with its indexes. Nothing existing
+  the `inbound-email` step), each with its indexes. Nothing existing
   is touched.
 - Risk: none for the pipeline. Only the email Worker, the `inbound-email`
   step and the /contribute address list use the new tables. The Clerk
