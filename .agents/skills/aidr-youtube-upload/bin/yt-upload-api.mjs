@@ -211,11 +211,16 @@ if (only.includes("playlist")) {
     pageToken = playlistId ? "" : (list.nextPageToken ?? "");
   } while (pageToken);
   if (!playlistId) fail("playlist", `no playlist titled "${PLAYLIST}" (video ${id} is uploaded)`);
-  await call(`playlist add (video ${id} is uploaded)`, `${API}/playlistItems?part=snippet`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ snippet: { playlistId, resourceId: { kind: "youtube#video", videoId: id } } }),
-  });
+  // A rerun after a failure past the insert must not add the video twice.
+  const member = new URLSearchParams({ part: "id", playlistId, videoId: id, maxResults: "1" });
+  const already = await call(`playlist membership (video ${id} is uploaded)`, `${API}/playlistItems?${member}`);
+  if (already.items?.length) log("already in the playlist");
+  else
+    await call(`playlist add (video ${id} is uploaded)`, `${API}/playlistItems?part=snippet`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ snippet: { playlistId, resourceId: { kind: "youtube#video", videoId: id } } }),
+    });
   console.log("DONE=playlist");
 }
 

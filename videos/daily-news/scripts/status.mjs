@@ -1,5 +1,6 @@
 // STATUS.json rows (one per cut, `<date>-<lang>-<fmt>`) and which cuts a step still has to do.
 // Pure helpers; publish.mjs reads and writes the file.
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { cutFor, formatsOf } from "./lang.mjs";
 
@@ -124,7 +125,7 @@ export function dayVideoPostedArgs(date, r) {
 
 /** Uploader args for a row (bin/yt-upload and bin/yt-upload-api.mjs). Metadata: posts.md, or visub's own JSON
  *  (Vietnamese title and description over English audio). */
-export function uploadArgs(r, dir) {
+export function uploadArgs(r, dir, exists = existsSync) {
   const c = cutFor(r.lang);
   const kind = r.fmt === "9x16" ? "short" : "long";
   const meta = join(dir, c.subs?.youtube ?? "posts.md");
@@ -139,7 +140,7 @@ export function uploadArgs(r, dir) {
     "--kind",
     kind,
   ];
-  if (kind === "long") args.push("--cover", r.cover);
+  if (kind === "long" && hasCover(r, exists)) args.push("--cover", r.cover);
   return args;
 }
 
@@ -157,10 +158,14 @@ export function parseUpload(out) {
   };
 }
 
-/** The steps after the upload that a cut needs: a thumbnail for the 16:9 (Shorts get none), the AI;DR playlist, and
- *  the public oEmbed check. */
-export const finishSteps = (r, privacy) => [
-  ...(r.fmt === "16x9" ? ["thumb"] : []),
+/** A long cut has a cover to upload only when its file is there: the uploader prints DONE=thumb only with one. */
+export const hasCover = (r, exists = existsSync) =>
+  Boolean(r.cover) && exists(r.cover);
+
+/** The steps after the upload that a cut needs: a thumbnail for a 16:9 that has a cover (Shorts get none), the
+ *  AI;DR playlist, and the public oEmbed check. */
+export const finishSteps = (r, privacy, exists = existsSync) => [
+  ...(r.fmt === "16x9" && hasCover(r, exists) ? ["thumb"] : []),
   "playlist",
   ...(privacy === "public" ? ["oembed"] : []),
 ];

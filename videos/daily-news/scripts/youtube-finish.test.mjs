@@ -12,6 +12,7 @@ import {
   finishTodo,
   parseUpload,
   pendingSteps,
+  uploadArgs,
 } from "./status.mjs";
 
 const UPLOADER = resolve(
@@ -47,6 +48,8 @@ globalThis.fetch = async (url, init = {}) => {
   if (u.includes("/thumbnails/set"))
     return process.env.STUB_FAIL === "thumbnail" ? json({ error: { message: "boom" } }, 500) : json({});
   if (u.includes("/playlists")) return json({ items: [{ id: "PL1", snippet: { title: "AI;DR" } }] });
+  if (u.includes("/playlistItems") && (init.method ?? "GET") === "GET")
+    return json({ items: process.env.STUB_IN_PLAYLIST ? [{ id: "PLI1" }] : [] });
   if (u.includes("/playlistItems"))
     return process.env.STUB_FAIL === "playlist" ? json({ error: { message: "boom" } }, 503) : json({});
   if (u.includes("oembed")) return new Response("{}", { status: 200 });
@@ -55,14 +58,35 @@ globalThis.fetch = async (url, init = {}) => {
 `
 );
 
-function upload(extra, fail = "") {
+function runUploader(args, fail = "", inPlaylist = false) {
   writeFileSync(log, "");
   const r = spawnSync(
     process.execPath,
+    ["--import", pathToFileURL(stub).href, UPLOADER, ...args],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        YOUTUBE_CLIENT_ID: "x",
+        YOUTUBE_CLIENT_SECRET: "x",
+        YOUTUBE_REFRESH_TOKEN: "x",
+        STUB_LOG: log,
+        STUB_FAIL: fail,
+        STUB_IN_PLAYLIST: inPlaylist ? "1" : "",
+      },
+    }
+  );
+  return {
+    code: r.status,
+    out: r.stdout,
+    up: parseUpload(r.stdout),
+    calls: readFileSync(log, "utf8"),
+  };
+}
+
+function upload(extra, fail = "", inPlaylist = false) {
+  return runUploader(
     [
-      "--import",
-      pathToFileURL(stub).href,
-      UPLOADER,
       mp4,
       "--meta",
       meta,
@@ -74,24 +98,9 @@ function upload(extra, fail = "") {
       cover,
       ...extra,
     ],
-    {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        YOUTUBE_CLIENT_ID: "x",
-        YOUTUBE_CLIENT_SECRET: "x",
-        YOUTUBE_REFRESH_TOKEN: "x",
-        STUB_LOG: log,
-        STUB_FAIL: fail,
-      },
-    }
+    fail,
+    inPlaylist
   );
-  return {
-    code: r.status,
-    out: r.stdout,
-    up: parseUpload(r.stdout),
-    calls: readFileSync(log, "utf8"),
-  };
 }
 
 test("a thumbnail failure after the upload prints the id and no finished steps", () => {
@@ -134,8 +143,8 @@ test("a full upload reports every step done", () => {
 });
 
 test("pending steps are what the uploader did not report done", () => {
-  const long = { fmt: "16x9" };
-  const short = { fmt: "9x16" };
+  const long = { fmt: "16x9", cover };
+  const short = { fmt: "9x16", cover };
   assert.deepEqual(finishSteps(long, "public"), [
     "thumb",
     "playlist",
@@ -171,4 +180,97 @@ test("a cut with pending steps is finished on rerun; a clean or seeded one is no
     finishTodo(rows, ["en", "vi"]).map((r) => r.cut),
     ["a", "c"]
   );
+});
+
+const gone = join(work, "no-such-cover.png");
+const row = (over = {}) => ({
+  lang: "en",
+  fmt: "16x9",
+  path: mp4,
+  cover,
+  ...over,
+});
+
+// The uploader call a row gets from publish.mjs, with the meta swapped for the test's JSON.
+const rowArgs = (r) => {
+  const args = uploadArgs(r, work);
+  args[args.indexOf("--meta") + 1] = meta;
+  return args;
+};
+
+test("a cover-less 16:9 does not list thumb, so it cannot stay pending forever", () => {
+  for (const r of [
+    row({ cover: gone }),
+    row({ cover: "" }),
+    row({ cover: undefined }),
+  ])
+    assert.deepEqual(finishSteps(r, "public"), ["playlist", "oembed"]);
+  assert.deepEqual(finishSteps(row(), "public"), [
+    "thumb",
+    "playlist",
+    "oembed",
+  ]);
+});
+
+test("uploadArgs passes --cover only when the cover file exists", () => {
+  assert.ok(uploadArgs(row(), work).includes("--cover"));
+  assert.ok(!uploadArgs(row({ cover: gone }), work).includes("--cover"));
+  assert.ok(!uploadArgs(row({ cover: "" }), work).includes("--cover"));
+});
+
+test("pending to --finish to done: a playlist failure is retried and nothing stays pending", () => {
+  const r = row();
+  const needed = finishSteps(r, "public");
+  const first = runUploader(rowArgs(r), "playlist");
+  assert.equal(first.code, 1);
+  const pending = pendingSteps(needed, first.up);
+  assert.deepEqual(pending, ["playlist", "oembed"]);
+
+  const second = runUploader([
+    ...rowArgs(r),
+    "--finish",
+    first.up.id,
+    "--steps",
+    pending.join(","),
+  ]);
+  assert.equal(second.code, 0);
+  assert.deepEqual(pendingSteps(pending, second.up), []);
+  assert.doesNotMatch(second.calls, /uploadType|upload\.stub|thumbnails\/set/);
+});
+
+test("pending to --finish to done for a cover-less cut: no thumb is asked for or waited on", () => {
+  const r = row({ cover: gone });
+  const needed = finishSteps(r, "public");
+  assert.deepEqual(needed, ["playlist", "oembed"]);
+  const first = runUploader(rowArgs(r), "playlist");
+  assert.equal(first.code, 1);
+  assert.doesNotMatch(first.calls, /thumbnails\/set/);
+  const pending = pendingSteps(needed, first.up);
+  assert.deepEqual(pending, ["playlist", "oembed"]);
+
+  const second = runUploader([
+    ...rowArgs(r),
+    "--finish",
+    first.up.id,
+    "--steps",
+    pending.join(","),
+  ]);
+  assert.equal(second.code, 0);
+  assert.deepEqual(second.up.done, ["playlist", "oembed"]);
+  assert.deepEqual(pendingSteps(pending, second.up), []);
+});
+
+test("a cover-less full upload reports every needed step done", () => {
+  const r = row({ cover: gone });
+  const up = runUploader(rowArgs(r)).up;
+  assert.deepEqual(pendingSteps(finishSteps(r, "public"), up), []);
+});
+
+test("the playlist step adds the video once: a video already in the playlist is done without an insert", () => {
+  const r = upload(["--finish", ID, "--steps", "playlist"], "", true);
+  assert.equal(r.code, 0);
+  assert.deepEqual(r.up.done, ["playlist"]);
+  assert.doesNotMatch(r.calls, /POST .*playlistItems/);
+  const fresh = upload(["--finish", ID, "--steps", "playlist"]);
+  assert.match(fresh.calls, /POST .*playlistItems/);
 });
