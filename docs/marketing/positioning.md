@@ -33,7 +33,7 @@ AI;DR reads AI news sources every 30 minutes, removes duplicates, scores each st
 | One topic family holds at most 5 of the 16 slots | `ALGORITHM.md` §10, `apps/web/worker/digest/select.ts` |
 | English and Vietnamese never fill in for each other | `CLAUDE.md`, `apps/web/worker/digest/edition.ts` |
 | Email from 07:00 in the reader's timezone, 3, 5, or 10 stories, daily or weekly | `ALGORITHM.md` "Overview" publish notes, `apps/web/worker/subscribe/handlers.ts` (`DIGEST_SIZES`) |
-| Telegram in Vietnamese (@aihomnay) and English (@aidr_today), 6 stories, from 08:00 Vietnam time | `ALGORITHM.md` "Overview" publish notes, `apps/web/src/lib/site.ts` |
+| Telegram in Vietnamese (@aihomnay) and English (@aidr_today), from 08:00 Vietnam time | `ALGORITHM.md` "Overview" publish notes, `apps/web/src/lib/site.ts` |
 | An English Facebook Page post per edition | `ALGORITHM.md` "Overview" publish notes, `apps/web/worker/notify/facebook.ts` |
 | RSS feed | https://aidr.today/feed.xml (`README.md`) |
 | Chrome new tab extension | `apps/extension`, Chrome Web Store link in `README.md` |
@@ -44,7 +44,7 @@ AI;DR reads AI news sources every 30 minutes, removes duplicates, scores each st
 ## Voice
 
 - Short sentences. Facts first, then the link.
-- Say what the pipeline does, with its numbers ("every 30 minutes", "16 bullets", "6 stories").
+- Say what the pipeline does, with its numbers ("every 30 minutes", "16 bullets", "from 07:00").
 - Admit the limits. A machine picks the stories, so it makes mistakes, and readers can fix them.
 - Write the name as **AI;DR** and the domain as **aidr.today**. "AI News" is the SEO title, not the brand (`SITE_NAME` note in `apps/web/src/lib/site.ts`).
 

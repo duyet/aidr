@@ -57,7 +57,7 @@ Xem đầy đủ: https://aidr.today
 
 ```
 AI;DR ranks AI news every 30 minutes.
-From 08:00 Vietnam time, this channel posts the day's top 6 AI stories, each linked to the source.
+From 08:00 Vietnam time, this channel posts the day's top AI stories, each linked to the source.
 Full edition at https://aidr.today
 ```
 
