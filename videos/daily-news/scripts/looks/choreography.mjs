@@ -1,11 +1,14 @@
 // How a story arrives (look axis "choreography"): the media reveal, the image drift (Ken Burns), the rank badge and
 // the copy lines, all from S.start (the cut, under the stinger). The camera push, image crossfades, paper card,
 // marker, stat and credit are shared (template/motion.js). Arrive fast, land soft, no overshoot.
+// `rankAt` is how long after the cut the rank badge lands: build.mjs turns it into S.rankAt, which both the badge
+// tween and the rankHit effect read.
 
 export const CHOREOGRAPHIES = [
   {
     id: "rise",
     auto: true,
+    rankAt: 0.2,
     // The media opens left to right while the images push in and out in turn; the badge turns in; the copy rises
     // line by line.
     motion: (tl, S, sc, h) => {
@@ -27,7 +30,7 @@ export const CHOREOGRAPHIES = [
         h.$(".rank", sc),
         { scale: 0.4, rotation: -10, opacity: 0 },
         { scale: 1, rotation: 0, opacity: 1, duration: 0.5, ease: h.LAND },
-        t + 0.2
+        S.rankAt
       );
       [".cat", ".kicker", ".head"].forEach((s, k) => {
         tl.fromTo(
@@ -42,6 +45,7 @@ export const CHOREOGRAPHIES = [
   {
     id: "slide",
     auto: true,
+    rankAt: 0.15,
     // The media drops open from the top while the images pan down the frame; the badge and the copy slide in
     // from opposite edges.
     motion: (tl, S, sc, h) => {
@@ -63,7 +67,7 @@ export const CHOREOGRAPHIES = [
         h.$(".rank", sc),
         { x: -60, opacity: 0 },
         { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" },
-        t + 0.15
+        S.rankAt
       );
       [".cat", ".kicker", ".head"].forEach((s, k) => {
         tl.fromTo(
@@ -78,6 +82,7 @@ export const CHOREOGRAPHIES = [
   {
     id: "mask",
     auto: true,
+    rankAt: 0.3,
     // The media opens from its centre and the images keep a slow push toward it; the badge settles from slightly
     // large; each copy line rises out of a mask.
     motion: (tl, S, sc, h) => {
@@ -100,7 +105,7 @@ export const CHOREOGRAPHIES = [
         h.$(".rank", sc),
         { scale: 1.25, opacity: 0 },
         { scale: 1, opacity: 1, duration: 0.45, ease: "power2.out" },
-        t + 0.3
+        S.rankAt
       );
       [".cat", ".kicker", ".head"].forEach((s, k) => {
         tl.fromTo(

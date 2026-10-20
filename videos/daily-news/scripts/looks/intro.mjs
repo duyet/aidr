@@ -79,7 +79,7 @@ export const INTROS = [
     },
     cues: (c) => [
       ...c.stories.map((_, i) => ["tick", 0.8 + i * 0.3, 0.7]),
-      ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+      ...c.focus.map((f) => ["tick", f.at, 0.8]),
     ],
     motion: (tl, I, h) => {
       // Frame 0 is the finished grid (title included). Then each tile is underlined in turn, and the grid drifts.
@@ -119,7 +119,7 @@ export const INTROS = [
         tl.to(
           tile,
           { scale: lift, opacity: 1, zIndex: 2, duration: 0.3, ease: h.LAND },
-          f.at - 0.1
+          f.at
         );
         tl.to(
           others,
@@ -130,7 +130,7 @@ export const INTROS = [
             duration: 0.3,
             ease: "power2.out",
           },
-          f.at - 0.1
+          f.at
         );
       });
       if (F.length)
@@ -386,7 +386,7 @@ export const INTROS = [
     },
     cues: (c) => [
       ...c.stories.slice(1).map((_, i) => ["tick", 0.8 + i * 0.25, 0.7]),
-      ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+      ...c.focus.map((f) => ["tick", f.at, 0.8]),
     ],
     motion: (tl, I, h) => {
       h.fit(h.$(".cv-hook"), 3, 56);
@@ -420,10 +420,10 @@ export const INTROS = [
         tl.to(
           cells.filter((x) => x !== cell),
           { opacity: 0.35, duration: 0.3, ease: "power2.out" },
-          f.at - 0.1
+          f.at
         );
         if (cell)
-          tl.to(cell, { opacity: 1, duration: 0.3, ease: h.LAND }, f.at - 0.1);
+          tl.to(cell, { opacity: 1, duration: 0.3, ease: h.LAND }, f.at);
         if (alt)
           tl.fromTo(
             alt,
@@ -434,13 +434,13 @@ export const INTROS = [
               ease: "power2.out",
               immediateRender: false,
             },
-            f.at - 0.1
+            f.at
           );
         else
           tl.to(
             ".cv-alt",
             { opacity: 0, duration: 0.4, ease: "power2.out" },
-            f.at - 0.1
+            f.at
           );
       });
       if (F.length) {
@@ -661,7 +661,7 @@ export const INTROS = [
     },
     cues: (c) => [
       ["rankHit", 0.45, 0.9],
-      ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+      ...c.focus.map((f) => ["tick", f.at, 0.8]),
     ],
     motion: (tl, I, h) => {
       h.fit(h.$(".ds-title"), h.vertical ? 3 : 4, 36);
@@ -696,13 +696,13 @@ export const INTROS = [
               ease: "power2.out",
               immediateRender: false,
             },
-            f.at - 0.1
+            f.at
           );
         else
           tl.to(
             ".ds-alt",
             { opacity: 0, duration: 0.45, ease: "power2.out" },
-            f.at - 0.1
+            f.at
           );
       });
     },
@@ -819,7 +819,7 @@ export const INTROS = [
     },
     cues: (c) => [
       ...c.stories.map((_, i) => ["tick", 0.8 + i * 0.2, 0.7]),
-      ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+      ...c.focus.map((f) => ["tick", f.at, 0.8]),
     ],
     motion: (tl, I, h) => {
       // A cross-year week's range is too long for the rail even at 14px, so it drops the show name.
@@ -859,7 +859,7 @@ export const INTROS = [
         tl.to(
           cell,
           { scale: 1.04, opacity: 1, zIndex: 2, duration: 0.3, ease: h.LAND },
-          f.at - 0.1
+          f.at
         );
         tl.to(
           cells.filter((x) => x !== cell),
@@ -870,7 +870,7 @@ export const INTROS = [
             duration: 0.3,
             ease: "power2.out",
           },
-          f.at - 0.1
+          f.at
         );
       });
       if (F.length)
@@ -1078,7 +1078,7 @@ ${second}`;
     cues: (c) => [
       ["tick", 0.8, 0.7],
       ["tick", 1.1, 0.7],
-      ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+      ...c.focus.map((f) => ["tick", f.at, 0.8]),
     ],
     motion: (tl, I, h) => {
       for (const p of h.$$(".hg-cap p")) h.fit(p, 2, 26);
@@ -1114,11 +1114,11 @@ ${second}`;
       F.forEach((f) => {
         const on = h.$(`.hg-side[data-rank="${f.rank}"]`);
         if (!on) return;
-        tl.to(on, { opacity: 1, duration: 0.3, ease: h.LAND }, f.at - 0.1);
+        tl.to(on, { opacity: 1, duration: 0.3, ease: h.LAND }, f.at);
         tl.to(
           sides.filter((x) => x !== on),
           { opacity: 0.45, duration: 0.3, ease: "power2.out" },
-          f.at - 0.1
+          f.at
         );
       });
       if (F.length)
@@ -1315,7 +1315,7 @@ ${second}`;
         .join("")}</div></div>`,
     cues: (c) => [
       ...c.stories.map((_, i) => ["tick", 0.7 + i * 0.22, 0.7]),
-      ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+      ...c.focus.map((f) => ["tick", f.at, 0.8]),
     ],
     motion: (tl, I, h) => {
       h.fit(h.$(".hs-title"), h.vertical ? 2 : 1, 44);
@@ -1345,11 +1345,11 @@ ${second}`;
       F.forEach((f) => {
         const row = h.$(`.hs-row[data-rank="${f.rank}"]`);
         if (!row) return;
-        tl.to(row, { opacity: 1, duration: 0.3, ease: h.LAND }, f.at - 0.1);
+        tl.to(row, { opacity: 1, duration: 0.3, ease: h.LAND }, f.at);
         tl.to(
           rows.filter((x) => x !== row),
           { opacity: 0.35, duration: 0.3, ease: "power2.out" },
-          f.at - 0.1
+          f.at
         );
       });
       if (F.length)
@@ -1491,7 +1491,7 @@ ${second}`;
             ? ["rankHit", 0.8 + i * 0.25, 0.8]
             : ["tick", 0.8 + i * 0.25, 0.7]
         ),
-        ...c.focus.map((f) => ["tick", f.at - 0.05, 0.8]),
+        ...c.focus.map((f) => ["tick", f.at, 0.8]),
       ];
     },
     motion: (tl, I, h) => {
@@ -1525,7 +1525,7 @@ ${second}`;
         tl.to(
           on,
           { scale: 1.08, opacity: 1, zIndex: 2, duration: 0.3, ease: h.LAND },
-          f.at - 0.1
+          f.at
         );
         tl.to(
           sq.filter((x) => x !== on),
@@ -1536,7 +1536,7 @@ ${second}`;
             duration: 0.3,
             ease: "power2.out",
           },
-          f.at - 0.1
+          f.at
         );
       });
       if (F.length)

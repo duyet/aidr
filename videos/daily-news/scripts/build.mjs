@@ -26,7 +26,15 @@ import { join, resolve } from "node:path";
 import { cutFor, cutOf, formatsOf } from "./lang.mjs";
 import { coverStory, resolveLook, thumbStory } from "./look.mjs";
 import { entry, lookCss, lookScript } from "./looks/index.mjs";
-import { bedStartFor, gainFor, SFX, soundFor } from "./looks/sound.mjs";
+import {
+  bedStartFor,
+  cuesFor,
+  gainFor,
+  SFX,
+  soundFor,
+} from "./looks/sound.mjs";
+import { STINGER } from "./looks/transition.mjs";
+import { imageSize } from "./media.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
 import { spreadWords, subsMismatch } from "./visub.mjs";
 import { applyScreen } from "./visub-screen.mjs";
@@ -258,7 +266,7 @@ for (const seg of storySegs) {
     (hit ? Math.max(0.6, hit.start - 0.15) : Math.min(2.4, seg.voiceDur * 0.4));
 }
 
-// Intro focus: a grid tile lifts on the word that names its story (script.intro.focus: [{ rank, word }]).
+// Intro focus: a grid tile lifts 0.1 s before the word that names its story (script.intro.focus: [{ rank, word }]).
 let fromWord = 0;
 const introFocus = (script.intro.focus ?? []).map((f) => {
   const k = intro.words.findIndex(
@@ -267,7 +275,10 @@ const introFocus = (script.intro.focus ?? []).map((f) => {
   if (k < 0)
     throw new Error(`intro.focus: "${f.word}" is not in the intro line`);
   fromWord = k + 1;
-  return { rank: f.rank, at: r3(intro.voiceStart + intro.words[k].start) };
+  return {
+    rank: f.rank,
+    at: r3(intro.voiceStart + intro.words[k].start - 0.1),
+  };
 });
 
 // ---------------------------------------------------------------- captions
@@ -398,6 +409,13 @@ const dateline =
       ? `${DOW}, ${DAY} ${MON.toLowerCase()}, ${d.getUTCFullYear()}`
       : `${DOW}, ${MON} ${DAY}, ${d.getUTCFullYear()}`);
 const firstImage = (s) => s.images[0];
+// Width over height of an image on disk, or "" when its header is unreadable (motion.js then never fits it).
+const aspectOf = (src) => {
+  const size = existsSync(join(dir, src))
+    ? imageSize(readFileSync(join(dir, src)))
+    : null;
+  return size ? (size.width / size.height).toFixed(3) : "";
+};
 
 // Wrap *starred* phrases in the yellow marker; default marks the whole headline.
 const marked = (h) =>
@@ -447,7 +465,8 @@ function storyHtml(seg, i) {
     media =
       s.images
         .map(
-          (src, k) => `<img id="s${s.rank}-img${k}" src="${esc(src)}" alt="" />`
+          (src, k) =>
+            `<div class="frame"><div class="fill" style="background-image:url(&quot;${esc(src)}&quot;)"></div><img id="s${s.rank}-img${k}" src="${esc(src)}" data-ar="${aspectOf(src)}" alt="" /></div>`
         )
         .join("") +
       `<div class="shade"></div><div class="credit">${esc(source)}</div>`;
@@ -495,8 +514,22 @@ function outroHtml() {
 
 const wipes = segs.slice(1).map((seg) => ({
   at: r3(seg.start),
+  hit: r3(seg.start - STINGER.in / 2),
   label: seg.kind === "story" ? String(seg.story.rank) : ";",
 }));
+const rankAfterCut = entry("choreography", look.choreography).rankAt;
+const stories = storySegs.map((s) => ({
+  start: r3(s.start),
+  dur: r3(s.dur),
+  layout: look.layouts[s.story.rank],
+  statAt: r3(s.statAt),
+  rankAt: r3(s.start + rankAfterCut),
+}));
+const outroTimes = {
+  start: r3(outro.start),
+  dur: r3(outro.dur),
+  hit: r3(outro.start + 0.3),
+};
 function wipesHtml() {
   return wipes
     .map((w, i) => {
@@ -547,14 +580,10 @@ ${body}
 function buildMix(outFile) {
   const sfxDir = resolve(ROOT, config.sfx.dir);
   const sfxMeta = read(join(sfxDir, "manifest.json"));
-  const cues = [
-    ["open", 0.25, 1.0],
-    ...wipes.map((w) => ["storyIn", w.at, 0.8]),
-    ...storySegs.map((s) => ["rankHit", s.start + 0.3, 0.55]),
-    ...storySegs.map((s) => ["statHit", s.statAt + 0.1, 0.5]),
-    ["outro", outro.start + 0.4, 0.8],
-    ...entry("intro", look.intro).cues(introCtx),
-  ];
+  const cues = cuesFor(
+    { wipes, stories, outro: outroTimes },
+    entry("intro", look.intro).cues(introCtx)
+  );
 
   const inputs = [];
   const filters = [];
@@ -732,14 +761,10 @@ for (const fmt of formatsOf(cut, config)) {
       focus: introFocus,
     },
     chrome: { start: r3(intro.dur), dur: r3(outro.start - intro.dur) },
-    stories: storySegs.map((s) => ({
-      start: r3(s.start),
-      dur: r3(s.dur),
-      layout: look.layouts[s.story.rank],
-      statAt: r3(s.statAt),
-    })),
-    outro: { start: r3(outro.start), dur: r3(outro.dur) },
+    stories,
+    outro: outroTimes,
     wipes,
+    stinger: STINGER,
     caps: config.captions.burn
       ? burnCaps.map((c) => ({
           start: r3(c.start),
