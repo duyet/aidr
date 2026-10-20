@@ -32,3 +32,8 @@ releases/STATUS.json
 daily-news/editions/*/out-*/
 daily-news/editions/*/snap*/
 daily-news/editions/*/STATUS.json
+# aidr-launch-2026: the 9:16 cut's media is copied from the 16:9 project by scripts/build.mjs
+aidr-launch-2026-9x16/assets/
+aidr-launch-2026/assets/bgm/bed.mp3
+*/.hyperframes/artifacts/
+*/.hyperframes/

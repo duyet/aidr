@@ -1,0 +1,98 @@
+[
+  {
+    "id": "w0",
+    "text": "Every",
+    "start": 0,
+    "end": 0.325
+  },
+  {
+    "id": "w1",
+    "text": "thirty",
+    "start": 0.383,
+    "end": 0.639
+  },
+  {
+    "id": "w2",
+    "text": "minutes,",
+    "start": 0.708,
+    "end": 1.057
+  },
+  {
+    "id": "w3",
+    "text": "it",
+    "start": 1.08,
+    "end": 1.149
+  },
+  {
+    "id": "w4",
+    "text": "pulls",
+    "start": 1.196,
+    "end": 1.451
+  },
+  {
+    "id": "w5",
+    "text": "from",
+    "start": 1.486,
+    "end": 1.625
+  },
+  {
+    "id": "w6",
+    "text": "Hacker",
+    "start": 1.695,
+    "end": 2.02
+  },
+  {
+    "id": "w7",
+    "text": "News,",
+    "start": 2.078,
+    "end": 2.473
+  },
+  {
+    "id": "w8",
+    "text": "Hugging",
+    "start": 2.508,
+    "end": 2.856
+  },
+  {
+    "id": "w9",
+    "text": "Face,",
+    "start": 2.926,
+    "end": 3.332
+  },
+  {
+    "id": "w10",
+    "text": "GitHub",
+    "start": 3.448,
+    "end": 3.831
+  },
+  {
+    "id": "w11",
+    "text": "releases,",
+    "start": 3.889,
+    "end": 4.528
+  },
+  {
+    "id": "w12",
+    "text": "Lobsters,",
+    "start": 4.621,
+    "end": 5.155
+  },
+  {
+    "id": "w13",
+    "text": "and",
+    "start": 5.178,
+    "end": 5.259
+  },
+  {
+    "id": "w14",
+    "text": "RSS",
+    "start": 5.364,
+    "end": 5.77
+  },
+  {
+    "id": "w15",
+    "text": "feeds.",
+    "start": 5.851,
+    "end": 6.687
+  }
+]

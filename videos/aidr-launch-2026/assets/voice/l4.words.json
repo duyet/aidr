@@ -1,0 +1,68 @@
+[
+  {
+    "id": "w0",
+    "text": "It",
+    "start": 0,
+    "end": 0.163
+  },
+  {
+    "id": "w1",
+    "text": "merges",
+    "start": 0.221,
+    "end": 0.639
+  },
+  {
+    "id": "w2",
+    "text": "duplicates",
+    "start": 0.708,
+    "end": 1.242
+  },
+  {
+    "id": "w3",
+    "text": "into",
+    "start": 1.277,
+    "end": 1.44
+  },
+  {
+    "id": "w4",
+    "text": "one",
+    "start": 1.533,
+    "end": 1.73
+  },
+  {
+    "id": "w5",
+    "text": "story.",
+    "start": 1.776,
+    "end": 2.299
+  },
+  {
+    "id": "w6",
+    "text": "Then",
+    "start": 2.496,
+    "end": 2.682
+  },
+  {
+    "id": "w7",
+    "text": "it",
+    "start": 2.728,
+    "end": 2.798
+  },
+  {
+    "id": "w8",
+    "text": "scores",
+    "start": 2.844,
+    "end": 3.309
+  },
+  {
+    "id": "w9",
+    "text": "each",
+    "start": 3.379,
+    "end": 3.564
+  },
+  {
+    "id": "w10",
+    "text": "one.",
+    "start": 3.646,
+    "end": 4.18
+  }
+]

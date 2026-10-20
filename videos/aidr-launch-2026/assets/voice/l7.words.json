@@ -1,0 +1,128 @@
+[
+  {
+    "id": "w0",
+    "text": "Read",
+    "start": 0,
+    "end": 0.255
+  },
+  {
+    "id": "w1",
+    "text": "it",
+    "start": 0.302,
+    "end": 0.36
+  },
+  {
+    "id": "w2",
+    "text": "on",
+    "start": 0.418,
+    "end": 0.499
+  },
+  {
+    "id": "w3",
+    "text": "the",
+    "start": 0.546,
+    "end": 0.615
+  },
+  {
+    "id": "w4",
+    "text": "site.",
+    "start": 0.673,
+    "end": 1.08
+  },
+  {
+    "id": "w5",
+    "text": "By",
+    "start": 1.126,
+    "end": 1.242
+  },
+  {
+    "id": "w6",
+    "text": "email",
+    "start": 1.312,
+    "end": 1.602
+  },
+  {
+    "id": "w7",
+    "text": "from",
+    "start": 1.66,
+    "end": 1.788
+  },
+  {
+    "id": "w8",
+    "text": "seven",
+    "start": 1.858,
+    "end": 2.136
+  },
+  {
+    "id": "w9",
+    "text": "a.m.,",
+    "start": 2.194,
+    "end": 2.566
+  },
+  {
+    "id": "w10",
+    "text": "your",
+    "start": 2.612,
+    "end": 2.763
+  },
+  {
+    "id": "w11",
+    "text": "time.",
+    "start": 2.821,
+    "end": 3.239
+  },
+  {
+    "id": "w12",
+    "text": "On",
+    "start": 3.274,
+    "end": 3.413
+  },
+  {
+    "id": "w13",
+    "text": "Telegram,",
+    "start": 3.46,
+    "end": 4.04
+  },
+  {
+    "id": "w14",
+    "text": "on",
+    "start": 4.087,
+    "end": 4.191
+  },
+  {
+    "id": "w15",
+    "text": "Facebook,",
+    "start": 4.261,
+    "end": 4.783
+  },
+  {
+    "id": "w16",
+    "text": "and",
+    "start": 4.807,
+    "end": 4.957
+  },
+  {
+    "id": "w17",
+    "text": "as",
+    "start": 5.027,
+    "end": 5.155
+  },
+  {
+    "id": "w18",
+    "text": "a",
+    "start": 5.213,
+    "end": 5.248
+  },
+  {
+    "id": "w19",
+    "text": "daily",
+    "start": 5.306,
+    "end": 5.631
+  },
+  {
+    "id": "w20",
+    "text": "video.",
+    "start": 5.689,
+    "end": 6.455
+  }
+]

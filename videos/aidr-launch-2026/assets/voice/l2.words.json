@@ -1,0 +1,62 @@
+[
+  {
+    "id": "w0",
+    "text": "AI",
+    "start": 0,
+    "end": 0.313
+  },
+  {
+    "id": "w1",
+    "text": "DR",
+    "start": 0.383,
+    "end": 0.743
+  },
+  {
+    "id": "w2",
+    "text": "is",
+    "start": 0.813,
+    "end": 0.894
+  },
+  {
+    "id": "w3",
+    "text": "a",
+    "start": 0.94,
+    "end": 0.964
+  },
+  {
+    "id": "w4",
+    "text": "machine",
+    "start": 1.022,
+    "end": 1.382
+  },
+  {
+    "id": "w5",
+    "text": "that",
+    "start": 1.405,
+    "end": 1.509
+  },
+  {
+    "id": "w6",
+    "text": "reads",
+    "start": 1.556,
+    "end": 1.765
+  },
+  {
+    "id": "w7",
+    "text": "it",
+    "start": 1.8,
+    "end": 1.858
+  },
+  {
+    "id": "w8",
+    "text": "for",
+    "start": 1.904,
+    "end": 2.009
+  },
+  {
+    "id": "w9",
+    "text": "you.",
+    "start": 2.078,
+    "end": 2.554
+  }
+]

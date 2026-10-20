@@ -1,0 +1,80 @@
+[
+  {
+    "id": "w0",
+    "text": "AI",
+    "start": 0,
+    "end": 0.302
+  },
+  {
+    "id": "w1",
+    "text": "news",
+    "start": 0.383,
+    "end": 0.627
+  },
+  {
+    "id": "w2",
+    "text": "never",
+    "start": 0.72,
+    "end": 0.964
+  },
+  {
+    "id": "w3",
+    "text": "stops.",
+    "start": 1.033,
+    "end": 1.591
+  },
+  {
+    "id": "w4",
+    "text": "The",
+    "start": 1.637,
+    "end": 1.741
+  },
+  {
+    "id": "w5",
+    "text": "same",
+    "start": 1.788,
+    "end": 2.02
+  },
+  {
+    "id": "w6",
+    "text": "story",
+    "start": 2.055,
+    "end": 2.38
+  },
+  {
+    "id": "w7",
+    "text": "shows",
+    "start": 2.438,
+    "end": 2.67
+  },
+  {
+    "id": "w8",
+    "text": "up",
+    "start": 2.717,
+    "end": 2.821
+  },
+  {
+    "id": "w9",
+    "text": "everywhere,",
+    "start": 2.926,
+    "end": 3.634
+  },
+  {
+    "id": "w10",
+    "text": "under",
+    "start": 3.704,
+    "end": 3.936
+  },
+  {
+    "id": "w11",
+    "text": "new",
+    "start": 4.017,
+    "end": 4.18
+  },
+  {
+    "id": "w12",
+    "text": "headlines.",
+    "start": 4.249,
+    "end": 5.062
+  }
+]
