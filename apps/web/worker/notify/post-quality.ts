@@ -74,7 +74,10 @@ export interface TranslationGate {
 /** Whether a Vietnamese translation may be posted: QA did not send it to
  *  human review, and the draft check that runs after translation finds
  *  nothing in it now, with today's knowledge rules. A draft whose repair
- *  failed is stored as is, so this is the last place it can be stopped. */
+ *  failed is stored as is, so this is the last place it can be stopped.
+ *  The post carries the Vietnamese summary, so it is judged whenever there
+ *  is one, also when the source has none: prod 657a40d5 keeps
+ *  "agent-to-agent" in its summary, not in its shortened title. */
 export function translationPostability(
   gate: TranslationGate,
   rules: KnowledgeRule[]
@@ -84,7 +87,7 @@ export function translationPostability(
     gate.source,
     gate.candidate,
     rules,
-    !gate.source.summary
+    !gate.source.summary && !gate.candidate.summary
   );
   return issues.length > 0
     ? { ok: false, reason: "draft", issues }

@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Env } from "../worker/types";
 
 /** Production D1 database `aidr`. `cf d1` takes this id, not the binding name. */
 export const D1_DATABASE_ID = "0c8f3efe-0427-4268-8d9f-bb1a4bcbe427";
@@ -119,4 +120,19 @@ export function wranglerSelect(sql: string): Record<string, unknown>[] {
   wranglerSelectTotals.queries++;
   wranglerSelectTotals.rowsRead += result.meta.rows_read ?? 0;
   return result.results ?? [];
+}
+
+/** An `Env` whose `DB.prepare(sql).all()` answers through `wranglerSelect`,
+ * so a script runs a worker loader (`loadActiveRules`) with its own query and
+ * parser, read-only. */
+export function wranglerSelectEnv(): Env {
+  return {
+    DB: {
+      prepare: (sql: string) => ({
+        all: async () => ({
+          results: wranglerSelect(sql.replace(/\s+/g, " ").trim()),
+        }),
+      }),
+    },
+  } as unknown as Env;
 }
