@@ -90,10 +90,10 @@ function PrivacyPage() {
             and browser details with its requests, as any server does.
             <ul>
               <li>
-                Google Analytics 4, through the Cloudflare Google tag gateway
-                when the tag gateway is on for the domain, sets the{" "}
-                <code>_ga</code> cookies and counts page views, how long a page
-                stays open, and the events listed below.
+                Google Analytics 4 sets the <code>_ga</code> cookies and counts
+                page views, how long a page stays open, and the events listed
+                below. When the tag gateway is on for the domain, it loads
+                through the Cloudflare Google tag gateway.
               </li>
               <li>
                 PostHog sets a cookie and a <code>localStorage</code> entry with
