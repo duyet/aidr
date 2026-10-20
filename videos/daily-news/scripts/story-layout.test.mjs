@@ -85,6 +85,8 @@ const CAM_Y = 1920 * 0.45;
 const measure = `<script>(async () => {
   const CAM_SCALE = ${CAM_SCALE}, CAM_Y = ${CAM_Y};
   await document.fonts.ready;
+  // A headful-style Chrome shaves its own UI off the window, so the viewport can be shorter than 1920; the frame is not.
+  Object.assign(document.getElementById("root").style, { width: "1080px", height: "1920px" });
   while (!window.__timelines.main) await new Promise((r) => setTimeout(r, 20));
   const cap = document.querySelector(".cap");
   cap.querySelector(".line").innerHTML = ${JSON.stringify(WORST_CAPTION)}.map((w) => '<span class="w">' + w + "</span>").join("");
