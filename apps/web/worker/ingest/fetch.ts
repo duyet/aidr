@@ -1,10 +1,13 @@
+import { NonRetryableError } from "cloudflare:workflows";
 import { chunk } from "../chunk.js";
 import { recordSourceHealth, recordStep } from "../run-stats.js";
 import { emptySourceHealth, type SourceRunHealth } from "../source-health.js";
 import { adapters } from "../sources/registry.js";
 import {
   describeFetchError,
+  isRetryableSourceFailure,
   type SourceFailureReason,
+  SourceFetchError,
   sourceFetchFailureReason,
 } from "../sources/rss.js";
 import { ensureVendorBlogSources } from "../sources/seed.js";
@@ -99,9 +102,21 @@ export async function fetchSources(
               const adapter = adapters[source.type];
               if (!adapter) return [];
               const config = JSON.parse(source.config || "{}");
-              return adapter.fetchItems(config, sinceEpochSec, {
-                githubToken: ctx.env.GITHUB_ALERT_TOKEN,
-              });
+              try {
+                return await adapter.fetchItems(config, sinceEpochSec, {
+                  githubToken: ctx.env.GITHUB_ALERT_TOKEN,
+                });
+              } catch (error) {
+                if (
+                  error instanceof SourceFetchError &&
+                  !isRetryableSourceFailure(error)
+                ) {
+                  throw new NonRetryableError(
+                    `SourceFetchError: ${error.message}`
+                  );
+                }
+                throw error;
+              }
             }
           )
           .catch((error: unknown) => {

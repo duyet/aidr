@@ -22,15 +22,9 @@ import type { FetchedItem, SourceAdapter, SourceLanguage } from "./types.js";
  * `sanitizeError` before it can reach D1 or an API response, so no URL,
  * header, or provider body leaks.
  *
- * Both reasons are thrown, so the fetch step's existing
- * `retries: { limit: 3, backoff: "exponential" }` applies to both. That is
- * deliberate for `fetch_failed` (429/5xx are transient and the backoff is the
- * right response) and slightly wasteful for `parse_failed` (a 200 HTML page is
- * deterministic, so retrying it cannot succeed). The cost is two extra GETs
- * against a publisher's own feed, once per hour, on a per-source step that
- * runs in parallel with its group — and the payoff is that a feed which has
- * quietly become an HTML error page is visible on the dashboard the next hour
- * instead of after a week of silence.
+ * The fetch step retries only what `isRetryableSourceFailure` allows:
+ * transport errors, 5xx, 408, 425 and 429. A deterministic answer (other
+ * 4xx, an HTML page, a challenge) fails the step once.
  */
 export type SourceFailureReason = "fetch_failed" | "parse_failed" | "blocked";
 
@@ -75,6 +69,19 @@ export function sourceFetchFailureReason(
     return "fetch_failed";
   }
   return null;
+}
+
+const RETRYABLE_4XX = new Set([408, 425, 429]);
+
+/**
+ * Whether retrying the same request this run can succeed. A 4xx other than
+ * timeout, too-early or rate limit, an HTML page, or a challenge page answers
+ * the same way a minute later. Transport errors and 5xx may not.
+ */
+export function isRetryableSourceFailure(error: SourceFetchError): boolean {
+  const status = Number(/returned (\d{3})\b/.exec(error.message)?.[1]);
+  if (status) return status >= 500 || RETRYABLE_4XX.has(status);
+  return error.reason === "fetch_failed";
 }
 
 /**
