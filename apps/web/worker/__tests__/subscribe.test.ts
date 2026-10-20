@@ -685,6 +685,23 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     expect(sentTo).toEqual(["nextday@example.com"]);
   });
 
+  it("does not resend an older edition after the subscriber moves to an earlier timezone (#979)", async () => {
+    const { env, sentTo } = makeEnv({
+      subscribers: [
+        {
+          email: "moved@example.com",
+          lang: "en",
+          unsubscribe_token: "t1",
+          timezone: "America/Los_Angeles",
+          last_sent_date: "2026-10-21",
+        },
+      ],
+    });
+    vi.setSystemTime(Date.UTC(2026, 9, 20, 18, 0, 0));
+    await sendDailyTldr(env);
+    expect(sentTo).toEqual([]);
+  });
+
   it("waits for the subscriber's local-date edition instead of mailing the UTC-dated one, then sends it once (#532)", async () => {
     // 2026-08-16T20:00Z is 08:00 on 2026-08-17 in Auckland (UTC+12): past
     // the digest hour, but only the UTC-dated 2026-08-16 snapshot exists.
