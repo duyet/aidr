@@ -245,6 +245,34 @@ describe("digest highlight", () => {
     expect(row("telegram-en", `digest:${TODAY}:top`)).toBeUndefined();
   });
 
+  it("records the highlight's story and the caption it carried", async () => {
+    await dispatchStoryNotifications(env);
+
+    const story = callsTo("@vi")[1];
+    expect(
+      sqlite
+        .prepare(
+          "SELECT story_id, message_id FROM notifications WHERE channel = 'telegram' AND item_id = ?"
+        )
+        .get(`digest:${TODAY}:top`)
+    ).toEqual({ story_id: TOP.id, message_id: "102" });
+    const post = sqlite
+      .prepare(
+        "SELECT message_id, kind, caption, caption_hash FROM notify_posts WHERE channel = 'telegram' AND item_id = ?"
+      )
+      .get(TOP.id) as Record<string, string>;
+    expect(post).toMatchObject({
+      message_id: "102",
+      kind: "photo",
+      caption: story.body.caption,
+    });
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(String(story.body.caption))
+    );
+    expect(post.caption_hash).toBe(Buffer.from(digest).toString("hex"));
+  });
+
   it("does not post the highlight after an ambiguous digest", async () => {
     // Vietnamese digest times out (it may be in the channel); English sends.
     respond = (call) => {
@@ -296,6 +324,43 @@ describe("digest highlight", () => {
     expect(String(en[1].body.caption)).toContain(TOP.title);
     expect(report.reasons["telegram-en"]?.highlightStory).toBe(TOP.id);
     expect(lastError("telegram-en", `digest:${TODAY}:top`)).toBeNull();
+  });
+
+  it("posts the next card story when the top one's Vietnamese draft breaks a knowledge rule", async () => {
+    // 2026-10 audit: "trung tây dữ liệu" (for "data center") went out as is.
+    sqlite
+      .prepare("UPDATE items SET summary = ? WHERE id = ?")
+      .run(
+        "The company will build a new data center in Texas, with power for 500,000 GPUs by the end of next year, the report says.",
+        TOP.id
+      );
+    sqlite
+      .prepare(
+        "UPDATE translations SET summary = ? WHERE item_id = ? AND lang = 'vi'"
+      )
+      .run(
+        "Công ty sẽ xây một trung tây dữ liệu mới ở Texas, đủ điện cho 500.000 GPU vào cuối năm sau, theo báo cáo.",
+        TOP.id
+      );
+    sqlite
+      .prepare(
+        `INSERT INTO translation_knowledge (id, kind, source_term, vi_term, bad_vi, status, created_at)
+         VALUES ('rule-dc', 'avoid', 'data center', 'trung tâm dữ liệu', '["trung tây dữ liệu"]', 'active', 1)`
+      )
+      .run();
+
+    const report = await dispatchStoryNotifications(env);
+
+    const viCalls = callsTo("@vi");
+    expect(viCalls).toHaveLength(2);
+    expect(String(viCalls[1].body.caption)).toContain(STORIES[1].titleVi);
+    expect(String(viCalls[1].body.caption)).not.toContain("trung tây dữ liệu");
+    expect(report.reasons.telegram?.highlightStory).toBe(STORIES[1].id);
+    expect(lastError("telegram", `digest:${TODAY}:top`)).toContain(
+      `${TOP.id} gate:draft`
+    );
+    // English is not judged by the Vietnamese gate.
+    expect(report.reasons["telegram-en"]?.highlightStory).toBe(TOP.id);
   });
 
   it("skips once, with no retry, when the first three card stories fail the gate", async () => {

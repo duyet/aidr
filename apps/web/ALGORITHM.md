@@ -2348,6 +2348,31 @@ deliberately non-spammy.
     day card's summary clause and the snapshot bullet text pass through
     `stripEmbeddedChrome`, so chrome that reaches a stored summary never
     becomes a digest clause.
+  - **Vietnamese translation gate** (`translationPostability`, the
+    trending candidates and the highlight's card stories): an EN→VI
+    translation on a `vi` channel is refused when QA sent that exact text to
+    human review (`gate:qa`: a terminal `human_review` row in
+    `translation_review_state` for the current title, summary and source
+    revision), or when `translationDraftIssues` finds an issue in it now,
+    with the active knowledge rules (`gate:draft`; the issues are logged as
+    one `notify_translation_gate` warning and, for the highlight, kept in
+    `last_error`). The source it checks against is what the translator was
+    sent (`sentSource` of `items.summary`). A missing QA rating is not a
+    reject: in the 2026-10 audit of t.me/s/aihomnay, 21 of 23 Vietnamese
+    story posts in a week had none, because posts go out before QA reaches
+    them. `review_failed` is
+    not a reject either: it means the reviewer was down. A refused story is
+    never claimed, so it costs no attempt and is judged again next run,
+    after a repair or a rule change. English channels and Vietnamese-source
+    copy are not judged by it. Then a leading Techmeme byline ("Kashmir Hill
+    / New York Times :") is dropped from the Vietnamese summary before the
+    postability gate runs.
+  - **Why the Vietnamese copy is not retranslated from `summary_en`**:
+    the language columns do not fall back to each other, and a send-time
+    retranslation is an LLM call per post with no QA behind it. The
+    Vietnamese translation is of the raw upstream summary, so the send
+    cleans what that brings (bylines here, teasers in the caption step
+    below) and refuses what it cannot clean.
   - **Cross-post dedup**: each `PostedEvent` is
     `{channelGroup, itemId, canonicalId, eventKey, postedAt, kind}`. The
     channel's events are its trending posts in the last 48 hours (statuses
@@ -2413,7 +2438,8 @@ deliberately non-spammy.
     sent) contributes no digest events.
   - **Recorded**: `workflow_runs.stats.notifyReason.<channel>.suppressed` is a
     count per reason (`dedup:canonical`, `dedup:event`, `gate:chrome`,
-    `gate:short`, `gate:missing`) for the candidates that run dropped. A
+    `gate:short`, `gate:missing`, `gate:draft`, `gate:qa`) for the
+    candidates that run dropped. A
     blocked candidate is re-judged and re-counted every run until it ages out
     of the 24h window. The `notify` step line stays unchanged (240-character
     cap).
@@ -2488,6 +2514,50 @@ deliberately non-spammy.
   else whole leading sentences with no ellipsis; else whole words plus `…`.
   A failed model call never blocks the send. Raw text is cut first and
   escaped after, so an HTML entity is never split.
+  On the Vietnamese channel a summary that ends in an ellipsis, `[…]` or a
+  read-more link ("…mà nhiều công ty Mỹ...") also reads as source copy; the
+  English channel reads the rewritten `summary_en` and is unchanged. A
+  rewrite of an EN→VI translation, stored or new, must also pass
+  `translationDraftIssues` against the English the translation came from,
+  minus the two checks for what it leaves out (the length ratio and a
+  dropped English term), since a rewrite is shorter on purpose
+  (`rewriteIssues`). When no clean rewrite exists and the Vietnamese
+  summary reads as source copy, the post is *withheld*
+  (`SendResult.withheld`): nothing is sent, the row is `failed` with
+  `withheld: …` in `last_error`, no owner alert goes out, and trending
+  gives the slot to its next candidate. The attempt counts, so a story is
+  withheld at most `NOTIFY_MAX_ATTEMPTS` times; the highlight retries the
+  same story on later runs and gives up after the same cap. A rewrite that
+  fails because the run is out of subrequests is not a withhold: the send
+  is deferred (`budgetExhausted`) and costs no attempt.
+- **Titles.** The caption title drops a trailing credit sentence ("From
+  Bloomberg.", "Theo Reuters."; `stripTrailingAttribution`, which needs
+  the lead word, so a bare "(Reuters)" stays) and is cut to 140 characters
+  after its last clause break (comma, semicolon, colon or spaced dash) when
+  that keeps at least 70, else at a word with `…`. The summary budget
+  follows the shorter title. When the title was cut, a summary that only
+  restates the full headline stays whole, because it is the only place the
+  cut clauses show.
+- **What each story post said** (`notify_posts`, migration 0070): a sent
+  story post writes its channel, story id, message id, kind (`photo`,
+  `video`, `album`, `text`), caption hash and the caption as sent
+  (`recordStoryPost`), and the highlight row's `notifications.story_id`
+  names its story. Both writes are best effort and never fail a sent post.
+  The admin caption edit (`POST /api/admin/notify/story-caption` with
+  `{channel, itemId, dryRun}`, or `pnpm --filter @aidr/web agent
+  story-caption <id> --channel telegram|telegram-en [--apply]`) rebuilds
+  the caption from current D1 text through the same gates and caption path
+  as a send, and refuses text a send would refuse. It is a dry run unless
+  `dryRun` is `false`: the dry run returns the old and new caption and
+  calls no Telegram method, though it may write the caption rewrite to
+  `notify_summaries` so the apply sends the same text. The message and chat
+  come from the `sent` `notifications` row, never the request, and must
+  match the `notify_posts` row; a post sent before 0070 has none and is
+  refused. `editStoryCaption` uses `editMessageText` for a text post (the
+  publisher preview pinned again) and `editMessageCaption` otherwise, sends
+  the Read button again except on an album, and treats "message is not
+  modified" as done. Each edit writes `admin_audit` as
+  `telegram.edit_caption`.
 - A trending story with two or more images uses `sendMediaGroup` (2–10
   photos: the story's own manifest images and video posters). One image
   stays `sendPhoto` so the inline button remains — an album has no

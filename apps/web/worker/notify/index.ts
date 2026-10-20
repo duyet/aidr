@@ -6,6 +6,7 @@ import { reportDeliveryFailure } from "../bugsink.js";
 import { nn } from "../d1-bind.js";
 import { loadEdition, primaryItemId } from "../digest/edition.js";
 import { enSummarySql } from "../en-summary.js";
+import { sentSource } from "../llm.js";
 import {
   canonicalizeMediaImageUrl,
   canonicalizeMediaUrl,
@@ -19,21 +20,29 @@ import {
 } from "../source-diversity.js";
 import { getLocalHourAndDate } from "../subscribe/send.js";
 import { AUDIENCE_TIMEZONE, isActiveHour } from "../time.js";
+import {
+  type KnowledgeRule,
+  loadActiveRules,
+} from "../translation-knowledge.js";
 import { stripEmbeddedChrome } from "../translation-terms.js";
 import type { Env } from "../types.js";
 import { loadDayCard } from "./day-card.js";
 import { facebookEnNotifier } from "./facebook.js";
+import { stripLeadingByline } from "./headline-repeat.js";
 import {
   countSuppression,
   dedupReason,
   eventKey,
+  type Postability,
   postability,
   type SuppressionCounts,
+  translationPostability,
 } from "./post-quality.js";
 import {
   digestItemIds,
   loadPostedEvents,
   recordDigestItems,
+  recordStoryPost,
 } from "./posted-events.js";
 import {
   editDigestReplyMarkup,
@@ -193,8 +202,8 @@ export interface NotifyChannelReason {
   highlightStory?: string;
   /** Trending candidates this run dropped before sending, by reason
    *  (`dedup:canonical`, `dedup:event`, `gate:chrome`, `gate:short`,
-   *  `gate:missing`). A candidate that stays blocked is counted again on
-   *  every run that sees it. */
+   *  `gate:missing`, `gate:draft`, `gate:qa`). A candidate that stays
+   *  blocked is counted again on every run that sees it. */
   suppressed?: SuppressionCounts;
 }
 
@@ -315,7 +324,22 @@ export interface ChannelCopyRow {
   tr_summary: string | null;
   /** The pipeline's explicit language for the source, or null for English. */
   source_lang?: string | null;
+  /** `items.summary` as fetched: what the translator was sent. */
+  raw_summary?: string | null;
+  /** 1 when QA sent this exact translation to human review. */
+  qa_rejected?: number | null;
 }
+
+/** A candidate's copy in one channel language (`channelCopy`). */
+export type ChannelCopy<T extends ChannelCopyRow> = Omit<
+  T,
+  keyof ChannelCopyRow
+> & {
+  title: string;
+  summary: string | null;
+  lang: Lang;
+  translation_source?: StoryPayload["translation_source"];
+};
 
 /**
  * Copy for a channel in that channel's language only, no fallback: the
@@ -333,19 +357,15 @@ export interface ChannelCopyRow {
 export function channelCopy<T extends ChannelCopyRow>(
   row: T,
   lang: Lang
-):
-  | (Omit<T, keyof ChannelCopyRow> & {
-      title: string;
-      summary: string | null;
-      lang: Lang;
-    })
-  | null {
+): ChannelCopy<T> | null {
   const {
     source_title,
     source_summary,
     tr_title,
     tr_summary,
     source_lang,
+    raw_summary: _rawSummary,
+    qa_rejected: _qaRejected,
     ...rest
   } = row;
   const translated = tr_title?.trim();
@@ -362,6 +382,90 @@ export function channelCopy<T extends ChannelCopyRow>(
   return { ...rest, title: source_title, summary: source_summary, lang };
 }
 
+/** The translation gate's input for an EN→VI translation posted on the
+ *  Vietnamese channel, else null: English channels and Vietnamese-source
+ *  copy are not judged by it. */
+function translationGateFor(row: ChannelCopyRow, lang: Lang) {
+  const title = row.tr_title?.trim();
+  if (lang !== "vi" || row.source_lang === "vi" || !title) return null;
+  const sent = sentSource(
+    { i: 0, title: row.source_title, summary: row.raw_summary ?? undefined },
+    false
+  );
+  return {
+    source: { title: sent.title, summary: sent.summary ?? "" },
+    candidate: { title, summary: row.tr_summary?.trim() ?? "" },
+    qaRejected: Boolean(row.qa_rejected),
+  };
+}
+
+/** Active knowledge rules when some row needs the translation gate, else
+ *  none. Each D1 read spends the subrequest budget the sends need. */
+async function gateRules(
+  env: Env,
+  rows: readonly ChannelCopyRow[],
+  lang: Lang
+): Promise<KnowledgeRule[]> {
+  return rows.some((row) => translationGateFor(row, lang))
+    ? loadActiveRules(env)
+    : [];
+}
+
+type GatedCopy<T extends ChannelCopyRow> =
+  | { ok: true; copy: ChannelCopy<T> }
+  | Extract<Postability, { ok: false }>;
+
+/** The channel's copy of a story when it may post, else why not; null when
+ *  the story has no copy in the channel's language. */
+function postableCopy<T extends ChannelCopyRow>(
+  row: T,
+  lang: Lang,
+  rules: KnowledgeRule[]
+): GatedCopy<T> | null {
+  const copy = channelCopy(row, lang);
+  if (!copy) return null;
+  const gate = translationGateFor(row, lang);
+  if (gate) {
+    const verdict = translationPostability(gate, rules);
+    if (!verdict.ok) return verdict;
+    // The translation is of the raw upstream summary, so a Techmeme byline
+    // comes with it. The English channel reads the cleaned `summary_en`.
+    if (copy.summary) copy.summary = stripLeadingByline(copy.summary);
+    copy.translation_source = gate.source;
+  }
+  const verdict = postability(copy);
+  return verdict.ok ? { ok: true, copy } : verdict;
+}
+
+/** A refusal the logs should explain: the draft issues, or the QA reject. */
+function logGateRefusal(
+  channel: string,
+  storyId: string,
+  verdict: Extract<Postability, { ok: false }>
+): void {
+  if (verdict.reason !== "draft" && verdict.reason !== "qa") return;
+  console.warn(
+    JSON.stringify({
+      event: "notify_translation_gate",
+      channel,
+      story: storyId,
+      reason: verdict.reason,
+      issues: verdict.issues ?? [],
+    })
+  );
+}
+
+/** QA sent this exact translation to human review. `review_failed` is not a
+ *  reject: it means the reviewer was down, and counting it would silence the
+ *  channel during an outage. */
+const QA_REJECTED_SQL = `EXISTS (
+                   SELECT 1 FROM translation_review_state s
+                    WHERE s.item_id = i.id AND s.lang = tr.lang
+                      AND s.source_revision = i.source_revision
+                      AND s.candidate_title = tr.title
+                      AND s.candidate_summary = tr.summary
+                      AND s.terminal = 1 AND s.decision = 'human_review')`;
+
 /** Story columns for a post, as `ChannelCopyRow` plus `StoryRow`: the
  *  source copy and the channel-language translation (`channelCopy`). */
 function storyCopySql(lang: Lang): { columns: string; join: string } {
@@ -370,9 +474,11 @@ function storyCopySql(lang: Lang): { columns: string; join: string } {
     columns: `i.id, i.url,
                  i.title AS source_title,
                  ${enSummarySql("i")} AS source_summary,
+                 i.summary AS raw_summary,
                  i.source_lang AS source_lang,
                  tr.title AS tr_title,
                  tr.summary AS tr_summary,
+                 ${QA_REJECTED_SQL} AS qa_rejected,
                  i.image_url, i.media_manifest, i.category,
                  i.points, i.comments, i.rank_score, i.llm_importance`,
     join: `LEFT JOIN translations tr ON tr.item_id = i.id AND tr.lang = '${trLang}'`,
@@ -601,13 +707,33 @@ interface HighlightPick {
 function postableCardStory(
   id: string,
   row: CardStoryRow | undefined,
-  lang: Lang
+  lang: Lang,
+  rules: KnowledgeRule[]
 ): StoryRow | string {
   if (!row) return `story ${id} not found`;
-  const story = channelCopy(row, lang);
-  if (!story) return `story ${id} has no ${lang} copy`;
-  const gate = postability(story);
-  return gate.ok ? story : `story ${id} gate:${gate.reason}`;
+  const gate = postableCopy(row, lang, rules);
+  if (!gate) return `story ${id} has no ${lang} copy`;
+  if (gate.ok) return gate.copy;
+  const issues = gate.issues?.length ? ` (${gate.issues.join("; ")})` : "";
+  return `story ${id} gate:${gate.reason}${issues}`;
+}
+
+/** One story as a post in `lang` would carry it now: current D1 text,
+ *  through the same gates as a send, or why it may not post. */
+export async function loadPostableStory(
+  env: Env,
+  id: string,
+  lang: Lang
+): Promise<StoryPayload | string> {
+  const copy = storyCopySql(lang);
+  const row = await env.DB.prepare(
+    `SELECT ${copy.columns} FROM items i ${copy.join} WHERE i.id = ?`
+  )
+    .bind(id)
+    .first<CardStoryRow>();
+  const rules = row ? await gateRules(env, [row], lang) : [];
+  const story = postableCardStory(id, row ?? undefined, lang, rules);
+  return typeof story === "string" ? story : hydrateStory(story);
 }
 
 /**
@@ -634,9 +760,10 @@ async function pickDigestHighlight(
     .bind(...ids)
     .all<CardStoryRow>();
   const rows = new Map((results ?? []).map((row) => [row.id, row]));
+  const rules = await gateRules(env, results ?? [], lang);
   const passedOver: string[] = [];
   for (const id of ids) {
-    const story = postableCardStory(id, rows.get(id), lang);
+    const story = postableCardStory(id, rows.get(id), lang, rules);
     if (typeof story !== "string") {
       return { story: hydrateStory(story), passedOver };
     }
@@ -691,7 +818,10 @@ export async function sendDigestHighlight(
     return { skipped: pick };
   }
   await recordDelivery(env, notifier.id, target, key, result);
-  if (!result.ok && !result.budgetExhausted) {
+  if (pick) await recordStoryPost(env, notifier.id, key, pick.story.id, result);
+  if (result.withheld) {
+    console.warn(`notify(${notifier.id}) highlight ${result.error}`);
+  } else if (!result.ok && !result.budgetExhausted) {
     const message = `${notifier.id} highlight ${failureLabel(result)}: ${result.error ?? "unknown"}`;
     console.error(`notify(${message})`);
     if (pick) {
@@ -1085,14 +1215,16 @@ export async function dispatchStoryNotifications(
       // Drop what must not post before the diversity pick, so a rejected
       // candidate frees its slot for the next one instead of leaving the
       // run with nothing.
+      const rules = await gateRules(env, results ?? [], notifier.lang);
       const postable = (results ?? []).flatMap((row) => {
-        const copy = channelCopy(row, notifier.lang);
-        if (!copy) return [];
-        const gate = postability(copy);
+        const gate = postableCopy(row, notifier.lang, rules);
+        if (!gate) return [];
         if (!gate.ok) {
           countSuppression(suppressed, `gate:${gate.reason}`);
+          logGateRefusal(notifier.id, row.id, gate);
           return [];
         }
+        const { copy } = gate;
         const event = eventKey(row.source_title, {
           url: row.url,
           sourceLang: row.source_lang ?? null,
@@ -1137,7 +1269,10 @@ export async function dispatchStoryNotifications(
       if (afterQuery) {
         trendingReason = afterQuery;
       } else {
-        for (const story of candidates.slice(0, budget)) {
+        // A withheld story posted nothing, so its slot goes to the next one.
+        let slots = budget;
+        for (const story of candidates) {
+          if (slots === 0) break;
           if (budgetSpent) {
             trendingReason = "send_failed";
             break;
@@ -1145,11 +1280,21 @@ export async function dispatchStoryNotifications(
           if (!(await claimDelivery(env, notifier.id, target, story.id))) {
             // Another dispatch claimed this story first.
             trendingReason = "none_unposted";
+            slots--;
             continue;
           }
           const result = await attemptSend(() =>
             notifier.sendStory(env, story)
           );
+          if (result.withheld) {
+            trendingReason = "none_unposted";
+            console.warn(
+              `notify(${notifier.id}) trending ${story.id} ${result.error}`
+            );
+            await recordDelivery(env, notifier.id, target, story.id, result);
+            continue;
+          }
+          slots--;
           if (result.budgetExhausted) {
             budgetSpent = true;
             trendingReason = "send_failed";
@@ -1170,6 +1315,7 @@ export async function dispatchStoryNotifications(
             trendingReason = "sent";
           }
           await recordDelivery(env, notifier.id, target, story.id, result);
+          await recordStoryPost(env, notifier.id, story.id, story.id, result);
           if (result.ok) sent[notifier.id]++;
         }
       }

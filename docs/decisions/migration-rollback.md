@@ -288,6 +288,20 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0070_notify_posts.sql
+
+- Change: new table `notify_posts` (channel, story id, message id, post
+  kind, caption hash and the caption as sent), written when a story post is
+  `sent`, and new column `notifications.story_id`, set on the digest
+  highlight row. Nothing is seeded or backfilled. Existing rows keep NULL.
+- Risk: none for sends. Both writes are best effort: before the file is
+  applied they log an error and the post still counts as sent. The admin
+  caption edit then finds no recorded post and refuses to edit.
+- Rollback: roll the Worker back first, then
+  `DROP TABLE IF EXISTS notify_posts;`. Export it first if the captions are
+  needed for an audit. `story_id` can stay: older code never reads it. To
+  drop it, `ALTER TABLE notifications DROP COLUMN story_id;`.
+
 ## 0069_hn_popular_without_query.sql
 
 - Change: sets the `hn` row's config to `{"popularMinPoints":20}`,

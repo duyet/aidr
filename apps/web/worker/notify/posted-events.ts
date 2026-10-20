@@ -6,9 +6,11 @@
  */
 
 import type { Lang } from "../../src/lib/types.js";
+import { sha256Hex } from "../hash.js";
 import type { Env } from "../types.js";
 import { loadDayCard } from "./day-card.js";
 import { eventKey, type PostedEvent } from "./post-quality.js";
+import type { SendResult } from "./types.js";
 
 export const POSTED_WINDOW_MS = 48 * 60 * 60 * 1000;
 
@@ -63,6 +65,51 @@ export async function recordDigestItems(
   } catch (error) {
     console.error(
       `notify(${channel}) digest items not recorded for ${date}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+/**
+ * Records what a story send was: the story a highlight row (`key` is
+ * `digest:<date>:top`) posted or tried, in `notifications.story_id`, and for
+ * a sent post its kind and caption in `notify_posts`. A failed write is
+ * logged, never thrown: the post is already out. The cost is a post the
+ * admin caption edit cannot find.
+ */
+export async function recordStoryPost(
+  env: Pick<Env, "DB">,
+  channel: string,
+  key: string,
+  storyId: string,
+  result: SendResult
+): Promise<void> {
+  try {
+    if (key !== storyId) {
+      await env.DB.prepare(
+        "UPDATE notifications SET story_id = ? WHERE channel = ? AND item_id = ?"
+      )
+        .bind(storyId, channel, key)
+        .run();
+    }
+    if (!result.ok || !result.post || !result.messageId) return;
+    await env.DB.prepare(
+      `INSERT OR REPLACE INTO notify_posts
+         (channel, item_id, message_id, kind, caption_hash, caption, sent_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        channel,
+        storyId,
+        result.messageId,
+        result.post.kind,
+        await sha256Hex(result.post.caption),
+        result.post.caption,
+        Date.now()
+      )
+      .run();
+  } catch (error) {
+    console.error(
+      `notify(${channel}) post of ${storyId} not recorded: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }

@@ -32,6 +32,7 @@ import {
   regenerateTldr,
   reprocessToday,
   retryTelegramDigest,
+  reviseStoryCaption,
   sendDayVideoTelegram,
   setDayVideo,
   triggerIngest,
@@ -843,6 +844,29 @@ async function handle(
     segments[1] === "digest"
   ) {
     return Response.json(await retryTelegramDigest(env));
+  }
+
+  // Rebuild a sent story post's caption from current D1 text. A dry run
+  // unless the body says `dryRun: false`.
+  if (
+    method === "POST" &&
+    segments.length === 2 &&
+    segments[0] === "notify" &&
+    segments[1] === "story-caption"
+  ) {
+    const { body, error } = await parseJsonBody(request);
+    if (error) return Response.json({ error }, { status: 400 });
+    const result = await reviseStoryCaption(
+      env,
+      (body ?? {}) as Parameters<typeof reviseStoryCaption>[1]
+    );
+    if (isHandlerError(result)) {
+      return Response.json(
+        { error: result.error },
+        { status: result.status ?? 400 }
+      );
+    }
+    return Response.json(result);
   }
 
   // Read-only Telegram Instant View field gate (#231). It answers "is this

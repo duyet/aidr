@@ -40,6 +40,11 @@
  *     (fallback tags for published stories stored with none; the dry run
  *     reads prod D1 with SELECTs only, neither calls a model; undo with
  *     unmerge --undo <batchId>)
+ *   pnpm --filter @aidr/web agent story-caption <item-id>
+ *     --channel telegram|telegram-en [--apply]
+ *     (rebuilds a sent story post's caption from current D1 text through
+ *     the send gates; the dry run prints the old and new caption, --apply
+ *     edits the post and writes admin_audit)
  *
  * `run` and `rerun` are dry runs unless `--live` is passed. A dry run sends
  * no email, Telegram or owner alert and only previews the TL;DR, but still
@@ -60,6 +65,7 @@ import { fileURLToPath } from "node:url";
 import { latestArchiveDate } from "../src/lib/day-archive";
 import type {
   BackfillTagsResult,
+  StoryCaptionResult,
   UndoUnmergeResult,
   UnmergeResult,
 } from "../worker/admin/handlers";
@@ -99,6 +105,7 @@ import { loadUndo, planUndo, scopeUndoRecords } from "../worker/unmerge/undo";
 import {
   type Args,
   parseArgs,
+  parseStoryCaptionCommand,
   parseUnmergeCommand,
   type UnmergeCommand,
   undoScopeMismatch,
@@ -617,6 +624,31 @@ async function backfillTags(args: Args): Promise<void> {
   );
 }
 
+/** Rebuild a sent Telegram story post's caption from current D1 text. The
+ * Worker refuses text the send gates would refuse. Dry run unless --apply. */
+async function storyCaption(args: Args): Promise<void> {
+  const command = parseStoryCaptionCommand(args);
+  if ("error" in command) fail(command.error);
+  const { itemId, channel, apply } = command;
+  const result = await api<StoryCaptionResult>(
+    "/api/admin/notify/story-caption",
+    {
+      method: "POST",
+      admin: true,
+      body: { channel, itemId, dryRun: !apply },
+    }
+  );
+  const verdict = !result.changed
+    ? "unchanged"
+    : result.edited
+      ? "edited"
+      : "would change (dry run; --apply edits it)";
+  print(
+    result,
+    `story-caption ${itemId} on ${channel}: message ${result.messageId} (${result.kind}) ${verdict}`
+  );
+}
+
 /** Rebuild one date's TL;DR row. Always uses the dated route, which a
  * server without it answers 404, so nothing is written there. */
 async function tldrRegenerate(args: Args): Promise<void> {
@@ -849,9 +881,11 @@ async function main(): Promise<void> {
       return unmerge(args);
     case "backfill-tags":
       return backfillTags(args);
+    case "story-caption":
+      return storyCaption(args);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | diagnose | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --dangling [decisions.json] --model-check [--confirm-llm] [--max-calls N] | unmerge --undo <batchId> [--canonical <id,...>] [--apply] | backfill-tags [--apply]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | diagnose | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --dangling [decisions.json] --model-check [--confirm-llm] [--max-calls N] | unmerge --undo <batchId> [--canonical <id,...>] [--apply] | backfill-tags [--apply] | story-caption <item-id> --channel telegram|telegram-en [--apply]"
       );
   }
 }

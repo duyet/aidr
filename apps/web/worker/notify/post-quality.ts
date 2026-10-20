@@ -10,6 +10,9 @@ import {
   foldDiacritics,
   significantTitleTokens,
 } from "../dedupe.js";
+import { translationDraftIssues } from "../translation-draft-check.js";
+import type { KnowledgeRule } from "../translation-knowledge.js";
+import type { TranslationText } from "../translation-review.js";
 import {
   extractProtectedTerms,
   hasSourceChrome,
@@ -36,9 +39,11 @@ export const EVENT_MIN_SHARED_NAMES = 2;
  *  Rubin delay") clear 0.2 on two tokens; real rewrites share three or more. */
 export const EVENT_MIN_SHARED_TOKENS = 3;
 
-export type GateReason = "chrome" | "short" | "missing";
+export type GateReason = "chrome" | "short" | "missing" | "draft" | "qa";
 
-export type Postability = { ok: true } | { ok: false; reason: GateReason };
+export type Postability =
+  | { ok: true }
+  | { ok: false; reason: GateReason; issues?: string[] };
 
 /** Whether this copy is worth a post of its own. `summary` is the channel's
  *  own-language summary, the text that would be sent. Page chrome is checked
@@ -53,6 +58,37 @@ export function postability(story: {
   if (hasSourceChrome(summary)) return { ok: false, reason: "chrome" };
   if (summary.length < MIN_SUMMARY_CHARS) return { ok: false, reason: "short" };
   return { ok: true };
+}
+
+/** An EN→VI translation as the Vietnamese channel judges it at send time. */
+export interface TranslationGate {
+  /** What the translator was sent (`sentSource`). */
+  source: TranslationText;
+  /** The stored translation, before any display cleanup. */
+  candidate: TranslationText;
+  /** QA sent this exact text to human review. A missing QA marker is not a
+   *  reject: most posts go out before QA reaches them. */
+  qaRejected: boolean;
+}
+
+/** Whether a Vietnamese translation may be posted: QA did not send it to
+ *  human review, and the draft check that runs after translation finds
+ *  nothing in it now, with today's knowledge rules. A draft whose repair
+ *  failed is stored as is, so this is the last place it can be stopped. */
+export function translationPostability(
+  gate: TranslationGate,
+  rules: KnowledgeRule[]
+): Postability {
+  if (gate.qaRejected) return { ok: false, reason: "qa" };
+  const issues = translationDraftIssues(
+    gate.source,
+    gate.candidate,
+    rules,
+    !gate.source.summary
+  );
+  return issues.length > 0
+    ? { ok: false, reason: "draft", issues }
+    : { ok: true };
 }
 
 /** Companies and labs whose names are not capitalized any differently from

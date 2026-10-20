@@ -13,13 +13,17 @@ import {
   primaryThumbnailUrl,
 } from "../media.js";
 import { TELEGRAM_IV_LIMITS } from "../telegram-iv.js";
+import { stripTrailingAttribution } from "../translation-terms.js";
 import type { Env } from "../types.js";
 import { digestCampaign, STORY_CAMPAIGN, withUtm } from "../utm.js";
 import { escapeHtml } from "./alert.js";
 import { digestPage } from "./day-card.js";
-import { fitText, fitWords } from "./fit-text.js";
-import { withoutRestatedHeadline } from "./headline-repeat.js";
-import { captionSummaryFor } from "./story-summary.js";
+import { fitClauses, fitText, fitWords } from "./fit-text.js";
+import {
+  stripLeadingByline,
+  withoutRestatedHeadline,
+} from "./headline-repeat.js";
+import { captionSummaryFor, readsAsSourceCopy } from "./story-summary.js";
 import {
   checkTelegramMedia,
   imageVerdict,
@@ -34,6 +38,7 @@ import {
   type Notifier,
   type SendResult,
   type StoryPayload,
+  type StoryPostKind,
 } from "./types.js";
 import { buildVideoAlbumMedia, planVideoDelivery } from "./video.js";
 
@@ -380,19 +385,115 @@ export async function editDigestReplyMarkup(
   return sendFailure(res);
 }
 
-/** Headlines are one bounded line in the feed; clip before the caption cap. */
-const CAPTION_TITLE_CAP = 300;
+/** A story post's text as `sendStory` sends it: the story with its caption
+ *  summary, the caption and the Read button. */
+export interface PreparedStoryPost {
+  story: StoryPayload;
+  caption: string;
+  replyMarkup: object;
+}
+
+/**
+ * Builds the post for `payload`, or says why it is withheld: a Vietnamese
+ * summary that reads as source copy (a teaser, a byline, "chúng tôi") and
+ * has no clean rewrite is not posted raw.
+ */
+export async function prepareStoryPost(
+  env: Env,
+  payload: StoryPayload
+): Promise<PreparedStoryPost | { withheld: string }> {
+  // The album caption has the least room (it carries the Read link), so
+  // one summary written to that budget fits the photo and text posts too.
+  const caption_summary = await captionSummaryFor(
+    env,
+    payload,
+    storySummaryBudget(payload, albumLinkReserve(payload.lang))
+  );
+  if (
+    !caption_summary &&
+    payload.lang === "vi" &&
+    readsAsSourceCopy(payload.summary ?? "", "vi")
+  ) {
+    return {
+      withheld:
+        "withheld: the summary reads as source copy and has no clean rewrite",
+    };
+  }
+  const story = caption_summary ? { ...payload, caption_summary } : payload;
+  return {
+    story,
+    caption: buildStoryCaption(story),
+    replyMarkup: buildStoryReplyMarkup(story),
+  };
+}
+
+/** The caption a post of `kind` carries: an album has no buttons, so its
+ *  Read link is in the caption. */
+export function storyPostCaption(
+  kind: StoryPostKind,
+  post: PreparedStoryPost
+): string {
+  return kind === "album" ? buildAlbumCaption(post.story) : post.caption;
+}
+
+/**
+ * Rewrites a sent story post's caption in place with the call its kind
+ * needs: `editMessageText` for a text post (its preview pinned again, as
+ * the send pinned it), `editMessageCaption` otherwise. The Read button is
+ * sent again, because an edit without `reply_markup` removes it; an album
+ * has none. Telegram's "message is not modified" means the caption already
+ * matches, so it is a success.
+ */
+export async function editStoryCaption(
+  env: Env,
+  chatId: string,
+  messageId: string,
+  kind: StoryPostKind,
+  post: PreparedStoryPost
+): Promise<SendResult> {
+  const token = env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
+  if (!token) return { ok: false, error: "TELEGRAM_BOT_TOKEN is not set" };
+  const target = { chat_id: chatId, message_id: Number(messageId) };
+  const caption = storyPostCaption(kind, post);
+  const res =
+    kind === "text"
+      ? await callTelegram("story", token, "editMessageText", {
+          ...target,
+          text: caption,
+          parse_mode: "HTML",
+          reply_markup: post.replyMarkup,
+          link_preview_options: storyTextLinkPreview(post.story),
+        })
+      : await callTelegram("story", token, "editMessageCaption", {
+          ...target,
+          caption,
+          parse_mode: "HTML",
+          ...(kind === "album" ? {} : { reply_markup: post.replyMarkup }),
+        });
+  if (res.ok || /message is not modified/i.test(res.description ?? "")) {
+    return { ok: true, messageId, post: { kind, caption } };
+  }
+  return sendFailure(res);
+}
+
+/** A headline reads as one line or two in the feed. Longer ones were wire
+ *  headlines with a dek run in, and pushed the summary out of the caption. */
+const CAPTION_TITLE_CAP = 140;
 /** Gallery photos a story post tries one by one before dropping to text. */
 const GALLERY_PHOTO_ATTEMPTS = 3;
 
-/** The caption title: whole, else whole words. A headline with no space to cut
- *  at (a pasted URL) is the one place a hard cut is the only option. */
-function captionTitle(title: string): string {
-  const clean = title.replace(/\s+/g, " ").trim();
-  return (
+/** The caption title without a trailing credit sentence ("From Bloomberg.",
+ *  "Theo Reuters."; the meta line names the source): whole, else its leading
+ *  clauses, else whole words. A headline with no space to cut at (a pasted
+ *  URL) is the one place a hard cut is the only option. */
+function captionTitle(title: string): { text: string; cut: boolean } {
+  const spaced = title.replace(/\s+/g, " ").trim();
+  const clean = stripTrailingAttribution(spaced) || spaced;
+  const text =
+    fitClauses(clean, CAPTION_TITLE_CAP) ||
     fitWords(clean, CAPTION_TITLE_CAP) ||
-    `${clean.slice(0, CAPTION_TITLE_CAP - 1)}…`
-  );
+    `${clean.slice(0, CAPTION_TITLE_CAP - 1)}…`;
+  return { text, cut: text !== clean };
 }
 
 /** Characters left for the summary: the 1024 caption cap minus the title,
@@ -403,7 +504,7 @@ export function storySummaryBudget(
   story: StoryPayload,
   reservedVisible = 0
 ): number {
-  const title = `<b>🔥 ${escapeHtml(captionTitle(story.title))}</b>`;
+  const title = `<b>🔥 ${escapeHtml(captionTitle(story.title).text)}</b>`;
   const meta = storyMetaLine(story);
   const used =
     title.length + (meta ? 2 + meta.length : 0) + 2 + reservedVisible;
@@ -418,19 +519,22 @@ export function storySummaryBudget(
  *  `captionSummaryFor`) when present, else the channel's own summary cut at a
  *  sentence boundary, else at a word boundary. Leading clauses that only
  *  repeat the title and add no fact are dropped first
- *  (`withoutRestatedHeadline`). Raw text is cut first and escaped
- *  after, so an entity is never split. */
+ *  (`withoutRestatedHeadline`). A summary that only restates a headline the
+ *  caption had to cut stays whole: it is the one place the cut clauses
+ *  still show. Raw text is cut first and escaped after, so an entity is
+ *  never split. */
 export function buildStoryCaption(
   story: StoryPayload,
   reservedVisible = 0
 ): string {
-  const parts = [`<b>🔥 ${escapeHtml(captionTitle(story.title))}</b>`];
+  const title = captionTitle(story.title);
+  const parts = [`<b>🔥 ${escapeHtml(title.text)}</b>`];
   const meta = storyMetaLine(story);
   const summaryCap = storySummaryBudget(story, reservedVisible);
-  const source = withoutRestatedHeadline(
-    story.title,
-    story.caption_summary || story.summary || ""
-  );
+  const text = story.caption_summary || story.summary || "";
+  const source =
+    withoutRestatedHeadline(story.title, text) ||
+    (title.cut ? stripLeadingByline(text) : "");
   if (source && summaryCap > 1) {
     const summary = fitText(source, summaryCap);
     if (summary) parts.push(escapeHtml(summary));
@@ -636,7 +740,13 @@ async function sendVideoStory(
       parse_mode: "HTML",
       reply_markup: replyMarkup,
     });
-    if (res.ok) return { ok: true, messageId: telegramMessageId(res.result) };
+    if (res.ok) {
+      return {
+        ok: true,
+        messageId: telegramMessageId(res.result),
+        post: { kind: "video", caption },
+      };
+    }
     if (res.ambiguous || res.budgetExhausted) return sendFailure(res);
     fallback.push(`sendVideo:${res.description ?? "unknown"}`);
     console.error(
@@ -644,9 +754,10 @@ async function sendVideoStory(
     );
     return null;
   }
+  const albumCaption = buildAlbumCaption(story);
   const res = await callTelegram("story", token, "sendMediaGroup", {
     chat_id: chatId,
-    media: buildVideoAlbumMedia(plan.items, buildAlbumCaption(story)),
+    media: buildVideoAlbumMedia(plan.items, albumCaption),
   });
   if (res.ambiguous || res.budgetExhausted) return sendFailure(res);
   if (!res.ok) {
@@ -656,7 +767,11 @@ async function sendVideoStory(
     );
     return null;
   }
-  return { ok: true, messageId: telegramMessageId(res.result) };
+  return {
+    ok: true,
+    messageId: telegramMessageId(res.result),
+    post: { kind: "album", caption: albumCaption },
+  };
 }
 
 /** `sendMessage` answers once Telegram stores the text. */
@@ -875,16 +990,11 @@ function telegramChannel(options: {
     async sendStory(env: Env, payload: StoryPayload): Promise<SendResult> {
       const token = env.TELEGRAM_BOT_TOKEN as string;
       const chatId = options.chatId(env);
-      // The album caption has the least room (it carries the Read link), so
-      // one summary written to that budget fits the photo and text posts too.
-      const caption_summary = await captionSummaryFor(
-        env,
-        payload,
-        storySummaryBudget(payload, albumLinkReserve(payload.lang))
-      );
-      const story = caption_summary ? { ...payload, caption_summary } : payload;
-      const caption = buildStoryCaption(story);
-      const replyMarkup = buildStoryReplyMarkup(story);
+      const prepared = await prepareStoryPost(env, payload);
+      if ("withheld" in prepared) {
+        return { ok: false, withheld: true, error: prepared.withheld };
+      }
+      const { story, caption, replyMarkup } = prepared;
       const { gallery, dropped } = resolveStoryMedia(story);
 
       const fallback = dropped.map((reason) => `gallery:${reason}`);
@@ -988,7 +1098,11 @@ function telegramChannel(options: {
           for (const photoUrl of gallery.slice(0, GALLERY_PHOTO_ATTEMPTS)) {
             const photo = await sendOne(photoUrl);
             if (photo.ok) {
-              return { ok: true, messageId: telegramMessageId(photo.result) };
+              return {
+                ok: true,
+                messageId: telegramMessageId(photo.result),
+                post: { kind: "photo", caption },
+              };
             }
             if (photo.ambiguous || photo.budgetExhausted) {
               return sendFailure(photo);
@@ -1021,7 +1135,11 @@ function telegramChannel(options: {
             ),
           });
           if (album.ok) {
-            return { ok: true, messageId: telegramMessageId(album.result) };
+            return {
+              ok: true,
+              messageId: telegramMessageId(album.result),
+              post: { kind: "album", caption: albumCaption },
+            };
           }
           // Each fallback below runs only after a definite rejection. An
           // ambiguous result may already be in the channel, so it ends the send.
@@ -1060,7 +1178,11 @@ function telegramChannel(options: {
           link_preview_options: preview,
         });
         if (!msg.ok) return sendFailure(msg);
-        return { ok: true, messageId: telegramMessageId(msg.result) };
+        return {
+          ok: true,
+          messageId: telegramMessageId(msg.result),
+          post: { kind: "text", caption },
+        };
       }
     },
   };

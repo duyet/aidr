@@ -314,9 +314,13 @@ describe("Telegram video delivery", () => {
       env,
       story([{ type: "video", url: VIDEO, poster_url: poster }])
     );
-    expect(result).toEqual({ ok: true, messageId: "5" });
     expect(f.tg()).toHaveLength(1);
     const { url, body } = f.tg()[0];
+    expect(result).toEqual({
+      ok: true,
+      messageId: "5",
+      post: { kind: "video", caption: body?.caption },
+    });
     expect(url).toContain("/sendVideo");
     expect(body).toMatchObject({
       video: VIDEO,
@@ -541,7 +545,11 @@ describe("Telegram video delivery", () => {
     it("sends the one video Telegram accepts, as https, not a photo", async () => {
       const f = stubFetch(origins());
       const result = await telegramNotifier.sendStory(env, story(assets));
-      expect(result).toEqual({ ok: true, messageId: "5" });
+      expect(result).toMatchObject({
+        ok: true,
+        messageId: "5",
+        post: { kind: "video" },
+      });
       expect(f.tg()).toHaveLength(1);
       expect(f.tg()[0].url).toContain("/sendVideo");
       expect(f.tg()[0].body?.video).toBe(`https://${demo2}`);
@@ -677,9 +685,13 @@ describe("Telegram video delivery", () => {
         { type: "image", url: "https://img.example/a.jpg" },
       ])
     );
-    expect(result).toEqual({ ok: true, messageId: "9" });
     expect(methods(f)).toEqual(["sendMediaGroup"]);
     const media = f.tg()[0].body?.media as Array<{ caption?: string }>;
+    expect(result).toEqual({
+      ok: true,
+      messageId: "9",
+      post: { kind: "album", caption: media[0]?.caption },
+    });
     expect(media[0]?.caption).toContain("<a href=");
     expect(media[0]?.caption).toContain("utm_source=telegram");
   });

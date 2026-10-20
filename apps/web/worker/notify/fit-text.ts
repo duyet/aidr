@@ -44,6 +44,23 @@ export function fitWords(value: string, budget: number): string {
   return head ? `${head}…` : "";
 }
 
+/** A clause break: a comma, semicolon or colon, or a spaced dash. */
+const CLAUSE_BREAK = /[,;:](?=\s)|\s[—–-](?=\s)/g;
+
+/** The whole text when it fits, else its leading clauses up to the last
+ *  clause break within `budget` (no ellipsis: the clause is complete), or ""
+ *  when that would keep less than half the budget. */
+export function fitClauses(value: string, budget: number): string {
+  const text = normalizeSpace(value);
+  if (text.length <= budget) return text;
+  let cut = -1;
+  for (const match of text.slice(0, budget + 1).matchAll(CLAUSE_BREAK)) {
+    cut = match.index;
+  }
+  if (cut < budget / 2) return "";
+  return text.slice(0, cut).replace(DANGLING, "");
+}
+
 /** Best fit for `budget`: whole text, else whole sentences, else whole
  *  words with an ellipsis. "" when nothing fits. */
 export function fitText(value: string, budget: number): string {

@@ -117,6 +117,13 @@ function withoutByline(sentence: string): string {
   return sentence.slice(byline.length);
 }
 
+/** The summary without a leading Techmeme byline ("Kashmir Hill / New York
+ *  Times :"). The translator copies it from the source, and the meta line
+ *  already credits the outlet. */
+export function stripLeadingByline(summary: string): string {
+  return withoutByline(normalizeSpace(summary));
+}
+
 /** The sentence minus its leading clauses that restate the headline: the
  *  sentence itself when its first clause adds a fact, "" when every clause
  *  restates. A dropped clause takes the byline with it. */
