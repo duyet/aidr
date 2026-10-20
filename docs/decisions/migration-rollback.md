@@ -342,9 +342,9 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
 - Change: sets the `hn` row's config to `{"popularMinPoints":20}`,
   name/type/config only, never `enabled`. The `query` key goes: HN Algolia
   required every word of it, `OR` included, so it matched nothing (#873).
-- Order: a push to master runs Migrate D1 and Deploy Web Worker together,
-  and the deploy's `check:migrations` fails until every file is applied, so
-  this file lands about a minute before the new Worker uploads. The Worker
+- Order: a push to master runs Migrate D1 first, then Deploy Web Worker
+  (`needs: migrate`), so this file lands before the new Worker uploads and
+  the deploy's `check:migrations` gate passes. The Worker
   live in that minute must be the #874 Worker or later. Its adapter ignores
   `query` and reads this config as the front page plus every story at 20+
   points, which is the intended behavior. A fresh isolate of that Worker
