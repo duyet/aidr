@@ -661,7 +661,9 @@ export async function recordTopicDaily(
 
 /**
  * Promotes recurring entity topics into `learned_keywords` when today's
- * frequency clears the bar, or when growth vs yesterday is clear.
+ * frequency clears the bar, or when growth vs yesterday is clear. Only
+ * topics mentioned this run are touched, and `hit_count` grows by this
+ * run's mentions, so a topic's total matches its real mention count.
  * Returns the keywords newly activated or reinforced this run.
  */
 export async function promoteEmergingTopics(
@@ -670,6 +672,7 @@ export async function promoteEmergingTopics(
     day: string;
     yesterday: string;
     nowMs: number;
+    runCounts: ReadonlyMap<string, number>;
     /** Minimum today's count to consider promotion. */
     minToday?: number;
     /** Minimum today/yesterday ratio when yesterday > 0. */
@@ -697,7 +700,8 @@ export async function promoteEmergingTopics(
   const stmts: D1PreparedStatement[] = [];
 
   for (const row of todayRows ?? []) {
-    if (!isLearnableEntityTopic(row.topic)) continue;
+    const runCount = opts.runCounts.get(row.topic) ?? 0;
+    if (runCount === 0 || !isLearnableEntityTopic(row.topic)) continue;
     const yesterday = yesterdayByTopic.get(row.topic) ?? 0;
     const growing =
       yesterday === 0
@@ -720,7 +724,7 @@ export async function promoteEmergingTopics(
              hit_count = hit_count + excluded.hit_count,
              status = 'active'`
         )
-        .bind(keyword, row.topic, opts.nowMs, opts.nowMs, row.count)
+        .bind(keyword, row.topic, opts.nowMs, opts.nowMs, runCount)
     );
     promoted.push(keyword);
   }
@@ -850,6 +854,7 @@ export async function captureAndLearnTopics(
       day,
       yesterday,
       nowMs,
+      runCounts: counts,
     });
     return { day, promoted };
   } catch (error) {
