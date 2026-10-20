@@ -285,6 +285,12 @@ function logGateRejections(
       `cluster gate: ${model ?? "unknown model"} linked ${existingId.slice(0, 8)} "${existing.get(existingId)?.title ?? ""}" to unrelated ${JSON.stringify(titles)}; kept apart`
     );
   }
+  if (gated.detached.length > 0) {
+    const titles = gated.detached.map((i) => newItems.get(i)?.title ?? `#${i}`);
+    console.warn(
+      `cluster gate: ${model ?? "unknown model"} clustered ${JSON.stringify(titles)} with items they share no evidence with; kept apart`
+    );
+  }
 }
 
 /** Clusters new items with each other and with recently published items

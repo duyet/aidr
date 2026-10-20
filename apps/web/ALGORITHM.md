@@ -1429,9 +1429,19 @@ deterministic pass.
   function syllables and common pairs ("mo hinh", "du lieu", "viet
   nam"). Company names stay evidence: dropping them blocked two correct
   #728 merges that share only "OpenAI". When some new items are in the
-  story's language only those are judged. The rest of the cluster is
-  kept, so correctly paired twins still fold together; a cluster with no
-  new item is dropped. The Laguna era attached paired
+  story's language only those are judged. The gate then splits the
+  model's cluster into the parts evidence holds together: two new items
+  stay together when they share evidence, and an existing id joins only
+  the new items that back it. Correctly paired twins still fold
+  together; a part with no new item is dropped. Until then one backing
+  item carried the whole cluster in, and new-only clusters were never
+  judged: from 2026-10-15 to 10-19 gemma merged "Anthropic cushions its
+  upcoming IPO…" into the Disney/Character.AI story beside a Character.AI
+  twin, a GPT-6-Astra benchmark into the Bank of America/Mythos story, the
+  Iambic IPO twins into the Harvey twins, and an Amazon Bee story into a
+  Cloudflare post. Replayed over the 1,035 merges of 2026-10-10 to 10-21
+  the split cuts 11 items, all different stories, and no correct merge
+  (`detached` in the gate's result, logged per run). The Laguna era attached paired
   huggingnews/marketbrief twins to unrelated published stories. On the
   #728 hand labels (`scripts/cluster-gate-eval.ts`) the gate blocks 70 of
   86 wrong pairs (46 of 56 wrong canonicals fully) and 0 of 17 correct

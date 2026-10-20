@@ -281,7 +281,7 @@ export function isTitleNearDuplicate(a: string, b: string): boolean {
 
 type UfKey = string;
 
-function unionFind() {
+export function unionFind() {
   const parent = new Map<UfKey, UfKey>();
   const find = (key: UfKey): UfKey => {
     const current = parent.get(key) ?? key;
