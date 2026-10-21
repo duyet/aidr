@@ -8,8 +8,19 @@ import { ImageResponse } from "@cf-wasm/og/node";
 import { beforeAll, describe, expect, it } from "vitest";
 import { type Bitmap, decodePng } from "./__fixtures__/png";
 import { syntheticStoryPhoto } from "./__fixtures__/raster";
-import { chooseDayCardLayout, type DayCardStory } from "./day-card-layout";
-import { DAY_OG_HEIGHT, DAY_OG_WIDTH, dayOgCard } from "./day-og";
+import {
+  chooseDayCardLayout,
+  type DayCardStory,
+  layoutStories,
+} from "./day-card-layout";
+import {
+  DAY_OG_HEIGHT,
+  DAY_OG_WIDTH,
+  dayOgCard,
+  fourTilesFit,
+  MIN_HEADLINE_PX,
+} from "./day-og";
+import { drawnHeadlines } from "./day-og-headlines";
 import { loadStoryOgFonts, type StoryOgFontAsset } from "./og-fonts";
 import { storyOgImageFromBytes } from "./story-og";
 import type { Lang } from "./types";
@@ -58,7 +69,11 @@ function stories(pattern: string, lang: Lang): DayCardStory[] {
 }
 
 async function render(pattern: string, lang: Lang, today = false) {
-  const layout = chooseDayCardLayout(stories(pattern, lang), today);
+  const layout = chooseDayCardLayout(
+    stories(pattern, lang),
+    today,
+    fourTilesFit
+  );
   const res = await ImageResponse.async(
     dayOgCard({ date: "2026-10-12", lang, layout }),
     { width: DAY_OG_WIDTH, height: DAY_OG_HEIGHT, fonts }
@@ -116,6 +131,37 @@ describe("dayOgCard renders every layout inside the card", () => {
         // into the margin.
         expect(inkInMargin(bitmap)).toBe(0);
       }
+    },
+    60_000
+  );
+});
+
+describe("a six-story day card reads at phone width", () => {
+  it.each(["en", "vi"] as const)(
+    "%s: every story keeps a headline at MIN_HEADLINE_PX or larger",
+    async (lang) => {
+      const layout = chooseDayCardLayout(
+        stories("PPPPPP", lang),
+        false,
+        fourTilesFit
+      );
+      const drawn = drawnHeadlines(
+        dayOgCard({ date: "2026-10-12", lang, layout }),
+        layoutStories(layout)
+      );
+      expect(drawn.map((h) => h.id)).toEqual([
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+      ]);
+      for (const h of drawn) {
+        expect(h.fontSize).toBeGreaterThanOrEqual(MIN_HEADLINE_PX);
+      }
+      const { bitmap } = await render("PPPPPP", lang);
+      expect(inkInMargin(bitmap)).toBe(0);
     },
     60_000
   );
