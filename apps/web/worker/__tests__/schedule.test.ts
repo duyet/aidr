@@ -383,9 +383,11 @@ describe("LLM step telemetry identity (#189)", () => {
         )
       );
     }
-    expect(workflow).toMatch(
-      /llmStep\(\s*step,\s*env,\s*runId,\s*`backfill-translate-\$\{offset\}`/
-    );
+    // Each backfill-translate slice, the recheck batch too, goes through
+    // translateSlice, the one llmStep call that names it.
+    expect(workflow).toMatch(/llmStep\(\s*step,\s*env,\s*runId,\s*name,/);
+    expect(workflow).toMatch(/run\(\s*`backfill-translate-\$\{offset\}`/);
+    expect(workflow).toContain('run("backfill-translate-recheck"');
     // A finished score batch is its own step, so a later interrupt cannot
     // drop it or record the whole step as zero items scored.
     expect(workflow).toMatch(

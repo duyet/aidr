@@ -1668,8 +1668,14 @@ these checks sends 37 back for repair, the gate after sends 132 (calque
 Backfill also runs this gate on stored rows of the last 2 days
 (`RECHECK_TRANSLATE_WINDOW_SEC`) and re-translates up to 3 flagged rows per
 run (`RECHECK_TRANSLATE_CAP`). The retry replaces the stored row only when
-it has fewer issues. Before this, a row whose repair was skipped, or one
-stored before its rule existed, stayed wrong (#1021).
+it has fewer issues, through the logged upsert, so the old text is in
+`item_content_log`. Each item is re-translated at most once: it is written
+to `translation_rechecks` before the call, and the next run picks the next
+flagged rows. The recheck is one batch, and it is skipped when the run hit
+`BACKFILL_TRANSLATE_CAP` or any translate batch of the run returned rows
+without a title (a 429, a spent credit, a timeout) or threw. Before this, a
+row whose repair was skipped, or one stored before its rule existed, stayed
+wrong (#1021).
 Flagged items in a batch get
 one repair call with their issues as a `fix` list; a repaired row replaces
 the draft only when it has fewer issues, and the repair is skipped under

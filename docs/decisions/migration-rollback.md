@@ -288,6 +288,30 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0075_translation_rechecks.sql
+
+- Change: new table `translation_rechecks` (`item_id` primary key,
+  `attempted_at`). Backfill writes a row when it re-translates a stored VI
+  row the draft check flagged, and never re-checks that item again.
+- Order: the migration must land before the new Worker. Without the table
+  the recheck load fails and backfill skips the recheck for that run; an
+  older Worker never touches the table.
+- Rollback: roll the Worker back first, then
+  `DROP TABLE IF EXISTS translation_rechecks;`. The VI text a recheck
+  replaced is in `item_content_log` (`reason = 'backfill'`, `before_text`).
+
+## 0075_translation_rechecks.sql
+
+- Change: new table `translation_rechecks` (`item_id` primary key,
+  `attempted_at`). Backfill writes a row when it re-translates a stored VI
+  row the draft check flagged, and never re-checks that item again.
+- Order: the migration must land before the new Worker. Without the table
+  the recheck load fails and backfill skips the recheck for that run. An
+  older Worker never touches the table.
+- Rollback: roll the Worker back first, then
+  `DROP TABLE IF EXISTS translation_rechecks;`. The VI text a recheck
+  replaced is in `item_content_log` (`reason = 'backfill'`, `before_text`).
+
 ## 0074_submission_review_attempts.sql
 
 - Change: adds `submissions.review_attempts INTEGER NOT NULL DEFAULT 0`, the
