@@ -46,6 +46,7 @@ import {
   loadActiveRules,
   viSystemPrompt,
 } from "./translation-knowledge.js";
+import type { TranslationText } from "./translation-review.js";
 import {
   KEEP_ENGLISH_PROSE,
   keepVerbatimList,
@@ -1884,6 +1885,23 @@ export async function translateBatch(
   ).map((row) => ({ ...row, model }));
 }
 
+/** The deterministic draft check (translation-draft-check.ts) of one VI
+ * row against the source the translator is sent. */
+export function translatedRowIssues(
+  item: TranslateInput,
+  row: TranslationText,
+  titlesOnly: boolean,
+  rules: KnowledgeRule[]
+): string[] {
+  const sent = sentSource(item, titlesOnly);
+  return translationDraftIssues(
+    { title: sent.title, summary: sent.summary ?? "" },
+    row,
+    rules,
+    sent.summary === undefined
+  );
+}
+
 /** Under this much budget a repair call would only starve later batches. */
 const TRANSLATE_REPAIR_MIN_MS = 25_000;
 
@@ -1901,14 +1919,7 @@ async function repairDrafts(
   const byIndex = new Map(batch.map((item) => [item.i, item]));
   const issuesOf = (row: TranslateResult): string[] => {
     const item = byIndex.get(row.i);
-    if (!item) return [];
-    const sent = sentSource(item, titlesOnly);
-    return translationDraftIssues(
-      { title: sent.title, summary: sent.summary ?? "" },
-      row,
-      rules,
-      sent.summary === undefined
-    );
+    return item ? translatedRowIssues(item, row, titlesOnly, rules) : [];
   };
   const fixes = new Map<number, string[]>();
   for (const row of rows) {
