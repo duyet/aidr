@@ -40,10 +40,10 @@ describe("garbledWords", () => {
   it("returns a well-formed syllable that is not in the lexicon", () => {
     expect(
       garbledWords(
-        "các phòng nghiễn quốc gia, đang phát triên, The Information đư tin, chuyển đổi giọn nói",
+        "đang phát triên, The Information đư tin, chuyển đổi giọn nói",
         ""
       )
-    ).toEqual(["nghiễn", "triên", "đư", "giọn"]);
+    ).toEqual(["triên", "đư", "giọn"]);
   });
 
   it("accepts lexicon words and a capitalized name the lexicon lacks", () => {

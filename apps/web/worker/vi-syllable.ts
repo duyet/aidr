@@ -7,7 +7,8 @@
  * Viet74K (github.com/duyet/vietnamese-wordlist, 73,901 entries): it accepts
  * 144,706 of the 144,977 marked syllables there. The 271 it rejects are
  * loanwords with a consonant cluster ("đrô", "prô", "xtơ") and typos in the
- * list ("cưỡì", "ngườí"). Its marked syllables ship as `VI_MARKED_SYLLABLES`.
+ * list ("cưỡì", "ngườí"). The list itself is not shipped: `VI_MARKED_SYLLABLES`
+ * comes from permissive sources (scripts/gen-vi-lexicon.ts).
  */
 
 import { VI_MARKED_SYLLABLES } from "./vi-lexicon.js";
@@ -175,9 +176,14 @@ const ASCII_RE = /^\p{ASCII}*$/u;
 const isAcronym = (word: string) =>
   /\p{Lu}/u.test(word) && word === word.toUpperCase();
 
-/** Lowercase, so a name the lexicon lacks ("Hồng Kông") passes. */
-const isUnknownSyllable = (word: string) =>
-  word === word.toLowerCase() && !VI_MARKED_SYLLABLES.has(word);
+/** Lowercase, so a name the lexicon lacks ("Hồng Kông") passes. One syllable
+ * only: a toneless loanword ("nơron") is judged by its spelling alone. */
+function isUnknownSyllable(word: string): boolean {
+  if (word !== word.toLowerCase() || VI_MARKED_SYLLABLES.has(word))
+    return false;
+  const { base, tones } = spell(word);
+  return isSyllableBase(base, tones[0]);
+}
 
 /** Words in a Vietnamese draft that no Vietnamese spelling allows: another
  * script ("t合成", "chiến略", "lầnแรก"), a marked word that is not a

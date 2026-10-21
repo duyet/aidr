@@ -343,11 +343,11 @@ describe("tldrBulletIssues", () => {
   it("flags a garbled word so the bullet gets a repair", () => {
     expect(
       tldrBulletIssues(
-        "OpenAI opens a program for national labs.",
-        "OpenAI mở chương trình cho các phòng nghiễn quốc gia.",
+        "OpenAI pushes back on the view that AI takeover is inevitable.",
+        "OpenAI phản đối quan điệm cho rằng AI chiếm quyền là tất yếu.",
         []
       )
-    ).toEqual([`"nghiễn" is not a Vietnamese word; fix the spelling`]);
+    ).toEqual([`"điệm" is not a Vietnamese word; fix the spelling`]);
   });
 
   it("does not flag reduplication, English names, or a single word", () => {
