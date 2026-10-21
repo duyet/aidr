@@ -187,7 +187,7 @@
     D.stories.forEach((S, i) => {
       const sc = $("#story-" + (i + 1));
       const t = S.start;
-      fit($(".head", sc), S.layout === "stat" ? 2 : vertical ? 3 : 4, 40);
+      fit($(".head", sc), S.layout === "stat" || vertical ? 2 : 4, 40);
       fitWidth($(".kicker", sc), 22);
       fit($(".stat", sc), 1, 48);
       // A long (often Vietnamese) paper title would push the abstract out of the card.
