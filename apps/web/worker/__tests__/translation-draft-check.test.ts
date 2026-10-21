@@ -339,6 +339,17 @@ describe("tldrBulletIssues", () => {
     ).toEqual([`"thỏa thỏa" repeats a word; write "thỏa" once`]);
   });
 
+  // #927: a garbled bullet shipped because only item drafts were checked.
+  it("flags a garbled word so the bullet gets a repair", () => {
+    expect(
+      tldrBulletIssues(
+        "OpenAI pushes back on the view that AI takeover is inevitable.",
+        "OpenAI phản đối quan điệm cho rằng AI chiếm quyền là tất yếu.",
+        []
+      )
+    ).toEqual([`"điệm" is not a Vietnamese word; fix the spelling`]);
+  });
+
   it("does not flag reduplication, English names, or a single word", () => {
     expect(
       tldrBulletIssues(
