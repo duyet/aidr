@@ -14,6 +14,7 @@ To add an event, add a row with the product question it answers, call `track()`,
 | `channel_landing` | browser | ga4, posthog | `channel`: `extension`, `telegram`, `email`, `facebook`, `youtube`, `rss`, `other`<br>`page_type`: `home`, `story`, `day`, `week`, `calendar`, `data`, `subscribe`, `about`, `other`<br>`page_path`: pathname<br>`utm_medium?`: code slug<br>`utm_campaign?`: code slug<br>`utm_content?`: code slug | `apps/web/src/components/PageViewTracker.tsx` | Which channel, campaign and slot brings readers in, and to which page? |
 | `nav_click` | browser | ga4, posthog | `to`: `/`, `/weeks`, `/calendar`, `/about`, `/brand`, `/mcp`, `/data`, `/data/algo`, `/data/runs`, `/contribute`, `/release`, `/privacy`, `/terms`, `/sign-in`, `extension`, `telegram`, `github`, `duyet.net`, `anyrouter.dev`<br>`placement`: `header`, `header_menu`, `phone_menu`, `footer`, `subscribe_page` | `apps/web/src/components/NewsFooter.tsx`<br>`apps/web/src/components/header/Brand.tsx`<br>`apps/web/src/components/header/GetAIDRMenu.tsx`<br>`apps/web/src/components/header/HeaderAuth.tsx`<br>`apps/web/src/components/header/PhoneMenu.tsx` | `to` is one of `NAV_TARGETS` (route path like `/weeks`, or a bare name like `github`, never an href or query). Which navigation links get used, from which placement? |
 | `channel_click` | browser | ga4, posthog | `channel`: `extension`, `telegram`, `email`, `facebook`, `youtube`, `rss`, `other`<br>`placement`: `header`, `header_menu`, `phone_menu`, `footer`, `subscribe_page`<br>`lang?`: `vi`, `en` | `apps/web/src/components/NewsFooter.tsx`<br>`apps/web/src/components/header/GetAIDRMenu.tsx`<br>`apps/web/src/components/header/PhoneMenu.tsx`<br>`apps/web/src/components/subscribe/ChromeChannel.tsx`<br>`apps/web/src/components/subscribe/FacebookChannel.tsx`<br>`apps/web/src/components/subscribe/TelegramChannel.tsx` | Which follow or install CTA, in which placement, gets clicked? |
+| `rss_subscribe` | browser | ga4, posthog | `target`: `copy`, `feedly`, `inoreader`, `newsblur`, `feed`<br>`lang`: `vi`, `en` | `apps/web/src/components/subscribe/RssChannel.tsx` | On the RSS tab, which feed language gets copied or opened, and in which reader? |
 | `topic_filter` | browser | ga4, posthog | `tag`: feed label<br>`from`: `nav`, `trending`, `search` | `apps/web/src/components/CategoryNav.tsx`<br>`apps/web/src/components/SearchBox.tsx`<br>`apps/web/src/components/TrendingChips.tsx` | Which topics do readers filter by, and from where? |
 | `search` | browser | ga4, posthog | `query_len`: integer ≥ 0 | `apps/web/src/components/SearchBox.tsx` | Do readers run a full search? |
 | `tldr_toggle` | browser | ga4, posthog | `view`: `image`, `text` | `apps/web/src/components/TldrSection.tsx` | Do readers prefer the image or the text TL;DR? |
@@ -65,7 +66,7 @@ GA4 reports a param only after it is registered as a custom dimension, and regis
 | `channel` | Event | `extension`, `telegram`, `email`, `facebook`, `youtube`, `rss`, `other` | `channel_landing`, `channel_click` |
 | `edge_cache` | Event | `HIT`, `STALE`, `KV`, `MISS`, `none` | `web_vitals` |
 | `from` | Event | `nav`, `trending`, `search` | `topic_filter` |
-| `lang` | Event | `vi`, `en` | `channel_click`, `lang_change` |
+| `lang` | Event | `vi`, `en` | `channel_click`, `rss_subscribe`, `lang_change` |
 | `media` | Event | `thumb`, `image`, `video` | `media_open` |
 | `metric_name` | Event | `LCP`, `CLS`, `INP`, `FCP`, `TTFB` | `web_vitals` |
 | `metric_rating` | Event | `good`, `needs-improvement`, `poor` | `web_vitals` |
@@ -75,6 +76,7 @@ GA4 reports a param only after it is registered as a custom dimension, and regis
 | `pref_value` | Event | `default`, `cream`, `gray`, `dark`, `black`, `light`, `sans`, `serif`, `dense`, `compact`, `medium`, `comfortable`, `relaxed`, `spacious`, `airy`, `8`, `12`, `16`, `on`, `off` | `prefs_change` |
 | `reason` | Event | `invalid`, `rate_limited`, `network`, `server` | `subscribe_error` |
 | `source` | Event | `news`, `extension` | `subscribe_submit`, `subscribe_success`, `subscribe_error` |
+| `target` | Event | `copy`, `feedly`, `inoreader`, `newsblur`, `feed` | `rss_subscribe` |
 | `via` | Event | `row` | `story_view` |
 | `view` | Event | `image`, `text` | `tldr_toggle` |
 

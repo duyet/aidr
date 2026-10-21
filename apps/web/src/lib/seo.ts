@@ -215,9 +215,18 @@ export function feedDiscoveryLink(lang: Lang): HeadLink {
   return {
     rel: "alternate",
     type: "application/rss+xml",
-    title: lang === "vi" ? `${SITE_NAME} (aidr.today)` : SITE_TITLE,
+    title:
+      lang === "vi" ? `${SITE_NAME} (Tiếng Việt)` : `${SITE_NAME} (English)`,
     href: absoluteSiteUrl("/feed.xml", lang),
   };
+}
+
+/** Both feeds, the page's language first, so a reader offers that one by default. */
+export function feedDiscoveryLinks(lang: Lang): HeadLink[] {
+  return [
+    feedDiscoveryLink(lang),
+    feedDiscoveryLink(lang === "vi" ? "en" : "vi"),
+  ];
 }
 
 /**
@@ -647,7 +656,11 @@ export function pageHead(opts: {
       lang: opts.lang,
       siteOgDimensions: true,
     }),
-    links: [{ rel: "canonical", href: url }, SITEMAP_LINK],
+    links: [
+      { rel: "canonical", href: url },
+      ...feedDiscoveryLinks(opts.lang ?? "en"),
+      SITEMAP_LINK,
+    ],
     jsonLd: graph,
     scripts: jsonLdScript(graph),
   };
@@ -664,7 +677,7 @@ export function localizedPageHead(
     ...head,
     links: [
       ...localizedHeadLinks(opts.path, opts.lang),
-      feedDiscoveryLink(opts.lang),
+      ...feedDiscoveryLinks(opts.lang),
       SITEMAP_LINK,
     ],
   };
@@ -694,7 +707,7 @@ export function homepageHead(
     }),
     links: [
       ...localizedHeadLinks("/", lang),
-      feedDiscoveryLink(lang),
+      ...feedDiscoveryLinks(lang),
       SITEMAP_LINK,
     ],
     jsonLd: graph,
@@ -801,7 +814,7 @@ export function articleHead(
         title: "Markdown",
         href: storyMarkdownUrl(item, lang),
       },
-      feedDiscoveryLink(lang),
+      ...feedDiscoveryLinks(lang),
       SITEMAP_LINK,
     ],
     jsonLd: graph,

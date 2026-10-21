@@ -8,16 +8,15 @@ import {
   TabsTrigger,
 } from "@aidr/ui";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Mail, Send } from "lucide-react";
-import { type DeliverTab, parseDeliverTab } from "../../lib/deliver-tab";
+import { ArrowRight } from "lucide-react";
+import {
+  DELIVER_TABS,
+  type DeliverTab,
+  parseDeliverTab,
+} from "../../lib/deliver-tab";
 import { useLang } from "../../lib/lang-context";
 import type { MailFrequency } from "../../lib/mail-frequency";
-import { RSS_FEED_PATH } from "../../lib/site";
-import { ChromeMark } from "../header/ChromeMark";
-import { ChromeChannel } from "./ChromeChannel";
-import { EmailChannel } from "./EmailChannel";
-import { FacebookChannel, FacebookMark } from "./FacebookChannel";
-import { TelegramChannel } from "./TelegramChannel";
+import { DELIVER_CHANNELS } from "./channels";
 
 export function DeliverPage({
   tab,
@@ -48,8 +47,8 @@ export function DeliverPage({
           </h1>
           <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
             {t(
-              "Same ranked feed. Chrome new tab, Telegram, Facebook, or email digest — pick any, or all four.",
-              "Cùng bảng tin đã xếp hạng. Tab mới Chrome, Telegram, Facebook, hoặc email — chọn một, hoặc cả bốn."
+              "Same ranked feed. Chrome new tab, Telegram, Facebook, email digest, or RSS — pick any, or all five.",
+              "Cùng bảng tin đã xếp hạng. Tab mới Chrome, Telegram, Facebook, email hoặc RSS — chọn một, hoặc cả năm."
             )}
           </p>
         </div>
@@ -60,64 +59,41 @@ export function DeliverPage({
         onValueChange={(next) => onTabChange(parseDeliverTab(next))}
         className="w-full"
       >
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-4">
-          <TabsTrigger
-            value="chrome"
-            className="h-11 gap-2 text-sm sm:text-base"
-          >
-            <ChromeMark className="size-4" aria-hidden />
-            Chrome
-          </TabsTrigger>
-          <TabsTrigger
-            value="telegram"
-            className="h-11 gap-2 text-sm sm:text-base"
-          >
-            <Send className="size-4" aria-hidden />
-            Telegram
-          </TabsTrigger>
-          <TabsTrigger
-            value="facebook"
-            className="h-11 gap-2 text-sm sm:text-base"
-          >
-            <FacebookMark className="size-4" />
-            Facebook
-          </TabsTrigger>
-          <TabsTrigger
-            value="email"
-            className="h-11 gap-2 text-sm sm:text-base"
-          >
-            <Mail className="size-4" aria-hidden />
-            Email
-          </TabsTrigger>
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1 sm:grid-cols-5">
+          {DELIVER_TABS.map((id) => {
+            const { label, Icon } = DELIVER_CHANNELS[id];
+            return (
+              <TabsTrigger
+                key={id}
+                value={id}
+                className="h-11 gap-2 text-sm sm:text-base"
+              >
+                <Icon className="size-4" aria-hidden />
+                {label}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
-        <TabsContent value="chrome" className="mt-8">
-          <ChromeChannel lang={lang} />
-        </TabsContent>
-
-        <TabsContent value="telegram" className="mt-8">
-          <TelegramChannel lang={lang} />
-        </TabsContent>
-
-        <TabsContent value="facebook" className="mt-8">
-          <FacebookChannel lang={lang} />
-        </TabsContent>
-
-        <TabsContent value="email" className="mt-8">
-          <EmailChannel lang={lang} initialFrequency={frequency} />
-        </TabsContent>
+        {DELIVER_TABS.map((id) => {
+          const { Panel } = DELIVER_CHANNELS[id];
+          return (
+            <TabsContent key={id} value={id} className="mt-8">
+              <Panel lang={lang} frequency={frequency} />
+            </TabsContent>
+          );
+        })}
       </Tabs>
 
       <p className="max-w-3xl text-sm text-muted-foreground">
         {t("Prefer your own reader? ", "Thích dùng trình đọc riêng? ")}
-        <a
-          href={`${RSS_FEED_PATH}?lang=${lang}`}
-          rel="alternate"
-          type="application/rss+xml"
+        <button
+          type="button"
+          onClick={() => onTabChange("rss")}
           className="font-medium text-foreground underline underline-offset-4"
         >
           {t("Subscribe to the RSS feed", "Đăng ký bản tin RSS")}
-        </a>
+        </button>
         {t(
           " — the same ranked stories, in any reader.",
           " — cùng những tin đã xếp hạng, trong mọi trình đọc."

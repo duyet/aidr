@@ -3,6 +3,7 @@ export const DELIVER_TABS = [
   "telegram",
   "facebook",
   "email",
+  "rss",
 ] as const;
 
 export type DeliverTab = (typeof DELIVER_TABS)[number];

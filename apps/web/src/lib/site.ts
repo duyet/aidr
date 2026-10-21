@@ -106,5 +106,6 @@ export const EXTENSION_URL = `${SITE_URL}${EXTENSION_PATH}`;
  */
 export const RSS_FEED_PATH = "/feed.xml";
 export const RSS_ALIAS_PATH = "/rss.xml";
+export const RSS_PRETTY_PATH = "/feed";
 /** Google News sitemap (`news:` namespace); language-neutral by design. */
 export const NEWS_SITEMAP_PATH = "/news.xml";

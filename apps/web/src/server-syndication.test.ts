@@ -197,6 +197,24 @@ describe("/feed.xml locale contract", () => {
     expect(xml).toContain('?lang=en" />');
   });
 
+  it("follows LOCALE_URLS.md for a bare request: Accept-Language first, then Vietnamese", async () => {
+    const english = await fetchPath("/feed.xml", {
+      headers: { "accept-language": "en-US,en;q=0.9" },
+    });
+    expect(english.headers.get("content-language")).toBe("en");
+    const anonymous = await fetchPath("/feed.xml");
+    expect(anonymous.headers.get("content-language")).toBe("vi");
+    expect(await anonymous.text()).toContain("<language>vi</language>");
+  });
+
+  it("sends the short /feed path to /feed.xml with its query intact", async () => {
+    const response = await fetchPath("/feed?lang=en");
+    expect(response.status).toBe(301);
+    expect(response.headers.get("location")).toBe(
+      "https://aidr.today/feed.xml?lang=en"
+    );
+  });
+
   it("redirects one legacy locale to lang exactly once", async () => {
     const response = await fetchPath("/feed.xml?locale=vi");
     expect(response.status).toBe(307);

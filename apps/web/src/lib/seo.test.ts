@@ -178,6 +178,35 @@ describe("homepageHead", () => {
     }
   });
 
+  it("advertises both feeds on home and story pages, the page's language first", () => {
+    const feeds = (links: ReturnType<typeof homepageHead>["links"]) =>
+      links
+        .filter((link) => link.type === "application/rss+xml")
+        .map((link) => link.href);
+    const story = {
+      id: "abcdef12deadbeef",
+      title: "Stripe buys OpenRouter",
+      summary: null,
+      image_url: null,
+      category: null,
+    };
+    for (const [lang, other] of [
+      ["en", "vi"],
+      ["vi", "en"],
+    ] as const) {
+      const expected = [
+        `${SITE_URL}/feed.xml?lang=${lang}`,
+        `${SITE_URL}/feed.xml?lang=${other}`,
+      ];
+      expect(feeds(homepageHead(lang).links)).toEqual(expected);
+      expect(feeds(articleHead(story, lang).links)).toEqual(expected);
+    }
+    expect(feeds(pageHead({ path: "/about", title: "About" }).links)).toEqual([
+      `${SITE_URL}/feed.xml?lang=en`,
+      `${SITE_URL}/feed.xml?lang=vi`,
+    ]);
+  });
+
   it("keeps the feed link on /subscribe, the page that markets delivery channels", () => {
     const head = localizedPageHead({
       path: "/subscribe",

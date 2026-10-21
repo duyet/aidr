@@ -115,7 +115,9 @@ cookie/Accept-Language selected and `private, no-store` with
 legacy `locale` gets a single 307; invalid, repeated, or conflicting values get
 the bilingual JSON 400. Every `<item><link>` and `<guid isPermaLink="true">` is
 the canonical explicit-locale story permalink — the indexable form — with no
-UTM and no fragment, so the feed never advertises a `noindex` URL. `/feed.json`
+UTM and no fragment, so the feed never advertises a `noindex` URL. `/feed` is a
+path-only permanent 301 to `/feed.xml` that keeps the query unchanged. There is
+no `/vi/feed.xml`: locale lives in `lang`, never in a path prefix. `/feed.json`
 is a thin alias of `/api/feed` and adds no new document format.
 
 `/news.xml` is language-neutral: it is not a locale-aware surface and carries

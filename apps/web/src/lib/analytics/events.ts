@@ -86,6 +86,15 @@ export const NAV_TARGETS = [
 export type NavTarget = (typeof NAV_TARGETS)[number];
 
 const LANGS = ["vi", "en"] as const;
+/** `copy` or a reader id from `RSS_READERS` in lib/rss-subscribe.ts. */
+export const RSS_SUBSCRIBE_TARGETS = [
+  "copy",
+  "feedly",
+  "inoreader",
+  "newsblur",
+  "feed",
+] as const;
+export type RssSubscribeTarget = (typeof RSS_SUBSCRIBE_TARGETS)[number];
 const LINK_PLACEMENTS = [
   "header",
   "header_menu",
@@ -181,6 +190,15 @@ export const EVENTS = {
       channel: dim(oneOf(CHANNELS)),
       placement: dim(oneOf(LINK_PLACEMENTS)),
       lang: opt(dim(oneOf(LANGS))),
+    },
+  },
+  rss_subscribe: {
+    sender: "browser",
+    question:
+      "On the RSS tab, which feed language gets copied or opened, and in which reader?",
+    params: {
+      target: dim(oneOf(RSS_SUBSCRIBE_TARGETS)),
+      lang: dim(oneOf(LANGS)),
     },
   },
   topic_filter: {
