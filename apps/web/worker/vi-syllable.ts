@@ -176,14 +176,9 @@ const ASCII_RE = /^\p{ASCII}*$/u;
 const isAcronym = (word: string) =>
   /\p{Lu}/u.test(word) && word === word.toUpperCase();
 
-/** Lowercase, so a name the lexicon lacks ("Hồng Kông") passes. One syllable
- * only: a toneless loanword ("nơron") is judged by its spelling alone. */
-function isUnknownSyllable(word: string): boolean {
-  if (word !== word.toLowerCase() || VI_MARKED_SYLLABLES.has(word))
-    return false;
-  const { base, tones } = spell(word);
-  return isSyllableBase(base, tones[0]);
-}
+/** Lowercase, so a name the lexicon lacks ("Hồng Kông") passes. */
+const isUnknownSyllable = (word: string) =>
+  word === word.toLowerCase() && !VI_MARKED_SYLLABLES.has(word);
 
 /** Words in a Vietnamese draft that no Vietnamese spelling allows: another
  * script ("t合成", "chiến略", "lầnแรก"), a marked word that is not a
