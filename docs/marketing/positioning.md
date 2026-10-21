@@ -16,7 +16,7 @@ AI;DR reads AI news sources every 30 minutes, removes duplicates, scores each st
 
 - **No editor picks the order.** A fixed pipeline does it in steps (fetch, dedupe, enrich, score, merge, translate, rank). The rank step is pure code, and the rules are public in `ALGORITHM.md`.
 - **Two languages, written separately.** The Vietnamese bullets are restated on their own. If one language is not ready, that channel waits for the next run instead of posting the other language.
-- **One edition, many channels.** The site, email, Telegram, Facebook, and the extension read the same ranked edition.
+- **One edition, many channels.** The site, email, Telegram, Facebook, RSS, and the extension read the same ranked edition.
 - **Open to agents.** The public MCP server lets an agent read the news without an API key.
 - **Open source.** The code and the ranking contract are on GitHub.
 
@@ -35,7 +35,7 @@ AI;DR reads AI news sources every 30 minutes, removes duplicates, scores each st
 | Email from 07:00 in the reader's timezone, 3, 5, or 10 stories, daily or weekly | `ALGORITHM.md` "Overview" publish notes, `apps/web/worker/subscribe/handlers.ts` (`DIGEST_SIZES`) |
 | Telegram in Vietnamese (@aihomnay) and English (@aidr_today), from 08:00 Vietnam time | `ALGORITHM.md` "Overview" publish notes, `apps/web/src/lib/site.ts` |
 | An English Facebook Page post per edition | `ALGORITHM.md` "Overview" publish notes, `apps/web/worker/notify/facebook.ts` |
-| RSS feed | https://aidr.today/feed.xml (`README.md`) |
+| RSS feed in English and Vietnamese, up to 100 stories (100 tin) from the last 3 days, subscribe from `/subscribe?tab=rss` | https://aidr.today/feed.xml?lang=en, https://aidr.today/feed.xml?lang=vi (`src/lib/rss.ts`, `src/components/subscribe/RssChannel.tsx`) |
 | Chrome new tab extension | `apps/extension`, Chrome Web Store link in `README.md` |
 | Public MCP read tools with no auth (`latest_ai_news`, `search_news`, `get_story`, `get_ai_digest`, `get_day_edition`) | `apps/web/worker/mcp/public-tools.ts`, https://aidr.today/mcp |
 | Every story links to its source | https://aidr.today/about, `SITE_DESCRIPTION` in `apps/web/src/lib/site.ts` |

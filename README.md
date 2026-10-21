@@ -28,7 +28,7 @@
 | Telegram (Vietnamese) | [@aihomnay](https://t.me/aihomnay) |
 | Telegram (English) | [@aidr_today](https://t.me/aidr_today) |
 | Email digest | [aidr.today/subscribe](https://aidr.today/subscribe?tab=email) |
-| RSS | [feed.xml](https://aidr.today/feed.xml) |
+| RSS | [aidr.today/subscribe?tab=rss](https://aidr.today/subscribe?tab=rss): [English](https://aidr.today/feed.xml?lang=en), [Vietnamese](https://aidr.today/feed.xml?lang=vi) |
 
 ## Stack
 

@@ -132,6 +132,19 @@ export function NewsFooter() {
               >
                 Telegram
               </a>
+              <Link
+                to="/subscribe"
+                search={{ tab: "rss", lang: navigationLang }}
+                onClick={() =>
+                  track("channel_click", {
+                    channel: "rss",
+                    placement: "footer",
+                  })
+                }
+                className={`block ${linkClass}`}
+              >
+                RSS
+              </Link>
               <a
                 href={GITHUB_URL}
                 target="_blank"

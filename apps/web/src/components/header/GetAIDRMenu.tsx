@@ -14,6 +14,7 @@ import {
   Info,
   Mail,
   Plus,
+  Rss,
   Send,
   Workflow,
 } from "lucide-react";
@@ -148,6 +149,21 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           >
             <Mail aria-hidden />
             Email Subscription
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className={itemClassName}>
+          <Link
+            to="/subscribe"
+            search={{ tab: "rss", lang: navigationLang }}
+            onClick={() =>
+              track("channel_click", {
+                channel: "rss",
+                placement: "header_menu",
+              })
+            }
+          >
+            <Rss aria-hidden />
+            RSS Feed
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

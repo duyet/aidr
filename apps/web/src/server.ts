@@ -68,7 +68,12 @@ import {
 import { handleFeedXmlRequest, RSS_CACHE_CONTROL } from "./lib/rss";
 import { classifyServerFnPath } from "./lib/server-fn-registry";
 import { isServerFnBasePath, isServerFnPath } from "./lib/server-fn-request";
-import { NEWS_SITEMAP_PATH, RSS_ALIAS_PATH, RSS_FEED_PATH } from "./lib/site";
+import {
+  NEWS_SITEMAP_PATH,
+  RSS_ALIAS_PATH,
+  RSS_FEED_PATH,
+  RSS_PRETTY_PATH,
+} from "./lib/site";
 import {
   buildSitemapIndexXml,
   buildSitemapXml,
@@ -274,6 +279,13 @@ const worker = {
         RSS_CACHE_CONTROL,
         async () => handleFeedXmlRequest(request, await resolveDb(env))
       );
+    }
+    // The query rides along unchanged, so the target depends on the URL alone
+    // and the 301 is safe to cache for every reader.
+    if (path === RSS_PRETTY_PATH) {
+      const dest = new URL(request.url);
+      dest.pathname = RSS_FEED_PATH;
+      return Response.redirect(dest.toString(), 301);
     }
     // `/feed.json` is a thin alias of the existing JSON feed: same route
     // handler, same bounds, same document. It adds no new JSON format, so it
