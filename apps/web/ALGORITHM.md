@@ -1665,8 +1665,11 @@ Dry run of 2026-10-19 (`vi-audit --days 7`): 782 rows; the gate before
 these checks sends 37 back for repair, the gate after sends 132 (calque
 58, garble 26, decimal 24, keep 19, echo 18, stutter 16, dollar 7). Over
 30 days: 229 before, 436 after. Each flagged batch costs one repair call.
-Only fresh drafts are judged: backfill re-selects stored rows by length,
-not by this gate, so stored rows are not translated again.
+Backfill also runs this gate on stored rows of the last 2 days
+(`RECHECK_TRANSLATE_WINDOW_SEC`) and re-translates up to 3 flagged rows per
+run (`RECHECK_TRANSLATE_CAP`). The retry replaces the stored row only when
+it has fewer issues. Before this, a row whose repair was skipped, or one
+stored before its rule existed, stayed wrong (#1021).
 Flagged items in a batch get
 one repair call with their issues as a `fix` list; a repaired row replaces
 the draft only when it has fewer issues, and the repair is skipped under

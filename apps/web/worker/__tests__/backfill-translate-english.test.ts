@@ -87,3 +87,105 @@ describe("backfill-translate source without a summary", () => {
     ]);
   });
 });
+
+// Prod be38b11f and 2935c1e5 (#1021): a row stored before its term rule
+// existed, or whose one repair at generation was skipped, stayed wrong for
+// good. Backfill re-checks stored rows and re-translates the flagged ones.
+describe("backfill-translate re-checks stored VI rows", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const engine = {
+    id: "be38b11f",
+    title: "DeepSeek just open-sourced its inference engine",
+    summary: "DeepInfer: High-performance inference engine for DeepSeek models",
+    source_lang: "en",
+    vi_title: "DeepSeek vừa mã nguồn mở engine suy diễn của nó",
+    vi_summary:
+      "DeepInfer: Khung suy diễn hiệu năng cao cho các mô hình DeepSeek",
+  };
+  const clean = {
+    id: "clean",
+    title: "OpenAI ships a new model",
+    summary: "OpenAI released a new model today.",
+    source_lang: "en",
+    vi_title: "OpenAI ra mắt mô hình mới",
+    vi_summary: "OpenAI đã phát hành một mô hình mới hôm nay.",
+  };
+
+  function recheckCtx(stored: (typeof engine)[]) {
+    const written: unknown[][] = [];
+    const prepare = (sql: string) => {
+      const stmt = {
+        sql,
+        args: [] as unknown[],
+        bind: (...args: unknown[]) => {
+          stmt.args = args;
+          return stmt;
+        },
+        all: async () => ({
+          results: sql.includes("JOIN translations") ? stored : [],
+        }),
+        run: async () => ({ meta: { changes: 1 } }),
+        first: async () => null,
+      };
+      return stmt;
+    };
+    const env = {
+      DB: {
+        prepare,
+        batch: async (stmts: { sql: string; args: unknown[] }[]) => {
+          for (const s of stmts)
+            if (s.sql.startsWith("INSERT INTO translations"))
+              written.push(s.args);
+          return [];
+        },
+      },
+    } as unknown as Env;
+    const out: IngestContext = {
+      step,
+      env,
+      runId: "r1",
+      steps: [],
+      mode: LIVE_FULL_RUN,
+    };
+    return { ctx: out, written };
+  }
+
+  it("re-translates a calqued row and stores the fix", async () => {
+    const translate = vi.spyOn(llm, "translateItems").mockResolvedValue([
+      {
+        i: 0,
+        title: "DeepSeek mã nguồn mở inference engine của mình",
+        summary: "DeepInfer: inference engine hiệu năng cao cho DeepSeek",
+        tokens: 1,
+        model: "a/m",
+      },
+    ]);
+    const { ctx: c, written } = recheckCtx([engine, clean]);
+
+    const out = await backfillTranslations(c);
+
+    expect(translate.mock.calls[0][1].map((item) => item.title)).toEqual([
+      engine.title,
+    ]);
+    expect(out.translated).toBe(1);
+    expect(written.map((args) => args[0])).toEqual(["be38b11f"]);
+  });
+
+  it("keeps the stored row when the retry is no better", async () => {
+    vi.spyOn(llm, "translateItems").mockResolvedValue([
+      {
+        i: 0,
+        title: engine.vi_title,
+        summary: engine.vi_summary,
+        tokens: 1,
+        model: "a/m",
+      },
+    ]);
+    const { ctx: c, written } = recheckCtx([engine]);
+
+    await backfillTranslations(c);
+
+    expect(written).toEqual([]);
+  });
+});

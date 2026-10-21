@@ -92,6 +92,26 @@ export function buildMissingTranslationQuery(
           LIMIT ${limit}`;
 }
 
+/** How far back backfill re-checks stored VI rows, and how many flagged
+ * rows it re-translates per run. A row the model cannot fix costs at most
+ * one batch per run until it leaves the window. */
+export const RECHECK_TRANSLATE_WINDOW_SEC = 2 * 86_400;
+export const RECHECK_TRANSLATE_CAP = 3;
+
+/** Stored EN→VI rows of recent published items, to run the draft check
+ * again: a skipped repair or a newer rule leaves a stored row unchecked. */
+export function buildStoredTranslationQuery(): string {
+  return `SELECT i.id, i.title, i.summary, i.source_lang,
+                 t.title AS vi_title, t.summary AS vi_summary
+          FROM items i JOIN translations t
+            ON t.item_id = i.id AND t.lang = 'vi'
+          WHERE i.status = 'published'
+            AND i.source_lang = 'en'
+            AND t.title IS NOT NULL AND t.title != ''
+            AND i.published_at >= ?
+          ORDER BY i.published_at DESC`;
+}
+
 /** Published items that never got an LLM score (`llm_relevance` still null).
  * Merge writes tags onto a canonical and does not set the score columns, so
  * an empty-tags check never sees those rows again. Most-recent first. */
