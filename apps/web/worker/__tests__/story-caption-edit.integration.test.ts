@@ -275,7 +275,7 @@ describe("editStoryCaption", () => {
   } satisfies StoryPayload;
   const post: PreparedStoryPost = {
     story,
-    caption: "<b>🔥 Title</b>\n\nSummary.",
+    caption: "<b>Title</b>\n\nSummary.",
     replyMarkup: { inline_keyboard: [[{ text: "Đọc bài →", url: "u" }]] },
   };
 

@@ -144,11 +144,9 @@ describe("story caption fits without mid-word cuts", () => {
   });
 
   const titleOf = (title: string) =>
-    (
-      visible(buildStoryCaption(story({ title, summary: "" }))).split(
-        "\n\n"
-      )[0] ?? ""
-    ).replace("🔥 ", "");
+    visible(buildStoryCaption(story({ title, summary: "" }))).split(
+      "\n\n"
+    )[0] ?? "";
 
   it("shortens a long title with no clause break at a word boundary", () => {
     const source = "Breaking news about everything ".repeat(30).trim();
@@ -454,7 +452,7 @@ describe("story caption never restates its headline", () => {
           "Nvidia's AI chip shipments in China fell 44% YoY to 678K in H1 2026.",
       })
     );
-    expect(caption.split("\n\n")).toEqual([`🔥 ${title}`, "#Chips  ·  ▲ 2"]);
+    expect(caption.split("\n\n")).toEqual([title, "#Chips  ·  ▲ 2"]);
   });
 
   it("keeps the summary when the title is cut to its first clause", () => {
@@ -462,7 +460,7 @@ describe("story caption never restates its headline", () => {
     // share slid", so the summary is the only place the 34% share appears.
     const caption = visible(buildStoryCaption(nvidia));
     expect(caption.split("\n\n")).toEqual([
-      "🔥 IDC: Nvidia's AI chip shipments in China fell 44% YoY to 678K in H1 2026",
+      "IDC: Nvidia's AI chip shipments in China fell 44% YoY to 678K in H1 2026",
       nvidia.summary,
       "#Chips  ·  ▲ 2",
     ]);
