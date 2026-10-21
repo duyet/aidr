@@ -215,7 +215,6 @@ describe("#189 run-attempt identity persistence", () => {
       }
     );
 
-    // /api/system/run-attempts?run_id=…
     const attempts = await loadRunAttempts(db, RUN_ID);
     expect(attempts.status).toBe("ready");
     expect(attempts.attempts.map((attempt) => attempt.model)).toEqual([
@@ -225,7 +224,6 @@ describe("#189 run-attempt identity persistence", () => {
     expect(attempts.attempts.every((a) => a.runId === RUN_ID)).toBe(true);
     expect(attempts.attempts[1]?.errorStatus).toBe(502);
 
-    // Models used for the expanded run row.
     const runs = attachLlmCallsToRuns(
       [
         {

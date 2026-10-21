@@ -46,7 +46,6 @@ export const SOURCE_SKIP_REASONS: readonly SourceSkipReason[] = [
   "disabled",
 ];
 
-/** One source's outcome in one run, plus the stale verdict derived from it. */
 export interface RunSourceHealth {
   fetched: number;
   scored: number;
@@ -463,7 +462,8 @@ export function getModelChains(env: {
 
 /** Read SQL shared by the aggregate /api/system and the granular
  * /api/system/* endpoints. A db.batch() aborts entirely if one statement
- * fails; the deploy gate guarantees every table and column named here. */
+ * fails; the deploy gate requires every migration from 0023 up, and the
+ * older ones apply before them, so no table or column named here is probed. */
 const SQL = {
   itemsCount: "SELECT COUNT(*) AS c FROM items",
   translationsCount: "SELECT COUNT(*) AS c FROM translations",
@@ -840,7 +840,6 @@ async function loadLlmSummariesForRuns(
   return out;
 }
 
-/** Merge aggregated summaries onto the run rows they belong to. */
 function attachLlmSummariesToRuns(
   runs: WorkflowRunRow[],
   summaries: Map<string, RunLlmSummary>
@@ -868,8 +867,6 @@ export interface RunAttemptsResult {
   truncated: boolean;
 }
 
-/** Overview tiles + catalog: counts, token headline, run recert, digest
- * date — one batch, one round-trip. */
 export interface SystemOverview {
   totals: SystemStats["totals"];
   tokens: { total: number; avgPerItem: number };

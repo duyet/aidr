@@ -415,11 +415,9 @@ describe("planNewItemWrite", () => {
     expect(absorbed.item.comments).toBe(7);
     expect(absorbed.item.sources).toHaveLength(2);
     expect(absorbed.score?.tags).toEqual(["llm", "agents"]);
-    // More engagement + corroboration must rank the canonical higher.
     expect(absorbed.rank).toBeGreaterThan(alone.rank);
     expect(absorbed.llmTokens).toBe(15);
     expect(absorbed.writeSources).toBe(true);
-    // Stored tags are the canonical topics, not the scorer's raw tags.
     expect(alone.score?.tags).toEqual(["llm"]);
   });
 

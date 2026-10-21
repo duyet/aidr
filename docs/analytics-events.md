@@ -86,13 +86,15 @@ GA4 reports a param only after it is registered as a custom dimension, and regis
 | --- | --- | --- | --- | --- |
 | Email digest | `email` | `digest` | `digest-YYYY-MM-DD`, `weekly-YYYY-Www` | `lead`, `s2`..., `cta`, `header`, `view-in-browser`, `lang-switch`, `video`, `channel-*`, `footer-data`, `footer-subscribe` |
 | Email welcome, notes | `email` | `welcome`, `notes` | same as medium | `cta`, `header`, `body`, `footer-*` |
-| Telegram (posts, day videos, release videos) | `telegram` | `social` | `digest-YYYY-MM-DD`, `story`, `release-vX.Y.Z` | `button`, `link`, `preview` |
-| Facebook (posts, Reels) | `facebook` | `social` | `digest-YYYY-MM-DD` or `story` | `post`, `reel` |
+| Telegram (posts, day videos, release videos) | `telegram` | `social` | `digest-YYYY-MM-DD`, `story`, `release-vX.Y.Z` | `button-<id8>`, `link-<id8>` on a story post, `button`, `link`, `preview` on a digest |
+| Facebook (posts, Reels) | `facebook` | `social` | `digest-YYYY-MM-DD` or `story` | `post-<id8>` on a story post, `post`, `reel` |
 | YouTube descriptions | `youtube` | `video` | `digest-YYYY-MM-DD`, `weekly-YYYY-Www`, `release-vX.Y.Z` | `long`, `short` |
 | RSS feed | `rss` | `feed` | `story` | `item`, `channel` |
 | Extension | `extension` | `newtab` | `aidr_ext` | placement (`brand`, `tldr`, ...) |
 
-`social` is GA4's default-channel-group medium for Organic Social, and `video` with source `youtube` is Organic Video. Email keeps the mail kind as medium, and the edition is the campaign. The RSS `<guid>` stays the untagged permalink, so readers do not re-show items. Public API, MCP and `llms.txt` permalinks stay untagged: they are canonical ids that agents cite, not links a reader clicks in a channel.
+`social` is GA4's default-channel-group medium for Organic Social, and `video` with source `youtube` is Organic Video. Email keeps the mail kind as medium, and the edition is the campaign. The RSS `<guid>` stays the untagged permalink, so readers do not re-show items. A story post's `utm_content` ends in `<id8>`, the first 8 characters of the story id (the id in its permalink). The platform's own post id does not exist until the post is sent, so `notifications.message_id` maps (channel, story) to it. Per-post story opens are `item_reads` for that channel and story, the same rows the Top stories card shows. `post_stats` holds the reach and clicks Facebook reports per post and day (`worker/notify/facebook-insights.ts`); Telegram views cannot be read with the Bot API and YouTube has no Worker credential, so neither is filled.
+
+Public API, MCP and `llms.txt` permalinks stay untagged: they are canonical ids that agents cite, not links a reader clicks in a channel.
 
 ## GA4 Enhanced Measurement
 

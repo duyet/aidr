@@ -96,7 +96,6 @@ function logoLink(): HTMLElement {
   });
 }
 
-/** The href the real `Link` renders for the logo. */
 function logoHref(): string {
   return logoLink().getAttribute("href") ?? "";
 }
@@ -143,7 +142,6 @@ describe("Brand home navigation", () => {
       expect(href).toBe(`/?lang=${navigationLang}`);
       expect(href).not.toContain("payload");
       expect(href).not.toContain("locale");
-      // Exactly one search param, so nothing rides along invisibly.
       expect([...new URLSearchParams(href.split("?")[1] ?? "").keys()]).toEqual(
         ["lang"]
       );

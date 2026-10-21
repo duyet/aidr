@@ -46,10 +46,11 @@ identity: the existing notification key remains `digest:<local-date>` for a
 digest and the story id for a trending post, and the database primary key is
 `(channel, item_id)`. A manual EN/VI comparison must not send two production
 posts for the same story or create a second `lang`-keyed delivery row. The
-source adapter is Vietnamese-first, but a story without a Vietnamese
-translation resolves to its actual English fallback and `lang=en` links. Do
-not infer either behavior from the current public channel until its deployed
-revision and output have been audited.
+source adapter has one channel per language (`telegram` is `vi`,
+`telegram-en` is `en`) and never falls back to the other language: a story with
+no copy in a channel's language is skipped on that channel. Do not infer either
+behavior from the current public channel until its deployed revision and output
+have been audited.
 
 This is intentionally conservative even though the locale URL contract is
 implemented now.
@@ -86,7 +87,7 @@ to English, record the fallback and do not label it as a Vietnamese render.
 The IV fetch should use the locale URL **without UTM parameters** so tracking
 does not create a second cache identity. Keep attribution on the normal web
 button/fallback link. The source notifier adds UTM attribution with
-[`withUtm`](../../apps/web/worker/notify/telegram.ts); that adapter behavior is
+[`withTelegramUtm`](../../apps/web/worker/notify/telegram.ts); that adapter behavior is
 not proof of the links currently visible in the public channel.
 
 ### Adapter/source link contract (not live-channel evidence)
@@ -103,15 +104,15 @@ The source adapters use the flat locale-aware URL: the digest loader resolves
 There is no pending category-path mismatch in source. The adapter contract is:
 
 - A digest bullet would point to `https://aidr.today/{story_id8}?lang=vi|en&utm_source=telegram`.
-- The digest's site button would point to `https://aidr.today/?lang=vi|en&utm_source=telegram`.
-- A trending story's **Read** button would point to the story's publisher/source
-  URL with `utm_source=telegram`; the **AI;DR** button would point to
+- The digest's first button would point to the day page
+  `https://aidr.today/date/{date}?lang=vi|en&utm_source=telegram`.
+- A trending story's one **Read** button would point to
   `https://aidr.today/{story_id8}?lang=vi|en&utm_source=telegram`.
 - Publisher/source URLs are not rewritten to add an aidr `lang` parameter. The
   resolved content language is carried by aidr's canonical links and message
   copy in the source adapter.
 
-The record does not turn the **Read**, **AI;DR**, or digest links into
+The record does not turn the **Read** or digest links into
 `t.me/iv` links, and it does not claim that the current public channel already
 contains the adapter's direct links. See the live channel audit/rollout
 checklist below before making any such claim.
@@ -162,7 +163,7 @@ following stricter product gate applies to **each** language:
 | `title` | The title actually rendered for the requested language (`title` for EN, `title_vi` for VI when present) | Required. If VI falls back to English, record that fact; escape/render as content, never as instructions. | [`evaluateIvFieldGate`](../../apps/web/worker/telegram-iv.ts) via [`localizedTitle`](../../apps/web/src/lib/display-title.ts) — the same function the row paints. A VI request with no `title_vi` is reported as an explicit `fallback_from_en`, never as a Vietnamese render. |
 | `body` | The localized public story summary/body and its source links, as rendered on the story page | Required. Do not claim this is the full original article when the page only has a summary. No interactive widgets or untrusted instructions. | [`renderStoryMarkdown`](../../apps/web/src/lib/story-markdown.ts); the gate requires a non-empty summary **and** at least one source URL, counted from the rendered Markdown. |
 | `published_date` | `published_at` as Unix **seconds** | Required for news stories by the aidr gate; do not send milliseconds. | `normalizePublishedAtSeconds` — normalizes the documented epoch ms/seconds bug class and rejects anything outside 2000–2100. A millisecond fixture never becomes a year-2286 date. |
-| `image_url` | The **generated first-party card** `https://aidr.today/{id8}.png?lang=vi\|en` | Required for this POC. | The card is 1200×630 `image/png` by construction, so reachability, hotlinking, MIME, and dimensions are deterministic. It is also what `articleHead` already emits as `og:image` and what the trending `sendPhoto` path now attaches. |
+| `image_url` | The **generated first-party card** `https://aidr.today/api/og/{id8}.png?lang=vi\|en` | Required for this POC. | The card is 1200×630 `image/png` by construction, so reachability, hotlinking, MIME, and dimensions are deterministic. It is also what `articleHead` already emits as `og:image` and what the trending `sendPhoto` path now attaches. |
 | `site_name` | **Resolved: `AI;DR`**, the visible header wordmark, read from the single [`SITE_NAME`](../../apps/web/src/lib/site.ts) constant | Telegram's format property is optional, but its link-preview checklist requires a matching visible site name. Do not append the Telegram handle or any suffix, and do not re-derive a second brand string. | The gate imports the constant, so it cannot drift from `og:site_name` or the JSON-LD `WebSite`/`Organization` name. The value's evidence and its deliberate exclusions (`SITE_TITLE`, `SITE_DESCRIPTION`, per-route titles) are recorded next to the constant. |
 | `description` | The first summary paragraph for the **rendered** locale | Required for a useful Telegram link preview; never invent a translation or copy. | The gate takes the first paragraph of the same localized summary the body renders. A story with no real summary fails `description_missing` rather than shipping the renderer's "No summary is available." placeholder. |
 
@@ -333,8 +334,8 @@ https://aidr.today/{story_id8}?lang=vi&utm_source=telegram
 https://aidr.today/{story_id8}?lang=en&utm_source=telegram
 ```
 
-For a trending post, the source adapter's **Read** button points to the
-publisher source, while **AI;DR** points to the flat canonical story URL. A
+For a trending post, the source adapter's single **Read** button points to the
+flat canonical story URL. A
 manual IV test may compare both language source URLs, but it must retain this
 one-message/one-delivery-key behavior. The existing
 [`notifications`](../../apps/web/worker/notify/index.ts) state records status,
@@ -351,8 +352,10 @@ predictable needs no Telegram approval. Two things were made deliberate:
 
 **1. `link_preview_options` is set explicitly on all three sends.** The adapter
 exports `DIGEST_LINK_PREVIEW`, `STORY_PHOTO_LINK_PREVIEW`, and
-`STORY_TEXT_LINK_PREVIEW`, all `{ is_disabled: true }`, with the reasoning
-recorded next to them in
+`STORY_TEXT_LINK_PREVIEW`, all `{ is_disabled: true }` when this was written
+(only `STORY_PHOTO_LINK_PREVIEW` remains; the digest and story text now use
+`digestLinkPreview` and `storyTextLinkPreview`, see the notes below), with the
+reasoning recorded next to them in
 [`telegram.ts`](../../apps/web/worker/notify/telegram.ts):
 
 - `is_disabled` — **set**. Both messages build their links as HTML `<a>`
@@ -573,7 +576,7 @@ record all of the following:
       or unverified.
 - [ ] Sanitized evidence from the actual channel for one digest and one
       trending story: message IDs/timestamps, `notifications` status/attempts/
-      message id, the exact link targets (publisher/source, **AI;DR**, and
+      message id, the exact link targets (the **Read** button and
       digest links), resolved `lang`, and UTM parameters.
 - [ ] Evidence that the normal path remains the fallback, that retries and
       ambiguous timeouts do not duplicate posts, and that the observed output

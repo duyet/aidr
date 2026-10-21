@@ -13,7 +13,6 @@ import type { StoryOgImage } from "./story-og";
 
 export interface DayCardStory {
   id: string;
-  /** 1-based position in the digest list. */
   rank: number;
   title: string;
   kicker: string;
@@ -23,9 +22,7 @@ export interface DayCardStory {
 export type DayCardLayout =
   /** No story yet. `pending`: today, the first stories are still coming. */
   | { variant: "empty"; pending: boolean }
-  /** One story, as a poster: photo beside it when there is one. */
   | { variant: "single"; lead: DayCardStory }
-  /** Two stories, both with photos, side by side. */
   | { variant: "split"; pair: readonly [DayCardStory, DayCardStory] }
   /** Photos are scarce: the lead with its photo, the rest as a ruled list. */
   | { variant: "lead-list"; lead: DayCardStory; rows: DayCardStory[] }
@@ -42,13 +39,11 @@ export type DayCardLayout =
 
 export type DayCardVariant = DayCardLayout["variant"];
 
-/** What the choice depends on. */
 export interface DayCardShape {
   stories: number;
   /** Leading stories, in order, whose photo loaded. Only this run can take
    *  photo slots without reordering the list. */
   photoRun: number;
-  /** The day is today and may still gain its first stories. */
   today: boolean;
 }
 
@@ -64,10 +59,20 @@ export function dayCardShape(
   };
 }
 
+/** Whether these headlines fit whole in the 2×2 tile block. The renderer
+ *  owns the geometry, so the layout only asks. */
+export type FourTilesFit = (tiles: readonly DayCardStory[]) => boolean;
+
 /** Photo tiles beside the mosaic lead: a 2×2 block when four photos follow
- *  the lead, else one row of two. Three in a row is too narrow to read. */
-function mosaicTileCount(photoRun: number): number {
-  return photoRun - 1 >= 4 ? 4 : 2;
+ *  the lead and their headlines fit it, else one row of two. Three in a row
+ *  is too narrow to read. A story that loses its tile moves to the rows, in
+ *  the same order. */
+function mosaicTileCount(
+  rest: readonly DayCardStory[],
+  photoRun: number,
+  fourTilesFit: FourTilesFit
+): number {
+  return photoRun - 1 >= 4 && fourTilesFit(rest.slice(0, 4)) ? 4 : 2;
 }
 
 interface VariantRule {
@@ -75,11 +80,11 @@ interface VariantRule {
   when: (shape: DayCardShape) => boolean;
   assign: (
     stories: readonly DayCardStory[],
-    shape: DayCardShape
+    shape: DayCardShape,
+    fourTilesFit: FourTilesFit
   ) => DayCardLayout;
 }
 
-/** First match wins. */
 export const DAY_CARD_VARIANTS: readonly VariantRule[] = [
   {
     variant: "empty",
@@ -104,8 +109,8 @@ export const DAY_CARD_VARIANTS: readonly VariantRule[] = [
   {
     variant: "mosaic",
     when: (s) => s.photoRun >= 3,
-    assign: ([lead, ...rest], s) => {
-      const tileCount = mosaicTileCount(s.photoRun);
+    assign: ([lead, ...rest], s, fourTilesFit) => {
+      const tileCount = mosaicTileCount(rest, s.photoRun, fourTilesFit);
       return {
         variant: "mosaic",
         lead,
@@ -123,15 +128,14 @@ export const DAY_CARD_VARIANTS: readonly VariantRule[] = [
 
 export function chooseDayCardLayout(
   stories: readonly DayCardStory[],
-  today: boolean
+  today: boolean,
+  fourTilesFit: FourTilesFit
 ): DayCardLayout {
   const shape = dayCardShape(stories, today);
   const rule = DAY_CARD_VARIANTS.find((r) => r.when(shape));
-  // The last rule always matches.
-  return (rule as VariantRule).assign(stories, shape);
+  return (rule as VariantRule).assign(stories, shape, fourTilesFit);
 }
 
-/** Every story on the card, in reading order: lead, tiles, then rows. */
 export function layoutStories(layout: DayCardLayout): DayCardStory[] {
   switch (layout.variant) {
     case "empty":

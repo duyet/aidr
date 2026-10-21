@@ -17,7 +17,6 @@ import {
   serverFnIdOf,
 } from "./server-fn-request";
 
-/** Start's generated resolver: id -> bound handler, or a throw when unknown. */
 type ServerFnResolver = (
   id: string,
   access: { origin: "client" }
@@ -82,7 +81,6 @@ export async function isRegisteredServerFnId(
 }
 
 export type ServerFnPathVerdict =
-  /** A well-shaped, registered function id. */
   | "ok"
   /** Structurally impossible id: no id, a nested path, or unsafe characters. */
   | "malformed"

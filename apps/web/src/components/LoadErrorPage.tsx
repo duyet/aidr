@@ -2,7 +2,6 @@ import { useLocation } from "@tanstack/react-router";
 import { useLang } from "../lib/lang-context";
 import { type LoadErrorSubject, loadErrorCopy } from "../lib/load-error";
 
-/** A failed read, not a missing page: offer a reload of the same URL. */
 export function LoadErrorPage({ subject }: { subject: LoadErrorSubject }) {
   const lang = useLang();
   const href = useLocation({ select: (l) => l.href });

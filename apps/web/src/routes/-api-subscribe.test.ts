@@ -34,7 +34,6 @@ const ITEMS = [1, 2, 3, 4, 5].map((n) => ({
   image_url: `https://cdn.example/photo-${n}.jpg`,
 }));
 
-/** Minimal D1: one snapshot row, item images, and a log of bound writes. */
 function fakeDb() {
   const writes: { sql: string; args: unknown[] }[] = [];
   const statement = (sql: string, args: unknown[] = []) => ({
@@ -106,7 +105,7 @@ describe("POST /api/subscribe", () => {
     expect(res.status).toBe(200);
     expect(insert?.sql).toContain("mail_format = excluded.mail_format");
     // A re-subscribe must overwrite the old layout, not keep it.
-    expect(insert?.args.slice(-4)).toEqual([10, "large", "daily", 1]);
+    expect(insert?.args.slice(-5)).toEqual([10, "large", "sans", "daily", 1]);
   });
 
   it("stores the weekly frequency chosen in the form", async () => {
@@ -135,7 +134,18 @@ describe("POST /api/subscribe", () => {
       email: "reader@aidr.today",
       mail_format: "huge",
     });
-    expect(insert?.args.at(-3)).toBe("design");
+    expect(insert?.args.at(-4)).toBe("design");
+  });
+
+  it("stores the headline font chosen in the form, sans when unknown", async () => {
+    const serif = await post({
+      email: "reader@aidr.today",
+      mail_font: "serif",
+    });
+    expect(serif.insert?.sql).toContain("mail_font = excluded.mail_font");
+    expect(serif.insert?.args.at(-3)).toBe("serif");
+    const bad = await post({ email: "reader@aidr.today", mail_font: "comic" });
+    expect(bad.insert?.args.at(-3)).toBe("sans");
   });
 });
 
@@ -152,7 +162,7 @@ describe("GET /api/subscribe/preview", () => {
   it("passes the layout and story count to the renderer", async () => {
     const large = (await preview("lang=en&n=3&format=large")).html;
     // Story 1 is the lead (one large image); the other two get their own.
-    expect(large.match(/class="mail-lead-image"/g)?.length).toBe(1);
+    expect(large.match(/class="m-thumb"/g)?.length).toBe(1);
     expect(large.match(/class="mail-large"/g)?.length).toBe(2);
     expect(large).not.toContain("Story 4");
 
@@ -161,8 +171,7 @@ describe("GET /api/subscribe/preview", () => {
     expect(none).not.toContain("cdn.example");
 
     const thumbs = (await preview("lang=en&format=design")).html;
-    expect(thumbs.match(/class="mail-lead-image"/g)?.length).toBe(1);
-    expect(thumbs.match(/class="m-thumb"/g)?.length).toBe(4);
+    expect(thumbs.match(/class="m-thumb"/g)?.length).toBe(5);
   });
 
   it("is the mail the send path renders, byte for byte", async () => {

@@ -420,7 +420,6 @@ export function withPrivateSetCookie(response: Response): Response {
   return out;
 }
 
-/** Apply the same route contract to HTTP responses after route rendering. */
 export async function withRouteIndexabilityHeaders(
   request: Request,
   response: Response | Promise<Response>

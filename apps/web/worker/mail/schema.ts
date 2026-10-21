@@ -1,7 +1,7 @@
 let schemaReady = false;
 
 /**
- * Adds the `subscribers` columns no numbered migration creates: 0019 and 0059
+ * Adds `subscribers` columns: 0019 and 0059
  * are no-ops because SQLite has no ADD COLUMN IF NOT EXISTS and production
  * already held these columns from this function. Every other mail table and
  * column comes from migrations 0015 and 0029.
@@ -16,12 +16,12 @@ export async function ensureMailSchema(db: D1Database): Promise<void> {
     "ALTER TABLE subscribers ADD COLUMN last_weekly_sent TEXT",
     // Weekday (0 = Sunday … 6) a weekly subscriber gets the digest, local.
     "ALTER TABLE subscribers ADD COLUMN weekly_day INTEGER NOT NULL DEFAULT 1",
+    // Headline font (src/lib/mail-font.ts); migration 0071 adds it too.
+    "ALTER TABLE subscribers ADD COLUMN mail_font TEXT NOT NULL DEFAULT 'sans'",
   ]) {
     try {
       await db.prepare(sql).run();
-    } catch {
-      // Column already present.
-    }
+    } catch {}
   }
   schemaReady = true;
 }

@@ -184,7 +184,6 @@ function advance(seconds: number) {
   vi.setSystemTime(Date.now() + seconds * 1000);
 }
 
-/** A render whose completion the test controls. */
 function gate(body: () => Promise<Response>) {
   let release = () => {};
   const released = new Promise<void>((r) => {

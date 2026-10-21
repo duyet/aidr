@@ -16,13 +16,6 @@ import {
 
 /** Bounded story media for the reader.
  *
- * The bounded, typed `items.media_manifest` (#160 / migration 0024) already
- * carries ordered, canonicalized image/video assets all the way to the client,
- * but nothing under `apps/web` read it and no `<video>` existed, so "one story
- * can show more than one thumbnail" had no user-visible effect on the web.
- * This renders exactly that: the manifest's assets, in the manifest's order,
- * from the manifest's own URLs.
- *
  * Invariants this component must not break:
  * - No URL is re-derived, re-sanitized, or CDN-rewritten. The manifest string
  *   is what lands in `src` / `poster`. The reader adds no network call and no
@@ -46,7 +39,6 @@ export type VisibleMediaAsset =
       index: number;
     };
 
-/** A poster is only usable if it passes the same image gate as an asset. */
 function gatedPoster(poster: unknown): string | null {
   if (typeof poster !== "string" || !poster) return null;
   return mediaIdentityKey("image", poster) ? poster : null;
@@ -110,7 +102,6 @@ export function visibleMediaAssets(
   return visible;
 }
 
-/** 16:9 box reserved before load, matching the `aspect-[16/9]` class. */
 const FRAME_WIDTH = 640;
 const FRAME_HEIGHT = 360;
 const FRAME_CLASS =

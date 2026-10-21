@@ -14,6 +14,7 @@ import {
   READER_VOTE_CAP,
   READER_VOTE_GAIN,
   rankScore,
+  rankScoreForRow,
   rankScoreWithoutBreaking,
   rankSignals,
   readerEngagement,
@@ -711,5 +712,57 @@ describe("story kind weights (2026-10-16 replay, base+K4)", () => {
     expect(buildRerankQuery()).toMatch(
       /SELECT[\s\S]*\bcategory\b[\s\S]*FROM items/
     );
+  });
+});
+
+describe("rankScoreForRow", () => {
+  const row = {
+    published_at: Math.floor(NOW / 1000) - 3 * 3600,
+    llm_importance: 7,
+    llm_quality: 6,
+    category: "Models",
+    source_id: "hn",
+    points: 120,
+    comments: 40,
+    merged_members: "[]",
+    vote_net: 2,
+  };
+
+  it("scores the stored columns with the row's own cluster signals", () => {
+    expect(rankScoreForRow(row, NOW)).toBe(
+      rankScore({
+        importance: 7,
+        quality: 6,
+        publishedAt: row.published_at * 1000,
+        now: NOW,
+        ...rowRankSignals(row),
+        category: "Models",
+      })
+    );
+  });
+
+  it("scores unscored columns as 5/5 with no category weight", () => {
+    const bare = {
+      ...row,
+      llm_importance: null,
+      llm_quality: null,
+      category: null,
+    };
+    expect(rankScoreForRow(bare, NOW)).toBe(
+      rankScoreForRow(row, NOW, { importance: 5, quality: 5, category: "" })
+    );
+  });
+
+  it("lets fresh scores replace the stored ones", () => {
+    const fresh = { importance: 9, quality: 9, category: "Funding" };
+    expect(rankScoreForRow(row, NOW, fresh)).not.toBe(
+      rankScoreForRow(row, NOW)
+    );
+    expect(
+      rankScoreForRow(
+        { ...row, llm_importance: 9, llm_quality: 9, category: "Funding" },
+        NOW
+      )
+    ).toBe(rankScoreForRow(row, NOW, fresh));
   });
 });

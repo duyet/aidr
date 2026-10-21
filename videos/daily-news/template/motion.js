@@ -65,12 +65,45 @@
     });
   }
 
+  // Clamp a block to the whole lines that fit above its clipping parent's bottom padding, so the clip never cuts a
+  // line through; hide it when not one line fits. Offsets, not rects, so a transform on the way in is ignored.
+  function clampLines(el) {
+    if (!el) return;
+    measured(el, () => {
+      const box = el.offsetParent;
+      // A layout that hides the card (a statement) has nothing to clamp.
+      if (!box) return;
+      const lh = parseFloat(getComputedStyle(el).lineHeight);
+      const room =
+        box.clientHeight -
+        parseFloat(getComputedStyle(box).paddingBottom) -
+        el.offsetTop;
+      const lines = Math.floor(room / lh);
+      if (lines < 1) el.style.display = "none";
+      else if (el.offsetHeight > lines * lh + 1)
+        Object.assign(el.style, {
+          display: "-webkit-box",
+          webkitBoxOrient: "vertical",
+          webkitLineClamp: String(lines),
+          overflow: "hidden",
+        });
+    });
+  }
+
   function build() {
     const tl = gsap.timeline({ paused: true });
     const vertical = D.fmt === "9x16";
-    // The day's variants (looks/, serialized by build.mjs) get the timeline, their data and these helpers.
     const L = window.__LOOK;
+    // A hit element turns fully legible on its hit key: a linear fade of D.fade from its start (choreography.mjs FADE).
+    const fadeIn = (el, at) =>
+      tl.fromTo(
+        el,
+        { opacity: 0 },
+        { opacity: 1, duration: D.fade, ease: "none" },
+        at
+      );
     const H = {
+      fadeIn,
       $,
       $$,
       fit,
@@ -80,11 +113,10 @@
       LAND,
       F,
       vertical,
-      IN: 0.32,
-      OUT: 0.4,
+      IN: D.stinger.in,
+      OUT: D.stinger.out,
     };
 
-    // ---------- intro ----------
     const I = D.intro;
     const intro = $("#intro");
     tl.fromTo(
@@ -101,7 +133,6 @@
     );
     L.intro(tl, I, H);
 
-    // ---------- chrome ----------
     tl.fromTo(
       ".bar",
       { y: -30, opacity: 0 },
@@ -124,7 +155,7 @@
     const half = crawl.scrollWidth / 2; // crawl content is written twice for a seamless loop
     if (saved === null) chrome.removeAttribute("style");
     else chrome.setAttribute("style", saved);
-    const speed = vertical ? 150 : 170; // px per second
+    const speed = vertical ? 150 : 170;
     const crawlDur = D.chrome.dur;
     tl.fromTo(
       crawl,
@@ -149,15 +180,15 @@
       0
     );
 
-    // ---------- stories ----------
     D.stories.forEach((S, i) => {
       const sc = $("#story-" + (i + 1));
       const t = S.start;
-      fit($(".head", sc), S.layout === "stat" ? 2 : vertical ? 3 : 4, 40);
+      fit($(".head", sc), S.layout === "stat" || vertical ? 2 : 4, 40);
       fitWidth($(".kicker", sc), 22);
       fit($(".stat", sc), 1, 48);
       // A long (often Vietnamese) paper title would push the abstract out of the card.
       fit($(".paper .ptitle", sc), vertical ? 3 : 2, 48);
+      clampLines($(".paper .abs", sc));
 
       tl.fromTo(
         $(".cam", sc),
@@ -182,16 +213,26 @@
         t
       );
 
-      // The day's choreography: media reveal, image drift, rank badge, copy lines.
+      // An image far from its box's shape (a wide social card in a narrower box) shows whole over a blurred copy
+      // of itself: a cover crop plus the drift would cut through the text baked into it.
+      const frames = $$(".media .frame", sc);
+      const pic = $(".media .pic", sc);
+      const box = pic
+        ? measured(pic, () => pic.offsetWidth / pic.offsetHeight)
+        : 1;
+      frames.forEach((fr) => {
+        const ar = parseFloat($("img", fr).dataset.ar);
+        if (ar && Math.min(ar / box, box / ar) < 0.9) fr.classList.add("fit");
+      });
+
       L.choreography(tl, S, sc, H);
-      const imgs = $$(".media img", sc);
-      imgs.forEach((img, k) => {
+      frames.forEach((fr, k) => {
         if (k > 0)
           tl.fromTo(
-            img,
+            fr,
             { opacity: 0 },
             { opacity: 1, duration: 0.5, ease: "power1.inOut" },
-            t + (S.dur * k) / imgs.length
+            t + (S.dur * k) / frames.length
           );
       });
       const paper = $(".paper", sc);
@@ -233,27 +274,26 @@
       });
       tl.fromTo(
         $(".stat", sc),
-        { y: 40, opacity: 0, scale: 0.92 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: LAND },
-        S.statAt
+        { y: 40, scale: 0.92 },
+        { y: 0, scale: 1, duration: 0.6, ease: LAND },
+        S.statIn
       );
+      fadeIn($(".stat", sc), S.statIn);
       tl.fromTo(
         $(".stat-label", sc),
         { y: 24, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.5, ease: LAND },
-        S.statAt + 4 * F
+        S.statIn + 4 * F
       );
-      // The credit is left out when the story has no source.
       if ($(".src", sc))
         tl.fromTo(
           $(".src", sc),
           { opacity: 0 },
           { opacity: 1, duration: 0.5, ease: "power1.out" },
-          S.statAt + 0.4
+          S.statIn + 0.4
         );
     });
 
-    // ---------- outro ----------
     const O = D.outro;
     const outro = $("#outro");
     tl.fromTo(
@@ -264,10 +304,11 @@
     );
     tl.fromTo(
       $(".biglogo", outro),
-      { scale: 0.6, opacity: 0 },
-      { scale: 1, opacity: 1, duration: 0.6, ease: LAND },
-      O.start + 0.3
+      { scale: 0.6 },
+      { scale: 1, duration: 0.6, ease: LAND },
+      O.logoIn
     );
+    fadeIn($(".biglogo", outro), O.logoIn);
     tl.fromTo(
       $(".title", outro),
       { y: 50, opacity: 0 },
@@ -287,10 +328,9 @@
       O.start + 1.0
     );
 
-    // ---------- stingers ----------
     D.wipes.forEach((W, i) => L.transition(tl, $("#wipe-" + i), W, H));
 
-    // ---------- captions: active word gets the marker ----------
+    // Yellow belongs to the headline marker alone: a yellow caption word beside it made two focal points.
     D.caps.forEach((C, ci) => {
       const line = $("#cap-" + ci + " .line");
       tl.fromTo(
@@ -301,9 +341,9 @@
       );
       $$(".w", line).forEach((w, k) => {
         const W = C.words[k];
-        tl.set(w, { backgroundColor: "#f5c518" }, W.s);
+        tl.set(w, { color: "#0a0a0a" }, W.s);
         if (k < C.words.length - 1)
-          tl.set(w, { backgroundColor: "#f7f7f5" }, C.words[k + 1].s);
+          tl.set(w, { color: "#7a7a7a" }, C.words[k + 1].s);
       });
     });
 

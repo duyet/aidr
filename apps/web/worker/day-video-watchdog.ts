@@ -10,6 +10,7 @@ import { AIDR_REPO, github } from "./owner-alerts.js";
 import { getLocalHourAndDate } from "./subscribe/send.js";
 import { AUDIENCE_TIMEZONE } from "./time.js";
 import type { Env } from "./types.js";
+import { shiftDate } from "./weekly-digest.js";
 
 /**
  * The daily video must reach YouTube (16:9 and Short), the Facebook Reel and
@@ -32,6 +33,9 @@ const DAILY_REEL_WORKFLOW = "daily-reel.yml";
 export const DRY_RUN_TITLE = "(dry run)";
 const TIMEOUT_MS = 10_000;
 
+/** Days before the checked date that the missing streak looks back over. */
+export const STREAK_LOOKBACK_DAYS = 6;
+
 const DAY_VIDEO_TARGETS = {
   youtube: "YouTube 16:9",
   short: "YouTube Short",
@@ -42,13 +46,24 @@ const DAY_VIDEO_TARGETS = {
 } as const;
 type DayVideoTarget = keyof typeof DAY_VIDEO_TARGETS;
 
+/** What a rerun cannot fix once a target stays missing: its credentials. */
+const TARGET_CREDENTIALS: Record<DayVideoTarget, string> = {
+  youtube: "YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN",
+  short: "YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN",
+  youtubeVi: "YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN",
+  facebook: "FACEBOOK_PAGE_ID, FACEBOOK_PAGE_ACCESS_TOKEN",
+  telegram: "TELEGRAM_BOT_TOKEN, TELEGRAM_EN_CHAT_ID",
+  telegramVi: "TELEGRAM_BOT_TOKEN, TELEGRAM_VI_CHAT_ID",
+};
+
 /**
  * What a target's record says. `unsure` (a run of the date is still going, or
  * the lookup failed) waits for the window's last check.
  */
 type TargetState =
   | { state: "posted" }
-  | { state: "missing" | "unsure"; why: string };
+  | { state: "unsure"; why: string }
+  | { state: "missing"; why: string; days: number };
 type DayVideoChecks = Record<DayVideoTarget, TargetState>;
 
 export type DayVideoVerdict =
@@ -62,6 +77,33 @@ const RUNNING: TargetState = {
   why: "a daily-reel run of this date is still running",
 };
 
+/** Consecutive days ending at `date` with no post, looking back
+ *  `STREAK_LOOKBACK_DAYS` days; `postedDates` holds the days that did post. */
+function missingDays(postedDates: Set<string>, date: string): number {
+  let days = 1;
+  while (
+    days <= STREAK_LOOKBACK_DAYS &&
+    !postedDates.has(shiftDate(date, -days))
+  )
+    days++;
+  return days;
+}
+
+function missing(
+  why: string,
+  postedDates: Set<string>,
+  date: string
+): TargetState {
+  return { state: "missing", why, days: missingDays(postedDates, date) };
+}
+
+function streakNote(days: number): string {
+  if (days < 2) return "";
+  return days > STREAK_LOOKBACK_DAYS
+    ? ` (missing ${days}+ days in a row)`
+    : ` (missing ${days} days in a row)`;
+}
+
 export function rerunCommand(date: string): string {
   return `gh workflow run ${DAILY_REEL_WORKFLOW} -R ${AIDR_REPO} -f dry_run=false -f date=${date}`;
 }
@@ -74,6 +116,8 @@ export function dayVideoConfirmedKey(date: string): string {
 export function reelMarker(date: string): string {
   return `aidr.today/date/${date}`;
 }
+
+const REEL_DAY_LINK = /aidr\.today\/date\/(\d{4}-\d{2}-\d{2})/g;
 
 /** Inside the window, until today is confirmed or a run in today's window
  *  raised the alert. */
@@ -123,6 +167,10 @@ function dayVideoVerdict(
   );
   if (open.length === 0) return { kind: "confirmed" };
   if (!last && open.every((t) => t.state === "unsure")) return { kind: "wait" };
+  const stuck = open.filter((t) => t.state === "missing" && t.days >= 2);
+  const credentials = [
+    ...new Set(stuck.map((t) => TARGET_CREDENTIALS[t.target])),
+  ];
   const telegramLangs = open.flatMap((t) =>
     t.target === "telegram"
       ? ["en"]
@@ -138,8 +186,16 @@ function dayVideoVerdict(
       title: "Daily video not posted",
       detail: `${date}: ${open.map((t) => DAY_VIDEO_TARGETS[t.target]).join(", ")} missing`,
       evidence: [
-        ...open.map((t) => `${DAY_VIDEO_TARGETS[t.target]}: ${t.why}`),
+        ...open.map(
+          (t) =>
+            `${DAY_VIDEO_TARGETS[t.target]}: ${t.why}${t.state === "missing" ? streakNote(t.days) : ""}`
+        ),
         runLine,
+        ...(credentials.length
+          ? [
+              `A rerun cannot fix a target that stays missing day after day. Check its credentials first (GitHub Actions secrets for ${DAILY_REEL_WORKFLOW}): ${credentials.join("; ")}`,
+            ]
+          : []),
         `Rerun (idempotent, skips what is posted): ${rerunCommand(date)}`,
         `Rerun before local midnight: a past date needs a committed videos/daily-news/editions/${date}/edition.json`,
         ...(telegramLangs.length
@@ -164,21 +220,29 @@ async function checkDayPage(
   date: string
 ): Promise<Pick<DayVideoChecks, "youtube" | "short" | "youtubeVi">> {
   try {
-    const row = await env.DB.prepare(
-      "SELECT youtube_id, short_id, youtube_id_vi FROM day_videos WHERE date = ?"
+    const { results } = await env.DB.prepare(
+      "SELECT date, youtube_id, short_id, youtube_id_vi FROM day_videos WHERE date >= ? AND date <= ?"
     )
-      .bind(date)
-      .first<{
+      .bind(shiftDate(date, -STREAK_LOOKBACK_DAYS), date)
+      .all<{
+        date: string;
         youtube_id: string | null;
         short_id: string | null;
         youtube_id_vi: string | null;
       }>();
-    const onPage = (id: string | null | undefined): TargetState =>
-      id ? POSTED : { state: "missing", why: "not on the day page" };
+    const rows = results ?? [];
+    const onPage = (
+      column: "youtube_id" | "short_id" | "youtube_id_vi"
+    ): TargetState => {
+      const dates = new Set(rows.filter((r) => r[column]).map((r) => r.date));
+      return dates.has(date)
+        ? POSTED
+        : missing("not on the day page", dates, date);
+    };
     return {
-      youtube: onPage(row?.youtube_id),
-      short: onPage(row?.short_id),
-      youtubeVi: onPage(row?.youtube_id_vi),
+      youtube: onPage("youtube_id"),
+      short: onPage("short_id"),
+      youtubeVi: onPage("youtube_id_vi"),
     };
   } catch (error) {
     const failed = lookupFailed(error);
@@ -192,6 +256,7 @@ async function checkFacebookReel(env: Env, date: string): Promise<TargetState> {
     if (!pageId || !token)
       return {
         state: "missing",
+        days: 1,
         why: "FACEBOOK_PAGE_ID or FACEBOOK_PAGE_ACCESS_TOKEN is not set on the Worker",
       };
     const res = await fetch(
@@ -208,15 +273,14 @@ async function checkFacebookReel(env: Env, date: string): Promise<TargetState> {
     const body = (await res.json()) as {
       data?: { description?: unknown }[];
     };
-    const marker = reelMarker(date);
-    const found = (body.data ?? []).some(
-      (reel) =>
-        typeof reel.description === "string" &&
-        reel.description.includes(marker)
-    );
-    return found
+    const dates = new Set<string>();
+    for (const reel of body.data ?? [])
+      if (typeof reel.description === "string")
+        for (const [, day] of reel.description.matchAll(REEL_DAY_LINK))
+          if (day) dates.add(day);
+    return dates.has(date)
       ? POSTED
-      : { state: "missing", why: `no Page Reel mentions ${marker}` };
+      : missing(`no Page Reel mentions ${reelMarker(date)}`, dates, date);
   } catch (error) {
     return lookupFailed(error);
   }
@@ -230,15 +294,19 @@ async function checkTelegram(
 ): Promise<Pick<DayVideoChecks, "telegram" | "telegramVi">> {
   try {
     const { results } = await env.DB.prepare(
-      "SELECT channel FROM day_video_posts WHERE date = ?"
+      "SELECT date, channel FROM day_video_posts WHERE date >= ? AND date <= ?"
     )
-      .bind(date)
-      .all<{ channel: string }>();
-    const recorded = new Set((results ?? []).map((row) => row.channel));
-    const onChannel = (channel: DayVideoPostChannel): TargetState =>
-      recorded.has(channel)
+      .bind(shiftDate(date, -STREAK_LOOKBACK_DAYS), date)
+      .all<{ date: string; channel: string }>();
+    const rows = results ?? [];
+    const onChannel = (channel: DayVideoPostChannel): TargetState => {
+      const dates = new Set(
+        rows.filter((r) => r.channel === channel).map((r) => r.date)
+      );
+      return dates.has(date)
         ? POSTED
-        : { state: "missing", why: "no post recorded for this date" };
+        : missing("no post recorded for this date", dates, date);
+    };
     return {
       telegram: onChannel("telegram-en"),
       telegramVi: onChannel("telegram-vi"),

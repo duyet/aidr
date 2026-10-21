@@ -19,11 +19,6 @@ import * as llm from "../llm.js";
 import { tldrSnapshotDate } from "../tldr.js";
 import type { Env } from "../types.js";
 
-/**
- * Minimal in-memory D1 fake, tailored to the exact statements
- * worker/admin/handlers.ts issues. Not a general SQL engine — routes on
- * the fixed set of query shapes used by this module.
- */
 class FakeD1 {
   items = new Map<string, Record<string, unknown>>();
   sources = new Map<string, Record<string, unknown>>();
@@ -90,7 +85,7 @@ class FakeD1 {
 
     if (
       sql.startsWith(
-        "SELECT id, title, summary, published_at, source_lang, source_id, points, comments, url AS signal_url, COALESCE(merged.members"
+        "SELECT id, title, summary, published_at, source_lang, items.tags, fetched_at, source_id, points, comments, url AS signal_url, COALESCE(merged.members"
       )
     ) {
       const [since] = args as [number];
@@ -313,6 +308,8 @@ class FakeD1 {
         category,
         tags,
         rank_score,
+        gateRelevance,
+        threshold,
         id,
       ] = args;
       const row = this.items.get(id as string);
@@ -325,6 +322,12 @@ class FakeD1 {
           tags,
           rank_score,
         });
+        if (
+          row.status === "published" &&
+          (gateRelevance as number) < (threshold as number)
+        ) {
+          row.status = "rejected";
+        }
       }
       return { success: true };
     }
@@ -777,6 +780,21 @@ describe("pushItems", () => {
     }
   });
 
+  it("stores fetched_at as epoch seconds", async () => {
+    const nowMs = 1_786_847_892_625;
+    vi.spyOn(Date, "now").mockReturnValue(nowMs);
+    try {
+      const env = makeEnv();
+      const db = env.DB as unknown as FakeD1;
+      await pushItems(env, { url: "https://example.com/fetched", title: "t" });
+      expect(
+        db.items.get(await sha256Hex("https://example.com/fetched"))?.fetched_at
+      ).toBe(1_786_847_892);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
   it("rejects items missing url or title", async () => {
     const env = makeEnv();
     const result = await pushItems(env, { url: "", title: "no url" });
@@ -848,7 +866,7 @@ describe("getLlmCalls", () => {
     for (let i = 0; i < n; i++) {
       db.llmCalls.push({
         id: i + 1,
-        ts: i, // ascending insert order, oldest first
+        ts: i,
         task: "score",
         model: "test-model",
         ok: 1,
@@ -1008,6 +1026,30 @@ describe("reprocessToday", () => {
     const row = db.items.get("item-1");
     expect(row?.llm_importance).toBe(8);
     expect(row?.category).toBe("Models");
+  });
+
+  it("hides a story the rescore finds below the relevance threshold", async () => {
+    const env = makeEnv();
+    const todaySec = Math.floor(Date.now() / 1000);
+    seedPublished(env, "keep", todaySec);
+    seedPublished(env, "drop", todaySec);
+    vi.spyOn(llm, "scoreItems").mockImplementation(async (_env, items) =>
+      items.map(({ i }) => ({
+        i,
+        relevance: i === 0 ? 0.9 : 0.1,
+        importance: 6,
+        quality: 6,
+        category: "Models",
+        tags: [],
+        tokens: 1,
+      }))
+    );
+
+    await reprocessToday(env, { steps: ["score"] });
+
+    const db = env.DB as unknown as FakeD1;
+    expect(db.items.get("keep")?.status).toBe("published");
+    expect(db.items.get("drop")?.status).toBe("rejected");
   });
 
   it("upserts translations by item id via reprocess without duplicates", async () => {
@@ -1332,7 +1374,6 @@ describe("MCP server", () => {
     const res = await handleMcpRequest(req, env);
     const json = (await res.json()) as any;
     const names: string[] = json.result.tools.map((t: any) => t.name);
-    // The six operator tools are unchanged since the registry split (#227).
     for (const adminTool of [
       "push_items",
       "list_sources",
@@ -1344,7 +1385,6 @@ describe("MCP server", () => {
     ]) {
       expect(names).toContain(adminTool);
     }
-    // An admin additionally gets the anonymous read surface, once each.
     for (const readTool of [
       "latest_ai_news",
       "search_news",

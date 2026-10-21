@@ -319,7 +319,6 @@ describe("buildDigestEmail", () => {
     expect(html).toContain("Sunday's 3 AI stories in 1 minute.");
     expect(html).not.toContain(`opacity:0;mso-hide:all">${long}`);
     // The lead's image is unsafe, so no lead image; story 3 keeps its photo.
-    expect(html).not.toContain("mail-lead-image");
     expect(html).toContain(`src="${photo}"`);
     expect(html).not.toContain("javascript:");
     expect(html).not.toContain("127.0.0.1");
@@ -338,9 +337,7 @@ describe("buildDigestEmail", () => {
       "en",
       "tok"
     ).html;
-    expect(lead).toContain(
-      'class="mail-lead-image" src="https://cdn.example/photos/claude-stage.jpg"'
-    );
+    expect(lead).toContain('src="https://cdn.example/photos/claude-stage.jpg"');
     const card = buildDigestEmail(
       "2026-08-16",
       [
@@ -356,9 +353,7 @@ describe("buildDigestEmail", () => {
       "en",
       "tok"
     ).html;
-    expect(card).not.toContain("mail-lead-image");
     expect(card).not.toContain("/api/og/date/");
-    // The one CTA goes to the day page.
     expect(card).toContain('href="https://aidr.today/date/2026-08-16?lang=en');
     expect(card).toContain("See all stories on aidr.today");
     expect(card).not.toContain("Read more");
@@ -371,7 +366,6 @@ describe("buildDigestEmail", () => {
       "en",
       "tok"
     );
-    expect(html).not.toContain("mail-lead-image");
     expect(html).not.toContain("/api/og/date/");
     expect(html).not.toContain("not a url");
   });
@@ -480,9 +474,7 @@ describe("digestBulletsWithImages", () => {
     expect(hydrated[0]?.image_url).toBe("https://news.example/og/card.png");
     expect(hydrated[1]?.image_url).toBe("https://cdn.example/photos/room.jpg");
     const { html } = buildDigestEmail("2026-09-29", hydrated, "en", "tok");
-    expect(html).not.toContain(
-      'class="mail-lead-image" src="https://news.example/og/'
-    );
+    expect(html).not.toContain('src="https://news.example/og/');
     expect(html).toContain('src="https://cdn.example/photos/room.jpg"');
   });
 });
@@ -528,7 +520,7 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
               ? (opts.items ?? [])
               : opts.subscribers,
           }),
-          run: async () => ({ success: true }),
+          run: async () => ({ success: true, meta: { changes: 1 } }),
         });
         return {
           ...bound(),
@@ -630,7 +622,7 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     );
   });
 
-  it("does not stamp last_sent_date when the send fails, so it retries next hour", async () => {
+  it("moves last_sent_date back when the send fails, so it retries next run", async () => {
     const fixedNow = Date.UTC(2026, 7, 16, 3, 0, 0);
     const { env, updates, sentTo } = makeEnv({
       subscribers: [
@@ -648,12 +640,14 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     await sendDailyTldr(env);
 
     expect(sentTo).toEqual([]);
-    const stamp = updates.find(
-      (u) =>
-        u.sql.includes("UPDATE subscribers") &&
-        u.args.includes("fail@example.com")
-    );
-    expect(stamp).toBeUndefined();
+    expect(
+      updates
+        .filter((u) => u.sql.includes("UPDATE subscribers"))
+        .map((u) => u.args)
+    ).toEqual([
+      ["2026-08-16", "fail@example.com", null],
+      [null, "fail@example.com", "2026-08-16"],
+    ]);
   });
 
   it("does not send twice in the same local day (second run same day no-send)", async () => {
@@ -690,6 +684,23 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
     vi.setSystemTime(fixedNow);
     await sendDailyTldr(env);
     expect(sentTo).toEqual(["nextday@example.com"]);
+  });
+
+  it("does not resend an older edition after the subscriber moves to an earlier timezone (#979)", async () => {
+    const { env, sentTo } = makeEnv({
+      subscribers: [
+        {
+          email: "moved@example.com",
+          lang: "en",
+          unsubscribe_token: "t1",
+          timezone: "America/Los_Angeles",
+          last_sent_date: "2026-10-21",
+        },
+      ],
+    });
+    vi.setSystemTime(Date.UTC(2026, 9, 20, 18, 0, 0));
+    await sendDailyTldr(env);
+    expect(sentTo).toEqual([]);
   });
 
   it("waits for the subscriber's local-date edition instead of mailing the UTC-dated one, then sends it once (#532)", async () => {
@@ -729,7 +740,7 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
             if (sql.startsWith("UPDATE subscribers SET last_sent_date")) {
               subscriber.last_sent_date = args[0] as string;
             }
-            return { success: true };
+            return { success: true, meta: { changes: 1 } };
           },
         });
         return { ...bound([]), bind: (...args: unknown[]) => bound(args) };
@@ -798,7 +809,7 @@ describe("sendDailyTldr — per-subscriber send flow", () => {
           all: async () => ({
             results: sql.includes("FROM items") ? [] : subscribers,
           }),
-          run: async () => ({ success: true }),
+          run: async () => ({ success: true, meta: { changes: 1 } }),
         });
         return {
           ...bound(),
@@ -854,6 +865,7 @@ describe("note mails share the digest shell", () => {
     timezone: "Asia/Ho_Chi_Minh",
     digest_size: 10,
     mail_format: "large" as const,
+    mail_font: "serif" as const,
     frequency: "weekly" as const,
     weekly_day: 3 as const,
   };
@@ -886,12 +898,11 @@ describe("note mails share the digest shell", () => {
       const { html, text, from } = sent[0]!;
       expect(from.name).toBe("AI;DR");
       expect(html).toContain(">AI;DR</span>");
-      expect(html).toContain("AI news, ranked and summarized");
       expect(html).toContain("max-width:600px");
       expect(html).toContain("unsubscribe=tok");
-      expect(html).toContain("AI;DR · PO Box 1");
+      expect(html).not.toContain("PO Box 1");
       expect(html).toContain(needle);
-      expect(text).toContain("AI;DR · PO Box 1");
+      expect(text).not.toContain("PO Box 1");
     }
   );
 });

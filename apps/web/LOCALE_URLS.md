@@ -42,8 +42,8 @@ toggle writes both `news_lang` and an explicit URL.
 
 The Worker applies the locale response policy to every TanStack SSR response:
 
-- Localized pages (`/`, story pages, `/mcp`, `/subscribe`, `/release`, and
-  `/submit`) have explicit `vi`/`en` canonicals, hreflang links, and sitemap
+- Localized pages (`/`, story pages, `/mcp`, `/subscribe`, `/release`,
+  `/contribute`, and `/contribute/new`) have explicit `vi`/`en` canonicals, hreflang links, and sitemap
   entries. Only one valid `lang` is publicly cacheable; bare and header-selected
   variants are private.
 - Language-neutral public pages (`/about`, `/brand`, `/data`, `/privacy`, and
@@ -151,9 +151,10 @@ extension caches are keyed by normalized API base and locale. Form actions carry
 attribution in the action while the single serialized locale comes from the
 hidden `lang` field.
 
-Telegram remains Vietnamese-first: VI content uses explicit `lang=vi`; when a
-story or digest has no Vietnamese translation, its actual fallback language is
-English and its Telegram controls use `lang=en`. Digest email follows the
+Telegram has one channel per language. `telegram` uses explicit `lang=vi` and
+`telegram-en` uses `lang=en`. A channel never falls back to the other language:
+a story with no copy in the channel's language is skipped there, and a digest
+waits until its own language has bullets. Digest email follows the
 resolved content language, preserves unsubscribe/settings tokens, and localizes
 footer links. English mail/webhook examples use `lang=en`. Publisher URLs never
 receive an aidr.today language parameter.

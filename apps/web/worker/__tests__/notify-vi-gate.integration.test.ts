@@ -154,14 +154,23 @@ function addAvoidRule(term: string, bad: string, good: string) {
     .run(`rule-${term}`, term, good, JSON.stringify([bad]));
 }
 
+/** One QA attempt on the candidate: its decision and the reviewer's
+ *  fidelity score, null when the reviewer call failed before scoring. */
+interface Attempt {
+  decision: string;
+  fidelity: number | null;
+}
+
 function reviewDecision(
   story: Story,
   decision: string,
   candidate: { title: string; summary: string } = {
     title: story.titleVi,
     summary: story.summaryVi,
-  }
+  },
+  attempts: Attempt[] = [{ decision: "human_review", fidelity: 0.6 }]
 ) {
+  const stateId = `state-${story.id}`;
   sqlite
     .prepare(
       `INSERT INTO translation_review_state (
@@ -171,15 +180,41 @@ function reviewDecision(
          policy_fingerprint, decision, attempt_id, attempt_count,
          manual_retry_count, terminal, created_at, updated_at
        ) VALUES (?, ?, 'vi', 'en', 'vi', 'en-vi', 'sh', 'ch', 0, ?, ?,
-                 'c', 'p', 'p', ?, 'attempt-1', 1, 0, 1, 1, 1)`
+                 'c', 'p', 'p', ?, ?, ?, 0, 1, 1, 1)`
     )
     .run(
-      `state-${story.id}`,
+      stateId,
       story.id,
       candidate.title,
       candidate.summary,
-      decision
+      decision,
+      `${stateId}-attempt-${attempts.length}`,
+      attempts.length
     );
+  attempts.forEach((attempt, i) => {
+    sqlite
+      .prepare(
+        `INSERT INTO translation_review_attempts (
+           attempt_id, state_id, item_id, lang, source_lang, target_lang,
+           direction, source_hash, candidate_hash, source_revision,
+           attempt_number, round, phase, criteria_fingerprint,
+           prompt_fingerprint, policy_fingerprint, model_fingerprint,
+           decision, fidelity, naturalness, confidence, reason,
+           reviewer_chain, created_at
+         ) VALUES (?, ?, ?, 'vi', 'en', 'vi', 'en-vi', 'sh', 'ch', 0, ?, 1,
+                   'initial', 'c', 'p', 'p', 'm', ?, ?, ?, ?, 'r', 'reviewer', 1)`
+      )
+      .run(
+        `${stateId}-attempt-${i + 1}`,
+        stateId,
+        story.id,
+        i + 1,
+        attempt.decision,
+        attempt.fidelity,
+        attempt.fidelity,
+        attempt.fidelity
+      );
+  });
 }
 
 /** Story ids each channel posted as trending. */
@@ -330,6 +365,38 @@ describe("Vietnamese trending gate", () => {
     await dispatchStoryNotifications(env);
 
     expect(trendingPosts("telegram")).toEqual([CLEAN.id]);
+  });
+
+  // In the 14 days to 2026-10-20, QA gave up this way on 127 Vietnamese
+  // stories during a reviewer outage (502, 429, provider chain exhausted).
+  // No reviewer read them, so nothing says the text is wrong.
+  it("posts when QA gave up after the reviewer failed on every attempt", async () => {
+    addStory(CLEAN);
+    reviewDecision(CLEAN, "human_review", undefined, [
+      { decision: "review_failed", fidelity: null },
+      { decision: "review_failed", fidelity: null },
+      { decision: "review_failed", fidelity: null },
+    ]);
+
+    await dispatchStoryNotifications(env);
+
+    expect(trendingPosts("telegram")).toEqual([CLEAN.id]);
+  });
+
+  // Prod d02c1565: the reviewer scored fidelity 0.55, then the repair call
+  // hit a 502. The low score is a verdict on this text; the outage is not.
+  it("does not post when the reviewer scored the text and only the repair failed", async () => {
+    addStory({ ...CLEAN, rank: 11 });
+    reviewDecision(CLEAN, "human_review", undefined, [
+      { decision: "review_failed", fidelity: 0.55 },
+      { decision: "review_failed", fidelity: null },
+    ]);
+    addStory({ ...CLEAN, id: "other", rank: 10 });
+
+    const report = await dispatchStoryNotifications(env);
+
+    expect(trendingPosts("telegram")).toEqual(["other"]);
+    expect(report.reasons.telegram?.suppressed).toEqual({ "gate:qa": 1 });
   });
 
   it("records the caption of a trending post sent as text", async () => {

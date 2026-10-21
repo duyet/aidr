@@ -24,7 +24,6 @@ const marks = new AsyncLocalStorage<Marks>();
 let isolateFirstRequestAt: number | undefined;
 let isolateRequests = 0;
 
-/** Run `fn` with a fresh mark list. */
 export function withRequestTiming<T>(fn: () => Promise<T>): Promise<T> {
   const now = Date.now();
   isolateFirstRequestAt ??= now;
@@ -40,7 +39,6 @@ export function withoutRequestTiming<T>(fn: () => T): T {
   return marks.exit(fn);
 }
 
-/** End the stage `name` now. A no-op outside `withRequestTiming`. */
 export function markStage(name: string): void {
   const store = marks.getStore();
   if (!store) return;

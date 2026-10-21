@@ -516,15 +516,16 @@ describe("gateLlmClusters", () => {
     expect(out.rejected).toEqual([{ existingId: "shop", newIndices: [0, 1] }]);
   });
 
-  it("keeps an existing id that one new item of the cluster backs", () => {
+  it("keeps an existing id with the new item that backs it, not the item riding along", () => {
     const out = gateLlmClusters(
       [{ new: [0, 2], existing: ["dots", "shop"] }],
       newItems,
       existing
     );
-    expect(out.clusters).toEqual([{ new: [0, 2], existing: ["dots"] }]);
+    expect(out.clusters).toEqual([{ new: [2], existing: ["dots"] }]);
     expect(out.proposed).toBe(2);
     expect(out.rejected.map((r) => r.existingId)).toEqual(["shop"]);
+    expect(out.detached).toEqual([0]);
   });
 
   it("drops a cluster left with one item, and one with no new item", () => {
@@ -548,6 +549,107 @@ describe("gateLlmClusters", () => {
     );
     expect(out.clusters).toEqual([]);
     expect(out.rejected).toEqual([{ existingId: "gone", newIndices: [2] }]);
+  });
+});
+
+describe("gateLlmClusters on the gemma merges of 2026-10-15 to 10-19", () => {
+  const disney = h(
+    "marketbrief",
+    "https://marketbrief.ai/disney-to-pay-210m-for-character-ai-staff",
+    "Disney to Pay $210M for Character.AI Staff in Bankruptcy Deal"
+  );
+  const filings = h(
+    "techmeme",
+    "https://www.techmeme.com/261019/p12",
+    "Character.AI's Chapter 11 court filings indicate a two-part deal with Disney to transfer talent and tech while insulating Disney from mounting legal liabilities (Maddy Varner/Wired)"
+  );
+  const ipoFund = h(
+    "the-decoder",
+    "https://the-decoder.com/anthropic-cushions-its-upcoming-ipo",
+    "Anthropic cushions its upcoming IPO with a discretionary fund for workers its models might replace"
+  );
+  const harvey = h(
+    "huggingnews",
+    "https://huggingnews.com/ai/harvey-cuts-legal-ai-agent-task-costs",
+    "Harvey Cuts Legal AI Agent Task Costs by 48% With Context Graphs"
+  );
+  const iambic = h(
+    "huggingnews",
+    "https://huggingnews.com/ai/iambic-therapeutics-shares-jump",
+    "Iambic Therapeutics Shares Jump 18% on Debut After $150M IPO"
+  );
+  const bee = h(
+    "theverge-ai",
+    "https://www.theverge.com/news/amazon-bee-wearable-shopping",
+    "Amazon’s always-listening Bee wearable can now help you buy stuff"
+  );
+  const cloudflare = h(
+    "cloudflare-blog",
+    "https://blog.cloudflare.com/cloudflare-and-openai-ai-discovery/",
+    "Cloudflare and OpenAI: making AI discovery better for everyone"
+  );
+
+  it("keeps an unrelated item out of a story another member of its cluster backs", () => {
+    const out = gateLlmClusters(
+      [{ new: [0, 1], existing: ["disney"] }],
+      new Map([
+        [0, filings],
+        [1, ipoFund],
+      ]),
+      new Map([["disney", disney]])
+    );
+    expect(out.clusters).toEqual([{ new: [0], existing: ["disney"] }]);
+    expect(out.rejected).toEqual([]);
+    expect(out.detached).toEqual([1]);
+  });
+
+  it("splits two correctly paired twin sets the model joined", () => {
+    const out = gateLlmClusters(
+      [{ new: [0, 1, 2, 3], existing: [] }],
+      new Map([
+        [0, harvey],
+        [1, { ...harvey, sourceId: "marketbrief" }],
+        [2, iambic],
+        [3, { ...iambic, sourceId: "marketbrief" }],
+      ]),
+      new Map()
+    );
+    expect(out.clusters).toEqual([
+      { new: [0, 1], existing: [] },
+      { new: [2, 3], existing: [] },
+    ]);
+    expect(out.detached).toEqual([]);
+  });
+
+  it("drops a model pair of new items that share nothing", () => {
+    const out = gateLlmClusters(
+      [{ new: [0, 1], existing: [] }],
+      new Map([
+        [0, cloudflare],
+        [1, bee],
+      ]),
+      new Map()
+    );
+    expect(out.clusters).toEqual([]);
+    expect(out.detached).toEqual([0, 1]);
+  });
+
+  it("keeps a new item linked through another member that shares evidence with it", () => {
+    const wired = h(
+      "wired-ai",
+      "https://www.wired.com/story/disney-character-ai-bankruptcy",
+      "Disney Asked Character.AI to Go Bankrupt for a Get-Out-of-Lawsuits Card"
+    );
+    const out = gateLlmClusters(
+      [{ new: [0, 1], existing: ["disney"] }],
+      new Map([
+        [0, filings],
+        [1, wired],
+      ]),
+      new Map([["disney", disney]])
+    );
+    expect(out.clusters).toEqual([{ new: [0, 1], existing: ["disney"] }]);
+    expect(out.detached).toEqual([]);
   });
 });
 

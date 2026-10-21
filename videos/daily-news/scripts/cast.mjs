@@ -28,7 +28,6 @@ export function loadCast(config, lang = config.voice.lang ?? "en") {
   };
 }
 
-// Host keys shuffled with the seed (same seed → same order).
 export function hostOrder(keys, seed) {
   let h = [...seed].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   const rand = () => {

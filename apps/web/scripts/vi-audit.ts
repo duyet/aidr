@@ -25,8 +25,7 @@ import {
   type KnowledgeRule,
   loadActiveRules,
 } from "../worker/translation-knowledge";
-import type { Env } from "../worker/types";
-import { wranglerSelect } from "./cf-d1";
+import { wranglerSelect, wranglerSelectEnv } from "./cf-d1";
 
 interface StoredRow {
   id: string;
@@ -70,20 +69,9 @@ function loadRows(args: Args): StoredRow[] {
   ) as unknown as StoredRow[];
 }
 
-/** `loadActiveRules` reads through a D1 binding; this one answers with
- * `wranglerSelect`, so the audit uses the worker's own query and parser. */
 async function loadRules(args: Args): Promise<KnowledgeRule[]> {
   if (args.file) return [];
-  const env = {
-    DB: {
-      prepare: (sql: string) => ({
-        all: async () => ({
-          results: wranglerSelect(sql.replace(/\s+/g, " ").trim()),
-        }),
-      }),
-    },
-  } as unknown as Env;
-  return loadActiveRules(env);
+  return loadActiveRules(wranglerSelectEnv());
 }
 
 function auditRow(

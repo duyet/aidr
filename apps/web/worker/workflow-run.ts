@@ -288,10 +288,7 @@ async function persistAndConfirmLastRun(
 
 /** Upsert that must stick before POST /api/admin/ingest returns. Throws
  * after retries if D1 does not show the id as lastRun (epoch-normalized
- * `started_at` DESC, `id` DESC LIMIT 1 — same query `/api/system` uses).
- * #1413's INSERT…RETURNING `.first()` 500'd the live force POST while
- * lastRun stayed `42d830a9-…`; #1411's WHERE-id SELECT was 2xx for
- * `5419a68e-…` without that row becoming lastRun. */
+ * `started_at` DESC, `id` DESC LIMIT 1 — same query `/api/system` uses). */
 export async function persistOpenedWorkflowRunVerified(
   db: D1Runner,
   id: string,

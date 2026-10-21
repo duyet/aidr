@@ -118,7 +118,7 @@ function makeEnv(opts: {
               : opts.subscribers,
           };
         },
-        run: async () => ({ success: true }),
+        run: async () => ({ success: true, meta: { changes: 1 } }),
       });
       return {
         ...bound(),
@@ -184,7 +184,23 @@ describe("sendDailyTldr — weekly lane", () => {
     ).toEqual(["2026-W41"]);
     expect(
       updates.find((u) => u.sql.includes("last_weekly_sent"))?.args
-    ).toEqual(["2026-10-11", "w@aidr.today", "2026-10-11"]);
+    ).toEqual(["2026-10-11", "w@aidr.today", null]);
+  });
+
+  it("mails each subscriber's saved headline font", async () => {
+    vi.setSystemTime(mondayMorning);
+    const { env, sent } = makeEnv({
+      subscribers: [
+        sub({ mail_font: "serif" }),
+        sub({ email: "plain@aidr.today" }),
+      ],
+      week: WEEK_ROW,
+    });
+    expect(await sendDailyTldr(env)).toBe(2);
+    const serif = sent.find((m) => m.to === "w@aidr.today");
+    const plain = sent.find((m) => m.to === "plain@aidr.today");
+    expect(serif?.html).toContain("EB Garamond");
+    expect(plain?.html).not.toContain("EB Garamond");
   });
 
   it("Wednesday: mails the shared rolling digest of the 7 days before", async () => {
@@ -287,7 +303,7 @@ describe("sendDailyTldr — weekly lane", () => {
     expect(updates).toEqual([]);
   });
 
-  it("a failed send is not stamped and does not stop the others", async () => {
+  it("a failed send moves its stamp back and does not stop the others", async () => {
     vi.setSystemTime(mondayMorning);
     const { env, sent, updates } = makeEnv({
       subscribers: [sub({ email: "bad@aidr.today" }), sub()],
@@ -306,8 +322,12 @@ describe("sendDailyTldr — weekly lane", () => {
     expect(
       updates
         .filter((u) => u.sql.includes("last_weekly_sent"))
-        .map((u) => u.args[1])
-    ).toEqual(["w@aidr.today"]);
+        .map((u) => u.args)
+    ).toEqual([
+      ["2026-10-11", "bad@aidr.today", null],
+      [null, "bad@aidr.today", "2026-10-11"],
+      ["2026-10-11", "w@aidr.today", null],
+    ]);
   });
 });
 
@@ -325,7 +345,6 @@ describe("renderWeeklyEmail", () => {
       "tok",
       "design"
     );
-    expect(html).toContain("Also this week");
     expect(html).not.toContain("/feedback?");
     expect(text).toContain("AI;DR Weekly #2 · Oct 5 – 11, 2026");
     expect(text).toContain("Read the full week on aidr.today");
@@ -342,14 +361,13 @@ describe("renderWeeklyEmail", () => {
 });
 
 describe("rolling digest masthead and footer", () => {
-  it("names the window instead of an issue and says one email a week", async () => {
+  it("names the window instead of an issue and drops the issue number", async () => {
     const { env } = makeEnv({ subscribers: [], digest: DIGEST_ROW });
     const mail = await loadWeeklyMail(env, "2026-10-13", "en", 5);
     const { html } = await renderWeeklyEmail(env, mail!, "en", "tok", "design");
     expect(html).not.toContain("Issue null");
     expect(html).not.toContain("#null");
     expect(html).toContain("Last 7 days");
-    expect(html).toContain("One email a week.");
     expect(html).not.toContain("One email a day.");
   });
 });

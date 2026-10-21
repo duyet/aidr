@@ -8,7 +8,6 @@ export interface ReadTotal {
 }
 
 export interface CategoryReads extends ReadTotal {
-  /** Distinct stories read in this category. */
   items: number;
 }
 

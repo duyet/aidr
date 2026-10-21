@@ -10,27 +10,30 @@ export const SFX = {
   chime: { peak: 0.42, level: -23.9 },
   "click-soft": { peak: 0.055, level: -25.8 },
   "impact-bass-1": { peak: 0.07, level: -4 },
-  "impact-bass-2": { peak: 0.045, level: -1.7 },
-  "key-press": { peak: 0.075, level: -36.3 },
-  notification: { peak: 0.095, level: -15.6 },
+  "impact-bass-2": { peak: 0.085, level: -1.7 },
+  "key-press": { peak: 0.07, level: -36.3 },
   ping: { peak: 0.325, level: -23.6 },
-  sparkle: { peak: 0.03, level: -6.3 },
-  whoosh: { peak: 0.165, level: -15.2 },
-  "whoosh-cinematic": { peak: 2.35, level: -9.5 },
+  pop: { peak: 0.12, level: -21.2 },
+  sparkle: { peak: 0.05, level: -6.3 },
+  whoosh: { peak: 0.16, level: -15.2 },
+  "whoosh-cinematic": { peak: 2.445, level: -9.5 },
 };
 
 /**
  * Each cue's pool. The first file is the cue's reference: it plays at gain 1 and the others are trimmed to its
  * level (`gainFor`), so the mix sits where it always did whichever file the day draws. Pool members share a shape
  * (impact, tonal alert, bright chime, tick), so their hits also agree within about 1 dB over a 50 ms window
- * (sound-measure.mjs prints it); a short pop beside a long sparkle would be 11 dB apart. The whooshes are the one
- * exception the library leaves: the cinematic swell's crest sits 4 dB under the short whoosh at 50 ms.
+ * (sound-measure.mjs prints it); a short pop beside a long sparkle would be 11 dB apart. The library leaves one
+ * exception: pop's hit sits 7 dB over ping's. storyIn is the whoosh alone: the library's other long whoosh, the
+ * cinematic swell, holds a 0.5 s plateau with no peak and reads as a soft hit, and whoosh-short is whoosh byte for
+ * byte. The library has no second tonal alert: notification's louder second note comes 5 frames after its
+ * first, so one of the two always misses the stat.
  */
 export const POOLS = {
   open: ["impact-bass-2", "impact-bass-1"],
-  storyIn: ["whoosh", "whoosh-cinematic"],
+  storyIn: ["whoosh"],
   rankHit: ["impact-bass-1", "impact-bass-2"],
-  statHit: ["ping", "notification"],
+  statHit: ["ping", "pop"],
   tick: ["click-soft", "key-press"],
   outro: ["chime", "sparkle"],
 };
@@ -74,4 +77,21 @@ export function soundFor(dateKey) {
 /** The gain that plays `name` on `cue` at the level of the cue's reference file. */
 export function gainFor(cue, name) {
   return 10 ** ((SFX[POOLS[cue][0]].level - SFX[name].level) / 20);
+}
+
+/**
+ * Every effect of a cut as [cue, at, gain], `at` being when the effect peaks. Each `at` is a hit key: the frame
+ * its element is first legible (S.rankAt, S.statAt and O.hit end their fade, choreography.mjs FADE), the wipe's
+ * mid-cover (W.hit), or the intro's own cues.
+ * `open` is the one cue with no visual: it opens the bed over frame 0, the still thumbnail.
+ */
+export function cuesFor({ wipes, stories, outro }, introCues) {
+  return [
+    ["open", 0.25, 1.0],
+    ...wipes.map((w) => ["storyIn", w.hit, 0.8]),
+    ...stories.map((s) => ["rankHit", s.rankAt, 0.55]),
+    ...stories.map((s) => ["statHit", s.statAt, 0.5]),
+    ["outro", outro.hit, 0.8],
+    ...introCues,
+  ];
 }

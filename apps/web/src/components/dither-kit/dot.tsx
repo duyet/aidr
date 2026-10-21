@@ -23,7 +23,6 @@ function dotPaint(variant: DotVariant, seed: Seed) {
   }
 }
 
-/** A marker at every data point along the series' top line. */
 export function Dot({
   variant = "border",
   r = 2,
@@ -59,7 +58,6 @@ export function Dot({
   )
 }
 
-/** A single marker at the hovered point — keys off the shared hover index. */
 export function ActiveDot({
   variant = "colored-border",
   r = 3,
@@ -80,7 +78,6 @@ export function ActiveDot({
 
   return (
     <g>
-      {/* Soft halo so the active point is unmistakable over the dither. */}
       <circle cx={cx} cy={cy} r={r + 3} fill={rgb(seed.line, 1, 0.18)} />
       <circle cx={cx} cy={cy} r={r} {...paint} strokeWidth={2} />
     </g>

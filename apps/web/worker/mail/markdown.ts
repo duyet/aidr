@@ -21,7 +21,6 @@ export function safeHref(raw: string): string | null {
   }
 }
 
-/** Rewrites each link href, e.g. to add UTM params. */
 export type HrefTagger = (href: string) => string;
 
 function inline(text: string, tagHref: HrefTagger): string {
@@ -58,9 +57,9 @@ function headingLevel(line: string): number {
 }
 
 const HEADING_STYLE: Record<number, string> = {
-  1: "margin:0 0 16px;font-size:24px;line-height:1.25;font-weight:500;letter-spacing:-0.02em;color:#0a0a0a",
-  2: "margin:24px 0 12px;font-size:18px;line-height:1.3;font-weight:500;letter-spacing:-0.01em;color:#0a0a0a",
-  3: "margin:20px 0 8px;font-size:16px;line-height:1.35;font-weight:500;color:#0a0a0a",
+  1: "margin:0 0 16px;font-size:18px;line-height:1.3;font-weight:600;letter-spacing:-0.02em;color:#0a0a0a",
+  2: "margin:24px 0 12px;font-size:15px;line-height:1.35;font-weight:600;letter-spacing:-0.01em;color:#0a0a0a",
+  3: "margin:20px 0 8px;font-size:14px;line-height:1.4;font-weight:600;color:#0a0a0a",
 };
 
 function listHtml(
@@ -78,10 +77,9 @@ function listHtml(
         `<li style="margin:0 0 8px;padding:0">${inline(item, tagHref)}</li>`
     )
     .join("");
-  return `<${tag} style="margin:0 0 20px;padding:0 0 0 22px;color:#0a0a0a;font-size:16px;line-height:1.65">${items}</${tag}>`;
+  return `<${tag} style="margin:0 0 20px;padding:0 0 0 22px;color:#0a0a0a;font-size:14px;line-height:1.6">${items}</${tag}>`;
 }
 
-/** Turns campaign markdown into table-safe email HTML fragments. */
 export function markdownToEmailHtml(
   md: string,
   tagHref: HrefTagger = (href) => href
@@ -130,7 +128,7 @@ export function markdownToEmailHtml(
       i++;
     }
     blocks.push(
-      `<p style="margin:0 0 16px;font-size:16px;line-height:1.65;color:#0a0a0a">${inline(para.join(" "), tagHref)}</p>`
+      `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#0a0a0a">${inline(para.join(" "), tagHref)}</p>`
     );
   }
   return blocks.join("\n");

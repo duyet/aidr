@@ -264,7 +264,6 @@ export function applyScreen(script, edition, fields) {
   return out;
 }
 
-// --- CLI -----------------------------------------------------------------
 async function main() {
   const argv = process.argv.slice(2);
   const date = argv[0];

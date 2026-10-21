@@ -12,7 +12,6 @@ export function notFoundLangFromCookie(cookieHeader: string | null): Lang {
   return readLangFromCookie(cookieHeader);
 }
 
-/** Shared request resolver used by root SSR and client navigation. */
 export const loadRequestLocale = createIsomorphicFn()
   .client(
     (search = ""): LocaleResolution =>

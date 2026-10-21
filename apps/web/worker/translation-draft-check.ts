@@ -20,6 +20,7 @@ import {
   mentionsModelFamily,
   missingProtectedTerms,
 } from "./translation-terms.js";
+import { VI_COMPOUNDS, VI_STANDALONE } from "./vi-compounds.js";
 import { garbledWords } from "./vi-syllable.js";
 
 /** Below this the source is too short for a length ratio to mean much. */
@@ -448,11 +449,13 @@ function glossInitials(text: string): string {
  * only when the word before the parenthesis is an all-caps acronym whose
  * initials match (RAG, CCC). A bare label ("USD", "NYSE", "Anthropic"), a
  * place or product name ("New York", "Claude Code", "Sam Altman"), a number,
- * a year, or a percentage is not. Each hit costs a repair call. */
+ * a year, a percentage, or a list marker ("và (ii)", prod c4bfc91a) is not.
+ * Each hit costs a repair call. */
 function isEnglishGloss(before: string, inside: string): boolean {
   const text = inside.trim();
   if (!text || isNumberYearOrPercent(text)) return false;
   if (/\P{ASCII}/u.test(text)) return false;
+  if (/^(?:i{1,3}|iv|vi{0,3}|ix|x)$/i.test(text)) return false;
   const letters = text.match(/[A-Za-z]/g)?.length ?? 0;
   const significant = text.replace(/\s/g, "");
   if (letters < 2 || letters / significant.length < 0.8) return false;
@@ -461,13 +464,17 @@ function isEnglishGloss(before: string, inside: string): boolean {
   return /^[A-Z]{2,}$/.test(before) && glossInitials(text) === before;
 }
 
-function glossIssues(viText: string): string[] {
+/** A gloss the source itself writes ("SERA (Self-Evaluating Recursive
+ * Agents)", prod 1e7f081e) is the author's, and the translation keeps it. */
+function glossIssues(viText: string, sourceText: string): string[] {
   const issues: string[] = [];
+  const source = sourceText.replace(/\s+/g, " ");
   for (const match of viText.normalize("NFC").matchAll(GLOSS_RE)) {
     const whole = match[0];
     const before = whole.slice(0, whole.lastIndexOf("(")).trim();
     if (!isEnglishGloss(before, match[1] ?? "")) continue;
     const snippet = whole.replace(/\s+/g, " ").trim();
+    if (source.includes(snippet)) continue;
     issues.push(
       `"${snippet}" is a parenthetical English gloss; drop the gloss and keep one term`
     );
@@ -476,8 +483,8 @@ function glossIssues(viText: string): string[] {
 }
 
 /** Vietnamese reduplications that are correct as written ("từ từ",
- * "người người"). Any other doubled Vietnamese syllable is a generation
- * stutter. */
+ * "người người", "dần dần"). Any other doubled Vietnamese syllable is a
+ * generation stutter, unless two words share it (`isCompoundOverlap`). */
 const VI_REDUPLICATION = new Set([
   "từ",
   "người",
@@ -491,19 +498,49 @@ const VI_REDUPLICATION = new Set([
   "mãi",
   "xa",
   "lâu",
+  "dần",
 ]);
+
+const SYLLABLE_RE = /[\p{L}\p{M}\p{N}]+/gu;
+
+/** "quy mô mô hình": each copy of the doubled syllable belongs to a
+ * neighbour, the first ending a compound and the second starting one or
+ * standing alone. */
+function isCompoundOverlap(
+  before: string,
+  word: string,
+  after: string
+): boolean {
+  const left = VI_COMPOUNDS.has(`${before} ${word}`);
+  const right = VI_COMPOUNDS.has(`${word} ${after}`);
+  const alone = VI_STANDALONE.has(word);
+  return (left || right) && (left || alone) && (right || alone);
+}
 
 /** A Vietnamese syllable written twice in a row: "thỏa thỏa thuận",
  * "285 triệu triệu USD" (prod 2026-10-08). Only syllables with Vietnamese
- * diacritics count, so English names and kept jargon never trip it. */
+ * diacritics count, so English names and kept jargon never trip it. Two
+ * words that share a syllable are not a stutter (`isCompoundOverlap`): of
+ * the 45 doubled syllables it flagged in the 14 days to 2026-10-20, 35 were
+ * ("quy mô mô hình", "bài toán toán học"). */
 function stutterIssues(viText: string): string[] {
   const issues: string[] = [];
   const seen = new Set<string>();
-  for (const match of viText
-    .normalize("NFC")
-    .matchAll(/(?<![\p{L}\p{M}])([\p{L}\p{M}]+)\s+\1(?![\p{L}\p{M}])/giu)) {
+  const text = viText.normalize("NFC");
+  for (const match of text.matchAll(
+    /(?<![\p{L}\p{M}])([\p{L}\p{M}]+)\s+\1(?![\p{L}\p{M}])/giu
+  )) {
     const word = (match[1] ?? "").toLowerCase();
     if (!NON_ASCII_RE.test(word) || VI_REDUPLICATION.has(word)) continue;
+    const start = match.index ?? 0;
+    const before =
+      text.slice(0, start).match(SYLLABLE_RE)?.at(-1)?.toLowerCase() ?? "";
+    const after =
+      text
+        .slice(start + match[0].length)
+        .match(SYLLABLE_RE)?.[0]
+        ?.toLowerCase() ?? "";
+    if (isCompoundOverlap(before, word, after)) continue;
     if (seen.has(word)) continue;
     seen.add(word);
     issues.push(`"${match[0]}" repeats a word; write "${match[1]}" once`);
@@ -511,8 +548,9 @@ function stutterIssues(viText: string): string[] {
   return issues;
 }
 
-/** "vượ quá", "nền tảp", "t合成": words no Vietnamese spelling allows. A
- * near miss built from real syllables ("rời rạp", "sụp đảo") passes. */
+/** "vượ quá", "nền tảp", "t合成", "phòng nghiễn": words no Vietnamese
+ * spelling or word allows. A near miss built from real syllables ("rời
+ * rạp", "sụp đảo", "giả thuyền") passes. */
 function garbleIssues(sourceText: string, viText: string): string[] {
   const words = garbledWords(viText, sourceText);
   return words.length === 0
@@ -640,7 +678,7 @@ export function draftIssuesByCheck(
     calque: calqueIssues(sourceText, viText),
     magnitude: magnitudeIssues(sourceText, viText),
     version: versionIssues(src, cand),
-    gloss: glossIssues(viText),
+    gloss: glossIssues(viText, sourceText),
     stutter: stutterIssues(viText),
     garble: garbleIssues(sourceText, viText),
     decimal: decimalPointIssues(sourceText, viText),
@@ -674,8 +712,8 @@ export function translationDraftIssues(
 }
 
 /** Issues in one Vietnamese TL;DR bullet against the items it cites. A
- * bullet is a digest: calques, magnitudes, parenthetical glosses, and
- * doubled words. */
+ * bullet is a digest: calques, magnitudes, parenthetical glosses, doubled
+ * words, and garbled words. */
 export function tldrBulletIssues(
   sourceText: string,
   bullet: string,
@@ -687,8 +725,9 @@ export function tldrBulletIssues(
     ...avoidIssues(source, candidate, rules),
     ...calqueIssues(sourceText, bullet),
     ...magnitudeIssues(sourceText, bullet),
-    ...glossIssues(bullet),
+    ...glossIssues(bullet, sourceText),
     ...stutterIssues(bullet),
+    ...garbleIssues(sourceText, bullet),
   ];
 }
 

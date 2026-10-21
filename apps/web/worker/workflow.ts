@@ -218,7 +218,6 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         clusterRefs: {} as ClusterRefTally,
       };
 
-      // 1. Consume sources.
       const sources = await loadSources(ctx);
       seedSourceHealth(sourceHealth, sources);
       const fetched = await fetchSources(ctx, sources, sourceHealth, bySource);
@@ -235,7 +234,6 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       const newRows = await enrichNewRows(ctx, dedupedRows);
       if (!runChainStep(ctx, "score")) return result;
 
-      // 2. Score, normalize topics, cluster, translate.
       const scored = await scoreNewRows(ctx, newRows);
       tallyScored(sourceHealth, newRows, scored);
 
@@ -279,7 +277,6 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
       for (const translation of translated.values())
         result.tokens += translation.tokens;
 
-      // 3. Persist and re-rank.
       if (runChainStep(ctx, "write")) {
         await writeItems(ctx, {
           newRows,
@@ -295,7 +292,6 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
     };
 
     try {
-      // 1–3. Consume sources, score, translate, persist and re-rank.
       if (runChainStep(ctx, "fetch")) {
         const fresh = await ingestFreshItems();
         sourceHealthComplete = fresh.sourceHealthComplete;
@@ -310,7 +306,6 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         clusterRefs = fresh.clusterRefs;
       }
 
-      // 4. Drain backlogs and review queues.
       if (!skipUnselectedStep(ctx, "backfill-content")) {
         backfilledSummaries = await backfillContent(ctx);
       }

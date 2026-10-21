@@ -48,7 +48,7 @@ Change the smallest of these, then the test that locks it:
 | Voice, examples, calques | `VI_STYLE` in `llm.ts` | `llm.test.ts` |
 | The short card the model sees | `RULES_OVERVIEW` in `llm.ts` | the exact-string assertion in `llm.test.ts` |
 | A term that must survive in English | `translation-terms.ts` | `translation-terms.test.ts` |
-| What counts as a bad draft (calque, magnitude, gloss, Title Case, doubled word, garbled word, decimal point, `$` figure, English headline, length) | `translation-draft-check.ts`, `vi-syllable.ts` | `translation-draft-check.test.ts`, `vi-syllable.test.ts` |
+| What counts as a bad draft (calque, magnitude, gloss, Title Case, doubled word, garbled word, decimal point, `$` figure, English headline, length) | `translation-draft-check.ts`, `vi-syllable.ts`, `vi-lexicon.ts` (regenerate with `scripts/gen-vi-lexicon.ts`) | `translation-draft-check.test.ts`, `vi-syllable.test.ts` |
 
 Before a new check ships, count what it would send back for repair: `pnpm exec tsx scripts/vi-audit.ts --days 7` (from `apps/web`, read-only D1) prints rows per check.
 | How TL;DR VI bullets relate to the EN ones | `tldrPrompt` in `llm.ts` | `llm.test.ts` |
@@ -94,3 +94,36 @@ pnpm exec biome check apps/web/worker/llm.ts apps/web/worker/translation-terms.t
 ```
 
 Run `schedule.test.ts` as well when the model chain changes. Do not run the full `@aidr/web` suite. Do not `wrangler deploy`. A push to `master` deploys.
+
+## Score a translation
+
+Use this to score today's Vietnamese edition before you call it good, or after a change to `VI_STYLE`, the glossary, or the draft gate. Nothing ships below 8/10. Run it in a session that did not write the translations.
+
+Scope is the stories and the VI TL;DR bullets of `GET /api/public?lang=vi`, with the stored `vi_title` and `vi_summary` from read-only D1. The script makes no LLM call and writes nothing. It reuses `draftIssuesByCheck`, `garbledWords`, `sentSource`, and `loadActiveRules`, so it agrees with the worker's gate.
+
+```bash
+pnpm --filter @aidr/web exec tsx scripts/review/vi.ts [--fixture <json>] [--json <out>]
+```
+
+Run it from the repo root. With `--fixture` it scores a saved edition instead of the live one (`scripts/review/fixtures/vi-good.json` is the clean one, `vi-bad.json` fails every automatic row). Every failure reason starts with the story or bullet and the first 8 characters of the item id, the same id as its `aidr.today/<id>` permalink.
+
+| Row | Points | How to judge | Auto/Judged |
+|---|---|---|---|
+| `vi_garble` | 2 | No word that no Vietnamese spelling allows (`vi-syllable`), in a story or a bullet | Auto |
+| `vi_numbers` | 1 | `draftIssuesByCheck` magnitude, decimal, dollar, and version checks are empty | Auto |
+| `vi_calque_gloss` | 1 | Calque, parenthetical English gloss, and knowledge-rule `avoid` checks are empty | Auto |
+| `vi_doubled_case` | 0.5 | No doubled word, no Title Case headline | Auto |
+| `vi_untranslated` | 0.5 | No English headline echoed as the VI title | Auto |
+| `vi_length` | 0.5 | VI summary is at least 60% of the English one when the source has 200 or more characters | Auto |
+| `vi_title_present` | 1 | Every edition story has a VI title, and no VI bullet equals its English twin | Auto |
+| `vi_keep_terms` | 1 | Every `KEEP_ENGLISH_TERMS` term in the source survives | Auto |
+| `vi_native` | 1 | Read each title and bullet aloud. It sounds like a Vietnamese tech journalist, not English syntax in Vietnamese words | Judged |
+| `vi_facts` | 1.5 | Against the English: who did what, every name, number, and hedge is kept, and nothing is added | Judged |
+
+Scoring: an automatic row earns full points or none, and taste never overrules it. A judged row may earn half when the defect is in one spot. Ships at 8 of 10. Open the English item next to each Vietnamese one for the judged rows. A story that is clean to the gate can still swap who did what.
+
+Report format:
+
+1. The row table with PASS, FAIL, or the judged score for each row.
+2. Every lost point, with the item id and the fix, for example `be38b11f: write "inference engine", not "khung suy diễn" (vi_calque_gloss, vi_keep_terms)`.
+3. The total out of 10 and whether it ships.

@@ -222,7 +222,6 @@ describe("rssAdapter", () => {
       { feed: "https://example.com/feed.xml" },
       Math.floor(Date.parse("2026-09-06T00:00:00Z") / 1000)
     );
-    // Date.now() used to put the undated URL inside every since-window.
     expect(items.map((item) => item.url)).toEqual([
       "https://example.com/dated",
     ]);

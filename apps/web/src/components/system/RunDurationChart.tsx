@@ -48,14 +48,11 @@ function durationOf(run: WorkflowRunRow): number | null {
 
 export interface DurationRow {
   id: string;
-  /** Tooltip heading. */
   at: string;
-  /** x-axis tick. */
   label: string;
   seconds: number;
 }
 
-/** Per-run duration series, oldest first, dropping runs that never finished. */
 export function durationRows(
   runs: WorkflowRunRow[],
   lang: Lang
@@ -72,14 +69,6 @@ export function durationRows(
     .filter((row): row is DurationRow => row.seconds !== null);
 }
 
-/**
- * Bar chart of run duration, oldest to newest, on the shared dither canvas.
- *
- * The previous hand-rolled version nested a percentage `height` inside a
- * flex item of `height: auto`, which resolved to 0 — the card read as empty.
- * `BarChart` measures the plot itself, so the bars always have real geometry,
- * and the axes/tooltip make a 3-minute outlier legible at a glance.
- */
 export function RunDurationChart({
   runs,
   emptyLabel,

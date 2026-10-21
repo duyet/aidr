@@ -86,11 +86,6 @@ function StoryThumbTile(): ReactElement {
   );
 }
 
-/**
- * Compact story thumbnail matching the feed card language: rounded,
- * bordered, object-cover. Sized to two lines of the surrounding
- * `leading-snug` copy (`2lh`) so it fills an AI;DR row.
- */
 export function StoryThumb({
   src,
   alt = "",

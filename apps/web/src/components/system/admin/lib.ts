@@ -77,6 +77,7 @@ export interface QueueSubmission {
   user_name: string | null;
   rating: number | null;
   created_at: number;
+  review_attempts: number;
 }
 
 export interface AuditRow {

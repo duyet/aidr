@@ -25,8 +25,10 @@ import type { DayCount, NamedCount } from "./system-queries";
  *   `subscriber_sources`, so they are exact at read time and need no
  *   snapshot of their own.
  *
- * The deploy gate guarantees every migrated table, `ga4_insights` (0028) and
- * `subscriber_sources` (0015) included, so neither is probed. The one probe
+ * The deploy gate requires every migration from 0023 up, so `ga4_insights`
+ * (0028) is not probed. `subscriber_sources` (0015) sits below the gate's
+ * floor: migrations apply in order, so a ledger that holds 0023 holds 0015,
+ * and production does. It is not probed either. The one probe
  * left is `subscribers.digest_size`: no migration creates it (0019 is a
  * no-op), only `ensureMailSchema` does, and a D1 `batch()` aborts wholesale
  * on one failing statement.
@@ -40,16 +42,11 @@ export type Ga4AudienceStatus =
 
 export interface Ga4AudienceView {
   status: Ga4AudienceStatus;
-  /** Epoch seconds the stored snapshot was written, when there is one. */
   fetchedAt: number | null;
-  /** Null unless the payload validated — never a partial object. */
   audience: Ga4Audience | null;
   viewsPerDay: DayCount[];
   usersPerDay: DayCount[];
   topPages: NamedCount[];
-  /** GA4 sessions over the same 28 days as the totals, by default channel
-   *  group, by `source / medium`, and by landing page. Distinct from the
-   *  subscriber signup sources below. */
   channels: NamedCount[];
   sourceMedium: NamedCount[];
   landingPages: NamedCount[];
@@ -61,7 +58,6 @@ export interface DigestSizeCount {
 }
 
 export interface SubscriberAudience {
-  /** Confirmed email subscriptions — the audience the digest actually reaches. */
   confirmed: number;
   /** Rows present but not yet confirmed, so the two never silently disagree. */
   unconfirmed: number;
@@ -69,7 +65,6 @@ export interface SubscriberAudience {
   bySource: NamedCount[];
   byLang: NamedCount[];
   byDigestSize: DigestSizeCount[];
-  /** Confirmed signups per day over the trailing window. */
   newPerDay: DayCount[];
   new7d: number;
   new28d: number;
@@ -191,8 +186,6 @@ function ga4View(snapshot: Ga4Snapshot, nowSec: number): Ga4AudienceView {
   };
 }
 
-/** The GA4 half, read on its own so a broken snapshot cannot 500 the
- *  subscriber counts sitting next to it. */
 async function loadGa4Audience(
   db: DbReader,
   nowSec: number
@@ -267,7 +260,6 @@ async function loadSubscribers(
   };
 }
 
-/** One batched D1 read for the whole Audience tab. */
 export async function loadAudienceStats(
   db: DbReader,
   opts: { now?: number } = {}

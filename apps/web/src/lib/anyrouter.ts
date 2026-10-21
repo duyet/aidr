@@ -40,7 +40,6 @@ export function logosForModels(ids: readonly string[]): Record<string, string> {
   return logos;
 }
 
-/** Validate a public model id before it is used as a link target. */
 export function isValidAnyrouterModel(model: string): boolean {
   const value = model.trim();
   if (!value || value.length > 160) return false;

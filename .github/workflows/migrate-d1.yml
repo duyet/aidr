@@ -1,15 +1,22 @@
 name: Migrate D1
 
+# Apply pending D1 migrations. deploy-web.yml calls this as its first job, so a
+# push that adds a migration applies it before the Worker deploys. Run it by
+# hand with workflow_dispatch. There is no push trigger: one would race the
+# deploy-web gate ("required migration is not applied").
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - "apps/web/migrations/**"
-      - ".github/workflows/migrate-d1.yml"
+  workflow_call:
+    inputs:
+      verify-live:
+        description: Probe the live site after applying
+        type: boolean
+        default: true
   workflow_dispatch:
 
+# Never cancelled: a half-applied migration is worse than a queued one.
+# Shared by every caller, so concurrent runs apply one at a time.
 concurrency:
-  group: migrate-d1-${{ github.ref }}
+  group: migrate-d1
   cancel-in-progress: false
 
 permissions:
@@ -69,6 +76,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: "7df185a18b98382c3240fa7ac4a37075"
 
       - name: Verify live sources total
+        if: ${{ inputs.verify-live != false }}
         run: |
           count=$(curl -s --max-time 30 'https://aidr.today/api/system' -H 'Cache-Control: no-store' | python3 -c "import json,sys; print(json.load(sys.stdin)['totals']['sources'])")
           echo "Live sources total: $count"

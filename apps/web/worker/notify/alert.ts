@@ -64,7 +64,6 @@ export function healthOk(snapshot: HealthSnapshot): boolean {
   return snapshot.services.every((service) => service.ok);
 }
 
-/** Compact one-line health footer for Telegram / Slack. */
 export function formatHealthFooter(snapshot: HealthSnapshot): string {
   if (snapshot.services.length === 0) return "health: n/a";
   const down = snapshot.services.filter((service) => !service.ok);

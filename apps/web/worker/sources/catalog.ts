@@ -6,15 +6,6 @@
  * generated migration, and the `/api/system/sources` + `/data` admin surfaces
  * all read this list, so the three can no longer drift apart.
  *
- * ## Why this exists
- *
- * Before this file the set of sources was duplicated by hand across
- * `worker/sources/seed.ts` and `migrations/0018` / `0020` / `0021` / `0022`.
- * `seed.ts`'s own header called that out as a maintenance hazard ("Mirrors
- * migrations/… so ingest can seed before `wrangler d1 migrations apply`"), and
- * the hazard was real: a source added to the migration but not the seed (or
- * the other way round) shows up only as a mysteriously missing feed.
- *
  * ## Ownership rules (deliberate, and load-bearing)
  *
  * - **This registry owns `name`, `type`, and `config` for the ids it declares.**
@@ -203,7 +194,6 @@ written out in the ARXIV_NOT_ADDED_REASON notes in worker/sources/catalog.ts.`;
 
 /** Exactly the rows generated into the already-applied 0027 migration. */
 export const REGISTRY_0027: readonly SourceSpec[] = [
-  // ---------------------------------------------------------------- community
   {
     id: "hn",
     name: "Hacker News",
@@ -233,7 +223,6 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
     enabled: true,
   },
 
-  // ------------------------------------------------------------------- vendor
   {
     id: "openai",
     name: "OpenAI News",
@@ -327,7 +316,6 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
     enabled: true,
   },
 
-  // ---------------------------------------------------------------- editorial
   {
     id: "mit-tr-ai",
     name: "MIT Tech Review AI",
@@ -401,7 +389,6 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
     enabled: true,
   },
 
-  // ------------------------------------------------------ Vietnamese (VI→EN)
   {
     id: "vnexpress-tech",
     name: "VnExpress Khoa học & Công nghệ",
@@ -425,13 +412,6 @@ export const REGISTRY_0027: readonly SourceSpec[] = [
     note: "First VI-native source. Chosen over Tuổi Trẻ because its pubDate is RFC-822 with +0700; see PR.",
   },
 
-  // ------------------------------------------------- primary research: arXiv
-  // Intentionally absent. See ARXIV_NOT_ADDED_REASON above: the sortable Atom
-  // API is robots-disallowed, and the one allowed surface could not be verified
-  // live. The flood gate, its tests, and the exact row to add are all already
-  // in place; only this list entry and a regenerated migration are missing.
-
-  // ------------------------------------------------------ AI newsrooms (EN)
   {
     id: "techcrunch-ai",
     name: "TechCrunch AI",

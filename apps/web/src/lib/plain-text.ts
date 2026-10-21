@@ -38,7 +38,6 @@ export function stripTitleMarker(title: string): string {
   return stripped.trim() ? stripped : title;
 }
 
-/** Ingest normalization for a source headline. */
 export function cleanTitle(title: string): string {
   return stripTitleMarker(decodeHtmlEntitiesOnce(title)).trim();
 }

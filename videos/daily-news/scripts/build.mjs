@@ -25,8 +25,17 @@ import {
 import { join, resolve } from "node:path";
 import { cutFor, cutOf, formatsOf } from "./lang.mjs";
 import { coverStory, resolveLook, thumbStory } from "./look.mjs";
+import { FADE } from "./looks/choreography.mjs";
 import { entry, lookCss, lookScript } from "./looks/index.mjs";
-import { bedStartFor, gainFor, SFX, soundFor } from "./looks/sound.mjs";
+import {
+  bedStartFor,
+  cuesFor,
+  gainFor,
+  SFX,
+  soundFor,
+} from "./looks/sound.mjs";
+import { STINGER } from "./looks/transition.mjs";
+import { imageSize } from "./media.mjs";
 import { estimateWords, partsOf } from "./novoice.mjs";
 import { spreadWords, subsMismatch } from "./visub.mjs";
 import { applyScreen } from "./visub-screen.mjs";
@@ -78,7 +87,6 @@ const noVoice =
   process.argv.includes("--no-voice") ||
   (existsSync(modeFile) && read(modeFile).voice === false);
 
-// Screen and post copy per language (facts and headlines come from the script).
 const UI_BASE = {
   en: {
     locale: "en-US",
@@ -194,7 +202,6 @@ function probe(file) {
   );
 }
 
-// ---------------------------------------------------------------- timeline
 const segs = [
   { id: "intro", kind: "intro", timing: config.timing.intro },
   ...script.stories.map((s) => ({
@@ -249,16 +256,17 @@ const norm = (t) =>
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, "");
 
-// The stat lands on its spoken word (script: statWord), else 40% into the line.
+// The stat starts 0.15 s before its spoken word (script: statWord), else 40% into the line, and is legible by
+// the word.
 for (const seg of storySegs) {
   const key = seg.story.statWord && norm(seg.story.statWord);
   const hit = key && seg.words.find((w) => norm(w.text).startsWith(key));
-  seg.statAt =
+  seg.statIn =
     seg.voiceStart +
     (hit ? Math.max(0.6, hit.start - 0.15) : Math.min(2.4, seg.voiceDur * 0.4));
 }
 
-// Intro focus: a grid tile lifts on the word that names its story (script.intro.focus: [{ rank, word }]).
+// Intro focus: a grid tile lifts 0.1 s before the word that names its story (script.intro.focus: [{ rank, word }]).
 let fromWord = 0;
 const introFocus = (script.intro.focus ?? []).map((f) => {
   const k = intro.words.findIndex(
@@ -267,10 +275,12 @@ const introFocus = (script.intro.focus ?? []).map((f) => {
   if (k < 0)
     throw new Error(`intro.focus: "${f.word}" is not in the intro line`);
   fromWord = k + 1;
-  return { rank: f.rank, at: r3(intro.voiceStart + intro.words[k].start) };
+  return {
+    rank: f.rank,
+    at: r3(intro.voiceStart + intro.words[k].start - 0.1),
+  };
 });
 
-// ---------------------------------------------------------------- captions
 function captionChunks(segList) {
   const out = [];
   for (const seg of segList) {
@@ -359,7 +369,6 @@ if (cut.subs) {
   );
 const burnCaps = allCaps.filter((c) => c.seg.startsWith("s"));
 
-// ---------------------------------------------------------------- html pieces
 const fontFaces = readFileSync(join(BRAND, "frame.md"), "utf8")
   .split("\n")
   .filter((l) => l.startsWith("@font-face"))
@@ -398,12 +407,21 @@ const dateline =
       ? `${DOW}, ${DAY} ${MON.toLowerCase()}, ${d.getUTCFullYear()}`
       : `${DOW}, ${MON} ${DAY}, ${d.getUTCFullYear()}`);
 const firstImage = (s) => s.images[0];
+// Width over height of an image on disk, or "" when its header is unreadable (motion.js then never fits it).
+const aspectOf = (src) => {
+  const size = existsSync(join(dir, src))
+    ? imageSize(readFileSync(join(dir, src)))
+    : null;
+  return size ? (size.width / size.height).toFixed(3) : "";
+};
 
-// Wrap *starred* phrases in the yellow marker; default marks the whole headline.
-const marked = (h) =>
-  h.includes("*")
-    ? esc(h).replace(/\*(.+?)\*/g, '<span class="mk">$1</span>')
-    : `<span class="mk">${esc(h)}</span>`;
+// Wrap the one *starred* phrase in the yellow marker, kept on one line so it reads as one focal point.
+const marked = (h) => {
+  const spans = h.match(/\*(.+?)\*/g) ?? [];
+  if (spans.length > 1)
+    throw new Error(`headline marks ${spans.length} spans, not one: "${h}"`);
+  return esc(h).replace(/\*(.+?)\*/g, '<span class="mk">$1</span>');
+};
 
 // What an intro variant's markup and cues read (looks/intro.mjs).
 const introCtx = {
@@ -447,7 +465,8 @@ function storyHtml(seg, i) {
     media =
       s.images
         .map(
-          (src, k) => `<img id="s${s.rank}-img${k}" src="${esc(src)}" alt="" />`
+          (src, k) =>
+            `<div class="frame"><div class="fill" style="background-image:url(&quot;${esc(src)}&quot;)"></div><div class="pic"><img id="s${s.rank}-img${k}" src="${esc(src)}" data-ar="${aspectOf(src)}" alt="" /></div></div>`
         )
         .join("") +
       `<div class="shade"></div><div class="credit">${esc(source)}</div>`;
@@ -495,8 +514,25 @@ function outroHtml() {
 
 const wipes = segs.slice(1).map((seg) => ({
   at: r3(seg.start),
+  hit: r3(seg.start - STINGER.in / 2),
   label: seg.kind === "story" ? String(seg.story.rank) : ";",
 }));
+const rankAfterCut = entry("choreography", look.choreography).rankIn;
+const stories = storySegs.map((s) => ({
+  start: r3(s.start),
+  dur: r3(s.dur),
+  layout: look.layouts[s.story.rank],
+  statIn: r3(s.statIn),
+  statAt: r3(s.statIn + FADE),
+  rankIn: r3(s.start + rankAfterCut),
+  rankAt: r3(s.start + rankAfterCut + FADE),
+}));
+const outroTimes = {
+  start: r3(outro.start),
+  dur: r3(outro.dur),
+  logoIn: r3(outro.start + 0.3),
+  hit: r3(outro.start + 0.3 + FADE),
+};
 function wipesHtml() {
   return wipes
     .map((w, i) => {
@@ -543,18 +579,13 @@ ${body}
 `;
 }
 
-// ---------------------------------------------------------------- audio
 function buildMix(outFile) {
   const sfxDir = resolve(ROOT, config.sfx.dir);
   const sfxMeta = read(join(sfxDir, "manifest.json"));
-  const cues = [
-    ["open", 0.25, 1.0],
-    ...wipes.map((w) => ["storyIn", w.at, 0.8]),
-    ...storySegs.map((s) => ["rankHit", s.start + 0.3, 0.55]),
-    ...storySegs.map((s) => ["statHit", s.statAt + 0.1, 0.5]),
-    ["outro", outro.start + 0.4, 0.8],
-    ...entry("intro", look.intro).cues(introCtx),
-  ];
+  const cues = cuesFor(
+    { wipes, stories, outro: outroTimes },
+    entry("intro", look.intro).cues(introCtx)
+  );
 
   const inputs = [];
   const filters = [];
@@ -629,7 +660,6 @@ function buildMix(outFile) {
   ]);
 }
 
-// ---------------------------------------------------------------- cover still
 // One story (look.mjs coverStory) gives the cover both its picture and its hook, so they never come from
 // different stories. A stand-in for an image-less thumb story uses its own kicker as the hook.
 const thumb = thumbStory(script);
@@ -640,64 +670,67 @@ if (cover !== thumb && !cut.subs)
   );
 const coverHook =
   cover === thumb ? (script.thumb?.hook ?? cover.kicker) : cover.kicker;
-// The cover intro opens on the cover still's story and hook.
 Object.assign(introCtx, { lead: cover, hook: coverHook });
 
 function coverHtml(fmt) {
   const lead = cover;
   const hook = coverHook;
   const img = firstImage(lead);
+  const stat = /\d/.test(lead.stat ?? "") ? lead.stat : null;
   const list = script.stories
-    .slice(0, fmt === "9x16" ? 4 : 3)
+    .filter((s) => s !== lead)
+    .slice(0, fmt === "9x16" ? 3 : 2)
     .map((s) => `<li><b>${s.rank}</b>${esc(s.kicker)}</li>`)
     .join("");
   const css = `
   .cv{position:absolute;inset:0;background:var(--yellow);overflow:hidden}
   .cv .img{position:absolute;object-fit:cover;display:block}
-  .cv .date{position:absolute;font-family:var(--serif);font-weight:600;line-height:.85;letter-spacing:-.04em}
-  .cv .mon{position:absolute;font-weight:800;letter-spacing:.3em}
-  .cv .hook{position:absolute;font-family:var(--serif);font-weight:500;line-height:1.2;letter-spacing:-.01em}
-  .cv .hook span{background:var(--ink);color:var(--yellow);padding:0 14px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+  .cv .date{position:absolute;font-family:var(--serif);font-weight:600;line-height:.8;letter-spacing:-.04em}
+  .cv .mon{position:absolute;font-weight:800;letter-spacing:.24em}
+  .cv .hook{position:absolute;font-family:var(--serif);font-weight:600;line-height:1.08;letter-spacing:-.02em}
+  .cv .hook span{background:var(--ink);color:var(--yellow);padding:0 18px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+  .cv .stat{position:absolute;font-family:var(--serif);font-weight:600;line-height:1;letter-spacing:-.03em;background:var(--yellow);color:var(--ink);padding:10px 26px 18px;box-shadow:0 10px 0 var(--ink)}
   .cv ul{position:absolute;list-style:none;font-weight:700}
-  .cv li{display:flex;gap:18px;align-items:baseline;border-top:2px solid var(--ink);padding:10px 0}
+  .cv li{display:flex;gap:18px;align-items:baseline;border-top:2px solid var(--ink);padding:8px 0}
   .cv li b{font-family:var(--serif);font-weight:600}
   .cv .brand{position:absolute;display:flex;align-items:center;gap:16px;font-weight:800;letter-spacing:.14em;background:var(--ink);color:var(--paper);padding:12px 22px 12px 12px}
   .cv .brand svg{display:block}
   .cv .panel{position:absolute;background:var(--soft);display:flex;flex-direction:column;justify-content:center;gap:24px}
   .cv .panel span{font-weight:800;letter-spacing:.12em;color:#b31b1b}
   .cv .panel b{font-family:var(--serif);font-weight:500;line-height:1.02;color:var(--ink)}
-  .f-16x9 .cv .img,.f-16x9 .cv .panel{right:0;top:0;width:44%;height:100%}
+  .f-16x9 .cv .img,.f-16x9 .cv .panel{right:0;top:0;width:54%;height:100%}
   .f-16x9 .cv .panel{padding:0 70px}
   .f-16x9 .cv .panel span{font-size:28px}
   .f-16x9 .cv .panel b{font-size:76px}
-  .f-16x9 .cv .date{left:70px;top:60px;font-size:330px}
-  .f-16x9 .cv .mon{left:84px;top:350px;font-size:48px}
-  .f-16x9 .cv .hook{left:70px;top:450px;width:960px;font-size:92px}
-  .f-16x9 .cv ul{left:70px;top:800px;width:960px;font-size:30px}
-  .f-16x9 .cv li{padding:6px 0}
-  .f-16x9 .cv .brand{right:30px;bottom:30px;font-size:28px}
-  .f-16x9 .cv .brand svg{width:56px;height:56px}
-  .f-9x16 .cv .img,.f-9x16 .cv .panel{left:0;top:0;width:100%;height:36%}
+  .f-16x9 .cv .brand{left:70px;top:60px;font-size:26px}
+  .f-16x9 .cv .brand svg{width:52px;height:52px}
+  .f-16x9 .cv .date{left:70px;top:180px;font-size:120px}
+  .f-16x9 .cv .mon{left:220px;top:240px;font-size:30px}
+  .f-16x9 .cv .hook{left:70px;top:350px;width:780px;font-size:116px}
+  .f-16x9 .cv .stat{left:calc(46% + 50px);bottom:70px;font-size:150px}
+  .f-16x9 .cv ul{left:70px;top:880px;width:780px;font-size:28px}
+  .f-9x16 .cv .img,.f-9x16 .cv .panel{left:0;top:0;width:100%;height:48%}
   .f-9x16 .cv .panel{padding:0 60px}
   .f-9x16 .cv .panel span{font-size:32px}
   .f-9x16 .cv .panel b{font-size:80px}
-  .f-9x16 .cv .date{left:60px;top:740px;font-size:360px}
-  .f-9x16 .cv .mon{left:76px;top:1050px;font-size:52px}
-  .f-9x16 .cv .hook{left:60px;top:1150px;width:960px;font-size:96px}
-  .f-9x16 .cv ul{left:60px;top:1520px;width:960px;font-size:34px}
-  .f-9x16 .cv .brand{left:60px;top:620px;font-size:30px}
-  .f-9x16 .cv .brand svg{width:64px;height:64px}`;
+  .f-9x16 .cv .brand{left:60px;top:70px;font-size:30px}
+  .f-9x16 .cv .brand svg{width:64px;height:64px}
+  .f-9x16 .cv .stat{left:60px;top:700px;font-size:150px}
+  .f-9x16 .cv .date{left:60px;top:1000px;font-size:130px}
+  .f-9x16 .cv .mon{left:230px;top:1070px;font-size:34px}
+  .f-9x16 .cv .hook{left:60px;top:1170px;width:960px;font-size:112px}
+  .f-9x16 .cv ul{left:60px;top:1590px;width:960px;font-size:34px}`;
   const body = `<div class="clip cv" id="cover" data-start="0" data-duration="1">
     ${img ? `<img class="img" id="cover-img" src="${esc(img)}" alt="" />` : `<div class="panel"><span>${esc(lead.paper?.venue ?? byRank[lead.rank]?.source ?? "")}</span><b>${esc(lead.paper?.title ?? lead.kicker)}</b></div>`}
+    ${stat ? `<div class="stat">${esc(stat)}</div>` : ""}
     <div class="date">${pad2(DAY)}</div><div class="mon">${esc(MON.toUpperCase())} ${d.getUTCFullYear()}</div>
     <div class="hook"><span>${esc(hook)}</span></div>
     <ul>${list}</ul>
     <div class="brand">${logo("")}${esc(UI.daily)}</div></div>
-    <script>document.fonts.ready.then(()=>{const h=document.querySelector('.hook');let p=parseFloat(getComputedStyle(h).fontSize);while(h.scrollHeight>p*1.0*3+4&&p>40){p-=2;h.style.fontSize=p+'px'}window.__timelines.main=gsap.timeline({paused:true});});</script>`;
+    <script>document.fonts.ready.then(()=>{const h=document.querySelector('.hook');let p=parseFloat(getComputedStyle(h).fontSize);while(h.scrollHeight>p*1.08*3+4&&p>48){p-=2;h.style.fontSize=p+'px'}window.__timelines.main=gsap.timeline({paused:true});});</script>`;
   return page(fmt, body, 1, `<style>${css}</style>`);
 }
 
-// ---------------------------------------------------------------- write projects
 const outRoot = join(dir, cut.out);
 const mixShared = join(outRoot, "mix.wav");
 mkdirSync(outRoot, { recursive: true });
@@ -727,14 +760,11 @@ for (const fmt of formatsOf(cut, config)) {
       focus: introFocus,
     },
     chrome: { start: r3(intro.dur), dur: r3(outro.start - intro.dur) },
-    stories: storySegs.map((s) => ({
-      start: r3(s.start),
-      dur: r3(s.dur),
-      layout: look.layouts[s.story.rank],
-      statAt: r3(s.statAt),
-    })),
-    outro: { start: r3(outro.start), dur: r3(outro.dur) },
+    stories,
+    outro: outroTimes,
     wipes,
+    stinger: STINGER,
+    fade: FADE,
     caps: config.captions.burn
       ? burnCaps.map((c) => ({
           start: r3(c.start),
@@ -793,7 +823,6 @@ if (cut.subs) {
   process.exit(0);
 }
 
-// ---------------------------------------------------------------- timeline + posts
 const mmss = (t) => `${Math.floor(t / 60)}:${pad2(Math.floor(t % 60))}`;
 const { layouts, notes, ...theme } = look;
 writeFileSync(

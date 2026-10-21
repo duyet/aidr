@@ -17,9 +17,7 @@ export function DaySection({
   day: DayGroup;
   lang: Lang;
   selectedTag?: string | null;
-  /** Feed pages link each day heading to its /date archive page. */
   linkToDay?: boolean;
-  /** Render at most this many stories until the reader asks for more. */
   limit?: number;
   /** Fetch the rest of a day the payload carries only part of
    * (`day.totalItems`). Resolves false when the fetch failed. */

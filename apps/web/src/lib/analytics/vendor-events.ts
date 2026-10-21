@@ -9,9 +9,7 @@ export type VendorName = "ga4" | "posthog" | "jitsu";
 export interface VendorEvent {
   vendor: VendorName;
   event: string;
-  /** When the vendor script sends it. */
   fires: string;
-  /** What we do about it. */
   handling: string;
 }
 

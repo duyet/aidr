@@ -36,7 +36,6 @@ import { sha256Hex } from "../hash.js";
 import { validateIngestMode } from "../ingest/mode.js";
 import { tickIngest } from "../ingest-schedule.js";
 import {
-  scoreItems,
   setLlmCallLogger,
   translateItems,
   withLlmCallContext,
@@ -59,10 +58,10 @@ import {
   RANK_SIGNAL_COLUMNS,
   RANK_SIGNAL_JOIN,
   type RankSignalRow,
-  rankScore,
+  rankScoreForRow,
   rowRankSignals,
-  storyCategory,
 } from "../ranking.js";
+import { rescoreItems } from "../rescore.js";
 import { adapters } from "../sources/registry.js";
 import type { SourceLanguage } from "../sources/types.js";
 import {
@@ -86,8 +85,6 @@ import {
   type TldrRegenerateResult,
   tldrSnapshotDate,
 } from "../tldr.js";
-import { captureAndLearnTopics } from "../topic-learning.js";
-import { normalizeTopics, type ScoredStoryTags } from "../topics.js";
 import { fetchTraffic } from "../traffic.js";
 import type { Env } from "../types.js";
 import { applyUnmerge, type BatchResult } from "../unmerge/apply.js";
@@ -298,7 +295,7 @@ export async function pushItems(
         item.title,
         summary,
         publishedAt,
-        now,
+        toEpochSeconds(now),
         item.points ?? 0,
         item.comments ?? 0,
         item.relevance ?? null,
@@ -503,14 +500,7 @@ export async function previewRanking(env: Env, limitParam?: unknown) {
         source_id: row.source_id,
         published_at: row.published_at,
         rank_score: row.rank_score,
-        rank_score_now: rankScore({
-          importance: row.llm_importance ?? 5,
-          quality: row.llm_quality ?? 5,
-          publishedAt: row.published_at * 1000,
-          now,
-          ...signals,
-          category: storyCategory(row.category),
-        }),
+        rank_score_now: rankScoreForRow(row, now),
         inputs: {
           relevance: row.llm_relevance,
           importance: row.llm_importance,
@@ -1091,6 +1081,8 @@ interface ReprocessItemRow extends RankSignalRow {
   summary: string | null;
   published_at: number;
   source_lang: "en" | "vi";
+  tags: string | null;
+  fetched_at: number;
 }
 
 /** Epoch seconds for the start of the current UTC day — matches
@@ -1138,8 +1130,8 @@ export async function reprocessToday(
 
     const since = startOfTodayUtcSec();
     const { results } = await env.DB.prepare(
-      `SELECT id, title, summary, published_at, source_lang,
-              ${RANK_SIGNAL_COLUMNS}
+      `SELECT id, title, summary, published_at, source_lang, items.tags,
+              fetched_at, ${RANK_SIGNAL_COLUMNS}
        FROM items ${RANK_SIGNAL_JOIN}
        WHERE status = 'published' AND published_at >= ?`
     )
@@ -1152,69 +1144,11 @@ export async function reprocessToday(
     let tokens = 0;
 
     if (doScore && items.length > 0) {
-      const scoreResults = await withLlmCallContext(operationId, () =>
-        scoreItems(
-          env,
-          items.map((row, i) => ({
-            i,
-            title: row.title,
-            summary: row.summary ?? undefined,
-            source: row.source_id,
-          }))
-        )
+      const rescored = await withLlmCallContext(operationId, () =>
+        rescoreItems(env, items)
       );
-
-      const storiesById = new Map<string, ScoredStoryTags>();
-      const scoreByItemId = new Map<string, (typeof scoreResults)[number]>();
-      for (const result of scoreResults) {
-        const row = items[result.i];
-        if (!row) continue;
-        storiesById.set(row.id, {
-          tags: result.tags,
-          title: row.title,
-          sourceId: row.source_id,
-        });
-        scoreByItemId.set(row.id, result);
-      }
-      const nowMs = Date.now();
-      const canonicalTagsByItem = await withLlmCallContext(operationId, () =>
-        normalizeTopics(env, storiesById, nowMs)
-      );
-      await captureAndLearnTopics(env.DB, canonicalTagsByItem, nowMs);
-
-      const statements: D1PreparedStatement[] = [];
-      for (const row of items) {
-        const score = scoreByItemId.get(row.id);
-        if (!score) continue;
-        tokens += score.tokens;
-        scoredCount++;
-        const tags = canonicalTagsByItem.get(row.id) ?? score.tags;
-        const rank = rankScore({
-          importance: score.importance,
-          quality: score.quality,
-          publishedAt: row.published_at * 1000,
-          now: Date.now(),
-          ...rowRankSignals(row),
-          category: storyCategory(score.category),
-        });
-        statements.push(
-          env.DB.prepare(
-            `UPDATE items SET
-               llm_relevance = ?, llm_importance = ?, llm_quality = ?,
-               category = ?, tags = ?, rank_score = ?
-             WHERE id = ?`
-          ).bind(
-            score.relevance,
-            score.importance,
-            score.quality,
-            score.category || null,
-            JSON.stringify(tags),
-            rank,
-            row.id
-          )
-        );
-      }
-      if (statements.length > 0) await env.DB.batch(statements);
+      scoredCount = rescored.scored;
+      tokens += rescored.tokens;
     }
 
     if (doTranslate && items.length > 0) {
@@ -1358,14 +1292,7 @@ export async function updateItem(
         ? clamp(input.relevance, 0, 1)
         : row.llm_relevance;
 
-    const rank = rankScore({
-      importance,
-      quality,
-      publishedAt: row.published_at * 1000,
-      now: Date.now(),
-      ...rowRankSignals(row),
-      category: storyCategory(row.category),
-    });
+    const rank = rankScoreForRow(row, Date.now(), { importance, quality });
 
     await env.DB.prepare(
       `UPDATE items SET
@@ -1465,7 +1392,7 @@ export async function listPendingSubmissions(
     100
   );
   const { results } = await env.DB.prepare(
-    `SELECT id, url, title, note, user_name, rating, created_at, status
+    `SELECT id, url, title, note, user_name, rating, created_at, status, review_attempts
      FROM submissions
      WHERE status = 'pending'
      ORDER BY created_at ASC

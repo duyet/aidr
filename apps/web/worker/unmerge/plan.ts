@@ -286,7 +286,6 @@ export function unknownDecisionIds(
     .filter((id) => !snapshot.items.has(id));
 }
 
-/** The `items` columns the plan reads. */
 export interface UnmergeItemRow {
   id: ItemId;
   source_id: string;
@@ -405,7 +404,6 @@ export type PairOutcome =
       candidates?: StoryRef[];
     };
 
-/** Pair actions that write. */
 export const MOVED_ACTIONS: ReadonlySet<PairOutcome["action"]> = new Set([
   "restore",
   "regroup",
@@ -477,7 +475,6 @@ export interface TranslationText {
   summary: string | null;
 }
 
-/** A `translations` row with `lang = 'vi'`; null is no row. */
 export interface TranslationTarget {
   itemId: ItemId;
   before: TranslationText | null;

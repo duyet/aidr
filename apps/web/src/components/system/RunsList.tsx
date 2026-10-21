@@ -19,8 +19,6 @@ interface RunsListProps {
 
 export function RunsList({ runs, lang, focusRunId }: RunsListProps) {
   const [openId, setOpenId] = useState<string | null>(null);
-  // Attempt rows are no longer inlined in the runs payload — each
-  // expanded row fetches /api/system/run-attempts once, then caches.
   const [attemptsByRun, setAttemptsByRun] = useState<
     Record<string, LlmCallRow[]>
   >({});

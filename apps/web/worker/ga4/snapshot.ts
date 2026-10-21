@@ -79,7 +79,6 @@ export interface Ga4Audience {
   sessions28d: number;
   newUsers28d: number;
   views7d: number;
-  /** Mean daily views across the daily series, rounded. */
   avgDailyViews: number;
 }
 

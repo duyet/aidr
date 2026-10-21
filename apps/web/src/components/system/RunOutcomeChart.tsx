@@ -33,9 +33,7 @@ const SERIES = Object.keys(CONFIG) as SeriesKey[];
 
 export interface OutcomeRow {
   id: string;
-  /** Tooltip heading. */
   at: string;
-  /** x-axis tick. */
   label: string;
   new: number;
   merged: number;
@@ -48,7 +46,6 @@ export interface OutcomeRow {
  * JSON; `merged`/`rejected` have no such column and stay 0 there — an honest
  * zero rather than an invented number. */
 export function outcomeRows(runs: WorkflowRunRow[], lang: Lang): OutcomeRow[] {
-  // The endpoint returns newest-first; charts read oldest → newest.
   return [...runs].reverse().map((run) => ({
     id: run.id,
     at: runAxisHeading(run.started_at, lang),
@@ -61,11 +58,6 @@ export function outcomeRows(runs: WorkflowRunRow[], lang: Lang): OutcomeRow[] {
 
 /**
  * Stacked bar chart of new / merged / rejected items per run, oldest to newest.
- *
- * Replaces a hand-rolled stack whose percentage heights were nested inside a
- * `height: auto` flex item, so every bar resolved to 0 and the card looked
- * permanently empty. `BarChart` owns the plot geometry, so the stack scales
- * correctly and the per-run split is legible.
  */
 export function RunOutcomeChart({
   runs,

@@ -56,11 +56,10 @@ describe("buildTopItemsQuery", () => {
   });
 
   it("normalizes `since` to epoch seconds, 24h before now", () => {
-    const nowMs = 1786847892625; // a real ms timestamp from the earlier bug
+    const nowMs = 1786847892625;
     const { since } = buildTopItemsQuery(nowMs);
     const nowSec = Math.floor(nowMs / 1000);
     expect(since).toBe(nowSec - 24 * 60 * 60);
-    // sanity: since is in seconds, not milliseconds
     expect(since).toBeLessThan(1e12);
   });
 
@@ -83,7 +82,6 @@ describe("buildTopItemsQuery", () => {
     expect(tldrSnapshotDate(now)).toBe("2026-10-14");
     expect(until).toBe(endOfTodaySec);
     expect(sql).toContain("published_at < ?");
-    // A story stamped after today's end fails the bound the query binds.
     const publishedAt = endOfTodaySec + 60;
     expect(publishedAt >= since && publishedAt < until).toBe(false);
     expect(endOfTodaySec - 1 >= since && endOfTodaySec - 1 < until).toBe(true);

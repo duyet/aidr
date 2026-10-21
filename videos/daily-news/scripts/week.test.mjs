@@ -50,7 +50,6 @@ test("last closed week is judged by the Ho Chi Minh date, not UTC", () => {
   // Monday Oct 12 00:30 ICT is Sunday 17:30 UTC: UTC alone would still say W41 is open.
   assert.equal(ictDate(new Date("2026-10-11T17:30:00Z")), "2026-10-12");
   assert.equal(lastClosedWeek(new Date("2026-10-11T17:30:00Z")), "2026-W41");
-  // Across the year boundary.
   assert.equal(
     lastClosedWeek(new Date("2027-01-04T09:00:00+07:00")),
     "2026-W53"

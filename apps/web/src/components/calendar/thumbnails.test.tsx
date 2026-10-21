@@ -44,9 +44,6 @@ function thumb(container: HTMLElement): HTMLImageElement {
 }
 
 describe("calendar thumbnails", () => {
-  // Live 2026-10-16: two October rows on /calendar showed Chrome's broken
-  // image icon for 404 marketbrief and twimg URLs. The day card and the
-  // phone preview render the same URL.
   it.each(CASES)(
     "swaps the dead %s image for the muted placeholder",
     (_, ui) => {

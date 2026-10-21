@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readCampaign } from "../../src/lib/analytics/landing.js";
 import {
   renderDigestEmail,
   renderNoteEmail,
@@ -13,7 +14,7 @@ import {
   buildStoryReplyMarkup,
 } from "../notify/telegram.js";
 import type { DailyDigest, StoryPayload } from "../notify/types.js";
-import { digestCampaign, withUtm } from "../utm.js";
+import { digestCampaign, postContent, withUtm } from "../utm.js";
 
 const OWN = "https://aidr.today/abcdef12";
 const THIRD_PARTY = "https://techcrunch.com/2026/10/14/post?id=1";
@@ -132,12 +133,12 @@ describe("Telegram UTMs", () => {
       utm_source: "telegram",
       utm_medium: "social",
       utm_campaign: "story",
-      utm_content: "button",
+      utm_content: "button-abcdef12",
     });
     const [captionLink] = hrefs(buildAlbumCaption(story)).slice(-1);
     expect(params(captionLink)).toMatchObject({
       utm_campaign: "story",
-      utm_content: "link",
+      utm_content: "link-abcdef12",
     });
   });
 });
@@ -163,7 +164,7 @@ describe("Facebook UTMs", () => {
       utm_source: "facebook",
       utm_medium: "social",
       utm_campaign: "story",
-      utm_content: "post",
+      utm_content: "post-abcdef12",
     });
   });
 });
@@ -202,18 +203,7 @@ describe("Email UTMs", () => {
     }
   });
 
-  it("tags the plain-text story, CTA and footer links", () => {
-    const urls = digest.text.match(/https:\/\/aidr\.today\S+/g) ?? [];
-    const data = urls.find((u) => u.includes("/data"));
-    const subscribe = urls.find((u) => u.includes("/subscribe?lang"));
-    expect(params(data as string)).toMatchObject({
-      ...edition,
-      utm_content: "footer-data",
-    });
-    expect(params(subscribe as string)).toMatchObject({
-      ...edition,
-      utm_content: "footer-subscribe",
-    });
+  it("tags the plain-text story and CTA links, with no data or subscribe footer links", () => {
     expect(digest.text).toContain("utm_content=lead");
   });
 
@@ -276,14 +266,29 @@ describe("Email UTMs", () => {
     );
     expect(note.text).toContain(`TechCrunch (${THIRD_PARTY})`);
     expect(note.text).toContain(`Settings: ${settings}`);
-    const footerData = note.text.match(/How we rank: (\S+)/)?.[1];
-    expect(params(footerData as string)).toMatchObject({
-      ...expected,
-      utm_content: "footer-data",
-    });
   });
 
   it("digestCampaign is the edition date", () => {
     expect(digestCampaign("2026-10-14")).toBe("digest-2026-10-14");
+  });
+});
+
+describe("per-post utm_content", () => {
+  const fullId = "0123456789abcdef".repeat(4);
+
+  it("keys a story post by its 8-character id prefix, which the landing reader keeps", () => {
+    const { link } = buildFacebookStory(
+      { ...story, id: fullId, lang: "en" },
+      "https://aidr.today"
+    );
+    expect(params(link).utm_content).toBe("post-01234567");
+    expect(readCampaign(new URL(link).search)?.utm_content).toBe(
+      "post-01234567"
+    );
+  });
+
+  it("names the slot first so GA4 still groups by slot", () => {
+    expect(postContent("button", fullId)).toBe("button-01234567");
+    expect(postContent("link", fullId)).toBe("link-01234567");
   });
 });

@@ -139,9 +139,10 @@ export async function reportHealthAlert(
 
 /** What the Workflows engine raises when it interrupts a step itself: a deploy
  * replacing the Durable Object code, a Durable Object that went away under an
- * in-flight call, an internal engine fault, or a step that outran its timeout.
- * The engine retries or replays the step, so none of these is an app bug and
- * none belongs in a Bugsink issue.
+ * in-flight call, a storage fault that resets the Durable Object, an internal
+ * engine fault, or a step that outran its timeout. The engine retries or
+ * replays the step, so none of these is an app bug and none belongs in a
+ * Bugsink issue.
  *
  * The value is a short reason, not a tag, because `workflow-step.ts` writes it
  * onto the run's step line — that is where the signal has to land once the
@@ -154,6 +155,10 @@ const ENGINE_INTERRUPTIONS: ReadonlyArray<readonly [RegExp, string]> = [
   [
     /durable object instance is no longer active/i,
     "durable object instance went away",
+  ],
+  [
+    /internal error in durable object storage caused object to be reset/i,
+    "durable object storage reset",
   ],
   [/internal workflows error/i, "internal workflows error"],
   [/(?:execution|step) timed out after \d+\s*ms/i, "step timed out"],

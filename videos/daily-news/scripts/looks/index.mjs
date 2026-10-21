@@ -24,14 +24,12 @@ const INDEX = {
   layout: byId(LAYOUTS),
 };
 
-/** The entry for `id` on `axis` ("intro", "transition", "background", "choreography", "layout"). */
 export function entry(axis, id) {
   const e = INDEX[axis]?.[id];
   if (!e) throw new Error(`look registry: no ${axis} "${id}"`);
   return e;
 }
 
-/** The chosen entries of a resolved look: one per day axis, plus each layout the day uses. */
 function chosen(look) {
   const layouts = [...new Set(Object.values(look.layouts))].sort();
   return {
@@ -40,7 +38,6 @@ function chosen(look) {
   };
 }
 
-/** CSS of the chosen variants, appended after template/style.css. */
 export function lookCss(look) {
   const { day, layouts } = chosen(look);
   return [...layouts, ...day]

@@ -56,8 +56,6 @@ describe("homepage OG image asset", () => {
 });
 
 describe("post-deploy smoke homepage OG check", () => {
-  // Regression guard for a stale literal that made `pnpm run smoke` fail
-  // against production while the deployed homepage was correct.
   it("derives the expected homepage og:image from the shared constant", () => {
     expect(smokeSrc).toContain("SITE_OG_HOME_IMAGE_URL");
     expect(smokeSrc).toContain('from "../src/lib/site"');

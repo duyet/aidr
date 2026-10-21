@@ -66,8 +66,11 @@ body {
   --tick-h: 100px;
   --tick: 34px;
 }
-/* 9:16: TikTok, Reels and Shorts cover the bottom ~28% with their own text and buttons, so the
-   story copy ends above ~1130px, captions sit at 60–67% and the ticker ends by 72%.
+/* 9:16: TikTok, Reels and Shorts cover the bottom 28% (below 1382px) with their own caption, username and buttons.
+   Nothing a viewer must read sits there: the copy ends near 1060px, captions start at 1100px, the ticker runs
+   1250-1324px and the footer chip ends at 1374px. Pictures may go there, so the story media runs to the bottom of
+   the frame: the picture sits in the top box (--pic-h) and its blurred copy bleeds down behind the captions, ticker
+   and footer, which keeps the picture whole (a poster's yellow panel and a statement's yellow block bleed too).
    The rank box sits top right, ending at the media's right edge, in every layout. Top left, the story
    camera push carries it into the logo tile, and the paper card's venue line sits under it. */
 .f-9x16 {
@@ -78,12 +81,13 @@ body {
   --media-x: 40px;
   --media-y: 180px;
   --media-w: 1000px;
-  --media-h: 470px;
+  --media-h: 1740px;
+  --pic-h: 480px;
   --rank: 130px;
   --rank-x: 910px;
   --rank-y: 190px;
   --text-x: 64px;
-  --text-y: 690px;
+  --text-y: 692px;
   --text-w: 952px;
   --cat: 30px;
   --kicker: 38px;
@@ -91,11 +95,11 @@ body {
   --stat: 88px;
   --stat-label: 30px;
   --src: 28px;
-  --cap-y: 1150px;
+  --cap-y: 1100px;
   --cap: 56px;
   --cap-w: 960px;
-  --tick-y: 1300px;
-  --tick-h: 84px;
+  --tick-y: 1250px;
+  --tick-h: 74px;
   --tick: 32px;
 }
 
@@ -248,10 +252,12 @@ body {
 }
 .f-9x16 .footer {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 1410px;
-  text-align: center;
+  left: 50%;
+  top: 1326px;
+  transform: translateX(-50%);
+  padding: 4px 22px;
+  background: var(--paper);
+  white-space: nowrap;
   font-size: 30px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -270,6 +276,41 @@ body {
   height: var(--media-h);
   overflow: hidden;
   background: var(--ink);
+}
+.media .frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.media .pic {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.media .fill {
+  display: none;
+  position: absolute;
+  inset: -20%;
+  background: center / cover no-repeat;
+  filter: blur(64px) saturate(1.4);
+}
+/* A page-coloured wash over the blur: a white card blurred and darkened read as flat grey, this reads as the page
+   tinted by the picture's colours. */
+.media .frame.fit .fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  opacity: 0.55;
+}
+.media .frame.fit .fill {
+  display: block;
+}
+/* The whole image, inset so the drift's 1.14 scale still keeps its edges in the box. */
+.media .frame.fit img {
+  object-fit: contain;
+  padding: 8%;
+  box-sizing: border-box;
 }
 .media img {
   position: absolute;
@@ -296,6 +337,56 @@ body {
   font-weight: 600;
   letter-spacing: 0.04em;
   opacity: 0.9;
+}
+
+/* 9:16: the picture fills the top box and its blurred copy runs on to the bottom of the frame, under the captions,
+   ticker and footer. The copy sits on a paper card over it. */
+.f-9x16 .media .pic {
+  bottom: auto;
+  height: var(--pic-h);
+}
+.f-9x16 .media .fill {
+  display: block;
+}
+.f-9x16 .media .fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  opacity: 0.3;
+}
+.f-9x16 .media .frame.fit .fill::after {
+  opacity: 0.55;
+}
+.f-9x16 .media {
+  background: var(--yellow);
+}
+.f-9x16 .media .paper {
+  bottom: auto;
+  height: var(--pic-h);
+  overflow: hidden;
+  box-sizing: border-box;
+  padding-bottom: 36px;
+}
+.f-9x16 .media .shade {
+  top: calc(var(--pic-h) * 0.7);
+  bottom: auto;
+  height: calc(var(--pic-h) * 0.3);
+}
+.f-9x16 .media .credit {
+  top: calc(var(--pic-h) - 44px);
+  bottom: auto;
+  padding: 3px 10px;
+  background: rgba(10, 10, 10, 0.55);
+}
+.f-9x16 .copy {
+  left: var(--media-x);
+  top: calc(var(--text-y) - 20px);
+  width: var(--media-w);
+  box-sizing: border-box;
+  padding: 20px calc(var(--text-x) - var(--media-x)) 22px;
+  background: var(--paper);
+  border: 1px solid var(--hair);
 }
 
 .paper {
@@ -388,8 +479,7 @@ body {
   background-repeat: no-repeat;
   background-position: 0 88%;
   background-size: 0% 38%;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
+  white-space: nowrap;
 }
 .statrow {
   margin-top: 34px;
@@ -424,8 +514,8 @@ body {
   align-items: baseline;
   gap: 24px;
   flex-wrap: wrap;
-  margin-top: 28px;
-  padding-top: 22px;
+  margin-top: 16px;
+  padding-top: 14px;
 }
 .f-9x16 .stat-label {
   margin-top: 0;
@@ -536,6 +626,17 @@ body {
 .cap .w {
   display: inline-block;
   padding: 2px 10px 6px;
+  background: #f7f7f5;
+  color: #7a7a7a;
+}
+
+/* 9:16: the words sit on one paper chip, so a line over the copy card's edge never puts grey words on yellow. */
+.f-9x16 .cap .line {
+  left: 0;
+  right: 0;
+  width: fit-content;
+  max-width: var(--cap-w);
+  margin: 0 auto;
   background: #f7f7f5;
 }
 

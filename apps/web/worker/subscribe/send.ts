@@ -1,6 +1,7 @@
 import { parseDayVideoRow } from "../../src/lib/feed-queries.js";
 import { categoryLabel } from "../../src/lib/lang.js";
 import { absoluteSiteUrl } from "../../src/lib/locale-url.js";
+import { type MailFont, normalizeMailFont } from "../../src/lib/mail-font.js";
 import {
   type MailFormat,
   normalizeMailFormat,
@@ -60,6 +61,7 @@ export interface SubscriberRow {
   last_sent_date: string | null;
   digest_size?: number | null;
   mail_format?: string | null;
+  mail_font?: string | null;
   /** `daily` (default) or `weekly`; see src/lib/mail-frequency.ts. */
   frequency?: string | null;
   /** End date (YYYY-MM-DD) of the last weekly digest mailed. */
@@ -85,12 +87,7 @@ export function digestSizeFor(value: unknown): 3 | 5 | 10 {
 export const DIGEST_LOCAL_HOUR = 7;
 
 /** A snapshot is usable for a digest once it has bullets in at least one
- * language — no longer gated on `sent_at`, which is per-run/global and
- * can't express "has this specific subscriber, in their timezone, been
- * sent today's digest yet." That gate is now per-subscriber; see
- * `shouldSendForSubscriber`. `sent_at` is still stamped as a legacy
- * "this snapshot has been processed at least once" signal, but nothing
- * reads it to decide whether to send. */
+ * language. */
 export function snapshotHasBullets(
   snapshot: Pick<TldrSnapshotRow, "bullets_en" | "bullets_vi">
 ): boolean {
@@ -127,15 +124,14 @@ export function getLocalHourAndDate(
 }
 
 /** A subscriber gets today's digest once it's at/after their local
- * DIGEST_LOCAL_HOUR and they haven't already received one for this local
- * date. */
+ * DIGEST_LOCAL_HOUR and this local date is later than their last_sent_date. */
 export function shouldSendForSubscriber(
   sub: Pick<SubscriberRow, "last_sent_date">,
   localHour: number,
   localDate: string
 ): boolean {
   if (localHour < DIGEST_LOCAL_HOUR) return false;
-  return sub.last_sent_date !== localDate;
+  return sub.last_sent_date === null || localDate > sub.last_sent_date;
 }
 
 /** A title-only fallback digest (the LLM failed) waits until this local
@@ -197,11 +193,11 @@ export interface DigestExtras {
   video?: DigestVideo | null;
   weekVideos?: DigestVideo[];
   postalAddress?: string;
+  font?: MailFont;
   /** Renders the weekly edition instead of a day (see `renderWeeklyEmail`). */
   weekly?: WeeklyMailMeta;
 }
 
-/** Builds the plain-text and HTML bodies for a subscriber's daily digest email. */
 export function buildDigestEmail(
   date: string,
   bullets: DigestBullet[],
@@ -231,6 +227,7 @@ export function buildDigestEmail(
     unsubscribeUrl: unsubscribeUrl(unsubscribeToken, mailLang),
     settingsUrl: settingsUrl(unsubscribeToken, mailLang),
     format,
+    font: extras.font,
     video: extras.video,
     weekVideos: extras.weekVideos,
     postalAddress: extras.postalAddress,
@@ -302,6 +299,7 @@ export interface RequestedPrefs {
   timezone: string;
   digest_size: number;
   mail_format: MailFormat;
+  mail_font: MailFont;
   frequency: MailFrequency;
   weekly_day: WeeklyDay;
 }
@@ -317,6 +315,7 @@ export function settingsChangeUrl(
     set_timezone: prefs.timezone,
     set_digest_size: String(prefs.digest_size),
     set_mail_format: prefs.mail_format,
+    set_mail_font: prefs.mail_font,
     set_frequency: prefs.frequency,
     set_weekly_day: String(prefs.weekly_day),
   });
@@ -335,8 +334,8 @@ export async function sendSettingsChangeEmail(
     ? "Xác nhận thay đổi cài đặt AI;DR"
     : "Confirm your AI;DR settings change";
   const settingsList = vi
-    ? `- Ngôn ngữ: ${prefs.lang}\n- Múi giờ: ${prefs.timezone}\n- Tần suất: ${prefs.frequency === "weekly" ? `hằng tuần (${weekdayName(prefs.weekly_day, "vi")})` : "hằng ngày"}\n- Số tin: ${prefs.digest_size}\n- Định dạng: ${prefs.mail_format}\n`
-    : `- Language: ${prefs.lang}\n- Timezone: ${prefs.timezone}\n- Frequency: ${prefs.frequency === "weekly" ? `weekly (${weekdayName(prefs.weekly_day, "en")})` : "daily"}\n- Stories: ${prefs.digest_size}\n- Format: ${prefs.mail_format}\n`;
+    ? `- Ngôn ngữ: ${prefs.lang}\n- Múi giờ: ${prefs.timezone}\n- Tần suất: ${prefs.frequency === "weekly" ? `hằng tuần (${weekdayName(prefs.weekly_day, "vi")})` : "hằng ngày"}\n- Số tin: ${prefs.digest_size}\n- Định dạng: ${prefs.mail_format}\n- Phông tiêu đề: ${prefs.mail_font === "serif" ? "có chân" : "không chân"}\n`
+    : `- Language: ${prefs.lang}\n- Timezone: ${prefs.timezone}\n- Frequency: ${prefs.frequency === "weekly" ? `weekly (${weekdayName(prefs.weekly_day, "en")})` : "daily"}\n- Stories: ${prefs.digest_size}\n- Format: ${prefs.mail_format}\n- Headline font: ${prefs.mail_font}\n`;
   const bodyMd = vi
     ? `Có người vừa đăng ký lại địa chỉ này với các cài đặt sau:\n\n${settingsList}\nBấm nút bên dưới để áp dụng. Nếu không phải bạn, cứ bỏ qua email này — cài đặt hiện tại sẽ giữ nguyên.\n`
     : `Someone just signed up this address again with these settings:\n\n${settingsList}\nClick the button below to apply them. If this wasn't you, ignore this email — your current settings stay as they are.\n`;
@@ -558,7 +557,8 @@ export async function renderEditionEmail(
   unsubscribeToken: string,
   size: number,
   format: MailFormat,
-  preloadedVideo?: DigestVideo | null
+  preloadedVideo?: DigestVideo | null,
+  font?: MailFont
 ): Promise<{ subject: string; html: string; text: string }> {
   const lang = edition.lang === "en" ? "en" : "vi";
   const [bullets, video] = await Promise.all([
@@ -574,7 +574,11 @@ export async function renderEditionEmail(
     unsubscribeToken,
     size,
     format,
-    { video, postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined }
+    {
+      video,
+      font,
+      postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined,
+    }
   );
 }
 
@@ -597,59 +601,90 @@ export async function sendEmailLane(
     const { hour, date: localDate } = getLocalHourAndDate(now, sub.timezone);
     if (!shouldSendForSubscriber(sub, hour, localDate)) continue;
 
-    const size = digestSizeFor(sub.digest_size);
-    const format = normalizeMailFormat(sub.mail_format);
-    const cacheKey = `${localDate}:${lang}:${size}`;
-    let edition = editions.get(cacheKey);
-    if (edition === undefined) {
-      edition = await loadEdition(env, localDate, lang, size);
-      editions.set(cacheKey, edition);
+    try {
+      const size = digestSizeFor(sub.digest_size);
+      const format = normalizeMailFormat(sub.mail_format);
+      const cacheKey = `${localDate}:${lang}:${size}`;
+      let edition = editions.get(cacheKey);
+      if (edition === undefined) {
+        edition = await loadEdition(env, localDate, lang, size);
+        editions.set(cacheKey, edition);
+      }
+      if (!edition) continue;
+      const videoKey = `${edition.date}:${lang}`;
+      let video = videos.get(videoKey);
+      if (video === undefined) {
+        video = await loadDailyVideo(env, edition.date, lang);
+        videos.set(videoKey, video);
+      }
+      const { subject, html, text } = await renderEditionEmail(
+        env,
+        edition,
+        sub.unsubscribe_token,
+        size,
+        format,
+        video,
+        normalizeMailFont(sub.mail_font)
+      );
+      const stamp = {
+        column: "last_sent_date",
+        email: sub.email,
+        from: sub.last_sent_date,
+        to: localDate,
+      } as const;
+      if (!(await claimStamp(env, stamp))) continue;
+      const ok = await sendSubscriberEmail(env, {
+        to: sub.email,
+        from: digestFrom(env),
+        subject,
+        html,
+        text,
+        unsubscribeToken: sub.unsubscribe_token,
+        lang,
+        replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
+      });
+      if (ok) {
+        await recordMailStat(env.DB, "sent", lang, now);
+        sent++;
+        stampedDate = edition.date;
+        continue;
+      }
+      await releaseStamp(env, stamp);
+    } catch (error) {
+      console.error("daily digest send failed:", error);
     }
-    if (!edition) continue;
-    const videoKey = `${edition.date}:${lang}`;
-    let video = videos.get(videoKey);
-    if (video === undefined) {
-      video = await loadDailyVideo(env, edition.date, lang);
-      videos.set(videoKey, video);
-    }
-    const { subject, html, text } = await renderEditionEmail(
-      env,
-      edition,
-      sub.unsubscribe_token,
-      size,
-      format,
-      video
-    );
-
-    const ok = await sendSubscriberEmail(env, {
-      to: sub.email,
-      from: digestFrom(env),
-      subject,
-      html,
-      text,
-      unsubscribeToken: sub.unsubscribe_token,
-      lang,
-      replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
-    });
-    if (!ok) {
-      failed++;
-      await recordMailStat(env.DB, "failed", lang, now);
-      continue;
-    }
-
-    // Count only when the stamp moves: a retry that finds it already set
-    // (or a duplicate row) must not add a second `sent`.
-    const stamp = await env.DB.prepare(
-      "UPDATE subscribers SET last_sent_date = ? WHERE email = ? AND last_sent_date IS NOT ?"
-    )
-      .bind(localDate, sub.email, localDate)
-      .run();
-    if (stamp.meta?.changes) await recordMailStat(env.DB, "sent", lang, now);
-    sent++;
-    stampedDate = edition.date;
+    failed++;
+    await recordMailStat(env.DB, "failed", lang, now);
   }
   return { sent, failed, stampedDate };
 }
+
+interface SendStamp {
+  column: "last_sent_date" | "last_weekly_sent";
+  email: string;
+  from: string | null;
+  to: string;
+}
+
+async function swapStamp(
+  env: Pick<Env, "DB">,
+  { column, email }: SendStamp,
+  expected: string | null,
+  next: string | null
+): Promise<boolean> {
+  const result = await env.DB.prepare(
+    `UPDATE subscribers SET ${column} = ? WHERE email = ? AND ${column} IS ?`
+  )
+    .bind(next, email, expected)
+    .run();
+  return result.meta.changes === 1;
+}
+
+const claimStamp = (env: Pick<Env, "DB">, stamp: SendStamp) =>
+  swapStamp(env, stamp, stamp.from, stamp.to);
+
+const releaseStamp = (env: Pick<Env, "DB">, stamp: SendStamp) =>
+  swapStamp(env, stamp, stamp.to, stamp.from);
 
 /** One weekly digest in one language, as digest bullets. */
 export interface WeeklyMail {
@@ -757,7 +792,8 @@ export async function renderWeeklyEmail(
   lang: "en" | "vi",
   unsubscribeToken: string,
   format: MailFormat,
-  preloadedVideos?: DigestVideo[]
+  preloadedVideos?: DigestVideo[],
+  font?: MailFont
 ): Promise<{ subject: string; html: string; text: string }> {
   const [bullets, videos] = await Promise.all([
     loadBulletDetails(env, mail.bullets, lang),
@@ -773,6 +809,7 @@ export async function renderWeeklyEmail(
     format,
     {
       postalAddress: env.MAIL_POSTAL_ADDRESS?.trim() || undefined,
+      font,
       weekly: mail.meta,
       weekVideos: [...videos].reverse(),
     }
@@ -813,8 +850,6 @@ export async function sendWeeklyLane(
     ) {
       continue;
     }
-    // One subscriber's render or send error must not stop the others.
-    let ok = false;
     try {
       let videos = weekVideos.get(key);
       if (videos === undefined) {
@@ -832,9 +867,17 @@ export async function sendWeeklyLane(
         lang,
         sub.unsubscribe_token,
         normalizeMailFormat(sub.mail_format),
-        videos
+        videos,
+        normalizeMailFont(sub.mail_font)
       );
-      ok = await sendSubscriberEmail(env, {
+      const stamp = {
+        column: "last_weekly_sent",
+        email: sub.email,
+        from: sub.last_weekly_sent ?? null,
+        to: end,
+      } as const;
+      if (!(await claimStamp(env, stamp))) continue;
+      const ok = await sendSubscriberEmail(env, {
         to: sub.email,
         from: digestFrom(env),
         subject,
@@ -844,21 +887,17 @@ export async function sendWeeklyLane(
         lang,
         replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
       });
+      if (ok) {
+        await recordMailStat(env.DB, "sent", lang, now);
+        sent++;
+        continue;
+      }
+      await releaseStamp(env, stamp);
     } catch (error) {
       console.error("weekly digest send failed:", error);
     }
-    if (!ok) {
-      failed++;
-      await recordMailStat(env.DB, "failed", lang, now);
-      continue;
-    }
-    const stamp = await env.DB.prepare(
-      "UPDATE subscribers SET last_weekly_sent = ? WHERE email = ? AND last_weekly_sent IS NOT ?"
-    )
-      .bind(end, sub.email, end)
-      .run();
-    if (stamp.meta?.changes) await recordMailStat(env.DB, "sent", lang, now);
-    sent++;
+    failed++;
+    await recordMailStat(env.DB, "failed", lang, now);
   }
   return { sent, failed };
 }
@@ -908,7 +947,7 @@ export async function sendDailyTldr(env: Env): Promise<number> {
   await ensureMailSchema(env.DB);
 
   const { results: subscribers } = await env.DB.prepare(
-    "SELECT email, lang, unsubscribe_token, timezone, last_sent_date, digest_size, mail_format, frequency, last_weekly_sent, weekly_day FROM subscribers WHERE confirmed = 1"
+    "SELECT email, lang, unsubscribe_token, timezone, last_sent_date, digest_size, mail_format, mail_font, frequency, last_weekly_sent, weekly_day FROM subscribers WHERE confirmed = 1"
   ).all<SubscriberRow>();
 
   if (!subscribers || subscribers.length === 0) return 0;

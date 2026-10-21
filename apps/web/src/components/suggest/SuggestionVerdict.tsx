@@ -40,9 +40,6 @@ export function isAdjusted(
   return Boolean(appliedText) && appliedText?.trim() !== suggestion.trim();
 }
 
-/** The reviewer's verdict on one suggestion: rating, reason, and for an
- *  applied edit the published text — as a word diff against what the reader
- *  wrote when the reviewer adjusted it. */
 export function SuggestionVerdict({
   status,
   suggestion,
@@ -58,8 +55,6 @@ export function SuggestionVerdict({
   rating: number | null;
   note: string | null;
   lang: Lang;
-  /** Per-field edits of a free-form suggestion. When present, each field is
-   *  shown as a diff of the story text before and after. */
   changes?: AppliedChange[];
 }) {
   const perField = (changes ?? []).length > 0;

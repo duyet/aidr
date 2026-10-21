@@ -536,7 +536,6 @@ describe("protected English terms", () => {
     "Bởi Felix Ng / Cointelegraph.",
     "Bài viết của Claire Ruckin thuộc Bloomberg.",
     "Bài viết từ Tim Fernholz thuộc TechCrunch.",
-    // #738
     "By Tiffany May / New York Times.",
     "By Brian May / Reuters.",
     "By Robert Smith Jr. / Axios.",

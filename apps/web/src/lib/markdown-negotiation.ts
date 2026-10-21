@@ -17,7 +17,6 @@ const STORY_MARKDOWN_ALIAS_RE = /^\/([0-9a-f]{8,64})\.md$/;
 const DAY_PAGE_RE = /^\/date\/(\d{4}-\d{2}-\d{2})$/;
 const WEEK_PAGE_RE = /^\/week\/(\d{4}-W\d{2})$/;
 
-/** The Markdown twin's path for a negotiable page, else null. */
 export function negotiableMarkdownPath(pathname: string): string | null {
   if (pathname === "/") return HOME_MARKDOWN_PATH;
   const story = STORY_PAGE_RE.exec(pathname);
@@ -81,7 +80,6 @@ export function prefersMarkdown(accept: string | null): boolean {
   return q > 0 && q >= qualityOf(ranges, "text/html");
 }
 
-/** Response with `Accept` merged into its Vary, and an optional extra Link. */
 export function withAcceptVary(response: Response, link?: string): Response {
   const out = new Response(response.body, response);
   const vary = out.headers.get("vary");
@@ -93,7 +91,6 @@ export function withAcceptVary(response: Response, link?: string): Response {
   return out;
 }
 
-/** `Link` value advertising the Markdown twin, carrying an explicit `lang`. */
 export function markdownAlternateLink(
   twinPath: string,
   search: string

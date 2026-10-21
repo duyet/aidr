@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { withEtag } from "./etag";
 
-/**
- * /api/feed and /api/public change once per edition, but the Chrome extension
- * polls them. A matching If-None-Match must cost a 304 with no body, and the
- * cache policy must survive so the client keeps reusing its copy.
- */
 const policy = "public, max-age=60, s-maxage=120, stale-while-revalidate=300";
 
 function json(body: unknown, status = 200) {

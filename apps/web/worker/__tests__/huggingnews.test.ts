@@ -97,14 +97,52 @@ describe("huggingNewsAdapter", () => {
     expect(items).toEqual([]);
   });
 
-  it("never throws and returns [] on network failure", async () => {
+  it("falls back to the sitemap when the data feed times out", async () => {
+    const lastmod = new Date().toISOString();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes("sitemap")) {
+          return new Response(
+            `<url><loc>https://huggingnews.com/ai/open-model-ships-1a2b3c4d</loc><lastmod>${lastmod}</lastmod></url>`
+          );
+        }
+        throw new DOMException("The operation timed out.", "TimeoutError");
+      })
+    );
+
+    const items = await huggingNewsAdapter.fetchItems({}, 0);
+    expect(items.map((item) => item.title)).toEqual(["Open Model Ships"]);
+  });
+
+  it("reports parse_failed when the feed is not JSON and the sitemap also fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockImplementation(async (url: string) =>
+          url.includes("sitemap")
+            ? new Response("", { status: 503 })
+            : new Response("<html>maintenance</html>")
+        )
+    );
+
+    await expect(huggingNewsAdapter.fetchItems({}, 0)).rejects.toMatchObject({
+      name: "SourceFetchError",
+      reason: "parse_failed",
+    });
+  });
+
+  it("reports fetch_failed when both the feed and the sitemap are unreachable", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockRejectedValue(new Error("network down"))
     );
 
-    const items = await huggingNewsAdapter.fetchItems({}, 0);
-    expect(items).toEqual([]);
+    await expect(huggingNewsAdapter.fetchItems({}, 0)).rejects.toMatchObject({
+      name: "SourceFetchError",
+      reason: "fetch_failed",
+    });
   });
 
   it("enriches an item with sources from its real detail-page selectedTweets", async () => {
@@ -128,9 +166,7 @@ describe("huggingNewsAdapter", () => {
       quote: "licensed under Apache 2.0",
       url: "https://x.com/alibaba_cloud/status/2088282795638394986",
     });
-    // tweetedAt 1786720391000 ms -> 1786720391 seconds
     expect(alibabaItem?.sources?.[0].postedAt).toBe(1786720391);
-    // second tweet in the fixture has label "Support"
     expect(alibabaItem?.sources?.[1]).toMatchObject({ kind: "support" });
   });
 

@@ -9,16 +9,13 @@
     (1 - Math.pow(1 - k, p * dur * 30)) / (1 - Math.pow(1 - k, dur * 30));
   const arrive = (target, from, at, dur = 0.6, k = 0.15) =>
     tl.fromTo(target, from, { x: 0, y: 0, opacity: 1, filter: "blur(0px)", duration: dur, ease: park(dur, k) }, at);
-  // The one linear root push per section, from its first frame.
   const push = (target, at, dur, to = 1.025) =>
     tl.fromTo(target, { scale: 1 }, { scale: to, duration: dur, ease: "none" }, at);
-  // Leave left with horizontal blur, ahead of the next section's entrance.
   const leave = (target, end) =>
     tl.to(target, { x: -150, filter: "blur(6px)", duration: F.EXIT, ease: "power3.in" }, end - F.EXIT);
   const sweep = (target, at, dur = 0.4) =>
     tl.fromTo(target, { scaleX: 0 }, { scaleX: 1, duration: dur, ease: "power2.out" }, at);
 
-  // ── title ──────────────────────────────────────────────
   push("#title-push", 0, F.title.dur, 1.03);
   tl.fromTo("#wm-dot", { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.36, ease: park(0.36, 0.19) }, 0.05);
   tl.fromTo("#wm-comma", { scale: 0, transformOrigin: "50% 20%" }, { scale: 1, duration: 0.36, ease: park(0.36, 0.19) }, 0.12);
@@ -31,7 +28,6 @@
   arrive("#t-dates", { y: 16, opacity: 0, filter: "blur(4px)" }, 2.35, 0.5);
   leave("#title-out", F.title.dur);
 
-  // ── highlights ─────────────────────────────────────────
   F.scenes.forEach((s, i) => {
     const t = s.start;
     const S = F.S;
@@ -53,7 +49,6 @@
     leave(id + "-out", t + s.dur);
   });
 
-  // ── in numbers ─────────────────────────────────────────
   const st = F.stats.start;
   push("#stats-push", st, F.stats.dur, 1.025);
   arrive("#st-label", { x: -40, opacity: 1 }, st, 0.5);
@@ -71,7 +66,6 @@
   arrive("#st-also", { y: 26, opacity: 0, filter: "blur(4px)" }, st + 1.2, 0.6);
   leave("#stats-out", st + F.stats.dur);
 
-  // ── close ──────────────────────────────────────────────
   const c = F.close.start;
   push("#close-push", c, F.close.dur, 1.03);
   tl.fromTo("#c-tile", { scale: 0.7, opacity: 1, filter: "blur(8px)" }, { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.6, ease: park(0.6, 0.17) }, c);
@@ -80,7 +74,6 @@
   sweep("#c-hl", c + 1.45);
   arrive("#c-notes", { y: 16, opacity: 0 }, c + 1.9, 0.5);
 
-  // ── captions: each line rises in, the spoken word gets the marker ──
   F.caps.forEach((C, ci) => {
     const line = document.querySelector("#cap-" + ci + " .line");
     tl.fromTo(line, { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.18, ease: "power2.out" }, C.start);

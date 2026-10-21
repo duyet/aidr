@@ -399,8 +399,6 @@ describe("Worker locale redirects", () => {
     expect(explicit.headers.get("Cache-Control")).toContain("s-maxage=300");
     expect(explicit.headers.get("X-Robots-Tag")).toBe("index, follow");
 
-    // Left out of the sitemap, so indexability used to stamp private, no-store
-    // and the explicit-lang edge TTL never landed.
     const submit = await fetchLocale(
       new Request("https://aidr.today/contribute/new?lang=en")
     );

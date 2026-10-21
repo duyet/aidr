@@ -240,7 +240,6 @@ export async function getStory(
     )
     .bind(...idPrefixBinds(idPrefix))
     .all<{ duplicate_of: string }>();
-  // An ambiguous prefix resolves to nothing rather than to a guess.
   if (results?.length !== 1) return null;
   const canonical =
     (await queryStories(db, results[0].duplicate_of, 1))[0] ?? null;

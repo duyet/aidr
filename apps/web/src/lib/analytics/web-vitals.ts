@@ -28,7 +28,6 @@ export function documentCacheStatus(): EdgeCache {
   }
 }
 
-/** One metric → GA4 event + PostHog event, same name and dimensions. */
 export function metricParams(
   metric: Metric,
   cache: EdgeCache,

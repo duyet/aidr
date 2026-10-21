@@ -158,6 +158,7 @@ export function buildMergeCandidates(
       points: row.item.points ?? 0,
       comments: row.item.comments ?? 0,
       rank,
+      belowBar: (score?.relevance ?? 0.5) < RELEVANCE_THRESHOLD,
       imageUrl: row.item.imageUrl,
       mediaManifest: row.item.mediaManifest,
       official:
@@ -194,7 +195,6 @@ export function toExistingCandidates(
   );
 }
 
-/** Item ids per `IN (...)` read of demoted canonicals' rows. */
 const DEMOTED_READ_CHUNK = 50;
 
 /** Each demoted canonical's `item_sources` and earlier merged items, so the
@@ -283,6 +283,12 @@ function logGateRejections(
     const titles = newIndices.map((i) => newItems.get(i)?.title ?? `#${i}`);
     console.warn(
       `cluster gate: ${model ?? "unknown model"} linked ${existingId.slice(0, 8)} "${existing.get(existingId)?.title ?? ""}" to unrelated ${JSON.stringify(titles)}; kept apart`
+    );
+  }
+  if (gated.detached.length > 0) {
+    const titles = gated.detached.map((i) => newItems.get(i)?.title ?? `#${i}`);
+    console.warn(
+      `cluster gate: ${model ?? "unknown model"} clustered ${JSON.stringify(titles)} with items they share no evidence with; kept apart`
     );
   }
 }

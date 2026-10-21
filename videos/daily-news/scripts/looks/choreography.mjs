@@ -1,13 +1,21 @@
 // How a story arrives (look axis "choreography"): the media reveal, the image drift (Ken Burns), the rank badge and
 // the copy lines, all from S.start (the cut, under the stinger). The camera push, image crossfades, paper card,
 // marker, stat and credit are shared (template/motion.js). Arrive fast, land soft, no overshoot.
+// `rankIn` is how long after the cut the rank badge starts: build.mjs turns it into S.rankIn, where the badge
+// tweens start, and S.rankAt, where the rankHit effect peaks.
+
+/**
+ * How long a hit element (rank badge, stat, outro logo) takes to fade in, linearly, while its move lands softly
+ * over a longer ease. A viewer hears a hit as on time on the frame the element is first fully legible, which is
+ * the end of this fade, so each hit key (S.rankAt, S.statAt, O.hit) is its start plus FADE.
+ */
+export const FADE = 4 / 30;
 
 export const CHOREOGRAPHIES = [
   {
     id: "rise",
     auto: true,
-    // The media opens left to right while the images push in and out in turn; the badge turns in; the copy rises
-    // line by line.
+    rankIn: 0.2,
     motion: (tl, S, sc, h) => {
       const t = S.start;
       tl.fromTo(
@@ -25,10 +33,11 @@ export const CHOREOGRAPHIES = [
       });
       tl.fromTo(
         h.$(".rank", sc),
-        { scale: 0.4, rotation: -10, opacity: 0 },
-        { scale: 1, rotation: 0, opacity: 1, duration: 0.5, ease: h.LAND },
-        t + 0.2
+        { scale: 0.4, rotation: -10 },
+        { scale: 1, rotation: 0, duration: 0.5, ease: h.LAND },
+        S.rankIn
       );
+      h.fadeIn(h.$(".rank", sc), S.rankIn);
       [".cat", ".kicker", ".head"].forEach((s, k) => {
         tl.fromTo(
           h.$(s, sc),
@@ -42,8 +51,7 @@ export const CHOREOGRAPHIES = [
   {
     id: "slide",
     auto: true,
-    // The media drops open from the top while the images pan down the frame; the badge and the copy slide in
-    // from opposite edges.
+    rankIn: 0.15,
     motion: (tl, S, sc, h) => {
       const t = S.start;
       tl.fromTo(
@@ -61,10 +69,11 @@ export const CHOREOGRAPHIES = [
       });
       tl.fromTo(
         h.$(".rank", sc),
-        { x: -60, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" },
-        t + 0.15
+        { x: -60 },
+        { x: 0, duration: 0.5, ease: "expo.out" },
+        S.rankIn
       );
+      h.fadeIn(h.$(".rank", sc), S.rankIn);
       [".cat", ".kicker", ".head"].forEach((s, k) => {
         tl.fromTo(
           h.$(s, sc),
@@ -78,8 +87,7 @@ export const CHOREOGRAPHIES = [
   {
     id: "mask",
     auto: true,
-    // The media opens from its centre and the images keep a slow push toward it; the badge settles from slightly
-    // large; each copy line rises out of a mask.
+    rankIn: 0.3,
     motion: (tl, S, sc, h) => {
       const t = S.start;
       tl.fromTo(
@@ -98,10 +106,11 @@ export const CHOREOGRAPHIES = [
       });
       tl.fromTo(
         h.$(".rank", sc),
-        { scale: 1.25, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.45, ease: "power2.out" },
-        t + 0.3
+        { scale: 1.25 },
+        { scale: 1, duration: 0.45, ease: "power2.out" },
+        S.rankIn
       );
+      h.fadeIn(h.$(".rank", sc), S.rankIn);
       [".cat", ".kicker", ".head"].forEach((s, k) => {
         tl.fromTo(
           h.$(s, sc),

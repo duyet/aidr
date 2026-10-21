@@ -1,6 +1,5 @@
 import { adminActionBtnClass } from "./lib";
 
-/** A pipeline trigger row: one busy-aware button plus its last result. */
 export function AdminAction({
   busy,
   busyLabel,

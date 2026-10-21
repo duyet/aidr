@@ -21,6 +21,7 @@ import {
   evidenceTokens,
   isTitleNearDuplicate,
   normalizeTitleForDedupe,
+  unionFind,
 } from "./dedupe.js";
 import type { HealthIssue } from "./health.js";
 import { officialSourceFor } from "./sources/catalog.js";
@@ -32,7 +33,6 @@ import { looksVietnamese } from "./tldr-lang.js";
  *  fails until it is bumped. */
 export const CLUSTER_GATE_VERSION = 1;
 
-/** What the gate reads of one item in a proposed link. */
 export interface GateHeadline {
   title: string;
   sourceId: string;
@@ -108,23 +108,30 @@ function sharesStoryEvidence(
   });
 }
 
+/** The members judged against `target`: those in its language when any
+ *  are, so a Vietnamese copy in the cluster cannot vouch for an English
+ *  story its English members share nothing with. */
+function judgedFor<T extends GateHeadline>(
+  members: readonly T[],
+  target: GateHeadline
+): readonly T[] {
+  const vietnamese = looksVietnamese(target.title);
+  const comparable = members.filter(
+    (m) => looksVietnamese(m.title) === vietnamese
+  );
+  return comparable.length > 0 ? comparable : members;
+}
+
 /**
  * True when `members`, items the model put in one story, back linking it
- * to `target`: one of them shares evidence with it. When some members are
- * in the target's language only those are judged, so a Vietnamese copy in
- * the cluster cannot vouch for an English story its English members share
- * nothing with.
+ * to `target`: one of the judged members (`judgedFor`) shares evidence
+ * with it.
  */
 export function backsExisting(
   members: readonly GateHeadline[],
   target: GateHeadline
 ): boolean {
-  const vietnamese = looksVietnamese(target.title);
-  const comparable = members.filter(
-    (m) => looksVietnamese(m.title) === vietnamese
-  );
-  const judged = comparable.length > 0 ? comparable : members;
-  return judged.some((m) => sharesStoryEvidence(m, target));
+  return judgedFor(members, target).some((m) => sharesStoryEvidence(m, target));
 }
 
 /** One existing id the gate removed from an LLM cluster. */
@@ -138,14 +145,23 @@ export interface GatedClusters {
   /** Existing ids the model linked to at least one new item. */
   proposed: number;
   rejected: ClusterGateRejection[];
+  /** New items cut from their model cluster: nothing else in it shares
+   *  evidence with them. */
+  detached: number[];
 }
 
 /**
- * Drops each existing id the new items of its LLM cluster do not back
- * (`backsExisting`), and keeps the rest of the cluster (the new items' own
- * pairing is not judged). A cluster with no new item is dropped: the merge
- * plan only folds new items, so its one effect would be to make an
- * unrelated existing row the canonical of a later union.
+ * Splits each LLM cluster into the parts its own evidence holds together.
+ * Two new items stay together when they share story evidence; a new item
+ * joins an existing id when it is a judged member that shares evidence with
+ * it. An existing id no judged member backs is rejected, exactly as
+ * `backsExisting` decides. One item backing a story no longer carries the
+ * rest of the cluster in: gemma put "Anthropic cushions its upcoming IPO…"
+ * in with a Character.AI twin of the Disney story, and paired the Iambic
+ * IPO twins with the Harvey twins (2026-10-15 to 10-19). A part with no
+ * new item is dropped: the merge plan only folds new items, so its one
+ * effect would be to make an unrelated existing row the canonical of a
+ * later union.
  */
 export function gateLlmClusters(
   clusters: readonly Cluster[],
@@ -154,25 +170,54 @@ export function gateLlmClusters(
 ): GatedClusters {
   const out: Cluster[] = [];
   const rejected: ClusterGateRejection[] = [];
+  const detached: number[] = [];
   let proposed = 0;
   for (const cluster of clusters) {
     if (cluster.new.length === 0) continue;
-    const members = cluster.new.flatMap((i) => newItems.get(i) ?? []);
-    const kept: string[] = [];
+    const members = cluster.new.flatMap((i) => {
+      const headline = newItems.get(i);
+      return headline ? [{ ...headline, i }] : [];
+    });
+    const uf = unionFind();
+    for (const m of members) uf.ensure(`n:${m.i}`);
+    for (let a = 0; a < members.length; a++) {
+      for (let b = a + 1; b < members.length; b++) {
+        if (sharesStoryEvidence(members[a], members[b])) {
+          uf.union(`n:${members[a].i}`, `n:${members[b].i}`);
+        }
+      }
+    }
     for (const id of cluster.existing) {
       proposed++;
       const target = existing.get(id);
-      if (target && backsExisting(members, target)) {
-        kept.push(id);
-      } else {
+      const backers = target
+        ? judgedFor(members, target).filter((m) =>
+            sharesStoryEvidence(m, target)
+          )
+        : [];
+      if (backers.length === 0) {
         rejected.push({ existingId: id, newIndices: [...cluster.new] });
+        continue;
       }
+      for (const m of backers) uf.union(`n:${m.i}`, `e:${id}`);
     }
-    if (cluster.new.length + kept.length >= 2) {
-      out.push({ new: [...cluster.new], existing: kept });
+    const parts = new Map<string, Cluster>();
+    for (const m of members) {
+      const root = uf.find(`n:${m.i}`);
+      const part = parts.get(root) ?? { new: [], existing: [] };
+      part.new.push(m.i);
+      parts.set(root, part);
+    }
+    for (const id of cluster.existing) {
+      const part = parts.get(uf.find(`e:${id}`));
+      if (part && !part.existing.includes(id)) part.existing.push(id);
+    }
+    for (const part of parts.values()) {
+      if (part.new.length + part.existing.length >= 2) out.push(part);
+      else if (cluster.new.length > 1) detached.push(...part.new);
     }
   }
-  return { clusters: out, proposed, rejected };
+  return { clusters: out, proposed, rejected, detached };
 }
 
 export interface ModelClusterGate {
@@ -182,7 +227,6 @@ export interface ModelClusterGate {
   rejected: number;
 }
 
-/** Served cluster model id -> counts. */
 export type ClusterGateTally = Record<string, ModelClusterGate>;
 
 /** Below this many proposed links in 24h a rate is noise. A day carries
@@ -221,7 +265,6 @@ function add(into: ClusterGateTally, model: string, counts: ModelClusterGate) {
   };
 }
 
-/** This run's tally: empty when the model linked nothing to an existing id. */
 export function tallyClusterGate(
   model: string | null,
   gated: Pick<GatedClusters, "proposed" | "rejected">
@@ -273,7 +316,6 @@ function pct(m: ModelClusterGate): string {
   return `${Math.round((m.rejected / m.proposed) * 100)}%`;
 }
 
-/** "model: rejected/proposed (pct)", busiest model first. */
 export function clusterGateLines(tally: ClusterGateTally): string[] {
   return Object.entries(tally)
     .sort((a, b) => b[1].proposed - a[1].proposed)

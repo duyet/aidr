@@ -191,7 +191,6 @@ export const release: Release = {
     },
   ],
   changes: [
-    // Day pages and the day card
     {
       kind: "feature",
       scope: "web",
@@ -318,7 +317,6 @@ export const release: Release = {
       },
       commit: "8b88ddf",
     },
-    // Ranking and voting
     {
       kind: "feature",
       scope: "web",
@@ -450,7 +448,6 @@ export const release: Release = {
       commit: "500048c",
       pr: 386,
     },
-    // Sources and pipeline
     {
       kind: "feature",
       scope: "sources",
@@ -498,7 +495,6 @@ export const release: Release = {
       commit: "f397b36",
       pr: 438,
     },
-    // Vietnamese
     {
       kind: "feature",
       scope: "web",
@@ -594,7 +590,6 @@ export const release: Release = {
       commit: "78bfe83",
       pr: 456,
     },
-    // Contribute
     {
       kind: "feature",
       scope: "web",
@@ -651,7 +646,6 @@ export const release: Release = {
       commit: "f517255",
       pr: 440,
     },
-    // Get AI;DR, email, Telegram, Facebook
     {
       kind: "feature",
       scope: "web",
@@ -802,7 +796,6 @@ export const release: Release = {
       },
       commit: "45213ed",
     },
-    // Site
     {
       kind: "fix",
       scope: "web",
@@ -849,7 +842,6 @@ export const release: Release = {
       commit: "e549e8f",
       pr: 376,
     },
-    // Extension
     {
       kind: "feature",
       scope: "extension",
@@ -878,7 +870,6 @@ export const release: Release = {
       },
       commit: "8c499f3",
     },
-    // Data page
     {
       kind: "feature",
       scope: "web",

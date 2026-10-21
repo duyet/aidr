@@ -363,7 +363,6 @@ export function boundFeedResponse(feed: FeedResponse): FeedResponse {
   };
 }
 
-/** Hard ceiling on the `days` window — the product never reads further back. */
 export const FEED_MAX_DAYS = 14;
 const BEFORE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -653,7 +652,6 @@ function parseDayVideoColumns(
   };
 }
 
-/** The `en` columns and the `_vi` columns of one `day_videos` row. */
 export function parseDayVideoRow(row: unknown): Record<Lang, DayVideo | null> {
   const r = (row && typeof row === "object" ? row : {}) as Record<
     string,

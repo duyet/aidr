@@ -169,7 +169,6 @@ export function staticSitemapUrls(now: number = Date.now()): SitemapUrl[] {
   });
 }
 
-/** The generated, always-200 story card used as the sitemap image. */
 export function storySitemapImage(id: string): string {
   return `${SITE_URL}${withLang(`/api/og/${id}.png`, DEFAULT_LANG)}`;
 }
@@ -240,7 +239,6 @@ export function robotsResponse(): Response {
   });
 }
 
-/** Always 200 XML. Any load/build failure falls back to static URLs. */
 export async function safeSitemapResponse(
   loadUrls: () => Promise<SitemapUrl[]> | SitemapUrl[]
 ): Promise<Response> {
@@ -251,18 +249,6 @@ export async function safeSitemapResponse(
     return sitemapResponse(buildSitemapXml(staticSitemapUrls()));
   }
 }
-
-// ---------------------------------------------------------------------------
-// Sitemap index + date-sharded children
-//
-// The old flat document selected the 1,000 newest published items and emitted
-// nothing else, so every story older than the 1,000th newest was absent from
-// the sitemap entirely — a coverage loss for a site whose whole value is its
-// archive. `/sitemap.xml` is now a <sitemapindex>: one static child, one child
-// per UTC month of publication, and the news sitemap. A month larger than
-// `SITEMAP_SHARD_ITEM_LIMIT` splits into `-2`, `-3`, … parts so no child ever
-// approaches the 50,000-URL / 50 MiB protocol ceiling.
-// ---------------------------------------------------------------------------
 
 /** Items per shard; each item contributes exactly two explicit-locale URLs. */
 export const SITEMAP_SHARD_ITEM_LIMIT = 1000;
@@ -289,7 +275,6 @@ export function sitemapShardPath(shard: SitemapShard): string {
   return `${SITEMAP_CHILD_DIR}/sitemap-${shard.month}${suffix}.xml`;
 }
 
-/** Parse a child path back into its shard, or null when it is not one. */
 export function parseSitemapShardPath(pathname: string): SitemapShard | null {
   const match = /^\/sitemaps\/sitemap-(\d{4}-\d{2})(?:-(\d+))?\.xml$/.exec(
     pathname
@@ -300,7 +285,6 @@ export function parseSitemapShardPath(pathname: string): SitemapShard | null {
   return { month: match[1], part };
 }
 
-/** How many parts a month needs at `SITEMAP_SHARD_ITEM_LIMIT` items per part. */
 export function sitemapShardParts(count: number): number {
   if (!Number.isFinite(count) || count <= 0) return 0;
   return Math.max(1, Math.ceil(count / SITEMAP_SHARD_ITEM_LIMIT));
@@ -414,7 +398,6 @@ export async function loadSitemapMonthCounts(
   return results ?? [];
 }
 
-/** One shard's URLs. Every published story in the month is in some part. */
 export async function loadSitemapShardUrls(
   db: DbReader,
   shard: SitemapShard
@@ -427,7 +410,6 @@ export async function loadSitemapShardUrls(
   return (results ?? []).flatMap((row) => storySitemapUrls(row));
 }
 
-/** Always 200 XML. A D1 failure degrades to the static child content. */
 export async function safeSitemapIndexResponse(
   loadMonths: () => Promise<SitemapMonthRow[]> | SitemapMonthRow[]
 ): Promise<Response> {
@@ -443,14 +425,10 @@ export async function safeSitemapIndexResponse(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Day archive child (`/sitemaps/days.xml`)
-//
 // One `/date/YYYY-MM-DD` page per audience-zone day (Asia/Ho_Chi_Minh, the
 // key `tldr_snapshots.date` is written under) that has a published story or a
 // stored digest. A day is two URLs, so `SITEMAP_DAY_LIMIT` keeps the child
 // far under the 50,000-URL ceiling for decades before it needs sharding.
-// ---------------------------------------------------------------------------
 
 export const SITEMAP_DAY_LIMIT = 5000;
 
@@ -551,7 +529,6 @@ export function daySitemapUrls(
   });
 }
 
-/** Seconds from a seconds-or-milliseconds epoch (`day_videos` writes ms). */
 function epochSeconds(epoch: number | null | undefined): number {
   if (typeof epoch !== "number" || !Number.isFinite(epoch)) return 0;
   return epoch > 1e12 ? Math.floor(epoch / 1000) : epoch;
@@ -568,13 +545,9 @@ export async function loadDaySitemapUrls(
   return daySitemapUrls(days.results ?? [], videos.results ?? [], now);
 }
 
-// ---------------------------------------------------------------------------
-// Weekly edition child (`/sitemaps/weeks.xml`)
-//
 // One `/week/YYYY-Www` URL per language that has stories. The week page 404s
 // in a language with no story lines (`isWeekEmptyIn`), so that language is not
 // listed.
-// ---------------------------------------------------------------------------
 
 const WEEK_ROWS_SQL =
   "SELECT week, item_ids, stories_en, stories_vi, updated_at FROM weekly_snapshots ORDER BY week DESC";

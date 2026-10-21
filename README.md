@@ -40,8 +40,13 @@ Cloudflare Worker (`aidr`), TanStack Start frontend, D1 as the primary store.
 |------|------|
 | `apps/web` | Site, API, ingest workflow (`@aidr/web`) |
 | `apps/extension` | Chrome MV3 new-tab (`@aidr/extension`) |
-| `packages/*` | Shared libs / UI |
+| `apps/email` | Email Worker for `submit@aidr.today` (`@aidr/email`) |
+| `packages/*` | Shared libs, UI, and tsconfig bases |
+| `scripts` | Operator scripts run from the root (`sync-env`, Facebook token) |
+| `docs` | Decision records and analytics event list |
+| `plans` | Self-contained implementation plans for agents |
 | `videos` | Video sources, built with HyperFrames ([`videos/README.md`](videos/README.md)) |
+| `agents` | Managed-agent definitions (`aidr-daily-video`) |
 | `.agents/skills` | Agent skills for this repo |
 
 ## Pipeline
@@ -57,7 +62,7 @@ The scheduler starts a `NewsIngestWorkflow` every 30 minutes, with a 25-minute c
 ```bash
 pnpm install
 cp .env.example .env.local   # fill values (gitignored)
-pnpm --filter @aidr/web dev  # http://localhost:3014
+pnpm dev                     # http://localhost:3014 (runs pack-extension first)
 ```
 
 The local D1 starts empty. Apply the schema with `cd apps/web && pnpm exec wrangler d1 migrations apply aidr --local`, and again after pulling a new migration: read paths assume every migration is applied and do not probe for missing columns.
@@ -77,11 +82,23 @@ Extension (unpacked):
 ## Deploy
 
 ```bash
-pnpm run deploy              # build + wrangler deploy (see CLAUDE.md: cf cannot carry Workflows yet)
-pnpm run cf:deploy:prod      # production env + smoke
+pnpm run deploy              # migration gate, build, artifact checks, wrangler deploy
+pnpm run cf:deploy:prod      # production env, then deploy and smoke
 ```
 
-CI: `.github/workflows/deploy-web.yml` on push to `main`/`master` when `apps/web`, `apps/extension`, `packages`, or lockfile change.
+`wrangler deploy` uploads the Worker because `cf migrate` cannot carry Workflow and Durable Object bindings yet (see CLAUDE.md). The deploy stops first if the remote D1 ledger lacks a migration (`apps/web/README.md`, "Migration gate").
+
+CI, all in `.github/workflows/`:
+
+| Workflow | Runs |
+|---|---|
+| `ci.yml` | Lint, tests, and types on pushes and PRs to `main`/`master`. |
+| `validate.yml` | `validate:deploy-artifact` (a production build and Worker checks) on PRs and on pushes that touch app code. |
+| `deploy-web.yml` | Deploys the Worker on a push to `main`/`master` that touches `apps/web`, `apps/extension`, `packages`, `package.json`, `pnpm-workspace.yaml`, or the lockfile. |
+| `migrate-d1.yml` | Applies pending D1 migrations. `deploy-web.yml` calls it as its first job, and it also runs by hand. No push trigger. |
+| `ingest.yml` | Watchdog for the 30-minute ingest (see Ingest). |
+| `release-please.yml` | Opens release PRs and attaches the extension zips. |
+| `live-budget.yml`, `daily-reel.yml`, `secret-scan.yml` | Live performance budget, the daily video, and Gitleaks. |
 
 GitHub secrets: `CLOUDFLARE_API_TOKEN`, `VITE_CLERK_PUBLISHABLE_KEY`. Account ID comes from `apps/web/wrangler.toml` (and the workflow env). D1 queries and secret sync use `cf`, not Wrangler.
 
@@ -103,7 +120,7 @@ Alias: `pnpm config`. Non-secret config stays in `wrangler.toml` `[vars]`. Key l
 
 ## Extension release
 
-Zip: `https://aidr.today/aidr.zip` (built into the Worker).
+Zip: `https://aidr.today/aidr.zip` redirects (302) to the `aidr.zip` asset of the newest GitHub release on an `aidr-v*` tag. The release workflow attaches it.
 
 1. Unzip → load unpacked → select the `aidr/` folder inside
 
@@ -132,5 +149,6 @@ No Worker `[triggers] crons` (Free plan limit) and no Workflow `schedules` (paid
 pnpm run lint
 pnpm run test
 pnpm run check-types
-pnpm --filter @aidr/web smoke
+pnpm run validate                # lint, types, tests, deploy artifact (runs a build)
+pnpm --filter @aidr/web smoke    # live checks against https://aidr.today
 ```

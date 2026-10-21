@@ -126,7 +126,6 @@ export function highlightTitle(title: string, tags: string[]): TitleSegment[] {
   const sorted = [...needleTag.keys()].sort((a, b) => b.length - a.length);
 
   const lowerTitle = title.toLowerCase();
-  // Collect non-overlapping matches across the whole title.
   const ranges: { start: number; end: number; tag: string }[] = [];
   const matchedTags = new Set<string>();
 

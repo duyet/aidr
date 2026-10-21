@@ -245,7 +245,6 @@ describe("AudienceTab", () => {
 
     expect(screen.getByText("Channels")).toBeTruthy();
     expect(screen.queryByText("No sessions recorded yet.")).toBeNull();
-    // Four tiles, top pages, and the three acquisition cards.
     expect(screen.getAllByText("GA4 sync has not run yet")).toHaveLength(8);
   });
 

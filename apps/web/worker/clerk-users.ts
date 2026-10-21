@@ -123,6 +123,19 @@ export function clerkVerifiedEmailStatements(
     ...unique.map((email) =>
       db
         .prepare(
+          `DELETE FROM clerk_verified_emails
+            WHERE email = ?
+              AND user_id <> ?
+              AND user_id IN (
+                SELECT id FROM ${CLERK_USERS_TABLE} WHERE deleted_at IS NOT NULL
+              )
+              AND NOT ${STALE_TOMBSTONE_SQL}`
+        )
+        .bind(email, userId, userId, receivedAt)
+    ),
+    ...unique.map((email) =>
+      db
+        .prepare(
           `INSERT INTO clerk_verified_emails (user_id, email)
            SELECT ?, ?
             WHERE NOT ${STALE_TOMBSTONE_SQL}`
@@ -132,21 +145,22 @@ export function clerkVerifiedEmailStatements(
   ];
 }
 
+/** The account row and its verified addresses commit together or not at all. */
 export async function upsertClerkUser(
-  db: Pick<D1Database, "prepare">,
+  db: DbLike,
   row: ClerkUserSyncRow
 ): Promise<void> {
-  await prepareClerkUserUpsert(db, row).run();
-  if (row.verifiedEmails) {
-    for (const statement of clerkVerifiedEmailStatements(
-      db,
-      row.id,
-      row.verifiedEmails,
-      row.updatedAt
-    )) {
-      await statement.run();
-    }
-  }
+  await db.batch([
+    prepareClerkUserUpsert(db, row),
+    ...(row.verifiedEmails
+      ? clerkVerifiedEmailStatements(
+          db,
+          row.id,
+          row.verifiedEmails,
+          row.updatedAt
+        )
+      : []),
+  ]);
 }
 
 /** One page of accounts in a single D1 round-trip. */
@@ -200,10 +214,6 @@ export async function countClerkUsers(
   const total = Number(row?.c ?? 0);
   return Number.isSafeInteger(total) && total >= 0 ? total : 0;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Clerk Backend API (admin-gated backfill)                                   */
-/* -------------------------------------------------------------------------- */
 
 const CLERK_USERS_API = "https://api.clerk.com/v1/users";
 const BACKFILL_PAGE_LIMIT = 100;
@@ -373,12 +383,42 @@ export function parseClerkUserList(
   return rows;
 }
 
-export type ClerkUserSyncStatus = "ok" | "unconfigured" | "not_found" | "error";
+export type ClerkUserSyncStatus =
+  | "ok"
+  | "unconfigured"
+  | "not_found"
+  | "throttled"
+  | "error";
+
+/** Minimum gap between on-demand Clerk reads for one account. */
+export const CLERK_SYNC_MIN_INTERVAL_SEC = 10;
+
+/**
+ * Atomically claims this user's sync slot. False when a sync was claimed
+ * within the last CLERK_SYNC_MIN_INTERVAL_SEC seconds.
+ */
+async function claimClerkSync(
+  db: Pick<D1Database, "prepare">,
+  userId: string,
+  nowSec: number
+): Promise<boolean> {
+  const result = await db
+    .prepare(
+      `INSERT INTO clerk_sync_attempts (user_id, last_at) VALUES (?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET last_at = excluded.last_at
+        WHERE clerk_sync_attempts.last_at <= ?`
+    )
+    .bind(userId, nowSec, nowSec - CLERK_SYNC_MIN_INTERVAL_SEC)
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
+}
 
 /**
  * Re-reads one account from Clerk and rewrites its mirrored row and verified
  * addresses, so an address a signed-in user just verified is accepted by the
- * email Worker without waiting for the webhook.
+ * email Worker without waiting for the webhook. The row carries Clerk's own
+ * `updated_at`, so a `user.deleted` tombstone newer than the read survives.
+ * Calls are throttled per user.
  */
 export async function syncClerkUserById(
   env: ClerkBackfillEnv,
@@ -391,6 +431,9 @@ export async function syncClerkUserById(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), CLERK_TIMEOUT_MS);
   try {
+    if (!(await claimClerkSync(env.DB, userId, toEpochSeconds(Date.now())))) {
+      return "throttled";
+    }
     const response = await fetcher(
       `${CLERK_USERS_API}/${encodeURIComponent(userId)}`,
       {
@@ -406,7 +449,13 @@ export async function syncClerkUserById(
     const payload: unknown = await response.json().catch(() => null);
     const [row] = parseClerkUserList([payload], toEpochSeconds(Date.now()));
     if (!row) return "error";
-    await upsertClerkUser(env.DB, row);
+    const clerkUpdatedAt = epochSecondsOrNull(
+      (payload as { updated_at?: unknown }).updated_at
+    );
+    await upsertClerkUser(env.DB, {
+      ...row,
+      updatedAt: clerkUpdatedAt ?? row.updatedAt,
+    });
     return "ok";
   } catch {
     return "error";

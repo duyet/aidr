@@ -1,12 +1,12 @@
+import { truncateUtf16 } from "../../src/lib/truncate.js";
 import { nn } from "../d1-bind.js";
-import { submitStory } from "../submissions.js";
+import { MAX_NOTE_LENGTH, submitStory } from "../submissions.js";
 import { submitSuggestion } from "../suggestions.js";
 import type { Env } from "../types.js";
 import { quote, sendAck } from "./ack.js";
 import { classifyInbound, cleanSubject } from "./classify.js";
 import { contributorName } from "./identity.js";
 
-/** Rows handled per hourly run; the rest wait for the next run. */
 export const INBOUND_BATCH = 25;
 /** A `processing` claim older than this was cut off; hand it back. */
 const STALE_CLAIM_MS = 60 * 60 * 1000;
@@ -110,8 +110,8 @@ async function decide(env: Env, row: InboundRow): Promise<Outcome> {
   if (intent.kind === "submission") {
     const result = await submitStory(db, {
       url: intent.url,
-      title: intent.title.length >= 5 ? intent.title.slice(0, 300) : "",
-      note: intent.note || undefined,
+      title: intent.title.length >= 5 ? truncateUtf16(intent.title, 300) : "",
+      note: truncateUtf16(intent.note, MAX_NOTE_LENGTH) || undefined,
       userId: row.user_id,
       userName,
     });

@@ -26,7 +26,7 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
   only creates rows that were missing. Five rows are new in this migration:
   `vnexpress-tech`, `techcrunch-ai`, `theverge-ai`, `arstechnica-ai`,
   `wired-ai`. The other rows already existed from earlier migrations.
-- Risk: those five sources start fetching on the next hourly run and their
+- Risk: those five sources start fetching on the next ingest run and their
   items enter ranking, email and Telegram.
 - Rollback (preferred, keeps history): switch them off. Ingest respects the
   `enabled` flag and the seed never turns it back on.
@@ -152,7 +152,7 @@ the timestamp. Test the statement on a local D1 (`--local`) before production.
   the Clerk webhook and clerk-sync) and creates `contributor_emails` (extra
   sender addresses, pending or confirmed), `contributor_email_sends` (confirmation-mail log for the daily
   cap) and `inbound_emails` (written by the `aidr-email` Worker, consumed by
-  the hourly `inbound-email` step), each with its indexes. Nothing existing
+  the `inbound-email` step), each with its indexes. Nothing existing
   is touched.
 - Risk: none for the pipeline. Only the email Worker, the `inbound-email`
   step and the /contribute address list use the new tables. The Clerk
@@ -288,6 +288,65 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0075_translation_rechecks.sql
+
+- Change: new table `translation_rechecks` (`item_id` primary key,
+  `attempted_at`). Backfill writes a row when it re-translates a stored VI
+  row the draft check flagged, and never re-checks that item again.
+- Order: the migration must land before the new Worker. Without the table
+  the recheck load fails and backfill skips the recheck for that run. An
+  older Worker never touches the table.
+- Rollback: roll the Worker back first, then
+  `DROP TABLE IF EXISTS translation_rechecks;`. The VI text a recheck
+  replaced is in `item_content_log` (`reason = 'backfill'`, `before_text`).
+
+## 0074_submission_review_attempts.sql
+
+- Change: adds `submissions.review_attempts INTEGER NOT NULL DEFAULT 0`, the
+  count of failed review runs. A row at the cap (5) is no longer selected by
+  the review step.
+- Order: the migration must land before the new Worker. Without the column
+  the review select and the failure update both error. An older Worker
+  ignores the column.
+- Rollback: roll the Worker back first, then
+  `ALTER TABLE submissions DROP COLUMN review_attempts;`. Rows that had hit
+  the cap are picked up by review again.
+
+## 0073_post_stats.sql
+
+- Change: new table `post_stats` (channel, platform post id, UTC day,
+  impressions, clicks), written once a day by the Facebook insights sync.
+  Nothing is seeded or backfilled.
+- Risk: none for sends or reads. The sync is best effort and runs behind a
+  daily gate; an older Worker never touches the table.
+- Rollback: roll the Worker back first, then `DROP TABLE IF EXISTS post_stats;`.
+  Only the per-post reach history is lost.
+
+## 0072_clerk_sync_attempts.sql
+
+- Change: new table `clerk_sync_attempts` (`user_id` primary key, `last_at`
+  epoch seconds), the per-user throttle for `syncClerkUserById`. Nothing is
+  seeded.
+- Order: the migration must land before the new Worker. Without the table
+  every on-demand sync returns `error` and the contribute form shows
+  `synced:false`. The webhook and backfill paths do not read it.
+- Rollback: roll the Worker back first, then
+  `DROP TABLE IF EXISTS clerk_sync_attempts;`. The rows are throttle state
+  only, so nothing needs exporting.
+
+## 0071_subscriber_mail_font.sql
+
+- Change: adds `subscribers.mail_font TEXT NOT NULL DEFAULT 'sans'`, the
+  headline font a subscriber picks for the digest email (`sans` or `serif`).
+  `ensureMailSchema` runs the same ALTER at runtime and ignores a duplicate
+  column.
+- Order: the new Worker reads and writes the column, so the migration must
+  land with or before it. An older Worker ignores the column.
+- Rollback: roll the Worker back first, then
+  `ALTER TABLE subscribers DROP COLUMN mail_font;`. Rolling back only the
+  Worker needs no SQL: the column keeps its default and nothing reads it.
+  Subscribers who chose `serif` fall back to sans.
+
 ## 0070_notify_posts.sql
 
 - Change: new table `notify_posts` (channel, story id, message id, post
@@ -307,9 +366,9 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
 - Change: sets the `hn` row's config to `{"popularMinPoints":20}`,
   name/type/config only, never `enabled`. The `query` key goes: HN Algolia
   required every word of it, `OR` included, so it matched nothing (#873).
-- Order: a push to master runs Migrate D1 and Deploy Web Worker together,
-  and the deploy's `check:migrations` fails until every file is applied, so
-  this file lands about a minute before the new Worker uploads. The Worker
+- Order: a push to master runs Migrate D1 first, then Deploy Web Worker
+  (`needs: migrate`), so this file lands before the new Worker uploads and
+  the deploy's `check:migrations` gate passes. The Worker
   live in that minute must be the #874 Worker or later. Its adapter ignores
   `query` and reads this config as the front page plus every story at 20+
   points, which is the intended behavior. A fresh isolate of that Worker

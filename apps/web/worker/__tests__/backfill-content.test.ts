@@ -6,7 +6,6 @@ import { backfillContent } from "../ingest/backfill.js";
 import type { IngestContext } from "../ingest/context.js";
 import { parseMediaManifest } from "../media.js";
 
-/** Minimal D1 over node:sqlite; same shape as call-caps.test.ts. */
 function sqliteD1(sqlite: DatabaseSync) {
   type Input = null | number | bigint | string | NodeJS.ArrayBufferView;
   return {

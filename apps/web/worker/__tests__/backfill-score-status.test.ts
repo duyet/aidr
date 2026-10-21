@@ -18,7 +18,8 @@ vi.mock("../llm.js", async (original) => ({
     }))
   ),
 }));
-vi.mock("../topics.js", () => ({
+vi.mock("../topics.js", async (original) => ({
+  ...(await original<typeof import("../topics.js")>()),
   normalizeTopics: vi.fn(async () => new Map()),
 }));
 vi.mock("../workflow-step.js", () => ({
@@ -53,6 +54,8 @@ function harness(statuses: Record<string, string>) {
     title: id,
     summary: null,
     published_at: Math.floor(Date.now() / 1000),
+    fetched_at: Math.floor(Date.now() / 1000),
+    tags: null,
     source_id: "hn",
     points: 0,
     comments: 0,
@@ -63,12 +66,16 @@ function harness(statuses: Record<string, string>) {
       return {
         all: async () => ({ results: rows }),
         bind: (...args: unknown[]) => ({
+          all: async () => ({ results: [] }),
           run: async () => {
             sqlite.prepare(sql).run(...(args as never[]));
             return { success: true };
           },
         }),
       };
+    },
+    batch: async (statements: { run: () => Promise<unknown> }[]) => {
+      for (const statement of statements) await statement.run();
     },
   };
   const ctx = {

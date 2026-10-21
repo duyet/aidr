@@ -1,6 +1,8 @@
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import type { DbReader } from "../../src/lib/db";
 import {
+  captureAndLearnTopics,
   collectTrendingCandidates,
   displayKeywordFromTopic,
   extractTitleEntities,
@@ -469,5 +471,54 @@ describe("learned keywords stay under the denylist at read time", () => {
       "Claude Code",
       "Vietnam",
     ]);
+  });
+});
+
+describe("captureAndLearnTopics hit_count", () => {
+  function sqliteD1(sqlite: DatabaseSync) {
+    const statement = (sql: string, args: unknown[] = []) => ({
+      all: async () => ({
+        results: sqlite.prepare(sql).all(...(args as never[])),
+      }),
+      bind: (...bound: unknown[]) => statement(sql, bound),
+      run: async () => sqlite.prepare(sql).run(...(args as never[])),
+    });
+    return {
+      prepare: (sql: string) => statement(sql),
+      batch: async (statements: { run: () => Promise<unknown> }[]) => {
+        for (const s of statements) await s.run();
+      },
+    } as unknown as D1Database;
+  }
+
+  it("adds each run's own mentions, not the day's running total", async () => {
+    const sqlite = new DatabaseSync(":memory:");
+    sqlite.exec(`CREATE TABLE topic_daily (
+      day TEXT NOT NULL, topic TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (day, topic));
+    CREATE TABLE learned_keywords (
+      keyword TEXT PRIMARY KEY, source_topic TEXT NOT NULL, first_seen INTEGER NOT NULL,
+      last_seen INTEGER NOT NULL, hit_count INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active')`);
+    const db = sqliteD1(sqlite);
+    const nowMs = Date.UTC(2026, 9, 21, 6);
+    const run = (ids: string[]) =>
+      captureAndLearnTopics(
+        db,
+        new Map(ids.map((id) => [id, ["anthropic"]])),
+        nowMs
+      );
+
+    await run(["a", "b", "c"]);
+    await run(["d"]);
+    await run(["e"]);
+    await run([]);
+
+    const row = sqlite
+      .prepare(
+        "SELECT hit_count FROM learned_keywords WHERE source_topic = 'anthropic'"
+      )
+      .get() as { hit_count: number };
+    expect(row.hit_count).toBe(5);
   });
 });

@@ -55,15 +55,12 @@ describe("NewTabMock", () => {
   // of that page has to be present: losing one makes the preview misleading.
   it("shows every part of the real new tab", () => {
     for (const html of [en, vi]) {
-      // Header controls: the closed menu button and the preferences button.
       expect(html).toContain("Get AI;DR");
       expect(html).toContain(">Aa<");
       expect(html).not.toContain("Telegram");
-      // Card title, date and the 8 / 12 / 16 count control.
       expect(html).toContain(">AI;DR<");
       expect(html).toContain(NEW_TAB_SAMPLE.date);
       for (const n of NEW_TAB_SAMPLE.counts) expect(html).toContain(`>${n}<`);
-      // Every story leads with its topic label, numbered across two columns.
       for (const s of NEW_TAB_SAMPLE.stories) {
         expect(html).toContain(`>${s.label}</span>`);
       }
@@ -137,7 +134,6 @@ describe("TelegramChannel", () => {
     expect(html).toContain(`Mở ${TELEGRAM_EN_HANDLE}`);
     for (const b of TELEGRAM_DIGEST.vi.bullets) expect(html).toContain(b);
     for (const b of TELEGRAM_DIGEST.en.bullets) expect(html).toContain(b);
-    // Card matching the page language comes first.
     expect(html.indexOf(TELEGRAM_URL)).toBeLessThan(
       html.indexOf(TELEGRAM_EN_URL)
     );
@@ -176,9 +172,10 @@ describe("EmailChannel", () => {
   it("previews the same settings the form starts with", () => {
     const html = renderToStaticMarkup(<EmailChannel lang="vi" />);
     expect(html).toContain(
-      'src="/api/subscribe/preview?lang=vi&amp;n=5&amp;format=design&amp;freq=daily"'
+      'src="/api/subscribe/preview?lang=vi&amp;n=5&amp;format=design&amp;font=sans&amp;freq=daily"'
     );
     expect(html).toContain('name="digest-format"');
+    expect(html).toContain('name="digest-font"');
   });
 });
 

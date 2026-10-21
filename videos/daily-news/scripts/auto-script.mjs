@@ -32,6 +32,10 @@ const SCRIPT_MODEL = "openai/gpt-5.6-luna";
 const MIN_STORIES = 3;
 /** Screen text length in words, [min, max]; the visub cut checks its Vietnamese screen text against it too. */
 export const WORD_LIMITS = { kicker: [1, 6], headline: [3, 12] };
+/** Spoken pacing in words. A story opens on a short sentence a viewer takes in at once; no sentence runs past one
+ *  breath; the intro is a single beat. Only model copy is held to it: the template copies bullet sentences and is
+ *  the fallback when every model misses. */
+export const PACING = { first: 12, sentence: 18, intro: 14, hook: [3, 7] };
 
 /** Today in Asia/Ho_Chi_Minh, the zone the Worker dates editions in. */
 export const vnToday = (now = new Date()) =>
@@ -97,13 +101,16 @@ export const statSpoken = (voice, statWord) => {
   );
 };
 const UNIT = { K: "thousand", M: "million", B: "billion", T: "trillion" };
-/** "$870M" → "$870 million": the screen keeps "$870M" in `stat`, the voice reads the unit. */
 export const speakable = (t) =>
   t
     .replace(/\$([\d.,]+)\s?([KMBT])\b/g, (_, n, u) => `$${n} ${UNIT[u]}`)
     .replace(/~/g, "about ");
+/** The bullet's first number with its unit ("12%", "5 million"), else its first bare number; the stat when no dollar figure. */
+const figure = (t) =>
+  t.match(
+    /\d[\d,]*(?:\.\d+)?(?:\s?%|\s(?:percent|thousand|million|billion|trillion)\b)/i
+  )?.[0] ?? t.match(/\d[\d,]*(?:\.\d+)?/)?.[0];
 const money = (t) => t.match(MONEY)?.[0]?.replace(/\s/g, "");
-/** Digit runs in a text ("$7.5B" → ["7.5"]); the fact check compares these with the bullet. */
 const numbers = (t) =>
   (String(t ?? "").match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) =>
     n.replace(/,/g, "")
@@ -116,9 +123,27 @@ const voiceWords = (v) =>
  *  (timeline.total ÷ estimate with gaps): 2026-10-02 1.04, 10-03 1.02, 10-10 1.09; 1.1 keeps a margin. */
 export const VOICED_FACTOR = 1.1;
 
-/** The intro jumps into the news: no greeting, no "This is AI DR", no date line. */
 const GREETING =
   /^\s*(?:this is (?:ai\b|aidr|ai;dr)|welcome\b|hello\b|hi[,!.]|hi (?:there|everyone|all|folks)\b|good (?:morning|evening|afternoon)\b|here(?:'s| is) (?:ai\b|aidr|ai;dr))/i;
+
+export function pacingProblems(script) {
+  const p = [];
+  for (const s of script.stories) {
+    const sents = s.voice.flatMap((v) => sentencesOf(v.text));
+    const first = words(sents[0]).length;
+    if (first > PACING.first)
+      p.push(`story ${s.rank}: first sentence has ${first} words`);
+    for (const t of sents.slice(1))
+      if (words(t).length > PACING.sentence)
+        p.push(`story ${s.rank}: a sentence has ${words(t).length} words`);
+  }
+  const intro = words(script.intro.voice.at(-1)?.text).length;
+  if (intro > PACING.intro) p.push(`intro line has ${intro} words`);
+  const hook = words(script.thumb?.hook).length;
+  const [min, max] = PACING.hook;
+  if (hook < min || hook > max) p.push(`thumb.hook has ${hook} words`);
+  return p;
+}
 
 /** Estimated length (s): build.mjs's per-segment lead/tail, reading speed, the breath between parts
  *  (config.voice.gap), scaled by VOICED_FACTOR. */
@@ -137,7 +162,25 @@ export function estimateSeconds(script, config) {
   return raw * VOICED_FACTOR;
 }
 
-/** Problems with a script against its edition (empty = valid). */
+/** Above this share of the headline's words in the first voice sentence, the screen only repeats the voice. */
+export const HEADLINE_OVERLAP = 0.7;
+
+// Lowercase word stems: "open-sources" and "open-sourced" both give "open", "source".
+const stems = (t) =>
+  String(t ?? "")
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .map((w) => w.replace(/(ing|ed|es|s|e)$/, "") || w);
+
+export function headlineOverlap(headline, sentence) {
+  const head = new Set(stems(headline));
+  const said = new Set(stems(sentence));
+  return head.size
+    ? [...head].filter((w) => said.has(w)).length / head.size
+    : 0;
+}
+
 export function validateScript(script, edition) {
   const p = [];
   const raw = JSON.stringify(script);
@@ -162,6 +205,45 @@ export function validateScript(script, edition) {
       const n = words(String(s[k] ?? "").replace(/\*/g, "")).length;
       if (n < min || n > max) p.push(`story ${s.rank}: ${k} has ${n} words`);
     }
+    const spans = String(s.headline ?? "").match(/\*[^*]+\*/g) ?? [];
+    if (spans.length !== 1)
+      p.push(`story ${s.rank}: headline marks ${spans.length} spans, not one`);
+    const first = voiceWords(s.voice).split(/(?<=[.!?])\s/)[0];
+    const overlap = headlineOverlap(s.headline, first);
+    if (overlap > HEADLINE_OVERLAP)
+      p.push(
+        `story ${s.rank}: headline repeats the first voice sentence (${Math.round(overlap * 100)}% of its words)`
+      );
+    // The stat sits under the category label and the kicker; one that repeats either says nothing new.
+    const bare = (t) =>
+      String(t ?? "")
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]/gu, "");
+    if (
+      bare(s.stat) &&
+      [s.kicker, src.category].some((t) => bare(t) === bare(s.stat))
+    )
+      p.push(
+        `story ${s.rank}: stat "${s.stat}" repeats the kicker or category`
+      );
+    // A figure in the bullet is the stat; a topic label ("Policy shift") says less than the number would.
+    if (numbers(src.text).length && !numbers(s.stat).length)
+      p.push(
+        `story ${s.rank}: stat "${s.stat}" is not a figure, but the bullet has one`
+      );
+    // The headline's marker span and the stat are two spots on one card: a figure in both is said twice.
+    const statFigures = quantities(s.stat);
+    const doubled = [...String(s.headline).matchAll(/\*(.+?)\*/g)].some((m) =>
+      quantities(m[1]).some((q) =>
+        statFigures.some(
+          (f) => f.percent === q.percent && same(f.value, q.value)
+        )
+      )
+    );
+    if (doubled)
+      p.push(
+        `story ${s.rank}: the headline marker repeats the stat "${s.stat}"`
+      );
     if (s.statWord && !statSpoken(voiceWords(s.voice), s.statWord))
       p.push(`story ${s.rank}: statWord "${s.statWord}" is not spoken`);
     // Facts: no number on screen or in the voice that the bullet (or its title) does not have.
@@ -192,6 +274,7 @@ export function validateScript(script, edition) {
   const post = script.post ?? {};
   for (const [label, text] of [
     ["intro", introLine],
+    ["thumb.hook", script.thumb?.hook],
     ...["hook", "facebook", "tiktok", "youtubeTitle", "shortsTitle"].map(
       (k) => [`post.${k}`, post[k]]
     ),
@@ -248,7 +331,6 @@ const DANGLING = new Set([
   "into",
   "other",
 ]);
-/** The first `max` words, cut back so the phrase does not end on a connector or a comma. */
 export function phrase(tw, max) {
   const out = tw.slice(0, max);
   while (
@@ -271,25 +353,43 @@ const listOf = (xs) =>
 const sentencesOf = (t) =>
   t.split(/(?<=[.!?])\s+(?=[A-Z0-9"“$])/).filter(Boolean);
 
-/** Deterministic copy for one story: screen text from the source title, voice from the bullet. */
 export function templateStory(s) {
   const title = (s.title ?? s.text).replace(/\s*\([^)]*\)\s*$/, "");
   const tw = words(title);
   const kicker = phrase(tw, 4);
-  const head = words(phrase(tw, 9));
-  const headline =
-    head.length > 3
-      ? `*${head.slice(0, 3).join(" ")}* ${head.slice(3).join(" ")}`
-      : `*${head.join(" ")}*`;
   const sents = sentencesOf(s.text);
   const voice = [sents[0]];
   if (sents[1] && words(sents[0]).length + words(sents[1]).length <= 30)
     voice.push(sents[1]);
-  const m = money(s.text);
+  // A title the first sentence already says gives way to the bullet's next sentence, so the screen adds to it.
+  const fromTitle = words(phrase(tw, 9));
+  const head =
+    headlineOverlap(fromTitle.join(" "), sents[0]) > HEADLINE_OVERLAP &&
+    sents[1]
+      ? words(phrase(words(sents[1]), 9))
+      : fromTitle;
+  const m = money(s.text) ?? figure(s.text);
+  const isFigure = (w) => m && numbers(w).includes(numbers(m)[0]);
+  const from = Math.max(
+    0,
+    head.findIndex((w) => !isFigure(w))
+  );
+  let end = from;
+  while (end < head.length && end < from + 3 && !isFigure(head[end])) end++;
+  const headline =
+    end > from
+      ? [
+          ...head.slice(0, from),
+          `*${head.slice(from, end).join(" ")}*`,
+          ...head.slice(end),
+        ].join(" ")
+      : head.join(" ");
+  const said = m && sents.find((t) => numbers(t).includes(numbers(m)[0]));
+  if (said && !voice.includes(said)) voice.push(said);
   return {
     kicker,
     headline,
-    stat: m ?? s.category ?? "Today",
+    stat: m ?? "Today",
     statLabel: s.source ?? "aidr.today",
     statWord: m ? numbers(m)[0] : null,
     voice: voice.map(speakable),
@@ -319,6 +419,7 @@ export function assemble({
   introLine,
   focus,
   thumbRank,
+  thumbHook,
   hostKeys,
 }) {
   const date = edition.date;
@@ -363,7 +464,7 @@ export function assemble({
   return {
     date,
     dateline: `${DOW}, ${MON} ${d.getUTCDate()}, ${d.getUTCFullYear()}`,
-    thumb: { story: thumbRank, hook: copy[thumbRank].kicker },
+    thumb: { story: thumbRank, hook: thumbHook ?? copy[thumbRank].kicker },
     post,
     intro: {
       voice: [{ anchor: intro[0], text: introLine }],
@@ -384,7 +485,6 @@ export function assemble({
   };
 }
 
-/** The template script: no model, only the bullets. Always valid unless the edition is broken. */
 export function templateScript(edition, hostKeys) {
   const copy = Object.fromEntries(
     edition.stories.map((s) => [s.rank, templateStory(s)])
@@ -438,6 +538,7 @@ export function promptFor(edition) {
     source: s.source,
     title: s.title,
     bullet: s.text,
+    image: s.images.length > 0,
   }));
   return [
     {
@@ -447,7 +548,7 @@ export function promptFor(edition) {
     },
     {
       role: "user",
-      content: `Stories:\n${JSON.stringify(stories, null, 1)}\n\nReturn JSON:\n{\n "stories": [{ "rank": <rank>, "kicker": "2-5 words, who or what", "headline": "5-9 words, the news itself, with *2-4 words* in stars", "stat": "the one number or state that sums the story, e.g. $60B or Public beta", "statLabel": "3-8 words explaining the stat", "statWord": "the first spoken word of the stat as it appears in voice, e.g. 60", "voice": ["first sentence, opens on the subject and verb", "optional second sentence"] }],\n "introLine": "one line that opens straight on today's top news, naming one or two stories; no greeting, no show name, no date",\n "focus": [{ "rank": <rank>, "word": "a word from introLine that names that story" }],\n "thumbRank": <rank of the most surprising story>,\n "post": { "hook": "one sentence", "facebook": "1-2 sentences naming the top stories", "tiktok": "<=150 chars, ends with a question", "youtubeTitle": "<=100 chars: lead story, & more, the date", "shortsTitle": "<=80 chars", "hashtags": ["AI", "AINews", "...companies, 5-8 total, no #"] }\n}\nEvery story's voice is 15-22 words in total. Date: ${edition.date}.`,
+      content: `Stories:\n${JSON.stringify(stories, null, 1)}\n\nReturn JSON:\n{\n "stories": [{ "rank": <rank>, "kicker": "2-5 words, who or what", "headline": "5-9 words, the news itself, with one run of *2-4 words* in stars, never the stat's number; it adds to the first voice sentence instead of repeating it: at most ${Math.round(HEADLINE_OVERLAP * 100)}% of its words may be in that sentence", "stat": "the one number that sums the story, e.g. $60B, taken from the bullet; only a bullet with no number gets a state like Public beta; never a topic label, the kicker or the category", "statLabel": "3-8 words explaining the stat", "statWord": "the first spoken word of the stat as it appears in voice, e.g. 60", "voice": ["first sentence: the news in at most ${PACING.first} words, subject and verb first", "second sentence: why it matters or the one detail that makes it land, at most ${PACING.sentence} words"] }],\n "introLine": "at most ${PACING.intro} words, opens straight on today's top news, naming one or two stories; no greeting, no show name, no date",\n "focus": [{ "rank": <rank>, "word": "a word from introLine that names that story" }],\n "thumbRank": <rank of the most surprising story, preferring one with image true>,\n "thumbHook": "${PACING.hook.join("-")} words for the thumbnail: the surprising fact of the thumbRank story, concrete (a name, a number, an action), not a topic label like 'AI safety research', no question",\n "post": { "hook": "one sentence", "facebook": "1-2 sentences naming the top stories", "tiktok": "<=150 chars, ends with a question", "youtubeTitle": "<=100 chars: lead story, & more, the date", "shortsTitle": "<=80 chars", "hashtags": ["AI", "AINews", "...companies, 5-8 total, no #"] }\n}\nEvery story's voice is 14-24 words in total, written to be heard: one fact per sentence, at most one number per sentence, contractions are fine, no lists of three. Date: ${edition.date}.`,
     },
   ];
 }
@@ -519,7 +620,6 @@ export async function complete({
   return content;
 }
 
-/** Parse a model answer (tolerates a ```json fence) into a script, or throw. */
 export function fromModel(text, edition, hostKeys) {
   const json = JSON.parse(
     text.replace(/^[\s\S]*?(\{)/, "$1").replace(/\}[^}]*$/, "}")
@@ -550,6 +650,7 @@ export function fromModel(text, edition, hostKeys) {
     copy,
     hostKeys,
     thumbRank: ranks.includes(json.thumbRank) ? json.thumbRank : ranks[0],
+    thumbHook: ranks.includes(json.thumbRank) ? json.thumbHook : undefined,
     introLine: json.introLine,
     focus: (json.focus ?? []).filter((f) => ranks.includes(f.rank)).slice(0, 2),
     post: {
@@ -564,7 +665,6 @@ export function fromModel(text, edition, hostKeys) {
   });
 }
 
-/** Drop stories from the bottom until the estimate fits (never under MIN_STORIES). */
 export function fitLength(edition, maxSeconds, make, config) {
   let ed = edition;
   let script = make(ed);
@@ -579,7 +679,8 @@ export function fitLength(edition, maxSeconds, make, config) {
 }
 
 /**
- * The day's script: each model in the chain, then the template. Returns { script, source, problems }.
+ * The day's script: the first model answer that is valid and paced; else the first valid one (a long sentence
+ * still beats the bullet-copy template); else the template. Returns { script, source, problems }.
  * `llm(edition)` returns the raw model text for one model; injected for tests.
  */
 export async function writeScript({
@@ -598,6 +699,7 @@ export async function writeScript({
     (ed) => templateScript(ed, hostKeys),
     config
   );
+  let unpaced = null;
   for (const model of models) {
     try {
       const script = fromModel(
@@ -610,14 +712,19 @@ export async function writeScript({
       // The model may run long; a little over the budget still fits the 90 s Reel.
       if (est > maxSeconds + 5)
         problems.push(`~${est.toFixed(0)}s is over the ${maxSeconds}s budget`);
-      if (!problems.length) return { script, source: model, problems: [] };
+      const pacing = pacingProblems(script);
+      if (!problems.length && !pacing.length)
+        return { script, source: model, problems: [] };
+      if (!problems.length) unpaced ??= { script, source: model, problems: [] };
+      const all = [...problems, ...pacing];
       log(
-        `! ${model}: ${problems.length} problem(s): ${problems.slice(0, 4).join("; ")}`
+        `! ${model}: ${all.length} problem(s): ${all.slice(0, 4).join("; ")}`
       );
     } catch (e) {
       log(`! ${model}: ${e.message}`);
     }
   }
+  if (unpaced) return unpaced;
   return {
     script: fit.script,
     source: "template",
@@ -625,7 +732,6 @@ export async function writeScript({
   };
 }
 
-// --- CLI -----------------------------------------------------------------
 async function main() {
   const argv = process.argv.slice(2);
   const flag = (n) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : null);
@@ -650,7 +756,6 @@ async function main() {
     await ensureAssets(dir);
     return;
   }
-  // The edition: the committed one for that date, else today's from the public API.
   if (!existsSync(join(dir, "edition.json"))) {
     if (date !== vnToday())
       throw new Error(

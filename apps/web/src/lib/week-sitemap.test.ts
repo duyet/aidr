@@ -1,7 +1,3 @@
-/**
- * `/sitemaps/weeks.xml`: the weekly editions were reachable only through the
- * `/weeks` index, so no sitemap listed a single `/week/YYYY-Www` page.
- */
 import { describe, expect, it } from "vitest";
 import { expectWellFormedXml } from "./__fixtures__/xml";
 import type { DbReader } from "./db";

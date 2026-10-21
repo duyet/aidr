@@ -74,7 +74,10 @@ export interface TranslationGate {
 /** Whether a Vietnamese translation may be posted: QA did not send it to
  *  human review, and the draft check that runs after translation finds
  *  nothing in it now, with today's knowledge rules. A draft whose repair
- *  failed is stored as is, so this is the last place it can be stopped. */
+ *  failed is stored as is, so this is the last place it can be stopped.
+ *  The post carries the Vietnamese summary, so it is judged whenever there
+ *  is one, also when the source has none: prod 657a40d5 keeps
+ *  "agent-to-agent" in its summary, not in its shortened title. */
 export function translationPostability(
   gate: TranslationGate,
   rules: KnowledgeRule[]
@@ -84,7 +87,7 @@ export function translationPostability(
     gate.source,
     gate.candidate,
     rules,
-    !gate.source.summary
+    !gate.source.summary && !gate.candidate.summary
   );
   return issues.length > 0
     ? { ok: false, reason: "draft", issues }
@@ -154,7 +157,6 @@ export interface EventSource {
   englishTitle: string | null;
 }
 
-/** One title as `sameEvent` reads it. */
 export interface TitleKey {
   /** The title in NFC, the same text on both sides of a compare. */
   title: string;
@@ -168,7 +170,6 @@ export interface TitleKey {
   wordStarts: ReadonlyMap<string, readonly number[]>;
 }
 
-/** A story's source title, keyed. */
 export interface EventKey extends TitleKey {
   /** The publisher's article id (`articleId`), shared by an article and its
    *  live page. */
@@ -327,7 +328,6 @@ export function sameEvent(a: EventKey, b: EventKey): boolean {
 
 export type PostedKind = "digest" | "trending";
 
-/** One story a channel has already put in front of its readers. */
 export interface PostedEvent {
   /** The notifier id (`telegram`, `telegram-en`, `facebook-en`). */
   channelGroup: string;
@@ -369,7 +369,6 @@ export function dedupReason(
 
 export type SuppressionReason = `dedup:${DedupReason}` | `gate:${GateReason}`;
 
-/** Per-reason counts of the candidates a run dropped before sending. */
 export type SuppressionCounts = Partial<Record<SuppressionReason, number>>;
 
 export function countSuppression(

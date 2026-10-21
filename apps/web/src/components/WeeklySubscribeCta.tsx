@@ -2,14 +2,12 @@ import { Mail } from "lucide-react";
 import { withLang } from "../lib/locale-url";
 import type { Lang } from "../lib/types";
 
-/** Subscribe page with the email tab open and the weekly cadence preselected. */
 export const WEEKLY_SUBSCRIBE_PATH = "/subscribe?tab=email&freq=weekly";
 
 export function weeklySubscribeHref(lang: Lang): string {
   return withLang(WEEKLY_SUBSCRIBE_PATH, lang);
 }
 
-/** One call to action shared by `/weeks` and `/week/<week>`. */
 export function WeeklySubscribeCta({ lang }: { lang: Lang }) {
   const vi = lang === "vi";
   return (

@@ -34,7 +34,6 @@ export const UNMERGE_AUDIT_SOURCES = "unmerge.sources";
 export const UNMERGE_AUDIT_TRANSLATION = "unmerge.translation";
 export const UNMERGE_AUDIT_CANONICAL = "unmerge.canonical";
 
-/** The audit detail of one write target; `batchId` is the batch's `ts`. */
 export type TargetAudit = { batchId: number; canonicalId: ItemId } & (
   | { kind: "row"; target: RowTarget }
   | { kind: "sources"; target: SourcesTarget }

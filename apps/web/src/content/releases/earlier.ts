@@ -7,7 +7,6 @@
 import type { Bilingual, ReleaseImage } from "../../lib/releases/types";
 
 export interface EarlierEntry {
-  /** YYYY-MM. */
   date: string;
   text: Bilingual;
   image?: ReleaseImage;

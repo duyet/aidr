@@ -8,7 +8,6 @@ export interface RankScoreInput {
   comments: number;
   publishedAt: number;
   now: number;
-  /** Distinct source families in the story's cluster (`rankSignals`). */
   sourceCount?: number;
   /** Net of signed-in reader votes on this item. 0 when nobody has voted. */
   voteNet?: number;
@@ -185,17 +184,14 @@ export function rankScore(input: RankScoreInput): number {
   return Number.isFinite(score) ? score : 0;
 }
 
-/** True when a source's points/comments are reader votes and discussion. */
 export function hasReaderEngagement(sourceId: string): boolean {
   return findSourceSpec(sourceId)?.engagement === "reader";
 }
 
-/** One item of a story's cluster: the canonical or an item merged into it. */
 export interface RankMember {
   sourceId: string;
   points: number;
   comments: number;
-  /** The item's URL; places a user submission in its outlet's family. */
   url?: string;
 }
 
@@ -256,7 +252,6 @@ export interface RankSignalRow {
   vote_net?: number | null;
 }
 
-/** `rankSignals` for a row read with RANK_SIGNAL_COLUMNS. */
 export function rowRankSignals(row: RankSignalRow) {
   const merged: [string, number | null, number | null, (string | null)?][] =
     JSON.parse(row.merged_members ?? "[]");
@@ -277,6 +272,36 @@ export function rowRankSignals(row: RankSignalRow) {
     ]),
     voteNet: row.vote_net ?? 0,
   };
+}
+
+/** A stored item read with `RANK_SIGNAL_COLUMNS`, plus its own score
+ *  columns. `published_at` is epoch seconds. */
+export interface RankableRow extends RankSignalRow {
+  published_at: number;
+  llm_importance?: number | null;
+  llm_quality?: number | null;
+  category?: string | null;
+}
+
+/** `rankScore` for a stored row at `nowMs`. `scores` replaces the row's own
+ *  score columns when the caller holds fresher ones (a rescore, a rating). */
+export function rankScoreForRow(
+  row: RankableRow,
+  nowMs: number,
+  scores: {
+    importance?: number;
+    quality?: number;
+    category?: string | null;
+  } = {}
+): number {
+  return rankScore({
+    importance: scores.importance ?? row.llm_importance ?? 5,
+    quality: scores.quality ?? row.llm_quality ?? 5,
+    publishedAt: row.published_at * 1000,
+    now: nowMs,
+    ...rowRankSignals(row),
+    category: storyCategory(scores.category ?? row.category),
+  });
 }
 
 /** Published items from a bound epoch-second start, with every `rankScore`

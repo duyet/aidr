@@ -20,7 +20,6 @@ import type { DailyDigest, DigestBullet } from "./types.js";
 
 export interface DayCard {
   bullets: DigestBullet[];
-  /** Story ids of `bullets`, in order. */
   itemIds: string[];
   /** Stable token for the card URL, so Telegram refetches when the tiles change. */
   version: string;
@@ -112,7 +111,6 @@ function highlightLine(
   return { text: `${title} — ${sentence}`, lead: title };
 }
 
-/** Headline, plus the first sentence of that language's summary. */
 export function highlightBulletText(item: HighlightCopy, lang: Lang): string {
   return highlightLine(item, lang).text;
 }

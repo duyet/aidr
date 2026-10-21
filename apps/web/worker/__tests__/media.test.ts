@@ -305,6 +305,25 @@ describe("parseMediaMetadata", () => {
     );
     expect(manifest.assets).toEqual([]);
   });
+
+  it("keeps a video on an image CDN host typed as video", () => {
+    const candidates = parseMediaMetadata(`
+      <video><source src="https://images.ctfassets.net/x/clip.mp4" type="video/mp4"></video>
+      <video src="https://cdn.example.com/user-images/demo.webm"></video>
+    `);
+    expect(candidates.map(({ type, url }) => ({ type, url }))).toEqual([
+      { type: "video", url: "https://images.ctfassets.net/x/clip.mp4" },
+      { type: "video", url: "https://cdn.example.com/user-images/demo.webm" },
+    ]);
+  });
+
+  it("types a video-tag source as image only from an image MIME or extension", () => {
+    const candidates = parseMediaMetadata(`
+      <video><source src="https://example.com/a" type="image/gif"></video>
+      <video src="https://example.com/loop.gif"></video>
+    `);
+    expect(candidates.map(({ type }) => type)).toEqual(["image", "image"]);
+  });
 });
 
 describe("stored media manifests", () => {

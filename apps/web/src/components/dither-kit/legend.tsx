@@ -41,8 +41,6 @@ export function Legend({
             onClick={() =>
               chart.selectDataKey(chart.selectedDataKey === name ? null : name)
             }
-            // Hovering an entry spotlights its series so overlapping layers
-            // (e.g. two meshed radar polygons) can be told apart at a glance.
             onPointerEnter={() => chart.setFocusDataKey(name)}
             onPointerLeave={() => chart.setFocusDataKey(null)}
             onFocus={() => chart.setFocusDataKey(name)}

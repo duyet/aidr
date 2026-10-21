@@ -78,6 +78,92 @@ export async function pruneSubscribeAttempts(
   }
 }
 
+export interface InsertLimits {
+  table: "submissions" | "translation_suggestions";
+  pendingStatuses: readonly string[];
+  userId: string | null;
+  ipHash: string | null;
+  pendingLimit: number;
+  userDailyLimit: number;
+  ipDailyLimit: number;
+  now?: number;
+}
+
+export type ExceededLimit = "pending" | "daily" | "ip";
+
+function pendingCountSql(args: InsertLimits): string {
+  const statuses = args.pendingStatuses
+    .map((status) => `'${status.replace(/'/g, "''")}'`)
+    .join(", ");
+  return `SELECT COUNT(*) AS count FROM ${args.table} WHERE user_id = ? AND status IN (${statuses})`;
+}
+
+/**
+ * SQL predicate for `INSERT ... SELECT ... WHERE <predicate>`: true only while
+ * the user is under the pending and daily caps and the IP is under its daily
+ * cap. Counting and inserting in one statement closes the check-then-insert
+ * race where parallel requests all read the same count. A null user or IP
+ * skips that cap.
+ */
+export function buildInsertLimitGuard(args: InsertLimits): RateLimitQuery {
+  const since = (args.now ?? Date.now()) - ONE_DAY_SEC * 1000;
+  const t = args.table;
+  return {
+    sql: `(? IS NULL OR (${pendingCountSql(args)}) < ?)
+      AND (? IS NULL OR (SELECT COUNT(*) FROM ${t} WHERE user_id = ? AND created_at >= ?) < ?)
+      AND (? IS NULL OR (SELECT COUNT(*) FROM ${t} WHERE ip_hash = ? AND created_at >= ?) < ?)`,
+    params: [
+      args.userId,
+      args.userId,
+      args.pendingLimit,
+      args.userId,
+      args.userId,
+      since,
+      args.userDailyLimit,
+      args.ipHash,
+      args.ipHash,
+      since,
+      args.ipDailyLimit,
+    ],
+  };
+}
+
+/** Names the cap a refused insert hit, so the caller can answer with the
+ * matching message. Only runs after the guarded insert changed no rows. */
+export async function findExceededLimit(
+  db: D1Database,
+  args: InsertLimits
+): Promise<ExceededLimit | null> {
+  if (args.userId) {
+    const row = await db
+      .prepare(pendingCountSql(args))
+      .bind(args.userId)
+      .first<{ count: number }>();
+    if ((row?.count ?? 0) >= args.pendingLimit) return "pending";
+    const overDaily = await checkRateLimit(db, {
+      table: args.table,
+      column: "user_id",
+      key: args.userId,
+      windowSec: ONE_DAY_SEC,
+      limit: args.userDailyLimit,
+      now: args.now,
+    });
+    if (overDaily) return "daily";
+  }
+  if (args.ipHash) {
+    const overIp = await checkRateLimit(db, {
+      table: args.table,
+      column: "ip_hash",
+      key: args.ipHash,
+      windowSec: ONE_DAY_SEC,
+      limit: args.ipDailyLimit,
+      now: args.now,
+    });
+    if (overIp) return "ip";
+  }
+  return null;
+}
+
 /** Bilingual (EN / VI) rate-limit messages for the UI, in the "Bạn gửi quá
  * nhanh — thử lại sau" style the product asked for. */
 export const RATE_LIMIT_MESSAGES = {

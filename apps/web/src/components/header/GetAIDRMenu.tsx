@@ -32,9 +32,6 @@ import {
 import { ChromeMark } from "./ChromeMark";
 import { FacebookMark } from "./FacebookMark";
 
-/** Trailing marker on the items that leave the site. It sits at the far edge
- *  of the row so it reads as "opens elsewhere" and never competes with the
- *  item's own leading icon for the label's attention. */
 function ExternalMarker() {
   return <ExternalLink className="ml-auto !size-3 opacity-70" aria-hidden />;
 }

@@ -30,13 +30,6 @@ export const Route = createFileRoute("/mcp")({
   component: McpPage,
 });
 
-/**
- * This page is the public, indexed documentation for `/api/mcp`. It used
- * to document only the six operator tools, which is why an agent that read
- * it — or the machine-discovery card, which advertised an anonymous read
- * surface — got a 401 on its first call. It now leads with the read tools,
- * which need nothing, and states the credential boundary once.
- */
 function McpPage() {
   const lang = useLang();
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);

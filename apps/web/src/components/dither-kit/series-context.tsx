@@ -9,7 +9,6 @@ export type SeriesContextValue = {
 
 export const SeriesContext = createContext<SeriesContextValue | null>(null)
 
-/** Boundary guard for series-scoped markers (`<Dot>`, `<ActiveDot>`). */
 export function useSeries(part: string) {
   const ctx = use(SeriesContext)
   if (!ctx) {

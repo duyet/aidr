@@ -39,7 +39,6 @@ export const telegramAlertAdapter: AlertAdapter = {
   render: renderTelegramHtml,
 };
 
-/** Slack incoming-webhook JSON (text + attachments). */
 export function renderSlackPayload(event: AlertEvent): {
   text: string;
   attachments: Array<Record<string, unknown>>;

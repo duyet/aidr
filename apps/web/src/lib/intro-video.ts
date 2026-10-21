@@ -7,7 +7,6 @@ import type { Lang } from "./types";
  */
 export const INTRO_VIDEO_YOUTUBE_ID: string | null = "tynoWx03zDc";
 
-/** Header video control and dialog copy. Each language has its own text. */
 export const INTRO_VIDEO_COPY: Record<
   Lang,
   { open: string; menu: string; title: string }

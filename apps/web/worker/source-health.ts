@@ -1,13 +1,6 @@
 /**
  * Per-source run health: the observability half of #230.
  *
- * Before this, a source that quietly stopped producing (a moved feed URL, a
- * redesigned template, a host that started 403-ing the Worker) was invisible:
- * `workflow_runs.stats.bySource` only carried a fetch count, the feed just
- * got thinner, and nothing said which source thinned it. This module is the
- * structured, redacted, per-source outcome the workflow writes and the
- * `/api/system/sources` + `/data` surfaces read.
- *
  * Three things are tracked, deliberately and no more:
  *
  * 1. **Counts** — `fetched` / `scored` / `accepted` / `rejected` / `merged`,
@@ -23,10 +16,6 @@
  *    rather than recomputed by scanning run history, so surfacing staleness
  *    costs no extra read on the request path no matter how long the streak
  *    gets.
- *
- * Nothing here changes ranking, the hide rule, or any prompt. `rank_score` and
- * `relevance < 0.4` are untouched: a source that scores badly here is one an
- * operator can *see* and turn off, not one the formula quietly punishes.
  */
 import {
   DEFAULT_STALE_AFTER_RUNS,
@@ -184,17 +173,11 @@ export function isSourceFailing(
   return health.failedRuns >= FETCH_FAILED_ALERT_RUNS;
 }
 
-/**
- * Advance the streak. A run that fetched anything resets it to 0; a run that
- * fetched nothing increments it. The previous value is read from the prior
- * run's `stats` by the workflow (see `carrySourceEmptyRuns`).
- */
 export function nextEmptyRuns(previous: number, fetched: number): number {
   if (fetched > 0) return 0;
   return Math.max(0, Math.floor(previous)) + 1;
 }
 
-/** Advance the fetch-failure streak: only a `fetch_failed` run extends it. */
 export function nextFailedRuns(
   previous: number,
   skipReason: SourceSkipReason | ""

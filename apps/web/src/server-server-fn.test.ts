@@ -35,7 +35,6 @@ const HEX_FN_ID = "deadbeef".repeat(8);
  * build is running, so the registry must decline and defer to Start. */
 type Resolver = (id: string, access: { origin: "client" }) => Promise<unknown>;
 
-/** Stand in for Start's generated manifest lookup. */
 function resolverOver(ids: Iterable<string>): Resolver {
   const set = new Set(ids);
   return (id) =>

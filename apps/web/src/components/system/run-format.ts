@@ -72,7 +72,6 @@ export function formatSecondsShort(seconds: number): string {
   return `${Math.round(seconds / 60)}m`;
 }
 
-/** Epoch seconds → Date, or null for a missing/unusable timestamp. */
 function runDate(epochSeconds: number | null): Date | null {
   if (
     epochSeconds == null ||
@@ -141,7 +140,6 @@ export function formatSafeError(value: unknown): string {
     );
 }
 
-/** Chart label for a stored model id. Known families get a short name. */
 export function tokenBurnModelName(model: string): string {
   const id = model.trim().toLowerCase();
   if (!id) return "Unknown";
@@ -182,7 +180,6 @@ function isRunStepInfo(value: unknown): value is RunStepInfo {
   );
 }
 
-/** Keep malformed/legacy stats JSON from becoming misleading UI rows. */
 export function safeRunSteps(
   stats: WorkflowRunStats | null | undefined
 ): RunStepInfo[] {
@@ -260,7 +257,6 @@ export function stepState(step: {
   return "ok";
 }
 
-/** Lifecycle of the lazily fetched per-run attempt rows. */
 export type RunAttemptsState =
   | "idle"
   | "loading"
@@ -537,7 +533,6 @@ export function nextOpenId(
   return currentId === id ? null : id;
 }
 
-/** Scroll target for `/data?tab=runs&run=<id>` deep links. */
 export function runAnchorId(id: string): string {
   return `run-${id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 }
@@ -576,7 +571,6 @@ function sumTokenValues(
   return total;
 }
 
-/** One normalization path for compact and expanded token totals. */
 export function normalizeRunTokens(
   stats: WorkflowRunStats | null | undefined,
   llm?: RunLlmSummary,
@@ -617,7 +611,6 @@ export interface TokenBreakdown {
   cached: number | null;
 }
 
-/** Sum only the selected run's attempts; absent usage columns stay unknown. */
 export function tokenBreakdown(
   attempts: LlmCallRow[],
   stats: WorkflowRunStats | null | undefined,
@@ -727,7 +720,6 @@ export function groupFailedAttempts(
   return [...groups.values()].sort((a, b) => b.count - a.count);
 }
 
-/** Attempt row plus the per-invocation id and price (migration 0034). */
 export type ChainAttempt = LlmCallRow & {
   callId?: string | null;
   costUsd?: number | null;

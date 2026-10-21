@@ -7,7 +7,6 @@ export interface NotFoundCopy {
   documentTitle: string;
 }
 
-/** Localized 404 chrome. Reuses existing UI strings; does not invent new ones. */
 export function notFoundCopy(lang: Lang): NotFoundCopy {
   if (lang === "vi") {
     return {

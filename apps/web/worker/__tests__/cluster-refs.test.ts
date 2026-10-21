@@ -52,7 +52,6 @@ const env = {
   ANYROUTER_API_KEY: "test-key",
 } as unknown as Env;
 
-/** Answers every call with `content`; returns the prompts it was sent. */
 function modelAnswers(content: string): string[] {
   const prompts: string[] = [];
   const frame = (o: unknown) => `data: ${JSON.stringify(o)}\n\n`;
@@ -152,7 +151,6 @@ describe("alias check digit (#817)", () => {
     title: `live ${k}`,
   }));
 
-  /** The aliases the prompt gave `rows`, in the order sent. */
   const sentAliases = (): string[] => {
     const list = /Existing items [^\n]*\(id, title\):\n(.*)\n/.exec(
       clusterPrompt(newItems, rows, "last 72h")

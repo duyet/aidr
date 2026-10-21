@@ -62,7 +62,6 @@ import {
  *  exceptional story), so a fault is "more than a day", with slack for a
  *  late digest. A shorter window fired on normal days. */
 export const TELEGRAM_QUIET_MS = 26 * 3600 * 1000;
-/** LLM attempt failure rate in one run above which we alert. */
 export const LLM_FAILURE_RATE = 0.5;
 /** Provider 429s in one run at which the owner is told the quota is spent. */
 export const LLM_RATE_LIMIT_BURST = 5;
@@ -76,9 +75,7 @@ export function llmTaskFailingKey(task: string): string {
 }
 /** Below this many attempts the rate is noise. */
 export const LLM_MIN_CALLS = 4;
-/** TL;DR failed this many runs in a row (this run included). */
 export const TLDR_FAIL_STREAK = 3;
-/** A source's fetch step failed this many runs in a row (this run included). */
 export const SOURCE_FAILING_RUNS = 3;
 /** Per-source key, so each source keeps its own cooldown. */
 export function sourceFailingKey(id: string): string {
@@ -88,9 +85,7 @@ export function sourceFailingKey(id: string): string {
 export function sourceBlockedKey(id: string): string {
   return `source-blocked:${id}`;
 }
-/** The same alert key does not fire again within this window. */
 export const ALERT_COOLDOWN_MS = 6 * 3600 * 1000;
-/** Previous runs read for the TL;DR streak and the cooldown. */
 const HISTORY_RUNS = 12;
 /** `stats.alerts` keys that record a finished check, not a problem. */
 export const MARKER_PREFIXES = ["daily-summary:", DAY_VIDEO_CONFIRMED_PREFIX];
@@ -122,13 +117,11 @@ export interface LlmTaskCount {
   total: number;
   ok: number;
   rateLimited: number;
-  /** This task's attempts per model this run. */
   models: ModelStat[];
 }
 
 export interface HealthInput {
   nowMs: number;
-  /** Local audience hour (0-23). */
   localHour: number;
   steps: RunStepInfo[];
   /** Newest successful post per Telegram channel, epoch ms. */
@@ -151,6 +144,11 @@ function tldrFailed(steps: RunStepInfo[]): boolean | null {
   // A partial rerun that left tldr out says nothing about the streak.
   if (!tldr || tldr.reason === NOT_SELECTED_REASON) return null;
   return FAILURE_RE.test(tldr.action) || FAILURE_RE.test(tldr.reason ?? "");
+}
+
+function failureSummary(m: ModelStat): string {
+  const counts = Object.entries(m.statuses).map(([s, n]) => `${s}×${n}`);
+  return `${m.model}: ${counts.join(" ")}`;
 }
 
 /** Pure threshold evaluation. Order is stable so tests can assert keys. */
@@ -220,7 +218,7 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
       key: llmTaskFailingKey(t.task),
       severity: "error",
       title: `LLM ${t.task} chain down`,
-      detail: `All ${attempts} ${t.task} attempts failed this run (${t.models.map((m) => m.model).join(", ")})`,
+      detail: `All ${attempts} ${t.task} attempts failed this run (${t.models.map(failureSummary).join(", ")})`,
       models: t.models,
     });
   }
@@ -257,7 +255,6 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
   return issues;
 }
 
-/** Drop issues whose key already fired within the cooldown window. */
 export function applyCooldown(
   issues: HealthIssue[],
   history: PriorRun[],
@@ -343,10 +340,10 @@ interface ModelStatRow {
   model: string;
   ok: number;
   status: number | null;
+  code: string | null;
   n: number;
 }
 
-/** Folds (model, ok, status) counts into per-model stats, busiest first. */
 function foldModelStats(rows: ModelStatRow[]): ModelStat[] {
   const byModel = new Map<string, ModelStat>();
   for (const row of rows) {
@@ -359,7 +356,7 @@ function foldModelStats(rows: ModelStatRow[]): ModelStat[] {
     m.total += row.n;
     if (!row.ok) {
       m.failed += row.n;
-      const status = row.status === null ? "error" : String(row.status);
+      const status = String(row.status ?? row.code ?? "error");
       m.statuses[status] = (m.statuses[status] ?? 0) + row.n;
     }
     byModel.set(row.model, m);
@@ -374,8 +371,9 @@ async function readLlmCounts(
 ): Promise<HealthInput["llm"]> {
   await flushLlmCallWrites();
   const { results } = await env.DB.prepare(
-    `SELECT task, model, ok, error_status AS status, COUNT(*) AS n
-     FROM llm_calls WHERE run_id = ? GROUP BY task, model, ok, error_status`
+    `SELECT task, model, ok, error_status AS status, error_code AS code,
+     COUNT(*) AS n FROM llm_calls WHERE run_id = ?
+     GROUP BY task, model, ok, error_status, error_code`
   )
     .bind(runId)
     .all<ModelStatRow & { task: string }>();
@@ -490,8 +488,9 @@ async function readModelStats(
   bind: unknown
 ): Promise<ModelStat[]> {
   const { results } = await env.DB.prepare(
-    `SELECT model, ok, error_status AS status, COUNT(*) AS n FROM llm_calls
-     WHERE ${where} GROUP BY model, ok, error_status`
+    `SELECT model, ok, error_status AS status, error_code AS code,
+     COUNT(*) AS n FROM llm_calls
+     WHERE ${where} GROUP BY model, ok, error_status, error_code`
   )
     .bind(bind)
     .all<ModelStatRow>();

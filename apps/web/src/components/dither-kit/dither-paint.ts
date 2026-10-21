@@ -1,8 +1,6 @@
 import type { AreaVariant } from "./chart-context"
 import { rgb, type Seed } from "./palette"
 
-// 4×4 ordered (Bayer) matrix, normalized to 0–1 thresholds — the exact matrix
-// the legacy chart dithers with.
 export const BAYER = [
   [0, 8, 2, 10],
   [12, 4, 14, 6],
@@ -65,8 +63,6 @@ export function paintColumn(
   }
   const bias = (variant === "dotted" ? 0.12 : 0) + (stacked ? 0.2 : 0) - sparse
   for (let y = t; y < f; y++) {
-    // Inverted falloff: 0 at the top line, 1 at the floor — dense at the
-    // bottom, thinning as it rises toward the outline.
     let density = (y - t) / depth
     if (stacked) density = 0.5 + 0.5 * density
     if (variant === "hatched" && ((x + y) & 3) >= 2) continue
@@ -77,7 +73,6 @@ export function paintColumn(
     // the cell and lets the dither ride the alpha (on = full tier, off = a
     // faint tint) so nothing shows the background through as white.
     if (variant === "dotted" && !lit) continue
-    // Density → alpha (see the colour-vs-opacity note above).
     const k = (0.3 + density * 0.7) * (1 + 0.22 * intensity)
     const alpha = clamp01((lit ? k : k * OFF_TIER) * dim)
     octx.fillStyle = rgb(seed.fill, 1, alpha)
@@ -94,7 +89,6 @@ export function paintColumn(
   }
 }
 
-/** Linear-resample a per-index fraction array to `cols` columns. */
 export function resample(src: number[], cols: number): number[] {
   const out = new Array<number>(cols)
   const last = Math.max(src.length - 1, 1)
@@ -109,7 +103,6 @@ export function resample(src: number[], cols: number): number[] {
   return out
 }
 
-/** Backing-canvas resolution for a plot rect — low-res, scaled up `pixelated`. */
 export function backingSize(width: number, height: number) {
   return {
     cols: Math.min(MAX_COLS, Math.max(8, Math.round(width / CELL))),
@@ -132,7 +125,6 @@ export type BloomConfig = {
   saturate?: number
   blend?: BloomBlend // additive by default
 }
-/** A preset name, a full config, or "off". */
 export type BloomInput = BloomLevel | BloomConfig
 
 const PRESET: Record<Exclude<BloomLevel, "off">, BloomConfig> = {
@@ -148,7 +140,6 @@ export type BloomStyle = {
   imageRendering: "auto"
 }
 
-/** Style for the bloom *layer* canvas (a blurred, additive copy). null when off. */
 export function bloomLayerStyle(
   input: BloomInput,
   active: boolean
@@ -163,13 +154,11 @@ export function bloomLayerStyle(
   }
 }
 
-// Easing — gentle start + soft settle so entrances don't feel linear.
 export const easeInOutCubic = (t: number) =>
   t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
 export const easeOutCubic = (t: number) => 1 - (1 - t) ** 3
 export const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t)
 
-/** Whether the OS asks for reduced motion (snap + steady stars). */
 export function prefersReducedMotion() {
   return (
     window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false

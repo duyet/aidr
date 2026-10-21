@@ -1,8 +1,3 @@
-/**
- * The sitemap index and its date-sharded children. Kept in its own file (not
- * `sitemap.test.ts`) because the flat-sitemap assertions there describe the
- * pre-index shape that this change replaces.
- */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { expectWellFormedXml } from "./__fixtures__/xml";
 import type { DbReader } from "./db";

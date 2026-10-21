@@ -10,7 +10,6 @@ export type TrendKind = "topic" | "model" | "category";
 export interface TrendSeries {
   name: string;
   kind: TrendKind;
-  /** One count per entry in `SystemTrends.days`, zero-filled. */
   counts: number[];
 }
 
@@ -109,8 +108,6 @@ function topByTotal(series: TrendSeries[], limit: number): TrendSeries[] {
     .slice(0, limit);
 }
 
-/** Dense, bounded series for the window ending `today`. Topic rows come from
- *  `topic_daily`, category rows from published items. */
 export function buildTrends(
   topicRows: TrendRow[],
   categoryRows: TrendRow[],

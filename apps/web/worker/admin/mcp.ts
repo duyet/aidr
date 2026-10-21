@@ -89,7 +89,6 @@ const ANONYMOUS_TOOL_REFUSAL = {
     "unauthenticated tools/list returns every tool available without auth.",
 } as const;
 
-/** JSON-RPC implementation-defined server error (-32000). */
 const RATE_LIMITED = -32000;
 const RATE_LIMIT_MESSAGE =
   "anonymous MCP read rate limit exceeded; retry after the Retry-After " +

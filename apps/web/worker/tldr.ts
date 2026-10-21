@@ -16,7 +16,6 @@ import type { Env } from "./types.js";
  * stories that land after the first successful generate of the day. */
 export const TLDR_REFRESH_MS = 3 * 60 * 60 * 1000;
 
-/** Stories per TL;DR edition. */
 export const TLDR_MAX_ITEMS = 16;
 /** The whole 24h window is the candidate pool (~120 rows on a normal day):
  * mirrored aggregators can fill the top 50 alone, so a small over-fetch
@@ -89,7 +88,6 @@ export function tldrSnapshotDate(nowMs: number = Date.now()): string {
   return getLocalHourAndDate(nowMs, AUDIENCE_TIMEZONE).date;
 }
 
-/** A TL;DR result is only worth persisting if it actually has bullets. */
 export function shouldPersistTldr(result: {
   bullets_en: unknown[];
   bullets_vi: unknown[];
@@ -140,7 +138,6 @@ export function shouldRefreshExistingSnapshot(opts: {
   itemCount: number;
   nowMs: number;
   refreshMs?: number;
-  /** True when last-24h ranked items now have Vietnamese title_vi. */
   hasTitleVi?: boolean;
 }): boolean {
   if (!opts.existing) return true;

@@ -1,5 +1,9 @@
 import { callAnyrouter, parseJson } from "./llm.js";
-import { fallbackTags, type TaggableStory } from "./tag-fallback.js";
+import {
+  loadKnownTopics,
+  scoredOrFallbackTags,
+  type TaggableStory,
+} from "./tag-fallback.js";
 import type { Env } from "./types.js";
 
 /** Cap on canonical topics stored per item — mirrors the scoring prompt's
@@ -177,22 +181,13 @@ export async function normalizeTopics(
   const canonicalTagsByItem = new Map<string, string[]>();
   if (storiesById.size === 0) return canonicalTagsByItem;
 
-  const { results: existingRows } = await env.DB.prepare(
-    "SELECT name, canonical FROM topics"
-  ).all<{ name: string; canonical: string }>();
-  const existingByName = new Map(
-    (existingRows ?? []).map((r) => [r.name, r.canonical])
-  );
-  const existingCanonicals = [
-    ...new Set((existingRows ?? []).map((r) => r.canonical)),
-  ];
+  const existingByName = await loadKnownTopics(env.DB);
+  const existingCanonicals = [...new Set(existingByName.values())];
 
   const normalizedTagsByItem = new Map<string, string[]>();
   const allNormalized = new Set<string>();
   for (const [itemId, story] of storiesById) {
-    const scored = dedupeNormalized(story.tags);
-    const normalized =
-      scored.length > 0 ? scored : fallbackTags(story, existingByName);
+    const normalized = scoredOrFallbackTags(story, existingByName);
     normalizedTagsByItem.set(itemId, normalized);
     for (const name of normalized) allNormalized.add(name);
   }

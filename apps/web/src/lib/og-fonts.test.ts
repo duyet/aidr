@@ -8,7 +8,6 @@ import {
   VIETNAMESE_ALPHABET,
 } from "./og-fonts";
 
-/** The two committed weights, read from disk. */
 const FONT_PATHS = [
   STORY_OG_FONT_SOURCES.medium,
   STORY_OG_FONT_SOURCES.bold,

@@ -116,7 +116,9 @@ test("every cue the build plays has a pool of measured library files", () => {
   ]);
   for (const cue of cues) assert.ok(POOLS[cue], `${cue}: no pool`);
   for (const [cue, pool] of Object.entries(POOLS)) {
-    assert.ok(pool.length >= 2, `${cue}: one file never changes`);
+    assert.ok(pool.length >= 1, `${cue}: empty pool`);
+    if (cue !== "storyIn")
+      assert.ok(pool.length >= 2, `${cue}: one file never changes`);
     for (const name of pool) {
       assert.ok(manifest[name], `${cue}: "${name}" is not in the library`);
       assert.equal(
@@ -145,12 +147,19 @@ test("no pool holds the same audio twice", () => {
   }
 });
 
+// whoosh-cinematic holds a 0.5 s plateau with no peak: it reads as a soft hit, not a cut.
+test("storyIn plays the punchy whoosh, never the cinematic swell", () => {
+  assert.deepEqual(POOLS.storyIn, ["whoosh"]);
+  for (const date of TWO_YEARS)
+    assert.equal(soundFor(date).sfx.storyIn, "whoosh");
+});
+
 test("each cue plays a different file every day and its whole pool every cycle", () => {
   for (const [cue, pool] of Object.entries(POOLS)) {
     const cycles = new Map();
     TWO_YEARS.forEach((date, i) => {
       const pick = soundFor(date).sfx[cue];
-      if (i)
+      if (i && pool.length > 1)
         assert.notEqual(
           pick,
           soundFor(TWO_YEARS[i - 1]).sfx[cue],
@@ -198,7 +207,6 @@ test("a cut too long for the day's bed start moves back to an earlier phrase ins
     assert.ok(at + total <= BED.duration, `${start}+${total} → ${at}`);
     assert.ok(BED.starts.daily.includes(at), `${at} is a phrase start`);
   }
-  // With room, the day's rotation stands.
   for (const start of BED.starts.daily)
     assert.equal(bedStartFor(start, 117), start);
 });

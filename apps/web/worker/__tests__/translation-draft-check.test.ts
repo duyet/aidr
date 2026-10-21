@@ -163,6 +163,37 @@ describe("translationDraftIssues", () => {
     ]);
   });
 
+  // Prod 1e7f081e copied the paper's own "SERA (Self-Evaluating Recursive
+  // Agents)"; prod c4bfc91a numbered a list "(i) … và (ii)". Neither is a
+  // gloss the translator added, so neither is a repair or a refused post.
+  it("does not flag a gloss the source writes or a list marker", () => {
+    const glosses = (source: string, vi: string) =>
+      translationDraftIssues(
+        { title: "Self-Evaluating Recursive Agents", summary: source },
+        { title: "Các agent đệ quy tự đánh giá", summary: vi },
+        [],
+        false
+      ).filter((issue) => issue.includes("gloss"));
+    expect(
+      glosses(
+        "SERA (Self-Evaluating Recursive Agents) turns evaluation into a learned capability.",
+        "SERA (Self-Evaluating Recursive Agents) biến việc đánh giá thành một khả năng được học."
+      )
+    ).toEqual([]);
+    expect(
+      glosses(
+        "(i) a base station broadcasts the weights, and (ii) edge users receive them.",
+        "(i) trạm phát sóng trọng số, và (ii) người dùng biên nhận trọng số."
+      )
+    ).toEqual([]);
+    expect(
+      glosses(
+        "SERA turns evaluation into a learned capability.",
+        "SERA (Self-Evaluating Recursive Agents) biến việc đánh giá thành một khả năng được học."
+      )
+    ).toHaveLength(1);
+  });
+
   it("asks for kept jargon the draft translated away", () => {
     const issues = translationDraftIssues(
       { title: "OpenAI pauses frontier model", summary: LONG_EN },
@@ -308,6 +339,17 @@ describe("tldrBulletIssues", () => {
     ).toEqual([`"thỏa thỏa" repeats a word; write "thỏa" once`]);
   });
 
+  // #927: a garbled bullet shipped because only item drafts were checked.
+  it("flags a garbled word so the bullet gets a repair", () => {
+    expect(
+      tldrBulletIssues(
+        "OpenAI pushes back on the view that AI takeover is inevitable.",
+        "OpenAI phản đối quan điệm cho rằng AI chiếm quyền là tất yếu.",
+        []
+      )
+    ).toEqual([`"điệm" is not a Vietnamese word; fix the spelling`]);
+  });
+
   it("does not flag reduplication, English names, or a single word", () => {
     expect(
       tldrBulletIssues(
@@ -316,6 +358,80 @@ describe("tldrBulletIssues", () => {
         []
       )
     ).toEqual([]);
+  });
+});
+
+describe("stutter check and compound words", () => {
+  const stutters = (vi: string) =>
+    tldrBulletIssues("An AI news story.", vi, []).filter((issue) =>
+      issue.includes("repeats a word")
+    );
+
+  // Stored translations the Vietnamese Telegram gate refused in the 14 days
+  // to 2026-10-20 (scripts/telegram-gate-replay.ts). Each doubled syllable
+  // ends one word and starts the next, so the sentence is correct.
+  it.each([
+    [
+      "b639c583",
+      "Các tác giả của một benchmark vật lý lý thuyết đã sửa lại đáp án chuẩn.",
+    ],
+    [
+      "e2a62c45",
+      "Dyson ngừng bán bàn chải AI giá 500 USD sau khi thiết bị bị lỗi.",
+    ],
+    [
+      "ae6e4921",
+      "Chúng tôi đánh giá HybridAgent ở 3 quy mô mô hình trên 11 benchmark.",
+    ],
+    [
+      "14e5315c",
+      "Các mô hình hình ảnh mới nhất từ OpenAI và Google dễ bị jailbreak hơn.",
+    ],
+    [
+      "cc19c646",
+      "Các công ty không nên thử nghiệm các bài toán toán học nâng cao.",
+    ],
+    [
+      "c75409a9",
+      "Mô hình định điều kiện khung hình đầu và cuối cùng cùng đầu vào âm thanh.",
+    ],
+    [
+      "6b6ee068",
+      "Đây là giai đoạn đầu tư tư nhân cuối cùng trước khi lên sàn.",
+    ],
+  ])("does not flag %s, two words sharing a syllable", (_id, vi) => {
+    expect(stutters(vi)).toEqual([]);
+  });
+
+  // The same stories' real stutters: a copy that belongs to neither
+  // neighbour is a generation glitch the repair must remove.
+  it.each([
+    [
+      "d70fece5",
+      "Triển vọng dựa trên nguồn cung hẹp hẹp cho hạ tầng AI.",
+      "hẹp",
+    ],
+    [
+      "5bc6764d",
+      "Người dùng cho rằng thuật ngữ này giấu giấu một vụ rò rỉ.",
+      "giấu",
+    ],
+    [
+      "7454dac9",
+      "Mức tăng lớn nhất kể từ khi Cục Thống thống Lao động theo dõi.",
+      "Thống",
+    ],
+    [
+      "265a5629",
+      "TypeSafe ra mắt Jev 1.14 với nâng cấp đa dạng dạng và đa ngôn ngữ.",
+      "dạng",
+    ],
+    ["5633ac08", "Điều này có thể dẫn đến sự tránh tránh thuật toán.", "tránh"],
+    ["held out", "Công ty đưa ra các biện biện pháp an toàn mới.", "biện"],
+  ])("flags %s", (_id, vi, word) => {
+    expect(stutters(vi)).toEqual([
+      expect.stringContaining(`write "${word}" once`),
+    ]);
   });
 });
 
@@ -334,6 +450,116 @@ describe("translationDraftIssues stutter", () => {
     expect(issues).toContain(
       `"triệu triệu" repeats a word; write "triệu" once`
     );
+  });
+});
+
+describe("keep-English terms in their ordinary English sense", () => {
+  const jargon = (source: string) =>
+    extractProtectedTerms({ title: "", summary: source }).jargon;
+
+  // Source lines of stories the Vietnamese Telegram gate refused in the 14
+  // days to 2026-10-20 for "keep these terms in English" although the term
+  // was the plain verb, which the Vietnamese rightly translated.
+  it.each([
+    [
+      "38814028",
+      "To make it computationally practical, we exploit the backbone's causal structure.",
+      "exploit",
+    ],
+    [
+      "b34ad4f9",
+      "How threat actors select targets, direct autonomous agents, exploit vulnerabilities, and expose secrets.",
+      "exploit",
+    ],
+    [
+      "2248a66d",
+      "A lack of safeguards allows criminals to exploit increasingly powerful AI tools.",
+      "exploit",
+    ],
+    [
+      "f5987825",
+      "We develop a matrix multiplication engine that exploits this property.",
+      "exploit",
+    ],
+    [
+      "739162d7",
+      "Yelp is embedding numerous new AI features into its app.",
+      "embedding",
+    ],
+    [
+      "9eceb514",
+      "The method is on the leaderboard after embedding 24,576 fingerprints in Llama-3.1-8B.",
+      "embedding",
+    ],
+    [
+      "b6799858",
+      "The fallout has prompted some mathematics students to question the field.",
+      "prompt",
+    ],
+    [
+      "d3f037bc",
+      "Muse Wonder Full and the anticipated launch of Gemini 4, prompting speculation about the deployment.",
+      "prompt",
+    ],
+  ])("does not ask %s to keep a verb in English", (_id, source, term) => {
+    expect(jargon(source)).not.toContain(term);
+  });
+
+  it("still asks to keep the jargon nouns", () => {
+    expect(jargon("A zero-day exploit hit the eval harness.")).toContain(
+      "exploit"
+    );
+    expect(jargon("The new text embeddings beat OpenAI.")).toContain(
+      "embedding"
+    );
+    expect(
+      jargon("We compare few-shot prompting with JSON prompts.")
+    ).toContain("prompt");
+    expect(jargon("Attackers used the exploit chain twice.")).toContain(
+      "exploit"
+    );
+    // Held-out b6437fe6, 26128afc: a headline noun followed by the summary's
+    // first word, and a model name, are not verbs.
+    expect(
+      extractProtectedTerms({
+        title: "CVSS 9.8 Bug in First Potential Autonomous AI Agent Exploit",
+        summary: "The flaw allows remote code execution.",
+      }).jargon
+    ).toContain("exploit");
+    expect(jargon("It beats Gemini Embedding 2 on retrieval.")).toContain(
+      "embedding"
+    );
+  });
+
+  // Prod 4be1348a, de25b1e6: "các mô hình frontier" keeps the English term in
+  // Vietnamese word order; "các mô hình tiên phong" does not.
+  it("accepts a kept term in Vietnamese word order", () => {
+    const source = {
+      title: "US Restores UK Access to Unreleased AI Models",
+      summary:
+        "The AISI may again review frontier models from Google and OpenAI.",
+    };
+    const issues = (vi: string) =>
+      translationDraftIssues(
+        source,
+        {
+          title:
+            "Mỹ khôi phục quyền truy cập của UK vào các mô hình AI chưa phát hành",
+          summary: vi,
+        },
+        [],
+        false
+      ).filter((issue) => issue.startsWith("keep these terms"));
+    expect(
+      issues(
+        "AISI có thể xem xét lại các mô hình frontier của Google và OpenAI."
+      )
+    ).toEqual([]);
+    expect(
+      issues(
+        "AISI có thể xem xét lại các mô hình mạnh nhất của Google và OpenAI."
+      )
+    ).toEqual(["keep these terms in English: frontier model"]);
   });
 });
 

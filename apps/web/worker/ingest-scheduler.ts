@@ -3,12 +3,14 @@ import { maybeSyncGa4Insights } from "./ga4/insights.js";
 import {
   armAlarmAt,
   blockedByOpenRun,
+  closeFailedCreate,
   type IngestTickOpts,
   type IngestTickResult,
   nextAlarmAt,
   persistCreatedIngestRun,
   shouldSkipIngest,
 } from "./ingest-schedule.js";
+import { syncFacebookPostStats } from "./notify/facebook-insights.js";
 import type { Env } from "./types.js";
 import { type D1Runner, NOT_DRY_RUN_SQL } from "./workflow-run.js";
 
@@ -18,10 +20,6 @@ const LAST_STARTED_KEY = "last_started_at";
  * Singleton Durable Object that fires ingest every 30 minutes without a Worker cron
  * trigger (Free accounts are capped at 5 crons). GitHub Actions remains a
  * watchdog; both paths call `tick()` so overlapping POSTs coalesce.
- *
- * HTTP `POST /api/admin/ingest` uses `canStart` + Worker D1 persist +
- * Worker `NEWS_INGEST.create({ id })` + `markStarted`. Alarm `tick()`
- * still creates from this isolate (best-effort persist).
  */
 export class NewsIngestScheduler extends DurableObject<Env> {
   async alarm(): Promise<void> {
@@ -35,6 +33,11 @@ export class NewsIngestScheduler extends DurableObject<Env> {
     } catch (error) {
       console.error("ga4 audience sync tick failed:", error);
     }
+    try {
+      await syncFacebookPostStats(this.env);
+    } catch (error) {
+      console.error("facebook post stats tick failed:", error);
+    }
   }
 
   async markStarted(_id: string): Promise<void> {
@@ -47,8 +50,6 @@ export class NewsIngestScheduler extends DurableObject<Env> {
     const now = Date.now();
     const lastStartedAt = await this.ctx.storage.get<number>(LAST_STARTED_KEY);
     if (opts.scheduled === false) {
-      // Dry / partial runs never move the 30-minute alarm; only make sure
-      // one is armed.
       await this.ensureArmed();
     } else {
       await this.ctx.storage.setAlarm(nextAlarmAt(now));
@@ -75,17 +76,19 @@ export class NewsIngestScheduler extends DurableObject<Env> {
     const now = Date.now();
     try {
       await this.env.NEWS_INGEST.create({ id });
-      await this.ctx.storage.put(LAST_STARTED_KEY, now);
-      await this.ctx.storage.setAlarm(nextAlarmAt(now));
-      return { id, skipped: false };
     } catch (error) {
       console.error("ingest scheduler create failed:", error);
+      await closeFailedCreate(this.env.DB, id, error);
       return {
         id,
         skipped: false,
         reason: error instanceof Error ? error.message : String(error),
       };
     }
+    // The run is live from here: a failure below must not mark its row.
+    await this.ctx.storage.put(LAST_STARTED_KEY, now);
+    await this.ctx.storage.setAlarm(nextAlarmAt(now));
+    return { id, skipped: false };
   }
 
   async tick(opts: IngestTickOpts = {}): Promise<IngestTickResult> {
@@ -116,15 +119,19 @@ async function previousRunStillOpen(
   try {
     const row = await db
       .prepare(
-        `SELECT started_at, finished_at FROM workflow_runs
+        `SELECT started_at, finished_at, error FROM workflow_runs
          WHERE ${NOT_DRY_RUN_SQL}
          ORDER BY CASE WHEN started_at > 1000000000000 THEN started_at / 1000 ELSE started_at END DESC, id DESC
          LIMIT 1`
       )
       .bind()
-      .first<{ started_at: number | null; finished_at: number | null }>();
+      .first<{
+        started_at: number | null;
+        finished_at: number | null;
+        error: string | null;
+      }>();
     if (!row) return false;
-    return blockedByOpenRun(row.started_at, row.finished_at, nowMs);
+    return blockedByOpenRun(row.started_at, row.finished_at, nowMs, row.error);
   } catch (error) {
     console.error("open-run check failed:", error);
     return false;

@@ -75,7 +75,6 @@ describe("buildEditPlan", () => {
           "fallback ok: sendPhoto:Bad Request: wrong type; sendPhoto(card):Bad Request: failed to get HTTP URL content; photo:none_sent",
         imageUrl: "https://example.com/dead.jpg",
       }),
-      // No forward happens for a D1 text post.
       facts({ media: undefined })
     );
     expect(plan).toMatchObject({ skip: "text_post", to: null });

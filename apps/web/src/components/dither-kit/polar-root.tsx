@@ -25,7 +25,6 @@ export type PolarRootProps<TData extends Row> = {
   chartType: "pie" | "radar"
   /** Family painter — `PieCanvas` or `RadarCanvas`; ships with each chart. */
   Canvas: ComponentType
-  /** Extra back-layer SVG content (e.g. the radar frame). */
   backDecoration?: ReactNode
   data: TData[]
   config: ChartConfig

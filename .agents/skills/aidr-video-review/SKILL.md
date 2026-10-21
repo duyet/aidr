@@ -1,6 +1,6 @@
 ---
 name: aidr-video-review
-description: Review a rendered AI;DR video as a harsh motion director before it ships — measure frame-to-frame change, compare against a reference or the storyboard frame by frame, check sound lands on its visual hit, and return the five fixes that matter with exact frame numbers and a score. Use after any render or re-render under videos/, when asked to "review", "validate", "QA", "score" or "check" a video, before calling a video done, and before it is posted anywhere. Nothing ships below 8/10.
+description: Review a rendered AI;DR video as a harsh motion director before it ships — measure frame-to-frame change, compare against a reference or the storyboard frame by frame, check sound lands on its visual hit, score it on an 11-row rubric (style, content, voice, thumbnail; script-checked rows plus judged rows), and return the five fixes that matter with exact frame numbers. Use after any render or re-render under videos/, when asked to "review", "validate", "QA", "score" or "check" a video, before calling a video done, and before it is posted anywhere. Nothing ships below 8/10.
 ---
 
 # aidr-video-review
@@ -83,7 +83,22 @@ as one event. A sound placed vaguely near the animation feels disconnected.
 
 Tolerance is one frame. Report the offset in frames and which side to move.
 
-## 5. Report
+## 5. Score with the rubric
+
+Every daily-news render gets a score out of 10 from eleven rows in four areas: style 3, content 2, voice 3, thumbnail 2. The rows live in `RUBRIC` in `scripts/rubric.mjs`, and the script decides the automatic ones:
+
+```bash
+python3 .agents/skills/aidr-video-review/scripts/motion_report.py <render.mp4> --json /tmp/motion.json
+node .agents/skills/aidr-video-review/scripts/rubric.mjs videos/daily-news/editions/<date> --motion /tmp/motion.json
+```
+
+It prints PASS or FAIL with the reason for each automatic row, and `judge` for each row you score by watching. Pull the cover at 320 px wide for `thumb.small` (`ffmpeg -i cover.png -vf scale=320:-2 small.png`) and listen through once with no picture for `vo.natural`.
+
+A row earns its full points or none, except `judge` rows, which may earn half when the defect sits in a single spot. An automatic FAIL is never overruled by taste. Report the table with each row's points and, for every lost point, the frame or line and the fix (section 6). The total decides: below 8 does not ship.
+
+For other videos (release films, story clips) the automatic rows do not apply. Judge the same eleven rows by hand.
+
+## 6. Report
 
 For every mismatch give four things: shot and frame number, what is wrong, why it looks worse, and
 the exact fix.
@@ -94,11 +109,11 @@ Useless: "The motion in the list feels a bit off."
 
 Then:
 
-1. **Score out of 10.** Below 8 does not ship.
+1. **Score out of 10**, the rubric total from section 5, with the row table. Below 8 does not ship.
 2. **The five fixes that improve the video most**, in order. Leave the rest as a short list below.
 3. **What you could not check** (no reference supplied, no audio, a section not rendered).
 
-## 6. Loop
+## 7. Loop
 
 The builder makes the fixes, re-renders only the affected section, and the review runs again on
 that section (`--from` / `--to` on the script). Repeat until the score is 8 or higher. Do not

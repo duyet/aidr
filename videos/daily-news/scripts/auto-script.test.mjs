@@ -8,9 +8,11 @@ import {
   complete,
   estimateSeconds,
   fromModel,
+  pacingProblems,
   speakable,
   statSpoken,
   templateScript,
+  templateStory,
   validateScript,
   videoModels,
   vnToday,
@@ -39,6 +41,96 @@ test("the template script is valid, fact-checked, and has no draft markers publi
     ]),
     []
   );
+});
+
+test("a stat that repeats the category label or the kicker is rejected", () => {
+  const s = templateScript(edition, hosts);
+  const story = s.stories[0];
+  const src = edition.stories.find((x) => x.rank === story.rank);
+  for (const stat of [src.category, story.kicker.toUpperCase()]) {
+    s.stories[0] = { ...story, stat };
+    assert.match(
+      validateScript(s, edition).join(),
+      /repeats the kicker or category/,
+      stat
+    );
+  }
+});
+
+test("a headline marks exactly one span, the screen's one focal point", () => {
+  const s = templateScript(edition, hosts);
+  const story = s.stories[0];
+  for (const [headline, n] of [
+    ["OpenAI *softens* on *chip controls*", 2],
+    ["OpenAI softens on chip controls", 0],
+  ]) {
+    s.stories[0] = { ...story, headline };
+    assert.match(
+      validateScript(s, edition).join(),
+      new RegExp(`headline marks ${n} spans, not one`),
+      headline
+    );
+  }
+});
+
+test("a headline that only restates the first voice sentence is rejected; one that adds to it passes", () => {
+  const s = templateScript(edition, hosts);
+  const story = s.stories[0];
+  const voice = [
+    {
+      anchor: story.voice[0].anchor,
+      text: "DeepSeek has open-sourced DeepInfer, its inference engine. It serves DeepSeek models at scale.",
+    },
+  ];
+  const problems = (headline) => {
+    s.stories[0] = { ...story, headline, voice, statWord: null };
+    return validateScript(s, edition).join();
+  };
+  assert.match(
+    problems("DeepSeek *open-sources DeepInfer*, its serving engine"),
+    /headline repeats the first voice sentence/
+  );
+  assert.doesNotMatch(
+    problems("The engine behind *DeepSeek's own chat*"),
+    /headline repeats/
+  );
+});
+
+test("a topic label is not a stat when the bullet has a figure; a label is fine when it has none", () => {
+  const s = templateScript(edition, hosts);
+  const withFigure = s.stories.findIndex((x) => /\d/.test(x.stat));
+  const without = s.stories.findIndex((x) => !/\d/.test(x.stat));
+  assert.ok(withFigure >= 0 && without >= 0, "the fixture has both kinds");
+  s.stories[withFigure] = { ...s.stories[withFigure], stat: "Policy shift" };
+  assert.match(
+    validateScript(s, edition).join(),
+    /stat "Policy shift" is not a figure, but the bullet has one/
+  );
+  s.stories[withFigure] = templateScript(edition, hosts).stories[withFigure];
+  s.stories[without] = { ...s.stories[without], stat: "Policy shift" };
+  assert.deepEqual(validateScript(s, edition), []);
+});
+
+test("a headline marker that holds the stat's figure is rejected, in any written form of it", () => {
+  const s = templateScript(edition, hosts);
+  const i = s.stories.findIndex((x) => x.stat === "$870M");
+  assert.ok(i >= 0, "the fixture has a $870M story");
+  for (const headline of [
+    "*$870M bet* on AI coding",
+    "A *$870 million* bet on coding",
+  ]) {
+    s.stories[i] = { ...s.stories[i], headline };
+    assert.match(
+      validateScript(s, edition).join(),
+      /headline marker repeats the stat "\$870M"/,
+      headline
+    );
+  }
+  s.stories[i] = {
+    ...s.stories[i],
+    headline: "A *big bet* on $870M of coding",
+  };
+  assert.deepEqual(validateScript(s, edition), []);
 });
 
 test("the intro is one line that opens on the news: no greeting, no show name, no date line", () => {
@@ -141,15 +233,9 @@ test("a model that invents a number is rejected (facts come only from the bullet
 test("a valid model answer is used; anchors come from the cast, not the model", async () => {
   const three = { ...edition, stories: edition.stories.slice(0, 3) };
   const answer = {
-    stories: three.stories.map((s) => ({
-      rank: s.rank,
-      kicker: "AI news",
-      headline: "*A real headline* for this story",
-      stat: "Today",
-      statLabel: "the state of play",
-      statWord: "This",
+    stories: answerWith({
       voice: ["This story is in the bullet.", "It matters for builders."],
-    })),
+    }).stories,
     introLine: "Stocks slide today.",
     focus: [{ rank: 1, word: "stocks" }],
     thumbRank: 2,
@@ -177,6 +263,107 @@ test("a valid model answer is used; anchors come from the cast, not the model", 
   assert.equal(script.thumb.story, 2);
   assert.ok(
     script.stories.every((s) => s.voice.every((v) => hosts.includes(v.anchor)))
+  );
+});
+
+const three = { ...edition, stories: edition.stories.slice(0, 3) };
+// The stat is the bullet's figure when it has one (validateScript rejects a label then), spoken in a closing sentence.
+const statOf = (s) => {
+  const { stat } = templateStory(s);
+  return /\d/.test(stat)
+    ? {
+        stat,
+        statWord: stat.match(/\d[\d,.]*/)[0],
+        said: `It says ${speakable(stat)}.`,
+      }
+    : { stat: "Today", statWord: "This", said: "" };
+};
+const answerWith = ({ voice, thumbHook }) => ({
+  stories: three.stories.map((s) => {
+    const { stat, statWord, said } = statOf(s);
+    return {
+      rank: s.rank,
+      kicker: "AI news",
+      headline: "*A real headline* for this story",
+      stat,
+      statLabel: "the state of play",
+      statWord,
+      voice: said ? [voice[0], said] : voice,
+    };
+  }),
+  introLine: "Stocks slide today.",
+  thumbRank: 2,
+  thumbHook,
+  post: {
+    hook: "Hook.",
+    facebook: "Today in AI.",
+    youtubeTitle: "AI News Today | Oct 10, 2026",
+    shortsTitle: "AI today",
+    tiktok: "What do you think?",
+    hashtags: ["AI", "AINews", "OpenAI"],
+  },
+});
+const paced = answerWith({
+  voice: ["This story is in the bullet.", "It matters for builders."],
+  thumbHook: "Chips slide in one day",
+});
+const breathless = answerWith({
+  voice: [
+    "This story is in the bullet and it keeps going with clause after clause until nobody can follow it.",
+  ],
+  thumbHook: "AI news",
+});
+
+test("a story opens on a short sentence, the intro is one beat, and the cover hook is a phrase, not a label", () => {
+  const ok = fromModel(JSON.stringify(paced), three, hosts);
+  assert.deepEqual(pacingProblems(ok), []);
+  assert.equal(ok.thumb.hook, "Chips slide in one day");
+  const bad = fromModel(JSON.stringify(breathless), three, hosts);
+  bad.intro.voice[0].text =
+    "Stocks slide today as chips fall, rates rise, and every lab ships a model at once.";
+  const problems = pacingProblems(bad).join();
+  assert.match(problems, /story 1: first sentence has 19 words/);
+  assert.match(problems, /intro line has 16 words/);
+  assert.match(problems, /thumb.hook has 2 words/);
+});
+
+test("a paced model answer beats an earlier one that is valid but breathless", async () => {
+  const answers = { m1: breathless, m2: paced };
+  const { script, source } = await writeScript({
+    edition: three,
+    config,
+    hostKeys: hosts,
+    maxSeconds: 200,
+    models: ["m1", "m2"],
+    llm: async (m) => JSON.stringify(answers[m]),
+    log: quiet,
+  });
+  assert.equal(source, "m2");
+  assert.equal(script.thumb.hook, "Chips slide in one day");
+});
+
+test("a valid but breathless model answer still beats the bullet-copy template", async () => {
+  const { source } = await writeScript({
+    edition: three,
+    config,
+    hostKeys: hosts,
+    maxSeconds: 200,
+    models: ["m1", "m2"],
+    llm: async (m) => (m === "m1" ? JSON.stringify(breathless) : "not json"),
+    log: quiet,
+  });
+  assert.equal(source, "m1");
+});
+
+test("a cover hook with a number the stories lack is rejected", () => {
+  const s = fromModel(
+    JSON.stringify({ ...paced, thumbHook: "Chips slide 99 percent" }),
+    three,
+    hosts
+  );
+  assert.match(
+    validateScript(s, three).join(),
+    /thumb.hook: number 99 is not in the stories/
   );
 });
 
@@ -216,7 +403,6 @@ test("a stat counts as spoken in any equivalent spoken form, but a different num
     assert.equal(statSpoken(voice, stat), false, `${stat} in "${voice}"`);
 });
 
-// 2026-10-16: the video chain was gpt-5.6-luna then gemini-3-flash, and AnyRouter refused gemini (#875).
 test("the video model chain is gpt-5.6-luna, then the Worker's chat chain read from wrangler.toml, paid Claude last", () => {
   const dir = mkdtempSync(join(tmpdir(), "aidr-chain-"));
   try {

@@ -49,9 +49,6 @@ export const TELEGRAM_DIGEST = {
   },
 } as const;
 
-/** Telegram channel mock: the once-a-day digest plus a trending post, in the
- *  two message shapes the bot actually sends. `channel` picks which channel
- *  (and content language) is shown; `lang` is the page language for chrome. */
 export function TelegramPreview({
   lang,
   channel,
@@ -112,7 +109,6 @@ export function TelegramPreview({
           </span>
         </div>
 
-        {/* Trending post: bold title, summary, meta line, two buttons. */}
         <div className="max-w-full rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3 py-2.5 shadow-sm">
           <p className="text-[13px] font-semibold leading-snug text-foreground">
             {copy.story.title}

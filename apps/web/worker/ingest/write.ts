@@ -16,8 +16,8 @@ import {
   buildRerankQuery,
   type RankSignalRow,
   rankScore,
+  rankScoreForRow,
   rankSignals,
-  rowRankSignals,
   storyCategory,
 } from "../ranking.js";
 import type { FetchedItemSource } from "../sources/types.js";
@@ -69,7 +69,6 @@ const UPSERT_ITEM_SQL = `INSERT INTO items (
 export const INSERT_ITEM_SOURCE_SQL = `INSERT INTO item_sources (item_id, position, kind, author, posted_at, quote, url)
                    VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
-/** Replace an item's `item_sources` rows with `sources`, in order. */
 function replaceItemSources(
   env: Env,
   itemId: string,
@@ -292,19 +291,22 @@ async function rerankRecentStatements(
     .filter((row) => !writtenIds.has(row.id))
     .map((row) => ({
       id: row.id,
-      r: rankScore({
-        importance: row.llm_importance ?? 5,
-        quality: row.llm_quality ?? 5,
-        // row.published_at is stored as epoch seconds; rankScore expects ms.
-        publishedAt: row.published_at * 1000,
-        now,
-        ...rowRankSignals(row),
-        category: storyCategory(row.category),
-      }),
+      r: rankScoreForRow(row, now),
     }));
   if (scores.length === 0) return [];
   return [env.DB.prepare(RERANK_UPDATE_SQL).bind(JSON.stringify(scores))];
 }
+
+/** D1 counts every batch statement toward its 1,000 queries per
+ * invocation. This leaves room for the run's other reads and writes. */
+export const WRITE_D1_MAX_STATEMENTS = 800;
+
+/** Worst case for one published row: content log and item upsert (2), vi
+ * translation logs and upsert (3), source delete and inserts, and the
+ * demoted canonical it replaces (5 writes, 1 vote read). A merged row
+ * costs less: 2 writes plus its canonical update. */
+export const WRITE_D1_MAX_STATEMENTS_PER_ROW =
+  2 + 3 + 1 + MAX_SOURCES_PER_ITEM + 6;
 
 /** Writes every new row, applies merges to existing canonicals, and
  * re-ranks the last 72h, all in one D1 batch. Rethrows so a failed write surfaces

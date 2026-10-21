@@ -115,7 +115,6 @@ function keepRowClosed(event: { stopPropagation(): void }) {
   event.stopPropagation();
 }
 
-/** One small thumbs-up + count, sized to the surrounding meta text. */
 function Thumb({
   voteNet,
   lang,

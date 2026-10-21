@@ -41,9 +41,9 @@ One ingest run does three jobs. The scheduler starts one every 30 minutes, with 
 
 Publish has two deliveries and they do not share a clock or a table:
 
-- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. Subscribers with `frequency = weekly` skip these lanes and get the weekly edition on Monday morning instead (§11, idempotency `last_weekly_sent`). A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=`.
+- **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) and headline font (`sans` or `serif`, see `src/lib/mail-font.ts`, `subscribers.mail_font`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. Subscribers with `frequency = weekly` skip these lanes and get the weekly edition on Monday morning instead (§11, idempotency `last_weekly_sent`). A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=&font=`.
 - **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, one message with the day card's 6 stories, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
-- **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`.
+- **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`. Story links carry `utm_content=post-<id8>` (Telegram: `button-<id8>`, `link-<id8>`), the story id's first 8 characters. Once a day, behind the ingest alarm, `worker/notify/facebook-insights.ts` reads `post_media_view` and `post_clicks` for the last 12 sent posts into `post_stats` (migration 0073). A token without `read_insights` ends the run with NULL rows and no retry that day.
 
 An empty `bullets_vi` or `bullets_en` means that language is not ready. The channel skips and the next run retries. Notifiers strip page chrome and a trailing outlet credit from each bullet (`stripEmbeddedChrome`), drop a bullet that strips to nothing, and only then take the top `DIGEST_MAX_BULLETS`. A snapshot whose every bullet strips to nothing skips as `empty_after_strip`, not `no_snapshot`. Email is not a `Notifier`: a notifier is one target plus a trending post.
 
@@ -842,6 +842,14 @@ ORDER BY week DESC, hits DESC
   missing Telegram post there is posted by hand:
   `node scripts/publish.mjs <date> --lang en --steps telegram --prod`
   (`--lang visub` for the Vietnamese channel), which records it.
+  Each missing target also counts its streak from the same tables (and the
+  Page's Reel captions), six days back: `YouTube Short: not on the day page
+  (missing 3 days in a row)`, `7+` when the whole window is empty. A streak
+  of two or more adds the credentials to check (`YOUTUBE_*`,
+  `FACEBOOK_PAGE_*`, `TELEGRAM_*`), because a rerun cannot fix an expired
+  token: 10-16 to 10-20 raised the same alert five evenings, and the 10-20
+  run log shows a revoked YouTube refresh token and a Facebook permission
+  error.
 - `run()` still upserts at start **before** `pruneLlmCalls` / fetch / LLM.
   Do not wrap `open-run` in `safeStep`.
 - Per-model caps in `worker/llm.ts`: score `SCORE_SLICE_MAX_MS` 70s, TL;DR
@@ -884,10 +892,10 @@ plus lab/vendor blogs and newsletters added in migration 0044 (`mistral`,
 `nvidia-blog`, `nvidia-dev`, `microsoft-research`, `apple-ml`,
 `together-ai`, `github-ai`, `latent-space`, `interconnects`, `import-ai`,
 `bens-bites`, `ahead-of-ai`; broad feeds use `keywordFilter: "ai"`, each
-has a 2–4 `maxItems` cap). Migration 0057 (2026-10-11) disables the sources
+has a 2–4 `maxItems` cap). Migration 0058 (2026-10-11) disables the sources
 that refuse Workers egress and adds the probation sources in the table below.
 
-#### Source table (migration 0057 changes)
+#### Source table (migration 0058 changes)
 
 | id | adapter | family | state | decision |
 | --- | --- | --- | --- | --- |
@@ -1103,6 +1111,14 @@ linked it first, so the feed's copy has the same id) is re-run as a new
 row when a fetch sees it again, it clears relevance, and it is a rewrite
 match for its non-official canonical (see 5). It then takes the story over.
 
+One run carries at most `MAX_NEW_ROWS_PER_RUN` (40) rows, so `write-d1`
+stays under `WRITE_D1_MAX_STATEMENTS` (800) in its single batch. Pending
+`status = 'new'` rows (submissions) keep their place. Fetched rows are taken
+one source at a time, newest first, so one flooded source cannot starve the
+rest. The run line reports the deferred count. The rest of a backlog
+is still missing from `items`, so later runs pick it up while it is inside
+the 26h fetch window.
+
 ### 3. Enrich
 
 Missing summary/thumbnail filled from the article page
@@ -1269,6 +1285,11 @@ Batches of 5.
   A row written unscored (its `score-N` batch failed, so it was stored at
   relevance 0.5) gets the same rule when `backfill-score` scores it later:
   a published row under 0.4 becomes `rejected`.
+  `backfill-score` and the admin reprocess share one rescore
+  (`worker/rescore.ts`): both apply this rule. Ingest already counted a
+  row's stored tags and title entities in `topic_daily`, so a rescore counts
+  only the canonical tags it adds, once per story, on the row's ingest
+  (`fetched_at`) day, and never counts titles again.
 - **Optional JEV review panel** (`worker/jev-panel/`), off unless
   `JEV_PANEL_ENABLED` is truthy. When on, two judges from different vendor
   families (`JEV_PANEL_RELEVANCE_MODEL`, `JEV_PANEL_SOURCE_QUALITY_MODEL`)
@@ -1288,7 +1309,7 @@ Batches of 5.
   panel (`JEV_PANEL_MAX_ITEMS_PER_STEP`), in input order; the rest keep
   the primary score. Details: `worker/jev-panel/README.md`.
 - Tags are then canonicalized (`normalizeTopics`) and captured into
-  `topic_daily` each ingest (~15 min). One mapping call asks about at
+  `topic_daily` each ingest (every 30 min). One mapping call asks about at
   most 100 unseen tags (`MAX_UNSEEN_TOPICS_IN_PROMPT`); tags past that
   become their own canonical, the same as after a failed call.
 - **Fallback tags (#770).** Jev answers `none` for both entity and theme on
@@ -1429,9 +1450,19 @@ deterministic pass.
   function syllables and common pairs ("mo hinh", "du lieu", "viet
   nam"). Company names stay evidence: dropping them blocked two correct
   #728 merges that share only "OpenAI". When some new items are in the
-  story's language only those are judged. The rest of the cluster is
-  kept, so correctly paired twins still fold together; a cluster with no
-  new item is dropped. The Laguna era attached paired
+  story's language only those are judged. The gate then splits the
+  model's cluster into the parts evidence holds together: two new items
+  stay together when they share evidence, and an existing id joins only
+  the new items that back it. Correctly paired twins still fold
+  together; a part with no new item is dropped. Until then one backing
+  item carried the whole cluster in, and new-only clusters were never
+  judged: from 2026-10-15 to 10-19 gemma merged "Anthropic cushions its
+  upcoming IPO…" into the Disney/Character.AI story beside a Character.AI
+  twin, a GPT-6-Astra benchmark into the Bank of America/Mythos story, the
+  Iambic IPO twins into the Harvey twins, and an Amazon Bee story into a
+  Cloudflare post. Replayed over the 1,035 merges of 2026-10-10 to 10-21
+  the split cuts 11 items, all different stories, and no correct merge
+  (`detached` in the gate's result, logged per run). The Laguna era attached paired
   huggingnews/marketbrief twins to unrelated published stories. On the
   #728 hand labels (`scripts/cluster-gate-eval.ts`) the gate blocks 70 of
   86 wrong pairs (46 of 56 wrong canonicals fully) and 0 of 17 correct
@@ -1491,7 +1522,8 @@ deterministic pass.
 - Canonical: an official existing item stays canonical. Otherwise an
   official new item that passes relevance and is a rewrite match (rule
   above) for the would-be canonical takes over the cluster. Otherwise the
-  existing item wins, else the highest rank. A takeover demotes the old
+  existing item wins, else the highest-ranked new item that passes
+  relevance; a cluster with none of those merges nothing. A takeover demotes the old
   canonical (`MergePlan.demoted`): it and everything merged into it point
   at the official item, its sources, topics and reader engagement fold in,
   and sent notifications move to the new id so nothing is posted twice. A
@@ -1599,12 +1631,51 @@ counts rows per check; the numbers below come from it.
   400 rows: 13, all flagged by raters (8 news, 5 paper titles); 8 more
   rater-flagged titles have < 2 function words and pass. 30 days: 23.
 
+Four checks read the text more narrowly since the Vietnamese Telegram gate
+replay of 2026-10-20 (`scripts/telegram-gate-replay.ts`, below under
+Notify). Each change fixed a class of false refusals. The calque, garble,
+magnitude, version, decimal and dollar rules are unchanged; the keep-term
+check now matches the jargon sense only.
+
+- Stutter: a doubled syllable is not a stutter when each copy belongs to a
+  neighbour, the first ending a two-syllable word and the second starting
+  one or standing alone (`worker/vi-compounds.ts`: "quy mô mô hình",
+  "bài toán toán học", "thiết bị bị lỗi"). The word table comes from every
+  doubled syllable in 4,819 stored rows of 2026-08-21..10-20: 35 of the 45
+  flagged in the last 14 days were such words. Real stutters still fail
+  ("nguồn cung hẹp hẹp", "các biện biện pháp", "285 triệu triệu USD").
+  On 356 held-out rows (days 61–150) the flags went from 7 to 4; the one
+  word the table lacks ("phân bổ bổ sung") is still flagged. "dần dần"
+  joined the reduplications.
+- Keep-English terms in their plain English sense are not asked for:
+  `ORDINARY_SENSE` cuts the verb uses before matching, the way "FBI
+  agents" already was ("we exploit the backbone", "Yelp is embedding
+  features", "the rout prompted"). The nouns stay ("a zero-day exploit",
+  "text embeddings", "few-shot prompting"). This list also feeds the
+  translate prompt's keep list and the QA terminology guard. Over the
+  3,577 held-out stored rows of days 15–150 it cuts 49 uses (prompt 38,
+  exploit 9, embedding 2), each a verb or a participle ("few-shot
+  prompted to adopt a persona").
+- A "<X> model" keep term is kept in Vietnamese word order too: "các mô
+  hình frontier" keeps "frontier models".
+- Gloss: a parenthetical the source itself writes ("SERA (Self-Evaluating
+  Recursive Agents)") and a list marker ("(ii)") are not glosses.
+
 Dry run of 2026-10-19 (`vi-audit --days 7`): 782 rows; the gate before
 these checks sends 37 back for repair, the gate after sends 132 (calque
 58, garble 26, decimal 24, keep 19, echo 18, stutter 16, dollar 7). Over
 30 days: 229 before, 436 after. Each flagged batch costs one repair call.
-Only fresh drafts are judged: backfill re-selects stored rows by length,
-not by this gate, so stored rows are not translated again.
+Backfill also runs this gate on stored rows of the last 2 days
+(`RECHECK_TRANSLATE_WINDOW_SEC`) and re-translates up to 3 flagged rows per
+run (`RECHECK_TRANSLATE_CAP`). The retry replaces the stored row only when
+it has fewer issues, through the logged upsert, so the old text is in
+`item_content_log`. Each item is re-translated at most once: it is written
+to `translation_rechecks` before the call, and the next run picks the next
+flagged rows. The recheck is one batch, and it is skipped when the run hit
+`BACKFILL_TRANSLATE_CAP` or any translate batch of the run returned rows
+without a title (a 429, a spent credit, a timeout) or threw. Before this, a
+row whose repair was skipped, or one stored before its rule existed, stayed
+wrong (#1021).
 Flagged items in a batch get
 one repair call with their issues as a `fix` list; a repaired row replaces
 the draft only when it has fewer issues, and the repair is skipped under
@@ -1866,7 +1937,9 @@ an earlier statement's result, and the read path never issues DDL or any
 other write (`src/lib/feed-queries.roundtrips.test.ts`). No schema probe
 runs before that batch, even on a cold isolate. The deploy gate
 (`check:migrations`, `worker/migration-gate.ts`) refuses to upload a Worker
-while any migration is missing from the D1 ledger, so feed, story, day and
+while any migration from 0023 up is missing from the D1 ledger (it checks
+no lower number: migrations apply in order, so a ledger with 0023 has 0001
+to 0022), so feed, story, day and
 weekly reads select `llm_tokens`, `image_url`, `media_manifest`, the
 `item_votes` join and the `item_reads` join directly. For those,
 `getFeed`'s `readOrder` sorts each day by:
@@ -2181,7 +2254,12 @@ no fallback to another date: until the local-date row exists the
 subscriber gets nothing, and the next 30-minute run sends it. An
 empty column leaves `last_sent_date` unset so the next run
 retries. Idempotency stays on `subscribers.last_sent_date`, not the
-`notifications` table.
+`notifications` table. The lane claims the stamp before it mails
+(`UPDATE ... SET last_sent_date = ? WHERE email = ? AND last_sent_date IS
+<value it read>`) and mails only when that changed a row, so a failed
+stamp write never leads to a second copy. A failed send moves the stamp
+back so the next run retries. One subscriber's error is counted as
+failed and the lane, and the lanes after it, carry on.
 
 The mail itself (`worker/mail/render.ts`, one function per block): the
 subject leads with the top one or two headlines plus "+N more" (about 60
@@ -2215,14 +2293,11 @@ shared tagger is `worker/utm.ts`; Telegram and Facebook use it too (see
 **Delivery counts.** `mail_daily_stats(date, lang, sent, failed,
 unsubscribed)` (0067, one row per UTC day and language, no address or
 per-subscriber row, no tracking pixel) is written by `recordMailStat`
-(`worker/mail/stats.ts`) as an UPSERT. `sent` is counted only when the
-stamp moves: the lane runs `UPDATE subscribers SET last_sent_date = ? ...
-AND last_sent_date IS NOT ?` (`last_weekly_sent` for the weekly lane) and
-counts only when that changed a row. A send retried for the same
-subscriber and day, such as a run that mailed and died before its own
-bookkeeping, finds the stamp already set and adds nothing (the email can
-still repeat; the count cannot). A crash between the stamp and the UPSERT
-undercounts by one and never overcounts. `failed` counts failed attempts,
+(`worker/mail/stats.ts`) as an UPSERT. `sent` is counted once per
+claimed send: the lane claims `last_sent_date` (`last_weekly_sent` for
+the weekly lane) before mailing, and a retry for the same subscriber and
+day finds the stamp already moved and neither mails nor counts. A crash
+between the send and the UPSERT undercounts by one and never overcounts. `failed` counts failed attempts,
 so a subscriber who fails on three runs adds three; it cannot be deduped
 without storing who failed. `unsubscribed` is counted when the `DELETE`
 removed a row, so a repeated click adds nothing. A write error is logged
@@ -2254,7 +2329,7 @@ legacy `YYYY-Www` value reads as that week's Sunday). A new window may
 overlap the last one by at most 3 days (`WEEKLY_MIN_GAP_DAYS` = 4), so
 moving the send day earlier still mails that week and moving it later in
 the same week waits for the next one. The digest build waits whenever the
-ISO-week build attempted an LLM call in the run, even a failed one. A failed send is not stamped and
+ISO-week build attempted an LLM call in the run, even a failed one. The stamp is claimed before the send; a failed send moves it back and
 retries next run. Preview: `GET /api/subscribe/preview?lang=&n=&format=&freq=weekly`
 (newest digest of either kind).
 
@@ -2352,22 +2427,53 @@ deliberately non-spammy.
   - **Vietnamese translation gate** (`translationPostability`, the
     trending candidates and the highlight's card stories): an EN→VI
     translation on a `vi` channel is refused when QA sent that exact text to
-    human review (`gate:qa`: a terminal `human_review` row in
-    `translation_review_state` for the current title, summary and source
-    revision), or when `translationDraftIssues` finds an issue in it now,
-    with the active knowledge rules (`gate:draft`; the issues are logged as
-    one `notify_translation_gate` warning and, for the highlight, kept in
-    `last_error`). The source it checks against is what the translator was
-    sent (`sentSource` of `items.summary`). A missing QA rating is not a
+    human review after a reviewer scored it (`gate:qa`: a terminal
+    `human_review` row in `translation_review_state` for the current title,
+    summary and source revision, with an attempt on that candidate that has
+    a fidelity score and is not `accepted`), or when `translationDraftIssues`
+    finds an issue in it now, with the active knowledge rules (`gate:draft`;
+    the issues are logged as one `notify_translation_gate` warning and, for
+    the highlight, kept in `last_error`). The source it checks against is
+    what the translator was sent (`sentSource` of `items.summary`); the
+    Vietnamese summary is judged whenever it exists, also when the source
+    has none, because the post shows it. A missing QA rating is not a
     reject: in the 2026-10 audit of t.me/s/aihomnay, 21 of 23 Vietnamese
     story posts in a week had none, because posts go out before QA reaches
     them. `review_failed` is
-    not a reject either: it means the reviewer was down. A refused story is
+    not a reject either: it means the reviewer was down. Nor is a terminal
+    `human_review` that QA reached only because the reviewer failed on
+    every attempt: no reviewer scored that text. A refused story is
     never claimed, so it costs no attempt and is judged again next run,
     after a repair or a rule change. English channels and Vietnamese-source
     copy are not judged by it. Then a leading Techmeme byline ("Kashmir Hill
     / New York Times :") is dropped from the Vietnamese summary before the
     postability gate runs.
+  - **Measured refusal rate** (`scripts/telegram-gate-replay.ts`, read-only:
+    it reads D1 through `wranglerSelect` and runs the notifier's own
+    `storyCopySql("vi")` and `postableCopy` over every EN→VI story of the
+    last N days; `--dump`/`--file` freeze the stories, `--ids` re-reads
+    them after a SQL change, `--labels` scores refusals against hand
+    labels). The 1,598 stories of 2026-10-06..20, every refusal read and
+    labeled a defect a Vietnamese reader would call wrong or a false
+    positive:
+
+    | | refused | defect | false positive |
+    |---|---|---|---|
+    | before | 674 (42.2%) | 389 | 285 (17.8% of stories) |
+    | after | 537 (33.6%) | 348 | 189 (11.8%) |
+
+    170 of the 189 left are `gate:qa`: QA's `hard_failures` mixes the
+    reviewer's checks with its deterministic guards, and the name guard
+    reads headline words as names ("Introduces", "Hits", the plural-folded
+    "Bits", the cut "Erd" of Erdős), so a scored verdict cannot be split
+    into "the reviewer found an error" and "a guard misfired" from stored
+    data. 13 are `gate:short` stubs that are informative but under 80
+    characters. 42 stories refused before are defective and now pass the
+    gate (a post also needs the trending bar, the cap and dedup): 32 were
+    held back only by a reviewer outage (no check names their defect), 10
+    only by a stutter or verb misfire. The trending-floor
+    subset (rank ≥ 3, importance ≥ 7) had 31 stories, 3 refused, all
+    defects; the highlight judges card stories outside it.
   - **Why the Vietnamese copy is not retranslated from `summary_en`**:
     the language columns do not fall back to each other, and a send-time
     retranslation is an LLM call per post with no QA behind it. The
@@ -2742,12 +2848,12 @@ length; a fooled model still cannot publish a payload) → text and
 verdict written in one batch. Outcomes: `accepted` (with
 `applied_text`, which may differ from the reader's text), `needs_review`
 (valid, 0.4 ≤ rating < 0.6, waits for an admin), `rejected` (with the
-reason). The hourly `review-suggestions` step is the safety net: it
+reason). The `review-suggestions` step (every ingest run) is the safety net: it
 reviews rows still `pending` and `reviewing` claims older than 10
 minutes, never `needs_review`. Readers poll their verdict and see full
-history (suggestions + submissions, keyset paged) on `/submit`; both
+history (suggestions + submissions, keyset paged) on `/contribute`; both
 reads are keyed by the Clerk session user. TL;DR bullets are not
-editable: snapshots are regenerated hourly and already sent.
+editable: snapshots are regenerated by ingest and already sent.
 
 **Free-form suggestions** (`field = 'auto'`, the default). The reader
 writes one suggestion in any language; one planner call (chat judge,
@@ -2785,7 +2891,7 @@ from the webhook / clerk-sync) or another address Clerk has already verified (`c
 auto-reply/bounce/list mail, ≤ 1 MiB, ≤ 20 per user per day. It writes
 an `inbound_emails` row: `pending` with parsed fields (the user's own
 text, links, story reference), or `ignored` with a reason and no
-content. No LLM runs there. The hourly `inbound-email` step (before
+content. No LLM runs there. The `inbound-email` step (every ingest run, before
 `review-suggestions`) turns pending rows into a submission (forward or
 new mail with one link), a suggestion on the referenced story
 (`submit+<id8>@`, `[aidr:<id8>]` subject marker, or one aidr.today story
@@ -2863,7 +2969,7 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 - JSON mode.
 - `temperature` 0, except on `anthropic/` ids: current Claude ids (5.5)
   reject it with a 400.
-- `max_tokens` 8192 (2048 on translate).
+- `max_tokens` 8192 (4096 on translate).
 - Reasoning-model fallback (extracts JSON from `message.reasoning` when
   content is starved).
 - Comma-separated model fallback chains (`ANYROUTER_MODEL`).

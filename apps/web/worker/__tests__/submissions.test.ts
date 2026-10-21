@@ -185,7 +185,7 @@ describe("submitStory", () => {
 
 /** Routes `.first()` per query so item-exists / url-dedupe / pending-count /
  * daily-count / ip-daily-count checks can each return a distinct value. */
-function makeRoutedDb(route: (sql: string) => unknown) {
+function makeRoutedDb(route: (sql: string) => unknown, insertChanges = 1) {
   const calls: { sql: string; args: unknown[] }[] = [];
   const db = {
     prepare(sql: string) {
@@ -194,7 +194,10 @@ function makeRoutedDb(route: (sql: string) => unknown) {
           calls.push({ sql, args });
           return {
             first: async () => route(sql),
-            run: async () => ({ success: true }),
+            run: async () => ({
+              success: true,
+              meta: { changes: insertChanges },
+            }),
           };
         },
       };
@@ -211,7 +214,7 @@ describe("submitStory — rate limiting", () => {
       if (sql.includes("status = 'pending'")) return { count: 1 }; // well under pending cap
       if (sql.includes("user_id = ? AND created_at")) return { count: 10 }; // at daily cap
       return null;
-    });
+    }, 0);
 
     const result = await submitStory(db, {
       url: "https://example.com/a-fine-story",
@@ -228,7 +231,7 @@ describe("submitStory — rate limiting", () => {
       if (sql.includes("FROM submissions WHERE url")) return null;
       if (sql.includes("ip_hash = ? AND created_at")) return { count: 20 }; // at ip cap
       return null;
-    });
+    }, 0);
 
     const result = await submitStory(db, {
       url: "https://example.com/another-fine-story",

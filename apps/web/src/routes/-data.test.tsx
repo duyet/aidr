@@ -115,8 +115,6 @@ describe("/data layout", () => {
   it("leads with a quiet page header and a full-width model strip", () => {
     const html = renderPage();
 
-    // The signups metric now lives in the Overview tab, so the header is just
-    // a title and a one-line description — no lonely card in the corner.
     expect(html).toContain("Pipeline</h1>");
     expect(html).toContain("Live ingest, content, and token use.");
     expect(html).not.toContain("AIDR user signups");

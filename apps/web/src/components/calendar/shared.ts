@@ -41,7 +41,6 @@ export function storiesLabel(n: number, lang: Lang): string {
   return n === 1 ? "1 story" : `${n} stories`;
 }
 
-/** Header popover/sheet ramp: brand yellow via `--heat-*` tokens, by heat level. */
 export const HEADER_HEAT_CLASS = [
   "",
   "bg-heat-1 text-heat-1-fg",
@@ -55,7 +54,6 @@ export const WEEKDAY_INITIALS: Record<Lang, string[]> = {
   vi: WEEKDAYS.vi,
 };
 
-/** "October 2026" / "Tháng 10, 2026"; the year is optional. */
 export function monthTitle(
   month: string,
   lang: Lang,
@@ -72,7 +70,6 @@ export function monthTitle(
   });
 }
 
-/** Localized UTC date: short ("Fri, Oct 9") or long ("Friday, October 9"). */
 export function formatDay(
   date: string,
   lang: Lang,
@@ -84,7 +81,6 @@ export function formatDay(
   );
 }
 
-/** Weekday of a `YYYY-MM-DD`: "T2".."CN" or "Mon".."Sun". */
 export function weekdayShort(date: string, lang: Lang): string {
   const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
   return WEEKDAYS[lang][(dow + 6) % 7];

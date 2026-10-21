@@ -6,7 +6,6 @@ import {
 } from "../../lib/contribute-email-fn";
 import { SUBMIT_EMAIL } from "../../lib/site";
 
-/** The slice of Clerk's `EmailAddressResource` this form calls. */
 interface PendingAddress {
   prepareVerification: (params: { strategy: "email_code" }) => Promise<unknown>;
   attemptVerification: (params: {
@@ -15,7 +14,6 @@ interface PendingAddress {
   destroy: () => Promise<unknown>;
 }
 
-/** The slice of Clerk's `UserResource` this form calls. */
 interface AccountUser {
   createEmailAddress: (params: { email: string }) => Promise<PendingAddress>;
   reload?: () => Promise<unknown>;

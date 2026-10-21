@@ -1,0 +1,44 @@
+{
+  "$comment": "On-screen copy. Headlines are verbatim from public-2026-10-21.json (stories[].title, tldr bullets' first sentence). Times are in scripts/build.mjs.",
+  "date": "Wednesday, 21 October 2026",
+  "sourcesEnabled": 51,
+  "hook": [
+    { "domain": "techmeme.com", "title": "The US DHS orders all federal civilian agencies to remove any DeepSeek tech from their IT systems", "pair": 1 },
+    { "domain": "madrobot.blog", "title": "The US orders every civilian agency to rip out DeepSeek, even tools built on it", "pair": 1 },
+    { "domain": "inceptionlabs.ai", "title": "Mercury 3: Diffusion at scale", "pair": 2 },
+    { "domain": "techmeme.com", "title": "Inception launches Mercury 3, a diffusion-based LLM it claims is \"comparable to Luna and Haiku models\" but 4x to 8x faster", "pair": 2 }
+  ],
+  "hookBack": [
+    { "domain": "github.com", "title": "DeepSeek just open-sourced its inference engine" },
+    { "domain": "huggingnews.com", "title": "Anthropic AI Autonomously Designs 17 Lab Validated Scorpion Protein Binders" },
+    { "domain": "github.com", "title": "Google open-sources TorchTPU, a native PyTorch back end for TPUs" },
+    { "domain": "the-decoder.com", "title": "OpenAI says GPT-6 is much better with legacy programming languages such as COBOL and Fortran" }
+  ],
+  "title": "A machine that reads AI news for you",
+  "sources": ["Hacker News", "Hugging Face", "GitHub releases", "Lobsters", "RSS"],
+  "rankLine": "No editor picks the order.",
+  "rankCode": "Rank is pure code · ALGORITHM.md",
+  "edition": {
+    "en": [
+      "DeepSeek released DeepInfer, a high-performance inference engine for its own models, as open-source software.",
+      "Inception launched Mercury 3, a diffusion-based LLM it says outperforms GPT-6 Luna and Claude Haiku 5.5 while running 4–8x faster at over 1,000 tokens per second.",
+      "ByteDance, Alibaba and Tencent ordered more than 3 million of Nvidia's RTX PRO 5500 GPUs worth $35B+, rushing to secure export-compliant chips."
+    ],
+    "vi": [
+      "DeepSeek đã công bố DeepInfer, một inference engine hiệu năng cao dành cho các mô hình của chính nó, dưới dạng mã nguồn mở.",
+      "Inception ra mắt Mercury 3, một LLM dựa trên diffusion, mà công ty cho là vượt trội hơn GPT-6 Luna và Claude Haiku 5.5 đồng thời chạy nhanh 4–8 lần ở hơn 1.000 token/giây.",
+      "ByteDance, Alibaba và Tencent đã đặt hàng hơn 3 triệu GPU RTX PRO 5500 của Nvidia, trị giá 35 tỷ USD+, trong bối cảnh vội vã xảy ra để đảm bảo nguồn cung chip tuân thủ xuất khẩu."
+    ]
+  },
+  "channels": [
+    { "id": "web", "label": "aidr.today", "note": "The ranked feed, every 30 minutes", "shot": "home" },
+    { "id": "email", "label": "Email", "note": "From 07:00, your time · 3, 5 or 10 stories", "shot": "email" },
+    { "id": "telegram", "label": "Telegram", "note": "@aidr_today · @aihomnay (Tiếng Việt) · from 08:00 Vietnam time", "shot": "telegram" },
+    { "id": "facebook", "label": "Facebook", "note": "One post per edition, in English", "shot": "daycard" },
+    { "id": "youtube", "label": "Daily video", "note": "The day's top stories, made from the edition", "shot": "daily" }
+  ],
+  "subscribe": "Get AI;DR delivered",
+  "proof": "Every story links to the original",
+  "closing": "What’s happening in AI today?",
+  "url": "aidr.today"
+}

@@ -196,7 +196,6 @@ describe("instant suggestion review", () => {
     expect(row.suggestion).toBe("OpenAI ra mắt mô hình");
     expect(row.applied_text).toBe("OpenAI ra mắt mô hình mới");
     expect(row.reviewed_at).toEqual(expect.any(Number));
-    // The text readers see changed.
     expect(viTitle(db)).toBe("OpenAI ra mắt mô hình mới");
 
     // Its LLM calls are logged under their own operation run id.

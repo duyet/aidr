@@ -28,6 +28,7 @@
  *     bundled, never awaited.
  */
 
+import { MAIL_FONTS } from "./mail-font";
 import { MAIL_FORMATS } from "./mail-format";
 import type { PublicDigest } from "./public-queries";
 import {
@@ -112,14 +113,6 @@ export function webmcpContext(
   const context = candidate?.modelContext;
   return context && typeof context.registerTool === "function" ? context : null;
 }
-
-/* ------------------------------------------------------------------ *
- * Execution
- *
- * Validation runs FIRST and identically to the MCP transport, so a
- * hostile argument costs one bounded pass and never a network request —
- * the browser-side twin of "rejected arguments touch no D1".
- * ------------------------------------------------------------------ */
 
 type ToolOutcome = { ok: true; value: unknown } | { ok: false; error: string };
 
@@ -318,10 +311,6 @@ export function registerWebmcpTools(
   return registered;
 }
 
-/* ------------------------------------------------------------------ *
- * Form annotations
- * ------------------------------------------------------------------ */
-
 export interface WebMcpFormAnnotation {
   /** Stable form id, mirrored into the DOM as `data-webmcp-form`. */
   id: string;
@@ -403,6 +392,11 @@ export const WEBMCP_FORM_ANNOTATIONS: readonly WebMcpFormAnnotation[] = [
           type: "string",
           enum: [...MAIL_FORMATS],
           default: "design",
+        },
+        mail_font: {
+          type: "string",
+          enum: [...MAIL_FONTS],
+          default: "sans",
         },
         frequency: {
           type: "string",

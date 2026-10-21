@@ -1,7 +1,6 @@
 import { AlertTriangle, Check, Circle } from "lucide-react";
 import { formatSafeDetail, type safeRunSteps, stepState } from "./run-format";
 
-/** Workflow steps with an ok / skipped / failed marker per step. */
 export function RunStepList({
   steps,
 }: {

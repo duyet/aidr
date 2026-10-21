@@ -10,7 +10,6 @@
  */
 
 export interface ClusterRefCounts {
-  /** Cluster answers counted. */
   calls: number;
   /** `new` entries answered, and those kept (an index the prompt sent). */
   newAnswered: number;
@@ -50,7 +49,6 @@ export function addClusterRefs(
   return out;
 }
 
-/** Per served model: the counts of every cluster answer it gave. */
 export type ClusterRefTally = Record<string, ClusterRefCounts>;
 
 export function tallyClusterRefs(

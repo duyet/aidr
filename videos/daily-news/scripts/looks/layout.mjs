@@ -34,13 +34,18 @@ export const LAYOUTS = [
   height: 850px;
 }
 .f-9x16 .l-full .media {
+  --pic-h: 880px;
   left: 0;
   top: 170px;
   width: 100%;
-  height: 1130px;
+  height: 1750px;
 }
 .l-full .media .shade {
   height: 60%;
+}
+.f-9x16 .l-full .media .shade {
+  top: calc(var(--pic-h) * 0.4);
+  height: calc(var(--pic-h) * 0.6);
 }
 .l-full .copy {
   background: var(--paper);
@@ -53,9 +58,8 @@ export const LAYOUTS = [
   width: 1100px;
 }
 .f-9x16 .l-full .copy {
-  left: 40px;
-  top: 600px;
-  width: 1000px;
+  top: 550px;
+  padding: 34px 40px 36px;
 }
 .f-16x9 .l-full .rank {
   left: auto;
@@ -76,8 +80,10 @@ export const LAYOUTS = [
   right: 72px;
 }
 .f-9x16 .l-full .media .credit {
-  bottom: 24px;
-  right: 40px;
+  top: 24px;
+  bottom: auto;
+  right: auto;
+  left: 40px;
 }
 `,
   },
@@ -121,13 +127,14 @@ export const LAYOUTS = [
   letter-spacing: -0.03em;
 }
 .f-9x16 .l-stat .media {
+  --pic-h: 330px;
   left: 40px;
   top: 180px;
   width: 1000px;
-  height: 400px;
+  height: 1740px;
 }
 .f-9x16 .l-stat .copy {
-  top: 620px;
+  top: 522px;
 }
 .f-9x16 .l-stat .statrow {
   display: block;
@@ -180,12 +187,17 @@ export const LAYOUTS = [
   height: 980px;
   padding: 270px 72px 0;
 }
+.f-9x16 .l-poster .media {
+  --pic-h: 390px;
+}
 .f-9x16 .l-poster .copy {
   left: 0;
-  top: 680px;
+  top: 580px;
+  bottom: 0;
   width: 1080px;
-  height: 620px;
   padding: 44px 64px 0;
+  border: 0;
+  background: var(--yellow);
 }
 .f-16x9 .l-poster .media {
   left: 940px;
@@ -247,10 +259,22 @@ export const LAYOUTS = [
   top: 264px;
   width: 1480px;
 }
+.f-9x16 .l-statement .cam::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 1100px;
+  bottom: 0;
+  background: var(--yellow);
+}
 .f-9x16 .l-statement .copy {
   left: 64px;
   top: 400px;
   width: 952px;
+  padding: 0;
+  border: 0;
+  background: none;
 }
 .l-statement .rank {
   background: none;

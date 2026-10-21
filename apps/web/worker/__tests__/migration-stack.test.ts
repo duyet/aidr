@@ -5,12 +5,6 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { assertMigrationFileOrder } from "../migration-gate.js";
 
-// Quality gate (#147): per-migration tests only cover the files someone wrote
-// a test for. This one applies the whole `migrations/` directory, in the order
-// D1 applies it, to an empty database. A new migration that references a
-// missing table/column, has a syntax error, or collides with an earlier file
-// fails here in CI instead of at `d1:migrate` against production.
-
 const migrationsDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../migrations"

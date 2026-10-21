@@ -21,7 +21,6 @@ export function nn<T>(value: T | null | undefined): T | null {
   return value ?? null;
 }
 
-/** Pure builder for the `items` upsert bind args, so it can be unit-tested without a D1 binding. */
 export function buildItemBindArgs(args: {
   id: string;
   sourceId: string;
@@ -85,7 +84,6 @@ export function buildItemBindArgs(args: {
 
 export const TRANSLATION_BIND_ARITY = 6;
 
-/** Pure builder for the explicit source/target translation upsert args. */
 export function buildTranslationBindArgs(args: {
   id: string;
   lang?: SourceLanguage;

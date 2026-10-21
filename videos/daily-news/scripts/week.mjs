@@ -10,7 +10,6 @@ const utc = (ymd) => {
 };
 const ymd = (ms) => new Date(ms).toISOString().slice(0, 10);
 
-// The ISO week of a YYYY-MM-DD date: "2026-W41".
 export function isoWeekOf(date) {
   const t = utc(date);
   const dow = (new Date(t).getUTCDay() + 6) % 7; // Monday = 0
@@ -32,7 +31,6 @@ export function parseWeek(week) {
   return { year, n, start, end: ymd(utc(start) + 6 * DAY) };
 }
 
-// Today's date in Asia/Ho_Chi_Minh.
 export const ictDate = (now = new Date()) => ymd(now.getTime() + ICT_OFFSET);
 
 // The most recent week that is fully over in Asia/Ho_Chi_Minh: the week containing the date 7 days ago.

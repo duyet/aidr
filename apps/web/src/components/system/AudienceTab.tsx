@@ -65,7 +65,6 @@ function digestLabel(size: number): string {
   return size === 1 ? "1 story" : `${size} stories`;
 }
 
-/** Why a traffic tile cannot show a number, in the dashboard's own voice. */
 function ga4UnavailableDetail(ga4: Ga4AudienceView): string {
   switch (ga4.status) {
     case "unconfigured":

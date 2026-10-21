@@ -46,6 +46,7 @@ import {
   loadActiveRules,
   viSystemPrompt,
 } from "./translation-knowledge.js";
+import type { TranslationText } from "./translation-review.js";
 import {
   KEEP_ENGLISH_PROSE,
   keepVerbatimList,
@@ -56,7 +57,6 @@ import type { Env } from "./types.js";
 /** 15-item score JSON routinely misses a 25s hang-cap (0 tokens, 100%
  *  fail). 5 titles still fill a batch and finish inside SCORE_SLICE_MAX. */
 export const SCORE_BATCH_SIZE = 5;
-/** Score batches run this many at a time. */
 export const SCORE_CONCURRENCY = 3;
 /** 15-item translate JSON + VI_STYLE routinely times out native Gemma 4
  *  at the 90s attempt cap; 3 titles still fill a homepage row and finish. */
@@ -290,7 +290,6 @@ export interface LlmCallLogEntry {
   requestId?: string | null;
 }
 
-/** Short id grouping one invocation's attempts in `llm_calls.call_id`. */
 export function newLlmCallId(): string {
   return crypto.randomUUID().slice(0, 8);
 }
@@ -419,6 +418,7 @@ interface StreamEvent {
   metadata?: { usage?: Usage };
   /** `model` is the catalog model a preset/router resolved to. */
   anyrouter_metadata?: { usage?: Usage; model?: string; requestId?: string };
+  error?: { code?: unknown; message?: unknown };
 }
 
 /** What actually served an attempt: the requested id, then each id a
@@ -646,6 +646,13 @@ async function streamCompletion(
       return; // keep-alives and other noise
     }
     sawEvent = true;
+    if (event.error) {
+      const code = Number(event.error.code);
+      throw new ProviderHttpError(
+        code >= 400 && code <= 599 ? code : 502,
+        payload
+      );
+    }
     if (isQueued(event)) queued = true;
     if (opts.trace) {
       const resolved = routeHop(event.anyrouter_metadata?.model);
@@ -1527,7 +1534,6 @@ export async function scoreItems(
   items: ScoreInput[]
 ): Promise<ScoreResult[]> {
   const batches = chunk(items, SCORE_BATCH_SIZE);
-  // Token spend unchanged on the chat path; wall-clock divided (~3×).
   const questions = isSystemOneConfigured(env)
     ? jevScoreQuestions(
         CORE_CATEGORIES,
@@ -1663,7 +1669,6 @@ export interface TranslateInput {
   sourceLang?: "en" | "vi";
 }
 
-/** One parsed row of a translate response. */
 export interface TranslatedRow {
   i: number;
   title: string;
@@ -1880,6 +1885,23 @@ export async function translateBatch(
   ).map((row) => ({ ...row, model }));
 }
 
+/** The deterministic draft check (translation-draft-check.ts) of one VI
+ * row against the source the translator is sent. */
+export function translatedRowIssues(
+  item: TranslateInput,
+  row: TranslationText,
+  titlesOnly: boolean,
+  rules: KnowledgeRule[]
+): string[] {
+  const sent = sentSource(item, titlesOnly);
+  return translationDraftIssues(
+    { title: sent.title, summary: sent.summary ?? "" },
+    row,
+    rules,
+    sent.summary === undefined
+  );
+}
+
 /** Under this much budget a repair call would only starve later batches. */
 const TRANSLATE_REPAIR_MIN_MS = 25_000;
 
@@ -1897,14 +1919,7 @@ async function repairDrafts(
   const byIndex = new Map(batch.map((item) => [item.i, item]));
   const issuesOf = (row: TranslateResult): string[] => {
     const item = byIndex.get(row.i);
-    if (!item) return [];
-    const sent = sentSource(item, titlesOnly);
-    return translationDraftIssues(
-      { title: sent.title, summary: sent.summary ?? "" },
-      row,
-      rules,
-      sent.summary === undefined
-    );
+    return item ? translatedRowIssues(item, row, titlesOnly, rules) : [];
   };
   const fixes = new Map<number, string[]>();
   for (const row of rows) {
@@ -2040,7 +2055,6 @@ export async function translateItems(
     return batchResults;
   };
 
-  // Token spend unchanged; wall-clock divided (~3× at TRANSLATE_CONCURRENCY).
   const TRANSLATE_CONCURRENCY = 3;
   const batches = chunk(needLlm, TRANSLATE_BATCH_SIZE);
   const parallelResults = await mapWithConcurrency(

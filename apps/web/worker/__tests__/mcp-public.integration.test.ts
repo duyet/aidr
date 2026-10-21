@@ -10,26 +10,6 @@ import { ADMIN_MCP_TOOL_NAMES } from "../mcp/admin-tools.js";
 import { MCP_READ_LIMIT, MCP_READ_RETRY_AFTER_SEC } from "../mcp/rate-limit.js";
 import type { Env } from "../types.js";
 
-/**
- * #227 end-to-end against REAL SQLite with the REAL migrations.
- *
- * `mcp-public.test.ts` proves the routing, the auth split, and the
- * validation with a hand-written D1 fake. A fake cannot catch the class of
- * bug that actually breaks an anonymous read surface in production: SQL
- * that does not run. These are the things only a real engine can tell us:
- *
- *  - `getPublicDigest`'s four-way column fallback against the real
- *    `items` schema after 27 migrations;
- *  - `getFeed`'s five-statement batch, its `INSERT INTO tldr_snapshots`
- *    read-time rebuild;
- *  - `getStoryCandidates`' id-prefix range matching, which
- *    is the query an ambiguous-id rejection depends on;
- *  - the rate limiter's real `SELECT COUNT(*)` over a real
- *    `subscribe_attempts(ip_hash, created_at)` table.
- *
- * If a future migration renames a column the read path uses, this fails
- * here instead of returning an empty digest to every anonymous agent.
- */
 const migrationsDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../migrations"
@@ -134,8 +114,6 @@ const toolPayload = (json: any) => JSON.parse(json.result.content[0].text);
 
 beforeEach(() => {
   const sqlite = new DatabaseSync(":memory:");
-  // Real schema, in migration order, exactly as `wrangler d1 migrations
-  // apply` would produce it.
   for (const name of readdirSync(migrationsDir)
     .filter((file) => file.endsWith(".sql"))
     .sort()) {
@@ -295,7 +273,6 @@ describe("#227 anonymous MCP against real SQLite", () => {
       },
       { ip: "203.0.113.2" }
     );
-    // Resolve a real 8-character prefix first.
     const digest = await rpc(
       {
         method: "tools/call",
@@ -414,7 +391,6 @@ describe("#227 anonymous MCP against real SQLite", () => {
     expect(limited!.headers.get("Retry-After")).toBe(
       String(MCP_READ_RETRY_AFTER_SEC)
     );
-    // Exactly the served requests were recorded, under one namespaced key.
     const rows = db.db
       .prepare("SELECT COUNT(*) AS c FROM subscribe_attempts")
       .get() as { c: number };
@@ -440,7 +416,6 @@ describe("#227 anonymous MCP against real SQLite", () => {
     }
     expect(statuses.slice(0, 10).every((s) => s === 401)).toBe(true);
     expect(statuses[10]).toBe(429);
-    // Even the right token is refused from that IP once the budget is spent.
     const right = await rpc(
       { method: "tools/list" },
       { ip, token: "integration-admin-token" }
@@ -467,7 +442,6 @@ describe("#227 anonymous MCP against real SQLite", () => {
       c: number;
     };
     expect(after.c).toBe(before.c);
-    // And it never ran an admin handler, so no audit row either.
     const audit = db.db
       .prepare("SELECT COUNT(*) AS c FROM admin_audit")
       .get() as { c: number };

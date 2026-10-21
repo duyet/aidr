@@ -98,14 +98,13 @@ describe("shipped SVG marks", () => {
 
   it.each(MARKS)("%s carries the wordmark as real path geometry", (name) => {
     const svg = markBody(name);
-    // A usable outline, not an empty or degenerate <path/>.
     const outlines = [...svg.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map(
       (m) => m[1]
     );
     expect(outlines.length).toBeGreaterThan(0);
     for (const d of outlines) {
       expect(d.length).toBeGreaterThan(200);
-      expect(d).toMatch(/[MLQ]/); // at least one absolute move/line/curve
+      expect(d).toMatch(/[MLQ]/);
     }
   });
 
@@ -119,9 +118,6 @@ describe("shipped SVG marks", () => {
   });
 
   it("positions the wordmark with a transform, not a font baseline", () => {
-    // Centring used to depend on `dominant-baseline="central"`, which only
-    // means something to a renderer that has the font. The mark now carries its
-    // own transform.
     const svg = markBody("favicon.svg");
     expect(svg).toMatch(
       /<path[^>]*transform="translate\([-\d.]+ [-\d.]+\) scale\([\d.]+\)"/

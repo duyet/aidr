@@ -34,7 +34,6 @@ function dammCheckDigit(digits: string): number {
 /** Covers MERGE_CANDIDATE_LIMIT and every unmerge chunk (300 rows each). */
 export const ALIAS_POSITION_DIGITS = 3;
 
-/** The alias of the existing row sent at position `k` (0-based). */
 export function existingAlias(k: number): string {
   const position = String(k + 1).padStart(ALIAS_POSITION_DIGITS, "0");
   if (position.length > ALIAS_POSITION_DIGITS) {

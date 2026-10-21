@@ -71,9 +71,6 @@ export function pngIhdr(width: number, height: number): number[] {
 
 export const PNG_IEND = pngChunk("IEND", []);
 
-/**
- * A complete, decodable solid-colour PNG of the requested size.
- */
 export function pngBytes(
   width: number,
   height: number,
@@ -82,7 +79,6 @@ export function pngBytes(
   return pngFromPixels(width, height, () => color);
 }
 
-/** A complete, decodable PNG whose pixels come from a per-pixel function. */
 export function pngFromPixels(
   width: number,
   height: number,
