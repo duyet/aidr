@@ -59,10 +59,20 @@ export function dayCardShape(
   };
 }
 
+/** Whether these headlines fit whole in the 2×2 tile block. The renderer
+ *  owns the geometry, so the layout only asks. */
+export type FourTilesFit = (tiles: readonly DayCardStory[]) => boolean;
+
 /** Photo tiles beside the mosaic lead: a 2×2 block when four photos follow
- *  the lead, else one row of two. Three in a row is too narrow to read. */
-function mosaicTileCount(photoRun: number): number {
-  return photoRun - 1 >= 4 ? 4 : 2;
+ *  the lead and their headlines fit it, else one row of two. Three in a row
+ *  is too narrow to read. A story that loses its tile moves to the rows, in
+ *  the same order. */
+function mosaicTileCount(
+  rest: readonly DayCardStory[],
+  photoRun: number,
+  fourTilesFit: FourTilesFit
+): number {
+  return photoRun - 1 >= 4 && fourTilesFit(rest.slice(0, 4)) ? 4 : 2;
 }
 
 interface VariantRule {
@@ -70,7 +80,8 @@ interface VariantRule {
   when: (shape: DayCardShape) => boolean;
   assign: (
     stories: readonly DayCardStory[],
-    shape: DayCardShape
+    shape: DayCardShape,
+    fourTilesFit: FourTilesFit
   ) => DayCardLayout;
 }
 
@@ -98,8 +109,8 @@ export const DAY_CARD_VARIANTS: readonly VariantRule[] = [
   {
     variant: "mosaic",
     when: (s) => s.photoRun >= 3,
-    assign: ([lead, ...rest], s) => {
-      const tileCount = mosaicTileCount(s.photoRun);
+    assign: ([lead, ...rest], s, fourTilesFit) => {
+      const tileCount = mosaicTileCount(rest, s.photoRun, fourTilesFit);
       return {
         variant: "mosaic",
         lead,
@@ -117,11 +128,12 @@ export const DAY_CARD_VARIANTS: readonly VariantRule[] = [
 
 export function chooseDayCardLayout(
   stories: readonly DayCardStory[],
-  today: boolean
+  today: boolean,
+  fourTilesFit: FourTilesFit
 ): DayCardLayout {
   const shape = dayCardShape(stories, today);
   const rule = DAY_CARD_VARIANTS.find((r) => r.when(shape));
-  return (rule as VariantRule).assign(stories, shape);
+  return (rule as VariantRule).assign(stories, shape, fourTilesFit);
 }
 
 export function layoutStories(layout: DayCardLayout): DayCardStory[] {

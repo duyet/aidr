@@ -48,6 +48,8 @@ function slots(layout: DayCardLayout): Record<string, number[] | boolean> {
   }
 }
 
+const fit = () => true;
+
 describe("chooseDayCardLayout", () => {
   it.each([
     // A day with nothing: today waits for stories, a past day says so.
@@ -72,7 +74,7 @@ describe("chooseDayCardLayout", () => {
     ["------", false, "headlines", { lead: [1], rows: [2, 3, 4, 5, 6] }],
     ["-PPPPP", false, "headlines", { lead: [1], rows: [2, 3, 4, 5, 6] }],
   ] as const)("%s (today=%s) → %s", (pattern, today, variant, expected) => {
-    const layout = chooseDayCardLayout(stories(pattern), today);
+    const layout = chooseDayCardLayout(stories(pattern), today, fit);
     expect(layout.variant).toBe(variant);
     expect(slots(layout)).toEqual(expected);
   });
@@ -80,17 +82,28 @@ describe("chooseDayCardLayout", () => {
   it("never moves a later photo above a story whose photo failed", () => {
     // Photo 3 failed: tiles take only the unbroken run, so 4–6 stay below 3
     // as rows (with their thumbnails) and the reading order is the digest's.
-    const layout = chooseDayCardLayout(stories("PP-PPP"), false);
+    const layout = chooseDayCardLayout(stories("PP-PPP"), false, fit);
     expect(layout.variant).toBe("lead-list");
     expect(layoutStories(layout).map((s) => s.rank)).toEqual([
       1, 2, 3, 4, 5, 6,
     ]);
   });
 
+  it("moves stories from the 2×2 block to rows when their headlines don't fit it", () => {
+    // Fewer tiles, same stories: a six-story day still shows all six, in rank
+    // order, rather than shrinking the tile type below the readable floor.
+    const layout = chooseDayCardLayout(stories("PPPPPP"), false, () => false);
+    expect(slots(layout)).toEqual({
+      lead: [1],
+      tiles: [2, 3],
+      rows: [4, 5, 6],
+    });
+  });
+
   it("puts every story on the card exactly once, in digest order", () => {
     for (const pattern of ["P", "PP", "P-P", "PPPP-P", "-P-P-P", "PPPPPP"]) {
       const input = stories(pattern);
-      const layout = chooseDayCardLayout(input, false);
+      const layout = chooseDayCardLayout(input, false, fit);
       expect(layoutStories(layout).map((s) => s.id)).toEqual(
         input.map((s) => s.id)
       );

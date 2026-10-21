@@ -24,6 +24,16 @@ import type { FeedItem, Lang } from "./types";
 export const DAY_OG_WIDTH = 1200;
 export const DAY_OG_HEIGHT = 630;
 
+/** Telegram and social feeds show the card about this wide on a phone. */
+export const PREVIEW_WIDTH = 320;
+/** Smallest headline, in preview pixels, that still reads there. */
+export const MIN_PREVIEW_PX = 6;
+/** No headline on the card is set smaller: 6 px at 320 wide is 22.5 px on
+ *  the 1200 px card, rounded up to a whole size. */
+export const MIN_HEADLINE_PX = Math.ceil(
+  (MIN_PREVIEW_PX * DAY_OG_WIDTH) / PREVIEW_WIDTH
+);
+
 const YELLOW = "#f5c518";
 const INK = "#0a0a0a";
 const AMBER = "#b45309";
@@ -88,7 +98,11 @@ export async function dayCardModel(input: {
   const stories = picked.map((item, i) =>
     dayCardStory(item, images[i] ?? null, lang, i + 1)
   );
-  return { date, lang, layout: chooseDayCardLayout(stories, input.today) };
+  return {
+    date,
+    lang,
+    layout: chooseDayCardLayout(stories, input.today, fourTilesFit),
+  };
 }
 
 export function dayOgDateParts(
@@ -570,27 +584,47 @@ function leadWithList(
   );
 }
 
+const MOSAIC_LEAD_W = 520;
+const MOSAIC_RIGHT_W = BODY_W - MOSAIC_LEAD_W - GAP;
+const TILE_GAP = 12;
+const TILE_W = Math.floor((MOSAIC_RIGHT_W - TILE_GAP) / 2);
+const BLOCK_TILE_TEXT: BlockText = {
+  sizes: [24, MIN_HEADLINE_PX],
+  maxLines: 3,
+};
+
+/** The 2×2 block only when each of its headlines fits a tile whole at the
+ *  floor size; otherwise those stories read better as list rows. */
+export function fourTilesFit(tiles: readonly DayCardStory[]): boolean {
+  const width = TILE_W - bandPadding(TILE_W).padX * 2;
+  return tiles.every(
+    (t) =>
+      fitText(t.title, {
+        width,
+        height: 10_000,
+        sizes: [MIN_HEADLINE_PX],
+        maxLines: BLOCK_TILE_TEXT.maxLines,
+        lineHeight: LINE_HEIGHT,
+      }).text === t.title
+  );
+}
+
 function mosaic(layout: Extract<DayCardLayout, { variant: "mosaic" }>) {
-  const leadW = 520;
-  const rightW = BODY_W - leadW - GAP;
-  const tileGap = 12;
   const rowH = 84;
   const rowsH = layout.rows.length * rowH;
   const bandH = BODY_H - (rowsH ? rowsH + 8 : 0);
-  const perRow = 2;
-  const tileRows = Math.ceil(layout.tiles.length / perRow);
-  const tileW = Math.floor((rightW - tileGap) / perRow);
-  const tileH = Math.floor((bandH - tileGap * (tileRows - 1)) / tileRows);
+  const tileRows = Math.ceil(layout.tiles.length / 2);
+  const tileH = Math.floor((bandH - TILE_GAP * (tileRows - 1)) / tileRows);
   const tileText = sharedBlockText(
     layout.tiles,
-    tileW,
+    TILE_W,
     tileH >= 300
-      ? { sizes: [26, 24, 22, 20], maxLines: 3 }
-      : { sizes: [22, 20, 19, 18], maxLines: 2 }
+      ? { sizes: [26, 24, MIN_HEADLINE_PX], maxLines: 3 }
+      : BLOCK_TILE_TEXT
   );
   return (
     <div style={{ display: "flex", gap: `${GAP}px` }}>
-      {photoBlock(layout.lead, leadW, BODY_H, {
+      {photoBlock(layout.lead, MOSAIC_LEAD_W, BODY_H, {
         sizes: [36, 34, 32, 30, 28],
         maxLines: 3,
         kickerSize: 15,
@@ -600,7 +634,7 @@ function mosaic(layout: Extract<DayCardLayout, { variant: "mosaic" }>) {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          width: `${rightW}px`,
+          width: `${MOSAIC_RIGHT_W}px`,
           height: `${BODY_H}px`,
         }}
       >
@@ -608,17 +642,19 @@ function mosaic(layout: Extract<DayCardLayout, { variant: "mosaic" }>) {
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: `${tileGap}px`,
-            width: `${rightW}px`,
+            gap: `${TILE_GAP}px`,
+            width: `${MOSAIC_RIGHT_W}px`,
           }}
         >
           {layout.tiles.map((tile) => (
             <div key={tile.rank} style={{ display: "flex" }}>
-              {photoBlock(tile, tileW, tileH, tileText)}
+              {photoBlock(tile, TILE_W, tileH, tileText)}
             </div>
           ))}
         </div>
-        {layout.rows.length ? rowList(layout.rows, rightW, rowsH) : null}
+        {layout.rows.length
+          ? rowList(layout.rows, MOSAIC_RIGHT_W, rowsH)
+          : null}
       </div>
     </div>
   );
