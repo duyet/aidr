@@ -11,11 +11,11 @@ export const release: Release = {
     vi: "Một email, đủ mọi tin",
   },
   intro: {
-    en: "You get one email a day, never two. Telegram shows every story on short days, the day card stays readable, and Vietnamese text gets a spelling check before it goes out. The news run that reads sources every 30 minutes also fails less often.",
-    vi: "Mỗi ngày bạn nhận đúng một email, không bao giờ hai. Telegram hiện đủ mọi tin vào những ngày ít tin, ảnh tóm tắt luôn dễ đọc, và bản tiếng Việt được kiểm tra chính tả trước khi gửi đi. Quy trình đọc nguồn tin mỗi 30 phút cũng ít lỗi hơn.",
+    en: "You get one email a day, never two, and you can now follow AI;DR in any RSS reader. Telegram shows every story on short days, the day card stays readable, and Vietnamese text gets a spelling check before it goes out. The news run that reads sources every 30 minutes also fails less often.",
+    vi: "Mỗi ngày bạn nhận đúng một email, không bao giờ hai, và giờ có thể theo dõi AI;DR bằng bất kỳ trình đọc RSS nào. Telegram hiện đủ mọi tin vào những ngày ít tin, ảnh tóm tắt luôn dễ đọc, và bản tiếng Việt được kiểm tra chính tả trước khi gửi đi. Quy trình đọc nguồn tin mỗi 30 phút cũng ít lỗi hơn.",
   },
   stats: [
-    { value: "55", label: { en: "changes", vi: "thay đổi" } },
+    { value: "57", label: { en: "changes", vi: "thay đổi" } },
     { value: "33", label: { en: "fixes", vi: "bản sửa lỗi" } },
     {
       value: "4",
@@ -41,10 +41,18 @@ export const release: Release = {
       href: "/subscribe",
     },
     {
+      label: { en: "Follow by RSS", vi: "Theo dõi qua RSS" },
+      text: {
+        en: "RSS is now a way to subscribe, next to email, Telegram and Facebook. Open the RSS tab, copy the English or Vietnamese feed, or add it to Feedly, Inoreader or NewsBlur in one click. The short address aidr.today/feed works too.",
+        vi: "Giờ bạn có thể đăng ký nhận tin qua RSS, bên cạnh email, Telegram và Facebook. Mở thẻ RSS, sao chép nguồn tin tiếng Anh hoặc tiếng Việt, hoặc thêm vào Feedly, Inoreader hay NewsBlur chỉ với một cú nhấp. Địa chỉ ngắn aidr.today/feed cũng dùng được.",
+      },
+      href: "/subscribe?tab=rss",
+    },
+    {
       label: { en: "Every story on Telegram", vi: "Đủ mọi tin trên Telegram" },
       text: {
-        en: "On days with four or five stories, the Telegram post now lists all of them instead of cutting some. The Vietnamese channel also turns down fewer good posts.",
-        vi: "Vào những ngày có bốn hoặc năm tin, bài đăng Telegram giờ liệt kê đủ cả, không bỏ bớt tin nào. Kênh tiếng Việt cũng ít từ chối nhầm những bài đăng tốt hơn.",
+        en: "On days with four or five stories, the Telegram post now lists all of them instead of cutting some. Its headers are now plain, like the email, with no emoji in front. The Vietnamese channel also turns down fewer good posts.",
+        vi: "Vào những ngày có bốn hoặc năm tin, bài đăng Telegram giờ liệt kê đủ cả, không bỏ bớt tin nào. Tiêu đề giờ để trơn như email, không còn biểu tượng cảm xúc phía trước. Kênh tiếng Việt cũng ít từ chối nhầm những bài đăng tốt hơn.",
       },
       href: "https://t.me/aidr_today",
     },
@@ -106,6 +114,26 @@ export const release: Release = {
     },
   ],
   changes: [
+    {
+      kind: "feature",
+      scope: "subscribe",
+      text: {
+        en: "Subscribe by RSS. Copy the English or Vietnamese feed, or open it in Feedly, Inoreader or NewsBlur.",
+        vi: "Đăng ký qua RSS. Sao chép nguồn tin tiếng Anh hoặc tiếng Việt, hoặc mở bằng Feedly, Inoreader hay NewsBlur.",
+      },
+      commit: "cfc1bd5",
+      pr: 1028,
+    },
+    {
+      kind: "feature",
+      scope: "telegram",
+      text: {
+        en: "Telegram headers and story titles are plain, like the email, with no emoji in front.",
+        vi: "Tiêu đề bản tin và tiêu đề tin trên Telegram để trơn như email, không còn biểu tượng cảm xúc phía trước.",
+      },
+      commit: "e47d93d",
+      pr: 948,
+    },
     {
       kind: "feature",
       scope: "telegram",
