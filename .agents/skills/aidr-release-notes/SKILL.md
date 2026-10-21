@@ -79,9 +79,10 @@ automatically. Do not add routes per version.
    `pnpm exec biome lint apps/web/src`. Every `src` in the content file
    must exist under `apps/web/public`.
 8. **Ship.** Branch `docs/release-vX.Y.Z`, semantic commits
-   (`docs(web): release notes for vX.Y.Z`), PR, merge after CI. Deploy runs
+   (`docs(web): release notes for vX.Y.Z`), PR, CI green. The owner merges
+   the release-please PR and this PR. Deploy runs
    on master push. Check `https://aidr.today/release/vX.Y.Z` and its Vietnamese
    variant (`?lang=vi`) return 200 and the film plays.
 
-Never merge release-please PRs as part of this workflow unless the user
-says so.
+Never merge, update-branch or auto-merge release-please PRs. The owner
+merges them.

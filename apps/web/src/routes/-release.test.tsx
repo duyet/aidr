@@ -142,6 +142,17 @@ describe("release page", () => {
     // No film: the cover is the hero, nothing from YouTube is referenced.
     expect(html).toContain('src="/releases/v9.9.9/cover.png"');
     expect(html).not.toContain("youtube");
+    expect(html).toContain("Film coming soon");
+  });
+
+  it("says the film is coming in Vietnamese and drops the note once a film exists", () => {
+    expect(render({ kind: "release", release: FIXTURE }, "vi")).toContain(
+      "Video sắp ra mắt"
+    );
+    const withFilm = { ...FIXTURE, youtubeId: "dQw4w9WgXcQ" };
+    expect(render({ kind: "release", release: withFilm }, "en")).not.toContain(
+      "Film coming soon"
+    );
   });
 
   it("paints Vietnamese strings from the content's .vi", () => {

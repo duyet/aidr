@@ -8,6 +8,10 @@ Read [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md) before changing ingest, ra
 
 Telegram Instant View contract and manual checklist: [`docs/decisions/telegram-instant-view.md`](docs/decisions/telegram-instant-view.md).
 
+## Releases
+
+After user-visible changes ship, run the aidr-release flow: release page plus release film (Opus); never merge release-please PRs yourself. Skill `.agents/skills/aidr-release/`.
+
 ## Deploy
 
 - Worker name: `aidr` (`apps/web/wrangler.toml`)

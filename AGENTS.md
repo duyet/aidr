@@ -39,6 +39,7 @@ pnpm dev                                # http://localhost:3014
 
 - Do not deploy, write to remote D1, or sync secrets unless the task says so. The `aidr-ops` and `aidr-validate` skills give the safe order.
 - Never merge release-please PRs (`chore(main): release X.Y.Z`). A human does.
+- After user-visible changes ship, run the aidr-release flow: release page plus release film (Opus); never merge release-please PRs yourself.
 - Build secret-shaped test fixtures from string parts at runtime. `no-secret-literals.test.ts` fails on any tracked literal.
 - Add a migration to `apps/web/migrations` with the next number. The deploy gate requires every file from `0023` up.
 - English and Vietnamese columns never fall back to each other.
