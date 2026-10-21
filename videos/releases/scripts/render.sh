@@ -22,7 +22,7 @@ for spec in "${langs[@]}"; do
     name="aidr-$v-$lang-$ratio"
     res=landscape-4k; size=1920:1080
     [[ "$ratio" == 9x16 ]] && res=portrait-4k && size=1080:1920
-    (cd "$dir" && npx --yes hyperframes@0.8.96 render --skill=product-launch-video --resolution "$res" --quality high --output "../$out/$name.mp4" --quiet >/dev/null)
+    (cd "$dir" && npx --yes hyperframes@0.8.96 render --skill=product-launch-video --workers 2 --resolution "$res" --quality high --output "../$out/$name.mp4" --quiet >/dev/null)
     ffmpeg -v error -y -ss 3.0 -i "$out/$name.mp4" -frames:v 1 -vf "scale=$size:flags=lanczos" "$out/$name-cover.png"
     if [[ "$ratio" == 9x16 ]]; then
       # Two-pass to a bitrate that lands under 28 MB for the film's length.

@@ -1,0 +1,324 @@
+{
+  "$comment": "Copy, voice and framing for the v0.1.16 film. Copy follows apps/web/src/content/releases/v0.1.16.ts. Each scene frames one station of the launch film's machine (videos/aidr-launch-2026/assets/machine.svg) beside one real capture. `at` keys are the first letters of a word in that scene's voice line; the hit lands on that word. `view` / `view9` are the capture crop as fractions [x, y, w] of the desktop / mobile capture.",
+  "version": "0.1.16",
+  "headline": "One email, every story",
+  "dates": "Oct 20 – 22, 2026",
+  "closing": "Release notes",
+  "captures": {
+    "pages": {
+      "data": "/data?lang=en",
+      "data-vi": "/data?lang=vi",
+      "home-vi": "/?lang=vi",
+      "email": "/api/subscribe/preview?lang=en&n=5&format=design",
+      "email-vi": "/api/subscribe/preview?lang=vi&n=5&format=design",
+      "tg-post": "https://t.me/aidr_today/193?embed=1",
+      "tg-post-vi": "https://t.me/aihomnay/329?embed=1",
+      "rss": "/subscribe?tab=rss&lang=en",
+      "rss-vi": "/subscribe?tab=rss&lang=vi"
+    },
+    "files": {
+      "daycard": "/api/og/date/2026-10-21.png"
+    }
+  },
+  "voice": {
+    "speed": 1.12,
+    "title": "AI DR, version zero point one point sixteen.",
+    "close": "Release notes at AI DR dot today."
+  },
+  "scenes": [
+    {
+      "id": "ingest",
+      "station": "fetch",
+      "shot": "data",
+      "url": "aidr.today/data",
+      "label": "A steadier news run",
+      "title": "Fails less, every 30 minutes",
+      "mark": "every 30 minutes",
+      "view": [
+        0.13,
+        0.2,
+        0.74
+      ],
+      "view9": [
+        0,
+        0.05,
+        1
+      ],
+      "tags": [
+        {
+          "text": "every 30 min",
+          "at": "thirty"
+        },
+        {
+          "text": "same failure: skipped",
+          "at": "skips"
+        }
+      ],
+      "voice": "Every thirty minutes, AI DR reads its sources and skips any that keep failing."
+    },
+    {
+      "id": "vi",
+      "station": "tldr-vi",
+      "shot": "home-vi",
+      "url": "aidr.today/?lang=vi",
+      "label": "Vietnamese spelling check",
+      "title": "Broken syllables get caught",
+      "mark": "caught",
+      "view": [
+        0.13,
+        0.18,
+        0.74
+      ],
+      "view9": [
+        0,
+        0.12,
+        1
+      ],
+      "tags": [
+        {
+          "text": "VI syllables checked",
+          "at": "syllables"
+        },
+        {
+          "text": "older stories rechecked",
+          "at": "Older"
+        }
+      ],
+      "voice": "Vietnamese text is checked for syllables no Vietnamese word uses. Older stories too."
+    },
+    {
+      "id": "daycard",
+      "station": "tldr",
+      "shot": "daycard",
+      "url": "aidr.today · day card, 21 Oct",
+      "label": "A day card you can read",
+      "title": "Never below 23 px",
+      "view": [
+        0,
+        0,
+        1
+      ],
+      "view9": [
+        0.44,
+        0,
+        0.56
+      ],
+      "tags": [
+        {
+          "text": "headlines ≥ 23 px",
+          "at": "twenty"
+        },
+        {
+          "text": "tiles → rows",
+          "at": "rows"
+        }
+      ],
+      "voice": "Day card headlines never go below twenty-three pixels. Crowded tiles become rows."
+    },
+    {
+      "id": "email",
+      "station": "email",
+      "shot": "email",
+      "url": "Email · AI;DR daily",
+      "label": "One email, never two",
+      "title": "Claimed before it is sent",
+      "mark": "Claimed",
+      "view": [
+        0.28,
+        0,
+        0.44
+      ],
+      "view9": [
+        0,
+        0,
+        1
+      ],
+      "tags": [
+        {
+          "text": "claimed",
+          "at": "claimed"
+        },
+        {
+          "text": "second run: skipped",
+          "at": "only"
+        }
+      ],
+      "voice": "Before any email goes out, it is claimed first. If two runs overlap, only one sends."
+    },
+    {
+      "id": "rss",
+      "station": "rss",
+      "shot": "rss",
+      "url": "aidr.today/subscribe?tab=rss",
+      "label": "Follow by RSS",
+      "title": "Any reader, one click",
+      "mark": "one click",
+      "view": [
+        0.14,
+        0.28,
+        0.38
+      ],
+      "view9": [
+        0,
+        0.5,
+        1
+      ],
+      "tags": [
+        {
+          "text": "RSS · EN + VI",
+          "at": "RSS"
+        },
+        {
+          "text": "Feedly · Inoreader · NewsBlur",
+          "at": "Feedly"
+        }
+      ],
+      "voice": "Follow AI DR by RSS in Feedly, Inoreader or NewsBlur."
+    },
+    {
+      "id": "telegram",
+      "station": "telegram",
+      "shot": "tg-post",
+      "url": "t.me/aidr_today · 21 Oct",
+      "label": "Every story on Telegram",
+      "title": "No story left out",
+      "mark": "No story",
+      "view": [
+        0.33,
+        0.24,
+        0.36
+      ],
+      "view9": [
+        0,
+        0.27,
+        1
+      ],
+      "tags": [
+        {
+          "text": "4 or 5 story days",
+          "at": "four"
+        },
+        {
+          "text": "every story",
+          "at": "every"
+        }
+      ],
+      "voice": "And on four and five story days, Telegram lists every story."
+    }
+  ],
+  "vi": {
+    "headline": "Một email, đủ mọi tin",
+    "dates": "20 – 22/10/2026",
+    "closing": "Ghi chú phát hành",
+    "voice": {
+      "title": "AI DR, phiên bản không chấm một chấm mười sáu.",
+      "close": "Xem ghi chú phát hành tại AI DR chấm today."
+    },
+    "scenes": [
+      {
+        "shot": "data-vi",
+        "url": "aidr.today/data?lang=vi",
+        "label": "Lấy tin ổn định hơn",
+        "title": "Ít lỗi hơn, mỗi 30 phút",
+        "mark": "mỗi 30 phút",
+        "tags": [
+          {
+            "text": "mỗi 30 phút",
+            "at": "mươi"
+          },
+          {
+            "text": "lỗi lặp lại: bỏ qua",
+            "at": "bỏ"
+          }
+        ],
+        "voice": "Cứ ba mươi phút, AI DR đọc các nguồn tin và bỏ qua nguồn nào cứ lỗi mãi."
+      },
+      {
+        "label": "Kiểm tra chính tả tiếng Việt",
+        "title": "Bắt được âm tiết hỏng",
+        "mark": "âm tiết hỏng",
+        "tags": [
+          {
+            "text": "kiểm tra âm tiết",
+            "at": "âm"
+          },
+          {
+            "text": "tin cũ được kiểm tra lại",
+            "at": "cũ"
+          }
+        ],
+        "voice": "Bản dịch tiếng Việt được kiểm tra âm tiết hỏng, cả các tin cũ."
+      },
+      {
+        "url": "aidr.today · ảnh tóm tắt, 21/10",
+        "label": "Ảnh tóm tắt dễ đọc",
+        "title": "Không nhỏ hơn 23 px",
+        "tags": [
+          {
+            "text": "tiêu đề ≥ 23 px",
+            "at": "hai"
+          },
+          {
+            "text": "ô → hàng",
+            "at": "hàng"
+          }
+        ],
+        "voice": "Tiêu đề ảnh tóm tắt không nhỏ hơn hai mươi ba pixel. Ô chật thì chuyển thành hàng."
+      },
+      {
+        "shot": "email-vi",
+        "url": "Email · AI;DR hằng ngày",
+        "label": "Một email, không bao giờ hai",
+        "title": "Đánh dấu trước khi gửi",
+        "mark": "Đánh dấu",
+        "tags": [
+          {
+            "text": "đã nhận gửi",
+            "at": "đánh"
+          },
+          {
+            "text": "lượt thứ hai: bỏ qua",
+            "at": "chỉ"
+          }
+        ],
+        "voice": "Mỗi email được đánh dấu trước khi gửi. Hai lượt trùng nhau thì chỉ một lượt gửi."
+      },
+      {
+        "shot": "rss-vi",
+        "url": "aidr.today/subscribe?tab=rss",
+        "label": "Theo dõi qua RSS",
+        "title": "Mọi trình đọc, một cú nhấp",
+        "mark": "một cú nhấp",
+        "tags": [
+          {
+            "text": "RSS · EN + VI",
+            "at": "RSS"
+          },
+          {
+            "text": "Feedly · Inoreader · NewsBlur",
+            "at": "Feedly"
+          }
+        ],
+        "voice": "Theo dõi AI DR qua RSS trên Feedly, Inoreader hay NewsBlur."
+      },
+      {
+        "shot": "tg-post-vi",
+        "url": "t.me/aihomnay · 21/10",
+        "label": "Đủ mọi tin trên Telegram",
+        "title": "Không bỏ sót tin nào",
+        "mark": "Không bỏ sót",
+        "tags": [
+          {
+            "text": "ngày có 4 hoặc 5 tin",
+            "at": "bốn"
+          },
+          {
+            "text": "đủ mọi tin",
+            "at": "đủ"
+          }
+        ],
+        "voice": "Và vào những ngày có bốn hoặc năm tin, Telegram hiện đủ mọi tin."
+      }
+    ]
+  }
+}
