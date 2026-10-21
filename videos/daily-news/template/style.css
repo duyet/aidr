@@ -67,8 +67,8 @@ body {
   --tick: 34px;
 }
 /* 9:16: TikTok, Reels and Shorts cover the bottom 28% (below 1382px) with their own caption, username and buttons.
-   Nothing a viewer must read sits there: the copy ends near 1100px, captions start at 1100px, the ticker runs
-   1240-1324px and the footer chip ends at 1374px. Pictures may go there, so the story media runs to the bottom of
+   Nothing a viewer must read sits there: the copy ends near 1060px, captions start at 1100px, the ticker runs
+   1250-1324px and the footer chip ends at 1374px. Pictures may go there, so the story media runs to the bottom of
    the frame: the picture sits in the top box (--pic-h) and its blurred copy bleeds down behind the captions, ticker
    and footer, which keeps the picture whole (a poster's yellow panel and a statement's yellow block bleed too).
    The rank box sits top right, ending at the media's right edge, in every layout. Top left, the story
@@ -98,8 +98,8 @@ body {
   --cap-y: 1100px;
   --cap: 56px;
   --cap-w: 960px;
-  --tick-y: 1240px;
-  --tick-h: 84px;
+  --tick-y: 1250px;
+  --tick-h: 74px;
   --tick: 32px;
 }
 

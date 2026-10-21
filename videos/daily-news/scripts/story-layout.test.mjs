@@ -83,7 +83,7 @@ const CAM_SCALE = 1.03;
 const CAM_Y = 1920 * 0.45;
 
 const measure = `<script>(async () => {
-  const CAM_SCALE = ${CAM_SCALE}, CAM_Y = ${CAM_Y};
+  const CAM_SCALE = ${CAM_SCALE}, CAM_Y = ${CAM_Y}, CAM_X = 540;
   await document.fonts.ready;
   // A headful-style Chrome shaves its own UI off the window, so the viewport can be shorter than 1920; the frame is not.
   Object.assign(document.getElementById("root").style, { width: "1080px", height: "1920px" });
@@ -93,7 +93,7 @@ const measure = `<script>(async () => {
   for (const c of document.querySelectorAll(".clip"))
     c.style.display = c.id === "story-1" || c.id === "chrome" || c === cap ? "block" : "none";
   const shown = (el) => el.getClientRects().length > 0;
-  const out = { text: {}, box: {}, media: 0, clipped: [], picH: 0 };
+  const out = { text: {}, box: {}, rects: {}, media: 0, clipped: [], picH: 0 };
   // A clip may only cut below a text block's last line when the block is line-clamped and its own box fits. The
   // scene's own clip is the frame edge, which the safe-zone check already covers.
   const clippedBy = (el, bottom) => {
@@ -114,6 +114,13 @@ const measure = `<script>(async () => {
     range.selectNodeContents(el);
     const raw = range.getBoundingClientRect().bottom;
     out.text[s] = CAM_Y + (raw - CAM_Y) * CAM_SCALE;
+    const rr = el.getBoundingClientRect();
+    out.rects[s] = {
+      top: CAM_Y + (rr.top - CAM_Y) * CAM_SCALE,
+      bottom: out.text[s],
+      left: CAM_X + (rr.left - CAM_X) * CAM_SCALE,
+      right: CAM_X + (rr.right - CAM_X) * CAM_SCALE,
+    };
     const by = clippedBy(el, raw);
     if (by) out.clipped.push(s + " by ." + by);
   }
@@ -121,7 +128,10 @@ const measure = `<script>(async () => {
   if (pic && shown(pic)) out.picH = pic.getBoundingClientRect().height;
   for (const s of ${JSON.stringify(BOX)}) {
     const el = document.querySelector(s);
-    if (el && shown(el)) out.box[s] = el.getBoundingClientRect().bottom;
+    if (!el || !shown(el)) continue;
+    const r = el.getBoundingClientRect();
+    out.box[s] = r.bottom;
+    if (s !== ".bar") out.rects[s] = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
   }
   const media = document.querySelector("#story-1 .media");
   if (media && shown(media)) out.media = media.getBoundingClientRect().bottom;
@@ -202,6 +212,25 @@ const CASES = [
   ["statement", { images: false }],
 ];
 
+// The stat layout sets a 190px figure over its label; their line boxes meet by ~20px above and below the glyphs.
+const SAME_ROW = new Set([".stat.stat-label"]);
+
+/** Pairs of text blocks whose boxes intersect by more than a pixel on both axes, as "a x b by N px". */
+function overlaps(rects) {
+  const names = Object.keys(rects);
+  const hits = [];
+  for (const [i, a] of names.entries())
+    for (const b of names.slice(i + 1)) {
+      if (SAME_ROW.has(a + b)) continue;
+      const x = rects[a],
+        y = rects[b];
+      const h = Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top);
+      const w = Math.min(x.right, y.right) - Math.max(x.left, y.left);
+      if (h > 1 && w > 1) hits.push(`${a} x ${b} by ${Math.round(h)}px`);
+    }
+  return hits;
+}
+
 for (const [layout, opts] of CASES) {
   const name = `${layout}${opts.images ? "" : " without a picture"}`;
   test(`9:16 ${name}: no text sits below ${SAFE_BOTTOM}px and the picture fills the band`, () => {
@@ -218,6 +247,11 @@ for (const [layout, opts] of CASES) {
       m.clipped,
       [],
       `${name}: an overflow:hidden box cuts through a line of text`
+    );
+    assert.deepEqual(
+      overlaps(m.rects),
+      [],
+      `${name}: text blocks overlap, so one reads over another`
     );
     if (layout === "split")
       assert.ok(
