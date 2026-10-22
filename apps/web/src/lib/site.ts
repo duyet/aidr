@@ -94,6 +94,10 @@ export const ANYROUTER_URL = "https://anyrouter.dev/?ref=aidr.today";
 /** Chrome Web Store listing — install CTA on /subscribe only, never header chrome. */
 export const CHROME_WEB_STORE_URL =
   "https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkghgbbilnpefelbmpcg";
+/** Short link for videos and print. The Worker answers it with a 302 to the
+ *  store listing (`worker/chrome-short-link.ts`). */
+export const CHROME_SHORT_PATH = "/c";
+export const CHROME_SHORT_URL = `${SITE_URL}${CHROME_SHORT_PATH}`;
 /** In-app destination for the Chrome icon (install guide lives at /subscribe). */
 export const EXTENSION_PATH = "/subscribe";
 export const EXTENSION_URL = `${SITE_URL}${EXTENSION_PATH}`;
