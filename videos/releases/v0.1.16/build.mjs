@@ -41,7 +41,6 @@ const machine = JSON.parse(readFileSync(join(LAUNCH, "assets/machine.json"), "ut
 const machineSvg = readFileSync(join(LAUNCH, "assets/machine.svg"), "utf8").replace(/<\?xml[^>]*>\s*/, "");
 const peaks = JSON.parse(readFileSync(join(LAUNCH, "assets/sfx/peaks.json"), "utf8"));
 
-const probe = (file) => Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]).toString());
 const ff = (...args) => execFileSync("ffmpeg", ["-v", "error", "-y", ...args], { cwd: ROOT });
 const round = (t) => Math.round(t * FPS) / FPS;
 const r3 = (x) => Math.round(x * 1000) / 1000;
@@ -49,7 +48,9 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
 // Voice: one line per section; hosts alternate in an order shuffled with the version as seed.
 mkdirSync(join(ROOT, "assets/audio/voice"), { recursive: true });
 cpSync(join(BRAND, "assets/fonts"), join(ROOT, "assets/fonts"), { recursive: true });
-const lines = [film.voice.title, ...film.scenes.map((s) => s.voice), film.voice.close];
+// A section's voice is one line or a list of short parts, spoken by one host with a breath between them.
+const lines = [film.voice.title, ...film.scenes.map((s) => s.voice), film.voice.close].map((v) => [v].flat());
+const GAP = 0.35;
 const cast = JSON.parse(readFileSync(join(BRAND, "voices.json"), "utf8"));
 const pool = [...cast[lang]];
 let seed = [...film.version].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -59,15 +60,21 @@ for (let i = pool.length - 1; i > 0; i--) {
   [pool[i], pool[j]] = [pool[j], pool[i]];
 }
 const settings = JSON.stringify(cast.settings);
-const voices = lines.map((text, k) => {
+const voices = lines.map((parts, k) => {
   const host = pool[k % pool.length];
-  const key = createHash("sha1").update(`elevenlabs|${host.id}|${film.voice.speed}|${settings}|${text}`).digest("hex").slice(0, 12);
-  const wav = join(ROOT, "assets/audio/voice", `${key}.wav`);
-  const words = wav.replace(/\.wav$/, ".words.json");
-  if (!existsSync(wav)) {
-    execFileSync(process.execPath, [TTS, host.id, text, "-o", wav, "--words", words, "--speed", String(film.voice.speed), "--settings", settings], { stdio: "inherit" });
-  }
-  return { host: host.name, wav, words: JSON.parse(readFileSync(words, "utf8")), dur: probe(wav) };
+  let at = 0;
+  const said = parts.map((text) => {
+    const key = createHash("sha1").update(`elevenlabs|${host.id}|${film.voice.speed}|${settings}|${text}`).digest("hex").slice(0, 12);
+    const wav = join(ROOT, "assets/audio/voice", `${key}.wav`);
+    const words = wav.replace(/\.wav$/, ".words.json");
+    if (!existsSync(wav)) {
+      execFileSync(process.execPath, [TTS, host.id, text, "-o", wav, "--words", words, "--speed", String(film.voice.speed), "--settings", settings], { stdio: "inherit" });
+    }
+    const part = { text, wav, at, words: JSON.parse(readFileSync(words, "utf8")) };
+    at += part.words.at(-1).end + GAP;
+    return part;
+  });
+  return { host: host.name, parts: said, words: said.flatMap((p) => p.words.map((w) => ({ ...w, start: w.start + p.at, end: w.end + p.at }))) };
 });
 
 // Sections: as long as the line needs (lead + line + tail), rounded up to the 120 BPM beat.
@@ -84,10 +91,15 @@ const sections = kinds.map((kind, k) => {
   return sec;
 });
 const TOTAL = clock;
+// Every spoken part with its words on the film clock, for the voice check (../scripts/vo-report.mjs).
+writeFileSync(
+  join(ROOT, `assets/audio/vo-${lang}.json`),
+  `${JSON.stringify(voices.flatMap((v, k) => v.parts.map((p) => ({ section: k, kind: kinds[k], host: v.host, text: p.text, start: r3(sections[k].voiceAt + p.at), words: p.words }))), null, 1)}\n`,
+);
 const word = (k, key) => {
   const fold = (s) => s.toLowerCase().normalize("NFC");
   const w = voices[k].words.find((x) => fold(x.text).startsWith(fold(key)));
-  if (!w) throw new Error(`no word "${key}" in line ${k}: ${lines[k]}`);
+  if (!w) throw new Error(`no word "${key}" in line ${k}: ${lines[k].join(" ")}`);
   return round(sections[k].voiceAt + w.start);
 };
 
@@ -164,12 +176,13 @@ ff("-ss", "16", "-t", String(TOTAL), "-i", join(VIDEOS, "aidr-launch/assets/bgm/
 {
   const inputs = [];
   const f = [];
-  voices.forEach((v, k) => {
-    inputs.push("-i", v.wav);
-    f.push(`[${k}:a]aresample=48000,aformat=channel_layouts=stereo,adelay=${Math.round(sections[k].voiceAt * 1000)}:all=1[v${k}]`);
+  const parts = voices.flatMap((v, k) => v.parts.map((p) => ({ ...p, at: sections[k].voiceAt + p.at })));
+  parts.forEach((p, k) => {
+    inputs.push("-i", p.wav);
+    f.push(`[${k}:a]aresample=48000,aformat=channel_layouts=stereo,adelay=${Math.round(p.at * 1000)}:all=1[v${k}]`);
   });
-  const nv = voices.length;
-  f.push(`${voices.map((_, k) => `[v${k}]`).join("")}amix=inputs=${nv}:normalize=0,apad=whole_dur=${TOTAL}[voice]`);
+  const nv = parts.length;
+  f.push(`${parts.map((_, k) => `[v${k}]`).join("")}amix=inputs=${nv}:normalize=0,apad=whole_dur=${TOTAL}[voice]`);
   inputs.push("-i", "assets/audio/score.mp3");
   f.push(`[${nv}:a]aresample=48000,aformat=channel_layouts=stereo,volume=0.22[bgm]`, "[voice]asplit=2[vmix][vkey]", "[bgm][vkey]sidechaincompress=threshold=0.02:ratio=6:attack=15:release=350[duck]");
   hits.forEach(([name, at, vol], k) => {
@@ -234,6 +247,11 @@ function html(fmt) {
             <h2 class="title" id="h${i}-title">${marked(s.title, s.mark)}</h2>
           </div>
           <div class="win" id="w${i}"><div class="bar"><i></i><i></i><i></i><span>${esc(s.url)}</span></div><div class="view${s.shot === "daycard" ? " dark" : ""}"><img id="w${i}-img" src="capture/${esc(scenes[i].shot)}.png" alt=""></div></div>`;
+  // The cover: the frame of the scene it names, once that scene's window and tags have landed, with
+  // the hook over the machine side. Hidden in the film; render.sh shows it for the cover still.
+  const coverScene = film.scenes.findIndex((s) => s.id === film.cover.scene);
+  const cs = T.scenes[coverScene];
+  const coverAt = r3(Math.min(cs.tags.at(-1) + 0.8, cs.start + cs.dur - 0.5));
   const tags = film.scenes
     .map((s, i) => s.tags.map((t, j) => `<div class="tag" id="t${i}-${j}"><span>${esc(t.text)}</span></div>`).join(""))
     .join("");
@@ -250,7 +268,7 @@ ${css(W, H)}
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="${TOTAL}" data-width="${W}" data-height="${H}" data-fps="${FPS}">
+    <div id="root" data-composition-id="main" data-start="0" data-duration="${TOTAL}" data-width="${W}" data-height="${H}" data-fps="${FPS}" data-cover-at="${coverAt}">
       <section id="s-title" class="clip scene" data-start="0" data-duration="${T.title.dur + 0.6}" data-track-index="2">
         <div class="hatch top" id="hatch-top"></div><div class="hatch bottom" id="hatch-bottom"></div>
         <div class="cam" id="title-cam">
@@ -286,6 +304,11 @@ ${css(W, H)}
           <p class="url" id="close-url">aidr.today/release/v${esc(film.version)}</p>
         </div>
       </section>
+      <div id="cover" class="cover">
+        <div class="cover-lock"><div class="tile-wrap">${logoTile}</div><span>v${esc(film.version)}</span></div>
+        <p class="cover-hook">${marked(film.cover.hook, film.cover.mark)}</p>
+        <p class="cover-sub">${esc(film.cover.sub)}</p>
+      </div>
       ${caps.map((c, i) => [c, i]).filter(([c]) => c.section > 0 && c.section < sections.length - 1).map(([c, i]) => `<div id="cap-${i}" class="clip cap" data-start="${r3(c.start)}" data-duration="${r3(c.end - c.start)}" data-track-index="6"><div class="line"><span>${esc(c.words.map((w) => w.text).join(" "))}</span></div></div>`).join("\n      ")}
       <audio id="a-mix" src="assets/audio/mix-${lang}.wav" data-start="0" data-duration="${TOTAL}" data-track-index="10" data-volume="1"></audio>
     </div>
@@ -322,7 +345,7 @@ function css(W, H) {
       .headline { position: absolute; left: 0; right: 0; top: ${tall ? 1130 : 590}px; padding: 0 80px; text-align: center;
         font-family: "EB Garamond Variable", serif; font-weight: 500; font-size: ${tall ? 92 : 96}px; line-height: 1.06; }
       .dates { position: absolute; left: 0; right: 0; top: ${tall ? 1390 : 740}px; text-align: center; font-size: ${tall ? 30 : 28}px; letter-spacing: .18em; text-transform: uppercase; }
-      .url { position: absolute; left: 0; right: 0; top: ${tall ? 1290 : 730}px; text-align: center; font-weight: 600; font-size: ${tall ? 54 : 58}px; letter-spacing: .02em; }
+      .url { position: absolute; left: 0; right: 0; top: ${tall ? 1400 : 730}px; text-align: center; font-weight: 600; font-size: ${tall ? 54 : 58}px; letter-spacing: .02em; }
       /* machine: accents stay paper-grey; the one yellow part is the ring on the active station */
       .mcam { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
       .mcam > svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }
@@ -359,6 +382,14 @@ function css(W, H) {
       .win .view { position: relative; overflow: hidden; height: calc(100% - 46px); background: #fff; }
       .win .view.dark { background: #0a0a0a; }
       .win .view img { position: absolute; left: 0; top: 0; display: block; transform-origin: 0 0; }
+      /* cover still only (render.sh): the hook over the machine side, the window stays in view */
+      .cover { display: none; position: absolute; left: 0; top: 0; z-index: 15; background: #f7f7f5; padding: 0 80px;
+        ${tall ? "width: 100%; height: 980px; padding-top: 170px;" : "width: 1000px; height: 100%; padding-top: 250px;"} }
+      .cover-lock { display: flex; align-items: center; gap: 24px; font-family: "EB Garamond Variable", serif; font-weight: 500; font-size: ${tall ? 96 : 80}px; line-height: 1; }
+      .cover-lock .tile-wrap { width: ${tall ? 120 : 100}px; height: ${tall ? 120 : 100}px; }
+      .cover-hook { margin-top: ${tall ? 60 : 50}px; font-family: "EB Garamond Variable", serif; font-weight: 600; font-size: ${tall ? 176 : 150}px; line-height: 1; letter-spacing: -0.02em; isolation: isolate; }
+      .cover .hl { transform: none; }
+      .cover-sub { margin-top: ${tall ? 44 : 40}px; font-weight: 600; font-size: ${tall ? 50 : 44}px; line-height: 1.2; }
       /* captions: paper chip with a dark rule, bottom centre */
       .cap { z-index: 20; } .cap .line { opacity: 0; }
       .cap .line { position: absolute; left: 50%; top: ${tall ? 1530 : 960}px; width: ${tall ? 920 : 1500}px; margin-left: ${tall ? -460 : -750}px; text-align: center; }
@@ -381,5 +412,5 @@ for (const fmt of Object.keys(SHAPES)) {
   }
   writeFileSync(join(dir, "index.html"), html(fmt));
 }
-console.log(`v${film.version} ${lang}: ${TOTAL}s, ${caps.length} caption lines, ${hits.length} effects, ${lines.join(" ").length} voice chars`);
+console.log(`v${film.version} ${lang}: ${TOTAL}s, ${caps.length} caption lines, ${hits.length} effects, ${lines.flat().join(" ").length} voice chars`);
 console.log(sections.map((s, k) => `${s.kind}@${r3(s.start)}+${s.dur} (${voices[k].host})`).join("  "));

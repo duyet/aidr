@@ -76,11 +76,11 @@
     const win = $(`w${i}`);
     const img = $(`w${i}-img`);
     const [iw, ih] = s.size;
-    const [vx, vy, vw] = s.view;
+    const [vx, vy, vw, vh = 1 - vy] = s.view;
     const ww = win.offsetWidth;
     const k = ww / (vw * iw);
-    // A capture shorter than the window (the day card) gets a window cut to its height.
-    const shown = (ih - vy * ih) * k + 46;
+    // A window cut to the crop's height when the capture runs out (the day card) or the crop ends in whitespace.
+    const shown = Math.min(vh, 1 - vy) * ih * k + 46;
     if (shown < win.offsetHeight) Object.assign(win.style, { height: `${shown}px`, top: `${win.offsetTop + (win.offsetHeight - shown) / 2}px` });
     Object.assign(img.style, { width: `${iw}px`, height: `${ih}px`, transform: `translate(${-vx * iw * k}px, ${-vy * ih * k}px) scale(${k})` });
     // k 0.2 leaves under a pixel for the last frame, so the window settles instead of stopping.
