@@ -34,8 +34,8 @@ export const release: Release = {
     width: 1440,
     height: 900,
     alt: {
-      en: "The day page for Thursday, Oct 8, 2026: the yellow day card with six top stories, the AI;DR digest beside it, and the ranked stories below.",
-      vi: "Trang ngày thứ Năm, 8/10/2026: ảnh tóm tắt màu vàng với sáu tin nổi bật, AI;DR bên cạnh và danh sách tin xếp hạng bên dưới.",
+      en: "The day page for Thursday, Oct 8, 2026, with the yellow day card of six top stories, the AI;DR digest beside it, and the ranked stories below.",
+      vi: "Trang ngày thứ Năm, 8/10/2026, có ảnh tóm tắt màu vàng với sáu tin nổi bật, AI;DR bên cạnh và danh sách tin xếp hạng bên dưới.",
     },
     caption: {
       en: "aidr.today/date/2026-10-08",
@@ -46,8 +46,8 @@ export const release: Release = {
     {
       label: { en: "Day pages", vi: "Trang theo ngày" },
       text: {
-        en: "Every day has a page at aidr.today/date/YYYY-MM-DD: that day's AI;DR, then every story from the day in ranked order, with links to the day before and after. Some days also carry a short video you can play on the page.",
-        vi: "Mỗi ngày có trang riêng tại aidr.today/date/YYYY-MM-DD: AI;DR của ngày đó, bên dưới là toàn bộ tin trong ngày theo thứ hạng, kèm liên kết sang ngày trước và ngày sau. Một số ngày còn có video ngắn xem ngay trên trang.",
+        en: "Every day has a page at aidr.today/date/YYYY-MM-DD. It opens with that day's AI;DR, then every story from the day in ranked order, with links to the day before and after. Some days also carry a short video you can play on the page.",
+        vi: "Mỗi ngày có trang riêng tại aidr.today/date/YYYY-MM-DD. Trang mở đầu bằng AI;DR của ngày đó, rồi đến toàn bộ tin trong ngày theo thứ hạng, kèm liên kết sang ngày trước và ngày sau. Một số ngày còn có video ngắn xem ngay trên trang.",
       },
       image: {
         src: "/releases/v0.1.12/day-page.webp",
@@ -97,16 +97,16 @@ export const release: Release = {
     {
       label: { en: "Why this ranks", vi: "Vì sao tin xếp hạng này" },
       text: {
-        en: "Open a story and tap Why this ranks to see its rank for the day, score, importance, outlet count, and whether it went out on Telegram. Ranking now looks at a rolling 72-hour window, counts real corroboration and engagement, and caps each source family on the top lists.",
-        vi: "Mở một tin và bấm Why this ranks để xem thứ hạng trong ngày, điểm số, mức độ quan trọng, số trang đưa tin, và tin đã lên Telegram hay chưa. Cách xếp hạng giờ xét trong 72 giờ gần nhất, tính theo số nguồn xác nhận và mức tương tác thật, và giới hạn mỗi nhóm nguồn trên các danh sách nổi bật.",
+        en: "Open a story and tap Why this ranks to see its rank for the day, score, importance, outlet count, and whether it went out on Telegram. Ranking now looks at a rolling 72-hour window. It counts real corroboration and engagement, and caps each source family on the top lists.",
+        vi: "Mở một tin và bấm Why this ranks để xem thứ hạng trong ngày, điểm số, mức độ quan trọng, số trang đưa tin, và tin đã lên Telegram hay chưa. Xếp hạng giờ xét khung 72 giờ gần nhất. Hệ thống tính số nguồn xác nhận và mức tương tác thật, và giới hạn số tin của mỗi nhóm nguồn trên các danh sách nổi bật.",
       },
       image: {
         src: "/releases/v0.1.12/why-this-ranks.webp",
         width: 1080,
         height: 740,
         alt: {
-          en: "A story page with the Why this ranks panel open: rank 1 of 122, score 14.9, importance 7.88, and Telegram post times.",
-          vi: "Trang tin với bảng Why this ranks đang mở: hạng 1 trên 122, điểm 14,9, độ quan trọng 7,88 và giờ đăng Telegram.",
+          en: "A story page with the Why this ranks panel open, showing rank 1 of 122, score 14.9, importance 7.88, and Telegram post times.",
+          vi: "Trang tin đang mở bảng Why this ranks, hiện hạng 1 trên 122, điểm 14,9, độ quan trọng 7,88 và giờ đăng Telegram.",
         },
       },
       href: "/90b333df",
@@ -122,8 +122,8 @@ export const release: Release = {
         width: 1080,
         height: 570,
         alt: {
-          en: "The Email tab: the signup form with language, story count, and layout options beside a preview of the digest email.",
-          vi: "Tab Email: form đăng ký với lựa chọn ngôn ngữ, số tin và bố cục, bên cạnh bản xem trước email.",
+          en: "The Email tab, with the signup form's language, story count, and layout options beside a preview of the digest email.",
+          vi: "Tab Email, form đăng ký có lựa chọn ngôn ngữ, số tin và bố cục, bên cạnh là bản xem trước email.",
         },
       },
       href: "/subscribe?tab=email",
@@ -135,7 +135,7 @@ export const release: Release = {
       },
       text: {
         en: "The English edition now posts to a Facebook Page, linked from the Get AI;DR menu. The new Contribute page collects story submissions and suggestions with a filterable history, and you can also send a story to submit@aidr.today.",
-        vi: "Bản tiếng Anh giờ được đăng lên Fanpage Facebook, có liên kết trong menu Nhận AI;DR. Trang Contribute mới gom tin gửi lên và gợi ý sửa bản dịch, kèm lịch sử lọc được, và bạn cũng có thể gửi tin tới submit@aidr.today.",
+        vi: "Bản tiếng Anh giờ đăng lên Fanpage Facebook, có liên kết trong menu Nhận AI;DR. Trang Contribute mới gom tin bạn gửi và các gợi ý, kèm lịch sử lọc được. Bạn cũng có thể gửi tin tới submit@aidr.today.",
       },
       image: {
         src: "/releases/v0.1.12/get-menu-facebook.webp",
@@ -152,7 +152,7 @@ export const release: Release = {
       label: { en: "Better Vietnamese", vi: "Tiếng Việt chuẩn hơn" },
       text: {
         en: "Translations are checked by translating them back, tech terms stay in English, and weak drafts get repaired. Accepted reader suggestions become rules for later translations, and each story shows a short history of its title and summary edits.",
-        vi: "Bản dịch được kiểm tra bằng cách dịch ngược lại, thuật ngữ kỹ thuật giữ nguyên tiếng Anh, và bản nháp yếu được sửa lại. Gợi ý của bạn đọc khi được duyệt sẽ thành quy tắc cho các lần dịch sau, và mỗi tin có lịch sử ngắn các lần sửa tiêu đề và tóm tắt.",
+        vi: "Hệ thống dịch ngược từng bản dịch để kiểm tra, giữ nguyên thuật ngữ kỹ thuật bằng tiếng Anh và sửa lại bản nháp yếu. Gợi ý của bạn đọc khi được duyệt sẽ thành quy tắc cho các lần dịch sau. Mỗi tin có lịch sử ngắn các lần sửa tiêu đề và tóm tắt.",
       },
       image: {
         src: "/releases/v0.1.12/day-card-vi.webp",
@@ -183,8 +183,8 @@ export const release: Release = {
         width: 1080,
         height: 740,
         alt: {
-          en: "The Runs tab on the Data page: a row of green run status tiles and a chart of run durations.",
-          vi: "Tab Runs trên trang Dữ liệu: dãy ô trạng thái màu xanh và biểu đồ thời gian mỗi lượt chạy.",
+          en: "The Runs tab on the Data page, with a row of green run status tiles and a chart of run durations.",
+          vi: "Tab Runs trên trang Dữ liệu, có dãy ô trạng thái màu xanh và biểu đồ thời gian mỗi lượt chạy.",
         },
       },
       href: "/data?tab=runs",
@@ -295,7 +295,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "WebP photos are converted so they no longer draw blank on cards.",
-        vi: "Ảnh WebP được chuyển định dạng nên không còn hiện trống trên thẻ.",
+        vi: "Hệ thống chuyển định dạng ảnh WebP nên thẻ không còn ô ảnh trống.",
       },
       commit: "c819aa1",
     },
@@ -304,7 +304,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Share cards and their photos are cached and shared across regions.",
-        vi: "Thẻ chia sẻ và ảnh trong thẻ được lưu đệm và dùng chung giữa các khu vực.",
+        vi: "Thẻ chia sẻ và ảnh trong thẻ giờ lưu cache, dùng chung giữa các khu vực.",
       },
       commit: "c15d05c",
     },
@@ -313,7 +313,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "The day card preloads so the masthead hover is instant.",
-        vi: "Ảnh tóm tắt được tải trước nên rê chuột là hiện ngay.",
+        vi: "Trang tải sẵn ảnh tóm tắt nên rê chuột là hiện ngay.",
       },
       commit: "8b88ddf",
     },
@@ -378,7 +378,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "New builder categories, and an official post owns the story it announces.",
-        vi: "Thêm các chủ đề cho người làm sản phẩm, và bài đăng chính thức đứng tên cho tin mà nó công bố.",
+        vi: "Thêm chủ đề mới cho người làm sản phẩm, và tin nào có bài công bố chính thức thì lấy bài đó làm bài chính.",
       },
       commit: "8a0153d",
     },
@@ -386,8 +386,8 @@ export const release: Release = {
       kind: "fix",
       scope: "web",
       text: {
-        en: "Importance uses one shared 1–10 scale.",
-        vi: "Độ quan trọng dùng chung một thang 1–10.",
+        en: "Importance uses one shared scale from 1 to 10.",
+        vi: "Độ quan trọng dùng chung một thang điểm từ 1 đến 10.",
       },
       commit: "be99f17",
     },
@@ -443,7 +443,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Cut-off summaries are replaced with full ones.",
-        vi: "Tóm tắt bị cắt ngang được thay bằng bản đầy đủ.",
+        vi: "Tóm tắt bị cắt ngang giờ thay bằng bản đầy đủ.",
       },
       commit: "500048c",
       pr: 386,
@@ -452,8 +452,8 @@ export const release: Release = {
       kind: "feature",
       scope: "sources",
       text: {
-        en: "Reddit and Techmeme trending feeds join; VnExpress Tech is paused.",
-        vi: "Thêm nguồn nổi bật từ Reddit và Techmeme; tạm dừng VnExpress Khoa học & Công nghệ.",
+        en: "Reddit and Techmeme trending feeds join, and VnExpress Tech is paused.",
+        vi: "Thêm nguồn nổi bật từ Reddit và Techmeme. Tạm dừng VnExpress Khoa học & Công nghệ.",
       },
       commit: "ecb5fce",
       pr: 474,
@@ -463,7 +463,7 @@ export const release: Release = {
       scope: "sources",
       text: {
         en: "More AI sources, sharper trending, and scoring that leads with the decision.",
-        vi: "Thêm nguồn AI, nổi bật chính xác hơn, và chấm điểm dựa trước tiên vào quyết định đưa tin.",
+        vi: "Thêm nguồn AI, nổi bật chính xác hơn, và phần chấm điểm nêu quyết định trước.",
       },
       commit: "bc50213",
     },
@@ -500,7 +500,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Translations are checked by back-translation, and tech terms stay in English.",
-        vi: "Bản dịch được kiểm tra bằng cách dịch ngược, và thuật ngữ kỹ thuật giữ nguyên tiếng Anh.",
+        vi: "Hệ thống kiểm tra bản dịch bằng cách dịch ngược. Thuật ngữ kỹ thuật giữ nguyên tiếng Anh.",
       },
       commit: "cebdb9c",
     },
@@ -518,7 +518,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Accepted suggestions teach the translator new rules, and there is one free-form suggestion box.",
-        vi: "Gợi ý được duyệt sẽ thành quy tắc mới cho phần dịch, và chỉ còn một ô gợi ý viết tự do.",
+        vi: "Gợi ý được duyệt sẽ thành quy tắc dịch mới, và giờ chỉ còn một ô gợi ý viết tự do.",
       },
       commit: "033c572",
     },
@@ -536,7 +536,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Vietnamese summaries that a translate batch dropped are filled in.",
-        vi: "Tóm tắt tiếng Việt bị sót trong một lượt dịch được bổ sung.",
+        vi: "Hệ thống bổ sung các tóm tắt tiếng Việt bị sót trong một lượt dịch.",
       },
       commit: "92bd29a",
     },
@@ -565,7 +565,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Reader labels that stayed in English are translated.",
-        vi: "Các nhãn còn để tiếng Anh đã được dịch.",
+        vi: "Các nhãn còn sót tiếng Anh giờ đã dịch sang tiếng Việt.",
       },
       commit: "7ea917f",
       pr: 385,
@@ -585,7 +585,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "An approved suggestion is kept even if re-translation fails.",
-        vi: "Gợi ý đã duyệt vẫn được giữ dù lần dịch lại bị lỗi.",
+        vi: "Gợi ý đã duyệt vẫn giữ nguyên dù lần dịch lại bị lỗi.",
       },
       commit: "78bfe83",
       pr: 456,
@@ -774,7 +774,7 @@ export const release: Release = {
       scope: "facebook",
       text: {
         en: "The English digest and trending stories post to the Facebook Page.",
-        vi: "Bản tin tiếng Anh và các tin nổi bật được đăng lên Fanpage Facebook.",
+        vi: "Bản tin tiếng Anh và các tin nổi bật giờ lên Fanpage Facebook.",
       },
       commit: "e65ea90",
     },
@@ -810,7 +810,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "The header sign-in slot keeps its size, so the header no longer shifts.",
-        vi: "Ô đăng nhập trên header giữ nguyên kích thước nên header không còn bị xô lệch.",
+        vi: "Ô đăng nhập trên đầu trang giữ nguyên kích thước nên đầu trang không còn bị xô lệch.",
       },
       commit: "9cb75b7",
     },
@@ -837,7 +837,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "The feed and ranking queries are indexed.",
-        vi: "Truy vấn bảng tin và xếp hạng được đánh chỉ mục.",
+        vi: "Thêm index cho truy vấn bảng tin và xếp hạng.",
       },
       commit: "e549e8f",
       pr: 376,
@@ -875,7 +875,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Runs with failed steps are flagged, and each run is drawn as a workflow graph.",
-        vi: "Lượt chạy có bước lỗi được đánh dấu, và mỗi lượt chạy được vẽ thành sơ đồ.",
+        vi: "Lượt chạy nào có bước lỗi giờ có đánh dấu riêng. Mỗi lượt chạy hiện thành sơ đồ workflow.",
       },
       commit: "aef4a07",
     },

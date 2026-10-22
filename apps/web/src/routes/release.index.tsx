@@ -15,8 +15,8 @@ import { localizedPageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
 
 const DESCRIPTION = {
-  en: "Every AI;DR release, newest first: what shipped, screenshots, the film, and the full changelog for each version.",
-  vi: "Mọi bản phát hành của AI;DR, mới nhất trước: có gì mới, ảnh chụp màn hình, phim và nhật ký thay đổi đầy đủ của từng phiên bản.",
+  en: "Every AI;DR release, newest first. Each version has what shipped, screenshots, the film and the full changelog.",
+  vi: "Mọi bản phát hành của AI;DR, mới nhất lên đầu. Mỗi phiên bản gồm những gì mới, ảnh chụp màn hình, video và toàn bộ nhật ký thay đổi.",
 };
 
 export const Route = createFileRoute("/release/")({
