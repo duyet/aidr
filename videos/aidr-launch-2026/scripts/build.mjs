@@ -9,7 +9,7 @@
 // site stills from scripts/capture.mjs). Needs ffmpeg on PATH.
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const VERTICAL = resolve(ROOT, "../aidr-launch-2026-9x16");
@@ -141,6 +141,7 @@ function audioTags() {
  *  voice line with 0.15 s ramps, faded out over the last 2 s. */
 function buildBed() {
   const out = join(ROOT, "assets/bgm/bed.mp3");
+  mkdirSync(dirname(out), { recursive: true });
   const windows = script.lines.map((l) => [VOICE_AT[l.id] - 0.1, VOICE_AT[l.id] + voiceLength[l.id]]);
   const duck = windows
     .map(([a, b]) => `clip((t-${a.toFixed(2)})/0.15,0,1)*clip((${b.toFixed(2)}-t)/0.3,0,1)`)

@@ -18,7 +18,8 @@
       "!**/routeTree.gen.ts",
       "!**/public",
       "!**/src/components/dither-kit/**",
-      "!**/scripts/how-it-works/kit/**"
+      "!**/scripts/how-it-works/kit/**",
+      "!**/machine/kit/**"
     ]
   },
   "formatter": {
