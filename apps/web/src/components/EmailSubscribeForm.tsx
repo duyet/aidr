@@ -1,5 +1,5 @@
 import { Button } from "@aidr/ui";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { EventParams } from "../lib/analytics/events";
 import { track } from "../lib/analytics/track";
 import { withLang } from "../lib/locale-url";
@@ -29,6 +29,18 @@ export interface DigestPrefs {
   weeklyDay: WeeklyDay;
 }
 
+const FALLBACK_TIMEZONE = "Asia/Ho_Chi_Minh";
+
+const subscribeNever = () => () => {};
+const serverTimezone = () => null;
+function browserTimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return FALLBACK_TIMEZONE;
+  }
+}
+
 /** Maps the /api/subscribe POST statuses (worker/subscribe/handlers.ts). */
 function subscribeErrorReason(
   status: number
@@ -54,13 +66,12 @@ export function EmailSubscribeForm({
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
     "idle"
   );
-  const [timezone] = useState<string>(() => {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch {
-      return "Asia/Ho_Chi_Minh";
-    }
-  });
+  const timezone = useSyncExternalStore(
+    subscribeNever,
+    browserTimezone,
+    serverTimezone
+  );
+  const zone = timezone ? ` (${timezone})` : "";
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +84,7 @@ export function EmailSubscribeForm({
         body: JSON.stringify({
           email,
           lang: prefs.lang,
-          timezone,
+          timezone: timezone ?? FALLBACK_TIMEZONE,
           source,
           digest_size: prefs.size,
           mail_format: prefs.format,
@@ -104,11 +115,11 @@ export function EmailSubscribeForm({
         <p>
           {t(
             prefs.frequency === "weekly"
-              ? `Almost done — check your inbox and click the confirmation link. The weekly digest arrives ${weekdayName(prefs.weeklyDay, "en")} around 7:00 AM (${timezone}).`
-              : `Almost done — check your inbox and click the confirmation link. Digests start around 7:00 AM (${timezone}) once confirmed.`,
+              ? `Almost done — check your inbox and click the confirmation link. The weekly digest arrives ${weekdayName(prefs.weeklyDay, "en")} around 7:00 AM${zone}.`
+              : `Almost done — check your inbox and click the confirmation link. Digests start around 7:00 AM${zone} once confirmed.`,
             prefs.frequency === "weekly"
-              ? `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Bản tin tuần đến vào sáng ${weekdayName(prefs.weeklyDay, "vi")}, khoảng 7:00 (${timezone}).`
-              : `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Bản tin bắt đầu khoảng 7:00 sáng (${timezone}) sau khi xác nhận.`
+              ? `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Bản tin tuần đến vào sáng ${weekdayName(prefs.weeklyDay, "vi")}, khoảng 7:00${zone}.`
+              : `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Bản tin bắt đầu khoảng 7:00 sáng${zone} sau khi xác nhận.`
           )}
         </p>
         <p className="text-muted-foreground">
@@ -229,11 +240,11 @@ export function EmailSubscribeForm({
       <p className="text-xs text-muted-foreground">
         {t(
           prefs.frequency === "weekly"
-            ? `${weekdayName(prefs.weeklyDay, "en")}s around 7:00 AM your time (${timezone}). No account required.`
-            : `Around 7:00 AM your time (${timezone}). No account required.`,
+            ? `${weekdayName(prefs.weeklyDay, "en")}s around 7:00 AM your time${zone}. No account required.`
+            : `Around 7:00 AM your time${zone}. No account required.`,
           prefs.frequency === "weekly"
-            ? `Sáng ${weekdayName(prefs.weeklyDay, "vi")}, khoảng 7:00 theo giờ của bạn (${timezone}). Không cần tài khoản.`
-            : `Khoảng 7:00 sáng theo giờ của bạn (${timezone}). Không cần tài khoản.`
+            ? `Sáng ${weekdayName(prefs.weeklyDay, "vi")}, khoảng 7:00 theo giờ của bạn${zone}. Không cần tài khoản.`
+            : `Khoảng 7:00 sáng theo giờ của bạn${zone}. Không cần tài khoản.`
         )}
       </p>
 
