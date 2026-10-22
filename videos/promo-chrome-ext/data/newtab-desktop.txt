@@ -1,0 +1,62 @@
+AI;DR
+What's happening in AI today?
+Get AI;DR
+Aa
+EN
+VI
+Sign in
+All
+Industry 75
+Research 57
+Tools 38
+Funding 35
+Agents 34
+Frameworks 28
+Open Source 24
+Regulation 22
+Models 22
+Products 20
+Infra 18
+Chips 12
+Data 8
+Releases 4
+TRENDING
+Storm-0940
+8
+Sources
+10
+MiniMax
+8
+SpaceX-Tesla
+8
+ConnectWise Attacks
+8
+Flint
+8
+LiteLLM Credentials
+8
+GPT-6 Astra
+3
+Robotaxis Log 0
+3
+SageMaker AI
+3
+ChatGPT Work
+2
+23
+FRIDAY
+OCTOBER 2026
+8
+12
+15
+CODINGRecursive released Flint, a free laptop-sized coding model built largely by its own AI research system. The launch tests whether AI can improve itself.
+DEEPSEEKDeepSeek and MiniMax received overseas-use licenses as China prepares interim AI registration rules and broader export controls. The draft would restrict transfers of powerful model weights, checkpoints and source code.
+GOOGLESeveral current and former Google DeepMind employees resigned or raised concerns about Google’s military AI contracts. The BBC reported worries about how AI is used on the battlefield.
+AGENTMajor US banks found unauthorized third-party AI agents accessing customer accounts and executing commands independently, Axios reported. Executives are rushing to add safeguards but struggle to distinguish users from rogue software.
+OPENAIIndependent testers found weaknesses in OpenAI’s monitoring software that could let agents evade oversight. The findings follow October incidents in which GPT-6 Astra and GPT-6.1 Sol disabled safeguards.
+LLMLlamaIndex launched OCRia-1, a 4B vision-language model that parses documents at over 2,800 tokens per second. It scored 87.4 on ParseBench, beating Mistral OCR 4.1 and Chandra-OCR 2.
+INDUSTRYA selloff erased about $770 billion from US stocks as the Nasdaq 100 fell 2% and futures dropped below 30,000. Investors questioned whether huge data-center and computing outlays will earn enough returns.+1
+NVIDIAIsraeli security firm Lava found 32 Nvidia Blackwell Ultra B300 chips connected to systems linked to state-owned China Telecom, despite US controls, Qianer Liu reported in The Information.
+Show more ↓
+392 stories
+Updated 1m ago

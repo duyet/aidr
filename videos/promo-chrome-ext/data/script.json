@@ -1,0 +1,9 @@
+{
+  "$comment": "Voiceover. `say` is what the voice engine reads (AI;DR read as letters); `text` is the caption form. Hosts differ per line, opener and closer differ (videos/brand/voices.json). Claims checked against capture/ and data/newtab-desktop.txt: the new tab shows the day's ranked stories and an EN/VI switch; the store listing is free to add.",
+  "speed": 1.0,
+  "lines": [
+    { "id": "l1", "host": "Kristen", "text": "Don't forget. AI;DR has a Chrome extension.", "say": "Don't forget. AI DR has a Chrome extension." },
+    { "id": "l2", "host": "Alex", "text": "Every new tab opens on today's top AI stories, in English or Vietnamese." },
+    { "id": "l3", "host": "Allison", "text": "It's free. Get it at aidr.today/c", "say": "It's free. Get it at A I D R dot today, slash C." }
+  ]
+}
