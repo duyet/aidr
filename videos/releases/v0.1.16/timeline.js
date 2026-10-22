@@ -167,15 +167,15 @@
     for (const m of [m0, m1]) leave(m, { opacity: 0 }, mail.start + mail.dur - 0.35, 0.25);
   }
 
-  // Telegram port: every story leaves, numbered, one after another.
+  // Telegram port: on "every", all six stories of 21 Oct leave, numbered, one after another.
   const tg = byStation("telegram");
   if (tg) {
     const [px, py] = machine.ports.telegram;
     ringOn(tg, [px, py]);
-    for (let m = 2; m < 7; m += 1) {
+    for (let m = 2; m < 8; m += 1) {
       const el = $(`msg-${m}`);
       const [fx, fy] = front(tall ? 80 + (m - 2) * 34 : 110 + (m - 2) * 46);
-      arrive(el, { x: px, y: py, opacity: 0 }, { x: px + fx, y: py + fy, opacity: 1 }, tg.tags[0] + 0.1 + (m - 2) * 4 * F, 0.55);
+      arrive(el, { x: px, y: py, opacity: 0 }, { x: px + fx, y: py + fy, opacity: 1 }, tg.tags[1] + 0.1 + (m - 2) * 4 * F, 0.55);
       leave(el, { opacity: 0 }, tg.start + tg.dur - 0.35, 0.25);
     }
   }

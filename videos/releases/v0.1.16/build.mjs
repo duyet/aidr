@@ -289,7 +289,7 @@ ${css(W, H)}
             ${[0, 1, 2].map((i) => `<div class="pk" id="pk-${i}"><i></i><i></i></div>`).join("")}
             <div class="plate2" id="plate">VI</div>
             <div class="plate2" id="plate-day">Aa</div>
-            ${[0, 1, 2, 3, 4, 5, 6].map((i) => `<div class="msg" id="msg-${i}">${i < 2 ? "@" : i - 1}</div>`).join("")}
+            ${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<div class="msg" id="msg-${i}">${i < 2 ? "@" : i - 1}</div>`).join("")}
             ${[0, 1, 2].map((i) => `<div class="msg feed" id="feed-${i}">RSS</div>`).join("")}
             ${tags}
           </div>

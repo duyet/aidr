@@ -22,10 +22,12 @@ mkdirSync(OUT, { recursive: true });
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME, args: ["--hide-scrollbars", "--no-sandbox"] });
 try {
   for (const [form, viewport] of Object.entries(VIEWPORTS)) {
-    for (const [name, path] of Object.entries(film.captures.pages).filter(([n]) => !only.length || only.includes(n))) {
+    for (const [name, entry] of Object.entries(film.captures.pages).filter(([n]) => !only.length || only.includes(n))) {
+      // An entry is a path, or { path, desktop?, mobile? } with viewport overrides for one form.
+      const { path, ...forms } = typeof entry === "string" ? { path: entry } : entry;
       // A fresh page per shot: a page reused across origins can detach mid-navigation.
       const page = await browser.newPage();
-      await page.setViewport(viewport);
+      await page.setViewport({ ...viewport, ...forms[form] });
       const url = path.startsWith("http") ? path : SITE + path;
       await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
       await page.evaluate(() => document.fonts.ready);
