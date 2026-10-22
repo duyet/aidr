@@ -147,15 +147,16 @@ const T = {
 };
 const hits = [
   ["impact-bass-1", 0.1, 0.35],
-  ["pop", 0.75, 0.25],
-  ["whoosh-cinematic", T.title.start + T.title.dur - 0.25, 0.32],
+  ["pop", 0.64, 0.25],
+  // The hatch runs power2.in, so it is fastest as it clears the frame.
+  ["whoosh-cinematic", T.title.start + T.title.dur + 0.15, 0.32],
 ];
 T.scenes.forEach((s, i) => {
   // The whoosh peaks on the camera's fastest frame (timeline.js: power3.inOut, mid-move).
   hits.push(["whoosh-short", i === 0 ? s.start + 0.55 : s.start + 0.3, 0.22]);
   s.tags.forEach((t) => hits.push(["click-soft", t + 0.03, 0.4]));
 });
-hits.push(["whoosh-cinematic", T.close.start + 0.05, 0.3], ["impact-bass-1", T.close.start + 0.5, 0.35], ["pop", T.close.start + 1.4, 0.25]);
+hits.push(["whoosh-cinematic", T.close.start + 0.05, 0.3], ["impact-bass-1", T.close.start + 0.5, 0.35], ["pop", T.close.start + 1.33, 0.25]);
 
 const audio = join(ROOT, "assets/audio");
 for (const name of new Set(hits.map((h) => h[0]))) cpSync(join(LAUNCH, `assets/sfx/${name}.mp3`), join(audio, `${name}.mp3`));
