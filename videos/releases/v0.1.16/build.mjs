@@ -151,9 +151,9 @@ const hits = [
   ["whoosh-cinematic", T.title.start + T.title.dur - 0.25, 0.32],
 ];
 T.scenes.forEach((s, i) => {
-  if (i > 0) hits.push(["whoosh-short", s.start + 0.35, 0.2]);
-  hits.push(["whoosh-short", s.start + 1.15, 0.22]);
-  s.tags.forEach((t) => hits.push(["click-soft", t + 0.1, 0.4]));
+  // The whoosh peaks on the camera's fastest frame (timeline.js: power3.inOut, mid-move).
+  hits.push(["whoosh-short", i === 0 ? s.start + 0.55 : s.start + 0.3, 0.22]);
+  s.tags.forEach((t) => hits.push(["click-soft", t + 0.03, 0.4]));
 });
 hits.push(["whoosh-cinematic", T.close.start + 0.05, 0.3], ["impact-bass-1", T.close.start + 0.5, 0.35], ["pop", T.close.start + 1.4, 0.25]);
 
