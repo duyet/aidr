@@ -54,6 +54,26 @@ These come from the HyperFrames toolchain. Start at `hyperframes`, which routes 
 
 `hyperframes`, `hyperframes-core`, `hyperframes-cli`, `hyperframes-animation`, `hyperframes-audio`, `hyperframes-creative`, `hyperframes-keyframes`, `hyperframes-registry`, `hyperframes-studio`, `media-use`, `motion-graphics`, `embedded-captions`, `faceless-explainer`, `general-video`, `music-to-video`, `pr-to-video`, `product-launch-video`, `remotion-to-hyperframes`, `slideshow`, `talking-head-recut`, `figma`.
 
+## Vendored skill tests
+
+The HyperFrames skills ship their own `*.test.mjs` files. `hyperframes skills install` overwrites them, so do not edit them here. CI does not run them: `pnpm test` is `pnpm -r test`, and `.agents/skills` is not a workspace package.
+
+To run them by hand, from the repo root:
+
+```bash
+node --test ".agents/skills/**/*.test.mjs"
+```
+
+Some need `ffmpeg` on `PATH`. Three files fail in this repo, because they assume the layout of the upstream HyperFrames checkout:
+
+| Test | Why it fails here |
+|---|---|
+| `embedded-captions/scripts/make-theme.test.mjs` | Reads `scripts/fixtures/heroless/transcript.json`, which the skill's own ignore file excludes, so a clone never has it. |
+| `hyperframes-creative/scripts/package-loader.test.mjs` | Expects a `package.json` named `hyperframes` or `@hyperframes/cli` in an ancestor directory to pin a version. There is none in this repo, so the spec falls back to `@latest`. |
+| `hyperframes-animation/scripts/package-loader.test.mjs` | Same as above. |
+
+Treat those failures as expected. Any other failure in this directory is real.
+
 ## Add a skill
 
 Create `<name>/SKILL.md` with `name` and `description` front matter. Write the description as the trigger, naming the situations that should load it. Add a row above in the matching table.
