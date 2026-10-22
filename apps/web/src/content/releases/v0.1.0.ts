@@ -11,8 +11,8 @@ export const release: Release = {
     vi: "AI;DR chính thức ra mắt tại aidr.today",
   },
   intro: {
-    en: "This is the first public release of AI;DR: ranked AI news with a short daily digest, in English and Vietnamese, at aidr.today. In three weeks it grew from three sources to 25, got a page for every story, and started reaching readers in Chrome, on Telegram, by email, over RSS, and through MCP.",
-    vi: "Đây là bản phát hành công khai đầu tiên của AI;DR: tin AI được xếp hạng kèm bản tóm tắt ngắn mỗi ngày, bằng tiếng Anh và tiếng Việt, tại aidr.today. Trong ba tuần, số nguồn tin tăng từ 3 lên 25, mỗi tin có trang riêng, và bạn đọc giờ nhận tin qua Chrome, Telegram, email, RSS và MCP.",
+    en: "This is the first public release of AI;DR at aidr.today. It ranks AI news and writes a short daily digest, in English and Vietnamese. In three weeks it grew from three sources to 25, got a page for every story, and started reaching readers in Chrome, on Telegram, by email, over RSS, and through MCP.",
+    vi: "AI;DR ra mắt công khai lần đầu tại aidr.today. Trang xếp hạng tin AI và viết bản tóm tắt ngắn mỗi ngày, bằng tiếng Anh và tiếng Việt. Sau ba tuần, số nguồn tin tăng từ 3 lên 25, tin nào cũng có trang riêng, và bạn đọc giờ nhận tin qua Chrome, Telegram, email, RSS và MCP.",
   },
   stats: [
     { value: "332", label: { en: "commits", vi: "commit" } },
@@ -64,7 +64,7 @@ export const release: Release = {
       label: { en: "One Get AI;DR menu", vi: "Gộp vào menu Nhận AI;DR" },
       text: {
         en: "Header actions merged into one menu: Chrome Extension, the Telegram channels, Email Subscription, Submit, Data Analytics, and Algorithms. On phones it opens as a near-full-screen grid of large tiles.",
-        vi: "Các nút trên header gộp vào một menu: Chrome Extension, các kênh Telegram, Email Subscription, Submit, Data Analytics và Algorithms. Trên điện thoại, menu mở gần toàn màn hình với các ô lớn.",
+        vi: "Các nút trên đầu trang gộp vào một menu: Chrome Extension, các kênh Telegram, Email Subscription, Submit, Data Analytics và Algorithms. Trên điện thoại, menu mở gần toàn màn hình với các ô lớn.",
       },
       image: {
         src: "/releases/v0.1.0/get-menu.webp",
@@ -72,11 +72,11 @@ export const release: Release = {
         height: 420,
         alt: {
           en: "The Get AI;DR menu open under the header, listing Chrome Extension, Telegram, Facebook, Email, Contribute, Data Analytics, Algorithms, and About.",
-          vi: "Menu Nhận AI;DR mở dưới header, liệt kê Chrome Extension, Telegram, Facebook, Email, Contribute, Data Analytics, Algorithms và About.",
+          vi: "Menu Nhận AI;DR mở dưới đầu trang, liệt kê Chrome Extension, Telegram, Facebook, Email, Contribute, Data Analytics, Algorithms và About.",
         },
         caption: {
           en: "Current look. Facebook and Contribute were added in 0.1.12.",
-          vi: "Giao diện hiện tại. Mục Facebook và Contribute được thêm ở bản 0.1.12.",
+          vi: "Giao diện hiện tại. Mục Facebook và Contribute có từ bản 0.1.12.",
         },
       },
       href: "/subscribe",
@@ -138,7 +138,7 @@ export const release: Release = {
         height: 810,
         alt: {
           en: "The MCP Server page: the connect config, a Claude Code command, and the four read-only tools.",
-          vi: "Trang MCP Server: cấu hình kết nối, lệnh cho Claude Code và bốn công cụ chỉ-đọc.",
+          vi: "Trang MCP Server: cấu hình kết nối, lệnh cho Claude Code và bốn công cụ chỉ đọc.",
         },
       },
       href: "/mcp",
@@ -170,7 +170,7 @@ export const release: Release = {
       },
       text: {
         en: "The Data page shows every ingest run, each source's health, the models behind scoring and translation, and token use per day. The footer links to the latest run with a health dot.",
-        vi: "Trang Dữ liệu hiện từng lượt thu thập tin, tình trạng từng nguồn, các model dùng để chấm điểm và dịch, và lượng token mỗi ngày. Footer có liên kết tới lượt chạy gần nhất kèm chấm báo tình trạng.",
+        vi: "Trang Dữ liệu hiện từng lượt thu thập tin, tình trạng từng nguồn, các model dùng để chấm điểm và dịch, và lượng token mỗi ngày. Chân trang có liên kết tới lượt chạy gần nhất kèm chấm báo tình trạng.",
       },
       image: {
         src: "/releases/v0.1.0/data-page.webp",
@@ -189,7 +189,7 @@ export const release: Release = {
       kind: "feature",
       scope: "web",
       text: {
-        en: "Story permalinks are short: aidr.today/<id>.",
+        en: "Story permalinks are short, like aidr.today/<id>.",
         vi: "Đường dẫn tin rút gọn thành aidr.today/<id>.",
       },
       commit: "f5d525d",
@@ -200,7 +200,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Outlets covering the same story merge into one row, and a story's rank and trending score rise with the number of sources.",
-        vi: "Nhiều trang cùng đưa một tin được gộp thành một dòng, và thứ hạng cùng điểm nổi bật của tin tăng theo số nguồn.",
+        vi: "Tin nhiều trang cùng đưa gộp lại thành một dòng. Thứ hạng và điểm nổi bật của tin tăng theo số nguồn.",
       },
       commit: "83d36e9",
       pr: 39,
@@ -346,7 +346,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Header actions merged into the Get AI;DR menu.",
-        vi: "Các nút trên header gộp vào menu Nhận AI;DR.",
+        vi: "Các nút trên đầu trang gộp vào menu Nhận AI;DR.",
       },
       commit: "710de64",
       pr: 133,
@@ -374,7 +374,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Header icons have 44px tap targets with even spacing.",
-        vi: "Các biểu tượng trên header có vùng chạm 44px và khoảng cách đều nhau.",
+        vi: "Các biểu tượng trên đầu trang có vùng chạm 44px và khoảng cách đều nhau.",
       },
       commit: "d1fed2e",
       pr: 79,
@@ -393,7 +393,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Sign in is always in the header, without waiting for the login script.",
-        vi: "Nút Đăng nhập luôn có sẵn trên header, không phải chờ tải phần đăng nhập.",
+        vi: "Nút Đăng nhập luôn nằm sẵn trên đầu trang, khỏi chờ tải script đăng nhập.",
       },
       commit: "a91143d",
     },
@@ -402,7 +402,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "The header can play a short intro video.",
-        vi: "Header có nút xem video giới thiệu ngắn.",
+        vi: "Đầu trang có nút xem video giới thiệu ngắn.",
       },
       commit: "f41f264",
       pr: 309,
@@ -412,7 +412,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Your language choice stays as you move between pages, without redirect loops.",
-        vi: "Ngôn ngữ bạn chọn được giữ nguyên khi chuyển trang, không còn bị chuyển hướng vòng lặp.",
+        vi: "Chuyển trang vẫn giữ ngôn ngữ bạn chọn, hết lỗi chuyển hướng vòng lặp.",
       },
       commit: "4d18a7c",
       pr: 182,
@@ -479,7 +479,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "The homepage has its own masthead share card.",
-        vi: "Trang chủ có thẻ chia sẻ masthead riêng.",
+        vi: "Trang chủ có thẻ chia sẻ riêng.",
       },
       commit: "177a633",
     },
@@ -498,7 +498,7 @@ export const release: Release = {
       scope: "telegram",
       text: {
         en: "The English digest posts to @aidr_today.",
-        vi: "Bản tin tiếng Anh được đăng lên @aidr_today.",
+        vi: "Kênh @aidr_today đăng bản tin tiếng Anh.",
       },
       commit: "619d006",
       pr: 251,
@@ -614,7 +614,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Chrome Web Store links on the extension page and in the footer.",
-        vi: "Có liên kết Chrome Web Store trên trang tiện ích và ở footer.",
+        vi: "Có liên kết Chrome Web Store trên trang tiện ích và ở chân trang.",
       },
       commit: "69bbce7",
       pr: 32,
@@ -652,7 +652,7 @@ export const release: Release = {
       scope: "extension",
       text: {
         en: "A roomier layout, aligned header icons, and no host or score clutter.",
-        vi: "Bố cục thoáng hơn, biểu tượng header thẳng hàng, bỏ tên miền và điểm số cho đỡ rối.",
+        vi: "Bố cục thoáng hơn, biểu tượng đầu trang thẳng hàng, bỏ tên miền và điểm số cho đỡ rối.",
       },
       commit: "d917f6b",
       pr: 46,
@@ -691,7 +691,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Browsers with agent tools get four read-only tools on the page.",
-        vi: "Trình duyệt hỗ trợ công cụ cho agent nhận được bốn công cụ chỉ-đọc ngay trên trang.",
+        vi: "Trình duyệt hỗ trợ công cụ cho agent nhận được bốn công cụ chỉ đọc ngay trên trang.",
       },
       commit: "1cb0c6d",
       pr: 238,
@@ -720,7 +720,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Links in story Markdown are sanitized against escaped-URL tricks.",
-        vi: "Liên kết trong bản Markdown của tin được lọc để chặn các kiểu URL thoát ký tự.",
+        vi: "Bản Markdown của tin lọc liên kết, chặn mẹo dùng URL thoát ký tự.",
       },
       commit: "715e28a",
       pr: 184,
@@ -796,7 +796,7 @@ export const release: Release = {
       scope: "sources",
       text: {
         en: "More verified news sources, each with its own health tracking.",
-        vi: "Thêm nhiều nguồn tin đã xác minh, mỗi nguồn được theo dõi tình trạng riêng.",
+        vi: "Thêm nhiều nguồn tin đã xác minh, nguồn nào cũng có theo dõi tình trạng riêng.",
       },
       commit: "dda036f",
       pr: 241,
@@ -826,7 +826,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "The Data page was redesigned, with tabs for runs, sources, models, and the ranking algorithm.",
-        vi: "Trang Dữ liệu được thiết kế lại, có các tab lượt chạy, nguồn, model và thuật toán xếp hạng.",
+        vi: "Trang Dữ liệu có thiết kế mới, với các tab lượt chạy, nguồn, model và thuật toán xếp hạng.",
       },
       commit: "2b63ced",
       pr: 205,
@@ -854,7 +854,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "The footer shows when the feed last updated, with a health dot linked to the latest run.",
-        vi: "Footer cho biết bảng tin cập nhật lúc nào, kèm chấm tình trạng dẫn tới lượt chạy gần nhất.",
+        vi: "Chân trang cho biết bảng tin cập nhật lúc nào, kèm chấm tình trạng dẫn tới lượt chạy gần nhất.",
       },
       commit: "cfc876e",
       pr: 265,
@@ -873,7 +873,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "The homepage renders with about three database round trips.",
-        vi: "Trang chủ hiển thị chỉ với khoảng ba lượt truy vấn cơ sở dữ liệu.",
+        vi: "Trang chủ cần khoảng ba lượt truy vấn cơ sở dữ liệu để hiển thị.",
       },
       commit: "41ed437",
       pr: 130,
@@ -922,7 +922,7 @@ export const release: Release = {
       scope: "web",
       text: {
         en: "Critical CSS is inlined so the first paint needs no extra request.",
-        vi: "CSS cần thiết được nhúng sẵn nên lần hiển thị đầu không phải chờ thêm yêu cầu nào.",
+        vi: "CSS quan trọng nhúng thẳng vào trang nên lần hiển thị đầu không cần thêm request nào.",
       },
       commit: "bea5b44",
       pr: 291,
