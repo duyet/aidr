@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Plug } from "lucide-react";
 import { ExtLink } from "../components/mcp/ExtLink";
+import { McpAnatomy } from "../components/mcp/McpAnatomy";
 import {
   AdminClientSection,
   AuthSection,
@@ -54,6 +55,8 @@ function McpPage() {
         </ExtLink>
         .
       </p>
+
+      <McpAnatomy />
 
       <ConnectSection />
       <ClientsSection />
