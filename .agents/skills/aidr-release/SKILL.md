@@ -10,6 +10,9 @@ it; this file says the order, the gates, and what "done" means.
 
 ## When
 
+- **Standing rule.** After user-visible changes ship, run the aidr-release
+  flow (release page plus an Opus release film); never merge release-please
+  PRs yourself.
 - **Every web release.** After user-visible changes ship, each release-please
   version gets a release page and a release film. Build both on a branch while
   the release-please PR is still open, so they publish as soon as the owner
