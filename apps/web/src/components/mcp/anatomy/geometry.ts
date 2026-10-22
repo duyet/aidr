@@ -1,5 +1,5 @@
-import * as k from "./iso-kit";
 import type { Flat, Plan, Point3, SolidPaths } from "./iso-kit";
+import * as k from "./iso-kit";
 import { TOOL_PARTS } from "./model";
 
 export const WIDTH = 640;
