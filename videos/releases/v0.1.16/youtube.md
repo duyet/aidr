@@ -4,8 +4,8 @@ All files are in `renders/`: 4K for YouTube (3840x2160 and 2160x3840), 1080p cov
 
 | Cut | File | Length |
 |-----|------|--------|
-| English 16:9 | `aidr-v0.1.16-en-16x9.mp4`, thumbnail `aidr-v0.1.16-en-16x9-cover.png` | 45s |
-| English 9:16 | `aidr-v0.1.16-en-9x16.mp4`, TikTok `aidr-v0.1.16-en-9x16-tiktok.mp4` | 45s |
+| English 16:9 | `aidr-v0.1.16-en-16x9.mp4`, thumbnail `aidr-v0.1.16-en-16x9-cover.png` | 43s |
+| English 9:16 | `aidr-v0.1.16-en-9x16.mp4`, TikTok `aidr-v0.1.16-en-9x16-tiktok.mp4` | 43s |
 | Vietnamese 16:9 | `aidr-v0.1.16-vi-16x9.mp4`, thumbnail `aidr-v0.1.16-vi-16x9-cover.png` | 44s |
 | Vietnamese 9:16 | `aidr-v0.1.16-vi-9x16.mp4`, TikTok `aidr-v0.1.16-vi-9x16-tiktok.mp4` | 44s |
 
@@ -31,8 +31,8 @@ Telegram: https://t.me/aidr_today
 Facebook: https://www.facebook.com/aidr.today/
 
 0:00 A steadier news run
-0:11 Vietnamese spelling check and the day card
-0:23 One email, RSS, and every story on Telegram
+0:10 Vietnamese spelling check and the day card
+0:22 One email, RSS, and every story on Telegram
 
 #AI #AInews #ArtificialIntelligence #aidr
 ```
