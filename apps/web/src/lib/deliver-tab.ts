@@ -3,6 +3,7 @@ export const DELIVER_TABS = [
   "telegram",
   "facebook",
   "email",
+  "mcp",
   "rss",
 ] as const;
 

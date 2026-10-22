@@ -1,4 +1,4 @@
-import { Mail, Rss, Send } from "lucide-react";
+import { Mail, Plug, Rss, Send } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import type { DeliverTab } from "../../lib/deliver-tab";
 import type { MailFrequency } from "../../lib/mail-frequency";
@@ -7,6 +7,7 @@ import { ChromeMark } from "../header/ChromeMark";
 import { ChromeChannel } from "./ChromeChannel";
 import { EmailChannel } from "./EmailChannel";
 import { FacebookChannel, FacebookMark } from "./FacebookChannel";
+import { McpChannel } from "./McpChannel";
 import { RssChannel } from "./RssChannel";
 import { TelegramChannel } from "./TelegramChannel";
 
@@ -38,6 +39,11 @@ export const DELIVER_CHANNELS: Record<DeliverTab, DeliverChannel> = {
     Panel: ({ lang, frequency }) => (
       <EmailChannel lang={lang} initialFrequency={frequency} />
     ),
+  },
+  mcp: {
+    label: "MCP",
+    Icon: Plug,
+    Panel: ({ lang }) => <McpChannel lang={lang} />,
   },
   rss: {
     label: "RSS",
