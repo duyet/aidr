@@ -390,6 +390,7 @@ describe("mobile action sizing", () => {
       "Telegram Channel (English)",
       "Facebook Page",
       "Email Subscription",
+      "MCP Server",
       "RSS Feed",
       "Contribute",
       "Data Analytics",

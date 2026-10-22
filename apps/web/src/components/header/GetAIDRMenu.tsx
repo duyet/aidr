@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Info,
   Mail,
+  Plug,
   Plus,
   Rss,
   Send,
@@ -149,6 +150,18 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
           >
             <Mail aria-hidden />
             Email Subscription
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className={itemClassName}>
+          <Link
+            to="/mcp"
+            search={{ lang: navigationLang }}
+            onClick={() =>
+              track("nav_click", { to: "/mcp", placement: "header_menu" })
+            }
+          >
+            <Plug aria-hidden />
+            MCP Server
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className={itemClassName}>
