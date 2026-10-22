@@ -54,6 +54,7 @@ automatically. Do not add routes per version.
      English. Reuse the house wording in `routes/changelog.tsx`
      ("Nhận AI;DR", "trang Dữ liệu", "Fanpage Facebook") and the
      `aidr-vi-translation` skill. Keep tech terms in English.
+   - Run the `aidr-unslop` pass on every EN and VI string before review.
 4. **Screenshots** from production, light theme, headless Chrome:
    `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars --window-size=1440,900 --screenshot=<out>.png <url>`.
    Crop to the feature, convert to WebP (`cwebp -q 82`), keep each under

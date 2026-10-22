@@ -37,7 +37,7 @@ Restate the news the way a Vietnamese tech journalist would say it out loud. Kee
 - A named conjecture, theorem, or paper title you cannot render with certainty stays in English (`Unique Games Conjecture`).
 - A Vietnamese TL;DR bullet carries the same facts as its English twin: every name (co-investors, the source outlet), nothing added (`mạnh mẽ`, `vừa`, `trực tiếp`).
 
-After a draft, run the same checks the worker runs. In a node snippet or a unit test, call `translationDraftIssues` with the stripped source, the candidate, and the knowledge rules. Fix every issue it returns. Do not store a draft that still has issues.
+After a draft, run the `aidr-unslop` pass (Vietnamese rules V1 to V16), then run the same checks the worker runs. In a node snippet or a unit test, call `translationDraftIssues` with the stripped source, the candidate, and the knowledge rules. Fix every issue it returns. Do not store a draft that still has issues.
 
 ## Change the pipeline
 

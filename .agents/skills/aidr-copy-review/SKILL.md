@@ -15,6 +15,8 @@ Review as someone who did not write the copy. Default: reject. Find the line, sa
 
 ## Run
 
+The author runs the `aidr-unslop` pass before this review. Judge Vietnamese copy in `unslop.judged` against its rules V1 to V16.
+
 From the repo root:
 
 ```bash

@@ -28,6 +28,7 @@ Each folder here is one skill with a `SKILL.md`. `.claude/skills`, `.cursor/skil
 | Skill | Use it to |
 |---|---|
 | `aidr-vi-translation` | Translate news into Vietnamese, or change the EN to VI prompt, glossary, and draft gate. |
+| `aidr-unslop` | Cut AI tells and translationese from EN and VI copy. Required pass between drafting and review. |
 | `aidr-daily-news` | Make the daily brief video (16:9 and 9:16). |
 | `aidr-story-clip` | Build or run the per-story clip pipeline. |
 | `aidr-video` | Make, re-cut, or translate any AI;DR video under `videos/`. |
