@@ -95,6 +95,16 @@ export const RSS_SUBSCRIBE_TARGETS = [
   "feed",
 ] as const;
 export type RssSubscribeTarget = (typeof RSS_SUBSCRIBE_TARGETS)[number];
+/** `id` of each client in `MCP_CLIENTS` in lib/mcp-install.ts. */
+export const MCP_INSTALL_TARGETS = [
+  "cursor",
+  "vscode",
+  "vscode-insiders",
+  "lmstudio",
+  "claude-ai",
+  "claude-code",
+] as const;
+export type McpInstallTarget = (typeof MCP_INSTALL_TARGETS)[number];
 const LINK_PLACEMENTS = [
   "header",
   "header_menu",
@@ -200,6 +210,12 @@ export const EVENTS = {
       target: dim(oneOf(RSS_SUBSCRIBE_TARGETS)),
       lang: dim(oneOf(LANGS)),
     },
+  },
+  mcp_install: {
+    sender: "browser",
+    question:
+      "Which MCP client do readers add the AI;DR server to, by deeplink or by copying the URL or command?",
+    params: { target: dim(oneOf(MCP_INSTALL_TARGETS)) },
   },
   topic_filter: {
     sender: "browser",
