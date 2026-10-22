@@ -178,7 +178,7 @@
     {
       "id": "telegram",
       "station": "telegram",
-      "shot": "tg-post",
+      "shot": "tg-plain",
       "url": "t.me/aidr_today · 21 Oct",
       "label": "Every story on Telegram",
       "title": "No story left out",
@@ -199,7 +199,7 @@
           "at": "four"
         },
         {
-          "text": "every story",
+          "text": "every story · plain headers",
           "at": "every"
         }
       ],
@@ -302,7 +302,7 @@
         "voice": "Theo dõi AI DR qua RSS trên Feedly, Inoreader hay NewsBlur."
       },
       {
-        "shot": "tg-post-vi",
+        "shot": "tg-plain-vi",
         "url": "t.me/aihomnay · 21/10",
         "label": "Đủ mọi tin trên Telegram",
         "title": "Không bỏ sót tin nào",
@@ -313,7 +313,7 @@
             "at": "bốn"
           },
           {
-            "text": "đủ mọi tin",
+            "text": "đủ mọi tin · tiêu đề gọn",
             "at": "đủ"
           }
         ],

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render every built cut of one release film in 4K into <v>/renders/, plus 1080p cover stills and
+# Render every built cut of one release film in 4K into <v>/renders/, plus caption-free 1080p cover stills and
 # 1080x1920 TikTok-ready copies of the 9:16 cuts (under 28 MB, H.264 High, AAC 128k).
 #
 # Usage: scripts/render.sh v0.1.12 [en|vi|en:9x16 ...]   (default: en vi; lang:ratio renders one shape)
@@ -23,7 +23,14 @@ for spec in "${langs[@]}"; do
     res=landscape-4k; size=1920:1080
     [[ "$ratio" == 9x16 ]] && res=portrait-4k && size=1080:1920
     (cd "$dir" && npx --yes hyperframes@0.8.96 render --skill=product-launch-video --workers 2 --resolution "$res" --quality high --output "../$out/$name.mp4" --quiet >/dev/null)
-    ffmpeg -v error -y -ss 3.0 -i "$out/$name.mp4" -frames:v 1 -vf "scale=$size:flags=lanczos" "$out/$name-cover.png"
+    # The cover is a still of the composition at 3.0 s with the captions hidden: the voice runs
+    # through the whole title, so no frame of the MP4 is caption-free.
+    tmp=$(mktemp -d)
+    for f in "$dir"/*; do [[ "$(basename "$f")" == index.html || "$(basename "$f")" == renders ]] || ln -s "$(realpath "$f")" "$tmp/"; done
+    sed 's#</head>#<style>.cap { display: none !important; }</style></head>#' "$dir/index.html" > "$tmp/index.html"
+    npx --yes hyperframes@0.8.96 snapshot "$tmp" --at 3.0 --no-end --describe false --output "$tmp/snap" >/dev/null
+    ffmpeg -v error -y -i "$(ls "$tmp"/snap/*.png | head -1)" -vf "scale=$size:flags=lanczos" "$out/$name-cover.png"
+    rm -rf "$tmp"
     if [[ "$ratio" == 9x16 ]]; then
       # Two-pass to a bitrate that lands under 28 MB for the film's length.
       dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$out/$name.mp4")

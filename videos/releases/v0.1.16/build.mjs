@@ -116,6 +116,8 @@ voices.forEach((v, k) => {
     cur = [];
   };
   words.forEach((w, j) => {
+    // A Vietnamese line breaks before "và" (and) once it holds a clause, so the clause stays whole.
+    if (lang === "vi" && /^và$/i.test(w.text) && cur.map((x) => x.text).join(" ").length >= 16) flush();
     cur.push(w);
     if (END.test(w.text)) return flush();
     const next = words[j + 1];
@@ -300,7 +302,8 @@ function css(W, H) {
       html, body { width: ${W}px; height: ${H}px; overflow: hidden; background: #f7f7f5; }
       #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #f7f7f5;
         font-family: "Source Sans 3 Variable", sans-serif; color: #0a0a0a; -webkit-font-smoothing: antialiased; }
-      .scene { position: absolute; inset: 0; overflow: hidden; }
+      .scene { position: absolute; inset: 0; overflow: hidden; isolation: isolate; }
+      #s-machine { z-index: 1; } #s-title { z-index: 2; } #s-close { z-index: 3; }
       .paper { background: #f7f7f5; } .yellow { background: #f5c518; }
       .cam, .push { position: absolute; inset: 0; transform-origin: 50% 50%; }
       .grid { position: absolute; inset: 0; opacity: .5;

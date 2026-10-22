@@ -23,6 +23,7 @@
   go($("hatch-top"), { y: 0 }, { y: -H * 0.52 }, hatch, 0.6, "power2.in");
   go($("hatch-bottom"), { y: 0 }, { y: H * 0.52 }, hatch, 0.6, "power2.in");
   go($("title-cam"), { y: 0 }, { y: -H * 0.52 }, hatch, 0.6, "power2.in");
+  go($("title-cam"), { opacity: 1 }, { opacity: 0 }, hatch, 0.25, "power2.in");
 
   // The machine camera: frames one station per highlight inside the region left of the window.
   const st = machine.stations;
