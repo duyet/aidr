@@ -48,7 +48,7 @@ Code: <github repo url>
 ### Telegram, Vietnamese (@aihomnay)
 
 ```
-AI;DR: tin AI xếp hạng mỗi 30 phút.
+AI;DR xếp hạng tin AI mỗi 30 phút.
 Mỗi sáng từ 08:00, kênh gửi 6 tin AI đáng đọc nhất, mỗi tin dẫn về bài gốc.
 Xem đầy đủ: https://aidr.today
 ```
