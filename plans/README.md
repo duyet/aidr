@@ -41,6 +41,7 @@ Execute in order unless dependencies say otherwise.
 | 031  | Delete subscribe_attempts rows older than one day | P2 | S | — | TODO | https://github.com/duyet/aidr/issues/427 |
 | 032  | Characterization tests for requireClerkUser | P2 | S | — | TODO | https://github.com/duyet/aidr/issues/428 |
 | 033  | Replace the Remix Icon Chrome mark with one SVG | P3 | S | — | TODO | https://github.com/duyet/aidr/issues/429 |
+| 034  | Theme system with AI;DR and Newspaper themes | P2 | L | — | TODO | |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED | REJECTED
 
