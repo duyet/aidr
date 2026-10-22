@@ -20,6 +20,7 @@ import {
   READ_TOOLS_CALL_EXAMPLE,
   RESOURCES_CALL_EXAMPLE,
 } from "./lib";
+import { McpInstallButtons } from "./McpInstallButtons";
 
 export function ConnectSection() {
   const lang = useLang();
@@ -31,6 +32,7 @@ export function ConnectSection() {
         <Plug className="h-3.5 w-3.5" aria-hidden />
         {t("Connect (no auth)", "Kết nối (không cần auth)")}
       </h2>
+      <McpInstallButtons />
       <CodeBlock code={PUBLIC_CLIENT_CONFIG} />
       <p className="mt-2 text-xs text-muted-foreground">
         {t(
