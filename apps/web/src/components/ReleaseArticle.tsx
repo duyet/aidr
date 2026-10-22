@@ -78,15 +78,20 @@ export function ReleaseHero({
   if (!filmId) {
     if (!release.cover) return null;
     return (
-      <img
-        src={release.cover.src}
-        width={release.cover.width}
-        height={release.cover.height}
-        alt={t(release.cover.alt, lang)}
-        decoding="async"
-        fetchPriority="high"
-        className="h-auto w-full rounded-xl border border-border bg-card"
-      />
+      <figure className="relative">
+        <img
+          src={release.cover.src}
+          width={release.cover.width}
+          height={release.cover.height}
+          alt={t(release.cover.alt, lang)}
+          decoding="async"
+          fetchPriority="high"
+          className="h-auto w-full rounded-xl border border-border bg-card"
+        />
+        <figcaption className="absolute bottom-3 left-3 rounded-full bg-black/75 px-3 py-1 text-xs font-semibold text-white">
+          {lang === "vi" ? "Video sắp ra mắt" : "Film coming soon"}
+        </figcaption>
+      </figure>
     );
   }
   return (

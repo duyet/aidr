@@ -1,0 +1,75 @@
+1
+00:00:00,600 --> 00:00:02,483
+This is AI;DR.
+
+2
+00:00:02,483 --> 00:00:04,791
+Here's what's new this week.
+
+3
+00:00:05,550 --> 00:00:06,560
+Every 30 minutes,
+
+4
+00:00:06,560 --> 00:00:08,069
+AI;DR reads its sources
+
+5
+00:00:08,069 --> 00:00:10,226
+and skips any that keep failing.
+
+6
+00:00:11,050 --> 00:00:12,524
+Vietnamese text is checked
+
+7
+00:00:12,524 --> 00:00:14,754
+for syllables no Vietnamese word uses.
+
+8
+00:00:14,754 --> 00:00:16,400
+Older stories too.
+
+9
+00:00:17,050 --> 00:00:20,185
+Day card headlines never go below 23 px.
+
+10
+00:00:20,185 --> 00:00:22,283
+Crowded tiles become rows.
+
+11
+00:00:23,050 --> 00:00:24,490
+Before any email goes out,
+
+12
+00:00:24,490 --> 00:00:25,755
+it is claimed first.
+
+13
+00:00:25,755 --> 00:00:26,939
+If two runs overlap,
+
+14
+00:00:26,939 --> 00:00:28,562
+only one sends.
+
+15
+00:00:29,550 --> 00:00:30,653
+You can now follow
+
+16
+00:00:30,653 --> 00:00:33,900
+AI;DR in any RSS reader.
+
+17
+00:00:34,550 --> 00:00:36,106
+And on four and five story days,
+
+18
+00:00:36,106 --> 00:00:38,251
+Telegram lists every story.
+
+19
+00:00:39,500 --> 00:00:42,318
+The release notes list every change.

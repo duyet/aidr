@@ -97,6 +97,34 @@ const words = (t) =>
     .split(/\s+/)
     .filter(Boolean);
 
+const READ = read(
+  new URL("../../../../videos/daily-news/config.json", import.meta.url),
+).timing.noVoice.wordsPerSecond;
+/** vo.natural's script half: a part spoken faster than RUSHED x the language's reading rate, a silence over PAUSE s inside one section, a sentence over PACING.sentence words, or a spoken list of three. */
+export const VOICE = { pause: 0.6, rushed: 1.35 };
+const LIST_OF_THREE = /(?:^|\s)[^\s,]+(?: [^\s,]+)?, [^\s,]+(?: [^\s,]+)?,? (?:or|and|hay|hoặc|và) [^\s,.]+/i;
+
+/** Problems in timed voice parts [{ section (its index), text, words: [{ text, start, end }] }] (start on the film clock). */
+export function voiceProblems(parts, lang) {
+  const p = [];
+  parts.forEach((part, i) => {
+    const n = words(part.text).length;
+    const span = part.words.at(-1).end - part.words[0].start;
+    if (n / span > READ[lang] * VOICE.rushed)
+      p.push(`"${part.text}": ${(n / span).toFixed(2)} words/s, over ${(READ[lang] * VOICE.rushed).toFixed(2)}`);
+    for (const t of part.text.split(/(?<=[.!?])\s+/))
+      if (words(t).length > PACING.sentence) p.push(`"${t}": ${words(t).length} words in one sentence`);
+    if (LIST_OF_THREE.test(part.text)) p.push(`"${part.text}": a spoken list of three`);
+    const clock = part.words.map((w) => ({ s: part.start + w.start, e: part.start + w.end }));
+    const prev = parts[i - 1];
+    if (prev?.section === part.section) clock.unshift({ e: prev.start + prev.words.at(-1).end });
+    for (let j = 1; j < clock.length; j++)
+      if (clock[j].s - clock[j - 1].e > VOICE.pause)
+        p.push(`"${part.text}": ${(clock[j].s - clock[j - 1].e).toFixed(2)} s pause at ${clock[j].s.toFixed(2)} s`);
+  });
+  return p;
+}
+
 /** { id: [] } for a pass, { id: [reasons] } for a fail, for each automatic row. */
 export function autoChecks(dir, motion) {
   const script = read(join(dir, "script.json"));

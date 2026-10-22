@@ -10,16 +10,24 @@ it; this file says the order, the gates, and what "done" means.
 
 ## When
 
-- **Weekly** (Monday, Asia/Ho_Chi_Minh), or
-- **right away** after a significant reader-visible change (a new surface,
-  a feature people will notice, a fix to something broken in public).
-- Skip a week when there is nothing reader-visible since the last release.
+- **Standing rule.** After user-visible changes ship, run the aidr-release
+  flow (release page plus an Opus release film); never merge release-please
+  PRs yourself.
+- **Every web release.** After user-visible changes ship, each release-please
+  version gets a release page and a release film. Build both on a branch while
+  the release-please PR is still open, so they publish as soon as the owner
+  merges it.
+- The film is designed by an Opus session: music, voice-over, motion design,
+  and anatomy-style isometric drawings (the machine kit in
+  `videos/aidr-launch-2026/machine/kit/`) next to real UI captures, in a
+  simple style.
+- Skip only when nothing reader-visible shipped since the last release.
 
 ## Gates (stop and ask the user)
 
 - Merging release-please PRs (`chore(web): release …`,
-  `chore(extension): release …`) — the owner's rule is that humans merge
-  them. Ask once per release; a yes covers that release only.
+  `chore(extension): release …`) is the owner's job. Never merge,
+  update-branch or auto-merge them, even when asked to run the whole flow.
 - Anything that asks for a password or account verification.
 - A video that does not pass `aidr-video-review` at 8/10.
 
@@ -28,9 +36,10 @@ it; this file says the order, the gates, and what "done" means.
 1. **Ship code.** Feature PRs merged to master with CI green. Deploy runs
    on push (`.github/workflows/deploy-web.yml`); confirm it succeeded.
 2. **Cut versions.** release-please opens `chore(web): release X.Y.Z` and,
-   if the extension changed, `chore(extension): release A.B.C`. Gate:
-   ask, then merge. Tags: `web-vX.Y.Z`, `aidr-vA.B.C` (extension zips are
-   attached to its GitHub release).
+   if the extension changed, `chore(extension): release A.B.C`. The owner
+   merges them; read the PR for the version and commit list and go on with
+   steps 3 to 5 while it is open. Tags: `web-vX.Y.Z`, `aidr-vA.B.C`
+   (extension zips are attached to its GitHub release).
 3. **Release notes page** — skill `aidr-release-notes`. Range = previous
    page's `compare.head` .. new `web-v` tag. Content file, screenshots,
    register in `RELEASES`. `/release` lists every version; `/release/vX`
@@ -42,7 +51,9 @@ it; this file says the order, the gates, and what "done" means.
    `aidr-vX.Y.Z-{en,vi}-{16x9,9x16}.mp4` with voice-over from the cast in
    `videos/brand/voices.json` (English: the English hosts alternating like a
    TV show; Vietnamese: its own hosts, same rules) and burned-in captions per language. `youtube.md` holds the metadata for
-   every cut. Review to 8/10.
+   every cut. Review to 8/10, plus an independent score from a fresh
+   subagent that did not build the film. Until the YouTube ids exist the
+   page shows the cover with a "Film coming soon" label.
 5. **YouTube** — skill `aidr-youtube-upload`, channel
    `UCGDB5uD8znydgMg2XLOj04w`, through the user's Chrome. Upload the four
    cuts (16:9 as videos, 9:16 as Shorts) into the "AI;DR"
@@ -84,7 +95,7 @@ and what to report back.
 |-----|------|
 | `haiku-low-*` | Run the render queue and report `STATUS.json`; frame contact sheets; crops and WebP screenshots; oEmbed / HTTP checks (`curl` the release page, `oembed?url=https://youtu.be/<id>` → 200, 403 = still private); `gh pr checks` polling |
 | `sonnet-medium-*` | Release-notes content file and VI copy; `film.json` copy and voice lines; `youtube.md` metadata; Facebook copy; skill and doc edits; PR creation |
-| main session (or opus) | Visual framing judgment on snapshots; review gates (`aidr-video-review` 8/10); anything that touches the owner's Chrome (YouTube, Facebook, Chrome Web Store); merges that need the owner's approval |
+| main session (or opus) | Film design and storyboard; visual framing judgment on snapshots; review gates (`aidr-video-review` 8/10); anything that touches the owner's Chrome (YouTube, Facebook, Chrome Web Store) |
 
 ### Parallel and serial
 

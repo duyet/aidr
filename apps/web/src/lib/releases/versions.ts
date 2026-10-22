@@ -5,6 +5,7 @@
  * preloads. `versions.test.ts` keeps this list equal to `RELEASES`.
  */
 export const RELEASE_VERSIONS: readonly string[] = [
+  "0.1.16",
   "0.1.13",
   "0.1.12",
   "0.1.0",
