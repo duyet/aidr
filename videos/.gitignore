@@ -37,3 +37,9 @@ aidr-launch-2026-9x16/assets/
 aidr-launch-2026/assets/bgm/bed.mp3
 */.hyperframes/artifacts/
 */.hyperframes/
+# promo-chrome-ext: the 9:16 cut's media is copied from the 16:9 project by scripts/build.mjs
+promo-chrome-ext/9x16/assets/
+promo-chrome-ext/9x16/capture/
+promo-chrome-ext/9x16/renders/
+promo-chrome-ext/9x16/snapshots/
+promo-chrome-ext/assets/bgm/

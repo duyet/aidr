@@ -1,0 +1,80 @@
+[
+  {
+    "id": "w0",
+    "text": "Every",
+    "start": 0,
+    "end": 0.325
+  },
+  {
+    "id": "w1",
+    "text": "new",
+    "start": 0.372,
+    "end": 0.511
+  },
+  {
+    "id": "w2",
+    "text": "tab",
+    "start": 0.569,
+    "end": 0.882
+  },
+  {
+    "id": "w3",
+    "text": "opens",
+    "start": 0.952,
+    "end": 1.242
+  },
+  {
+    "id": "w4",
+    "text": "on",
+    "start": 1.289,
+    "end": 1.358
+  },
+  {
+    "id": "w5",
+    "text": "today's",
+    "start": 1.405,
+    "end": 1.718
+  },
+  {
+    "id": "w6",
+    "text": "top",
+    "start": 1.776,
+    "end": 2.032
+  },
+  {
+    "id": "w7",
+    "text": "AI",
+    "start": 2.113,
+    "end": 2.392
+  },
+  {
+    "id": "w8",
+    "text": "stories,",
+    "start": 2.461,
+    "end": 3.1
+  },
+  {
+    "id": "w9",
+    "text": "in",
+    "start": 3.135,
+    "end": 3.251
+  },
+  {
+    "id": "w10",
+    "text": "English",
+    "start": 3.344,
+    "end": 3.785
+  },
+  {
+    "id": "w11",
+    "text": "or",
+    "start": 3.843,
+    "end": 3.947
+  },
+  {
+    "id": "w12",
+    "text": "Vietnamese.",
+    "start": 4.029,
+    "end": 5.201
+  }
+]
