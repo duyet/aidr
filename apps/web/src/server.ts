@@ -1,4 +1,5 @@
 import handler from "@tanstack/react-start/server-entry";
+import { chromeShortLinkResponse } from "../worker/chrome-short-link";
 import { handleClerkProxy, isClerkProxyPath } from "../worker/clerk-proxy";
 import { handleAidrZipRequest } from "../worker/extension-zip";
 import { ensureIngestAlarm, tickIngest } from "../worker/ingest-schedule";
@@ -69,6 +70,7 @@ import { handleFeedXmlRequest, RSS_CACHE_CONTROL } from "./lib/rss";
 import { classifyServerFnPath } from "./lib/server-fn-registry";
 import { isServerFnBasePath, isServerFnPath } from "./lib/server-fn-request";
 import {
+  CHROME_SHORT_PATH,
   NEWS_SITEMAP_PATH,
   RSS_ALIAS_PATH,
   RSS_FEED_PATH,
@@ -197,6 +199,9 @@ const worker = {
         request,
         handleClerkProxy(request, env)
       );
+    }
+    if (path === CHROME_SHORT_PATH) {
+      return chromeShortLinkResponse(request);
     }
     if (path === "/aidr.zip") {
       return handleAidrZipRequest(request);
