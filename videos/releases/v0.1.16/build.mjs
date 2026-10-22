@@ -108,7 +108,7 @@ voices.forEach((v, k) => {
     }
   }
   const END = /[.,!?;:]$/;
-  const WEAK = /^(the|a|an|to|of|and|or|is|it|by|at|in|on|for|no|và|của|cho|các|là|để|với|từ|được|khi|có|sẽ|thì|mỗi|không|bao|chỉ)$/i;
+  const WEAK = /^(never|the|a|an|to|of|and|or|is|it|by|at|in|on|for|no|và|của|cho|các|là|để|với|từ|được|khi|có|sẽ|thì|mỗi|không|bao|chỉ)$/i;
   const limit = lang === "vi" ? 38 : 0;
   let cur = [];
   const flush = () => {
@@ -176,9 +176,11 @@ ff("-ss", "16", "-t", String(TOTAL), "-i", join(VIDEOS, "aidr-launch/assets/bgm/
     inputs.push("-i", `assets/audio/${name}.mp3`);
     f.push(`[${nv + 1 + k}:a]aresample=48000,aformat=channel_layouts=stereo,volume=${vol},adelay=${Math.max(0, Math.round((at - peaks[name].peak) * 1000))}:all=1[x${k}]`);
   });
-  f.push(`${hits.map((_, k) => `[x${k}]`).join("")}amix=inputs=${hits.length}:normalize=0[sfx]`);
+  f.push(`${hits.map((_, k) => `[x${k}]`).join("")}amix=inputs=${hits.length}:normalize=0,asplit=2[sfx][sfxonly]`);
   f.push(`[vmix][duck][sfx]amix=inputs=3:normalize=0,atrim=0:${TOTAL},loudnorm=I=-14:TP=-1.5:LRA=11[out]`);
-  ff(...inputs, "-filter_complex", f.join(";"), "-map", "[out]", "-ar", "48000", `assets/audio/mix-${lang}.wav`);
+  f.push(`[sfxonly]apad=whole_dur=${TOTAL},atrim=0:${TOTAL}[fx]`);
+  // sfx-<lang>.wav is the effects alone: mux it onto a render to check sync (aidr-video-review step 1).
+  ff(...inputs, "-filter_complex", f.join(";"), "-map", "[out]", "-ar", "48000", `assets/audio/mix-${lang}.wav`, "-map", "[fx]", "-ar", "48000", `assets/audio/sfx-${lang}.wav`);
 }
 
 const srt = (t) => {
@@ -284,7 +286,7 @@ ${css(W, H)}
           <p class="url" id="close-url">aidr.today/release/v${esc(film.version)}</p>
         </div>
       </section>
-      ${caps.map((c, i) => `<div id="cap-${i}" class="clip cap" data-start="${r3(c.start)}" data-duration="${r3(c.end - c.start)}" data-track-index="6"><div class="line"><span>${esc(c.words.map((w) => w.text).join(" "))}</span></div></div>`).join("\n      ")}
+      ${caps.map((c, i) => [c, i]).filter(([c]) => c.section > 0 && c.section < sections.length - 1).map(([c, i]) => `<div id="cap-${i}" class="clip cap" data-start="${r3(c.start)}" data-duration="${r3(c.end - c.start)}" data-track-index="6"><div class="line"><span>${esc(c.words.map((w) => w.text).join(" "))}</span></div></div>`).join("\n      ")}
       <audio id="a-mix" src="assets/audio/mix-${lang}.wav" data-start="0" data-duration="${TOTAL}" data-track-index="10" data-volume="1"></audio>
     </div>
     <script>

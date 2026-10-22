@@ -58,6 +58,7 @@
   // Tags float above the station's anchor, stacked; they keep the size a reader can take in.
   const tagScale = (s) => (tall ? 1.05 : 1) / Math.max(0.6, FRAME[s.station]().scale);
   const ring = $("ring");
+  const beltAt = (u) => [0, 1].map((k) => machine.belt[0][k] + (machine.belt[2][k] - machine.belt[0][k]) * u);
   const front = (len) => [-0.42 * len, 0.9 * len]; // toward the viewer in screen space
 
   scenes.forEach((s, i) => {
@@ -86,12 +87,13 @@
     go(win, tall ? { y: H - 1000, opacity: 1 } : { x: W - 1010, opacity: 1 }, { x: 0, y: 0 }, t + 0.1, 0.9, park(0.9, 0.2));
     leave(win, tall ? { y: H - 1000 } : { x: W - 1010 }, out, 0.35);
     // Tags on their spoken words, one at a time, on the side of the anchor with room.
-    const [ax, ay] = s.at;
     const ts = tagScale(s);
     const cam = FRAME[s.station]();
     // Right of the anchor when it fits the machine region, else left of it, never off its edges.
-    const sx = cam.x + cam.scale * ax;
     s.tags.forEach((at, j) => {
+      // The fetch scene's "skipped" tag points at the item that stopped on the belt.
+      const [ax, ay] = s.station === "fetch" && j === 1 ? beltAt(0.32) : s.at;
+      const sx = cam.x + cam.scale * ax;
       const tag = $(`t${i}-${j}`);
       const span = tag.firstElementChild;
       const w = span.offsetWidth * ts * cam.scale;
@@ -122,13 +124,10 @@
   if (fetchS) {
     tl.fromTo("#needle-clock", { attr: { transform: "rotate(0)" } }, { attr: { transform: "rotate(180)" }, duration: 0.7, ease: park(0.7), immediateRender: false }, fetchS.tags[0]);
     ringOn(fetchS, machine.pivots ? machine.pivots["needle-clock"] : fetchS.at, 1.5);
-    const belt = machine.belt;
-    const lerp = (a, b, u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
-    const [b0, b1] = [belt[0], belt[2]];
     [0, 1, 2].forEach((p) => {
       const pk = $(`pk-${p}`);
-      const s0 = lerp(b0, b1, 0.05);
-      const stop = p === 1 ? lerp(b0, b1, 0.32) : lerp(b0, b1, 0.95);
+      const s0 = beltAt(0.05);
+      const stop = beltAt(p === 1 ? 0.32 : 0.95);
       const start = fetchS.start + 0.9 + p * 0.5;
       const end = p === 1 ? fetchS.tags[1] : fetchS.start + fetchS.dur - 0.4;
       arrive(pk, { x: s0[0], y: s0[1], opacity: 0 }, { opacity: 1 }, start, 0.3);
@@ -201,12 +200,13 @@
   arrive($("close-line"), { y: 30, opacity: 0 }, { y: 0, opacity: 1 }, close.start + 0.9, 0.5);
   arrive($("close-url"), { y: 20, opacity: 0 }, { y: 0, opacity: 1 }, close.start + 1.3, 0.5);
 
-  // Captions: each line shows for its own span only.
+  // Captions: each line shows for its own span only, and cuts in without a tween so the tag
+  // hit stays the one thing moving. The title and close carry no caption: the lockup says it.
   document.querySelectorAll(".cap").forEach((cap) => {
     const a = Number(cap.dataset.start);
     const b = a + Number(cap.dataset.duration);
     cap = cap.firstElementChild;
-    tl.fromTo(cap, { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.15, ease: "power2.out", immediateRender: false }, a);
+    tl.set(cap, { opacity: 1 }, a);
     tl.set(cap, { opacity: 0 }, b);
   });
 

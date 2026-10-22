@@ -31,49 +31,45 @@ for syllables no Vietnamese word uses.
 Older stories too.
 
 9
-00:00:17,550 --> 00:00:19,013
-Day card headlines never
+00:00:17,550 --> 00:00:20,685
+Day card headlines never go below 23 px.
 
 10
-00:00:19,013 --> 00:00:20,685
-go below 23 px.
-
-11
 00:00:20,685 --> 00:00:22,783
 Crowded tiles become rows.
 
-12
+11
 00:00:23,550 --> 00:00:24,990
 Before any email goes out,
 
-13
+12
 00:00:24,990 --> 00:00:26,255
 it is claimed first.
 
-14
+13
 00:00:26,255 --> 00:00:27,439
 If two runs overlap,
 
-15
+14
 00:00:27,439 --> 00:00:29,062
 only one sends.
 
-16
+15
 00:00:30,050 --> 00:00:33,312
 Follow AI;DR by RSS in Feedly,
 
-17
+16
 00:00:33,312 --> 00:00:35,900
 Inoreader or NewsBlur.
 
-18
+17
 00:00:36,550 --> 00:00:38,106
 And on four and five story days,
 
-19
+18
 00:00:38,106 --> 00:00:40,251
 Telegram lists every story.
 
-20
+19
 00:00:41,500 --> 00:00:44,504
 Release notes at aidr.today.
