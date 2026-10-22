@@ -47,12 +47,12 @@ export const Route = createFileRoute("/subscribe")({
       path: "/subscribe",
       title:
         lang === "vi"
-          ? "Nhận AI;DR | Chrome, Telegram, Email, RSS"
-          : "Get AI;DR | Chrome, Telegram, Email, RSS",
+          ? "Nhận AI;DR | Chrome, Telegram, Email, MCP, RSS"
+          : "Get AI;DR | Chrome, Telegram, Email, MCP, RSS",
       description:
         lang === "vi"
-          ? "Nhận bản tin AI đã xếp hạng qua email, Telegram, RSS hoặc tiện ích tab mới trên Chrome."
-          : "Get the ranked AI news digest by email, on Telegram, over RSS, or in the Chrome new-tab extension.",
+          ? "Nhận bản tin AI đã xếp hạng qua email, Telegram, MCP, RSS hoặc tiện ích tab mới trên Chrome."
+          : "Get the ranked AI news digest by email, on Telegram, over MCP or RSS, or in the Chrome new-tab extension.",
       lang,
       route: headRouteInput(match),
     });

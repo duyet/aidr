@@ -47,8 +47,8 @@ export function DeliverPage({
           </h1>
           <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
             {t(
-              "Same ranked feed. Chrome new tab, Telegram, Facebook, email digest, or RSS — pick any, or all five.",
-              "Cùng bảng tin đã xếp hạng. Tab mới Chrome, Telegram, Facebook, email hoặc RSS — chọn một, hoặc cả năm."
+              "Same ranked feed. Chrome new tab, Telegram, Facebook, email digest, your AI assistant over MCP, or RSS. Pick any, or all six.",
+              "Cùng bảng tin đã xếp hạng. Tab mới Chrome, Telegram, Facebook, email, trợ lý AI qua MCP hoặc RSS. Chọn một, hoặc cả sáu."
             )}
           </p>
         </div>
@@ -59,7 +59,7 @@ export function DeliverPage({
         onValueChange={(next) => onTabChange(parseDeliverTab(next))}
         className="w-full"
       >
-        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1 sm:grid-cols-5">
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1 sm:grid-cols-6">
           {DELIVER_TABS.map((id) => {
             const { label, Icon } = DELIVER_CHANNELS[id];
             return (
