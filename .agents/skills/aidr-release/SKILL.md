@@ -51,7 +51,8 @@ it; this file says the order, the gates, and what "done" means.
    `aidr-vX.Y.Z-{en,vi}-{16x9,9x16}.mp4` with voice-over from the cast in
    `videos/brand/voices.json` (English: the English hosts alternating like a
    TV show; Vietnamese: its own hosts, same rules) and burned-in captions per language. `youtube.md` holds the metadata for
-   every cut. Review to 8/10, plus an independent score from a fresh
+   every cut. Run the `aidr-unslop` pass on voice lines, captions, and
+   `youtube.md` copy in both languages, then review to 8/10, plus an independent score from a fresh
    subagent that did not build the film. Until the YouTube ids exist the
    page shows the cover with a "Film coming soon" label.
 5. **YouTube** — skill `aidr-youtube-upload`, channel
