@@ -8,7 +8,7 @@ import {
 import type { ReactElement } from "react";
 import { track } from "../../lib/analytics/track";
 import { type TldrCount, usePrefs } from "../../lib/prefs";
-import { PREFS_LABEL, Segmented } from "./Segmented";
+import { PrefsRow, Segmented } from "./Segmented";
 
 const TLDR_COUNTS: TldrCount[] = [8, 12, 16];
 
@@ -44,12 +44,9 @@ export function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5">
-        <span className={`block ${PREFS_LABEL}`}>
-          {t("AI;DR items", "Số mục AI;DR")}
-        </span>
+      <PrefsRow id="prefs-tldr-count" label={t("AI;DR items", "Số mục AI;DR")}>
         <Segmented
-          label={t("AI;DR items", "Số mục AI;DR")}
+          labelledBy="prefs-tldr-count"
           value={prefs.tldrCount}
           onChange={(n: TldrCount) => {
             track("prefs_change", { pref: "tldrCount", pref_value: `${n}` });
@@ -57,10 +54,10 @@ export function SettingsTab({ t }: { t: (en: string, vi: string) => string }) {
           }}
           options={TLDR_COUNTS.map((n) => ({ value: n, label: n }))}
         />
-      </div>
+      </PrefsRow>
 
       <div className="space-y-1.5">
-        <span className={`block ${PREFS_LABEL}`}>
+        <span className="block text-xs text-muted-foreground">
           {t("Sections", "Mục hiển thị")}
         </span>
         <div className="grid grid-cols-2 gap-1">

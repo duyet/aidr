@@ -52,18 +52,18 @@ export function PrefsPanel({
         <div
           role="dialog"
           aria-label={t("Reader preferences", "Tuỳ chỉnh hiển thị")}
-          className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-card p-3 text-sm shadow-md"
+          className="absolute right-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-border bg-card p-3 text-sm shadow-md"
         >
-          <Tabs defaultValue="theme">
+          <Tabs defaultValue="display">
             <TabsList className="mb-1 grid h-8 w-full grid-cols-2">
-              <TabsTrigger value="theme" className="text-xs">
-                {t("Theme", "Giao diện")}
+              <TabsTrigger value="display" className="text-xs">
+                {t("Display", "Hiển thị")}
               </TabsTrigger>
               <TabsTrigger value="settings" className="text-xs">
                 {t("Settings", "Cài đặt")}
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="theme">
+            <TabsContent value="display">
               <ThemeTab t={t} />
             </TabsContent>
             <TabsContent value="settings">
