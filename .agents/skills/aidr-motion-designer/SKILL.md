@@ -93,6 +93,8 @@ tl.fromTo(el, { x: 240, opacity: 0 }, { x: 0, opacity: 1, duration: 0.6, ease: p
 
 ## Sound
 
+Which effects to use, and the no-reused-whoosh rule, live in `aidr-video` "Script and voice". This section covers timing only.
+
 Sound needs the same precision as motion. The strongest part of the sound lands on the strongest part of the visual action, so the two read as one event.
 
 - A **click** lands on the press frame.
@@ -108,7 +110,7 @@ Rule ids are from the `hyperframes-animation` rule library (`rules/<id>.md`). Re
 | Motif | Rule ids |
 |-------|----------|
 | Semicolon caret blink and a typed line | `discrete-text-sequence`, `context-sensitive-cursor` |
-| Marker highlight sweep | `css-marker-patterns` |
+| Marker highlight sweep (headline text only, never a UI button; see `aidr-video` "Script and voice") | `css-marker-patterns` |
 | Count from the day's story total down to 8 | `counting-dynamic-scale` |
 | Ranked rows arriving on the beat | `kinetic-beat-slam`, `dynamic-content-sequencing` |
 | Logo letters drawn or assembled from outlined paths | `svg-path-draw` |

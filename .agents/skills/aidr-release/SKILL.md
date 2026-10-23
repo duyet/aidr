@@ -20,7 +20,8 @@ it; this file says the order, the gates, and what "done" means.
 - The film is designed by an Opus session: music, voice-over, motion design,
   and anatomy-style isometric drawings (the machine kit in
   `videos/aidr-launch-2026/machine/kit/`) next to real UI captures, in a
-  simple style.
+  simple style. Script, voice, pace and sound follow `aidr-video`
+  "Script and voice": a TVC, not a feature list.
 - Skip only when nothing reader-visible shipped since the last release.
 
 ## Gates (stop and ask the user)

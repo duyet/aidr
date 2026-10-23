@@ -46,6 +46,7 @@ For per-story automated clips, use the `aidr-story-clip` skill instead. For the 
 - **Brand spec from `videos/brand/frame.md`.** The logo is animated from its outlined paths, never retyped.
 - **Sources in git, output ignored.** `capture/`, `renders/` and `snapshots/` stay out of git (`videos/.gitignore`). Do not force-add them.
 - **Never render without the owner's approval.** Passing checks is not approval.
+- **Script, voice, picture and sound follow "Script and voice" below.**
 - **Motion follows `aidr-motion-designer`.**
 - **Every render is reviewed with `aidr-video-review`.** Nothing ships below 8/10.
 - A change to a confirmed brief field is written back to `BRIEF.md` when it happens.
@@ -58,6 +59,38 @@ For per-story automated clips, use the `aidr-story-clip` skill instead. For the 
 - [ ] The owner approved the preview, then the render ran.
 - [ ] The render was reviewed with `aidr-video-review`, its top five fixes applied, and it scores at least 8/10.
 - [ ] The report names the MP4 path, the real duration, and anything skipped.
+
+## Script and voice
+
+Every AI;DR video is cut like a TV commercial, not a product tour. These rules are the single source; other video skills point here.
+
+**Script**
+
+- Hook in the first 2 s: the strongest picture and the first spoken line land together. No logo intro, no title card first.
+- 2 to 5 voice lines in the whole cut, each one short sentence of 8 words or fewer.
+- Sell the benefit or the feeling, never the feature. "Your morning, already read." beats "It has a summary panel."
+- No feature lists and no feature tours. One idea per cut.
+- No UI callouts: no button highlights, no arrows, no cursor tours, no "click here".
+- The last line is the call to action with the short link or `aidr.today`.
+- Run the `aidr-unslop` pass on every line before review.
+
+**Pace and voice**
+
+- Target 2.8 to 3.3 words per second in English and 3.4 to 4.0 in Vietnamese, faster than conversational read. `voiceProblems` in `aidr-video-review/scripts/rubric.mjs` still fails a line above 1.35x the reading rate (EN 3.5, VI 4.3).
+- Cut every 1 to 2 s. No shot holds longer than its line.
+- Cast for TVC energy: a confident, warm, upbeat host from `videos/brand/voices.json`. Raise `style` and drop `stability` per project (about `style` 0.35, `stability` 0.35) rather than editing the shared settings. Re-voice any line that reads flat.
+
+**Picture**
+
+- Art-led: real screenshots of the product are the hero, full-bleed or on a tilted card, never a shrunken window with labels.
+- Kinetic type carries the voice line's key word; brand color fields from `videos/brand/brand.md` fill the frame between screenshots.
+- No stock icons, no bullet slides.
+
+**Sound**
+
+- Fresh effects per project, picked for the cut: a hit or riser on each beat cut, a soft tick per typed character, one end sting on the logo.
+- Do not reuse the stock whoosh set from earlier projects. Effects sync to their visual hit per `aidr-motion-designer`.
+- The music bed ducks under the voice and carries the cuts on the beat.
 
 ## Voices
 
