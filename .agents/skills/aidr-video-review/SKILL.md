@@ -98,6 +98,17 @@ A row earns its full points or none, except `judge` rows, which may earn half wh
 
 For other videos (release films, story clips) the automatic rows do not apply. Judge the same eleven rows by hand.
 
+Every video also passes the TVC gates from `aidr-video` "Script and voice". Each is pass or fail, and one fail means the cut does not ship, whatever the total:
+
+| Gate | Fails when |
+| --- | --- |
+| `content.hook` | the first 2 s show a logo, a title card or an empty frame instead of the hero picture and the first line |
+| `content.no-feature-list` | the voice or the screen lists features, a line describes a control, or a button, arrow or cursor is highlighted |
+| `vo.tvc` | more than 5 voice lines, a line over 8 words, or a read that sounds flat or slower than the target pace |
+| `style.sound-fresh` | the cut reuses the stock whoosh set, or a beat cut, typed line or end logo has no matching hit, tick or sting |
+
+Report each gate with the frame or line that fails it.
+
 ## 6. Report
 
 For every mismatch give four things: shot and frame number, what is wrong, why it looks worse, and

@@ -34,4 +34,5 @@ Do not start a phase until the open decisions it depends on (listed in the plan)
 - **Confirm with the owner** before adding storage, a new vendor, or posting credentials.
 - The output must pass the existing Telegram video preflight: MP4, at most 20 MB, at most 300 s.
 - The template must work with no thumbnail.
+- Script, pace and sound follow `aidr-video` "Script and voice".
 - Sources in git; rendered clips are never committed.
