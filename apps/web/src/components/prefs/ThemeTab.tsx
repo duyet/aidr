@@ -1,12 +1,4 @@
-import {
-  AArrowDown,
-  AArrowUp,
-  Moon,
-  RotateCcw,
-  Rows2,
-  Rows4,
-  Sun,
-} from "lucide-react";
+import { Check, Moon, RotateCcw, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { track } from "../../lib/analytics/track";
@@ -15,18 +7,62 @@ import {
   DEFAULT_PREFS,
   READER_DENSITIES,
   type ReaderBg,
+  type ReaderDensity,
   type ReaderFont,
   usePrefs,
 } from "../../lib/prefs";
-import { PREFS_LABEL, Segmented } from "./Segmented";
+import { PrefsRow, Segmented, Stepper } from "./Segmented";
 
-const BG_SWATCHES: { key: ReaderBg; color: string }[] = [
-  { key: "default", color: "var(--background)" },
-  { key: "cream", color: "#faf6ec" },
-  { key: "gray", color: "#d9d9d6" },
-  { key: "dark", color: "#2a2a28" },
-  { key: "black", color: "#000000" },
+const BG_SWATCHES: {
+  key: ReaderBg;
+  color: string;
+  en: string;
+  vi: string;
+  /** Check colour that contrasts with `color`. */
+  check: string;
+}[] = [
+  {
+    key: "default",
+    color: "var(--background)",
+    en: "Default",
+    vi: "Mặc định",
+    check: "text-foreground",
+  },
+  {
+    key: "cream",
+    color: "#faf6ec",
+    en: "Cream",
+    vi: "Kem",
+    check: "text-neutral-900",
+  },
+  {
+    key: "gray",
+    color: "#d9d9d6",
+    en: "Gray",
+    vi: "Xám",
+    check: "text-neutral-900",
+  },
+  { key: "dark", color: "#2a2a28", en: "Dark", vi: "Tối", check: "text-white" },
+  {
+    key: "black",
+    color: "#000000",
+    en: "Black",
+    vi: "Đen",
+    check: "text-white",
+  },
 ];
+
+const FONT_SIZES = [0.85, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.2, 1.25];
+
+const DENSITY_LABELS: Record<ReaderDensity, [string, string]> = {
+  dense: ["Dense", "Rất sát"],
+  compact: ["Compact", "Sát"],
+  medium: ["Medium", "Vừa"],
+  comfortable: ["Comfortable", "Thoáng"],
+  relaxed: ["Relaxed", "Rộng"],
+  spacious: ["Spacious", "Rất rộng"],
+  airy: ["Airy", "Rộng nhất"],
+};
 
 export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
   const { prefs, setPrefs } = usePrefs();
@@ -83,17 +119,33 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
     setTheme("system");
   };
 
-  const sliderRow =
-    "grid grid-cols-[4.5rem_1fr_2.25rem] items-center gap-2 text-xs";
+  const sizeIndex = FONT_SIZES.findIndex(
+    (v) => Math.abs(v - prefs.fontSize) < 0.001
+  );
+  const stepSize = (dir: -1 | 1) => {
+    const from =
+      sizeIndex >= 0
+        ? sizeIndex
+        : FONT_SIZES.findIndex((v) => v >= prefs.fontSize);
+    const next = FONT_SIZES[from + dir];
+    if (next === undefined) return;
+    track("prefs_change", { pref: "fontSize" });
+    setPrefs({ fontSize: next });
+  };
+
+  const densityIndex = READER_DENSITIES.indexOf(prefs.density);
+  const stepDensity = (dir: -1 | 1) => {
+    const density = READER_DENSITIES[densityIndex + dir];
+    if (!density) return;
+    track("prefs_change", { pref: "density", pref_value: density });
+    setPrefs({ density });
+  };
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1.5">
-        <span className={`block ${PREFS_LABEL}`}>
-          {t("Appearance", "Giao diện")}
-        </span>
+    <div className="space-y-0.5">
+      <PrefsRow id="prefs-mode" label={t("Mode", "Chế độ")}>
         <Segmented
-          label={t("Appearance", "Giao diện")}
+          labelledBy="prefs-mode"
           value={isDark ? "dark" : "light"}
           onChange={(v) => setDarkMode(v === "dark")}
           options={[
@@ -117,12 +169,46 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
             },
           ]}
         />
-      </div>
+      </PrefsRow>
 
-      <div className="space-y-1.5">
-        <span className={`block ${PREFS_LABEL}`}>{t("Font", "Phông chữ")}</span>
+      <PrefsRow id="prefs-bg" label={t("Background", "Nền")}>
+        <fieldset aria-labelledby="prefs-bg" className="flex gap-1.5">
+          {BG_SWATCHES.map((s) => {
+            const on = prefs.bg === s.key;
+            const name = t(s.en, s.vi);
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setBg(s.key)}
+                aria-label={name}
+                title={name}
+                aria-pressed={on}
+                style={{ background: s.color }}
+                className={`flex size-6 items-center justify-center rounded-full border border-border outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card ${
+                  on
+                    ? "ring-2 ring-foreground ring-offset-2 ring-offset-card"
+                    : "hover:ring-1 hover:ring-border hover:ring-offset-2 hover:ring-offset-card"
+                }`}
+              >
+                {on && (
+                  <Check
+                    className={`size-3 ${s.check}`}
+                    strokeWidth={3}
+                    aria-hidden
+                  />
+                )}
+              </button>
+            );
+          })}
+        </fieldset>
+      </PrefsRow>
+
+      <div className="my-1.5 border-t border-border" />
+
+      <PrefsRow id="prefs-font" label={t("Font", "Phông chữ")}>
         <Segmented
-          label={t("Font", "Phông chữ")}
+          labelledBy="prefs-font"
           value={prefs.font}
           onChange={(f: ReaderFont) => {
             track("prefs_change", { pref: "font", pref_value: f });
@@ -131,113 +217,54 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
           options={(["sans", "serif"] satisfies ReaderFont[]).map((f) => ({
             value: f,
             label: (
-              <>
-                <span
-                  className="text-sm leading-none"
-                  style={
-                    f === "serif"
-                      ? { fontFamily: "var(--reader-font-serif)" }
-                      : undefined
-                  }
-                  aria-hidden
-                >
-                  Aa
-                </span>
+              <span
+                style={
+                  f === "serif"
+                    ? { fontFamily: "var(--reader-font-serif)" }
+                    : undefined
+                }
+              >
                 {f === "sans" ? t("Sans", "Không chân") : t("Serif", "Có chân")}
-              </>
+              </span>
             ),
           }))}
         />
-      </div>
+      </PrefsRow>
 
-      <label className={sliderRow}>
-        <span className="text-muted-foreground">
-          {t("Text size", "Cỡ chữ")}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <AArrowDown
-            className="size-3.5 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
-          <input
-            type="range"
-            min={0.85}
-            max={1.25}
-            step={0.05}
-            value={prefs.fontSize}
-            onChange={(e) => {
-              track("prefs_change", { pref: "fontSize" });
-              setPrefs({ fontSize: Number(e.target.value) });
-            }}
-            className="reader-slider w-full"
-            aria-label={t("Text size", "Cỡ chữ")}
-          />
-          <AArrowUp
-            className="size-3.5 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
-        </span>
-        <span className="text-right tabular-nums text-muted-foreground">
-          {Math.round(prefs.fontSize * 100)}%
-        </span>
-      </label>
+      <PrefsRow id="prefs-size" label={t("Text size", "Cỡ chữ")}>
+        <Stepper
+          labelledBy="prefs-size"
+          display={`${Math.round(prefs.fontSize * 100)}%`}
+          canDecrease={prefs.fontSize > FONT_SIZES[0] + 0.001}
+          canIncrease={
+            prefs.fontSize < FONT_SIZES[FONT_SIZES.length - 1] - 0.001
+          }
+          onDecrease={() => stepSize(-1)}
+          onIncrease={() => stepSize(1)}
+          decreaseLabel={t("Smaller text", "Chữ nhỏ hơn")}
+          increaseLabel={t("Larger text", "Chữ lớn hơn")}
+        />
+      </PrefsRow>
 
-      <label className={sliderRow}>
-        <span className="text-muted-foreground">{t("Density", "Mật độ")}</span>
-        <span className="flex items-center gap-1.5">
-          <Rows4
-            className="size-3.5 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
-          <input
-            type="range"
-            min={0}
-            max={READER_DENSITIES.length - 1}
-            step={1}
-            value={READER_DENSITIES.indexOf(prefs.density)}
-            onChange={(e) => {
-              const density = READER_DENSITIES[Number(e.target.value)];
-              track("prefs_change", { pref: "density", pref_value: density });
-              setPrefs({ density });
-            }}
-            className="reader-slider w-full"
-            aria-label={t("Density", "Mật độ")}
-          />
-          <Rows2
-            className="size-3.5 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
-        </span>
-        <span />
-      </label>
+      <PrefsRow id="prefs-density" label={t("Density", "Mật độ")}>
+        <Stepper
+          labelledBy="prefs-density"
+          display={t(...DENSITY_LABELS[prefs.density])}
+          canDecrease={densityIndex > 0}
+          canIncrease={densityIndex < READER_DENSITIES.length - 1}
+          onDecrease={() => stepDensity(-1)}
+          onIncrease={() => stepDensity(1)}
+          decreaseLabel={t("Tighter", "Sát hơn")}
+          increaseLabel={t("Looser", "Thoáng hơn")}
+        />
+      </PrefsRow>
 
-      <div className="grid grid-cols-[4.5rem_1fr] items-center gap-2 text-xs">
-        <span className="text-muted-foreground">{t("Background", "Nền")}</span>
-        <div className="flex gap-2">
-          {BG_SWATCHES.map((s) => (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => setBg(s.key)}
-              aria-label={s.key}
-              aria-pressed={prefs.bg === s.key}
-              style={{ background: s.color }}
-              className={`size-5 shrink-0 rounded-full border border-border transition-shadow ${
-                prefs.bg === s.key
-                  ? "ring-1 ring-foreground/70 ring-offset-2 ring-offset-card"
-                  : "hover:ring-1 hover:ring-border hover:ring-offset-2 hover:ring-offset-card"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="border-t border-border pt-2">
+      <div className="flex justify-end border-t border-border pt-1.5 mt-1.5">
         <button
           type="button"
           onClick={resetAppearance}
           disabled={isDefault}
-          className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
         >
           <RotateCcw className="size-3.5" aria-hidden />
           {t("Reset to default", "Khôi phục mặc định")}
