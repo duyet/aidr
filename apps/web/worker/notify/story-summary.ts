@@ -30,7 +30,11 @@ import { isSubrequestLimitError, type StoryPayload } from "./types.js";
 const MIN_BUDGET = 80;
 /** Ask for less than the budget; models overshoot. */
 const TARGET_MARGIN = 0.9;
-const LLM_TIMEOUT_MS = 30_000;
+/** Chain budget for the 4-id ANYROUTER_MODEL chain. At 30s a hung first id
+ *  took 15s and left each fallback 5s, so all four timed out (#1034).
+ *  60s with a 20s slice cap leaves each fallback about 13s. */
+export const LLM_TIMEOUT_MS = 60_000;
+export const LLM_SLICE_MAX_MS = 20_000;
 /** Reasoning models spend tokens on hidden reasoning before the answer. */
 const LLM_MAX_TOKENS = 2048;
 
@@ -197,6 +201,7 @@ export async function captionSummaryFor(
       {
         task: "caption",
         timeoutMs: LLM_TIMEOUT_MS,
+        maxSliceMs: LLM_SLICE_MAX_MS,
         maxTokens: LLM_MAX_TOKENS,
         // An over-long answer is cut to its whole sentences and kept, so it
         // logs ok. bad_output means the answer was thrown away and the
