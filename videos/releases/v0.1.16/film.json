@@ -30,8 +30,7 @@
   "voice": {
     "speed": 1.12,
     "title": [
-      "This is AI DR.",
-      "Here's what's new this week."
+      "This is AI DR."
     ],
     "close": "The release notes list every change."
   },
@@ -263,10 +262,9 @@
     "closing": "82 thay đổi · 45 bản sửa lỗi",
     "voice": {
       "title": [
-        "Đây là AI DR.",
-        "Tuần này có gì mới?"
+        "Đây là AI DR."
       ],
-      "close": "Danh sách đầy đủ có trong ghi chú phát hành."
+      "close": "Mời bạn đọc ghi chú phát hành."
     },
     "scenes": [
       {
@@ -406,7 +404,7 @@
         "mark": "56%",
         "tags": [
           {
-            "text": "trước: ảnh nhỏ trong khung",
+            "text": "trước: ô ảnh nhỏ",
             "at": "chia"
           },
           {
@@ -418,15 +416,15 @@
       }
     ],
     "cover": {
-      "hook": "Thẻ chia sẻ ảnh lớn",
-      "mark": "ảnh lớn",
-      "sub": "Ảnh to hơn khi chia sẻ lên Facebook, Telegram và X"
+      "hook": "Ảnh phủ 56%",
+      "mark": "56%",
+      "sub": "thẻ chia sẻ mỗi tin"
     }
   },
   "cover": {
     "scene": "share",
-    "hook": "Photo-first share cards",
-    "mark": "Photo-first",
-    "sub": "Bigger photos on Facebook, Telegram, X"
+    "hook": "Photos fill 56%",
+    "mark": "56%",
+    "sub": "of every story share card"
   }
 }

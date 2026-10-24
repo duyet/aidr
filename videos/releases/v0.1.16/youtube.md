@@ -4,10 +4,10 @@ All files are in `renders/`: 4K for YouTube (3840x2160 and 2160x3840), 1080p cov
 
 | Cut | File | Length |
 |-----|------|--------|
-| English 16:9 | `aidr-v0.1.16-en-16x9.mp4`, thumbnail `aidr-v0.1.16-en-16x9-cover.png` | 48s |
-| English 9:16 | `aidr-v0.1.16-en-9x16.mp4`, TikTok `aidr-v0.1.16-en-9x16-tiktok.mp4` | 48s |
-| Vietnamese 16:9 | `aidr-v0.1.16-vi-16x9.mp4`, thumbnail `aidr-v0.1.16-vi-16x9-cover.png` | 49s |
-| Vietnamese 9:16 | `aidr-v0.1.16-vi-9x16.mp4`, TikTok `aidr-v0.1.16-vi-9x16-tiktok.mp4` | 49s |
+| English 16:9 | `aidr-v0.1.16-en-16x9.mp4`, thumbnail `aidr-v0.1.16-en-16x9-cover.png` | 44.5s |
+| English 9:16 | `aidr-v0.1.16-en-9x16.mp4`, TikTok `aidr-v0.1.16-en-9x16-tiktok.mp4` | 44.5s |
+| Vietnamese 16:9 | `aidr-v0.1.16-vi-16x9.mp4`, thumbnail `aidr-v0.1.16-vi-16x9-cover.png` | 45.5s |
+| Vietnamese 9:16 | `aidr-v0.1.16-vi-9x16.mp4`, TikTok `aidr-v0.1.16-vi-9x16-tiktok.mp4` | 45.5s |
 
 Voice-over by the house cast in `videos/brand/voices.json` (ElevenLabs): hosts alternate per scene, in an order seeded by the version. Burned-in captions; separate tracks in `captions-en.srt` and `captions-vi.srt`.
 
@@ -31,9 +31,9 @@ Telegram: https://t.me/aidr_today
 Facebook: https://www.facebook.com/aidr.today/
 
 0:00 A steadier news run
-0:10 Vietnamese spelling check and the day card
-0:22 One email and RSS
-0:34 Every story on Telegram and photo-first share cards
+0:08 Vietnamese spelling check and the day card
+0:20 One email and RSS
+0:31 Every story on Telegram and photo-first share cards
 
 #AI #AInews #ArtificialIntelligence #aidr
 ```
@@ -90,9 +90,9 @@ Telegram: https://t.me/aihomnay
 Facebook: https://www.facebook.com/aidr.today/
 
 0:00 Lấy tin ổn định hơn
-0:10 Kiểm tra chính tả tiếng Việt và ảnh tóm tắt
-0:23 Một email và RSS
-0:33 Đủ mọi tin trên Telegram và thẻ chia sẻ ảnh lớn
+0:09 Kiểm tra chính tả tiếng Việt và ảnh tóm tắt
+0:21 Một email và RSS
+0:31 Đủ mọi tin trên Telegram và thẻ chia sẻ ảnh lớn
 
 #AI #TinAI #TriTueNhanTao #aidr
 ```

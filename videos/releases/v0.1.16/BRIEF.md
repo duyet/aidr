@@ -5,7 +5,7 @@ message: "v0.1.16: one email, every story. Five fixes a reader notices, each sho
 destination: youtube (16:9 video, 9:16 Short), release page hero
 aspect: 1920x1080 (rendered 3840x2160) and 1080x1920 (rendered 2160x3840)
 language: en, vi
-length: 48s (en), vi as the voice needs
+length: 44.5s (en), 45.5s (vi), vi as the voice needs
 narration: yes
 ---
 

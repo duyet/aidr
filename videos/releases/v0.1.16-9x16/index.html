@@ -48,7 +48,8 @@
       .plate2 { width: 150px; height: 100px; margin: -50px 0 0 -75px; background: #fff; border: 4px solid #0a0a0a; border-radius: 4px;
         font-family: "EB Garamond Variable", serif; font-size: 52px; font-weight: 600; text-align: center; line-height: 92px; }
       .plate2.card { width: 200px; height: 105px; margin: -52px 0 0 -100px; overflow: hidden; }
-      .plate2.card img { display: block; width: 100%; height: 100%; }
+      .plate2.card img { position: absolute; left: 0; top: 0; display: block; width: 100%; height: 100%; }
+      #plate-og-after { opacity: 0; }
       .msg { width: 56px; height: 56px; margin: -28px 0 0 -28px; background: #fff; border: 3px solid #0a0a0a; border-radius: 50%;
         font-family: ui-monospace, monospace; font-size: 28px; font-weight: 700; text-align: center; line-height: 50px; }
       .msg.feed { width: 84px; border-radius: 28px; margin-left: -42px; font-size: 22px; background: #f5c518; }
@@ -89,8 +90,8 @@
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="48" data-width="1080" data-height="1920" data-fps="30" data-cover-at="41.567">
-      <section id="s-title" class="clip scene" data-start="0" data-duration="5.6" data-track-index="2">
+    <div id="root" data-composition-id="main" data-start="0" data-duration="44.5" data-width="1080" data-height="1920" data-fps="30" data-cover-at="38.367">
+      <section id="s-title" class="clip scene" data-start="0" data-duration="4.1" data-track-index="2">
         <div class="hatch top" id="hatch-top"></div><div class="hatch bottom" id="hatch-bottom"></div>
         <div class="cam" id="title-cam">
           <div class="lock" id="title-lock">
@@ -105,7 +106,7 @@
           <p class="dates" id="title-dates">Oct 20 – 24, 2026</p>
         </div>
       </section>
-      <section id="s-machine" class="clip scene paper" data-start="4.6" data-duration="40" data-track-index="1">
+      <section id="s-machine" class="clip scene paper" data-start="3.1" data-duration="38.5" data-track-index="1">
         <div class="grid"></div>
         <div class="push" id="machine-push">
           <div class="mcam" id="mcam" style="width:4000px;height:1800px">
@@ -236,7 +237,7 @@
             <div class="pk" id="pk-0"><i></i><i></i></div><div class="pk" id="pk-1"><i></i><i></i></div><div class="pk" id="pk-2"><i></i><i></i></div>
             <div class="plate2" id="plate">VI</div>
             <div class="plate2" id="plate-day">Aa</div>
-            <div class="plate2 card" id="plate-og"><img src="capture/share.png" alt=""></div>
+            <div class="plate2 card" id="plate-og"><img src="capture/share-before.png" alt=""><img id="plate-og-after" src="capture/share.png" alt=""></div>
             <div class="msg" id="msg-0">@</div><div class="msg" id="msg-1">@</div><div class="msg" id="msg-2">1</div><div class="msg" id="msg-3">2</div><div class="msg" id="msg-4">3</div><div class="msg" id="msg-5">4</div><div class="msg" id="msg-6">5</div><div class="msg" id="msg-7">6</div>
             <div class="msg feed" id="feed-0">RSS</div><div class="msg feed" id="feed-1">RSS</div><div class="msg feed" id="feed-2">RSS</div>
             <div class="tag" id="t0-0"><span>48 runs a day</span></div><div class="tag" id="t0-1"><span>no endless retries</span></div><div class="tag" id="t1-0"><span>before it goes out</span></div><div class="tag" id="t1-1"><span>stored rows re-run</span></div><div class="tag" id="t2-0"><span>long headlines too</span></div><div class="tag" id="t2-1"><span>2 tiles + 3 rows</span></div><div class="tag" id="t3-0"><span>all 4 paths</span></div><div class="tag" id="t3-1"><span>1 reader, 1 copy</span></div><div class="tag" id="t4-0"><span>RSS · EN + VI</span></div><div class="tag" id="t4-1"><span>Feedly · Inoreader · NewsBlur</span></div><div class="tag" id="t5-0"><span>used to cut some</span></div><div class="tag" id="t5-1"><span>one post, none cut</span></div><div class="tag" id="t6-0"><span>was a small inset</span></div><div class="tag" id="t6-1"><span>edge to edge</span></div>
@@ -287,7 +288,7 @@
           </div>
           <div class="win" id="w6"><div class="bar"><i></i><i></i><i></i><span>aidr.today · share card, 22 Oct</span></div><div class="view"><img id="w6-img" src="capture/share.png" alt=""><img id="w6-before" src="capture/share-before.png" alt=""></div></div>
       </section>
-      <section id="s-close" class="clip scene yellow" data-start="44" data-duration="4" data-track-index="3">
+      <section id="s-close" class="clip scene yellow" data-start="41" data-duration="3.5" data-track-index="3">
         <div class="cam" id="close-cam">
           <div class="lock" id="close-lock"><div class="tile-wrap" id="close-tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" class="tile" aria-hidden="true">
   <rect width="160" height="160" rx="30" fill="#f5c518"/>
@@ -304,32 +305,32 @@
   <path fill="#1c1917" transform="translate(12.9688 46.7422) scale(0.515625)" d="M69.6 91L55.3 91L49.2 73.4L23.0 73.4L16.9 91L2.5 91L27.6 22.2L44.6 22.2L69.6 91ZM37.1 36.2L36.1 32.8L35.8 33.9Q35.3 35.6 34.6 37.9Q33.9 40.1 26.2 62.6L26.2 62.6L46.0 62.6L39.2 42.8L37.1 36.2ZM88.9 91L74.5 91L74.5 22.2L88.9 22.2L88.9 91ZM114.9 54.3L100.8 54.3L100.8 40.5L114.9 40.5L114.9 54.3ZM114.9 77.3L114.9 87.8Q114.9 93.6 113.7 98.1Q112.4 102.6 109.6 106.5L109.6 106.5L100.6 106.5Q103.8 102.5 105.5 98.5Q107.1 94.5 107.1 91L107.1 91L100.8 91L100.8 77.3L114.9 77.3ZM188.0 56.1L188.0 56.1Q188.0 66.7 183.8 74.7Q179.6 82.6 172.0 86.8Q164.4 91 154.5 91L154.5 91L126.7 91L126.7 22.2L151.6 22.2Q169.0 22.2 178.5 31.0Q188.0 39.7 188.0 56.1ZM173.5 56.1L173.5 56.1Q173.5 45.0 167.7 39.2Q162.0 33.3 151.3 33.3L151.3 33.3L141.1 33.3L141.1 79.9L153.3 79.9Q162.6 79.9 168.0 73.5Q173.5 67.1 173.5 56.1ZM257.9 91L241.7 91L225.7 64.9L208.9 64.9L208.9 91L194.4 91L194.4 22.2L228.8 22.2Q241.1 22.2 247.8 27.5Q254.5 32.8 254.5 42.7L254.5 42.7Q254.5 49.9 250.4 55.2Q246.3 60.4 239.3 62.1L239.3 62.1L257.9 91ZM240.0 43.3L240.0 43.3Q240.0 33.4 227.3 33.4L227.3 33.4L208.9 33.4L208.9 53.7L227.7 53.7Q233.8 53.7 236.9 51.0Q240.0 48.2 240.0 43.3Z"/>
 </svg>
 </div><span>v0.1.16</span></div>
-        <p class="cover-hook"><span class="mk"><i class="hl"></i>Photo-first</span> share cards</p>
-        <p class="cover-sub">Bigger photos on Facebook, Telegram, X</p>
+        <p class="cover-hook">Photos fill <span class="mk"><i class="hl"></i>56%</span></p>
+        <p class="cover-sub">of every story share card</p>
       </div>
-      <div id="cap-2" class="clip cap" data-start="5.55" data-duration="1.01" data-track-index="6"><div class="line"><span>Every 30 minutes,</span></div></div>
-      <div id="cap-3" class="clip cap" data-start="6.56" data-duration="1.509" data-track-index="6"><div class="line"><span>AI;DR reads its sources</span></div></div>
-      <div id="cap-4" class="clip cap" data-start="8.069" data-duration="2.157" data-track-index="6"><div class="line"><span>and skips any that keep failing.</span></div></div>
-      <div id="cap-5" class="clip cap" data-start="11.05" data-duration="1.474" data-track-index="6"><div class="line"><span>Vietnamese text is checked</span></div></div>
-      <div id="cap-6" class="clip cap" data-start="12.524" data-duration="2.23" data-track-index="6"><div class="line"><span>for syllables no Vietnamese word uses.</span></div></div>
-      <div id="cap-7" class="clip cap" data-start="14.754" data-duration="1.646" data-track-index="6"><div class="line"><span>Older stories too.</span></div></div>
-      <div id="cap-8" class="clip cap" data-start="17.05" data-duration="3.135" data-track-index="6"><div class="line"><span>Day card headlines never go below 23 px.</span></div></div>
-      <div id="cap-9" class="clip cap" data-start="20.185" data-duration="2.098" data-track-index="6"><div class="line"><span>Crowded tiles become rows.</span></div></div>
-      <div id="cap-10" class="clip cap" data-start="23.05" data-duration="1.44" data-track-index="6"><div class="line"><span>Before any email goes out,</span></div></div>
-      <div id="cap-11" class="clip cap" data-start="24.49" data-duration="1.265" data-track-index="6"><div class="line"><span>it is claimed first.</span></div></div>
-      <div id="cap-12" class="clip cap" data-start="25.755" data-duration="1.184" data-track-index="6"><div class="line"><span>If two runs overlap,</span></div></div>
-      <div id="cap-13" class="clip cap" data-start="26.939" data-duration="1.623" data-track-index="6"><div class="line"><span>only one sends.</span></div></div>
-      <div id="cap-14" class="clip cap" data-start="29.55" data-duration="1.103" data-track-index="6"><div class="line"><span>You can now follow</span></div></div>
-      <div id="cap-15" class="clip cap" data-start="30.653" data-duration="3.247" data-track-index="6"><div class="line"><span>AI;DR in any RSS reader.</span></div></div>
-      <div id="cap-16" class="clip cap" data-start="34.55" data-duration="1.556" data-track-index="6"><div class="line"><span>And on four and five story days,</span></div></div>
-      <div id="cap-17" class="clip cap" data-start="36.106" data-duration="2.145" data-track-index="6"><div class="line"><span>Telegram lists every story.</span></div></div>
-      <div id="cap-18" class="clip cap" data-start="39.55" data-duration="0.859" data-track-index="6"><div class="line"><span>Share a story,</span></div></div>
-      <div id="cap-19" class="clip cap" data-start="40.409" data-duration="0.906" data-track-index="6"><div class="line"><span>and its photo now</span></div></div>
-      <div id="cap-20" class="clip cap" data-start="41.315" data-duration="2.075" data-track-index="6"><div class="line"><span>fills half the card.</span></div></div>
-      <audio id="a-mix" src="assets/audio/mix-en.wav" data-start="0" data-duration="48" data-track-index="10" data-volume="1"></audio>
+      <div id="cap-1" class="clip cap" data-start="3.85" data-duration="1.01" data-track-index="6"><div class="line"><span>Every 30 minutes,</span></div></div>
+      <div id="cap-2" class="clip cap" data-start="4.86" data-duration="1.509" data-track-index="6"><div class="line"><span>AI;DR reads its sources</span></div></div>
+      <div id="cap-3" class="clip cap" data-start="6.369" data-duration="2.031" data-track-index="6"><div class="line"><span>and skips any that keep failing.</span></div></div>
+      <div id="cap-4" class="clip cap" data-start="8.85" data-duration="1.474" data-track-index="6"><div class="line"><span>Vietnamese text is checked</span></div></div>
+      <div id="cap-5" class="clip cap" data-start="10.324" data-duration="2.23" data-track-index="6"><div class="line"><span>for syllables no Vietnamese word uses.</span></div></div>
+      <div id="cap-6" class="clip cap" data-start="12.554" data-duration="1.762" data-track-index="6"><div class="line"><span>Older stories too.</span></div></div>
+      <div id="cap-7" class="clip cap" data-start="14.85" data-duration="3.135" data-track-index="6"><div class="line"><span>Day card headlines never go below 23 px.</span></div></div>
+      <div id="cap-8" class="clip cap" data-start="17.985" data-duration="1.915" data-track-index="6"><div class="line"><span>Crowded tiles become rows.</span></div></div>
+      <div id="cap-9" class="clip cap" data-start="20.35" data-duration="1.44" data-track-index="6"><div class="line"><span>Before any email goes out,</span></div></div>
+      <div id="cap-10" class="clip cap" data-start="21.79" data-duration="1.265" data-track-index="6"><div class="line"><span>it is claimed first.</span></div></div>
+      <div id="cap-11" class="clip cap" data-start="23.055" data-duration="1.184" data-track-index="6"><div class="line"><span>If two runs overlap,</span></div></div>
+      <div id="cap-12" class="clip cap" data-start="24.239" data-duration="1.623" data-track-index="6"><div class="line"><span>only one sends.</span></div></div>
+      <div id="cap-13" class="clip cap" data-start="26.35" data-duration="1.103" data-track-index="6"><div class="line"><span>You can now follow</span></div></div>
+      <div id="cap-14" class="clip cap" data-start="27.453" data-duration="3.248" data-track-index="6"><div class="line"><span>AI;DR in any RSS reader.</span></div></div>
+      <div id="cap-15" class="clip cap" data-start="31.35" data-duration="1.556" data-track-index="6"><div class="line"><span>And on four and five story days,</span></div></div>
+      <div id="cap-16" class="clip cap" data-start="32.906" data-duration="2.145" data-track-index="6"><div class="line"><span>Telegram lists every story.</span></div></div>
+      <div id="cap-17" class="clip cap" data-start="36.35" data-duration="0.859" data-track-index="6"><div class="line"><span>Share a story,</span></div></div>
+      <div id="cap-18" class="clip cap" data-start="37.209" data-duration="0.906" data-track-index="6"><div class="line"><span>and its photo now</span></div></div>
+      <div id="cap-19" class="clip cap" data-start="38.115" data-duration="2.075" data-track-index="6"><div class="line"><span>fills half the card.</span></div></div>
+      <audio id="a-mix" src="assets/audio/mix-en.wav" data-start="0" data-duration="44.5" data-track-index="10" data-volume="1"></audio>
     </div>
     <script>
-      const CFG = {"W":1080,"H":1920,"tall":true,"TOTAL":48,"title":{"kind":"title","start":0,"dur":5,"voiceAt":0.6},"close":{"kind":"close","start":44,"dur":4,"voiceAt":44.5},"scenes":[{"box":"st-fetch","at":[1215.1,453.3],"station":"fetch","shot":"data-mobile","before":null,"size":[1290,2796],"view":[0,0.0558,1,0.2275],"tags":[5.9,8.2],"kind":"scene","start":5,"dur":5.5,"voiceAt":5.55},{"box":"st-tldr","at":[2853.4,1095.6],"station":"tldr-vi","shot":"home-vi-mobile","before":null,"size":[1290,2796],"view":[0,0.1195,1,0.2189],"tags":[12.7,14.766666666666667],"kind":"scene","start":10.5,"dur":6,"voiceAt":11.05},{"box":"st-tldr","at":[2853.4,1095.6],"station":"tldr","shot":"daycard","before":null,"size":[1200,630],"view":[0.44,0,0.56],"tags":[19.066666666666666,21.366666666666667],"kind":"scene","start":16.5,"dur":6,"voiceAt":17.05},{"box":"st-dispatch","at":[3146.4,1381.7],"station":"email","shot":"email-mobile","before":null,"size":[1290,2796],"view":[0,0,1,0.2232],"tags":[24.766666666666666,26.933333333333334],"kind":"scene","start":22.5,"dur":6.5,"voiceAt":23.05},{"box":"st-dispatch","at":[3082.6,1361],"station":"rss","shot":"rss-mobile","before":null,"size":[1290,2796],"view":[0,0.5265,1,0.1574],"tags":[30.2,32.833333333333336],"kind":"scene","start":29,"dur":5,"voiceAt":29.55},{"box":"st-dispatch","at":[3210.2,1402.4],"station":"telegram","shot":"tg-plain-mobile","before":null,"size":[1290,2796],"view":[0,0.2543,1,0.2275],"tags":[34.9,36.833333333333336],"kind":"scene","start":34,"dur":5,"voiceAt":34.55},{"box":"st-tldr","at":[2853.4,1095.6],"station":"share","shot":"share","before":"share-before","size":[1200,630],"view":[0,0,1],"tags":[39.56666666666667,40.766666666666666],"kind":"scene","start":39,"dur":5,"voiceAt":39.55}],"machine":{"pivots":{"needle-clock":[1215.1,453.3],"needle-score":[2003.2,819.6]},"viewBox":[4000,1800],"stations":{"st-sources":{"center":[759.7,473.4],"bbox":[458.9,201.8,601.6,543.2]},"st-fetch":{"center":[1190.4,592.7],"bbox":[905.6,305.6,569.7,574.1]},"st-dedupe":{"center":[1605.2,785],"bbox":[1320.3,555.6,569.7,458.8]},"st-score":{"center":[2019.9,878.5],"bbox":[1735.1,607.9,569.7,541.1]},"st-rank":{"center":[2430.7,950.1],"bbox":[2141.8,616.4,577.7,667.2]},"st-tldr":{"center":[2853.4,1095.6],"bbox":[2564.6,770.2,577.7,650.8]},"st-dispatch":{"center":[3276.1,1315.2],"bbox":[2987.3,1072.2,577.7,486.1]}},"belt":[[1062.6,643.1],[1222.1,694.9],[1381.7,746.7],[1541.2,798.5],[1700.7,850.3],[1860.2,902.1],[2019.7,953.9],[2179.3,1005.7],[2338.8,1057.5],[2498.3,1109.3],[2657.8,1161.1],[2817.3,1212.9],[2976.8,1264.7]],"moves":{"plunger-score":[0,11.5],"rank-carriage":[0,-18.1],"ram-tldr":[0,49.4]},"ports":{"web":[3082.6,1361],"email":[3146.4,1381.7],"telegram":[3210.2,1402.4],"facebook":[3274,1423.2],"youtube":[3337.8,1443.9]}}};
+      const CFG = {"W":1080,"H":1920,"tall":true,"TOTAL":44.5,"title":{"kind":"title","start":0,"dur":3.5,"voiceAt":0.6},"close":{"kind":"close","start":41,"dur":3.5,"voiceAt":41.5},"scenes":[{"box":"st-fetch","at":[1215.1,453.3],"station":"fetch","shot":"data-mobile","before":null,"size":[1290,2796],"view":[0,0.0558,1,0.2275],"tags":[4.2,6.5],"kind":"scene","start":3.5,"dur":5,"voiceAt":3.85},{"box":"st-tldr","at":[2853.4,1095.6],"station":"tldr-vi","shot":"home-vi-mobile","before":null,"size":[1290,2796],"view":[0,0.1195,1,0.2189],"tags":[10.5,12.566666666666666],"kind":"scene","start":8.5,"dur":6,"voiceAt":8.85},{"box":"st-tldr","at":[2853.4,1095.6],"station":"tldr","shot":"daycard","before":null,"size":[1200,630],"view":[0.44,0,0.56],"tags":[16.866666666666667,19.166666666666668],"kind":"scene","start":14.5,"dur":5.5,"voiceAt":14.85},{"box":"st-dispatch","at":[3146.4,1381.7],"station":"email","shot":"email-mobile","before":null,"size":[1290,2796],"view":[0,0,1,0.2232],"tags":[22.066666666666666,24.233333333333334],"kind":"scene","start":20,"dur":6,"voiceAt":20.35},{"box":"st-dispatch","at":[3082.6,1361],"station":"rss","shot":"rss-mobile","before":null,"size":[1290,2796],"view":[0,0.5265,1,0.1574],"tags":[27,29.633333333333333],"kind":"scene","start":26,"dur":5,"voiceAt":26.35},{"box":"st-dispatch","at":[3210.2,1402.4],"station":"telegram","shot":"tg-plain-mobile","before":null,"size":[1290,2796],"view":[0,0.2543,1,0.2275],"tags":[31.7,33.63333333333333],"kind":"scene","start":31,"dur":5,"voiceAt":31.35},{"box":"st-tldr","at":[2853.4,1095.6],"station":"share","shot":"share","before":"share-before","size":[1200,630],"view":[0,0,1],"tags":[36.36666666666667,37.56666666666667],"kind":"scene","start":36,"dur":5,"voiceAt":36.35}],"machine":{"pivots":{"needle-clock":[1215.1,453.3],"needle-score":[2003.2,819.6]},"viewBox":[4000,1800],"stations":{"st-sources":{"center":[759.7,473.4],"bbox":[458.9,201.8,601.6,543.2]},"st-fetch":{"center":[1190.4,592.7],"bbox":[905.6,305.6,569.7,574.1]},"st-dedupe":{"center":[1605.2,785],"bbox":[1320.3,555.6,569.7,458.8]},"st-score":{"center":[2019.9,878.5],"bbox":[1735.1,607.9,569.7,541.1]},"st-rank":{"center":[2430.7,950.1],"bbox":[2141.8,616.4,577.7,667.2]},"st-tldr":{"center":[2853.4,1095.6],"bbox":[2564.6,770.2,577.7,650.8]},"st-dispatch":{"center":[3276.1,1315.2],"bbox":[2987.3,1072.2,577.7,486.1]}},"belt":[[1062.6,643.1],[1222.1,694.9],[1381.7,746.7],[1541.2,798.5],[1700.7,850.3],[1860.2,902.1],[2019.7,953.9],[2179.3,1005.7],[2338.8,1057.5],[2498.3,1109.3],[2657.8,1161.1],[2817.3,1212.9],[2976.8,1264.7]],"moves":{"plunger-score":[0,11.5],"rank-carriage":[0,-18.1],"ram-tldr":[0,49.4]},"ports":{"web":[3082.6,1361],"email":[3146.4,1381.7],"telegram":[3210.2,1402.4],"facebook":[3274,1423.2],"youtube":[3337.8,1443.9]}}};
 // The film's one paused timeline. Inlined by build.mjs after `const CFG = {...}` (shape, section
 // times, word-timed tag hits, machine anchors, capture sizes). Seek-safe: one timeline, explicit
 // from-states, no repeats, no randomness, transforms and opacity only.
@@ -402,7 +403,8 @@
     arrive($(`h${i}-label`), { y: 20, opacity: 0 }, { y: 0, opacity: 1 }, t + 0.02 + 3 * F, 0.45);
     arrive($(`h${i}-title`), { y: 30, opacity: 0 }, { y: 0, opacity: 1 }, t + 0.02 + 6 * F, 0.55);
     const hl = $(`h${i}-title`).querySelector(".hl");
-    if (hl) go(hl, { scaleX: 0 }, { scaleX: 1 }, t + 0.95, 0.4, "power2.inOut");
+    // A before/after scene marks its fact on the reveal, not before it.
+    if (hl) go(hl, { scaleX: 0 }, { scaleX: 1 }, s.before ? s.tags[1] + 0.05 : t + 0.95, 0.4, "power2.inOut");
     leave($(`h${i}`), { y: -20, opacity: 0 }, out);
     tl.set($(`h${i}`), { y: 0, opacity: 1 }, t);
     // window with the real capture
@@ -420,7 +422,7 @@
     const before = $(`w${i}-before`);
     if (before) {
       before.style.cssText = img.style.cssText;
-      go(before, { opacity: 1 }, { opacity: 0 }, s.tags[1] - 0.1, 0.45, "power2.inOut");
+      go(before, { opacity: 1 }, { opacity: 0 }, s.tags[1] - 0.05, 0.2, "power2.in");
     }
     // k 0.2 leaves under a pixel for the last frame, so the window settles instead of stopping.
     go(win, tall ? { y: H - 1000, opacity: 1 } : { x: W - 1010, opacity: 1 }, { x: 0, y: 0 }, t + 0.1, 0.9, park(0.9, 0.2));
@@ -491,6 +493,14 @@
     ringOn(s, [tc[0] + fx, tc[1] + fy], 1.6);
     leave(el, { opacity: 0 }, s.start + s.dur - 0.35, 0.25);
   });
+  // Share card: a second stamp on the reveal word swaps the plate from the old card to the new one.
+  const share = byStation("share");
+  if (share) {
+    const hit = share.tags[1];
+    go("#ram-tldr", { x: 0, y: 0 }, { x: mv["ram-tldr"][0], y: mv["ram-tldr"][1] }, hit - 0.25, 0.25, "power3.in");
+    go("#ram-tldr", { x: mv["ram-tldr"][0], y: mv["ram-tldr"][1] }, { x: 0, y: 0 }, hit + 0.15, 0.45);
+    tl.set($("plate-og-after"), { opacity: 1 }, hit);
+  }
 
   // Email port: one message leaves; the overlapping second run's copy is turned back.
   const mail = byStation("email");
