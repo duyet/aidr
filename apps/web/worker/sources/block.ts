@@ -15,6 +15,9 @@ export function blockedBy(
 ): string | null {
   if (headers.get("cf-mitigated")) return "Cloudflare challenge";
   if (status === 429) return "rate limited";
+  // GitHub answers an exhausted quota with 403 and `x-ratelimit-remaining: 0`.
+  if (status === 403 && headers.get("x-ratelimit-remaining") === "0")
+    return "rate limited";
   if (status === 401 || status === 403 || status === 451)
     return "access refused";
   const html = (headers.get("content-type") ?? "")
