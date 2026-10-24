@@ -9,9 +9,9 @@ describe("blockedBy", () => {
 
   it("keeps a plain 403 as an access refusal", () => {
     expect(blockedBy(403, new Headers())).toBe("access refused");
-    expect(
-      blockedBy(403, new Headers({ "x-ratelimit-remaining": "12" }))
-    ).toBe("access refused");
+    expect(blockedBy(403, new Headers({ "x-ratelimit-remaining": "12" }))).toBe(
+      "access refused"
+    );
   });
 
   it("reads 429 as rate limited and 500 as an ordinary error", () => {
