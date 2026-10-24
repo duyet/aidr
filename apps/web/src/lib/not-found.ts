@@ -13,13 +13,13 @@ export function notFoundCopy(lang: Lang): NotFoundCopy {
       heading: "404",
       body: "Không tìm thấy trang.",
       home: "Về trang chính",
-      documentTitle: "Không tìm thấy trang | AI News",
+      documentTitle: "Không tìm thấy trang | AI;DR",
     };
   }
   return {
     heading: "404",
     body: "Page not found",
     home: "Go home",
-    documentTitle: "Page not found | AI News",
+    documentTitle: "Page not found | AI;DR",
   };
 }

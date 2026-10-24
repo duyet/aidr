@@ -7,7 +7,7 @@ describe("notFoundCopy", () => {
     const copy = notFoundCopy("vi");
     expect(copy.body).toBe("Không tìm thấy trang.");
     expect(copy.home).toBe("Về trang chính");
-    expect(copy.documentTitle).toBe("Không tìm thấy trang | AI News");
+    expect(copy.documentTitle).toBe("Không tìm thấy trang | AI;DR");
     expect(copy.documentTitle).not.toBe(SITE_TITLE);
   });
 
@@ -15,7 +15,7 @@ describe("notFoundCopy", () => {
     const copy = notFoundCopy("en");
     expect(copy.body).toBe("Page not found");
     expect(copy.home).toBe("Go home");
-    expect(copy.documentTitle).toBe("Page not found | AI News");
+    expect(copy.documentTitle).toBe("Page not found | AI;DR");
     expect(copy.documentTitle).not.toBe(SITE_TITLE);
   });
 });

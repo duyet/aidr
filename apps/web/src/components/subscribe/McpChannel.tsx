@@ -15,7 +15,7 @@ export function McpChannel({ lang }: { lang: Lang }) {
           <p className="text-base leading-relaxed text-muted-foreground">
             {t(
               "Ask your AI assistant for today's AI news. Add the AI;DR MCP server to Claude, ChatGPT, Cursor or any MCP client. No account, no key.",
-              "Hỏi trợ lý AI của bạn về tin AI hôm nay. Thêm máy chủ MCP của AI;DR vào Claude, ChatGPT, Cursor hoặc bất kỳ client MCP nào. Không cần tài khoản, không cần key."
+              "Hỏi trợ lý AI của bạn về tin AI hôm nay. Thêm máy chủ MCP của AI;DR vào Claude, ChatGPT, Cursor hoặc bất kỳ ứng dụng nào hỗ trợ MCP. Không cần tài khoản, không cần khóa API."
             )}
           </p>
           <ConnectSection />

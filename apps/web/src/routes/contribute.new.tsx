@@ -7,7 +7,7 @@ export const Route = createFileRoute("/contribute/new")({
   head: ({ match }) =>
     localizedPageHead({
       path: "/contribute/new",
-      title: "Submit a story | AI News",
+      title: "Submit a story | AI;DR",
       lang: match.context.lang,
       route: headRouteInput(match),
     }),

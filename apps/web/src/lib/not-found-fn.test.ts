@@ -20,7 +20,7 @@ describe("notFoundLangFromCookie", () => {
 
   it("feeds the localized 404 title, not the homepage title", () => {
     const title = notFoundCopy(notFoundLangFromCookie(null)).documentTitle;
-    expect(title).toBe("Không tìm thấy trang | AI News");
+    expect(title).toBe("Không tìm thấy trang | AI;DR");
     expect(title).not.toBe(SITE_TITLE);
     expect(
       notFoundHead(title).meta.some((t) => "title" in t && t.title === title)

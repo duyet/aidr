@@ -36,12 +36,12 @@ export const SUBMIT_EMAIL = "submit@aidr.today";
  * Deliberately **not** the brand field, and intentionally untouched by this
  * decision (so a later reader does not re-open it as an inconsistency):
  *
- * - `SITE_TITLE` is the homepage *document title* ("AI News | ranked AI
+ * - `SITE_TITLE` is the homepage *document title* ("AI;DR | ranked AI
  *   digest | aidr.today"), i.e. SEO copy, not the site-name field. It feeds
  *   `<title>`/`og:title`/`twitter:title`, which the SEO brief forbids changing
  *   outside the brand resolution itself.
  * - `SITE_DESCRIPTION` is prose describing what the site does.
- * - The per-route document titles ("About | AI News") and the localized 404
+ * - The per-route document titles ("About | AI;DR") and the localized 404
  *   titles in `not-found.ts` are hand-written page copy owned by those routes.
  *
  * Never append the Telegram handle, `@aihomnay`, or any other suffix: the
@@ -49,10 +49,10 @@ export const SUBMIT_EMAIL = "submit@aidr.today";
  */
 export const SITE_NAME = "AI;DR";
 /** Homepage document title (SEO copy). See the `SITE_NAME` note above. */
-export const SITE_TITLE = "AI News | ranked AI digest | aidr.today";
+export const SITE_TITLE = "AI;DR | ranked AI digest | aidr.today";
 export const SITE_SLOGAN = "AI news ranked and summary";
 export const SITE_DESCRIPTION =
-  "AI News (aidr.today) ranks AI stories every 30 minutes from Hacker News, Hugging Face, and more. An LLM-scored AI;DR digest in English and Vietnamese, and every item links to its source.";
+  "AI;DR (aidr.today) ranks AI stories every 30 minutes from Hacker News, Hugging Face, and more. An LLM-scored digest in English and Vietnamese, and every item links to its source.";
 
 /**
  * Brand mark, used as the JSON-LD `Organization.logo`. `public/logo-sm.png`

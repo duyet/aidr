@@ -30,14 +30,14 @@ export function ConnectSection() {
     <section className="mt-6">
       <h2 className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
         <Plug className="h-3.5 w-3.5" aria-hidden />
-        {t("Connect (no auth)", "Kết nối (không cần auth)")}
+        {t("Connect (no auth)", "Kết nối (không cần xác thực)")}
       </h2>
       <McpInstallButtons />
       <CodeBlock code={PUBLIC_CLIENT_CONFIG} />
       <p className="mt-2 text-xs text-muted-foreground">
         {t(
           "No header, no token, no key. These read tools are rate limited per IP; operator tools need a bearer token.",
-          "Không header, không token, không key. Các công cụ đọc này bị giới hạn theo IP; công cụ vận hành cần bearer token."
+          "Không header, không token, không khóa API. Các công cụ đọc này bị giới hạn theo IP; công cụ vận hành cần bearer token."
         )}
       </p>
     </section>
@@ -95,7 +95,7 @@ export function ClientsSection() {
         </div>
         <div>
           <p className="font-semibold text-foreground">
-            {t("Other MCP clients", "Client MCP khác")}
+            {t("Other MCP clients", "Ứng dụng MCP khác")}
           </p>
           <p className="mt-1 text-muted-foreground">
             {t(
@@ -119,7 +119,7 @@ export function ReadToolsSection() {
   return (
     <section className="mt-6">
       <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {t("Read tools (no auth)", "Công cụ đọc (không cần auth)")}
+        {t("Read tools (no auth)", "Công cụ đọc (không cần xác thực)")}
       </h2>
       <div className="mt-2 divide-y divide-border rounded-md border border-border text-sm">
         {READ_TOOLS.map((tool) => (
@@ -233,7 +233,7 @@ export function AuthSection() {
       <p className="mt-2 text-xs text-muted-foreground">
         {t(
           "An unauthenticated tools/list never returns these names, and an anonymous call to one of them fails without revealing which tools exist.",
-          "tools/list không auth không bao giờ trả về các tên này, và gọi ẩn danh sẽ thất bại mà không tiết lộ những công cụ nào tồn tại."
+          "tools/list chưa xác thực không bao giờ trả về các tên này, và gọi ẩn danh sẽ thất bại mà không tiết lộ những công cụ nào tồn tại."
         )}
       </p>
     </section>

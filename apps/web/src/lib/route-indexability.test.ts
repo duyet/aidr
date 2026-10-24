@@ -378,7 +378,7 @@ describe("story response indexability", () => {
       const { head, response, meta } = await responseForStory(
         "/abcdef12",
         404,
-        notFoundHead(`${title} | AI News`)
+        notFoundHead(`${title} | AI;DR`)
       );
 
       expect(response.status).toBe(404);
