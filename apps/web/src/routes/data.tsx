@@ -36,7 +36,7 @@ export const Route = createFileRoute("/data")({
   head: ({ match }) =>
     pageHead({
       path: "/data",
-      title: "Pipeline | AI News",
+      title: "Pipeline | AI;DR",
       description:
         "How AI;DR collects sources, ranks stories, and publishes the AI news edition.",
       route: headRouteInput(match),

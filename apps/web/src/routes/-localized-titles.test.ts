@@ -56,6 +56,6 @@ describe("localized page titles", () => {
 describe("/mcp title", () => {
   it("is Vietnamese under lang=vi and unchanged in English", () => {
     expect(snippet(McpRoute, "/mcp", "vi").title).toBe("Máy chủ MCP | AI;DR");
-    expect(snippet(McpRoute, "/mcp", "en").title).toBe("MCP | AI News");
+    expect(snippet(McpRoute, "/mcp", "en").title).toBe("MCP | AI;DR");
   });
 });

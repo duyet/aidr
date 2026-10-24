@@ -15,7 +15,7 @@ describe("firstHtmlTitle", () => {
       "<html><head>",
       `<title>${SITE_TITLE}</title>`,
       "</head><body>",
-      "<title>Không tìm thấy trang | AI News</title>",
+      "<title>Không tìm thấy trang | AI;DR</title>",
       "</body></html>",
     ].join("");
     expect(firstHtmlTitle(html)).toBe(SITE_TITLE);
@@ -25,7 +25,7 @@ describe("firstHtmlTitle", () => {
   it("curl-style: a single 404 title is the first title", () => {
     const title = notFoundCopy("vi").documentTitle;
     const html = `<html><head><title>${title}</title></head><body><h1>404</h1></body></html>`;
-    expect(firstHtmlTitle(html)).toBe("Không tìm thấy trang | AI News");
+    expect(firstHtmlTitle(html)).toBe("Không tìm thấy trang | AI;DR");
     expect(firstHtmlTitle(html)).not.toBe(SITE_TITLE);
     expect(countHtmlTitles(html)).toBe(1);
   });
@@ -33,7 +33,7 @@ describe("firstHtmlTitle", () => {
   it("curl-style: EN cookie title is not the homepage title", () => {
     const title = notFoundCopy("en").documentTitle;
     const html = `<html><head><title>${title}</title></head><body></body></html>`;
-    expect(firstHtmlTitle(html)).toBe("Page not found | AI News");
+    expect(firstHtmlTitle(html)).toBe("Page not found | AI;DR");
     expect(countHtmlTitles(html)).toBe(1);
   });
 });
@@ -52,7 +52,7 @@ describe("firstTitleFromHeadMetas", () => {
     const title = notFoundCopy("vi").documentTitle;
     const rootWith404: Array<{ title?: string }> = [{ title }];
     expect(firstTitleFromHeadMetas([rootWith404, []])).toBe(
-      "Không tìm thấy trang | AI News"
+      "Không tìm thấy trang | AI;DR"
     );
     expect(firstTitleFromHeadMetas([rootWith404, []])).not.toBe(SITE_TITLE);
   });

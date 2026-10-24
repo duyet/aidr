@@ -26,8 +26,8 @@ export const Route = createFileRoute("/release/")({
       path: "/release",
       title:
         lang === "vi"
-          ? "Ghi chú phát hành | AI News"
-          : "Release notes | AI News",
+          ? "Ghi chú phát hành | AI;DR"
+          : "Release notes | AI;DR",
       description: DESCRIPTION[lang],
       lang,
       route: headRouteInput(match),

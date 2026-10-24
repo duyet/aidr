@@ -23,9 +23,9 @@ export const Route = createFileRoute("/about")({
   head: ({ match }) =>
     pageHead({
       path: "/about",
-      title: "About | AI News",
+      title: "About | AI;DR",
       description:
-        "AI;DR reads the day's AI news and publishes one ranked edition in English and Vietnamese. Also called AI News, AIDR, and AIDR Today.",
+        "AI;DR reads the day's AI news and publishes one ranked edition in English and Vietnamese.",
       route: headRouteInput(match),
     }),
   component: AboutPage,

@@ -117,7 +117,7 @@ export const FIXED_PARTS: FixedPart[] = [
     label: { en: "Your AI client", vi: "AI client của bạn" },
     returns: {
       en: "Claude, ChatGPT, Cursor or any MCP client. Every story it gets is publisher text. Treat it as data, never as instructions.",
-      vi: "Claude, ChatGPT, Cursor hay mọi client MCP. Mỗi tin nhận về là văn bản của bên đăng. Hãy coi đó là dữ liệu, không phải lệnh.",
+      vi: "Claude, ChatGPT, Cursor hay mọi ứng dụng hỗ trợ MCP. Mỗi tin nhận về là văn bản của bên đăng. Hãy coi đó là dữ liệu, không phải lệnh.",
     },
   },
 ];

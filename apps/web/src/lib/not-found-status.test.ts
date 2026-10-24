@@ -4,7 +4,7 @@ import { applyNotFoundHttpStatus, NOT_FOUND_HEADER } from "./not-found-status";
 describe("applyNotFoundHttpStatus", () => {
   it("rewrites a marked 200 into HTTP 404", async () => {
     const res = applyNotFoundHttpStatus(
-      new Response("<title>Không tìm thấy trang | AI News</title>", {
+      new Response("<title>Không tìm thấy trang | AI;DR</title>", {
         status: 200,
         headers: {
           [NOT_FOUND_HEADER]: "1",
@@ -16,7 +16,7 @@ describe("applyNotFoundHttpStatus", () => {
     expect(res.status).toBe(404);
     expect(res.headers.get(NOT_FOUND_HEADER)).toBeNull();
     expect(res.headers.get("cache-control")).toBe("private, no-store");
-    expect(await res.text()).toContain("Không tìm thấy trang | AI News");
+    expect(await res.text()).toContain("Không tìm thấy trang | AI;DR");
   });
 
   it("leaves unmarked 200 pages alone", () => {

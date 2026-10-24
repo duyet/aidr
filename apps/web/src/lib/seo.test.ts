@@ -228,7 +228,7 @@ describe("homepageHead", () => {
 
 describe("pageHead", () => {
   it("canonicalizes marketing routes to themselves, not the homepage", () => {
-    const head = pageHead({ path: "/about", title: "About | AI News" });
+    const head = pageHead({ path: "/about", title: "About | AI;DR" });
     expect(head.links).toContainEqual({
       rel: "canonical",
       href: `${SITE_URL}/about`,
@@ -248,7 +248,7 @@ describe("localizedPageHead", () => {
   it("emits explicit canonical and hreflang URLs for a localized static route", () => {
     const head = localizedPageHead({
       path: "/mcp",
-      title: "MCP | AI News",
+      title: "MCP | AI;DR",
       lang: "en",
     });
     expect(head.links).toContainEqual({
@@ -425,22 +425,22 @@ describe("routeRobotsMeta", () => {
 
 describe("notFoundHead", () => {
   it("sets a 404 document title, not the homepage title", () => {
-    const head = notFoundHead("Không tìm thấy trang | AI News");
+    const head = notFoundHead("Không tìm thấy trang | AI;DR");
     expect(metaContent(head.meta, "title")).toBe(
-      "Không tìm thấy trang | AI News"
+      "Không tìm thấy trang | AI;DR"
     );
     expect(metaContent(head.meta, "title")).not.toBe(SITE_TITLE);
     expect(metaContent(head.meta, "robots")).toBe("noindex, follow");
   });
 
   it("localizes the English 404 title too", () => {
-    const head = notFoundHead("Page not found | AI News");
-    expect(metaContent(head.meta, "title")).toBe("Page not found | AI News");
+    const head = notFoundHead("Page not found | AI;DR");
+    expect(metaContent(head.meta, "title")).toBe("Page not found | AI;DR");
     expect(metaContent(head.meta, "title")).not.toBe(SITE_TITLE);
   });
 
   it("publishes no structured data on a 404", () => {
-    const head = notFoundHead("Page not found | AI News");
+    const head = notFoundHead("Page not found | AI;DR");
     expect(head.jsonLd).toEqual([]);
     expect(jsonLdScripts(head.scripts)).toEqual([]);
   });
@@ -960,13 +960,13 @@ describe("static page JSON-LD (WebPage / BreadcrumbList)", () => {
       : lang
         ? localizedPageHead({
             path,
-            title: `${path} | AI News`,
+            title: `${path} | AI;DR`,
             lang,
             route: { pathname: path, search: { lang } },
           })
         : pageHead({
             path,
-            title: `${path} | AI News`,
+            title: `${path} | AI;DR`,
             route: { pathname: path, search: {} },
           });
 
@@ -1128,7 +1128,7 @@ describe("one JSON-LD block per document", () => {
   it("keeps the same values the og tags and description already published", () => {
     const head = pageHead({
       path: "/about",
-      title: "About | AI News",
+      title: "About | AI;DR",
       route: INDEXABLE_ROUTE,
     });
     const page = node<
@@ -1171,8 +1171,8 @@ describe("site_name is one constant (#224 brand resolution)", () => {
   });
 
   it("keeps the site-description copy untouched by the brand resolution", () => {
-    expect(SITE_DESCRIPTION).toContain("AI News (aidr.today)");
-    expect(SITE_TITLE).toBe("AI News | ranked AI digest | aidr.today");
+    expect(SITE_DESCRIPTION).toContain("AI;DR (aidr.today)");
+    expect(SITE_TITLE).toBe("AI;DR | ranked AI digest | aidr.today");
   });
 });
 
