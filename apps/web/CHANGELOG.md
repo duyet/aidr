@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.1.16](https://github.com/duyet/aidr/compare/web-v0.1.15...web-v0.1.16) (2026-10-24)
+
+
+### ✨ Features
+
+* **header:** add MCP Server to the Get AI;DR menu above RSS ([#1040](https://github.com/duyet/aidr/issues/1040)) ([49f90f4](https://github.com/duyet/aidr/commit/49f90f44df0c82f36fa8f21fee937c207b71c84a))
+* **mcp:** isometric anatomy figure that explains the MCP server ([#1039](https://github.com/duyet/aidr/issues/1039)) ([8b8083f](https://github.com/duyet/aidr/commit/8b8083fcfec7f26811dea8452a78f1cbd1c66b79))
+* **mcp:** one-click install buttons for MCP clients ([#1042](https://github.com/duyet/aidr/issues/1042)) ([5981b6f](https://github.com/duyet/aidr/commit/5981b6f454d9ca6a40d3ae9315dc7fef1e4fe06b))
+* **notify:** per-post utm_content and daily Facebook post stats ([#837](https://github.com/duyet/aidr/issues/837)) ([#967](https://github.com/duyet/aidr/issues/967)) ([a30d7cc](https://github.com/duyet/aidr/commit/a30d7cc8f0741a684d0caba9b0d8301f2d09dd08))
+* **og:** photo-led story share card with full-bleed thumbnail ([#1054](https://github.com/duyet/aidr/issues/1054)) ([c14fad2](https://github.com/duyet/aidr/commit/c14fad2accd261456a54b4d48716d5e1b70d7502))
+* **skills:** scored review skills for each output ([#1020](https://github.com/duyet/aidr/issues/1020)) ([62de0ce](https://github.com/duyet/aidr/commit/62de0ce8d8e0506bc99a6cac7bbfaaf1dc105126))
+* **subscribe:** add MCP server tab before RSS ([#1038](https://github.com/duyet/aidr/issues/1038)) ([f16cd97](https://github.com/duyet/aidr/commit/f16cd970a9561dd7cb481d1bfef3c284a08c7238))
+* **subscribe:** add RSS as a subscribe channel tab ([#1028](https://github.com/duyet/aidr/issues/1028)) ([cfc1bd5](https://github.com/duyet/aidr/commit/cfc1bd59f5c4c25bf9c1ae73369e5fd200bb0cce))
+* **telegram:** plain headers like the email, no 🗞 or 🔥 ([#948](https://github.com/duyet/aidr/issues/948)) ([e47d93d](https://github.com/duyet/aidr/commit/e47d93d95f5b0c69b5a65356a647f28247bf1218))
+* **telegram:** show every story on 4 and 5 story days ([#768](https://github.com/duyet/aidr/issues/768)) ([#952](https://github.com/duyet/aidr/issues/952)) ([315c06a](https://github.com/duyet/aidr/commit/315c06a102c5f7695976f732fa8ec08f8af595c7))
+* **web:** short link aidr.today/c to the Chrome Web Store ([#1041](https://github.com/duyet/aidr/issues/1041)) ([3808954](https://github.com/duyet/aidr/commit/380895440daeb0d39f92fbbea7ac94010325bc9c))
+
+
+### 🐛 Bug Fixes
+
+* **admin:** count only unverifiable bearers toward the admin lockout ([#977](https://github.com/duyet/aidr/issues/977)) ([#993](https://github.com/duyet/aidr/issues/993)) ([4816325](https://github.com/duyet/aidr/commit/4816325dd38c774295e751c5b4d34417b9315bb4))
+* **card:** set no day card headline below 23 px, move tiles to rows when they don't fit ([#1022](https://github.com/duyet/aidr/issues/1022)) ([#1026](https://github.com/duyet/aidr/issues/1026)) ([8c835e2](https://github.com/duyet/aidr/commit/8c835e2e9522d35feb697382d510e54973c435bc))
+* **ci:** apply D1 migrations before deploy in the same run ([#973](https://github.com/duyet/aidr/issues/973)) ([3745663](https://github.com/duyet/aidr/commit/374566356024237bf65896c540f61a2f09c30276))
+* **clerk:** write synced rows in one batch, stamp Clerk's updated_at, throttle per user ([#946](https://github.com/duyet/aidr/issues/946)) ([#956](https://github.com/duyet/aidr/issues/956)) ([bbee1c6](https://github.com/duyet/aidr/commit/bbee1c6ca7f05d5a03ac05b41d24c881841919a7))
+* **copy:** name the product AI;DR in titles and meta, clean VI MCP panel ([#1052](https://github.com/duyet/aidr/issues/1052)) ([70fb949](https://github.com/duyet/aidr/commit/70fb9499f798d5bd6ef12732c42cbfc4dd5745ae))
+* **dedupe:** never pick a story under the relevance bar as canonical ([#981](https://github.com/duyet/aidr/issues/981)) ([#998](https://github.com/duyet/aidr/issues/998)) ([cff91d6](https://github.com/duyet/aidr/commit/cff91d67f6fdc787a539de5d2720bd8fa13ea900))
+* **dedupe:** split LLM clusters by evidence so one backing item cannot carry others in ([#964](https://github.com/duyet/aidr/issues/964)) ([f61e6d0](https://github.com/duyet/aidr/commit/f61e6d012f4eb4f4bebb36ee886612525228e883))
+* **deps:** update all non-major dependencies ([#1014](https://github.com/duyet/aidr/issues/1014)) ([71811c6](https://github.com/duyet/aidr/commit/71811c667c077d42ab2ea6c60fc9497f33217f89))
+* **email:** claim the digest stamp before sending and isolate subscriber errors ([#976](https://github.com/duyet/aidr/issues/976)) ([#1005](https://github.com/duyet/aidr/issues/1005)) ([ea43e71](https://github.com/duyet/aidr/commit/ea43e7168b578efd482cfa8776a0999db3a6d2fd))
+* **email:** send a digest only for a local date later than the last one ([#979](https://github.com/duyet/aidr/issues/979)) ([#1004](https://github.com/duyet/aidr/issues/1004)) ([966881e](https://github.com/duyet/aidr/commit/966881e5e92e8130d688927fa00d5e8327591913))
+* **ingest:** cap new rows per run so write-d1 stays under the D1 query limit ([#997](https://github.com/duyet/aidr/issues/997)) ([f625e10](https://github.com/duyet/aidr/commit/f625e10401c20de11ae311b268a3841bb6925a4c))
+* **ingest:** close the run row when Workflow create() fails ([#991](https://github.com/duyet/aidr/issues/991)) ([88737e4](https://github.com/duyet/aidr/commit/88737e47706d07ae3dcd537582ce01ada44145c8))
+* **ingest:** do not retry deterministic source failures ([#1000](https://github.com/duyet/aidr/issues/1000)) ([4a4681b](https://github.com/duyet/aidr/commit/4a4681b1e987e01682c580600767185cc7fe8d8c)), closes [#983](https://github.com/duyet/aidr/issues/983)
+* **llm:** read mid-stream error frames and name each hop's failure ([#960](https://github.com/duyet/aidr/issues/960)) ([34bfa39](https://github.com/duyet/aidr/commit/34bfa39b0aed5b2e9667d073558a8e2c4411819f))
+* **mail:** claim each campaign recipient before sending ([#975](https://github.com/duyet/aidr/issues/975)) ([#1006](https://github.com/duyet/aidr/issues/1006)) ([a575300](https://github.com/duyet/aidr/commit/a575300625bf1e2c12f4b7933c0f1a458af738fb))
+* **media:** type video-tag sources from MIME or extension, not URL text ([#986](https://github.com/duyet/aidr/issues/986)) ([#990](https://github.com/duyet/aidr/issues/990)) ([a5696f8](https://github.com/duyet/aidr/commit/a5696f8feeeec871e706edbff1f98c7c7b45b19b))
+* **notify:** give caption fallbacks a real time slice ([#1053](https://github.com/duyet/aidr/issues/1053)) ([8bade7a](https://github.com/duyet/aidr/commit/8bade7a7bdc315b59a7aa71363bb92c0ef0705f3)), closes [#1034](https://github.com/duyet/aidr/issues/1034)
+* **notify:** measure the Vietnamese Telegram gate and cut its false refusals ([#950](https://github.com/duyet/aidr/issues/950)) ([670f63b](https://github.com/duyet/aidr/commit/670f63b04bede0e53f2b33d3facc62b569256161))
+* **og:** bump render version for the photo-led story card ([#1057](https://github.com/duyet/aidr/issues/1057)) ([1598ff3](https://github.com/duyet/aidr/commit/1598ff3cd88c144683a41c8ab2d481c186d4378e))
+* **privacy:** list every analytics vendor and turn off PostHog autocapture, errors and replay ([#955](https://github.com/duyet/aidr/issues/955)) ([e63d57b](https://github.com/duyet/aidr/commit/e63d57bf6ec23b89266e3c52f4a295ead58e8f90))
+* **qa:** say why qa-translations failed in the step-failed alert ([#592](https://github.com/duyet/aidr/issues/592)) ([#1010](https://github.com/duyet/aidr/issues/1010)) ([05677e2](https://github.com/duyet/aidr/commit/05677e267907db7771ec4d329363ce2ccbaf9452))
+* **sources:** read a GitHub 403 with an empty quota as rate limited ([#1055](https://github.com/duyet/aidr/issues/1055)) ([ea0e268](https://github.com/duyet/aidr/commit/ea0e268d71628c18cdf309f59ef0dfbc04aed295))
+* **sources:** type huggingnews feed errors and fall back to the sitemap ([#1001](https://github.com/duyet/aidr/issues/1001)) ([3de9c88](https://github.com/duyet/aidr/commit/3de9c887db91a8340cd141b1dab72d88eb2f3404)), closes [#984](https://github.com/duyet/aidr/issues/984)
+* **submissions:** cap note, bound review retries, claim limits atomically ([#999](https://github.com/duyet/aidr/issues/999)) ([a46e0bf](https://github.com/duyet/aidr/commit/a46e0bf3f7e33d3d19ff87f2b195fd589367b712))
+* **subscribe:** claim the confirm before sending welcome and owner mails ([#978](https://github.com/duyet/aidr/issues/978)) ([#1003](https://github.com/duyet/aidr/issues/1003)) ([e04b9a3](https://github.com/duyet/aidr/commit/e04b9a38ddf5782189a5eca101bc7a40bed99124))
+* **subscribe:** stop email tab hydration mismatch on the timezone note ([#1032](https://github.com/duyet/aidr/issues/1032)) ([1b355cb](https://github.com/duyet/aidr/commit/1b355cb18fd3f2c3498a6a893d47c204b7fa6024))
+* **topics:** grow learned keyword hit_count by this run's mentions ([#982](https://github.com/duyet/aidr/issues/982)) ([#995](https://github.com/duyet/aidr/issues/995)) ([584f810](https://github.com/duyet/aidr/commit/584f81024e9840bc94338bbc7a7280086faf2fac))
+* **translate:** flag VI syllables no Vietnamese word uses ([#959](https://github.com/duyet/aidr/issues/959)) ([dce9cad](https://github.com/duyet/aidr/commit/dce9cadbbf9846c151f8513b0774deff64455ed8))
+* **translate:** re-check stored VI rows with the draft check in backfill ([#1021](https://github.com/duyet/aidr/issues/1021)) ([#1025](https://github.com/duyet/aidr/issues/1025)) ([fc7fbfd](https://github.com/duyet/aidr/commit/fc7fbfde148927691635857f3c3bf6997f23d61a))
+* **web:** compact Aa popover with row layout and steppers ([#1048](https://github.com/duyet/aidr/issues/1048)) ([6860922](https://github.com/duyet/aidr/commit/68609227d24ca3c208c0cd465a1575dc58752b0e))
+* **web:** day video alert counts the missing streak and names the credentials to check ([#635](https://github.com/duyet/aidr/issues/635)) ([#965](https://github.com/duyet/aidr/issues/965)) ([3135d1b](https://github.com/duyet/aidr/commit/3135d1bfe7fd6e75e25a25b50b5e8c52d52dc3ac))
+* **worker:** one rescore for backfill and admin reprocess ([#969](https://github.com/duyet/aidr/issues/969)) ([e7610c6](https://github.com/duyet/aidr/commit/e7610c612cb9abdc0248d53ea7d09cecec726f2d))
+* **worker:** treat a Durable Object storage reset as an engine interruption ([#958](https://github.com/duyet/aidr/issues/958)) ([95603a2](https://github.com/duyet/aidr/commit/95603a2c2f42786c8597ebaf3d5b54ee421a577c)), closes [#928](https://github.com/duyet/aidr/issues/928)
+
+
+### ♻️ Refactoring
+
+* **worker:** one row-rank helper and one known-topics loader ([#968](https://github.com/duyet/aidr/issues/968)) ([b2880ef](https://github.com/duyet/aidr/commit/b2880efecad57e4e1c998c3508129848490f15ed))
+
 ## [0.1.15](https://github.com/duyet/aidr/compare/web-v0.1.14...web-v0.1.15) (2026-10-20)
 
 
