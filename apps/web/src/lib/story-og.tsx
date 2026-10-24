@@ -55,6 +55,23 @@ const TITLE_COLUMN_WIDTH = 650;
 const TITLE_COLUMN_GAP = 38;
 const IMAGE_PANEL = 360;
 
+/** Photo-led card: the photo takes the right 56% of the card, full bleed. */
+export const STORY_OG_PHOTO_WIDTH = 672;
+const PHOTO_TEXT_WIDTH = STORY_OG_WIDTH - STORY_OG_PHOTO_WIDTH;
+const PHOTO_PADDING_Y = 40;
+const PHOTO_PADDING_LEFT = 48;
+const PHOTO_PADDING_RIGHT = 40;
+const PHOTO_EDGE_RULE = 8;
+const PHOTO_TITLE_FONT_SIZE = 44;
+const PHOTO_TITLE_LINE_HEIGHT = 1.14;
+const PHOTO_TITLE_LINE_CLAMP = 5;
+export const STORY_OG_PHOTO_TITLE_MAX_HEIGHT = Math.ceil(
+  PHOTO_TITLE_LINE_CLAMP * PHOTO_TITLE_FONT_SIZE * PHOTO_TITLE_LINE_HEIGHT
+);
+/** The headline never crosses into the photo. */
+export const STORY_OG_PHOTO_TITLE_RIGHT =
+  PHOTO_TEXT_WIDTH - PHOTO_PADDING_RIGHT;
+
 /** Vertical space between the header rule and the footer row. */
 export const STORY_OG_TITLE_BAND_TOP = CARD_PADDING_TOP + HEADER_BLOCK;
 export const STORY_OG_TITLE_BAND_HEIGHT =
@@ -444,7 +461,8 @@ export function storyOgCopy(item: FeedItem, lang: Lang): StoryOgCopy {
   };
 }
 
-function imagePanel(image: StoryOgImage | null, lang: Lang): ReactElement {
+/** Branded panel for a story with no usable photo. */
+function fallbackPanel(): ReactElement {
   const panelStyle = {
     display: "flex" as const,
     position: "relative" as const,
@@ -455,144 +473,234 @@ function imagePanel(image: StoryOgImage | null, lang: Lang): ReactElement {
     border: `1px solid ${HAIRLINE}`,
     backgroundColor: IMAGE_WASH,
   };
-  if (!image) {
-    return (
-      <div style={panelStyle}>
-        <div
-          style={{
-            position: "absolute",
-            left: "-74px",
-            top: "24px",
-            width: "280px",
-            height: "280px",
-            borderRadius: "50%",
-            border: `2px solid ${INK}`,
-            opacity: 0.1,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            right: "-30px",
-            bottom: "-46px",
-            width: "210px",
-            height: "210px",
-            borderRadius: "50%",
-            backgroundColor: YELLOW,
-            opacity: 0.42,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: "28px",
-            top: "28px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "92px",
-            height: "92px",
-            backgroundColor: YELLOW,
-            color: INK,
-            fontSize: "24px",
-            fontWeight: 700,
-          }}
-        >
-          AI;DR
-        </div>
-        <div
-          style={{
-            position: "absolute",
-            left: "28px",
-            bottom: "30px",
-            color: MUTED,
-            fontSize: "25px",
-            letterSpacing: "1px",
-          }}
-        >
-          AI NEWS
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div style={panelStyle}>
-      <img
-        src={image.dataUri}
-        alt=""
-        style={{
-          position: "absolute",
-          left: "-28px",
-          top: "-28px",
-          width: "416px",
-          height: "416px",
-          objectFit: "cover",
-          filter: "blur(18px)",
-          opacity: 0.56,
-          transform: "scale(1.08)",
-        }}
-      />
       <div
         style={{
           position: "absolute",
-          left: 0,
-          top: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: PAPER,
-          opacity: 0.28,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          left: "24px",
+          left: "-74px",
           top: "24px",
-          padding: "8px 12px",
+          width: "280px",
+          height: "280px",
+          borderRadius: "50%",
+          border: `2px solid ${INK}`,
+          opacity: 0.1,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          right: "-30px",
+          bottom: "-46px",
+          width: "210px",
+          height: "210px",
+          borderRadius: "50%",
+          backgroundColor: YELLOW,
+          opacity: 0.42,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          left: "28px",
+          top: "28px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "92px",
+          height: "92px",
           backgroundColor: YELLOW,
           color: INK,
-          fontSize: "18px",
+          fontSize: "24px",
           fontWeight: 700,
+        }}
+      >
+        AI;DR
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: "28px",
+          bottom: "30px",
+          color: MUTED,
+          fontSize: "25px",
           letterSpacing: "1px",
         }}
       >
-        {lang === "vi" ? "BÀI VIẾT" : "STORY"}
+        AI NEWS
+      </div>
+    </div>
+  );
+}
+
+/** Pure story-card renderer shared by the Worker route and preview script.
+ *  A story with a photo gets the photo-led card; one without keeps the
+ *  branded headline card. */
+export function storyOgCard(
+  item: FeedItem,
+  image: StoryOgImage | null,
+  lang: Lang
+): ReactElement {
+  return image ? photoCard(item, image, lang) : brandedCard(item, lang);
+}
+
+/** The photo fills the right of the card, full bleed, so it reads at
+ *  thumbnail size in a Facebook, Telegram, or X preview. The headline column
+ *  stays on paper for contrast, whatever the photo looks like. */
+function photoCard(
+  item: FeedItem,
+  image: StoryOgImage,
+  lang: Lang
+): ReactElement {
+  const copy = storyOgCopy(item, lang);
+  const accent = item.category ? categoryColor(item.category).light : MUTED;
+  const meta = [copy.host, copy.date].filter(Boolean).join(" · ");
+  const metrics =
+    copy.points !== "0" || copy.comments !== "0"
+      ? `${copy.points} ${copy.pointsLabel} · ${copy.comments} ${copy.commentsLabel}`
+      : "";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        width: `${STORY_OG_WIDTH}px`,
+        height: `${STORY_OG_HEIGHT}px`,
+        backgroundColor: PAPER,
+        color: INK,
+        fontFamily: "Be Vietnam Pro",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          width: `${PHOTO_TEXT_WIDTH}px`,
+          height: "100%",
+          padding: `${PHOTO_PADDING_Y}px ${PHOTO_PADDING_RIGHT}px ${PHOTO_PADDING_Y}px ${PHOTO_PADDING_LEFT}px`,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "46px",
+              height: "46px",
+              backgroundColor: YELLOW,
+              color: INK,
+              fontSize: "27px",
+              fontWeight: 700,
+            }}
+          >
+            ;
+          </div>
+          <div style={{ fontSize: "36px", fontWeight: 700 }}>AI;DR</div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          {copy.category ? (
+            <div
+              style={{
+                color: accent,
+                fontSize: "22px",
+                fontWeight: 700,
+                letterSpacing: "1px",
+                textTransform: "uppercase",
+                marginBottom: "14px",
+              }}
+            >
+              {copy.category}
+            </div>
+          ) : null}
+          <div
+            style={{
+              fontSize: `${PHOTO_TITLE_FONT_SIZE}px`,
+              fontWeight: 700,
+              lineHeight: PHOTO_TITLE_LINE_HEIGHT,
+              wordBreak: "break-word",
+              display: "-webkit-box",
+              WebkitBoxOrient: "vertical",
+              WebkitLineClamp: PHOTO_TITLE_LINE_CLAMP,
+              // Satori only applies the clamp with an explicit ellipsis.
+              textOverflow: "ellipsis",
+              maxHeight: `${STORY_OG_PHOTO_TITLE_MAX_HEIGHT}px`,
+              overflow: "hidden",
+            }}
+          >
+            {copy.title}
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "4px",
+            fontSize: "21px",
+            color: MUTED,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+          }}
+        >
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+            {meta}
+          </span>
+          {metrics ? <span>{metrics}</span> : null}
+        </div>
       </div>
       <div
         style={{
           display: "flex",
-          position: "absolute",
-          left: "24px",
-          right: "24px",
-          bottom: "24px",
-          height: "218px",
+          position: "relative",
+          width: `${STORY_OG_PHOTO_WIDTH}px`,
+          height: "100%",
           overflow: "hidden",
-          borderRadius: "18px",
-          border: `4px solid ${PAPER}`,
           backgroundColor: IMAGE_WASH,
         }}
       >
         <img
           src={image.dataUri}
           alt=""
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+        <div
           style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: `${PHOTO_EDGE_RULE}px`,
+            backgroundColor: YELLOW,
           }}
         />
+        <div
+          style={{
+            position: "absolute",
+            right: "28px",
+            bottom: "28px",
+            padding: "8px 14px",
+            backgroundColor: INK,
+            color: PAPER,
+            fontSize: "20px",
+            fontWeight: 700,
+            letterSpacing: "1px",
+          }}
+        >
+          {lang === "vi" ? "BÀI VIẾT · aidr.today" : "STORY · aidr.today"}
+        </div>
       </div>
     </div>
   );
 }
 
-/** Pure story-card renderer shared by the Worker route and preview script. */
-export function storyOgCard(
-  item: FeedItem,
-  image: StoryOgImage | null,
-  lang: Lang
-): ReactElement {
+function brandedCard(item: FeedItem, lang: Lang): ReactElement {
   const copy = storyOgCopy(item, lang);
   const accent = item.category ? categoryColor(item.category).light : MUTED;
 
@@ -670,7 +778,7 @@ export function storyOgCard(
         >
           {copy.title}
         </div>
-        {imagePanel(image, lang)}
+        {fallbackPanel()}
       </div>
 
       <div

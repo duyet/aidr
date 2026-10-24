@@ -12,12 +12,16 @@ import { ImageResponse } from "@cf-wasm/og/node";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it } from "vitest";
 import { type Bitmap, decodePng } from "./__fixtures__/png";
+import { syntheticStoryPhoto } from "./__fixtures__/raster";
 import { loadStoryOgFonts, storyOgRenderOptions } from "./og-fonts";
 import {
   fetchStoryOgImage,
   isSafeStoryImageUrl,
   STORY_OG_CONTENT_INSET_X,
   STORY_OG_HEIGHT,
+  STORY_OG_PHOTO_TITLE_MAX_HEIGHT,
+  STORY_OG_PHOTO_TITLE_RIGHT,
+  STORY_OG_PHOTO_WIDTH,
   STORY_OG_TITLE_BAND_HEIGHT,
   STORY_OG_TITLE_BAND_TOP,
   STORY_OG_TITLE_COLUMN_RIGHT,
@@ -181,6 +185,52 @@ describe("story OG title layout geometry", () => {
     // Short titles take fewer lines than the four-line clamp allows.
     expect((shortBox as NonNullable<typeof shortBox>).maxY).toBeLessThan(
       (longBox as NonNullable<typeof longBox>).maxY
+    );
+  }, 20_000);
+});
+
+describe("story OG photo card", () => {
+  // The share preview is a thumbnail on Facebook, Telegram, and X: the photo
+  // has to be the dominant shape, not a small inset beside the headline.
+  it("fills the right of the card with the photo, full bleed", async () => {
+    const image = storyOgImageFromBytes(syntheticStoryPhoto());
+    expect(image).not.toBeNull();
+    expect(STORY_OG_PHOTO_WIDTH / STORY_OG_WIDTH).toBeGreaterThanOrEqual(0.55);
+    const bitmap = decodePng(await renderPng(item(), image, "en"));
+    const paper = (x: number, y: number) => {
+      const p = (y * bitmap.width + x) * 4;
+      return (
+        bitmap.data[p] > 240 &&
+        bitmap.data[p + 1] > 240 &&
+        bitmap.data[p + 2] > 235
+      );
+    };
+    // Photo pixels run from top edge to bottom edge at the photo's centre column.
+    const x = STORY_OG_WIDTH - STORY_OG_PHOTO_WIDTH / 2;
+    for (const y of [2, STORY_OG_HEIGHT / 2, STORY_OG_HEIGHT - 3]) {
+      expect(paper(x, y), `paper at ${x},${y}`).toBe(false);
+    }
+  }, 20_000);
+
+  it("keeps a long Vietnamese headline left of the photo and clamped", async () => {
+    const image = storyOgImageFromBytes(syntheticStoryPhoto());
+    // No category: a blank title re-centres the column, which would move the
+    // category label and pollute the headline diff.
+    const story = item({
+      title: LONG_TITLE,
+      title_vi: LONG_TITLE,
+      category: "",
+    });
+    const [rendered, blank] = await Promise.all([
+      renderPng(story, image, "vi"),
+      renderPng(blankedTitle(story), image, "vi"),
+    ]);
+    const box = diffBounds(decodePng(rendered), decodePng(blank));
+    expect(box, "headline rendered no ink").not.toBeNull();
+    const bounds = box as NonNullable<typeof box>;
+    expect(bounds.maxX).toBeLessThanOrEqual(STORY_OG_PHOTO_TITLE_RIGHT);
+    expect(bounds.maxY - bounds.minY).toBeLessThanOrEqual(
+      STORY_OG_PHOTO_TITLE_MAX_HEIGHT
     );
   }, 20_000);
 });
