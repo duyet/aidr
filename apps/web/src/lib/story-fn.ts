@@ -7,7 +7,7 @@ import type { FeedItem } from "./types";
  * story matches; a failed read throws `story_unavailable`, which the route
  * renders as a 500. */
 export const fetchStory = createServerFn({ method: "GET" })
-  .inputValidator((input: { idPrefix: string }) => input)
+  .validator((input: { idPrefix: string }) => input)
   .handler(async ({ data }): Promise<FeedItem | null> => {
     const { env } = await import("cloudflare:workers");
     const db = (env as { DB?: D1Database }).DB;

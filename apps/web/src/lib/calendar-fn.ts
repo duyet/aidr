@@ -8,7 +8,7 @@ import { readSession } from "./db";
  * to the current one; null only when D1 is unavailable or the read fails.
  */
 export const fetchCalendarMonth = createServerFn({ method: "GET" })
-  .inputValidator((input: { month?: string }) => input)
+  .validator((input: { month?: string }) => input)
   .handler(async ({ data }): Promise<CalendarMonth | null> => {
     const now = Date.now();
     const last = currentMonth(now);

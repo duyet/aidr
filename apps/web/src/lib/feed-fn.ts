@@ -13,7 +13,7 @@ import type { FeedItem, FeedResponse, Lang } from "./types";
  * from /api/story on first expand via the `lazyDetail` flag. /api/feed
  * keeps the complete shape — it's an external contract. */
 export const fetchFeed = createServerFn({ method: "GET" })
-  .inputValidator((input: { q?: string; days?: number; lang?: Lang }) => input)
+  .validator((input: { q?: string; days?: number; lang?: Lang }) => input)
   .handler(async ({ data }): Promise<FeedResponse | null> => {
     const { env } = await import("cloudflare:workers");
     const db = (env as { DB?: D1Database }).DB;

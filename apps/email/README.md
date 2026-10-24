@@ -6,10 +6,10 @@ Design and owner steps are in [`docs/decisions/email-contributions.md`](../../do
 
 ## Entrypoints
 
-| File | Role |
-|---|---|
-| `src/index.ts` | `email()` handler. Rejects oversize mail at SMTP time. |
-| `src/intake.ts` | `receiveEmail` runs the ordered checks, then the insert. |
+| File                                                           | Role                                                              |
+| -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `src/index.ts`                                                 | `email()` handler. Rejects oversize mail at SMTP time.            |
+| `src/intake.ts`                                                | `receiveEmail` runs the ordered checks, then the insert.          |
 | `src/loop.ts`, `src/auth.ts`, `src/identity.ts`, `src/body.ts` | Loop guard, Cloudflare auth result, account lookup, body parsing. |
 
 ## Commands

@@ -54,7 +54,7 @@ export function validateSubmission(input: {
 }
 
 export const submitStory = createServerFn({ method: "POST" })
-  .inputValidator((input: SubmissionInput) => input)
+  .validator((input: SubmissionInput) => input)
   .handler(async ({ data }) => {
     const { userId, userName } = await requireClerkUser();
     const { env } = await import("cloudflare:workers");

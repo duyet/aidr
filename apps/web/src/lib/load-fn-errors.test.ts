@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
-      inputValidator: () => builder,
+      validator: () => builder,
       handler: (fn: (ctx: { data: unknown }) => unknown) => fn,
     };
     return builder;

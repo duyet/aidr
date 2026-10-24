@@ -124,7 +124,7 @@ describe("Clerk request middleware", () => {
     );
     try {
       const { startInstance } = await import("./start");
-      await expect(startInstance.getOptions()).resolves.toBeDefined();
+      expect(await startInstance.getOptions()).toBeDefined();
     } finally {
       vi.doUnmock("@clerk/tanstack-react-start/server");
     }

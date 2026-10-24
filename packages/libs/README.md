@@ -2,9 +2,9 @@
 
 Small shared helpers, imported as TypeScript source. There is no build step.
 
-| Import | Contents |
-|---|---|
-| `@aidr/libs/utils` | `cn`, the class-name join. |
+| Import                    | Contents                                                               |
+| ------------------------- | ---------------------------------------------------------------------- |
+| `@aidr/libs/utils`        | `cn`, the class-name join.                                             |
 | `@aidr/libs/workers-auth` | `getBearerToken` and `timingSafeEqualStrings` for Worker token checks. |
 
 Consumers are `apps/web` and `@aidr/ui`.
