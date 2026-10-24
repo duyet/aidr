@@ -41,6 +41,7 @@
     email: () => view(around(machine.ports.email, 520, 470), REGION, 0.95),
     telegram: () => view(around(machine.ports.telegram, 520, 470), REGION, 0.95),
     rss: () => view(around(machine.ports.web, 520, 470), REGION, 0.95),
+    share: () => view(st["st-tldr"].bbox, REGION, 0.92),
   };
   const mcam = $("mcam");
   const machineIn = hatch;
@@ -83,6 +84,12 @@
     const shown = Math.min(vh, 1 - vy) * ih * k + 46;
     if (shown < win.offsetHeight) Object.assign(win.style, { height: `${shown}px`, top: `${win.offsetTop + (win.offsetHeight - shown) / 2}px` });
     Object.assign(img.style, { width: `${iw}px`, height: `${ih}px`, transform: `translate(${-vx * iw * k}px, ${-vy * ih * k}px) scale(${k})` });
+    // Before and after: the old capture sits on top and fades out on the second tag's word.
+    const before = $(`w${i}-before`);
+    if (before) {
+      before.style.cssText = img.style.cssText;
+      go(before, { opacity: 1 }, { opacity: 0 }, s.tags[1] - 0.1, 0.45, "power2.inOut");
+    }
     // k 0.2 leaves under a pixel for the last frame, so the window settles instead of stopping.
     go(win, tall ? { y: H - 1000, opacity: 1 } : { x: W - 1010, opacity: 1 }, { x: 0, y: 0 }, t + 0.1, 0.9, park(0.9, 0.2));
     leave(win, tall ? { y: H - 1000 } : { x: W - 1010 }, out, 0.35);
@@ -140,7 +147,7 @@
   // TL;DR press: the ram stamps, a plate slides out to the front.
   const mv = machine.moves;
   const tc = st["st-tldr"].center;
-  [["tldr-vi", "plate"], ["tldr", "plate-day"]].forEach(([name, id]) => {
+  [["tldr-vi", "plate"], ["tldr", "plate-day"], ["share", "plate-og"]].forEach(([name, id]) => {
     const s = byStation(name);
     if (!s) return;
     const hit = s.tags[0];

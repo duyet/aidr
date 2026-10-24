@@ -1,6 +1,6 @@
 # Storyboard: AI;DR v0.1.16
 
-43 s at 30 fps (English). Each section is as long as its voice line needs, rounded up to the 0.5 s beat (News Theme, 120 BPM). Paper `#F7F7F5` ground except the title and close; one yellow accent per frame (the title marker and the ring on the active machine part, same accent); EB Garamond headlines, Source Sans 3 labels, monospace tags. One linear root push per shot (2.5–4 %).
+48 s at 30 fps (English). Each section is as long as its voice line needs, rounded up to the 0.5 s beat (News Theme, 120 BPM). Paper `#F7F7F5` ground except the title and close; one yellow accent per frame (the title marker and the ring on the active machine part, same accent); EB Garamond headlines, Source Sans 3 labels, monospace tags. One linear root push per shot (2.5–4 %).
 
 Layout 16:9: header (number, label, Garamond title with a marker) top left on a paper band; the machine framed in the left region (0–1010, y 280–940); the capture window right (1010–1860, y 96–916); caption chip bottom centre (y 960). 9:16: header y 230–490, machine y 470–990, window y 1000–1500, caption y 1530, all inside x 60–960 / y 200–1580.
 
@@ -13,14 +13,15 @@ Layout 16:9: header (number, label, Garamond title with a marker) top left on a 
 | 04 Email | 22.5–29 | "Before any email goes out, it is claimed first. If two runs overlap, only one sends." (Allison) | Camera to the dispatch manifold, email port in the ring. On "claimed" one message leaves the port, tag "digest · welcome · campaign"; on "only" a second copy comes in and greys out, tag "1 reader, 1 copy". Window: the email preview. | click per tag |
 | 05 RSS | 29–34 | "You can now follow AI DR in any RSS reader." (Kristen) | Camera to the web port, ring on it. On "follow" tag "RSS · EN + VI"; on "reader" three yellow RSS chips leave the port one after another, tag "Feedly · Inoreader · NewsBlur". Window: live `/subscribe?tab=rss`, the English and Vietnamese feed cards. | click per tag |
 | 06 Telegram | 34–39 | "And on four and five story days, Telegram lists every story." (Alex) | Telegram port in the ring; on "four" tag "used to cut some"; on "every" five numbered messages leave one after another, tag "21 Oct: 6 of 6". Window: Telegram digest of 21 Oct, every story listed. | click on the tag |
-| Close | 39–43 | "The release notes list every change." (Tyler Cruz) | Yellow rises over the machine; tile lands, "57 changes · 33 fixes", "aidr.today/release/v0.1.16". | cinematic whoosh, impact on the tile, pop on the address |
+| 07 Share card | 39–44 | "Share a story, and its photo now fills half the card." (Tyler Cruz) | Same press; on "Share" tag "was a small inset" and the window shows the old card; on "photo" the ram stamps a plate carrying the new card, the window fades to the photo-led card, tag "edge to edge". Title "Now 56% of the card". | click per tag |
+| Close | 44–48 | "The release notes list every change." (Ivanna) | Yellow rises over the machine; tile lands, "82 changes · 45 fixes", "aidr.today/release/v0.1.16". | cinematic whoosh, impact on the tile, pop on the address |
 
-Scene titles say a fact the voice does not: "Feed down, sitemap read", "Flags broken translations", "No more tiny text", "4 email paths, sent once", "Or just aidr.today/feed", "Short days, full post".
+Scene titles say a fact the voice does not: "Feed down, sitemap read", "Flags broken translations", "No more tiny text", "4 email paths, sent once", "Or just aidr.today/feed", "Short days, full post", "Now 56% of the card".
 
-Cover (each cut): the RSS scene's frame at the root's `data-cover-at`, with the hook "AI;DR is now on RSS" and "English and Vietnamese feeds, in any reader" over the machine side; `render.sh` shows `#cover` and hides the captions for the still.
+Cover (each cut): the share card scene's frame at the root's `data-cover-at`, with the hook "Photo-first share cards" and "Bigger pictures on Facebook, Telegram and X" over the machine side; `render.sh` shows `#cover` and hides the captions for the still.
 
 Vietnamese: same beats and pictures, its own lengths (the build prints them), hosts from the Vietnamese cast.
 
 ## Chapters (YouTube, each at least 10 s)
 
-0:00 Title and a steadier news run · 0:10 Vietnamese spelling check and the day card · 0:22 One email, RSS, and every story on Telegram
+0:00 Title and a steadier news run · 0:10 Vietnamese spelling check and the day card · 0:22 One email and RSS · 0:34 Telegram and photo-first share cards

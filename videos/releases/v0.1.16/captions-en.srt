@@ -71,5 +71,17 @@ And on four and five story days,
 Telegram lists every story.
 
 19
-00:00:39,500 --> 00:00:42,318
+00:00:39,550 --> 00:00:40,409
+Share a story,
+
+20
+00:00:40,409 --> 00:00:41,315
+and its photo now
+
+21
+00:00:41,315 --> 00:00:43,390
+fills half the card.
+
+22
+00:00:44,500 --> 00:00:47,179
 The release notes list every change.

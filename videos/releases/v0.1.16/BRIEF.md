@@ -5,7 +5,7 @@ message: "v0.1.16: one email, every story. Five fixes a reader notices, each sho
 destination: youtube (16:9 video, 9:16 Short), release page hero
 aspect: 1920x1080 (rendered 3840x2160) and 1080x1920 (rendered 2160x3840)
 language: en, vi
-length: 45s (en), vi as the voice needs
+length: 48s (en), vi as the voice needs
 narration: yes
 ---
 
@@ -25,10 +25,13 @@ Each highlight is one station of the launch film's machine (`videos/aidr-launch-
 | 4 | Dispatch, email port | email preview (`/api/subscribe/preview`) | #1003, #1004, #1005, #1006 |
 | 5 | Dispatch, web port | RSS tab at /subscribe?tab=rss, live, 22 Oct | #1028 |
 | 6 | Dispatch, Telegram port | Telegram post 193 (@aidr_today) and 329 (@aihomnay), 21 Oct | #952 |
+| 7 | TL;DR press, a card plate | story share card before and after: EN Canva Craft (`/api/og/2d07cdf38f882d91.png`), VI Anthropic and Hg (`/api/og/435be2e6bd92373e.png?lang=vi`) | #1054, #1057 |
 
 Not in the film: Telegram plain headers (#948), the review rubrics and daily-video changes (#970–#972, #1020, #1024; cut for length).
 
 The Telegram capture is the 21 Oct digest, the first after #952 deployed. It has six stories, not four or five; the picture shows every story listed, and the voice names the four- and five-story days the fix is about.
+
+Scene 7 was added on 24 Oct, when #1052 to #1057 landed in the still-open #951. It goes last so the cached voice lines keep their hosts. Its "before" shots (`capture/share-before.png`, `capture/share-before-vi.png`) are the old inset card rendered locally for #1054; the live route no longer serves that design, so `capture.mjs` cannot fetch them. Copy them in by hand.
 
 ## Build
 

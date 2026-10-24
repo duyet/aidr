@@ -59,5 +59,13 @@ Và vào những ngày có bốn hoặc năm tin,
 Telegram hiện đủ mọi tin.
 
 16
-00:00:40,500 --> 00:00:43,644
+00:00:40,550 --> 00:00:42,083
+Khi bạn chia sẻ một tin,
+
+17
+00:00:42,083 --> 00:00:44,111
+ảnh giờ chiếm trọn nửa thẻ.
+
+18
+00:00:45,500 --> 00:00:47,900
 Danh sách đầy đủ có trong ghi chú phát hành.
