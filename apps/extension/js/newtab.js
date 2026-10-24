@@ -11,7 +11,7 @@ import {
 import { bindPrefsPopover } from "./settings-panel.js";
 import { NEWS_SITE, storyPermalink } from "./site-url.js";
 import { bindAidrDialogLink, openStoryDialogLazy } from "./dialog-link.js";
-import { topicColor } from "./topic-color.js";
+import { categoryColor, topicColor } from "./topic-color.js";
 import { track, trackChannelClick } from "./track.js";
 import {
   fetchExtensionMeta,
@@ -88,6 +88,12 @@ function bulletsFor(tldr, language) {
 function paintTopic(el, tag) {
   const color = topicColor(tag);
   el.classList.add("topic-colored");
+  el.style.setProperty("--tc-light", color.light);
+  el.style.setProperty("--tc-dark", color.dark);
+}
+
+function paintCategory(el, name) {
+  const color = categoryColor(name);
   el.style.setProperty("--tc-light", color.light);
   el.style.setProperty("--tc-dark", color.dark);
 }
@@ -676,8 +682,21 @@ function renderChips(settings, digest) {
       btn.className = "chip";
       const selected = filterCategories.has(row.name);
       btn.setAttribute("aria-pressed", selected ? "true" : "false");
+      paintCategory(btn, row.name);
+      if (selected) {
+        btn.append(
+          Object.assign(document.createElement("span"), {
+            className: "category-filter-dot",
+            ariaHidden: "true",
+          })
+        );
+      }
       btn.append(
-        `${categoryLabel(row.name, lang)} `,
+        Object.assign(document.createElement("span"), {
+          className: selected ? "" : "category-colored",
+          textContent: categoryLabel(row.name, lang),
+        }),
+        " ",
         Object.assign(document.createElement("span"), {
           className: "n",
           textContent: String(row.count),
@@ -886,7 +905,19 @@ function renderStoryRow(settings, story, index, hot) {
 
   const cat = document.createElement("span");
   cat.className = "story-cat";
-  cat.textContent = story.category ? categoryLabel(story.category, lang) : "";
+  if (story.category) {
+    paintCategory(cat, story.category);
+    cat.append(
+      Object.assign(document.createElement("span"), {
+        className: "category-filter-dot",
+        ariaHidden: "true",
+      }),
+      Object.assign(document.createElement("span"), {
+        className: "category-colored",
+        textContent: categoryLabel(story.category, lang),
+      })
+    );
+  }
 
   const when = document.createElement("span");
   when.className = "story-when";
@@ -1082,6 +1113,8 @@ function renderStories(settings, digest) {
     const more = entries.length - shown.length;
     for (const [name, c] of shown) {
       const bit = document.createElement("span");
+      bit.className = "category-colored";
+      paintCategory(bit, name);
       bit.append(
         document.createTextNode(`${categoryLabel(name, lang)} `),
         Object.assign(document.createElement("strong"), {

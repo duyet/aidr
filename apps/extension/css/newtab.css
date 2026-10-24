@@ -384,7 +384,7 @@ html[data-theme="dark"] .news-content {
 .search input {
   width: 100%;
   border: 1px solid transparent;
-  border-radius: 0.75rem;
+  border-radius: calc(var(--radius) * 1.4);
   padding: 0.35rem 0.75rem 0.35rem 2rem;
   background: color-mix(in srgb, var(--border) 50%, transparent);
   color: var(--foreground);
@@ -395,7 +395,7 @@ html[data-theme="dark"] .news-content {
 .search-compact input {
   height: 44px;
   min-height: 44px;
-  border-radius: 0.75rem;
+  border-radius: calc(var(--radius) * 1.4);
   padding: 0 0.75rem 0 2.25rem;
   font-size: 0.8125rem;
 }
@@ -449,7 +449,7 @@ html[data-theme="dark"] .news-content {
   height: 2rem;
   padding: 0 1rem;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 999px;
   background: transparent;
   color: var(--foreground);
   cursor: pointer;
@@ -644,7 +644,7 @@ html[data-theme="dark"] .news-content {
   height: 2rem;
   padding: 0 0.875rem;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 999px;
   background: transparent;
   color: var(--muted-foreground);
   cursor: pointer;
@@ -906,10 +906,9 @@ html[data-theme="dark"] .news-content {
 .lang-toggle {
   display: inline-flex;
   align-items: center;
-  height: 2rem;
-  padding: 0.25rem;
+  padding: 0.125rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-card);
+  border-radius: calc(var(--radius) * 1.8);
   box-sizing: border-box;
   font-size: 0.75rem;
   font-weight: 600;
@@ -920,9 +919,9 @@ html[data-theme="dark"] .news-content {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 1.5rem;
+  height: 1.75rem;
   border: 0;
-  border-radius: 0.375rem;
+  border-radius: 999px;
   background: transparent;
   color: var(--muted-foreground);
   cursor: pointer;
@@ -948,7 +947,7 @@ html[data-theme="dark"] .news-content {
   height: 2rem;
   padding: 0 0.875rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-control);
+  border-radius: 999px;
   box-sizing: border-box;
   background: transparent;
   color: var(--foreground);
@@ -1007,7 +1006,7 @@ html[data-theme="dark"] .news-content {
 .chip {
   flex-shrink: 0;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 999px;
   padding: 0.375rem 0.875rem;
   background: transparent;
   color: var(--muted-foreground);
@@ -1033,12 +1032,12 @@ html[data-theme="dark"] .news-content {
 }
 
 .chip .n {
-  font-size: 0.75em;
-  opacity: 0.7;
+  color: var(--quiet-foreground);
+  font-size: 0.75rem;
 }
 
 .chip[aria-pressed="true"] .n {
-  opacity: 0.8;
+  color: var(--primary-foreground-quiet);
 }
 
 .trending {
@@ -1078,7 +1077,7 @@ html[data-theme="dark"] .news-content {
   align-items: baseline;
   gap: 0.35rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-control);
+  border-radius: 999px;
   padding: 0.375rem 0.875rem;
   background: transparent;
   font: inherit;
@@ -1097,23 +1096,47 @@ html[data-theme="dark"] .news-content {
 }
 
 .trend-chip .n {
+  color: color-mix(in srgb, var(--tc) 35%, var(--quiet-foreground));
   font-size: 0.75em;
   font-weight: 600;
-  opacity: 0.7;
 }
 
-.topic-colored {
-  color: var(--tc-light);
+/* --tc resolves the per-element hue pair for the active theme. Text mixes
+   it with the foreground, as on the web, so it stays AA on every surface. */
+.topic-colored,
+.category-colored,
+.category-filter-dot,
+.trend-chip {
+  --tc: var(--tc-light);
 }
 
-html[data-theme="dark"] .topic-colored {
-  color: var(--tc-dark);
+html[data-theme="dark"]
+  :is(.topic-colored, .category-colored, .category-filter-dot, .trend-chip) {
+  --tc: var(--tc-dark);
 }
 
 @media (prefers-color-scheme: dark) {
-  html[data-theme="system"] .topic-colored {
-    color: var(--tc-dark);
+  html[data-theme="system"]
+    :is(.topic-colored, .category-colored, .category-filter-dot, .trend-chip) {
+    --tc: var(--tc-dark);
   }
+}
+
+.topic-colored,
+.category-colored {
+  color: color-mix(in srgb, var(--tc) 70%, var(--foreground));
+}
+
+.category-filter-dot {
+  display: inline-block;
+  width: 0.375rem;
+  height: 0.375rem;
+  margin-right: 0.375rem;
+  border-radius: 999px;
+  outline: 1px solid var(--primary-foreground);
+  outline-offset: 1px;
+  background: color-mix(in srgb, var(--tc) 60%, var(--primary-foreground));
+  vertical-align: middle;
 }
 
 .page.is-brief {
@@ -1136,7 +1159,7 @@ html[data-theme="dark"] .topic-colored {
   margin: 0.25rem 0 0;
   padding: calc(var(--pad) + 0.5rem) 1.125rem;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: var(--radius-card);
+  border-radius: calc(var(--radius) * 1.8);
   background: var(--card);
   overflow: hidden;
 }
@@ -1223,7 +1246,7 @@ html[data-theme="dark"] .topic-colored {
   margin: 0;
   border: 0;
   padding: 2px;
-  border-radius: var(--radius-control);
+  border-radius: 999px;
   background: #0a0a0a1a;
 }
 
@@ -1238,7 +1261,7 @@ html[data-theme="dark"] .topic-colored {
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 0.375rem;
+  border-radius: 999px;
   background: transparent;
   color: #0a0a0ab3;
   cursor: pointer;
@@ -1340,14 +1363,14 @@ html[data-theme="dark"] .topic-colored {
   display: flex;
   gap: 0.15rem;
   padding: 0.15rem;
-  border-radius: var(--radius-control);
+  border-radius: 999px;
   background: color-mix(in srgb, var(--muted) 80%, transparent);
   font-size: 0.75rem;
 }
 
 .tldr-counts button {
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 999px;
   background: transparent;
   color: var(--muted-foreground);
   cursor: pointer;
@@ -1459,7 +1482,7 @@ html[data-theme="dark"] .topic-colored {
   align-self: stretch;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: 0.75rem;
+  border-radius: calc(var(--radius) * 1.4);
   background: var(--muted);
   object-fit: cover;
 }
@@ -1512,7 +1535,7 @@ html[data-theme="dark"] .topic-colored {
   height: 1.25rem;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 999px;
   background: transparent;
   color: var(--muted-foreground);
   cursor: pointer;
@@ -1596,6 +1619,7 @@ html[data-theme="dark"] .topic-colored {
 }
 
 .day-cats strong {
+  color: var(--quiet-foreground);
   font-weight: 600;
 }
 
