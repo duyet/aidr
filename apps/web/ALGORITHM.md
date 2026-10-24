@@ -2,7 +2,6 @@
 
 How each `NewsIngestWorkflow` run turns raw sources into the ranked,
 bilingual feed.
-
 - [Overview](#overview)
 - [Scheduling & coalesce](#scheduling--coalesce)
 - [Audience metrics (GA4 snapshot)](#audience-metrics-ga4-snapshot)
@@ -33,14 +32,13 @@ bilingual feed.
 
 One ingest run does three jobs. The scheduler starts one every 30 minutes, with a 25-minute coalesce (`INGEST_MIN_INTERVAL_MS`). Prompts live in `worker/llm.ts`; the steps live in `worker/ingest/` (one module per step), run in order by `worker/workflow.ts`.
 
-| Phase | What it writes | Where |
-| --- | --- | --- |
-| Consume | Source rows become `items` (fetch, dedupe, enrich) | `worker/sources/`, `worker/dedupe.ts`, `worker/enrich.ts` |
-| Rank | Scores, translations, `rank_score`, then today's `tldr_snapshots` row (`bullets_en`, `bullets_vi`) | `worker/llm.ts`, `worker/ranking.ts`, `worker/tldr.ts` |
-| Publish | The same edition, per language, with no cross-language fill-in | `worker/digest/edition.ts` |
+| Phase   | What it writes                                                                                     | Where                                                     |
+| ------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Consume | Source rows become `items` (fetch, dedupe, enrich)                                                 | `worker/sources/`, `worker/dedupe.ts`, `worker/enrich.ts` |
+| Rank    | Scores, translations, `rank_score`, then today's `tldr_snapshots` row (`bullets_en`, `bullets_vi`) | `worker/llm.ts`, `worker/ranking.ts`, `worker/tldr.ts`    |
+| Publish | The same edition, per language, with no cross-language fill-in                                     | `worker/digest/edition.ts`                                |
 
 Publish has two deliveries and they do not share a clock or a table:
-
 - **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) and headline font (`sans` or `serif`, see `src/lib/mail-font.ts`, `subscribers.mail_font`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. Subscribers with `frequency = weekly` skip these lanes and get the weekly edition on Monday morning instead (§11, idempotency `last_weekly_sent`). A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=&font=`.
 - **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, one message with the day card's 6 stories, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
 - **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`. Story links carry `utm_content=post-<id8>` (Telegram: `button-<id8>`, `link-<id8>`), the story id's first 8 characters. Once a day, behind the ingest alarm, `worker/notify/facebook-insights.ts` reads `post_media_view` and `post_clicks` for the last 12 sent posts into `post_stats` (migration 0073). A token without `read_insights` ends the run with NULL rows and no retry that day.
@@ -67,7 +65,6 @@ the window.
 The `/data` **Audience** tab shows page views, DAU, MAU, where readers come
 from, and the subscriber breakdowns. Traffic comes from GA4; subscribers come
 from D1. They are never mixed.
-
 - **GA4 is pulled, never read live.** The browser's GA4 events are not
   readable by the Worker, so `worker/ga4/insights.ts` signs a read-only
   service-account assertion and runs six `properties.runReport` calls: a
@@ -146,7 +143,6 @@ backfill-translate, backfill-en-summary, backfill-score, qa-translations, inboun
 review-suggestions, review-submissions, tldr, weekly, email, notify`. In a dry run
 `inbound-email` only classifies the pending batch (no rows written, no
 acknowledgements sent).
-
 - **`dryRun: true`** — `sendEmailDigest` and `notifyChannels` return before
   calling `sendDailyTldr` / `dispatchStoryNotifications` and record
   `skipped` / `dry run: no email or telegram`. The TL;DR step runs as
@@ -176,7 +172,6 @@ acknowledgements sent).
   the chain reached translate.
 
 What a dry run **still does** (it gates distribution, not D1):
-
 - `write` inserts fetched items and re-ranks today: new items appear on the
   site, API, MCP and feeds at once, and the next real run's notify step can
   post them to Telegram / email (notify reads D1).
@@ -250,7 +245,6 @@ sharing a `group` under one canonical are one story (aggregator twins). It
 is a dry run unless `dryRun: false`. `agent unmerge <pairs.json>` plans
 locally from production D1 through `wrangler d1 execute`, SELECT only, and
 `--apply` posts to the endpoint. `worker/unmerge/` holds the planner.
-
 - A restored group is replayed through the merge planner and
   `planNewItemWrite` as ingest would have written it without the wrong
   canonical: one lead row, its twins merged into it, its own sources and
@@ -377,7 +371,6 @@ id. Those rows are hidden and no row holds their story.
 restores them (`agent unmerge --dangling [decisions.json] [--apply]`, a dry
 run by default, the same SELECT-only local plan). It finds every merged row
 whose `duplicate_of` names no item and needs no pairs file.
-
 - Stories: rows are one story when `sameStoryRule` says so (one URL, one
   aggregator slug hash, one article id, an exact title from another
   source). Among rows that one cluster call gave the same made-up id, a
@@ -464,7 +457,6 @@ unmerge apply reports `untaggedCanonicals`. It is a dry run unless
 `dryRun: false`. `agent backfill-tags` plans locally from production D1
 through `wrangler d1 execute`, SELECT only, and `--apply` posts to the
 endpoint, which re-plans from live rows. Neither calls a model.
-
 - Each untagged published story gets `fallbackTags` on its own title and
   source. The plan sorts the stories into three lists:
   - `tag`: stories it names something for, with the tags to write;
@@ -555,7 +547,6 @@ in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
 Agents read the published edition. They never trigger a run. Every surface
 renders from the same D1 reads as the pages, one language per response, with
 no fill-in from the other language.
-
 - Markdown twins: `/index.md` (the homepage, from `getPublicDigest`),
   `/date/YYYY-MM-DD.md` (TL;DR, video, up to 100 ranked stories with host and
   a summary for the top ten, capped at 44,000 bytes and the rest counted),
@@ -898,23 +889,22 @@ that refuse Workers egress and adds the probation sources in the table below.
 
 #### Source table (migration 0058 changes)
 
-| id | adapter | family | state | decision |
-| --- | --- | --- | --- | --- |
-| `reddit-ml`, `reddit-localllama`, `reddit-singularity` | `rss` | `reddit` | disabled | Reddit refuses Workers egress: `fetch_failed` on all 135+ runs, 0 items. |
-| `xai` | `xai` | n/a | disabled | x.ai answers the Worker with HTTP 403: 517 runs, 0 items. |
-| `ahead-of-ai` | `rss` | n/a | disabled | 0 items in 409 runs. The feed is alive (newest post 2026-09-29, one every two to three weeks), so this is a quiet-feed call. |
-| `arstechnica-ai` | `rss` | n/a | enabled | Re-pointed to `feeds.arstechnica.com/arstechnica/technology-lab` with `keywordFilter: "ai"`; the old URL failed on 517 runs. 7 of 20 titles pass the filter. |
-| `mistral` | `rss` | n/a | unchanged | No code bug. The feed parses (89 items); its only post since seeding, Mistral Large 4, was already stored from `docs.mistral.ai`. |
-| `release-ollama`, `release-vllm`, `release-transformers`, `release-codex` | `githubreleases` | `oss-release` | probation, 1 per run | GitHub REST API, `x.y.0` tags only. |
-| `hf-papers` | `hfpapers` | `hf` | probation, 2 per run | Daily papers, top by upvotes; upvotes are not engagement. |
-| `openrouter-models` | `openrouter` | `openrouter` | probation, 2 per run | Models with `created` inside the since-window; `:variant` ids skipped. |
-| `hf-models-qwen`, `-deepseek`, `-moonshotai`, `-zai-org`, `-mistralai` | `hfmodels` | `hf-models` | probation, 2 per run | New release repos of one organization; quantized, adapter, SAE, draft and conversion repos skipped. |
-| `hf-trending` (migration 0064) | `hftrending` | `hf-models` | probation, 2 per run | Release repos on the Hugging Face trending list, created within 14 days, ranked by `trendingScore` and sent 2 per run in a rotating window; the score, likes and downloads are not engagement. |
-| `ai2` | `rss` | n/a | probation, official | `allenai.org/rss.xml`. |
-| `genk-ai` | `rss` (`sourceLang: "vi"`, `timezone: "+07:00"`) | `vi-press` | probation, 2 per run | Second Vietnamese row, so the VI→EN path runs again while `vnexpress-tech` is off. |
+| id                                                                        | adapter                                          | family        | state                | decision                                                                                                                                                                                       |
+| ------------------------------------------------------------------------- | ------------------------------------------------ | ------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reddit-ml`, `reddit-localllama`, `reddit-singularity`                    | `rss`                                            | `reddit`      | disabled             | Reddit refuses Workers egress: `fetch_failed` on all 135+ runs, 0 items.                                                                                                                       |
+| `xai`                                                                     | `xai`                                            | n/a           | disabled             | x.ai answers the Worker with HTTP 403: 517 runs, 0 items.                                                                                                                                      |
+| `ahead-of-ai`                                                             | `rss`                                            | n/a           | disabled             | 0 items in 409 runs. The feed is alive (newest post 2026-09-29, one every two to three weeks), so this is a quiet-feed call.                                                                   |
+| `arstechnica-ai`                                                          | `rss`                                            | n/a           | enabled              | Re-pointed to `feeds.arstechnica.com/arstechnica/technology-lab` with `keywordFilter: "ai"`; the old URL failed on 517 runs. 7 of 20 titles pass the filter.                                   |
+| `mistral`                                                                 | `rss`                                            | n/a           | unchanged            | No code bug. The feed parses (89 items); its only post since seeding, Mistral Large 4, was already stored from `docs.mistral.ai`.                                                              |
+| `release-ollama`, `release-vllm`, `release-transformers`, `release-codex` | `githubreleases`                                 | `oss-release` | probation, 1 per run | GitHub REST API, `x.y.0` tags only.                                                                                                                                                            |
+| `hf-papers`                                                               | `hfpapers`                                       | `hf`          | probation, 2 per run | Daily papers, top by upvotes; upvotes are not engagement.                                                                                                                                      |
+| `openrouter-models`                                                       | `openrouter`                                     | `openrouter`  | probation, 2 per run | Models with `created` inside the since-window; `:variant` ids skipped.                                                                                                                         |
+| `hf-models-qwen`, `-deepseek`, `-moonshotai`, `-zai-org`, `-mistralai`    | `hfmodels`                                       | `hf-models`   | probation, 2 per run | New release repos of one organization; quantized, adapter, SAE, draft and conversion repos skipped.                                                                                            |
+| `hf-trending` (migration 0064)                                            | `hftrending`                                     | `hf-models`   | probation, 2 per run | Release repos on the Hugging Face trending list, created within 14 days, ranked by `trendingScore` and sent 2 per run in a rotating window; the score, likes and downloads are not engagement. |
+| `ai2`                                                                     | `rss`                                            | n/a           | probation, official  | `allenai.org/rss.xml`.                                                                                                                                                                         |
+| `genk-ai`                                                                 | `rss` (`sourceLang: "vi"`, `timezone: "+07:00"`) | `vi-press`    | probation, 2 per run | Second Vietnamese row, so the VI→EN path runs again while `vnexpress-tech` is off.                                                                                                             |
 
 Decisions behind the table:
-
 - **GitHub releases use the API, not `releases.atom`.** `github.com/robots.txt`
   disallows `/*.atom$` for `User-agent: *`, and no source may fetch what a
   robots.txt disallows. `api.github.com` serves no robots.txt. Titles are
@@ -962,7 +952,6 @@ Decisions behind the table:
 
 A new source starts with `probation: true` in the catalog. The rule, held by
 `worker/__tests__/source-catalog.test.ts`:
-
 - at most 2 items per run (1 for the `oss-release` family);
 - no `engagement: "reader"`, and no `points` or `comments` from the adapter;
 - `official` only for a first-party feed on its own host (it makes a row the
@@ -983,7 +972,6 @@ and miss the others. The seed upserts name, type and config (never
 `sources` rows, so nothing can undo the seed (#871). An operator can also add or enable an `rss` row at
 runtime through `upsert_source` with no deploy — see
 [`worker/README.md`](worker/README.md) → "Add a source without a deploy".
-
 - **Flood gate.** A high-volume feed is cut before the scorer sees it, in
   this order: event promos drop (see the next bullet), an optional named title pre-filter (`keywordFilter: "ai"`,
   the same regex HN uses; it admits inflections such as agents,
@@ -1020,7 +1008,7 @@ runtime through `upsert_source` with no deploy — see
 - **Top-list family cap.** The short ranked lists — homepage top stories
   (`PUBLIC_STORY_LIMIT`) and the trending pick — go
   through `pickDiverse` (`worker/source-diversity.ts`): at most
-  `ceil(0.3 × list size)` rows per source *family* (8 → 3, 16 → 5). The
+  `ceil(0.3 × list size)` rows per source _family_ (8 → 3, 16 → 5). The
   TL;DR's 16 use the same cap through `selectEdition`, which lets one
   importance-8+ story per family past it (at most 6 of 16; see "10.
   TL;DR"). A
@@ -1130,7 +1118,6 @@ posters stay nested on the video asset and are never emitted as extra image
 candidates. HTML entities in media URLs (including double-escaped `&amp;`
 in query strings) are decoded before storage, so thumbs are real article
 images rather than a broken-src fallback.
-
 - **The trigger is a missing picture, not missing media.** A new item is
   fetched when its summary is empty or cut off, or when it has no thumbnail
   (`primaryThumbnailUrl`): no image asset, and no poster on the first-ranked
@@ -1236,7 +1223,6 @@ images rather than a broken-src fallback.
 ### 4. Score (decision router, then Jev, then LLM)
 
 Batches of 5.
-
 - `ANYROUTER_DECISION_MODEL` is an optional System One router (such as
   `anyrouter/decision`) tried on each item before Jev, with the same
   questions and a 15s cap. An answer is used only if the response's served
@@ -1404,7 +1390,6 @@ Batches of 5.
 
 One clustering call, plus a
 deterministic pass.
-
 - The clustering call compares new items (title, url, source) with the
   last 72h of published titles. It sees at most 100 new items
   (`MAX_NEW_ITEMS_IN_CLUSTER_PROMPT`, input order) and 300 published
@@ -1590,7 +1575,6 @@ Four raters read 400 stored rows of 2026-10-12..19 (72 rated fidelity
 and naturalness ≥ 4, "clean"). From them the gate gained five checks.
 `scripts/vi-audit.ts` replays the gate over stored rows (read-only) and
 counts rows per check; the numbers below come from it.
-
 - Calques seen in ≥ 3 rated rows join `CALQUES`: "lý luận"/"lập luận" for
   reasoning (use "suy luận"), "đa dạng (thức)" for multimodal, "sinh tạo"
   for generative, "quỹ đường" for trajectories, "trọng lượng" for model
@@ -1637,7 +1621,6 @@ replay of 2026-10-20 (`scripts/telegram-gate-replay.ts`, below under
 Notify). Each change fixed a class of false refusals. The calque, garble,
 magnitude, version, decimal and dollar rules are unchanged; the keep-term
 check now matches the jargon sense only.
-
 - Stutter: a doubled syllable is not a stutter when each copy belongs to a
   neighbour, the first ending a two-syllable word and the second starting
   one or standing alone (`worker/vi-compounds.ts`: "quy mô mô hình",
@@ -1691,7 +1674,6 @@ explicit `source_lang='vi'` is a real VI→EN pair: the bounded QA runtime can
 create a missing English candidate with `ANYROUTER_ENGLISH_TRANSLATE_MODEL`,
 then independently reviews that candidate. The review path lives in
 `worker/translation-qa.ts`:
-
 - `ANYROUTER_REVIEW_MODEL` (legacy: explicit `ANYROUTER_QA_MODEL`) is
   required. The reviewer chain must be concrete and disjoint from every
   `ANYROUTER_TRANSLATE_MODEL` id; missing/overlapping config fails closed
@@ -1778,12 +1760,12 @@ sentence by sentence", third-person voice, no length line;
 `cards/natural.patch`) did not read more natural on either model and lost
 more facts, so the card above is unchanged:
 
-| Pair (both judges agree) | Natural wins | Faithful wins | Lost facts / story (luna, deepseek) |
-|---|---|---|---|
-| master vs free-form, Laguna | 7 vs 11 of 36 | 17 vs 4 | 1.27 vs 2.12, 1.00 vs 2.24 |
-| master vs free-form, Gemma | 11 vs 10 | 8 vs 4 | 0.43 vs 1.47, 2.03 vs 2.23 |
-| master + #654 voice line vs master, Laguna | 10 vs 9 | 3 vs 12 | 1.52 vs 1.30, 2.33 vs 1.18 |
-| Gemma vs Laguna, master card | 27 vs 4 | 13 vs 6 | 0.63 vs 1.43, 2.87 vs 3.77 |
+| Pair (both judges agree)                   | Natural wins  | Faithful wins | Lost facts / story (luna, deepseek) |
+| ------------------------------------------ | ------------- | ------------- | ----------------------------------- |
+| master vs free-form, Laguna                | 7 vs 11 of 36 | 17 vs 4       | 1.27 vs 2.12, 1.00 vs 2.24          |
+| master vs free-form, Gemma                 | 11 vs 10      | 8 vs 4        | 0.43 vs 1.47, 2.03 vs 2.23          |
+| master + #654 voice line vs master, Laguna | 10 vs 9       | 3 vs 12       | 1.52 vs 1.30, 2.33 vs 1.18          |
+| Gemma vs Laguna, master card               | 27 vs 4       | 13 vs 6       | 0.63 vs 1.43, 2.87 vs 3.77          |
 
 Lost facts exclude batches whose first call failed (titles-only
 fallback). The model, not the card, decides how natural the Vietnamese
@@ -1824,7 +1806,6 @@ Constants live in `worker/ranking.ts` (`IMPORTANCE_EXPONENT`,
 `READER_VOTE_GAIN`, `READER_VOTE_CAP`, `STORY_KIND_WEIGHTS`). Why each
 rule exists, from the 2026-10-11 audit, the 2026-10-16 story-kind replay
 and `rank-replay` (below):
-
 - **Decay ramp and boost cap.** 5 of the top 30 were older than 36h. After
   24h the decay steepens, and `engagement × sourceBoost` stops at 3.25 so
   HN volume plus many outlets cannot hold a stale story up.
@@ -1900,7 +1881,6 @@ A story's cluster is the canonical item plus every `merged` item whose
 `duplicate_of` points at it. `rankSignals` reads it one way everywhere
 (insert, merge recompute, 72h re-rank, backfill, admin rate/preview;
 SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
-
 - `sourceCount` = distinct source **families** in the cluster
   (`family` in `worker/sources/catalog.ts`, else the source id). One
   outlet gets no boost; HN + TechCrunch + Verge gets 1.24. Tweets in
@@ -1966,7 +1946,6 @@ inside its day, and so across the homepage's 30-story first view (from #33
 at most on the day simulated below).
 `worker/__tests__/feed-reads.integration.test.ts` holds a test per surface.
 Collection:
-
 - The browser counts a story once per tab, kind and UTC day with a key in
   `sessionStorage`. That is client-side only; the server cannot enforce it.
 - The server drops bot user agents, `Sec-Fetch-Site: cross-site`, unknown
@@ -1983,12 +1962,12 @@ Collection:
   cap sets the worst case, not the curve. Simulated on the 15 Oct 2026 ICT
   production day (159 stories; the homepage first view is the top 30):
 
-  | Counted opens | Factor | Max climb | Deepest entrant into top 30 |
-  |---|---|---|---|
-  | 200: one IP, 1/min for 24h across UTC midnight | ×1.030 | 10 (#62 to #53) | #33 |
-  | 100: the same drip inside one UTC day | ×1.017 | 6 | #31 |
-  | 50: 50 readers, one open each | ×1.009 | 4 | #31 |
-  | 10: 10 readers | ×1.002 | 2 | none |
+  | Counted opens                                  | Factor | Max climb       | Deepest entrant into top 30 |
+  | ---------------------------------------------- | ------ | --------------- | --------------------------- |
+  | 200: one IP, 1/min for 24h across UTC midnight | ×1.030 | 10 (#62 to #53) | #33                         |
+  | 100: the same drip inside one UTC day          | ×1.017 | 6               | #31                         |
+  | 50: 50 readers, one open each                  | ×1.009 | 4               | #31                         |
+  | 10: 10 readers                                 | ×1.002 | 2               | none                        |
 
   The previous ×1.3 / 200 curve with clicks counted let the 24h drip lift
   #62 to #30.
@@ -2087,7 +2066,6 @@ fallback; the Vietnamese column never reads `summary_en`. Drain on demand
 ### 10. TL;DR (LLM)
 
 Every run (30 minutes).
-
 - Generate today's **local** snapshot (`Asia/Ho_Chi_Minh` date key —
   same identity the Telegram digest looks up for once-per-local-day
   send) if missing, thin, EN-only (`bullets_vi` empty), or
@@ -2114,25 +2092,25 @@ Every run (30 minutes).
      next importance-5+ row in the top 32.
   2. The rest of the pool in rank order, 5 per family.
   3. Anything left, in rank order, so the edition is never short.
-  So a story under importance 5 makes the edition only when the top 32 has
-  nothing stronger within the cap, and one family holds at most 6 of 16
-  unless the pool has too few other families to fill the edition (step 3,
-  as `pickDiverse` backfills). An 8+ row in the top 32 is cut only when its
-  family already holds 6 higher-ranked picks (or the top 32 hold more than
-  16 of them).
-  Why, measured on the editions of 2026-10-09 to 10-16 (replay on the
-  current `rank_score`, SELECT only): the marketbrief/huggingnews pair
-  carries 37% of published stories and most model-release headlines, and
-  held 5 of 16 on 6 of the 8 days; `pickDiverse` then filled the tail with
-  importance-4 HN rows (a $15M maths grant at #14, a Nikon contest
-  disqualification) while importance-8 rows were cut (Gemini 4 Argon's
-  safety report at #26 on 10-15). The replay removes every sub-5 pick
-  (6 → 0 over 8 days) and adds two 8+ stories (Broadcom's $42B loan to
-  Anthropic on 10-13, the Argon report on 10-15). Every swap replaces a
-  sub-5 story. The aggregator family reaches 6 of 16 once (10-15). The
-  same day keeps Black Forest Labs' open 5.6B image model (#10, 7.9): an
-  earlier draft let 8+ rows claim family slots first, and the Argon report
-  cost it its place.
+     So a story under importance 5 makes the edition only when the top 32 has
+     nothing stronger within the cap, and one family holds at most 6 of 16
+     unless the pool has too few other families to fill the edition (step 3,
+     as `pickDiverse` backfills). An 8+ row in the top 32 is cut only when its
+     family already holds 6 higher-ranked picks (or the top 32 hold more than
+     16 of them).
+     Why, measured on the editions of 2026-10-09 to 10-16 (replay on the
+     current `rank_score`, SELECT only): the marketbrief/huggingnews pair
+     carries 37% of published stories and most model-release headlines, and
+     held 5 of 16 on 6 of the 8 days; `pickDiverse` then filled the tail with
+     importance-4 HN rows (a $15M maths grant at #14, a Nikon contest
+     disqualification) while importance-8 rows were cut (Gemini 4 Argon's
+     safety report at #26 on 10-15). The replay removes every sub-5 pick
+     (6 → 0 over 8 days) and adds two 8+ stories (Broadcom's $42B loan to
+     Anthropic on 10-13, the Argon report on 10-15). Every swap replaces a
+     sub-5 story. The aggregator family reaches 6 of 16 once (10-15). The
+     same day keeps Black Forest Labs' open 5.6B image model (#10, 7.9): an
+     earlier draft let 8+ rows claim family slots first, and the Argon report
+     cost it its place.
 - Homepage thumbs and the story dialog need those ids. If the model
   pastes `[hex]` into the bullet text instead of (or besides)
   `item_ids`, parse recovers the ids and strips the citation.
@@ -2167,7 +2145,7 @@ Every run (30 minutes).
   titles as `bullets_vi` once translations exist.
 - Empty results are never persisted.
 - The homepage also synthesizes a last-24h title-fallback at read time
-  when the stored snapshot is thin *or* English-only in VI while
+  when the stored snapshot is thin _or_ English-only in VI while
   `title_vi` exists. It only displays it and never writes
   `tldr_snapshots`; ingest owns the row and repairs it under the rules
   above. Before 2026-10-14 it persisted the rebuild, which rewrote the
@@ -2180,7 +2158,6 @@ Every run (30 minutes).
 
 `worker/weekly.ts`, step `weekly` (after `tldr`), table `weekly_snapshots`
 (0056). Pure week rules: `src/lib/week.ts`.
-
 - **Key.** The ISO week (`YYYY-Www`, Monday..Sunday) of audience-zone dates:
   the same seven days as the `tldr_snapshots` rows and `/date/` pages. The
   first run after Monday 00:00 ICT builds the week that just closed.
@@ -2339,12 +2316,11 @@ retries next run. Preview: `GET /api/subscribe/preview?lang=&n=&format=&freq=wee
 Pluggable channel adapters (Telegram, the English Facebook Page,
 plus optional JSON/Slack webhook via `NOTIFY_WEBHOOK_URL`),
 deliberately non-spammy.
-
 - A normalized `AlertEvent` (severity, source, title, summary, metrics,
   links, optional health snapshot) is the internal shape. Adapters in
   `worker/notify/adapters.ts` render Telegram HTML, Slack
   incoming-webhook JSON, or raw JSON.
-- *Daily digest*: one message per local day per channel
+- _Daily digest_: one message per local day per channel
   (Asia/Ho_Chi_Minh, from 08:00), and no message for the stories that
   did not make the card. It is a `sendMessage` (4096 characters, not a
   1024-character photo caption) naming the six stories on the day card,
@@ -2371,7 +2347,7 @@ deliberately non-spammy.
   the first six bullets of that language's snapshot and the preview is the
   day page. The send waits up to 45s, like a photo: Telegram may fetch the
   cold card for the preview before it answers.
-- *Digest highlight* (Telegram, `postsDigestHighlight`): right after the
+- _Digest highlight_ (Telegram, `postsDigestHighlight`): right after the
   digest, the card's top story goes out once as a normal story post
   (`sendStory`: its own photo or album, the full caption summary, the Read
   button). The story is loaded in the channel's language only
@@ -2393,7 +2369,7 @@ deliberately non-spammy.
   window, and its story is already in `notify_digest_items`. The admin
   force-send follows a sent digest with the highlight under the same key;
   the staging preview sends both and records neither.
-- *Trending*: an individual post only when the algo flags a story as
+- _Trending_: an individual post only when the algo flags a story as
   exceptional (`rank_score` at or above the trending bar and
   `llm_importance ≥ 7`), capped at
   3/day with a 3h minimum gap, one per run, and only during 09–23h
@@ -2411,7 +2387,7 @@ deliberately non-spammy.
   daily cap and gap do the limiting; 0.995 with a floor of 6 left the
   channels silent once the rank scale fell to a 3–8 max (2026-10-02). The
   floor keeps a dead window's weakest stories from posting.
-- *Trending never repeats an event and never posts junk copy*
+- _Trending never repeats an event and never posts junk copy_
   (`worker/notify/post-quality.ts`, `posted-events.ts`). Both checks run on
   the full candidate query result, before `pickDiverse`, so a rejected story
   frees its slot for the next one instead of costing the run its post.
@@ -2458,10 +2434,10 @@ deliberately non-spammy.
     labeled a defect a Vietnamese reader would call wrong or a false
     positive:
 
-    | | refused | defect | false positive |
-    |---|---|---|---|
-    | before | 674 (42.2%) | 389 | 285 (17.8% of stories) |
-    | after | 537 (33.6%) | 348 | 189 (11.8%) |
+    |        | refused     | defect | false positive         |
+    | ------ | ----------- | ------ | ---------------------- |
+    | before | 674 (42.2%) | 389    | 285 (17.8% of stories) |
+    | after  | 537 (33.6%) | 348    | 189 (11.8%)            |
 
     170 of the 189 left are `gate:qa`: QA's `hard_failures` mixes the
     reviewer's checks with its deterministic guards, and the name guard
@@ -2551,7 +2527,7 @@ deliberately non-spammy.
     blocked candidate is re-judged and re-counted every run until it ages out
     of the 24h window. The `notify` step line stays unchanged (240-character
     cap).
-- *Why this ranks* (story page, "Chi tiết bài viết" aside): `GET /api/story/{id}?ranking=1`
+- _Why this ranks_ (story page, "Chi tiết bài viết" aside): `GET /api/story/{id}?ranking=1`
   adds `ranking` from `worker/notify/story-ranking.ts`: day rank (Asia/Ho_Chi_Minh day, `archiveDateOfSec`),
   `rank_score`, importance, the live bar (same `trendingRankBar`), and per
   channel (`telegram`, `telegram-en`) either the `notifications` post time or
@@ -2580,7 +2556,7 @@ deliberately non-spammy.
   [`docs/decisions/telegram-instant-view.md`](../../docs/decisions/telegram-instant-view.md).
   IV is not enabled by this document; keep the normal message/photo path
   until product and operations approve a manual POC. That record is a
-  **no-go**; the only automation it gained is a *field gate*
+  **no-go**; the only automation it gained is a _field gate_
   ([`worker/telegram-iv.ts`](worker/telegram-iv.ts)) that checks
   `title`/`body`/`published_date`/`image_url`/`site_name`/`description`
   for one `{id8}` + `lang` and answers `iv_eligible` with a reason. Run it
@@ -2630,7 +2606,7 @@ deliberately non-spammy.
   minus the two checks for what it leaves out (the length ratio and a
   dropped English term), since a rewrite is shorter on purpose
   (`rewriteIssues`). When no clean rewrite exists and the Vietnamese
-  summary reads as source copy, the post is *withheld*
+  summary reads as source copy, the post is _withheld_
   (`SendResult.withheld`): nothing is sent, the row is `failed` with
   `withheld: …` in `last_error`, no owner alert goes out, and trending
   gives the slot to its next candidate. The attempt counts, so a story is
@@ -2751,7 +2727,7 @@ deliberately non-spammy.
   is a definite outcome. `ok: false` posted nothing, so the next transport
   may run and the row is `failed` (retried up to 3 attempts). A timeout, a
   dropped connection, or a non-JSON body (a proxy error page) is
-  *ambiguous*: Telegram downloads media itself, so the message may already
+  _ambiguous_: Telegram downloads media itself, so the message may already
   be posted. An ambiguous call ends the send with no fallback, is recorded
   as `notifications.status = 'ambiguous'`, and is reported to
   Sentry/Bugsink. That row is final: the trending query and the digest gate
@@ -2931,23 +2907,23 @@ balance" 429) while 7 bench processes ran in parallel. Prod `glm-4.6` review
 then logged its first failure of the day, so the bench may have helped
 drain it.
 
-| step | prod call → bench adapter | env var | output checked | label |
-|---|---|---|---|---|
-| `score` | `scoreBatchPrompt` → `sanitizeScoreResults` (chat backup) | `ANYROUTER_MODEL` | relevance, importance, quality, category, tags | gold importance band (`importance-eval.json`), silver status/category/tags |
-| `decision` | `callSystemOne` + `jevScoreQuestions` → `scoreJudgmentFromJev`; an answer not served by Jev is a miss, as in prod | `ANYROUTER_DECISION_MODEL` | same, plus `servedByJev` | same as score |
-| `jev` | same call, any answer counts | `ANYROUTER_JEV_MODEL` | same | same as score |
-| `translate-en-vi` | `translateItems` (VI_STYLE + glossary) | `ANYROUTER_TRANSLATE_MODEL` | protected terms, knowledge rules, blind back-translation by a fixed judge | gold: accepted suggestions, active knowledge rules; silver: stored VI |
-| `translate-vi-en` | `ENGLISH_TRANSLATION_SYSTEM_PROMPT` + `buildEnglishCandidatePrompt` → `parseRepairCandidate` | `ANYROUTER_ENGLISH_TRANSLATE_MODEL` | name keep, recall against stored EN | silver |
-| `review` | `requestReview` → `reviewPasses` | `ANYROUTER_REVIEW_MODEL` | pass/fail | silver `qa_rating` |
-| `tldr` | `generateTldr` | `ANYROUTER_TLDR_MODEL` | bilingual, item ids, bullet length, coverage | silver `tldr_snapshots` |
-| `cluster` | `clusterSimilar` | `ANYROUTER_MODEL` | same-story F1 | silver `duplicate_of` (distinct titles only) |
-| `topics` | `buildTopicMappingPrompt` → `parseTopicMappingResponse` | `ANYROUTER_MODEL` | canonical mapping | silver `topics.canonical` |
-| `draft-repair` | `translateBatch` with the draft check's `fix` lists (the one repair pass in `translateItems`) | `ANYROUTER_TRANSLATE_MODEL` | `acceptsRepair` (fewer issues, still VI, ≥80% length), all issues resolved | derived: stored VI rows `translationDraftIssues` flags, stratified by issue type |
-| `rule-extraction` | `buildRuleExtractionPrompt` → `validateRule` + `ruleIsEvidenced` (as `learnFromAcceptedSuggestion`, no D1 write) | `ANYROUTER_TRANSLATE_MODEL` | class-balanced: reusable + term + evidenced on positives, "one-off" on negatives | gold: active rule examples; derived: stored VI with a rule's `bad_vi` substituted, one-number fact fixes |
-| `suggestion` | `buildReviewPrompt` → `parseReviewResponse` (per field), or VI_STYLE + `buildUnifiedReviewPrompt` → `parseUnifiedVerdict` (`auto`), mapped to accepted / needs_review / rejected with prod thresholds (no output guard, no panel) | `ANYROUTER_TRANSLATE_MODEL` | status agreement | silver `translation_suggestions.status`; accepted rows left out (the applied edit is already in `translations`) |
-| `submission` | `buildSubmissionReviewPrompt` → `parseSubmissionVerdict`, accept at ≥0.6 (the chat fallback; prod asks Jev first) | `ANYROUTER_MODEL` | accept/reject agreement | silver `submissions.status`; og:description re-fetched at build for every case |
-| `judge-relevance`, `judge-source-quality`, `judge-safety` | `createJevJudgeExecutor`, one seat, score-panel or submission-gate subject shape | `JEV_PANEL_{RELEVANCE,SOURCE_QUALITY,SAFETY}_MODEL` | support/oppose agreement; abstain or transport failure = invalid | silver `items.status` published/rejected and `submissions.status` (`judge-score.json`; panel never ran in prod, no stored votes) |
-| `judge-translation-fidelity` | same, translation-gate subject shape | `JEV_PANEL_TRANSLATION_FIDELITY_MODEL` | same | silver `qa_rating` ≥0.7 and rejected suggestions (`judge-translation.json`) |
+| step                                                      | prod call → bench adapter                                                                                                                                                                                                         | env var                                             | output checked                                                                   | label                                                                                                                           |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `score`                                                   | `scoreBatchPrompt` → `sanitizeScoreResults` (chat backup)                                                                                                                                                                         | `ANYROUTER_MODEL`                                   | relevance, importance, quality, category, tags                                   | gold importance band (`importance-eval.json`), silver status/category/tags                                                      |
+| `decision`                                                | `callSystemOne` + `jevScoreQuestions` → `scoreJudgmentFromJev`; an answer not served by Jev is a miss, as in prod                                                                                                                 | `ANYROUTER_DECISION_MODEL`                          | same, plus `servedByJev`                                                         | same as score                                                                                                                   |
+| `jev`                                                     | same call, any answer counts                                                                                                                                                                                                      | `ANYROUTER_JEV_MODEL`                               | same                                                                             | same as score                                                                                                                   |
+| `translate-en-vi`                                         | `translateItems` (VI_STYLE + glossary)                                                                                                                                                                                            | `ANYROUTER_TRANSLATE_MODEL`                         | protected terms, knowledge rules, blind back-translation by a fixed judge        | gold: accepted suggestions, active knowledge rules; silver: stored VI                                                           |
+| `translate-vi-en`                                         | `ENGLISH_TRANSLATION_SYSTEM_PROMPT` + `buildEnglishCandidatePrompt` → `parseRepairCandidate`                                                                                                                                      | `ANYROUTER_ENGLISH_TRANSLATE_MODEL`                 | name keep, recall against stored EN                                              | silver                                                                                                                          |
+| `review`                                                  | `requestReview` → `reviewPasses`                                                                                                                                                                                                  | `ANYROUTER_REVIEW_MODEL`                            | pass/fail                                                                        | silver`qa_rating`                                                                                                               |
+| `tldr`                                                    | `generateTldr`                                                                                                                                                                                                                    | `ANYROUTER_TLDR_MODEL`                              | bilingual, item ids, bullet length, coverage                                     | silver`tldr_snapshots`                                                                                                          |
+| `cluster`                                                 | `clusterSimilar`                                                                                                                                                                                                                  | `ANYROUTER_MODEL`                                   | same-story F1                                                                    | silver`duplicate_of` (distinct titles only)                                                                                     |
+| `topics`                                                  | `buildTopicMappingPrompt` → `parseTopicMappingResponse`                                                                                                                                                                           | `ANYROUTER_MODEL`                                   | canonical mapping                                                                | silver`topics.canonical`                                                                                                        |
+| `draft-repair`                                            | `translateBatch` with the draft check's `fix` lists (the one repair pass in `translateItems`)                                                                                                                                     | `ANYROUTER_TRANSLATE_MODEL`                         | `acceptsRepair` (fewer issues, still VI, ≥80% length), all issues resolved       | derived: stored VI rows `translationDraftIssues` flags, stratified by issue type                                                |
+| `rule-extraction`                                         | `buildRuleExtractionPrompt` → `validateRule` + `ruleIsEvidenced` (as `learnFromAcceptedSuggestion`, no D1 write)                                                                                                                  | `ANYROUTER_TRANSLATE_MODEL`                         | class-balanced: reusable + term + evidenced on positives, "one-off" on negatives | gold: active rule examples; derived: stored VI with a rule's `bad_vi` substituted, one-number fact fixes                        |
+| `suggestion`                                              | `buildReviewPrompt` → `parseReviewResponse` (per field), or VI_STYLE + `buildUnifiedReviewPrompt` → `parseUnifiedVerdict` (`auto`), mapped to accepted / needs_review / rejected with prod thresholds (no output guard, no panel) | `ANYROUTER_TRANSLATE_MODEL`                         | status agreement                                                                 | silver`translation_suggestions.status`; accepted rows left out (the applied edit is already in `translations`)                  |
+| `submission`                                              | `buildSubmissionReviewPrompt` → `parseSubmissionVerdict`, accept at ≥0.6 (the chat fallback; prod asks Jev first)                                                                                                                 | `ANYROUTER_MODEL`                                   | accept/reject agreement                                                          | silver`submissions.status`; og:description re-fetched at build for every case                                                   |
+| `judge-relevance`, `judge-source-quality`, `judge-safety` | `createJevJudgeExecutor`, one seat, score-panel or submission-gate subject shape                                                                                                                                                  | `JEV_PANEL_{RELEVANCE,SOURCE_QUALITY,SAFETY}_MODEL` | support/oppose agreement; abstain or transport failure = invalid                 | silver`items.status` published/rejected and `submissions.status` (`judge-score.json`; panel never ran in prod, no stored votes) |
+| `judge-translation-fidelity`                              | same, translation-gate subject shape                                                                                                                                                                                              | `JEV_PANEL_TRANSLATION_FIDELITY_MODEL`              | same                                                                             | silver`qa_rating` ≥0.7 and rejected suggestions (`judge-translation.json`)                                                      |
 
 The `cluster` row is silver, so a model that merges what prod missed
 scores as a false positive. `scripts/cluster-gold-eval.ts` scores the
@@ -2965,7 +2941,6 @@ deterministic metrics first. Datasets hold no user ids, names or IP hashes.
 ## LLM transport
 
 All calls go through `callAnyrouter` (`worker/llm.ts`):
-
 - Streaming SSE (bypasses anyrouter's queue for long prompts).
 - JSON mode.
 - `temperature` 0, except on `anthropic/` ids: current Claude ids (5.5)
@@ -2985,7 +2960,6 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 
 Score tries Jev (`typesafe/jev` via `/systemone`, 30s cap per item) first,
 then this chat chain:
-
 - `google/gemma-latest` (rolling alias, served `gemma-4-31b` on 2026-10-10)
 - `z-ai/glm-latest` (rolling alias, served `glm-5.2`)
 - `@preset/aidr` (workspace preset, served `gemma-4-31b` on 2026-10-10)
@@ -3139,7 +3113,6 @@ omitted, and stealth/ox-alpha was removed after AnyRouter delisted it.
 Translate runs in batches of 3 (summaries clipped, title-only retry) and
 each backfill slice is its own Workflow step so a finished batch is written
 even if a later slice times out.
-
 - Score batches of 5. One model attempt stays on the 70s hang-cap. The chat
   chain passes `timeoutMs` so two batches — decision 15s, Jev 30s, then
   chat — stay inside the 5-minute `LLM_STEP` (the 120s default made two
@@ -3160,7 +3133,6 @@ collapses. If a future source set does not fit, the number to lower is the
 source row's `maxItems` — never a hang-cap, never a batch size.
 
 A hang, empty sanitize, timeout, or 402 advances the chain:
-
 - `raceTimeout` aborts the fetch.
 - Leftover reserves a 20s floor for two fallbacks and hang-caps at 25s so
   leftover actually reaches them.

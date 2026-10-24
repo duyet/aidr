@@ -57,7 +57,7 @@ export function validateSuggestion(input: SuggestionInput): string {
 }
 
 export const submitSuggestion = createServerFn({ method: "POST" })
-  .inputValidator((input: SuggestionInput) => input)
+  .validator((input: SuggestionInput) => input)
   .handler(async ({ data }) => {
     const { userId, userName } = await requireClerkUser();
     const { env, waitUntil } = await import("cloudflare:workers");
@@ -92,7 +92,7 @@ export const submitSuggestion = createServerFn({ method: "POST" })
 /** Polled by the suggest form until the verdict lands. Owner-only: the
  *  user comes from the Clerk session, and another user's id reads as null. */
 export const fetchSuggestionStatus = createServerFn({ method: "GET" })
-  .inputValidator((input: { id: string }) => input)
+  .validator((input: { id: string }) => input)
   .handler(async ({ data }): Promise<SuggestionStatusView | null> => {
     const { userId } = await requireClerkUser();
     const { env } = await import("cloudflare:workers");
@@ -105,7 +105,7 @@ export const fetchSuggestionStatus = createServerFn({ method: "GET" })
 
 /** The signed-in user's suggestions and submissions, newest first. */
 export const fetchMyContributions = createServerFn({ method: "GET" })
-  .inputValidator((input: { before?: ContributionCursor | null }) => input)
+  .validator((input: { before?: ContributionCursor | null }) => input)
   .handler(async ({ data }): Promise<ContributionPage> => {
     const { userId } = await requireClerkUser();
     const { env } = await import("cloudflare:workers");
@@ -122,7 +122,7 @@ export const fetchMyContributions = createServerFn({ method: "GET" })
   });
 
 export const fetchSuggestions = createServerFn({ method: "GET" })
-  .inputValidator((input: { item_id: string }) => input)
+  .validator((input: { item_id: string }) => input)
   .handler(async ({ data }): Promise<SuggestionSummary[]> => {
     const { env } = await import("cloudflare:workers");
     const db = (env as { DB?: D1Database }).DB;

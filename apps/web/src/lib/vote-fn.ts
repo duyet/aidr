@@ -20,7 +20,7 @@ function storyId(id: unknown): string {
 }
 
 export const castStoryVote = createServerFn({ method: "POST" })
-  .inputValidator((input: { item_id: string; value: 1 | -1 }) => {
+  .validator((input: { item_id: string; value: 1 | -1 }) => {
     if (input?.value !== 1 && input?.value !== -1) {
       throw new Error("Invalid vote");
     }
@@ -46,7 +46,7 @@ export const castStoryVote = createServerFn({ method: "POST" })
   });
 
 export const fetchMyVotes = createServerFn({ method: "GET" })
-  .inputValidator((input: { ids: string[] }) => {
+  .validator((input: { ids: string[] }) => {
     if (!Array.isArray(input?.ids) || input.ids.length > 90) {
       throw new Error("Invalid stories");
     }

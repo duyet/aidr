@@ -10,12 +10,12 @@ file in `migrations/` from `0023` up, in numeric order. The gate derives the
 list from the directory, so a new migration is covered without editing the
 gate (`worker/migration-gate.ts`, `scripts/check-migrations.ts`).
 
-| Command | What it does |
-|---|---|
-| `pnpm --filter @aidr/web check:migration-order` | Checks file names only. No network. |
-| `pnpm --filter @aidr/web check:migrations` | Also reads the remote ledger and fails if a required migration is missing or out of order. Applies nothing. |
-| `pnpm --filter @aidr/web d1:migrate` | Checks the ledger order, then applies pending migrations. |
-| `pnpm --filter @aidr/web deploy` or `cf:deploy:prod` | Runs `check:migrations` before the build. Do not bypass it with a direct `wrangler deploy`. |
+| Command                                              | What it does                                                                                                |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter @aidr/web check:migration-order`      | Checks file names only. No network.                                                                         |
+| `pnpm --filter @aidr/web check:migrations`           | Also reads the remote ledger and fails if a required migration is missing or out of order. Applies nothing. |
+| `pnpm --filter @aidr/web d1:migrate`                 | Checks the ledger order, then applies pending migrations.                                                   |
+| `pnpm --filter @aidr/web deploy` or `cf:deploy:prod` | Runs `check:migrations` before the build. Do not bypass it with a direct `wrangler deploy`.                 |
 
 `.github/workflows/migrate-d1.yml` runs `d1:migrate`. `deploy-web.yml` calls it
 as its first job (`needs`), so a push that adds a migration applies it, then
@@ -38,7 +38,6 @@ Do not use GitHub `releases/latest` — that may be a website (`web-v*`) release
 `GET /api/feed` is the full
 homepage payload (~360KB) and does not send CORS for `chrome-extension://`
 origins. Use this instead:
-
 - **URL:** `https://aidr.today/api/public?lang=vi` (or `?lang=en`)
 - **Auth:** none. Failures return a bilingual `{ "error": "unavailable", ... }`
   object with no D1/admin detail.
@@ -57,8 +56,12 @@ origins. Use this instead:
   "available_langs": ["en", "vi"],
   "tldr": {
     "date": "2026-08-27",
-    "bullets_en": [{ "text": "...", "item_ids": ["..."], "image_url": "https://..." }],
-    "bullets_vi": [{ "text": "...", "item_ids": ["..."], "image_url": "https://..." }]
+    "bullets_en": [
+      { "text": "...", "item_ids": ["..."], "image_url": "https://..." }
+    ],
+    "bullets_vi": [
+      { "text": "...", "item_ids": ["..."], "image_url": "https://..." }
+    ]
   },
   "stories": [
     {

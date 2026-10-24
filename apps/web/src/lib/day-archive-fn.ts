@@ -15,7 +15,7 @@ import { weekEditionExists } from "./week-queries";
  * expand.
  */
 export const fetchDayArchive = createServerFn({ method: "GET" })
-  .inputValidator((input: { date: string }) => input)
+  .validator((input: { date: string }) => input)
   .handler(async ({ data }): Promise<DayArchive | null> => {
     const date = parseArchiveDate(data.date, Date.now());
     if (!date) return null;

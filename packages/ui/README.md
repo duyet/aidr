@@ -4,12 +4,12 @@ Shared React components and design tokens, imported as source (`index.tsx`). The
 
 ## Entrypoints
 
-| Import | Contents |
-|---|---|
-| `@aidr/ui` | The components in `ui/` (button, card, tabs, sheet, and others), `AuthButtons`, `ThemeProvider`. |
-| `@aidr/ui/ThemeProvider` | Light and dark theme provider. |
-| `@aidr/ui/tokens.css` | Design tokens for color and type. |
-| `@aidr/ui/styles.css` | Base styles. |
+| Import                   | Contents                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------ |
+| `@aidr/ui`               | The components in `ui/` (button, card, tabs, sheet, and others), `AuthButtons`, `ThemeProvider`. |
+| `@aidr/ui/ThemeProvider` | Light and dark theme provider.                                                                   |
+| `@aidr/ui/tokens.css`    | Design tokens for color and type.                                                                |
+| `@aidr/ui/styles.css`    | Base styles.                                                                                     |
 
 ## Commands
 

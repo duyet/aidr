@@ -5,10 +5,10 @@ sources, ranks items, and publishes the daily edition. Primary store is D1
 (`aidr`). The step-by-step contract is [`../ALGORITHM.md`](../ALGORITHM.md).
 `apps/web/src/**` (frontend) is separate territory.
 
-| Phase | Modules |
-| --- | --- |
-| Consume | `sources/` (registry, adapters), `dedupe.ts`, `enrich.ts` |
-| Rank | `llm.ts`, `ranking.ts`, `tldr.ts` → `tldr_snapshots` |
+| Phase   | Modules                                                                                                              |
+| ------- | -------------------------------------------------------------------------------------------------------------------- |
+| Consume | `sources/` (registry, adapters), `dedupe.ts`, `enrich.ts`                                                            |
+| Rank    | `llm.ts`, `ranking.ts`, `tldr.ts` → `tldr_snapshots`                                                                 |
 | Publish | `digest/edition.ts` shared by `subscribe/send.ts` (email) and `notify/` (Telegram VI, Telegram EN, optional webhook) |
 
 ## Sources
@@ -19,11 +19,11 @@ sources, ranks items, and publishes the daily edition. Primary store is D1
 every source. Adding, renaming, re-pointing, or disabling a source is a
 one-line change there, and that one change feeds:
 
-| consumer | what it does with the registry |
-| --- | --- |
-| `sources/seed.ts` | builds the pre-migration runtime `INSERT … ON CONFLICT` upsert, so ingest can seed before `wrangler d1 migrations apply` |
-| `migrations/0027_source_registry.sql` | generated from the same list (`pnpm run gen:source-migration`) |
-| `/api/system/sources` + the `/data` Sources tab | renders the configured rows alongside their live per-source health |
+| consumer                                        | what it does with the registry                                                                                           |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `sources/seed.ts`                               | builds the pre-migration runtime `INSERT … ON CONFLICT` upsert, so ingest can seed before `wrangler d1 migrations apply` |
+| `migrations/0027_source_registry.sql`           | generated from the same list (`pnpm run gen:source-migration`)                                                           |
+| `/api/system/sources` + the `/data` Sources tab | renders the configured rows alongside their live per-source health                                                       |
 
 `worker/__tests__/source-catalog.test.ts` asserts all three agree, so the
 drift that used to exist between `seed.ts` and migrations 0018/0020/0021/0022
@@ -82,15 +82,15 @@ the registry should carry.
 
 ### Config keys the `rss` adapter understands
 
-| key | meaning |
-| --- | --- |
-| `feed` | RSS **or** Atom URL (required) — the adapter handles both |
-| `homepage` | publisher home, used for the favicon in `/data` |
-| `sourceLang` | `"vi"` for a genuinely Vietnamese-language source. Explicit metadata that puts the item on the real VI→EN translation-QA path; never inferred from diacritics. |
-| `maxItems` | flood gate: hard cap per fetch, newest-first, applied after the since-window filter |
-| `keywordFilter` | named title pre-filter, currently `"ai"` — the same regex the HN adapter uses |
-| `timezone` | fixed UTC offset (`"+07:00"`) for a feed whose dates carry no zone; a date with a zone is never shifted |
-| `minRequestIntervalMs` | per-host spacing between fetches, for hosts that reject concurrent requests |
+| key                    | meaning                                                                                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `feed`                 | RSS **or** Atom URL (required) — the adapter handles both                                                                                                      |
+| `homepage`             | publisher home, used for the favicon in `/data`                                                                                                                |
+| `sourceLang`           | `"vi"` for a genuinely Vietnamese-language source. Explicit metadata that puts the item on the real VI→EN translation-QA path; never inferred from diacritics. |
+| `maxItems`             | flood gate: hard cap per fetch, newest-first, applied after the since-window filter                                                                            |
+| `keywordFilter`        | named title pre-filter, currently `"ai"` — the same regex the HN adapter uses                                                                                  |
+| `timezone`             | fixed UTC offset (`"+07:00"`) for a feed whose dates carry no zone; a date with a zone is never shifted                                                        |
+| `minRequestIntervalMs` | per-host spacing between fetches, for hosts that reject concurrent requests                                                                                    |
 
 **Verify a feed before you add it.** Every source in the registry was checked
 live (HTTP 200, feed-shaped content type, parseable, ≥1 usable item with a
@@ -117,7 +117,6 @@ returned zero items, forward from the previous run's stats (a single-row
 read — surfacing staleness costs nothing on the request path). A source at or
 over its threshold is flagged `stale` in `/api/system/sources` and the `/data`
 Algo tab.
-
 - Default: **336 consecutive runs** (7 days at the 30-minute cadence). Chosen
   against measured cadence, not roundness: when the registry was verified
   live, 14 of 21 feeds returned nothing inside the 26h window — including
@@ -170,7 +169,6 @@ workflow, so a missing key is otherwise invisible until sign-in breaks.
 
 Both deploy paths assert the proxy is live, so a missing key fails the deploy
 instead of shipping:
-
 - `pnpm run smoke` (the local `cf:deploy:prod` path) checks
   `GET /__clerk/v1/environment` returns `200` with `auth_config`.
 - `.github/workflows/deploy-web.yml` runs an equivalent post-deploy
@@ -198,7 +196,6 @@ call to Clerk on every page view — a public dashboard endpoint must not fail
 because a third-party API is slow or rate-limited.
 
 Two writers keep that table current:
-
 - `POST /api/webhooks/clerk` (`src/routes/api/webhooks.clerk.ts`) handles
   `user.created`, `user.updated`, and `user.deleted`. Every request must carry
   Clerk's Svix headers (`svix-id`, `svix-timestamp`, `svix-signature`) and is
@@ -253,7 +250,6 @@ If both answer `200` from your network, read the zone settings for the URL GSC
 names. `aidr.today` is a Worker custom domain (`[[routes]] custom_domain` in
 `wrangler.toml`), so no WAF rule for these paths exists in this repository and
 the cause is in the zone:
-
 - `GET /zones/{zone_id}/security/bot_management` — bot fight mode / known bot
   actions, which can challenge or block a verified crawler.
 - `GET /zones/{zone_id}/security/settings` — Security Level and Browser
@@ -282,7 +278,6 @@ curl -s -o /dev/null -w '%{http_code} -> %{redirect_url}\n' \
 ```
 
 Then, in Google Search Console:
-
 1. Re-submit `https://aidr.today/sitemap.xml`.
 2. Pick a handful of the bare `/{8-hex}` permalinks that were reported as
    "Discovered - currently not indexed" and run **URL Inspection → Request

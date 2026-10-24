@@ -17,7 +17,7 @@ async function db(): Promise<D1Database | undefined> {
  * `week_unavailable`, which the route renders as a 500. Rows ship collapsed.
  */
 export const fetchWeekEdition = createServerFn({ method: "GET" })
-  .inputValidator((input: { week: string }) => input)
+  .validator((input: { week: string }) => input)
   .handler(async ({ data }): Promise<WeekEdition | null> => {
     const week = parseWeek(data.week, Date.now());
     if (!week) return null;

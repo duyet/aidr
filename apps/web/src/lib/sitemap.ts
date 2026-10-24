@@ -190,7 +190,8 @@ export function storySitemapUrl(
   const updated = sitemapLastmod(item.updated_at);
   const lastmod =
     published && updated
-      ? updated > published
+      ? // biome-ignore lint/complexity/useMathMinMax: ISO date strings, not numbers
+        updated > published
         ? updated
         : published
       : (published ?? updated);
