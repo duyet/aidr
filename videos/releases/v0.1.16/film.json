@@ -418,13 +418,13 @@
     "cover": {
       "hook": "Ảnh phủ 56%",
       "mark": "56%",
-      "sub": "thẻ chia sẻ mỗi tin"
+      "sub": "thẻ chia sẻ của tin, tràn viền"
     }
   },
   "cover": {
     "scene": "share",
     "hook": "Photos fill 56%",
     "mark": "56%",
-    "sub": "of every story share card"
+    "sub": "of a story's share card, edge to edge"
   }
 }

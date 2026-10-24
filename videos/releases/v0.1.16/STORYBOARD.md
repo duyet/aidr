@@ -18,7 +18,7 @@ Layout 16:9: header (number, label, Garamond title with a marker) top left on a 
 
 Scene titles say a fact the voice does not: "Feed down, sitemap read", "Flags broken translations", "No more tiny text", "4 email paths, sent once", "Or just aidr.today/feed", "Short days, full post", "Now 56% of the card".
 
-Cover (each cut): the share card scene's frame at the root's `data-cover-at`, with the hook "Photos fill 56%" and "of every story share card" over the machine side; `render.sh` shows `#cover` and hides the captions for the still.
+Cover (each cut): the share card scene's frame at the root's `data-cover-at`, with the hook "Photos fill 56%" and "of a story's share card, edge to edge" over the machine side; `render.sh` shows `#cover` and hides the captions for the still.
 
 Vietnamese: same beats and pictures, its own lengths (the build prints them), hosts from the Vietnamese cast.
 
