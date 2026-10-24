@@ -1,50 +1,13 @@
-# SFX Credits
+# Sound credits
 
-All sound effects in this directory are sourced from [Pixabay](https://pixabay.com/sound-effects/) and used under the [Pixabay Content License](https://pixabay.com/service/license-summary/).
+Every effect and the music track were generated for this spot with ElevenLabs (`/v1/sound-generation` and `/v1/music`, account plan terms). None comes from the Pixabay pack the previous cut and `aidr-launch-2026` use.
 
-The Pixabay license allows free use for commercial and non-commercial purposes without attribution, but attribution is appreciated and given here for transparency.
-
-## Files
-
-The following `.mp3` files are bundled with this skill:
-
-- `chime.mp3`
-- `click.mp3` / `click-soft.mp3`
-- `error.mp3`
-- `glitch-1.mp3` / `glitch-2.mp3` / `glitch-3.mp3`
-- `impact-bass-1.mp3` / `impact-bass-2.mp3`
-- `key-press.mp3`
-- `notification.mp3`
-- `ping.mp3`
-- `pop.mp3`
-- `riser.mp3`
-- `sparkle.mp3`
-- `typing.mp3`
-- `whoosh.mp3` / `whoosh-short.mp3` / `whoosh-cinematic.mp3`
-
-See `manifest.json` for per-file metadata (duration, energy character, recommended use).
-
-## License
-
-All files are distributed under the [Pixabay Content License](https://pixabay.com/service/license-summary/), which permits:
-
-- Commercial and non-commercial use
-- Modification and remixing
-- Redistribution as part of derivative works (such as videos rendered with HyperFrames)
-
-without any attribution requirement.
-
-## Trimmed copies
-
-`whoosh-cinematic.mp3` here is not byte-identical to the media-use library file of the same name (different md5). It is a 1.03 s excerpt of it, checked by cross-correlating the decoded audio of both files:
-
-| | Library copy | This directory |
+| File | Prompt | Length |
 |---|---|---|
-| Duration | 5.544 s | 1.032 s |
-| Bit rate | 256 kbps | 128 kbps |
-| Peak | 2.50 s | 0.30 s |
-
-- The excerpt starts 2.2 s into the library file. The two peaks differ by exactly that offset.
-- Over 0.1 s to 0.8 s of the excerpt the waveform matches the library segment with correlation 0.99 or higher.
-- The first 0.1 s and the last 0.3 s are quieter than the source (gain 0.69 at the start, falling to 0.29 by 0.8 s), which fits a short fade at each end. Mid-clip gain is 0.95, which fits re-encoding at the lower bit rate.
-- Same Pixabay Content License as the library copy.
+| `tick.mp3` | one crisp clean digital UI tick, very short, dry, no reverb | 0.5 s |
+| `hit.mp3` | punchy tight cinematic transition hit, snappy kick and clap layered, short, modern TV commercial | 0.8 s |
+| `swish.mp3` | fast short air swish, crisp, quick, for a card flying across the frame | 0.6 s |
+| `riser.mp3` | short tense reverse cymbal riser that swells and cuts off sharply at the very end | 1.0 s |
+| `boom.mp3` | deep punchy sub boom impact for a TV commercial, tight, clean, short tail | 1.5 s |
+| `sting.mp3` | bright satisfying logo sting for a TV commercial end card, short shimmering synth chord with a punchy hit, clean tail | 2.0 s |
+| `../music/track.mp3` | Instrumental TV commercial track at 120 BPM in 4/4, punchy kick, clap on 2 and 4, plucky synth stabs, sub bass, no vocals (15 s). Measured: beats at 0.035 + 0.5n s, a break from 7.5 to 8.0 s, a hotter section from 8.0 s | 15 s |

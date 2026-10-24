@@ -1,12 +1,14 @@
 # Storyboard
 
-Times in seconds at 30 fps. Word cues come from `assets/voice/*.words.json` (`T` in `scripts/build.mjs`).
+A 13.5 s TV spot. One idea: your new tab becomes something worth looking at. No feature list, no button callouts; the three owner screenshots are the hero. Times in seconds at 30 fps on a 120 BPM grid (beat = 0.5 s). Word cues come from `assets/voice/*.words.json` (`T` in `scripts/build.mjs`).
 
-| Time | Shot | Voice | Motion and sound |
+| Time | Shot | Voice (Alex) | Motion and sound |
 |---|---|---|---|
-| 0.0 to 4.4 | Paper. "Don't forget." in EB Garamond, then the logo tile, "has a", and "Chrome extension." with a yellow marker sweep | Kristen: "Don't forget. AI;DR has a Chrome extension." | Words arrive on their spoken word. Linear 3% push. Yellow wipe up at 4.1 with a whoosh |
-| 4.4 to 10.2 | Yellow. The real new tab in a hairline window. Full page, then the ranked card at "top AI stories", then the EN/VI switch circled at "English" | Alex: "Every new tab opens on today's top AI stories, in English or Vietnamese." | Window rises on a key press. Camera moves use the parking ease |
-| 10.2 to 11.8 | The live Chrome Web Store listing slides in. "Add to Chrome" circled in yellow | Allison: "It's free. Get it at aidr.today/c" | Horizontal slide with blur that clears on settle. Soft click on the ring |
-| 11.8 to 17.0 | End card. Logo, `aidr.today/c` large, "AI;DR for Chrome · free". Marker under `/c` at "slash" | (line continues) | Hard cut on a bass impact. 3% push. Music fades out |
+| 0.0 to 2.5 | Ink. Three empty grey tabs slam in out of depth, one per word; "Blank." stacks three times in EB Garamond, older lines step back | "Blank. Blank. Blank." | Each tab and word land on their spoken word with a tick. Music low-passed. Yellow skewed wipe in over 0.3 s, ending on the 2.5 beat |
+| 2.5 to 5.0 | Yellow. The light EN new tab flies in from depth and parks tilted in 3D; the VI dark and the list tabs stack behind it at "worth". The line sets word by word through masks, "worth looking at." in italic | "Make your new tab worth looking at." | Hit and riser peak on the 2.5 cut, music opens to full. Parking ease, 3.5% camera push |
+| 5.0 to 6.0 | Ink. Close, tilted pass across the light tab's ranked stories | (music) | Swish on the cut. Stage drifts across both shots |
+| 6.0 to 7.0 | Match cut on the beat to the Vietnamese dark tab, aligned on its yellow date header | "AIDR for Chrome." starts 6.4, yellow pill rises with it | Hit on the cut |
+| 7.0 to 8.0 | The three tabs fan out in 3D | (line continues) | Swish on the fan; riser into the drop |
+| 8.0 to 13.5 | End card on yellow. Logo, `aidr.today/c` huge, "AI;DR for Chrome". At "slash" an ink block wipes under `/c` and it turns yellow | "AIDR dot today, slash C." | Hard cut on the music drop with boom (kept low, under the voice) and sting. Tick on "slash". 3% push, music fades over the last 1.2 s |
 
-Captions are phrase chunks in an ink pill at the bottom, timed to the first word of each chunk.
+Grain over everything: an SVG noise tile stepped to a new offset every second frame.

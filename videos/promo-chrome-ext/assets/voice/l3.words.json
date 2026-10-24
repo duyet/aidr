@@ -1,80 +1,50 @@
 [
   {
     "id": "w0",
-    "text": "It's",
+    "text": "AIDR",
     "start": 0,
-    "end": 0.209
+    "end": 0.557
   },
   {
     "id": "w1",
-    "text": "free.",
-    "start": 0.267,
-    "end": 0.731
+    "text": "for",
+    "start": 0.627,
+    "end": 0.743
   },
   {
     "id": "w2",
-    "text": "Get",
-    "start": 1.057,
-    "end": 1.242
+    "text": "Chrome.",
+    "start": 0.801,
+    "end": 1.265
   },
   {
     "id": "w3",
-    "text": "it",
-    "start": 1.289,
-    "end": 1.358
+    "text": "AIDR",
+    "start": 1.312,
+    "end": 1.823
   },
   {
     "id": "w4",
-    "text": "at",
-    "start": 1.416,
-    "end": 1.521
+    "text": "dot",
+    "start": 1.869,
+    "end": 2.067
   },
   {
     "id": "w5",
-    "text": "A",
-    "start": 1.602,
-    "end": 1.718
-  },
-  {
-    "id": "w6",
-    "text": "I",
-    "start": 1.834,
-    "end": 1.904
-  },
-  {
-    "id": "w7",
-    "text": "D",
-    "start": 1.997,
-    "end": 2.055
-  },
-  {
-    "id": "w8",
-    "text": "R",
-    "start": 2.171,
-    "end": 2.287
-  },
-  {
-    "id": "w9",
-    "text": "dot",
-    "start": 2.357,
+    "text": "today,",
+    "start": 2.101,
     "end": 2.543
   },
   {
-    "id": "w10",
-    "text": "today,",
-    "start": 2.589,
-    "end": 2.961
-  },
-  {
-    "id": "w11",
+    "id": "w6",
     "text": "slash",
-    "start": 2.995,
-    "end": 3.332
+    "start": 2.601,
+    "end": 3.019
   },
   {
-    "id": "w12",
+    "id": "w7",
     "text": "C.",
-    "start": 3.379,
-    "end": 3.994
+    "start": 3.042,
+    "end": 3.715
   }
 ]

@@ -1,9 +1,26 @@
 {
-  "$comment": "Voiceover. `say` is what the voice engine reads (AI;DR read as letters); `text` is the caption form. Hosts differ per line, opener and closer differ (videos/brand/voices.json). Claims checked against capture/ and data/newtab-desktop.txt: the new tab shows the day's ranked stories and an EN/VI switch; the store listing is free to add.",
+  "$comment": "TVC voiceover, one announcer. `say` is what the voice engine reads; `text` is the caption form. Alex won a three-voice audition (Tyler Cruz, Ivanna, Alex) on pace: 7.85 s of speech for the three lines against 7.99 and 8.73, and all three transcribed word-perfect with ElevenLabs Scribe. Style 0.45 and stability 0.32, above the brand's narration defaults, for a commercial read.",
+  "host": "Alex",
   "speed": 1.0,
+  "settings": {
+    "stability": 0.32,
+    "similarity_boost": 0.8,
+    "style": 0.45,
+    "use_speaker_boost": true
+  },
   "lines": [
-    { "id": "l1", "host": "Kristen", "text": "Don't forget. AI;DR has a Chrome extension.", "say": "Don't forget. AI DR has a Chrome extension." },
-    { "id": "l2", "host": "Alex", "text": "Every new tab opens on today's top AI stories, in English or Vietnamese." },
-    { "id": "l3", "host": "Allison", "text": "It's free. Get it at aidr.today/c", "say": "It's free. Get it at A I D R dot today, slash C." }
+    {
+      "id": "l1",
+      "text": "Blank. Blank. Blank."
+    },
+    {
+      "id": "l2",
+      "text": "Make your new tab worth looking at."
+    },
+    {
+      "id": "l3",
+      "text": "AI;DR for Chrome. aidr.today/c",
+      "say": "AIDR for Chrome. AIDR dot today, slash C."
+    }
   ]
 }
