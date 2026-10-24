@@ -78,9 +78,9 @@ const voices = lines.map((parts, k) => {
 });
 
 // Sections: as long as the line needs (lead + line + tail), rounded up to the 120 BPM beat.
-const LEAD = { title: 0.6, scene: 0.55, close: 0.5 };
-const MIN = { title: 4, scene: 5, close: 4 };
-const TAIL = 0.4;
+const LEAD = { title: 0.6, scene: 0.35, close: 0.5 };
+const MIN = { title: 3.5, scene: 5, close: 3 };
+const TAIL = 0.3;
 const beat = (t) => Math.ceil(t * 2 - 1e-6) / 2;
 const kinds = ["title", ...film.scenes.map(() => "scene"), "close"];
 let clock = 0;
@@ -225,6 +225,7 @@ const ANCHOR = {
   email: { box: "st-dispatch", at: machine.ports.email },
   telegram: { box: "st-dispatch", at: machine.ports.telegram },
   rss: { box: "st-dispatch", at: machine.ports.web },
+  share: { box: "st-tldr", at: machine.stations["st-tldr"].center },
 };
 
 const SHAPES = {
@@ -236,8 +237,9 @@ function html(fmt) {
   const { W, H, form } = SHAPES[fmt];
   const tall = H > W;
   const scenes = film.scenes.map((s, i) => {
-    const shot = s.shot === "daycard" ? "daycard" : `${s.shot}-${form}`;
-    return { ...ANCHOR[s.station], station: s.station, shot, size: size(shot), view: (tall && s.view9) || s.view, tags: s.tags.length, ...T.scenes[i] };
+    // A fetched file (film.captures.files) is one picture for both shapes.
+    const shot = s.shot in film.captures.files ? s.shot : `${s.shot}-${form}`;
+    return { ...ANCHOR[s.station], station: s.station, shot, before: s.before ?? null, size: size(shot), view: (tall && s.view9) || s.view, tags: s.tags.length, ...T.scenes[i] };
   });
   const cfg = { W, H, tall, TOTAL, title: T.title, close: T.close, scenes, machine: { pivots: machine.pivots, viewBox: machine.viewBox, stations: machine.stations, belt: machine.belt, moves: machine.moves, ports: machine.ports } };
   const scene = (s, i) => `
@@ -246,7 +248,7 @@ function html(fmt) {
             <div class="label" id="h${i}-label">${esc(s.label)}</div>
             <h2 class="title" id="h${i}-title">${marked(s.title, s.mark)}</h2>
           </div>
-          <div class="win" id="w${i}"><div class="bar"><i></i><i></i><i></i><span>${esc(s.url)}</span></div><div class="view${s.shot === "daycard" ? " dark" : ""}"><img id="w${i}-img" src="capture/${esc(scenes[i].shot)}.png" alt=""></div></div>`;
+          <div class="win" id="w${i}"><div class="bar"><i></i><i></i><i></i><span>${esc(s.url)}</span></div><div class="view${s.shot === "daycard" ? " dark" : ""}"><img id="w${i}-img" src="capture/${esc(scenes[i].shot)}.png" alt="">${s.before ? `<img id="w${i}-before" src="capture/${esc(s.before)}.png" alt="">` : ""}</div></div>`;
   // The cover: the frame of the scene it names, once that scene's window and tags have landed, with
   // the hook over the machine side. Hidden in the film; render.sh shows it for the cover still.
   const coverScene = film.scenes.findIndex((s) => s.id === film.cover.scene);
@@ -289,6 +291,7 @@ ${css(W, H)}
             ${[0, 1, 2].map((i) => `<div class="pk" id="pk-${i}"><i></i><i></i></div>`).join("")}
             <div class="plate2" id="plate">VI</div>
             <div class="plate2" id="plate-day">Aa</div>
+            ${film.scenes.some((s) => s.station === "share") ? `<div class="plate2 card" id="plate-og"><img src="capture/${esc(film.scenes.find((s) => s.station === "share").before)}.png" alt=""><img id="plate-og-after" src="capture/${esc(film.scenes.find((s) => s.station === "share").shot)}.png" alt=""></div>` : ""}
             ${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<div class="msg" id="msg-${i}">${i < 2 ? "@" : i - 1}</div>`).join("")}
             ${[0, 1, 2].map((i) => `<div class="msg feed" id="feed-${i}">RSS</div>`).join("")}
             ${tags}
@@ -359,6 +362,9 @@ function css(W, H) {
       .pk i { position: absolute; left: 9px; right: 9px; height: 4px; background: #0a0a0a; } .pk i:first-child { top: 10px; } .pk i:last-child { top: 24px; right: 24px; }
       .plate2 { width: 150px; height: 100px; margin: -50px 0 0 -75px; background: #fff; border: 4px solid #0a0a0a; border-radius: 4px;
         font-family: "EB Garamond Variable", serif; font-size: 52px; font-weight: 600; text-align: center; line-height: 92px; }
+      .plate2.card { width: 200px; height: 105px; margin: -52px 0 0 -100px; overflow: hidden; }
+      .plate2.card img { position: absolute; left: 0; top: 0; display: block; width: 100%; height: 100%; }
+      #plate-og-after { opacity: 0; }
       .msg { width: 56px; height: 56px; margin: -28px 0 0 -28px; background: #fff; border: 3px solid #0a0a0a; border-radius: 50%;
         font-family: ui-monospace, monospace; font-size: 28px; font-weight: 700; text-align: center; line-height: 50px; }
       .msg.feed { width: 84px; border-radius: 28px; margin-left: -42px; font-size: 22px; background: #f5c518; }

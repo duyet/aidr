@@ -2,21 +2,21 @@ import type { Release } from "../../lib/releases/types";
 
 export const release: Release = {
   version: "0.1.16",
-  date: "2026-10-22",
+  date: "2026-10-24",
   from: "2026-10-20",
-  to: "2026-10-22",
+  to: "2026-10-24",
   compare: { base: "web-v0.1.15", head: "web-v0.1.16" },
   title: {
     en: "One email, every story",
     vi: "Một email, đủ mọi tin",
   },
   intro: {
-    en: "You get one email a day, never two, and you can now follow AI;DR in any RSS reader. Telegram shows every story on short days, the day card stays readable, and Vietnamese text gets a spelling check before it goes out. The news run that reads sources every 30 minutes also fails less often.",
-    vi: "Mỗi ngày bạn chỉ nhận đúng một email, và giờ có thể theo dõi AI;DR bằng trình đọc RSS nào cũng được. Ngày ít tin, Telegram vẫn đăng đủ mọi tin. Ảnh tóm tắt dễ đọc hơn, còn bản tiếng Việt được soát chính tả trước khi gửi. Lượt lấy tin chạy mỗi 30 phút cũng ít lỗi hơn.",
+    en: "You get one email a day, never two, and you can now follow AI;DR in any RSS reader. Telegram shows every story on short days, the day card stays readable, and Vietnamese text gets a spelling check before it goes out. The news run that reads sources every 30 minutes also fails less often, and a shared story now shows its photo across half the preview card.",
+    vi: "Mỗi ngày bạn chỉ nhận đúng một email, và giờ có thể theo dõi AI;DR bằng trình đọc RSS nào cũng được. Ngày ít tin, Telegram vẫn đăng đủ mọi tin. Ảnh tóm tắt dễ đọc hơn, còn bản tiếng Việt được soát chính tả trước khi gửi. Lượt lấy tin chạy mỗi 30 phút cũng ít lỗi hơn. Khi chia sẻ một tin, ảnh của tin giờ chiếm nửa thẻ xem trước.",
   },
   stats: [
-    { value: "57", label: { en: "changes", vi: "thay đổi" } },
-    { value: "33", label: { en: "fixes", vi: "bản sửa lỗi" } },
+    { value: "82", label: { en: "changes", vi: "thay đổi" } },
+    { value: "45", label: { en: "fixes", vi: "bản sửa lỗi" } },
     {
       value: "4",
       label: { en: "email paths checked", vi: "luồng email đã kiểm tra" },
@@ -32,6 +32,26 @@ export const release: Release = {
     },
   },
   highlights: [
+    {
+      label: {
+        en: "Share cards lead with the photo",
+        vi: "Thẻ chia sẻ đặt ảnh lên trước",
+      },
+      text: {
+        en: "Share a story on Facebook, Telegram or X and its photo now fills the right 56% of the preview card, edge to edge. Before, the photo sat in a small box beside the headline. Stories without a photo keep the plain card.",
+        vi: "Khi bạn chia sẻ một tin lên Facebook, Telegram hay X, ảnh của tin giờ phủ kín 56% bên phải thẻ xem trước. Trước đây ảnh chỉ nằm trong một ô nhỏ cạnh tiêu đề. Tin không có ảnh vẫn dùng thẻ cũ.",
+      },
+      image: {
+        src: "/releases/v0.1.16/share-card.webp",
+        width: 1200,
+        height: 630,
+        alt: {
+          en: "The share card for the story Canva launches Craft: the headline on the left, the story's photo filling the right side.",
+          vi: "Thẻ chia sẻ của tin Canva ra mắt Craft. Tiêu đề nằm bên trái, ảnh của tin phủ kín bên phải.",
+        },
+      },
+      href: "/",
+    },
     {
       label: { en: "One email, never two", vi: "Một email, không gửi trùng" },
       text: {
@@ -114,6 +134,16 @@ export const release: Release = {
     },
   ],
   changes: [
+    {
+      kind: "feature",
+      scope: "web",
+      text: {
+        en: "A shared story's preview card shows its photo across the right 56% of the card.",
+        vi: "Thẻ xem trước khi chia sẻ một tin hiện ảnh của tin trên 56% bên phải thẻ.",
+      },
+      commit: "c14fad2",
+      pr: 1054,
+    },
     {
       kind: "feature",
       scope: "subscribe",
@@ -283,6 +313,26 @@ export const release: Release = {
       },
       commit: "d132129",
       pr: 1024,
+    },
+    {
+      kind: "fix",
+      scope: "web",
+      text: {
+        en: "Tab titles and link previews name the site AI;DR, and the Vietnamese MCP panel uses plain Vietnamese words.",
+        vi: "Tiêu đề thẻ trình duyệt và bản xem trước liên kết ghi đúng tên AI;DR. Khung MCP tiếng Việt dùng từ tiếng Việt dễ hiểu.",
+      },
+      commit: "70fb949",
+      pr: 1052,
+    },
+    {
+      kind: "fix",
+      scope: "notify",
+      text: {
+        en: "When the first model is slow to write a post caption, the backup models now get enough time to write it.",
+        vi: "Khi mô hình đầu tiên viết chú thích bài đăng quá chậm, các mô hình dự phòng giờ có đủ thời gian để viết thay.",
+      },
+      commit: "8bade7a",
+      pr: 1053,
     },
   ],
 };

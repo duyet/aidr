@@ -1,9 +1,9 @@
 {
-  "$comment": "Copy, voice and framing for the v0.1.16 film. Copy follows apps/web/src/content/releases/v0.1.16.ts. Each scene frames one station of the launch film's machine (videos/aidr-launch-2026/assets/machine.svg) beside one real capture. `at` keys are the first letters of a word in that scene's voice line; the hit lands on that word. `view` / `view9` are the capture crop as fractions [x, y, w, h?] of the desktop / mobile capture; h cuts the window so it ends in whitespace. A section's voice may be a list of short parts, one host. On-screen titles, tags and the close add a fact the voice does not say. `cover` is the thumbnail: the named scene's frame with the hook over the machine side.",
+  "$comment": "Copy, voice and framing for the v0.1.16 film. Copy follows apps/web/src/content/releases/v0.1.16.ts. Each scene frames one station of the launch film's machine (videos/aidr-launch-2026/assets/machine.svg) beside one real capture. `at` keys are the first letters of a word in that scene's voice line; the hit lands on that word. `view` / `view9` are the capture crop as fractions [x, y, w, h?] of the desktop / mobile capture; h cuts the window so it ends in whitespace. A section's voice may be a list of short parts, one host. On-screen titles, tags and the close add a fact the voice does not say. `cover` is the thumbnail: the named scene's frame with the hook over the machine side. A scene with `before` cross-fades from that capture to `shot` on its second tag.",
   "version": "0.1.16",
   "headline": "One email, every story",
-  "dates": "Oct 20 – 22, 2026",
-  "closing": "57 changes · 33 fixes",
+  "dates": "Oct 20 – 24, 2026",
+  "closing": "82 changes · 45 fixes",
   "captures": {
     "pages": {
       "data": "/data?lang=en",
@@ -22,14 +22,15 @@
       }
     },
     "files": {
-      "daycard": "/api/og/date/2026-10-21.png"
+      "daycard": "/api/og/date/2026-10-21.png",
+      "share": "/api/og/2d07cdf38f882d91.png",
+      "share-vi": "/api/og/435be2e6bd92373e.png?lang=vi"
     }
   },
   "voice": {
     "speed": 1.12,
     "title": [
-      "This is AI DR.",
-      "Here's what's new this week."
+      "This is AI DR."
     ],
     "close": "The release notes list every change."
   },
@@ -222,18 +223,48 @@
         }
       ],
       "voice": "And on four and five story days, Telegram lists every story."
+    },
+    {
+      "id": "share",
+      "station": "share",
+      "shot": "share",
+      "before": "share-before",
+      "url": "aidr.today · share card, 22 Oct",
+      "label": "Share cards lead with the photo",
+      "title": "Now 56% of the card",
+      "mark": "56%",
+      "view": [
+        0,
+        0,
+        1
+      ],
+      "view9": [
+        0,
+        0,
+        1
+      ],
+      "tags": [
+        {
+          "text": "was a small inset",
+          "at": "Share"
+        },
+        {
+          "text": "edge to edge",
+          "at": "photo"
+        }
+      ],
+      "voice": "Share a story, and its photo now fills half the card."
     }
   ],
   "vi": {
     "headline": "Một email, đủ mọi tin",
-    "dates": "20 – 22/10/2026",
-    "closing": "57 thay đổi · 33 bản sửa lỗi",
+    "dates": "20 – 24/10/2026",
+    "closing": "82 thay đổi · 45 bản sửa lỗi",
     "voice": {
       "title": [
-        "Đây là AI DR.",
-        "Tuần này có gì mới?"
+        "Đây là AI DR."
       ],
-      "close": "Danh sách đầy đủ có trong ghi chú phát hành."
+      "close": "Mời bạn đọc ghi chú phát hành."
     },
     "scenes": [
       {
@@ -363,17 +394,37 @@
           }
         ],
         "voice": "Và vào những ngày có bốn hoặc năm tin, Telegram hiện đủ mọi tin."
+      },
+      {
+        "shot": "share-vi",
+        "before": "share-before-vi",
+        "url": "aidr.today · thẻ chia sẻ, 23/10",
+        "label": "Thẻ chia sẻ có ảnh lớn",
+        "title": "Ảnh chiếm 56% thẻ",
+        "mark": "56%",
+        "tags": [
+          {
+            "text": "trước: ô ảnh nhỏ",
+            "at": "chia"
+          },
+          {
+            "text": "tràn viền",
+            "at": "ảnh"
+          }
+        ],
+        "voice": "Khi bạn chia sẻ một tin, ảnh giờ chiếm trọn nửa thẻ."
       }
     ],
     "cover": {
-      "hook": "AI;DR đã có RSS",
-      "sub": "Nguồn tin tiếng Anh và tiếng Việt, mọi trình đọc"
+      "hook": "Ảnh phủ 56%",
+      "mark": "56%",
+      "sub": "thẻ chia sẻ của tin, tràn viền"
     }
   },
   "cover": {
-    "scene": "rss",
-    "hook": "AI;DR is now on RSS",
-    "mark": "RSS",
-    "sub": "English and Vietnamese feeds, in any reader"
+    "scene": "share",
+    "hook": "Photos fill 56%",
+    "mark": "56%",
+    "sub": "of a story's share card, edge to edge"
   }
 }

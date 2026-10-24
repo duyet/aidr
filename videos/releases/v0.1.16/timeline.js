@@ -41,6 +41,7 @@
     email: () => view(around(machine.ports.email, 520, 470), REGION, 0.95),
     telegram: () => view(around(machine.ports.telegram, 520, 470), REGION, 0.95),
     rss: () => view(around(machine.ports.web, 520, 470), REGION, 0.95),
+    share: () => view(st["st-tldr"].bbox, REGION, 0.92),
   };
   const mcam = $("mcam");
   const machineIn = hatch;
@@ -69,7 +70,8 @@
     arrive($(`h${i}-label`), { y: 20, opacity: 0 }, { y: 0, opacity: 1 }, t + 0.02 + 3 * F, 0.45);
     arrive($(`h${i}-title`), { y: 30, opacity: 0 }, { y: 0, opacity: 1 }, t + 0.02 + 6 * F, 0.55);
     const hl = $(`h${i}-title`).querySelector(".hl");
-    if (hl) go(hl, { scaleX: 0 }, { scaleX: 1 }, t + 0.95, 0.4, "power2.inOut");
+    // A before/after scene marks its fact on the reveal, not before it.
+    if (hl) go(hl, { scaleX: 0 }, { scaleX: 1 }, s.before ? s.tags[1] + 0.05 : t + 0.95, 0.4, "power2.inOut");
     leave($(`h${i}`), { y: -20, opacity: 0 }, out);
     tl.set($(`h${i}`), { y: 0, opacity: 1 }, t);
     // window with the real capture
@@ -83,6 +85,12 @@
     const shown = Math.min(vh, 1 - vy) * ih * k + 46;
     if (shown < win.offsetHeight) Object.assign(win.style, { height: `${shown}px`, top: `${win.offsetTop + (win.offsetHeight - shown) / 2}px` });
     Object.assign(img.style, { width: `${iw}px`, height: `${ih}px`, transform: `translate(${-vx * iw * k}px, ${-vy * ih * k}px) scale(${k})` });
+    // Before and after: the old capture sits on top and fades out on the second tag's word.
+    const before = $(`w${i}-before`);
+    if (before) {
+      before.style.cssText = img.style.cssText;
+      go(before, { opacity: 1 }, { opacity: 0 }, s.tags[1] - 0.05, 0.2, "power2.in");
+    }
     // k 0.2 leaves under a pixel for the last frame, so the window settles instead of stopping.
     go(win, tall ? { y: H - 1000, opacity: 1 } : { x: W - 1010, opacity: 1 }, { x: 0, y: 0 }, t + 0.1, 0.9, park(0.9, 0.2));
     leave(win, tall ? { y: H - 1000 } : { x: W - 1010 }, out, 0.35);
@@ -140,7 +148,7 @@
   // TL;DR press: the ram stamps, a plate slides out to the front.
   const mv = machine.moves;
   const tc = st["st-tldr"].center;
-  [["tldr-vi", "plate"], ["tldr", "plate-day"]].forEach(([name, id]) => {
+  [["tldr-vi", "plate"], ["tldr", "plate-day"], ["share", "plate-og"]].forEach(([name, id]) => {
     const s = byStation(name);
     if (!s) return;
     const hit = s.tags[0];
@@ -152,6 +160,14 @@
     ringOn(s, [tc[0] + fx, tc[1] + fy], 1.6);
     leave(el, { opacity: 0 }, s.start + s.dur - 0.35, 0.25);
   });
+  // Share card: a second stamp on the reveal word swaps the plate from the old card to the new one.
+  const share = byStation("share");
+  if (share) {
+    const hit = share.tags[1];
+    go("#ram-tldr", { x: 0, y: 0 }, { x: mv["ram-tldr"][0], y: mv["ram-tldr"][1] }, hit - 0.25, 0.25, "power3.in");
+    go("#ram-tldr", { x: mv["ram-tldr"][0], y: mv["ram-tldr"][1] }, { x: 0, y: 0 }, hit + 0.15, 0.45);
+    tl.set($("plate-og-after"), { opacity: 1 }, hit);
+  }
 
   // Email port: one message leaves; the overlapping second run's copy is turned back.
   const mail = byStation("email");
