@@ -33,3 +33,32 @@ export function topicColor(tag) {
   const index = hashString(canonical) % TOPIC_COLOR_PALETTE.length;
   return TOPIC_COLOR_PALETTE[index];
 }
+
+/** Stable semantic slots drawn from TOPIC_COLOR_PALETTE, not a second palette. */
+const CATEGORY_COLOR_BY_NAME = new Map([
+  ["models", TOPIC_COLOR_PALETTE[6]],
+  ["regulation", TOPIC_COLOR_PALETTE[0]],
+  ["products", TOPIC_COLOR_PALETTE[5]],
+  ["agents", TOPIC_COLOR_PALETTE[7]],
+  ["research", TOPIC_COLOR_PALETTE[8]],
+  ["industry", TOPIC_COLOR_PALETTE[1]],
+  ["legal", TOPIC_COLOR_PALETTE[11]],
+  ["infra", TOPIC_COLOR_PALETTE[4]],
+  ["releases", TOPIC_COLOR_PALETTE[3]],
+  ["chips", TOPIC_COLOR_PALETTE[2]],
+  ["funding", TOPIC_COLOR_PALETTE[9]],
+  ["tools", TOPIC_COLOR_PALETTE[10]],
+  ["frameworks", TOPIC_COLOR_PALETTE[2]],
+  ["data", TOPIC_COLOR_PALETTE[5]],
+  ["open source", TOPIC_COLOR_PALETTE[3]],
+]);
+
+/** Unknown categories stay neutral (the --muted-foreground pair). */
+export const NEUTRAL_CATEGORY_COLOR = { light: "#474747", dark: "#a3a3a3" };
+
+export function categoryColor(category) {
+  const canonical = String(category ?? "")
+    .trim()
+    .toLowerCase();
+  return CATEGORY_COLOR_BY_NAME.get(canonical) ?? NEUTRAL_CATEGORY_COLOR;
+}
