@@ -7,7 +7,6 @@ Supported locales are exactly `vi` and `en`. The canonical query parameter is
 ## Request selection and rejection
 
 All request surfaces use the shared resolver in `src/lib/lang.ts`:
-
 1. One exact `lang` value (`vi` or `en`).
 2. One exact legacy `locale` value, which is redirectable.
 3. The exact `news_lang` cookie (`vi` or `en`).
@@ -41,7 +40,6 @@ The root route resolves locale during SSR and client navigation. Explicit root
 toggle writes both `news_lang` and an explicit URL.
 
 The Worker applies the locale response policy to every TanStack SSR response:
-
 - Localized pages (`/`, story pages, `/mcp`, `/subscribe`, `/release`,
   `/contribute`, and `/contribute/new`) have explicit `vi`/`en` canonicals, hreflang links, and sitemap
   entries. Only one valid `lang` is publicly cacheable; bare and header-selected
@@ -83,7 +81,6 @@ to Vietnamese. Neutral pages appear once at their bare URL; no bare localized
 URL is listed anywhere.
 
 `/sitemap.xml` is a `<sitemapindex>`, not a flat `urlset`. It lists:
-
 - `/sitemaps/static.xml` — the static and marketing paths (both explicit
   homepage locales, both explicit locales for each localized static page).
 - `/sitemaps/sitemap-YYYY-MM.xml` — every published story of that **UTC**

@@ -326,7 +326,7 @@ describe("story OG card rendering", () => {
     }
   }, 20_000);
 
-  it("draws Vietnamese tone marks above the letter, not on it", async () => {
+  it("draws Vietnamese tone marks above the letter, not on it (GPOS composite)", async () => {
     // Source Sans 3 stores ấ as a composite whose vertical offset is only in
     // GPOS mark-to-base. satori/resvg skips that lookup, so the tone mark
     // used to sit on the letter. The card face has to put that ink above

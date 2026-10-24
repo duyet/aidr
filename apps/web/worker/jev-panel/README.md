@@ -3,7 +3,6 @@
 Deterministic review-panel core from [#167](https://github.com/duyet/aidr/pull/167),
 plus the transport adapter and scoring-call-site integration added in
 [#203](https://github.com/duyet/aidr/issues/203).
-
 - `core.ts` — worker-neutral aggregation, quorum, diversity, bounded debate,
   idempotency keys, audit records. No `Env`, `fetch`, D1, or LLM dependency.
 - `config.ts` — `Env` to `JevPanelConfig`, including the diversity refusal.
@@ -18,18 +17,18 @@ The panel is **off unless `JEV_PANEL_ENABLED` is set to a truthy value**
 the calls it issued before this directory existed and returns the same rows,
 with no `jevReview` field on the result.
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `JEV_PANEL_ENABLED` | unset (off) | Master switch. |
-| `JEV_PANEL_RELEVANCE_MODEL` | unset | Comma-separated chain for the `relevance` judge. |
-| `JEV_PANEL_SOURCE_QUALITY_MODEL` | unset | Comma-separated chain for the `source_quality` judge. |
-| `JEV_PANEL_SAFETY_MODEL` | unset | Optional third scoring judge (`safety`); a required seat on a translation panel. Must be a model no other seat uses. |
-| `JEV_PANEL_TRANSLATION_FIDELITY_MODEL` | unset | `translation_fidelity` judge. Only a translation panel (`resolveJevPanelWorkflowConfig(env, [], "translation")`) seats it. The translation-suggestion review uses that panel. |
-| `JEV_PANEL_QUORUM` | `2` | Non-abstain valid votes needed. Clamped to the judge's count. |
-| `JEV_PANEL_DEBATE` | `0` | `1` enables the single replacement cross-examination round. |
-| `JEV_PANEL_FAIL_MODE` | `open` | `closed` forces relevance to 0 when the panel cannot decide. |
-| `JEV_PANEL_BUDGET_MS` | `40000` | Wall-clock budget for one item's whole panel. |
-| `JEV_PANEL_APPLY_CATEGORY` | `0` | `1` lets an unambiguous panel category replace the primary one. |
+| Variable                               | Default     | Meaning                                                                                                                                                                       |
+| -------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JEV_PANEL_ENABLED`                    | unset (off) | Master switch.                                                                                                                                                                |
+| `JEV_PANEL_RELEVANCE_MODEL`            | unset       | Comma-separated chain for the `relevance` judge.                                                                                                                              |
+| `JEV_PANEL_SOURCE_QUALITY_MODEL`       | unset       | Comma-separated chain for the `source_quality` judge.                                                                                                                         |
+| `JEV_PANEL_SAFETY_MODEL`               | unset       | Optional third scoring judge (`safety`); a required seat on a translation panel. Must be a model no other seat uses.                                                          |
+| `JEV_PANEL_TRANSLATION_FIDELITY_MODEL` | unset       | `translation_fidelity` judge. Only a translation panel (`resolveJevPanelWorkflowConfig(env, [], "translation")`) seats it. The translation-suggestion review uses that panel. |
+| `JEV_PANEL_QUORUM`                     | `2`         | Non-abstain valid votes needed. Clamped to the judge's count.                                                                                                                 |
+| `JEV_PANEL_DEBATE`                     | `0`         | `1` enables the single replacement cross-examination round.                                                                                                                   |
+| `JEV_PANEL_FAIL_MODE`                  | `open`      | `closed` forces relevance to 0 when the panel cannot decide.                                                                                                                  |
+| `JEV_PANEL_BUDGET_MS`                  | `40000`     | Wall-clock budget for one item's whole panel.                                                                                                                                 |
+| `JEV_PANEL_APPLY_CATEGORY`             | `0`         | `1` lets an unambiguous panel category replace the primary one.                                                                                                               |
 
 Set the two model variables to models from **different vendor families**:
 
@@ -46,7 +45,6 @@ Every panel run that is not a replay writes one row to `jev_panel_verdicts`
 and per-judge votes, claims, served model, latency, and tokens. Raw subject
 text is not stored. The write is best effort; a failed insert never changes
 the outcome. With the panel off, the table stays empty.
-
 - `GET /api/admin/jev-verdicts?limit=50&item=<id>` lists recent verdicts.
 - `POST /api/admin/jev-verdicts/<id>/override` with
   `{"decision":"uphold"|"overturn","note":"..."}` records an operator decision.
@@ -87,15 +85,15 @@ a different model produces an identity mismatch and that vote is dropped rather
 than counted as a second opinion. One configured slot is one vote no matter how
 many transport attempts it took.
 
-**The panel can only lower a score.** The effect is a relevance *ceiling*:
+**The panel can only lower a score.** The effect is a relevance _ceiling_:
 `min(primaryRelevance, panelMeanScore)`. There is no configuration under which
 the panel raises a score or promotes an item.
 
-| Panel `recommendation` | Applied relevance |
-| --- | --- |
-| `support` | `min(primary, panel mean score)` |
-| `oppose` | `0` — a panel that voted against publication cannot be an enabler |
-| `human_review` (no quorum, tie, unresolved debate) | `primary`, or `0` when `JEV_PANEL_FAIL_MODE=closed` |
+| Panel `recommendation`                             | Applied relevance                                                 |
+| -------------------------------------------------- | ----------------------------------------------------------------- |
+| `support`                                          | `min(primary, panel mean score)`                                  |
+| `oppose`                                           | `0` — a panel that voted against publication cannot be an enabler |
+| `human_review` (no quorum, tie, unresolved debate) | `primary`, or `0` when `JEV_PANEL_FAIL_MODE=closed`               |
 
 **Bounded.** At most `JEV_PANEL_MAX_JUDGES` slots, at most one replacement
 cross-examination round (the core's hard cap), one prompt byte cap
@@ -115,7 +113,7 @@ limitation rather than silently assumed.
 **Never loses a primary result.** Disabled, unresolvable config, transport
 error, timeout, malformed judgment, no quorum, a throw in the adapter — every
 path returns the primary row with a reason in `ScoreResult.jevReview`. A
-config that cannot be resolved is a *misconfiguration*, not a verdict, so it
+config that cannot be resolved is a _misconfiguration_, not a verdict, so it
 always degrades open even under `JEV_PANEL_FAIL_MODE=closed`: a typo must never
 reject a whole ingest run.
 

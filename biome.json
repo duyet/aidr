@@ -47,7 +47,8 @@
         "noNonNullAssertion": "off"
       },
       "correctness": {
-        "useExhaustiveDependencies": "off"
+        "useExhaustiveDependencies": "off",
+        "noComponentHookFactories": "off"
       }
     }
   },
@@ -70,5 +71,11 @@
     "linter": {
       "enabled": false
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/no-secret-literals.test.ts"],
+      "linter": { "rules": { "style": { "useTemplate": "off" } } }
+    }
+  ]
 }

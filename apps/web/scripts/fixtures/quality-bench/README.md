@@ -44,13 +44,13 @@ reason you cannot explain. Do not edit gold files to make a change pass.
 
 Each metric is 0..1; the composite is the weighted sum (0..100).
 
-| metric | weight | how |
-|---|---|---|
-| trending | 30 | `getFeed` path (`capSourceShare` → `collectTrendingCandidates` → `rankTrendingWithGrowth`); 0.45·precision@10 + 0.35·recall + 0.2·(1 − junk rate) |
-| entities | 25 | `extractTitleEntities`; 0.7·recall + 0.3·precision |
-| keyword | 20 | `isAiRelatedTitle`; F2 (recall weighted) |
-| diversity | 15 | `pickDiverse` on the 24h window for top 16 and top 50; share under `familyCapFor` + family coverage |
-| importance | 10 | entropy of published importance + agreement with `importance-eval.json` bands |
+| metric     | weight | how                                                                                                                                               |
+| ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| trending   | 30     | `getFeed` path (`capSourceShare` → `collectTrendingCandidates` → `rankTrendingWithGrowth`); 0.45·precision@10 + 0.35·recall + 0.2·(1 − junk rate) |
+| entities   | 25     | `extractTitleEntities`; 0.7·recall + 0.3·precision                                                                                                |
+| keyword    | 20     | `isAiRelatedTitle`; F2 (recall weighted)                                                                                                          |
+| diversity  | 15     | `pickDiverse` on the 24h window for top 16 and top 50; share under `familyCapFor` + family coverage                                               |
+| importance | 10     | entropy of published importance + agreement with `importance-eval.json` bands                                                                     |
 
 Known gaps: yesterday's trending counts come from the snapshot's 24-48h rows,
 while production reads `topic_daily`. Importance is stored LLM output, so no

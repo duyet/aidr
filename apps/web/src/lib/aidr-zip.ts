@@ -58,7 +58,7 @@ function skipFile(base: string): boolean {
 
 function dosDateTime(date: Date): { time: number; date: number } {
   const year = date.getFullYear();
-  const clampedYear = year < 1980 ? 1980 : year > 2107 ? 2107 : year;
+  const clampedYear = year < 1980 ? 1980 : Math.min(year, 2107);
   return {
     time:
       (date.getSeconds() >> 1) |
