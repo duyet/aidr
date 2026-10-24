@@ -24,4 +24,4 @@ Vietnamese: same beats and pictures, its own lengths (the build prints them), ho
 
 ## Chapters (YouTube, each at least 10 s)
 
-0:00 Title and a steadier news run · 0:08 Vietnamese spelling check and the day card · 0:20 One email and RSS · 0:31 Telegram and photo-first share cards
+0:00 News run and Vietnamese check · 0:14 Day card and one email · 0:26 RSS, Telegram and share cards (same in vi)

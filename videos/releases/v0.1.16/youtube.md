@@ -30,10 +30,9 @@ Chrome extension: https://chromewebstore.google.com/detail/aidr/cagjehdlblcobkgh
 Telegram: https://t.me/aidr_today
 Facebook: https://www.facebook.com/aidr.today/
 
-0:00 A steadier news run
-0:08 Vietnamese spelling check and the day card
-0:20 One email and RSS
-0:31 Every story on Telegram and photo-first share cards
+0:00 A steadier news run and a Vietnamese spelling check
+0:14 The day card and one email
+0:26 RSS, every story on Telegram, photo-first share cards
 
 #AI #AInews #ArtificialIntelligence #aidr
 ```
@@ -89,10 +88,9 @@ Tiện ích Chrome: https://chromewebstore.google.com/detail/aidr/cagjehdlblcobk
 Telegram: https://t.me/aihomnay
 Facebook: https://www.facebook.com/aidr.today/
 
-0:00 Lấy tin ổn định hơn
-0:09 Kiểm tra chính tả tiếng Việt và ảnh tóm tắt
-0:21 Một email và RSS
-0:31 Đủ mọi tin trên Telegram và thẻ chia sẻ ảnh lớn
+0:00 Lấy tin ổn định hơn và kiểm tra chính tả tiếng Việt
+0:14 Ảnh tóm tắt và một email
+0:26 RSS, đủ mọi tin trên Telegram, thẻ chia sẻ ảnh lớn
 
 #AI #TinAI #TriTueNhanTao #aidr
 ```
