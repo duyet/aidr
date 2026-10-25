@@ -1776,6 +1776,16 @@ first call failed on 2 of 12 batches here (502s), and in the 7 days to
 times out of 289 that were not rate-limited (116 502s, 83 first-token
 timeouts at 35s), against Laguna's 575 of 698.
 
+On 2026-10-25 gemma-latest translated 0 of 22 (#1056), and NVIDIA Nemotron
+3.5 Bolt E4B took its place second in the chain. On the same card it
+served 7 of 12 full batches. The other 5 failed on all 3 tries (502 or a
+35s timeout) and fell back to titles only. On the 7 clean batches (21
+stories), gpt-5.6-luna and Claude Sonnet 4.6 judged blind. Nemotron was
+more natural on 32 of 42 votes and more faithful on 25 of 42 (10 ties).
+It lost 36 facts against Laguna's 68 and had no draft-check issues,
+against Laguna's 3. Its call p50 was 12s against Laguna's 28s. Laguna stays
+first because Nemotron fails 5 of 12 batches.
+
 ### 7. Rank (pure code, `worker/ranking.ts`)
 
 Recomputed every run for

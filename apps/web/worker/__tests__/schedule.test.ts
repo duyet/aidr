@@ -194,10 +194,13 @@ describe("live AnyRouter model chains", () => {
   // this chain too, and Laguna served it 772 of 987 over 7 days. Gemini is
   // off the tail as well: a 502 is never skipped, so a third id cuts the
   // head's slice from 50s to 30s, under Laguna's 32.5s translate p95.
+  // 2026-10-25 (#1056): gemma-latest translated 0 of 22. Nemotron 3.5 Bolt
+  // E4B replaces it on EN→VI only. It served 7 of 12 eval batches, so it
+  // stays behind Laguna. The VI→EN chain was not evaluated and is unchanged.
   it("orders the translate chains by measured success rate", () => {
     expect(idsOf("ANYROUTER_TRANSLATE_MODEL")).toEqual([
       "poolside/laguna-s-2.1",
-      "google/gemma-latest",
+      "nvidia/nemotron-3.5-bolt-e4b",
     ]);
     expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
       "poolside/laguna-s-2.1",

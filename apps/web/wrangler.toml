@@ -124,6 +124,10 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 #                            route). Streaming json_object via the prod
 #                            client (cluster-gold-eval): 2 of 2 and 3 of 3,
 #                            p50 10-16s on the 96-title cluster prompt.
+#   nvidia/nemotron-3.5-bolt-e4b 2026-10-25 (free). Streaming json_object
+#                            via the prod client (translation-eval gen, 3-item
+#                            translate): 7 of 12 batches, call p50 12s;
+#                            5 batches 502 or time out at 35s on every try.
 #   z-ai/glm-latest          2026-10-10 rolling alias → glm-5.2. Cluster 2 of
 #                            2, p50 7.6s. glm-flash-latest (→ glm-4.7-flash)
 #                            writes reasoning prose before JSON: not used.
@@ -191,7 +195,15 @@ ANYROUTER_MODEL = "google/gemma-latest,z-ai/glm-latest,@preset/aidr,anthropic/cl
 # over 7d. Gemini is not kept as a tail: a 502 is never skipped, and a
 # third id cuts the head's slice in the 70s batch from 50s to 30s, under
 # Laguna's 32.5s translate p95. Claude Sonnet stays off for the same reason.
-ANYROUTER_TRANSLATE_MODEL = "poolside/laguna-s-2.1,google/gemma-latest"
+# 2026-10-25 (#1056): gemma-latest went 0/22 on translate. NVIDIA
+# Nemotron 3.5 Bolt E4B (free) replaces it as the fallback. Eval on the
+# vi-natural set (36 stories, 12 batches): it served 7 of 12 full batches
+# (the other 5 returned a 502 or timed out on all 3 tries), at a call p50
+# of 12s against Laguna's 28s. On those 7 batches, two blind judges
+# preferred its Vietnamese (more natural 32 of 42, more faithful 25 of 42;
+# lost facts 36 against 68), with no draft-check issues. It stays second
+# because of those 5 batches. Two ids keep Laguna's slice.
+ANYROUTER_TRANSLATE_MODEL = "poolside/laguna-s-2.1,nvidia/nemotron-3.5-bolt-e4b"
 # TL;DR keeps two ids: every extra id reserves a 20s fallback slice out of
 # the first hop's budget, and Laguna needs 102-119s on the 26K VI prompt.
 # 2026-10-10 tldr bench (3 cases): gpt-5.6-luna quality 1.0, p50 37s,
