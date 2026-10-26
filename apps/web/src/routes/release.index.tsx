@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactElement } from "react";
 import { Figure, PlayGlyph, VersionBadge } from "../components/ReleaseArticle";
+import { ALGORITHM_ENTRIES } from "../content/releases/algorithm";
 import {
   EARLIER_ENTRIES,
   type EarlierEntry,
@@ -150,6 +151,18 @@ function ReleaseIndexPage(): ReactElement {
           <ReleaseRow key={release.version} release={release} lang={lang} />
         ))}
       </ol>
+
+      <section id="algorithm" className="mt-12 scroll-mt-20">
+        <h2 className={sectionHeading}>
+          {vi ? "Cách chọn và viết tin" : "How stories are picked"}
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {vi
+            ? "Thay đổi về xếp hạng, gom tin, prompt và các model AI;DR dùng."
+            : "Changes to ranking, clustering, prompts and the models AI;DR uses."}
+        </p>
+        <EarlierList entries={ALGORITHM_ENTRIES} lang={lang} />
+      </section>
 
       <section id="chrome-extension" className="mt-12 scroll-mt-20">
         <h2 className={sectionHeading}>

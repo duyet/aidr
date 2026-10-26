@@ -45,7 +45,10 @@ it; this file says the order, the gates, and what "done" means.
    page's `compare.head` .. new `web-v` tag. Content file, screenshots,
    register in `RELEASES`. `/release` lists every version; `/release/vX`
    is the detail page with the film as the hero. (`/changelog` redirects
-   to `/release`.)
+   to `/release`.) Check that every ranking, prompt or model-chain change
+   in the range has an EN and VI entry in
+   `apps/web/src/content/releases/algorithm.ts` ("How stories are picked"
+   on /release); add any that are missing.
 4. **Films** — skills `aidr-video`, `aidr-motion-designer`,
    `aidr-video-review`. Project `videos/releases/vX.Y.Z/` (sources in git,
    renders gitignored). Render matrix:
