@@ -262,6 +262,11 @@ ANYROUTER_REVIEW_MODEL = "z-ai/glm-4.6"
 # once a reviewer is chosen by a measured probe on review prompts, which
 # needs ANYROUTER_LOCAL_API_KEY (#656).
 TRANSLATION_REVIEW_ENABLED = "false"
+# Freshness check (ALGORITHM.md "Freshness check"): "shadow" checks the top
+# stories' article dates and HN coverage and stores verdicts in
+# story_freshness; ranking ignores them. Any other value skips the step.
+# FIRECRAWL_API_KEY (Worker secret) adds Firecrawl search when set.
+FRESHNESS_CHECK = "shadow"
 # Canonical catalog id typesafe/jev (upstream alias jev-latest). System One
 # only: score judgments and review gates try it first; the chat chain above
 # is the backup. BYOK-only — Dashboard → BYOK → TypeSafe. Never add this id

@@ -22,6 +22,7 @@ import { type IngestContext, LLM_STEP } from "./ingest/context.js";
 import { dedupeNewRows } from "./ingest/dedupe.js";
 import { enrichNewRows } from "./ingest/enrich.js";
 import { fetchSources, loadSources, seedSourceHealth } from "./ingest/fetch.js";
+import { freshnessCheck } from "./ingest/freshness.js";
 import { processInboundEmail } from "./ingest/inbound-email.js";
 import { planMerges } from "./ingest/merge.js";
 import {
@@ -350,6 +351,12 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         const submissionsStats = await reviewSubmissions(ctx);
         submissionsReviewed = submissionsStats.reviewed;
         submissionsTokens = submissionsStats.tokens;
+      }
+
+      // Shadow mode: stores verdicts in story_freshness, changes nothing
+      // the TL;DR or notify reads.
+      if (!skipUnselectedStep(ctx, "freshness")) {
+        await freshnessCheck(ctx);
       }
 
       // 5. Build the edition and publish it. A dry run previews the TL;DR

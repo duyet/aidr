@@ -13,6 +13,13 @@ export const ALGORITHM_ENTRIES: EarlierEntry[] = [
   {
     date: "2026-10-26",
     text: {
+      en: "Each run now checks the 10 highest-ranked stories of the last 48 hours: whether the article is really new or an old one shared again, whether a newer report corrects or replaces it, and how many separate outlets cover it. For now it only records the result and does not change the order. On 27 recent top stories it found 2 old articles shared again and 1 story with no new coverage in three days.",
+      vi: "Mỗi lượt chạy giờ kiểm tra 10 tin xếp hạng cao nhất trong 48 giờ qua: bài viết có thật sự mới hay là bài cũ được chia sẻ lại, có tin mới hơn đính chính hay thay thế nó không, và bao nhiêu trang tin khác nhau cùng đưa tin. Hiện bước này chỉ ghi lại kết quả, chưa thay đổi thứ tự tin. Thử trên 27 tin hàng đầu gần đây, nó tìm ra 2 bài cũ được chia sẻ lại và 1 tin không còn ai đưa tiếp sau ba ngày.",
+    },
+  },
+  {
+    date: "2026-10-26",
+    text: {
       en: "Models in use. Scoring, clustering and captions: google/gemma-latest, then z-ai/glm-latest, @preset/aidr and anthropic/claude-sonnet-5-5, with typesafe/jev scoring first. Vietnamese translation: poolside/laguna-s-2.1, then nvidia/nemotron-3.5-bolt-e4b. English translation: poolside/laguna-s-2.1, then google/gemma-latest. The daily TL;DR: openai/gpt-5.6-luna, then poolside/laguna-s-2.1. Review: z-ai/glm-4.6.",
       vi: "Các model đang dùng. Chấm điểm, gom tin và viết caption: google/gemma-latest, rồi tới z-ai/glm-latest, @preset/aidr và anthropic/claude-sonnet-5-5; typesafe/jev chấm điểm trước. Dịch sang tiếng Việt: poolside/laguna-s-2.1, rồi nvidia/nemotron-3.5-bolt-e4b. Dịch sang tiếng Anh: poolside/laguna-s-2.1, rồi google/gemma-latest. TL;DR mỗi ngày: openai/gpt-5.6-luna, rồi poolside/laguna-s-2.1. Soát lại: z-ai/glm-4.6.",
     },

@@ -288,6 +288,18 @@ Upserts `sources` rows. Roll back by deleting the new ids (`mistral`,
   Items already ingested from the new rows keep their `source_id` and stay
   readable; they just stop refreshing.
 
+## 0076_story_freshness.sql
+
+- Change: new table `story_freshness` (`item_id` primary key) plus an index
+  on `checked_at`. The shadow `freshness` step upserts one verdict row per
+  checked top story. Nothing else reads it.
+- Order: the migration must land before the new Worker. Without the table
+  the step records `schema missing; apply migration 0076` and the run goes
+  on. An older Worker never touches the table.
+- Rollback: roll the Worker back (or set `FRESHNESS_CHECK` to anything but
+  `shadow`) first, then `DROP TABLE IF EXISTS story_freshness;`. The rows
+  are shadow data only, so nothing is lost.
+
 ## 0075_translation_rechecks.sql
 
 - Change: new table `translation_rechecks` (`item_id` primary key,
