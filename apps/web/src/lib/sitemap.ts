@@ -119,8 +119,13 @@ export function buildSitemapXml(urls: SitemapUrl[]): string {
  * comment. `/llms.txt` stays discoverable through the agent-discovery headers
  * in `lib/agent-discovery.ts`; do not add any other non-standard directive.
  */
+/** Crawlers follow the header's sign-in link from every story, each with its
+ *  own `redirect_url`, so no cache can serve them: about 9% of fetch CPU in
+ *  the week to 2026-10-26. The pages are already noindex. */
+export const ROBOTS_DISALLOW_PATHS = ["/sign-in", "/sign-up"] as const;
+
 export function robotsTxt(): string {
-  return `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n# LLMs-txt: ${SITE_URL}/llms.txt\n`;
+  return `User-agent: *\nAllow: /\n${ROBOTS_DISALLOW_PATHS.map((path) => `Disallow: ${path}\n`).join("")}\nSitemap: ${SITE_URL}/sitemap.xml\n# LLMs-txt: ${SITE_URL}/llms.txt\n`;
 }
 
 /**

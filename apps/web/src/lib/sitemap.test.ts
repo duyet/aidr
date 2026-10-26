@@ -141,8 +141,28 @@ describe("robotsTxt", () => {
     const text = robotsTxt();
     expect(text).toMatch(/^User-agent: \*$/m);
     expect(text).toContain("Allow: /");
-    expect(text).not.toMatch(/^Disallow:/m);
     expect(text).toContain(`Sitemap: ${SITE_URL}/sitemap.xml`);
+  });
+
+  it("keeps crawlers off the auth pages and never off a sitemap page", () => {
+    const disallowed = [...robotsTxt().matchAll(/^Disallow: (.+)$/gm)].map(
+      (m) => m[1]
+    );
+    expect(disallowed).toEqual(["/sign-in", "/sign-up"]);
+    const blocked = (path: string) =>
+      disallowed.some((prefix) => prefix && path.startsWith(prefix));
+    expect(blocked("/sign-in?redirect_url=%2Fabcdef12")).toBe(true);
+    for (const { loc } of staticSitemapUrls()) {
+      expect(blocked(new URL(loc).pathname), loc).toBe(false);
+    }
+    const story = {
+      id: "abcdef12deadbeef",
+      category: null,
+      published_at: 1_787_000_000,
+    };
+    for (const { loc } of storySitemapUrls(story)) {
+      expect(blocked(new URL(loc).pathname), loc).toBe(false);
+    }
   });
 
   it("keeps the llms.txt pointer as a comment, never a directive", () => {
