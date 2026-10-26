@@ -116,7 +116,8 @@ function mapStoryRow(
 async function queryStories(
   db: DbReader,
   idPrefix: string,
-  requestedLimit: number
+  requestedLimit: number,
+  withContentLog = false
 ): Promise<FeedItem[]> {
   // The Markdown contract needs at most two rows to detect a prefix
   // collision. The number is clamped before interpolation, never user input.
@@ -142,15 +143,27 @@ async function queryStories(
 
   let rows: unknown[] = [];
   let sourceRows: Record<string, unknown>[] = [];
+  let logRows: ContentLogRow[] | null = null;
   try {
-    const [itemRes, sourcesRes] = await db.batch([
+    const statements = [
       db.prepare(itemSql).bind(...idPrefixBinds(idPrefix)),
       db.prepare(sourcesSql).bind(...idPrefixBinds(idPrefix)),
-    ]);
+    ];
+    if (withContentLog) {
+      statements.push(
+        db.prepare(PREFIX_CONTENT_LOG_SQL).bind(...idPrefixBinds(idPrefix))
+      );
+    }
+    const [itemRes, sourcesRes, logRes] = await db.batch(statements);
     rows = Array.isArray(itemRes.results) ? itemRes.results : [];
     sourceRows = Array.isArray(sourcesRes.results)
       ? (sourcesRes.results as Record<string, unknown>[])
       : [];
+    if (logRes) {
+      logRows = Array.isArray(logRes.results)
+        ? (logRes.results as ContentLogRow[])
+        : [];
+    }
   } catch {
     // item_sources may not exist yet (pre-migration) — the item still
     // resolves without sources via a fallback read.
@@ -179,7 +192,17 @@ async function queryStories(
     )
     .map((row) => mapStoryRow(row, sourceRows))
     .filter((item): item is FeedItem => item !== null)
-    .slice(0, limit);
+    .slice(0, limit)
+    .map((item) =>
+      logRows
+        ? {
+            ...item,
+            content_log: toContentLog(
+              logRows.filter((row) => row.item_id === item.id)
+            ),
+          }
+        : item
+    );
 }
 
 /** Look up a single published story by id (or id prefix). Shared by the
@@ -193,34 +216,53 @@ WHERE item_id = ?
 ORDER BY created_at DESC, id DESC
 LIMIT 12`;
 
+/** The same history, read in the story's own batch: scoped to published
+ *  ids so an unpublished item sharing the prefix cannot take the 12 rows. */
+const PREFIX_CONTENT_LOG_SQL = `SELECT item_id, field, lang, before_text, after_text, reason, created_at
+FROM item_content_log
+WHERE item_id IN (
+  SELECT id FROM items WHERE ${idPrefixPredicate("id")} AND +status = 'published'
+)
+ORDER BY created_at DESC, id DESC
+LIMIT 12`;
+
+interface ContentLogRow {
+  item_id?: string;
+  field: string;
+  lang: string;
+  before_text: string | null;
+  after_text: string | null;
+  reason: string;
+  created_at: number | string;
+}
+
+function toContentLog(rows: ContentLogRow[]): ContentLogEntry[] {
+  return rows.flatMap((row) =>
+    row.field === "title" || row.field === "summary"
+      ? [
+          {
+            field: row.field,
+            lang: row.lang,
+            before_text: row.before_text,
+            after_text: row.after_text,
+            reason: row.reason,
+            created_at: Number(row.created_at) || 0,
+          },
+        ]
+      : []
+  );
+}
+
 async function attachContentLog(
   db: DbReader,
   story: FeedItem
 ): Promise<FeedItem> {
   try {
-    const { results } = await db.prepare(CONTENT_LOG_SQL).bind(story.id).all<{
-      field: string;
-      lang: string;
-      before_text: string | null;
-      after_text: string | null;
-      reason: string;
-      created_at: number;
-    }>();
-    const content_log: ContentLogEntry[] = (results ?? []).flatMap((row) =>
-      row.field === "title" || row.field === "summary"
-        ? [
-            {
-              field: row.field,
-              lang: row.lang,
-              before_text: row.before_text,
-              after_text: row.after_text,
-              reason: row.reason,
-              created_at: Number(row.created_at) || 0,
-            },
-          ]
-        : []
-    );
-    return { ...story, content_log };
+    const { results } = await db
+      .prepare(CONTENT_LOG_SQL)
+      .bind(story.id)
+      .all<ContentLogRow>();
+    return { ...story, content_log: toContentLog(results ?? []) };
   } catch {
     // History is best-effort: a failed read still renders the story.
     return story;
@@ -231,12 +273,13 @@ export async function getStory(
   db: DbReader,
   idPrefix: string
 ): Promise<FeedItem | null> {
-  const stories = await queryStories(db, idPrefix, 2);
+  const stories = await queryStories(db, idPrefix, 2, true);
   // Two published rows share the prefix: refuse rather than guess. Zero
   // published rows still fall through to the merged lookup below.
   if (stories.length > 1) return null;
   const story = stories[0];
-  if (story) return attachContentLog(db, story);
+  // No content_log means the batch fell back to separate reads.
+  if (story) return story.content_log ? story : attachContentLog(db, story);
   const { results } = await db
     .prepare(
       `SELECT duplicate_of FROM items
