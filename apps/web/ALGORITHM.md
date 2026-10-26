@@ -2107,9 +2107,13 @@ the TL;DR, email and notify do not read it.
 
 Read the verdicts with `pnpm --filter @aidr/web agent freshness [--limit N]`
 (read-only SELECT); the run's step line shows the counts. Measure changes with
-`pnpm exec tsx scripts/freshness-eval.ts --out <dir>` over the live feed. On
-27 top stories (Oct 24-26) it took a median of 466ms per story and found 2
-`old_resurfaced`, 1 `stale` and no `superseded`. Enforcement (demoting or
+`pnpm exec tsx scripts/freshness-eval.ts --out <dir> [--no-gnews]` over the
+live feed. On 59 top stories (Oct 23-26) with the Worker's providers
+(`--no-gnews`) it took a median of 495ms per story and found 2
+`old_resurfaced` and 2 `stale`, all four right by the article's own date, and
+no `superseded`. 18 of 59 had no readable article date (403s, aggregator-only
+stories). Trending with HN only tops out at 3 outlets; Google News reached 20.
+Enforcement (demoting or
 boosting) is not built; it waits for shadow data and the owner's thresholds.
 
 ### 10. TL;DR (LLM)

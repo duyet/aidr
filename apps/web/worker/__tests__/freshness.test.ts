@@ -8,6 +8,7 @@ import {
 } from "../freshness/check.js";
 import {
   parseArticleDate,
+  parseFirecrawlNews,
   parseGoogleNewsRss,
 } from "../freshness/providers.js";
 import {
@@ -180,6 +181,32 @@ describe("parsers", () => {
         publishedAt: Date.parse("2026-10-25T12:00:00Z") / 1000,
         provider: "gnews",
       },
+    ]);
+  });
+
+  it("reads Firecrawl v2 news results and leaves unreadable dates null", () => {
+    const hits = parseFirecrawlNews({
+      success: true,
+      data: {
+        news: [
+          {
+            title: "A",
+            url: "https://www.reuters.com/a",
+            snippet: "",
+            date: "2026-10-25T10:00:00Z",
+          },
+          {
+            title: "B",
+            url: "https://wired.com/b",
+            snippet: "",
+            date: "3 hours ago",
+          },
+        ],
+      },
+    });
+    expect(hits.map((h) => [h.domain, h.publishedAt])).toEqual([
+      ["reuters.com", Date.parse("2026-10-25T10:00:00Z") / 1000],
+      ["wired.com", null],
     ]);
   });
 

@@ -33,7 +33,7 @@ interface FeedItem {
   title: string;
   published_at: number;
   rank_score: number;
-  sources?: { url: string; posted_at: number | null }[];
+  sources?: { kind: string; url: string; posted_at: number | null }[];
 }
 
 function arg(name: string): string | undefined {
@@ -60,10 +60,12 @@ async function main() {
         title: it.title,
         url: it.url,
         publishedAt: it.published_at,
-        sourceUrls: (it.sources ?? []).map((s) => ({
-          url: s.url,
-          postedAt: s.posted_at,
-        })),
+        sourceUrls: (it.sources ?? [])
+          .filter((s) => s.kind === "source")
+          .map((s) => ({
+            url: s.url,
+            postedAt: s.posted_at,
+          })),
         day: day.date,
         rank: it.rank_score,
       });

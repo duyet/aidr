@@ -15,7 +15,10 @@ async function get(url: string, init: RequestInit = {}): Promise<Response> {
     headers: { "user-agent": UA, ...(init.headers ?? {}) },
     signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    await res.body?.cancel().catch(() => undefined);
+    throw new Error(`HTTP ${res.status}`);
+  }
   return res;
 }
 
@@ -37,7 +40,7 @@ const DATE_PATTERNS = [
   /"datePublished"\s*:\s*"([^"]+)"/i,
   /<meta[^>]+(?:property|name)=["'](?:article:published_time|og:published_time|pubdate|publish-date|date)["'][^>]*content=["']([^"']+)["']/i,
   /<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["']article:published_time["']/i,
-  /<time[^>]+datetime=["']([^"']+)["']/i,
+  /<time[^>]+itemprop=["']datePublished["'][^>]*datetime=["']([^"']+)["']/i,
 ];
 
 /** The article's own published date from JSON-LD or meta tags. */
@@ -126,27 +129,35 @@ export async function searchGoogleNews(query: string): Promise<SearchHit[]> {
   return parseGoogleNewsRss(await cappedText(res)).slice(0, 30);
 }
 
-/** Firecrawl `/v1/search`, past 2 days. Used only when FIRECRAWL_API_KEY is
- * set; not exercised in the phase-1 eval because no key exists yet. */
+/** Firecrawl `POST /v2/search` news results from the past week (the judge
+ * applies the 48h window). Shape from docs.firecrawl.dev; not exercised
+ * live because no key exists yet. A `date` Date.parse cannot read is null. */
 export async function searchFirecrawl(
   query: string,
   apiKey: string
 ): Promise<SearchHit[]> {
-  const res = await get("https://api.firecrawl.dev/v1/search", {
+  const res = await get("https://api.firecrawl.dev/v2/search", {
     method: "POST",
     headers: {
       authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ query, limit: 10, tbs: "qdr:d2" }),
+    body: JSON.stringify({ query, limit: 10, sources: ["news"], tbs: "qdr:w" }),
   });
-  const body = (await res.json()) as {
-    data?: { url?: string; title?: string; publishedDate?: string }[];
-  };
-  return (body.data ?? [])
+  return parseFirecrawlNews(await res.json());
+}
+
+export function parseFirecrawlNews(body: unknown): SearchHit[] {
+  const news =
+    (
+      body as {
+        data?: { news?: { url?: string; title?: string; date?: string }[] };
+      }
+    ).data?.news ?? [];
+  return news
     .filter((d) => d.url && d.title)
     .map((d) => {
-      const ms = d.publishedDate ? Date.parse(d.publishedDate) : Number.NaN;
+      const ms = d.date ? Date.parse(d.date) : Number.NaN;
       return {
         url: d.url as string,
         title: d.title as string,

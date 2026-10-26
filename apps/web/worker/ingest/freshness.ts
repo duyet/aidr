@@ -100,7 +100,7 @@ export async function runFreshnessCheck(
 
   const { results: sourceRows } = await env.DB.prepare(
     `SELECT item_id, url, posted_at FROM item_sources
-      WHERE url IS NOT NULL AND item_id IN (${due.map(() => "?").join(",")})
+      WHERE url IS NOT NULL AND kind = 'source' AND item_id IN (${due.map(() => "?").join(",")})
       ORDER BY item_id, position`
   )
     .bind(...due.map((r) => r.id))
