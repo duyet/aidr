@@ -6,6 +6,8 @@ aidr / AI;DR monorepo — Cloudflare **Workers** (not Pages) at https://aidr.tod
 
 Read [`apps/web/ALGORITHM.md`](apps/web/ALGORITHM.md) before changing ingest, ranking, prompts, admin/MCP, or notify surfaces. The scheduler starts a run every 30 minutes, with a 25-minute coalesce (`INGEST_MIN_INTERVAL_MS`). One run consumes sources, ranks items, writes `tldr_snapshots`, then publishes that edition to email, Telegram, and the English Facebook Page (`facebook-en`). Language columns do not fall back to each other (`worker/digest/edition.ts`).
 
+Changes to ranking, scoring, clustering, prompts or a model chain (`*_MODEL` vars in `apps/web/wrangler.toml`, `worker/llm`, ALGORITHM.md) add an EN and VI entry to `apps/web/src/content/releases/algorithm.ts` in the same PR. It is the "How stories are picked" log on /release (/changelog redirects there). `algorithm.test.ts` fails when a chain model id is named in no entry.
+
 Telegram Instant View contract and manual checklist: [`docs/decisions/telegram-instant-view.md`](docs/decisions/telegram-instant-view.md).
 
 ## Releases

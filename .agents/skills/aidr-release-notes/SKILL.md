@@ -48,7 +48,9 @@ automatically. Do not add routes per version.
    - `highlights`: 5–8 reader-visible things, bold label + 1–2 sentences,
      a screenshot and an `href` to try it.
    - `changes`: reader-relevant feat/fix/perf only. Drop CI, lint, deps,
-     refactors, admin plumbing and model-chain tuning. Merge near-duplicates.
+     refactors and admin plumbing. Model-chain, ranking and prompt changes
+     go in `content/releases/algorithm.ts` instead, one dated EN and VI
+     entry each (which model, what readers get, why). Merge near-duplicates.
      Rewrite in plain reader language with short sha and PR.
    - Vietnamese is required for every string and never falls back to
      English. Reuse the house wording in `routes/changelog.tsx`

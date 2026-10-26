@@ -43,4 +43,5 @@ pnpm dev                                # http://localhost:3014
 - Build secret-shaped test fixtures from string parts at runtime. `no-secret-literals.test.ts` fails on any tracked literal.
 - Add a migration to `apps/web/migrations` with the next number. The deploy gate requires every file from `0023` up.
 - English and Vietnamese columns never fall back to each other.
+- Changes to ranking, scoring, clustering, prompts or a model chain (`*_MODEL` vars in `apps/web/wrangler.toml`, `worker/llm`, `apps/web/ALGORITHM.md`) add an EN and VI entry to `apps/web/src/content/releases/algorithm.ts` in the same PR. It shows on /release (and /changelog, which redirects there). `algorithm.test.ts` fails when a chain model id is named in no entry.
 - Prove a change on the real surface with `.agents/skills/verify-aidr/bin/verify-aidr`, not only with unit tests.
