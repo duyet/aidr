@@ -168,6 +168,11 @@ describe("getStory for a merged id", () => {
 describe("getStory content log", () => {
   function contentLogDb(log: Row[] | Error) {
     const prepared: string[] = [];
+    const calls = { batch: 0, all: 0 };
+    const logResult = () => {
+      if (log instanceof Error) throw log;
+      return { results: log.map((row) => ({ item_id: base.id, ...row })) };
+    };
     const stmt = (sql: string) => {
       prepared.push(sql);
       return {
@@ -176,28 +181,52 @@ describe("getStory content log", () => {
           return this;
         },
         async all() {
-          if (sql.includes("item_content_log")) {
-            if (log instanceof Error) throw log;
-            return { results: log };
-          }
+          calls.all += 1;
+          if (sql.includes("item_content_log")) return logResult();
           return { results: [base] };
         },
       };
     };
     return {
       prepared,
+      calls,
       db: {
         prepare: (sql: string) => stmt(sql),
         async batch(stmts: { sql: string }[]) {
-          return stmts.map((s) =>
-            s.sql.includes("item_sources")
-              ? { results: [] }
-              : { results: [base] }
-          );
+          calls.batch += 1;
+          return stmts.map((s) => {
+            if (s.sql.includes("item_content_log")) return logResult();
+            if (s.sql.includes("item_sources")) return { results: [] };
+            return { results: [base] };
+          });
         },
       } as unknown as Parameters<typeof getStory>[0],
     };
   }
+
+  const edit: Row = {
+    field: "title",
+    lang: "en",
+    before_text: "Old title",
+    after_text: "New title",
+    reason: "ingest",
+    created_at: 1_700_000_002,
+  };
+
+  // Each D1 round trip from a far colo costs tens to hundreds of ms of page
+  // wall time, so the history rides the story's own batch.
+  it("reads the story, its sources and its history in one D1 round trip", async () => {
+    const { db, calls } = contentLogDb([edit]);
+    const item = await getStory(db, "abcdef12");
+    expect(item?.content_log).toHaveLength(1);
+    expect(calls).toEqual({ batch: 1, all: 0 });
+  });
+
+  it("keeps another item's history off the story", async () => {
+    const { db } = contentLogDb([{ ...edit, item_id: "f".repeat(64) }]);
+    const item = await getStory(db, "abcdef12");
+    expect(item?.content_log).toEqual([]);
+  });
 
   it("reads at most 12 rows, newest first, and coerces created_at with Number", async () => {
     const { db, prepared } = contentLogDb([
