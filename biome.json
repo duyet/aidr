@@ -8,6 +8,7 @@
   "files": {
     "includes": [
       "**",
+      "!**/CHANGELOG.md",
       "!**/node_modules",
       "!**/dist",
       "!**/build",
