@@ -34,8 +34,8 @@ export const ALGORITHM_ENTRIES: EarlierEntry[] = [
   {
     date: "2026-10-24",
     text: {
-      en: "When GitHub refuses a release feed because the hourly quota ran out, the source alert now says \"rate limited\" instead of \"access refused\".",
-      vi: "Khi GitHub từ chối feed bản phát hành vì đã hết hạn mức theo giờ, cảnh báo nguồn tin giờ ghi \"rate limited\" thay vì \"access refused\".",
+      en: 'When GitHub refuses a release feed because the hourly quota ran out, the source alert now says "rate limited" instead of "access refused".',
+      vi: 'Khi GitHub từ chối feed bản phát hành vì đã hết hạn mức theo giờ, cảnh báo nguồn tin giờ ghi "rate limited" thay vì "access refused".',
     },
   },
   {
@@ -48,8 +48,8 @@ export const ALGORITHM_ENTRIES: EarlierEntry[] = [
   {
     date: "2026-10-19",
     text: {
-      en: "Vietnamese keeps \"model family\" in English, and the draft check flags four literal translations that made no sense, such as \"gia đình mô hình\" for a model family.",
-      vi: "Bản tiếng Việt giữ nguyên \"model family\" bằng tiếng Anh. Bước soát bản nháp cũng bắt bốn kiểu dịch từng chữ vô nghĩa, như dịch model family thành \"gia đình mô hình\".",
+      en: 'Vietnamese keeps "model family" in English, and the draft check flags four literal translations that made no sense, such as "gia đình mô hình" for a model family.',
+      vi: 'Bản tiếng Việt giữ nguyên "model family" bằng tiếng Anh. Bước soát bản nháp cũng bắt bốn kiểu dịch từng chữ vô nghĩa, như dịch model family thành "gia đình mô hình".',
     },
   },
   {

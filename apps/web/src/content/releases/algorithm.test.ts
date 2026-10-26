@@ -11,7 +11,7 @@ import { ALGORITHM_ENTRIES } from "./algorithm";
 function modelChainIds(): string[] {
   const toml = readFileSync(
     fileURLToPath(new URL("../../../wrangler.toml", import.meta.url)),
-    "utf8",
+    "utf8"
   );
   const ids = new Set<string>();
   for (const m of toml.matchAll(/^[A-Z_]*_MODEL\s*=\s*"([^"]*)"/gm)) {
