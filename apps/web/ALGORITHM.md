@@ -140,7 +140,7 @@ inside the Workflow. The mode travels as `create({ id, params })` and
 `worker/ingest/mode.ts` owns the step names:
 `fetch, dedupe, score, translate, write, backfill-content,
 backfill-translate, backfill-en-summary, backfill-score, qa-translations, inbound-email,
-review-suggestions, review-submissions, tldr, weekly, email, notify`. In a dry run
+review-suggestions, review-submissions, freshness, tldr, weekly, email, notify`. In a dry run
 `inbound-email` only classifies the pending batch (no rows written, no
 acknowledgements sent).
 - **`dryRun: true`** — `sendEmailDigest` and `notifyChannels` return before
@@ -2072,6 +2072,49 @@ notify incl. Telegram and `facebook-en`) select `enSummarySql()`:
 fallback; the Vietnamese column never reads `summary_en`. Drain on demand
 (a dry run still writes D1, sends nothing):
 `pnpm --filter @aidr/web agent run --steps backfill-en-summary --force --wait`.
+
+### 9b. Freshness check (shadow, `worker/ingest/freshness.ts`)
+
+Runs after `review-submissions` and before `tldr`, as the `freshness` step,
+when `FRESHNESS_CHECK = "shadow"` (wrangler.toml). Any other value records
+`skipped: flag off`. It only writes `story_freshness` (migration 0076). Ranking,
+the TL;DR, email and notify do not read it.
+
+- **Candidates.** Top 10 published items by `rank_score` from the last 48h. An
+  item checked under 6h ago keeps its row (counted as `cached`).
+- **Bounds.** 3 checks at a time, 8s per HTTP call, no new check after 60s.
+  A provider error goes into `errors_json`; the step never fails the run.
+- **Providers** (`worker/freshness/providers.ts`). The article's own date from
+  JSON-LD `datePublished` or `article:published_time`, read from the story URL
+  or its first non-aggregator source. HN Algolia search over the last 48h.
+  Firecrawl search when the `FIRECRAWL_API_KEY` secret is set (not yet set).
+  Google News RSS is used only by `scripts/freshness-eval.ts`: its feed terms
+  allow personal use only.
+- **Verdict** (`worker/freshness/check.ts`, pure). A related hit shares at
+  least 3 of the title's first 6 key terms.
+  - `old_resurfaced`: the article's date is more than 7 days before our
+    `published_at`.
+  - `superseded`: a related hit newer than the story by over 1h has a
+    follow-up cue (correction, retracts, denies, delays, reverses, scraps…)
+    that the story's own title lacks.
+  - `stale`: older than 3 days and no related hit in the last 48h.
+  - `unknown`: no article date and every search provider failed.
+  - otherwise `fresh`.
+- **Trending.** `trending_sources` counts distinct outlets in 48h: the story
+  URL, its `item_sources`, and related hits. Aggregators (Techmeme, X, HN,
+  Reddit, Google) do not count, and syndicated copies with the same
+  `-<8 hex>` path slug count once.
+
+Read the verdicts with `pnpm --filter @aidr/web agent freshness [--limit N]`
+(read-only SELECT); the run's step line shows the counts. Measure changes with
+`pnpm exec tsx scripts/freshness-eval.ts --out <dir> [--no-gnews]` over the
+live feed. On 59 top stories (Oct 23-26) with the Worker's providers
+(`--no-gnews`) it took a median of 495ms per story and found 2
+`old_resurfaced` and 2 `stale`, all four right by the article's own date, and
+no `superseded`. 18 of 59 had no readable article date (403s, aggregator-only
+stories). Trending with HN only tops out at 3 outlets; Google News reached 20.
+Enforcement (demoting or
+boosting) is not built; it waits for shadow data and the owner's thresholds.
 
 ### 10. TL;DR (LLM)
 

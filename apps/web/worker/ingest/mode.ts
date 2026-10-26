@@ -25,6 +25,7 @@ export const PIPELINE_STEPS = [
   "inbound-email",
   "review-suggestions",
   "review-submissions",
+  "freshness",
   "tldr",
   "weekly",
   "email",

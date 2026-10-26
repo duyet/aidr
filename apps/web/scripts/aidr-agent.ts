@@ -9,6 +9,8 @@
  *     (GET /api/admin/diagnostics: verdicts on ingest, the last run,
  *     traffic against its 7-day baseline, stuck rows and open alerts)
  *   pnpm --filter @aidr/web agent ranking [--limit N]
+ *   pnpm --filter @aidr/web agent freshness [--limit N]
+ *     (shadow freshness verdicts from story_freshness; read-only SELECT)
  *   pnpm --filter @aidr/web agent tldr-preview
  *   pnpm --filter @aidr/web agent tldr-regenerate [--date YYYY-MM-DD]
  *     [--dry-run]   (writes the row only if it is a model digest)
@@ -358,6 +360,18 @@ async function ranking(args: Args): Promise<void> {
     result,
     `ranking: ${result.items.length} items; #1 ${result.items[0]?.title ?? "-"}`
   );
+}
+
+/** Latest shadow freshness verdicts (ALGORITHM.md "Freshness check"). */
+async function freshness(args: Args): Promise<void> {
+  const limit = flagNumber(args, "limit", 30);
+  const rows = wranglerSelect(
+    `SELECT f.checked_at, f.verdict, f.trending_sources, f.article_published_at, i.published_at, i.title, f.domains_json, f.newer_urls_json, f.errors_json FROM story_freshness f JOIN items i ON i.id = f.item_id ORDER BY f.checked_at DESC LIMIT ${limit}`
+  );
+  const counts: Record<string, number> = {};
+  for (const r of rows)
+    counts[String(r.verdict)] = (counts[String(r.verdict)] ?? 0) + 1;
+  print(rows, `freshness: ${rows.length} rows ${JSON.stringify(counts)}`);
 }
 
 async function tldrPreview(): Promise<void> {
@@ -862,6 +876,8 @@ async function main(): Promise<void> {
       return diagnose();
     case "ranking":
       return ranking(args);
+    case "freshness":
+      return freshness(args);
     case "tldr-preview":
       return tldrPreview();
     case "tldr-regenerate":
@@ -885,7 +901,7 @@ async function main(): Promise<void> {
       return storyCaption(args);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | diagnose | ranking [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --dangling [decisions.json] --model-check [--confirm-llm] [--max-calls N] | unmerge --undo <batchId> [--canonical <id,...>] [--apply] | backfill-tags [--apply] | story-caption <item-id> --channel telegram|telegram-en [--apply]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | diagnose | ranking [--limit N] | freshness [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --dangling [decisions.json] --model-check [--confirm-llm] [--max-calls N] | unmerge --undo <batchId> [--canonical <id,...>] [--apply] | backfill-tags [--apply] | story-caption <item-id> --channel telegram|telegram-en [--apply]"
       );
   }
 }

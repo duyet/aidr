@@ -37,6 +37,11 @@ export interface Env {
    *  value ("false", "0", "off") pauses it: no review or repair calls, while
    *  VI→EN candidates are still created (#655). */
   TRANSLATION_REVIEW_ENABLED?: string;
+  /** "shadow" runs the freshness check on top stories and stores verdicts
+   *  in `story_freshness` without changing ranking; anything else skips it. */
+  FRESHNESS_CHECK?: string;
+  /** Adds Firecrawl search to the freshness check when set. */
+  FIRECRAWL_API_KEY?: string;
   /** Legacy translation-QA chain. Still honored when no review chain is set,
    *  but it never falls back to ANYROUTER_MODEL and must be model-independent. */
   ANYROUTER_QA_MODEL?: string;
