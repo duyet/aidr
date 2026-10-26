@@ -49,6 +49,10 @@ function copyFor(lang) {
       missing: "Không tìm thấy tin.",
       related: "Cùng chủ đề",
       site: "Xem trên aidr.today",
+      shareLabel: "Liên kết tin",
+      copyLink: "Sao chép",
+      copied: "Đã sao chép",
+      open: "Mở",
     };
   }
   return {
@@ -57,6 +61,10 @@ function copyFor(lang) {
     missing: "Story not found.",
     related: "Also in this story",
     site: "Open on aidr.today",
+    shareLabel: "Story link",
+    copyLink: "Copy",
+    copied: "Copied",
+    open: "Open",
   };
 }
 
@@ -201,7 +209,7 @@ export function openStoryDialog({
   siteLink.target = "_blank";
   siteLink.rel = "noopener noreferrer";
   siteLink.textContent = copy.site;
-  foot.append(siteLink);
+  foot.append(sharePermalinkRow(storyPermalink(itemId, lang), canonicalPermalink, copy), siteLink);
 
   panel.append(head, body, foot);
   overlay.append(panel);
@@ -263,6 +271,59 @@ export function openStoryDialog({
     renderBilingualBtn(next);
     paintStory(next, ctx);
   });
+}
+
+/** Canonical story URL (no UTM) with Copy and Open, like a share sheet. */
+function sharePermalinkRow(url, openHref, copy) {
+  const field = el("input", {
+    className: "story-dialog-share-url",
+    type: "text",
+    readonly: true,
+    value: url,
+    "aria-label": copy.shareLabel,
+    onFocus: (event) => event.target.select(),
+  });
+  const status = el("span", { className: "sr-only", "aria-live": "polite" });
+  let reset = 0;
+  const copyBtn = el(
+    "button",
+    {
+      type: "button",
+      className: "story-dialog-share-btn",
+      onClick: async () => {
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch {
+          field.select();
+          document.execCommand("copy");
+        }
+        copyBtn.textContent = copy.copied;
+        status.textContent = copy.copied;
+        clearTimeout(reset);
+        reset = setTimeout(() => {
+          copyBtn.textContent = copy.copyLink;
+          status.textContent = "";
+        }, 1600);
+      },
+    },
+    [copy.copyLink]
+  );
+  const openLink = el(
+    "a",
+    {
+      className: "story-dialog-share-btn",
+      href: openHref,
+      target: "_blank",
+      rel: "noopener noreferrer",
+    },
+    [copy.open]
+  );
+  return el("div", { className: "story-dialog-share" }, [
+    field,
+    copyBtn,
+    openLink,
+    status,
+  ]);
 }
 
 function paintStory(story, ctx) {

@@ -235,7 +235,6 @@ function splitColumns(items) {
 let filterTag = null;
 /** @type {Set<string>} */
 let filterCategories = new Set();
-let tldrExpanded = false;
 let pushSettings = async () => {};
 
 function formatDayHeading(date, lang) {
@@ -347,10 +346,7 @@ async function maybeOfferUnpackedUpdate(settings) {
 }
 
 function tldrShown(bullets, settings) {
-  const cap = settings.tldrCount || 8;
-  if (bullets.length <= 8) return bullets;
-  if (tldrExpanded) return bullets.slice(0, Math.min(bullets.length, cap));
-  return bullets.slice(0, 8);
+  return bullets.slice(0, settings.tldrCount || 8);
 }
 
 const SNAPSHOT_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -589,16 +585,13 @@ function renderTldr(settings, digest) {
     );
     btn.addEventListener("click", async () => {
       const nominal = n <= 8 ? 8 : n <= 12 ? 12 : 16;
-      tldrExpanded = nominal > 8;
       await pushSettings({ ...settings, tldrCount: nominal });
     });
     counts.append(btn);
   }
 
-  const shown = tldrShown(bullets, {
-    ...settings,
-    tldrCount: tldrExpanded ? settings.tldrCount || 8 : 8,
-  });
+  const shown = tldrShown(bullets, settings);
+  const expanded = shown.length > 8;
   const columns = splitColumns(shown);
   columns.forEach((col, ci) => {
     if (!col.length) return;
@@ -618,19 +611,17 @@ function renderTldr(settings, digest) {
     cols.append(list);
   });
 
-  if (bullets.length > 8 && !tldrExpanded) {
+  if (bullets.length > 8 && !expanded) {
     more.hidden = false;
     more.textContent = t(settings, "showMore");
     more.onclick = async () => {
-      tldrExpanded = true;
       const next = bullets.length > 12 ? 16 : 12;
       await pushSettings({ ...settings, tldrCount: next });
     };
-  } else if (tldrExpanded && bullets.length > 8) {
+  } else if (expanded) {
     more.hidden = false;
     more.textContent = t(settings, "showLess");
     more.onclick = async () => {
-      tldrExpanded = false;
       await pushSettings({ ...settings, tldrCount: 8 });
     };
   } else {

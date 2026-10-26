@@ -28,3 +28,10 @@ test("publisher links are never localized", () => {
   const source = "https://example.com/story?a=1";
   assert.equal(withSiteLang(source, "en"), source);
 });
+
+test("story dialog share link is the canonical permalink without tracking", () => {
+  const url = new URL(storyPermalink("0123abcd-full-id", "en"));
+  assert.equal(url.pathname, "/0123abcd");
+  assert.deepEqual([...url.searchParams.keys()], ["lang"]);
+  assert.equal(storyPermalink("0123abcd", "vi").endsWith("?lang=vi"), true);
+});

@@ -142,3 +142,10 @@ test("normalizeSettings normalizes sectionOrder", () => {
     "categories"
   );
 });
+
+test("tldrCount keeps a saved 12 or 16 so each new tab shows that many rows", () => {
+  assert.equal(normalizeSettings({ tldrCount: 12 }).tldrCount, 12);
+  assert.equal(normalizeSettings({ tldrCount: 16 }).tldrCount, 16);
+  assert.equal(normalizeSettings({ tldrCount: 5 }).tldrCount, 8);
+  assert.equal(DEFAULT_SETTINGS.tldrCount, 8);
+});
