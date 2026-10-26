@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.25](https://github.com/duyet/aidr/compare/aidr-v0.1.24...aidr-v0.1.25) (2026-10-26)
+
+
+### ✨ Features
+
+* **extension:** match aidr.today chip colors and shapes ([#1060](https://github.com/duyet/aidr/issues/1060)) ([1db2c4a](https://github.com/duyet/aidr/commit/1db2c4abdd0c1c4a3ccd983567c543e187783263))
+
 ## [0.1.24](https://github.com/duyet/aidr/compare/aidr-v0.1.23...aidr-v0.1.24) (2026-10-20)
 
 
