@@ -14,6 +14,11 @@ const STORY_URL_MAX_LENGTH = 1024;
  * under BINARY collation (ids are ASCII hex, so every id starting with the
  * prefix sorts inside it); the trailing `substr` keeps the match exact.
  * Binds: (prefix, prefix + U+FFFF, prefix.length, prefix).
+ *
+ * A `status = ?` beside it must be written `+status`: without that SQLite
+ * prefers `idx_items_status_fetched_at` and walks every published row (prod
+ * D1, 2026-10-26: 5,961 rows read and 22 ms per story lookup, against 33 rows
+ * and 0.4 ms with the hint).
  */
 export function idPrefixPredicate(column: string): string {
   return `${column} >= ? AND ${column} < ? AND substr(${column}, 1, ?) = ?`;
@@ -125,7 +130,7 @@ async function queryStories(
        FROM items i
        ${VOTE_NET_JOIN_I}
        LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
-       WHERE ${idPrefixPredicate("i.id")} AND i.status = 'published' LIMIT ${limit}`;
+       WHERE ${idPrefixPredicate("i.id")} AND +i.status = 'published' LIMIT ${limit}`;
 
   // item_sources is keyed by the full id, so the same predicate lets both
   // reads ride one db.batch — one D1 round-trip. Prefix matching never uses
@@ -235,7 +240,7 @@ export async function getStory(
   const { results } = await db
     .prepare(
       `SELECT duplicate_of FROM items
-       WHERE ${idPrefixPredicate("id")} AND status = 'merged'
+       WHERE ${idPrefixPredicate("id")} AND +status = 'merged'
          AND duplicate_of IS NOT NULL LIMIT 2`
     )
     .bind(...idPrefixBinds(idPrefix))
