@@ -1,6 +1,7 @@
 import { clerkMiddleware } from "@clerk/tanstack-react-start/server";
 import { createMiddleware, createStart } from "@tanstack/react-start";
 import { resolveClerkProxyUrl } from "./lib/clerk-proxy-config";
+import { requestNeedsClerk } from "./lib/clerk-user";
 import { isSubscriberTokenRequest } from "./lib/subscriber-token-request";
 
 const configuredProxyUrl = resolveClerkProxyUrl(
@@ -34,7 +35,10 @@ export const startInstance = createStart(() => {
       // request because the client bundle stubs clerkMiddleware to `{}`.
       createMiddleware().server((options) => {
         const url = new URL(options.request.url);
-        if (isSubscriberTokenRequest(url.pathname, url.search)) {
+        if (
+          isSubscriberTokenRequest(url.pathname, url.search) ||
+          !requestNeedsClerk(options.request.method, url.pathname)
+        ) {
           return options.next();
         }
         const runClerk = clerk.options.server;

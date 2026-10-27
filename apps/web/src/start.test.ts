@@ -74,13 +74,10 @@ describe("Clerk request middleware", () => {
   });
 
   it.each([
-    "/?tab=week",
-    "/about",
-    "/subscribe",
-    "/subscribe?lang=vi",
-    "/admin?settings=1",
+    "/sign-in",
+    "/data?settings=1",
+    "/mail",
     "/api/admin/status?settings=1",
-    "/feedback?d=2026-10-14&l=en&v=1",
     "/api/subscribe/preview?token=1",
   ])(
     "sends a returning reader on %s through Clerk's handshake",
@@ -91,6 +88,22 @@ describe("Clerk request middleware", () => {
       expect(outcome.reachedApp).toBe(false);
     }
   );
+
+  // A returning reader on a public page used to be sent to the handshake, and
+  // a browser that dropped the cookies on those 307s looped until Safari gave
+  // up with "too many redirects". Reader pages never read auth.
+  it.each([
+    "/7f181e7a?lang=en&utm_source=telegram&utm_medium=social&utm_campaign=story&utm_content=button-7f181e7a",
+    "/?tab=week",
+    "/about",
+    "/subscribe?lang=vi",
+    "/feedback?d=2026-10-14&l=en&v=1",
+  ])("serves a returning reader on %s without a handshake", async (path) => {
+    const outcome = await runRequestMiddleware(path);
+
+    expect(outcome.redirect).toBeNull();
+    expect(outcome.reachedApp).toBe(true);
+  });
 
   // Every GET link a subscriber receives by mail, plus case and slash
   // variants the router still matches.
