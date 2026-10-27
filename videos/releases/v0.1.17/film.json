@@ -1,0 +1,236 @@
+{
+  "$comment": "Copy and framing for the v0.1.17 film, music and effects only (no voice-over: the ElevenLabs quota was spent). Copy follows apps/web/src/content/releases/v0.1.17.ts. Each scene frames one station of the launch film's machine beside one real capture. Without a voice, a tag's `at` is seconds into its scene and `durations` sets each section's length. `view` / `view9` are the capture crop as fractions [x, y, w, h?] of the desktop / mobile capture.",
+  "version": "0.1.17",
+  "headline": "Story links open on the first tap",
+  "dates": "Oct 24 – 27, 2026",
+  "closing": "8 changes · 1 fix",
+  "durations": {
+    "title": 4,
+    "scene": 7,
+    "close": 4.5
+  },
+  "captures": {
+    "pages": {
+      "algo": "/release?lang=en#algorithm",
+      "algo-vi": "/release?lang=vi#algorithm",
+      "story": "/698114b6?lang=en",
+      "story-vi": "/698114b6?lang=vi",
+      "tg": "https://t.me/aidr_today/257?embed=1",
+      "tg-vi": "https://t.me/aihomnay/392?embed=1"
+    },
+    "files": {}
+  },
+  "scenes": [
+    {
+      "id": "fresh",
+      "station": "fetch",
+      "shot": "algo",
+      "url": "aidr.today/release",
+      "label": "Is it really new?",
+      "title": "Top 10, checked every run",
+      "mark": "checked",
+      "view": [
+        0.1,
+        0.06,
+        0.46,
+        0.32
+      ],
+      "view9": [
+        0,
+        0,
+        1,
+        0.45
+      ],
+      "tags": [
+        {
+          "text": "old news shared again",
+          "at": 1.6
+        },
+        {
+          "text": "recorded, not ranked yet",
+          "at": 4.0
+        }
+      ]
+    },
+    {
+      "id": "algo",
+      "station": "tldr",
+      "shot": "algo",
+      "url": "aidr.today/release#algorithm",
+      "label": "How stories are picked",
+      "title": "Every model change, dated",
+      "mark": "dated",
+      "view": [
+        0.1,
+        0.2,
+        0.46,
+        0.34
+      ],
+      "view9": [
+        0,
+        0,
+        1,
+        0.45
+      ],
+      "tags": [
+        {
+          "text": "ranking · prompts · models",
+          "at": 1.6
+        },
+        {
+          "text": "English + Vietnamese",
+          "at": 4.0
+        }
+      ]
+    },
+    {
+      "id": "story",
+      "station": "rss",
+      "shot": "story",
+      "url": "aidr.today/698114b6",
+      "label": "Faster story pages",
+      "title": "5,961 rows → 33",
+      "mark": "33",
+      "view": [
+        0.13,
+        0.04,
+        0.6,
+        0.5
+      ],
+      "view9": [
+        0,
+        0,
+        1,
+        0.45
+      ],
+      "tags": [
+        {
+          "text": "same page, fewer reads",
+          "at": 1.6
+        },
+        {
+          "text": "1 database trip, not 2",
+          "at": 4.0
+        }
+      ]
+    },
+    {
+      "id": "telegram",
+      "station": "telegram",
+      "shot": "tg",
+      "url": "t.me/aidr_today",
+      "label": "Telegram links open again",
+      "title": "Opens on the first tap",
+      "mark": "first tap",
+      "view": [
+        0.3,
+        0,
+        0.4,
+        0.94
+      ],
+      "view9": [
+        0,
+        0,
+        1,
+        0.45
+      ],
+      "tags": [
+        {
+          "text": "no more redirect loop",
+          "at": 1.6
+        },
+        {
+          "text": "you stay signed in",
+          "at": 4.0
+        }
+      ]
+    }
+  ],
+  "cover": {
+    "scene": "telegram",
+    "hook": "Opens on the first tap",
+    "mark": "first tap",
+    "sub": "story links from Telegram, signed in or not"
+  },
+  "vi": {
+    "headline": "Mở link tin là vào ngay",
+    "dates": "24 – 27/10/2026",
+    "closing": "8 thay đổi · 1 bản sửa lỗi",
+    "scenes": [
+      {
+        "shot": "algo-vi",
+        "url": "aidr.today/release?lang=vi",
+        "label": "Tin có thật sự mới?",
+        "title": "Kiểm tra 10 tin đầu mỗi lượt",
+        "mark": "Kiểm tra",
+        "tags": [
+          {
+            "text": "bài cũ chia sẻ lại",
+            "at": 1.6
+          },
+          {
+            "text": "chỉ ghi lại, chưa đổi thứ hạng",
+            "at": 4.0
+          }
+        ]
+      },
+      {
+        "shot": "algo-vi",
+        "url": "aidr.today/release?lang=vi",
+        "label": "Cách AI;DR chọn tin",
+        "title": "Mỗi lần đổi model đều ghi ngày",
+        "mark": "ghi ngày",
+        "tags": [
+          {
+            "text": "xếp hạng · prompt · model",
+            "at": 1.6
+          },
+          {
+            "text": "tiếng Anh + tiếng Việt",
+            "at": 4.0
+          }
+        ]
+      },
+      {
+        "shot": "story-vi",
+        "url": "aidr.today/698114b6?lang=vi",
+        "label": "Trang tin nhanh hơn",
+        "title": "5.961 dòng → 33",
+        "mark": "33",
+        "tags": [
+          {
+            "text": "vẫn trang đó, đọc ít hơn",
+            "at": 1.6
+          },
+          {
+            "text": "1 lượt đọc dữ liệu, không phải 2",
+            "at": 4.0
+          }
+        ]
+      },
+      {
+        "shot": "tg-vi",
+        "url": "t.me/aihomnay",
+        "label": "Link Telegram mở lại được",
+        "title": "Bấm một lần là mở",
+        "mark": "một lần",
+        "tags": [
+          {
+            "text": "hết chuyển hướng vòng vòng",
+            "at": 1.6
+          },
+          {
+            "text": "vẫn giữ đăng nhập",
+            "at": 4.0
+          }
+        ]
+      }
+    ],
+    "cover": {
+      "hook": "Bấm một lần là mở",
+      "mark": "một lần",
+      "sub": "link tin từ Telegram, đã đăng nhập hay chưa"
+    }
+  },
+  "feedLabel": "page"
+}
