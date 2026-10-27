@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.26](https://github.com/duyet/aidr/compare/aidr-v0.1.25...aidr-v0.1.26) (2026-10-27)
+
+
+### ✨ Features
+
+* **extension:** keep AI;DR row count across tabs, add story link copy ([#1068](https://github.com/duyet/aidr/issues/1068)) ([73937e8](https://github.com/duyet/aidr/commit/73937e8446de29a771a247b5dbefe28baf492ef5))
+
 ## [0.1.25](https://github.com/duyet/aidr/compare/aidr-v0.1.24...aidr-v0.1.25) (2026-10-26)
 
 
