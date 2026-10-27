@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.17](https://github.com/duyet/aidr/compare/web-v0.1.16...web-v0.1.17) (2026-10-27)
+
+
+### ✨ Features
+
+* **ingest:** shadow freshness and trending check for top stories ([#1075](https://github.com/duyet/aidr/issues/1075)) ([afa8512](https://github.com/duyet/aidr/commit/afa8512e47fc1921b010aa961eced7a9d68add35))
+
+
+### 🐛 Bug Fixes
+
+* **auth:** skip Clerk's handshake on reader pages ([#1078](https://github.com/duyet/aidr/issues/1078)) ([3ac2a8f](https://github.com/duyet/aidr/commit/3ac2a8f82aeb0d1ee94165c2933a139ff48d82b3))
+
+
+### ⚡ Performance
+
+* **story:** read a story's edit history in the story's own D1 batch ([#1073](https://github.com/duyet/aidr/issues/1073)) ([ec6810c](https://github.com/duyet/aidr/commit/ec6810ca8f45fb4c04d6162b32214b41c638995b))
+* **story:** seek the items id index instead of the status index ([#1072](https://github.com/duyet/aidr/issues/1072)) ([e17066f](https://github.com/duyet/aidr/commit/e17066fbb3f566210536b361c645621d402ec64b))
+* **web:** keep crawlers off /sign-in and /sign-up via robots.txt ([#1069](https://github.com/duyet/aidr/issues/1069)) ([4d75f35](https://github.com/duyet/aidr/commit/4d75f358ce06f4a655a2efbffdc7c2ea2c3c25db))
+
 ## [0.1.16](https://github.com/duyet/aidr/compare/web-v0.1.15...web-v0.1.16) (2026-10-26)
 
 
