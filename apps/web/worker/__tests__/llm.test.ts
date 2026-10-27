@@ -299,7 +299,7 @@ describe("llm_calls failure snippets", () => {
       vi.restoreAllMocks();
     });
 
-    it("logs an unparseable answer as failed bad_output, returns it, and logs no ok row", async () => {
+    it("logs an unparseable answer as failed bad_output and throws when no model is left", async () => {
       vi.stubGlobal(
         "fetch",
         vi.fn().mockImplementation(async () => chatResponse("not json at all"))
@@ -308,14 +308,15 @@ describe("llm_calls failure snippets", () => {
       setLlmCallLogger((e) => {
         entries.push(e);
       });
-      const out = await completeJson(env, [{ role: "user", content: "q" }], {
-        task: "cluster",
-        validate: (c) => {
-          parseJson(c);
-          return true;
-        },
-      }).finally(() => setLlmCallLogger(null));
-      expect(out).toBe("not json at all");
+      await expect(
+        completeJson(env, [{ role: "user", content: "q" }], {
+          task: "cluster",
+          validate: (c) => {
+            parseJson(c);
+            return true;
+          },
+        }).finally(() => setLlmCallLogger(null))
+      ).rejects.toThrow(/chain exhausted.*bad output/);
       expect(entries).toHaveLength(1);
       expect(entries[0]).toMatchObject({
         ok: false,
@@ -332,9 +333,9 @@ describe("llm_calls failure snippets", () => {
       expect(sanitizeError(entries[0]?.error)?.code).toBe("bad_output");
     });
 
-    it("never moves to the next model when validate rejects an answer", async () => {
-      // m/a fails on transport, m/b answers unusably, m/c must not run:
-      // validate only labels the answer, it does not reopen the chain.
+    it("moves to the next model when validate rejects an answer", async () => {
+      // A head model that answers in prose must not end the chain: the
+      // caller would get an unusable answer while m/c could have served.
       const fetchMock = vi.fn(async (_url: unknown, init: unknown) => {
         const { model } = JSON.parse((init as { body: string }).body) as {
           model: string;
@@ -344,7 +345,13 @@ describe("llm_calls failure snippets", () => {
         return chatResponse('{"from":"c"}');
       });
       vi.stubGlobal("fetch", fetchMock);
-      for (const validate of [() => false, () => JSON.parse("{") as boolean]) {
+      for (const validate of [
+        (c: string) => c.startsWith("{"),
+        (c: string) => {
+          JSON.parse(c);
+          return true;
+        },
+      ]) {
         fetchMock.mockClear();
         resetUnavailableModels();
         const entries: LlmCallLogEntry[] = [];
@@ -357,12 +364,13 @@ describe("llm_calls failure snippets", () => {
           validate,
         }).finally(() => setLlmCallLogger(null));
 
-        expect(out.content).toBe("not json from b");
-        expect(out.model).toBe("m/b");
-        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(out.content).toBe('{"from":"c"}');
+        expect(out.model).toBe("m/c");
+        expect(fetchMock).toHaveBeenCalledTimes(3);
         expect(entries.map((e) => [e.model, e.ok, e.error])).toEqual([
           ["m/a", false, "anyrouter request failed: 500"],
           ["m/b", false, "anyrouter bad output"],
+          ["m/c", true, null],
         ]);
       }
     });

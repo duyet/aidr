@@ -11,6 +11,13 @@ import type { EarlierEntry } from "./earlier";
 
 export const ALGORITHM_ENTRIES: EarlierEntry[] = [
   {
+    date: "2026-10-28",
+    text: {
+      en: "When a model answers in plain sentences instead of the format we asked for, the next model in the chain now gets the job. Before, that answer ended the chain. Since Oct 26 the first clustering model often replied in prose, so on Oct 27 all 33 clustering calls found no groups and copies of the same story published separately. The same now holds for scoring, translation repair, captions and the email summary.",
+      vi: "Khi một model trả lời bằng câu văn thường thay vì đúng định dạng yêu cầu, model tiếp theo trong chuỗi giờ sẽ nhận việc. Trước đây, câu trả lời đó làm dừng cả chuỗi. Từ 26/10, model gom tin đầu tiên hay trả lời bằng văn xuôi, nên ngày 27/10 cả 33 lần gom tin đều không tìm ra nhóm nào và các bản tin trùng nhau được đăng riêng lẻ. Cách xử lý này giờ áp dụng cả cho chấm điểm, sửa bản dịch, caption và bản tóm tắt email.",
+    },
+  },
+  {
     date: "2026-10-26",
     text: {
       en: "Each run now checks the 10 highest-ranked stories of the last 48 hours: whether the article is really new or an old one shared again, whether a newer report corrects or replaces it, and how many separate outlets cover it. For now it only records the result and does not change the order. On 59 recent top stories it found 2 old articles shared again, one of them a model launch from 17 days earlier, and 2 stories with no new coverage after three days.",

@@ -967,10 +967,10 @@ async function callAnyrouter(
     sensitive?: boolean;
     strictOutput?: boolean;
     maxOutputChars?: number;
-    /** Post-call usability check. Unlike `accept` it does not advance the
-     *  chain: the answer is still returned, but the attempt is logged as
-     *  failed with error_code `bad_output` instead of ok, so success rates
-     *  count usable answers only. */
+    /** Post-call usability check. A false or throwing check logs the
+     *  attempt as failed with error_code `bad_output` and moves to the next
+     *  id, so a model that answers in prose cannot end the chain. When every
+     *  id fails, the chain throws as on any other exhaustion. */
     validate?: (content: string) => boolean;
   } = {}
 ): Promise<AnyrouterCallResult> {
@@ -1073,7 +1073,6 @@ async function callAnyrouter(
         continue;
       }
       recordRunOutcome(task, model, false);
-      console.log(`anyrouter completion served by ${model}`);
       let usable = true;
       if (opts.validate) {
         try {
@@ -1102,6 +1101,11 @@ async function callAnyrouter(
         costUsd: result.costUsd,
         requestId: trace.requestId ?? null,
       });
+      if (!usable) {
+        failures.push(`${model}: anyrouter bad output`);
+        continue;
+      }
+      console.log(`anyrouter completion served by ${model}`);
       return { ...result, model };
     } catch (error) {
       const status =
