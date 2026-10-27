@@ -1,5 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { hasClerkSessionCookie, routeNeedsClerk } from "./clerk-user";
+import {
+  hasClerkSessionCookie,
+  requestNeedsClerk,
+  routeNeedsClerk,
+} from "./clerk-user";
+
+describe("requestNeedsClerk", () => {
+  it("skips reader page loads, so a story link can never enter a handshake loop", () => {
+    expect(requestNeedsClerk("GET", "/7f181e7a")).toBe(false);
+    expect(requestNeedsClerk("GET", "/")).toBe(false);
+    expect(requestNeedsClerk("HEAD", "/date/2026-10-27")).toBe(false);
+  });
+
+  it("keeps auth for server functions and API routes, which read the session", () => {
+    expect(requestNeedsClerk("GET", "/_serverFn/abc")).toBe(true);
+    expect(requestNeedsClerk("POST", "/_serverFn/abc")).toBe(true);
+    expect(requestNeedsClerk("GET", "/api/admin/stats")).toBe(true);
+    expect(requestNeedsClerk("POST", "/7f181e7a")).toBe(true);
+  });
+
+  it("keeps auth on Clerk and admin pages", () => {
+    expect(requestNeedsClerk("GET", "/sign-in")).toBe(true);
+    expect(requestNeedsClerk("GET", "/data")).toBe(true);
+  });
+});
 
 describe("hasClerkSessionCookie", () => {
   it("is false with no cookies, so plain readers never trigger the SDK load", () => {

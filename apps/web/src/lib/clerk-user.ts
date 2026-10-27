@@ -106,6 +106,20 @@ export function routeNeedsClerk(pathname: string): boolean {
 }
 
 /**
+ * Whether Clerk's server middleware runs for this request. Auth is read only
+ * by server functions and API routes; the SDK stays out of SSR, so a reader
+ * page gains nothing from it. Skipping it there removes Clerk's document
+ * handshake, which looped when a browser dropped the cookies set on its 307s.
+ */
+export function requestNeedsClerk(method: string, pathname: string): boolean {
+  if (method !== "GET" && method !== "HEAD") return true;
+  if (pathname.startsWith("/api/") || pathname.startsWith("/_serverFn/")) {
+    return true;
+  }
+  return routeNeedsClerk(pathname);
+}
+
+/**
  * Whether the app-wide <ClerkProvider> belongs in the tree. Inserting it
  * remounts everything below it, so the answer depends only on page-level
  * facts (where the reader is, whether they have a session) and never on a
