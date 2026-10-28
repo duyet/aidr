@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ogObjectKey } from "../../src/lib/og-cache.js";
+import { dayOgObjectKey } from "../../src/lib/og-cache.js";
 import { dayCardVersion, highlightBulletText } from "../notify/day-card.js";
 
 describe("highlightBulletText", () => {
@@ -279,9 +279,9 @@ describe("highlightBulletText", () => {
 
 describe("dayCardVersion", () => {
   it("pads a short stamp so the digest URL is its own R2 key", () => {
-    // Unpadded, s3i9q hashes to 4ws, which ogObjectKey drops.
+    // Unpadded, s3i9q hashes to 4ws, which dayOgObjectKey drops.
     const stamp = dayCardVersion(["s3i9q"]);
-    const key = ogObjectKey(
+    const key = dayOgObjectKey(
       new URL(
         `https://aidr.today/api/og/date/2026-10-04.png?lang=en&v=${stamp}`
       )
