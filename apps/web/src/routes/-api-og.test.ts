@@ -120,8 +120,7 @@ describe("api/og/$id locale wiring", () => {
 
     const html = markup();
     expect(html).toContain("A useful AI story");
-    expect(html).toContain("82 points");
-    expect(html).toContain("144 comments");
+    expect(html).not.toContain("82 points");
     expect(html).toContain("Research");
     expect(html).not.toContain("Một câu chuyện AI hữu ích");
   });
@@ -133,8 +132,7 @@ describe("api/og/$id locale wiring", () => {
 
     const html = markup();
     expect(html).toContain("Một câu chuyện AI hữu ích");
-    expect(html).toContain("82 điểm");
-    expect(html).toContain("144 bình luận");
+    expect(html).not.toContain("82 điểm");
     // The category is taxonomy, so the Vietnamese card keeps "Research".
     expect(html).toContain("Research");
     expect(html).not.toContain("Nghiên cứu");

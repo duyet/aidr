@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { readSession } from "./db";
+import { renderedStoryCardUrls } from "./og-cards";
 import { getStory } from "./story-queries";
 import type { FeedItem } from "./types";
 
@@ -13,7 +14,13 @@ export const fetchStory = createServerFn({ method: "GET" })
     const db = (env as { DB?: D1Database }).DB;
     if (!db) return null;
     try {
-      return await getStory(readSession(db), data.idPrefix);
+      const session = readSession(db);
+      const story = await getStory(session, data.idPrefix);
+      if (!story) return null;
+      return {
+        ...story,
+        og_card_urls: await renderedStoryCardUrls(session, story),
+      };
     } catch (error) {
       console.error("story page failed", error);
       // Start serializes a loader error into the page; keep D1 text out.

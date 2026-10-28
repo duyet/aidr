@@ -765,6 +765,15 @@ manual `DELETE` or `UPDATE`):
 - Rollback: `DROP INDEX IF EXISTS idx_workflow_runs_started_order;`. Nothing is
   lost.
 
+## 0078_story_og_cards.sql
+
+- Change: new table `story_og_cards` (rendered story card hash per story and
+  language). Written only by `POST /api/admin/og-cards/ack`.
+- Order: before the Worker that reads it. The story page read is best effort,
+  so a Worker that runs first only falls back to the `/api/og` route.
+- Rollback: `DROP TABLE IF EXISTS story_og_cards;`. Pages fall back to the
+  Worker card route; the R2 objects stay and are re-acked on the next run.
+
 ## Human steps
 
 These notes are untested against production. Confirming a Time Travel

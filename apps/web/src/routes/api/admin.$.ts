@@ -71,6 +71,11 @@ import {
   type TranslationReviewResolutionAction,
 } from "../../../worker/translation-review-queue.js";
 import type { Env } from "../../../worker/types.js";
+import {
+  ackOgCards,
+  listOgCardCandidates,
+  parseCardAcks,
+} from "../../lib/og-cards";
 
 async function resolveEnv(context: any): Promise<Env | undefined> {
   let env: any =
@@ -147,6 +152,37 @@ async function handle(
 
   const authResponse = await checkAdminAuth(request, env);
   if (authResponse) return authResponse;
+
+  // Story share cards: the off-Worker renderer (scripts/render-og-cards.ts)
+  // reads raw candidate rows (it hashes them itself, off the Worker's CPU
+  // budget) and acks the hashes it uploaded to R2.
+  if (
+    method === "GET" &&
+    segments.length === 2 &&
+    segments[0] === "og-cards" &&
+    segments[1] === "candidates"
+  ) {
+    const limit = Number(new URL(request.url).searchParams.get("limit") ?? 200);
+    return Response.json({
+      rows: await listOgCardCandidates(env.DB, { limit, now: Date.now() }),
+    });
+  }
+
+  if (
+    method === "POST" &&
+    segments.length === 2 &&
+    segments[0] === "og-cards" &&
+    segments[1] === "ack"
+  ) {
+    const { body, error } = await parseJsonBody(request);
+    const acks = error ? null : parseCardAcks(body);
+    if (!acks) {
+      return Response.json({ error: "invalid cards" }, { status: 400 });
+    }
+    return Response.json({
+      acked: await ackOgCards(env.DB, acks, Date.now()),
+    });
+  }
 
   if (
     method === "GET" &&

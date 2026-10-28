@@ -108,10 +108,6 @@ export interface StoryOgCopy {
   host: string;
   date: string;
   category: string;
-  points: string;
-  pointsLabel: string;
-  comments: string;
-  commentsLabel: string;
 }
 
 function boundedText(value: string, max: number): string {
@@ -422,13 +418,6 @@ export function storyOgLanguage(value: string | null | undefined): Lang {
   return value === "vi" ? "vi" : "en";
 }
 
-function formatMetric(value: number): string {
-  const safe = Number.isFinite(value)
-    ? Math.max(0, Math.min(9_999_999, Math.floor(value)))
-    : 0;
-  return String(safe).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
 function storyDate(publishedAt: number): string {
   const date = new Date(publishedAt * 1000);
   return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : "";
@@ -454,10 +443,6 @@ export function storyOgCopy(item: FeedItem, lang: Lang): StoryOgCopy {
     host,
     date,
     category,
-    points: formatMetric(item.points),
-    pointsLabel: lang === "vi" ? "điểm" : "points",
-    comments: formatMetric(item.comments),
-    commentsLabel: lang === "vi" ? "bình luận" : "comments",
   };
 }
 
@@ -553,12 +538,8 @@ function photoCard(
   lang: Lang
 ): ReactElement {
   const copy = storyOgCopy(item, lang);
-  const accent = item.category ? categoryColor(item.category).light : MUTED;
+  const accent = copy.category ? categoryColor(copy.category).light : MUTED;
   const meta = [copy.host, copy.date].filter(Boolean).join(" · ");
-  const metrics =
-    copy.points !== "0" || copy.comments !== "0"
-      ? `${copy.points} ${copy.pointsLabel} · ${copy.comments} ${copy.commentsLabel}`
-      : "";
 
   return (
     <div
@@ -652,7 +633,6 @@ function photoCard(
           <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
             {meta}
           </span>
-          {metrics ? <span>{metrics}</span> : null}
         </div>
       </div>
       <div
@@ -702,7 +682,7 @@ function photoCard(
 
 function brandedCard(item: FeedItem, lang: Lang): ReactElement {
   const copy = storyOgCopy(item, lang);
-  const accent = item.category ? categoryColor(item.category).light : MUTED;
+  const accent = copy.category ? categoryColor(copy.category).light : MUTED;
 
   return (
     <div
@@ -819,7 +799,7 @@ function brandedCard(item: FeedItem, lang: Lang): ReactElement {
               style={{
                 color: part.color,
                 // A 90-char host must degrade to an ellipsis instead of
-                // being hard-clipped under the engagement counters.
+                // being hard-clipped at the card edge.
                 ...(index === 0
                   ? { overflow: "hidden", textOverflow: "ellipsis" }
                   : { flexShrink: 0 }),
@@ -829,17 +809,6 @@ function brandedCard(item: FeedItem, lang: Lang): ReactElement {
             </span>,
           ])}
         </div>
-        {copy.points !== "0" || copy.comments !== "0" ? (
-          <div style={{ display: "flex", gap: "16px", whiteSpace: "nowrap" }}>
-            <span>
-              {copy.points} {copy.pointsLabel}
-            </span>
-            <span>·</span>
-            <span>
-              {copy.comments} {copy.commentsLabel}
-            </span>
-          </div>
-        ) : null}
       </div>
       <div style={{ height: `${CARD_RULE}px`, backgroundColor: YELLOW }} />
     </div>
@@ -847,35 +816,59 @@ function brandedCard(item: FeedItem, lang: Lang): ReactElement {
 }
 
 /** Bump when the story card's design changes. A day card change needs no
- *  bump here: the two cards keep separate R2 keys. */
-export const STORY_OG_RENDER_VERSION = "1";
+ *  bump here: the two cards keep separate R2 keys. v2 dropped points and
+ *  comments, so a card is a pure function of its key. */
+export const STORY_OG_RENDER_VERSION = "2";
 
-/** R2 key for a story card: `og-story/<sha256>/<lang>`, a hash of what the
- *  card draws. A later Vietnamese title, a title edit, or a new photo URL
- *  gives a new key, so a stored card never needs a TTL. Points and comments
- *  are left out because ingest rewrites them on every sighting; the card
- *  keeps the counts from its first render, and only whether it shows them
- *  at all is part of the key. Candidate URLs are hashed, not photo bytes:
- *  fetching a photo to look up a cached card would cost the render it
- *  saves. */
+/** Public host of the `aidr-og` R2 bucket. A card URL on it never reaches
+ *  the Worker. */
+export const STORY_OG_PUBLIC_ORIGIN = "https://og.aidr.today";
+
+/** R2 key the Worker route caches its on-demand render under:
+ *  `og-story/<sha256>/<lang>`, a hash of
+ *  everything the card draws (every `storyOgCopy` field) plus its photo
+ *  candidates. A later Vietnamese title, a title edit, or a new photo URL
+ *  gives a new key, so a stored card is immutable. Candidate URLs are
+ *  hashed, not photo bytes: fetching a photo to look up a cached card would
+ *  cost the render it saves. That is also why a card drawn without its
+ *  photo must not be served as immutable: a retry may draw the photo under
+ *  the same key. */
 export async function storyOgObjectKey(
   item: FeedItem,
   lang: Lang,
   version: string = STORY_OG_RENDER_VERSION
 ): Promise<string> {
-  const { points, comments, ...copy } = storyOgCopy(item, lang);
+  return `og-story/${await storyOgHash(item, lang, version)}/${lang}`;
+}
+
+/** R2 key of the static card the off-Worker renderer uploads, served at
+ *  og.aidr.today. It differs from the Worker route's key by the `.png`
+ *  suffix on purpose: the route writes its own render on a miss, and must
+ *  never overwrite bytes already served under an immutable URL. */
+export function storyOgStaticKey(hash: string, lang: Lang): string {
+  return `og-story/${hash}/${lang}.png`;
+}
+
+export async function storyOgHash(
+  item: FeedItem,
+  lang: Lang,
+  version: string = STORY_OG_RENDER_VERSION
+): Promise<string> {
   const inputs = JSON.stringify({
     version,
-    copy,
-    hasMetrics: points !== "0" || comments !== "0",
+    copy: storyOgCopy(item, lang),
     images: storyOgImageCandidates(item),
   });
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(inputs)
   );
-  const hex = [...new Uint8Array(digest)]
+  return [...new Uint8Array(digest)]
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  return `og-story/${hex}/${lang}`;
+}
+
+/** Public card URL for a rendered hash. */
+export function storyOgPublicUrl(hash: string, lang: Lang): string {
+  return `${STORY_OG_PUBLIC_ORIGIN}/${storyOgStaticKey(hash, lang)}`;
 }

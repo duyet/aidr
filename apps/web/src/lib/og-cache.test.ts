@@ -4,7 +4,7 @@ import {
   DAY_OG_RENDER_VERSION,
   dayOgObjectKey,
 } from "./og-cache";
-import { storyOgObjectKey } from "./story-og";
+import { storyOgObjectKey, storyOgStaticKey } from "./story-og";
 import type { FeedItem } from "./types";
 
 function item(overrides: Partial<FeedItem> = {}): FeedItem {
@@ -96,15 +96,25 @@ describe("OG card keys", () => {
     );
   });
 
-  // Ingest rewrites counts every 30 minutes; keying on them would re-render
-  // every active story each run.
-  it("keeps the card when only the counts move", async () => {
+  // Ingest rewrites counts every 30 minutes, and the card no longer draws
+  // them: a static card at an immutable URL must not depend on them.
+  it("keeps the card whatever the counts are", async () => {
     expect(
       await storyOgObjectKey(item({ points: 500, comments: 900 }), "en")
     ).toBe(await storyOgObjectKey(item(), "en"));
-    expect(
-      await storyOgObjectKey(item({ points: 0, comments: 0 }), "en")
-    ).not.toBe(await storyOgObjectKey(item(), "en"));
+    expect(await storyOgObjectKey(item({ points: 0, comments: 0 }), "en")).toBe(
+      await storyOgObjectKey(item(), "en")
+    );
+  });
+
+  // The Worker route writes its render on an R2 miss; the static card at
+  // og.aidr.today is immutable, so the two must never share a key.
+  it("keeps the Worker cache key apart from the static card key", async () => {
+    const workerKey = await storyOgObjectKey(item(), "vi");
+    const hash = workerKey.split("/")[1];
+    expect(workerKey).toMatch(/^og-story\/[0-9a-f]{64}\/vi$/);
+    expect(storyOgStaticKey(hash, "vi")).toBe(`og-story/${hash}/vi.png`);
+    expect(storyOgStaticKey(hash, "vi")).not.toBe(workerKey);
   });
 });
 

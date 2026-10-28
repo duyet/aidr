@@ -114,6 +114,11 @@ const GITHUB_OPTIONAL = [
   "YOUTUBE_CLIENT_ID",
   "YOUTUBE_CLIENT_SECRET",
   "YOUTUBE_REFRESH_TOKEN",
+  // .github/workflows/og-cards.yml: an R2 API token (Object Read & Write on
+  // the `aidr-og` bucket) for the story card uploads. Missing → the job
+  // skips and story pages keep the Worker card route.
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
 ] as const;
 
 const args = new Set(process.argv.slice(2));
