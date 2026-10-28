@@ -1,7 +1,7 @@
 /**
  * Guards for the self-hosted font stack added in issue #229.
  *
- * Three failure modes this file exists to prevent, all of which are silent:
+ * Four failure modes this file exists to prevent, all of which are silent:
  *
  *  1. Dropping the `vietnamese` unicode-range. The product is bilingual, and
  *     the whole Latin Extended Additional block (U+1EA0-1EF9) is missing from
@@ -12,15 +12,17 @@
  *     downloads the font twice and the preload is pure waste.
  *  3. A regression of `font-display` back to `swap`, which is what the
  *     measured 0.089 CLS was.
+ *  4. Splitting a family back into per-subset faces. `optional` decides per
+ *     face, so a late vietnamese file painted đ and ầ in Arial inside words
+ *     whose other letters were Source Sans 3.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import subsetFont from "subset-font";
 import { describe, expect, it } from "vitest";
 import {
-  LATIN_EXT_SOURCE,
-  latinExtUnicodeRange,
-  subsetLatinExt,
+  fontUnicodeRange,
+  subsetWebFont,
+  WEB_FONTS,
 } from "../../scripts/subset-fonts";
 import {
   FONT_PRELOAD_DECISION,
@@ -195,7 +197,6 @@ describe("self-hosted font stack (#229)", () => {
 
   it("covers the whole Vietnamese alphabet in the body font", () => {
     const sans = webfaces.filter((f) => f.family.includes("Source Sans 3"));
-    expect(sans.length).toBeGreaterThanOrEqual(2);
     const missing = [
       ...new Set([...vietnameseAlphabet()].filter((ch) => ch.trim() === "")),
     ];
@@ -221,7 +222,7 @@ describe("self-hosted font stack (#229)", () => {
     const serif = webfaces.filter(
       (f) => f.family === "Source Serif 4 Variable"
     );
-    expect(serif.length).toBe(2);
+    expect(serif.length).toBe(1);
     const uncovered = [...new Set([...vietnameseAlphabet()])].filter(
       (ch) =>
         ch.trim() !== "" &&
@@ -250,7 +251,7 @@ describe("self-hosted font stack (#229)", () => {
     // Story titles carry polynesian loanwords ("Māori", "Ōtaki"). The trace
     // of the live homepage showed U+0101 and U+014D on both /?lang=en and
     // /?lang=vi, and neither is in the latin or vietnamese subsets — so the
-    // latin-ext face is load-bearing and must not be deleted as "unused".
+    // latin-ext range is load-bearing and must not be dropped as "unused".
     const loanwords = ["ā", "ē", "ī", "ō", "ū", "Ā", "Ē", "Ī", "Ō", "Ū"];
     const sans = webfaces.filter((f) => f.family.includes("Source Sans 3"));
     const uncovered = loanwords.filter(
@@ -338,18 +339,17 @@ describe("self-hosted font stack (#229)", () => {
     );
   });
 
-  it("ships the two body subsets the LCP element needs", () => {
-    // The LCP element is body text in Source Sans 3, so `latin` (ASCII) and
-    // `vietnamese` (every diacritic) are the two that must be present.
-    const body = webfaces.filter((f) => f.family.includes("Source Sans 3"));
-    const files = body.map((f) => f.url);
-    expect(files.some((f) => f.includes("source-sans-3-latin-wght"))).toBe(
-      true
+  it("serves each webfont family from exactly one face", () => {
+    // font-display: optional picks per face. With latin and vietnamese as
+    // two faces, a reader whose cache held only latin saw "đầu" with d and u
+    // in Source Sans 3 and đ, ầ in Arial. One face makes it all or nothing.
+    const perFamily = new Map<string, number>();
+    for (const face of webfaces) {
+      perFamily.set(face.family, (perFamily.get(face.family) ?? 0) + 1);
+    }
+    expect(Object.fromEntries(perFamily)).toEqual(
+      Object.fromEntries(WEB_FONTS.map((font) => [font.family, 1]))
     );
-    expect(files.some((f) => f.includes("source-sans-3-vietnamese-wght"))).toBe(
-      true
-    );
-    for (const file of files) expect(file).toMatch(/\.woff2$/);
   });
 
   it("does not preload the fonts", () => {
@@ -387,59 +387,96 @@ describe("self-hosted font stack (#229)", () => {
   });
 });
 
-describe("build-time latin-ext subset (#229)", () => {
-  const latinExt = webfaces.find((f) => f.url.includes("latin-ext"));
-  const vietnamese = webfaces.find(
-    (f) => f.family.includes("Source Sans 3") && f.url.includes("vietnamese")
-  );
-
-  it("points the latin-ext face at the generated subset", () => {
-    expect(latinExt?.url).toBe(
-      "./fonts/generated/source-sans-3-latin-ext-wght-normal.woff2"
-    );
-  });
-
-  it("declares exactly the range the subsetter keeps", () => {
-    // A code point in the CSS range but not in the file would render as
-    // .notdef instead of falling back to the next font in the stack.
-    expect(latinExt?.unicodeRange.replace(/\s+/g, " ")).toBe(
-      latinExtUnicodeRange()
-    );
-  });
-
-  it("does not overlap the vietnamese face", () => {
-    // The old Fontsource range claimed ă đ ơ ư too, which made every
-    // Vietnamese page download the whole 60 KB latin-ext file.
-    if (!latinExt || !vietnamese) throw new Error("missing face");
-    const overlap = ranges(vietnamese).flatMap(([lo, hi]) => {
-      const hits: string[] = [];
-      for (let c = lo; c <= hi; c++) {
-        if (coveredBy(latinExt, c)) hits.push(`U+${c.toString(16)}`);
-      }
-      return hits;
-    });
-    expect(overlap).toEqual([]);
-  });
-
-  it("keeps the characters the live feed uses (ā ō ₹)", () => {
-    if (!latinExt) throw new Error("missing face");
-    for (const ch of ["ā", "ō", "Ā", "Ō", "₹"]) {
-      expect(coveredBy(latinExt, ch.codePointAt(0) ?? 0), ch).toBe(true);
+/** Code points in a TrueType font's cmap (formats 4 and 12). */
+function cmapCodePoints(sfnt: Buffer): Set<number> {
+  const tables = sfnt.readUInt16BE(4);
+  let cmap = -1;
+  for (let i = 0; i < tables; i++) {
+    const rec = 12 + i * 16;
+    if (sfnt.toString("latin1", rec, rec + 4) === "cmap") {
+      cmap = sfnt.readUInt32BE(rec + 8);
     }
-  });
+  }
+  if (cmap < 0) throw new Error("no cmap table");
+  const out = new Set<number>();
+  for (let i = 0; i < sfnt.readUInt16BE(cmap + 2); i++) {
+    const sub = cmap + sfnt.readUInt32BE(cmap + 4 + i * 8 + 4);
+    const format = sfnt.readUInt16BE(sub);
+    if (format === 4) {
+      const segs = sfnt.readUInt16BE(sub + 6) / 2;
+      const ends = sub + 14;
+      const starts = ends + segs * 2 + 2;
+      const deltas = starts + segs * 2;
+      const offsets = deltas + segs * 2;
+      for (let s = 0; s < segs; s++) {
+        const end = sfnt.readUInt16BE(ends + s * 2);
+        const start = sfnt.readUInt16BE(starts + s * 2);
+        const delta = sfnt.readUInt16BE(deltas + s * 2);
+        const offset = sfnt.readUInt16BE(offsets + s * 2);
+        for (let c = start; c <= end && c !== 0xffff; c++) {
+          const glyph =
+            offset === 0
+              ? (c + delta) & 0xffff
+              : sfnt.readUInt16BE(offsets + s * 2 + offset + (c - start) * 2);
+          if (glyph !== 0) out.add(c);
+        }
+      }
+    } else if (format === 12) {
+      for (let g = 0; g < sfnt.readUInt32BE(sub + 12); g++) {
+        const group = sub + 16 + g * 12;
+        const end = sfnt.readUInt32BE(group + 4);
+        for (let c = sfnt.readUInt32BE(group); c <= end; c++) out.add(c);
+      }
+    }
+  }
+  return out;
+}
 
-  it("produces a small woff2 that is still a variable font", async () => {
-    const woff2 = await subsetLatinExt();
-    // "wOF2" signature.
-    expect([...woff2.subarray(0, 4)]).toEqual([0x77, 0x4f, 0x46, 0x32]);
-    // Fontsource's file is 60,088 B; the point of this is to stay far below.
-    expect(woff2.length).toBeLessThan(20_000);
-    const sfnt = await subsetFont(readFileSync(LATIN_EXT_SOURCE), "ā", {
-      targetFormat: "truetype",
+describe("build-time font subsets", () => {
+  /** Characters a story title can contain that must never fall back. */
+  const required = [
+    ...new Set([
+      ...vietnameseAlphabet(),
+      ...vietnameseAlphabet().toUpperCase(),
+      ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+      ...".,:;!?'\"()[]-–—‘’“”…%&@#/$€₫₹←→",
+      ..."āēīōūĀĒĪŌŪŁłŚśŠšČčŘřŽžĚěŮůŐőŰű",
+    ]),
+  ];
+
+  for (const font of WEB_FONTS) {
+    const face = webfaces.find((f) => f.family === font.family);
+
+    it(`points ${font.family} at its generated file`, () => {
+      expect(face?.url).toBe(`./fonts/generated/${font.output}`);
     });
-    // The wght axis (200-900) must survive, or every weight renders as one.
-    // fvar declares the axis; gvar holds the per-glyph weight deltas.
-    expect(sfnt.includes(Buffer.from("fvar"))).toBe(true);
-    expect(sfnt.includes(Buffer.from("gvar"))).toBe(true);
-  });
+
+    it(`declares exactly the range the subsetter keeps for ${font.family}`, () => {
+      // A code point in the CSS range but not in the file renders as
+      // .notdef instead of falling back to the next font in the stack.
+      expect(face?.unicodeRange.replace(/\s+/g, " ")).toBe(fontUnicodeRange());
+    });
+
+    it(`keeps every letter a title needs in ${font.family}`, async () => {
+      const cmap = cmapCodePoints(await subsetWebFont(font, "truetype"));
+      const missing = required.filter(
+        (ch) => !cmap.has(ch.codePointAt(0) ?? 0)
+      );
+      expect(missing).toEqual([]);
+    });
+
+    it(`keeps ${font.family} a small variable woff2`, async () => {
+      const woff2 = await subsetWebFont(font);
+      // "wOF2" signature.
+      expect([...woff2.subarray(0, 4)]).toEqual([0x77, 0x4f, 0x46, 0x32]);
+      // The full upstream fonts are 170-430 KB. Hinting and stylistic
+      // features stay out, so each subset is close to Fontsource's latin
+      // and vietnamese files added together.
+      expect(woff2.length).toBeLessThan(70_000);
+      // The wght axis must survive, or every weight renders as one.
+      const sfnt = await subsetWebFont(font, "truetype");
+      expect(sfnt.includes(Buffer.from("fvar"))).toBe(true);
+      expect(sfnt.includes(Buffer.from("gvar"))).toBe(true);
+    });
+  }
 });

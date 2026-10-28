@@ -35,25 +35,18 @@ export const FONT_PRELOAD_DECISION =
   "no font preload: under font-display: optional it costs 316 ms of LCP element render delay (1,016 -> 1,332 ms, median of 3, cold mobile) and cannot land inside the ~100 ms block period" as const;
 
 /**
- * Subsets that are not needed for the first paint. They are still declared
- * as faces so their text renders correctly once they arrive, but they load
- * on demand at normal priority instead of competing with the stylesheet.
+ * Font files that are not needed for the first paint. They are still
+ * declared as faces so their text renders correctly once they arrive, but
+ * they load on demand at normal priority instead of competing with the
+ * stylesheet.
  *
- *   eb-garamond-latin     44,336 B  headings only ("AI;DR", a date)
- *   source-sans-3-latin-ext ~15 KB    only for loanword macrons (ā, ō) and
- *                                     ₹; subset at build time from 60,088 B
- *                                     by scripts/subset-fonts.ts
+ *   eb-garamond   55 KB  headings only ("AI;DR", a date)
  *
- * `source-sans-3-latin` (28,740 B) and `source-sans-3-vietnamese` (10,324 B)
- * are the two the first paint needs, and the Vietnamese one is
- * non-negotiable: the whole Latin Extended Additional block is missing from
- * the `latin` subset.
+ * `source-sans-3` (38 KB, latin + Vietnamese + Latin Extended-A in one file)
+ * is the one the first paint needs. scripts/subset-fonts.ts explains why each
+ * family is a single file.
  */
-export const NON_CRITICAL_FONT_SUBSETS = [
-  "eb-garamond-latin",
-  "eb-garamond-vietnamese",
-  "source-sans-3-latin-ext",
-] as const;
+export const NON_CRITICAL_FONT_SUBSETS = ["eb-garamond-wght"] as const;
 
 /**
  * How wide Source Sans 3 sets real feed copy, as a share of the same copy in
