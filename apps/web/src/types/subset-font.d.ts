@@ -7,6 +7,8 @@ declare module "subset-font" {
       targetFormat?: "woff2" | "woff" | "truetype" | "sfnt";
       preserveNameIds?: number[];
       variationAxes?: Record<string, number | { min: number; max: number }>;
+      noHinting?: boolean;
+      keepFeatures?: string[];
     }
   ): Promise<Buffer>;
 }

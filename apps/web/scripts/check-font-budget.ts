@@ -27,33 +27,26 @@ const distAssets = join(appRoot, "dist", "client", "assets");
 /**
  * Bytes the first paint is allowed to need from the body font.
  *
- * Today: Source Sans 3 latin (28,740) + vietnamese (10,324) = 39,064 B. The
- * LCP element is a story row in Source Sans 3, and the Vietnamese subset is
- * non-negotiable — the whole Latin Extended Additional block is missing from
- * `latin`, so a latin-only stack silently drops 52 of the 90 characters the
- * Vietnamese alphabet needs.
+ * Today: Source Sans 3 in one file (latin, the Vietnamese alphabet and Latin
+ * Extended-A), 38,136 B. The LCP element is a story row in Source Sans 3.
+ * Before the families became one file each, the same coverage took latin
+ * (28,740) + vietnamese (10,324) = 39,064 B, plus a 15 KB latin-ext file on
+ * any page with a macron.
  */
 const CRITICAL_BODY_BUDGET_BYTES = 45_000;
 
 /**
- * Bytes the whole font stack may declare, including the faces the first
- * paint does not need.
+ * Bytes the whole font stack may declare, excluding the opt-in reader serif:
+ * Source Sans 3 (38,136) and EB Garamond (54,820, headings like "AI;DR", a
+ * date and "Bảng tin theo ngày").
  *
- * The two body subsets above, Source Sans 3 latin-ext (subset at build
- * time by scripts/subset-fonts.ts from 60,088 B to ~15 KB — it is only for
- * the loanword macrons ā and ō and the ₹ sign that appear in story titles),
- * EB Garamond latin (44,336 — headings are "AI;DR" and a date) and
- * EB Garamond vietnamese (10,952: Vietnamese headings like "Bảng tin theo
- * ngày" need it).
- *
- * The 2026-09-27 baseline transferred 143,488 B over four requests, and the
- * pre-subset stack declared 154,440 B. The budget is set just above the
- * subset total so the 45 KB saving cannot quietly come back.
+ * The 2026-09-27 baseline transferred 143,488 B over four requests. The
+ * budget sits just above today's total so a stray subset cannot come back.
  */
-const TOTAL_BUDGET_BYTES = 115_000;
+const TOTAL_BUDGET_BYTES = 100_000;
 
 /**
- * Source Serif 4 latin (50,936) + vietnamese (13,508) = 64,444 B. Opt-in:
+ * Source Serif 4, one file, 62,924 B. Opt-in:
  * only `[data-reader-font="serif"]` uses the family, so only a reader who
  * picked serif downloads it. Budgeted on its own so the default page's
  * total above stays honest.
@@ -161,9 +154,7 @@ if (useBuilt) {
     const bytes = statSync(join(distAssets, file)).size;
     if (face.family.includes(READER_SERIF_FAMILY)) readerSerif += bytes;
     else total += bytes;
-    const isFirstPaint =
-      face.family.includes("Source Sans 3") &&
-      /latin-wght|vietnamese-wght/.test(face.url);
+    const isFirstPaint = face.family.includes("Source Sans 3");
     if (isFirstPaint) criticalBody += bytes;
     console.log(
       `  ${face.url} -> ${bytes.toLocaleString()} B${

@@ -1,94 +1,205 @@
 /**
- * Build-time subset of Source Sans 3 latin-ext. Issue #229.
+ * Build-time web font subsets: one file per family.
  *
- * Fontsource's latin-ext file is 60,088 B and covers ~1,000 code points:
- * Latin Extended-A/B, IPA, Latin Extended Additional, Extended-C/D and more.
- * Its unicode-range also overlaps the Vietnamese letters (ă đ ĩ ũ ơ ư and
- * U+1EF2-1EF9), so every Vietnamese page downloaded all of it.
+ * Fontsource ships each family as separate `latin`, `vietnamese` and
+ * `latin-ext` files, each its own @font-face. Under `font-display: optional`
+ * the browser decides per face whether it arrived inside the ~100 ms block
+ * period. When `latin` made it and `vietnamese` did not, a word like "đầu"
+ * painted d and u in Source Sans 3 and đ, ầ in Arial for the whole page view.
+ * A returning reader whose cache held only the latin file (an English page
+ * first, then /?lang=vi) hit this on every first Vietnamese view.
  *
- * Scanning the live /?lang=vi, /?lang=en and /api/feed?days=14 (en + vi)
- * found exactly three code points that need this face: ā (U+0101),
- * ō (U+014D) and ₹ (U+20B9). This keeps Latin Extended-A (European names and
- * loanword macrons), the currency block and the two symbols Fontsource's
- * range adds, and drops everything else. A character outside every range
- * still renders, in the metric-matched "Source Sans 3 Fallback" face.
+ * One file per family makes `optional` all-or-nothing: a page renders a
+ * family entirely in the webfont or entirely in its metric-matched fallback.
+ * The files are cut from the full upstream fonts vendored in
+ * src/fonts/source (see the README there), because two variable subsets
+ * cannot be merged back together (fontTools.merge fails on the shared
+ * variation store).
  *
- * The output is generated from node_modules on every dev/build start (the
- * `subset-fonts` plugin in vite.config.ts), so a Fontsource upgrade can
- * never leave a stale committed copy behind. It is gitignored.
+ * The output is generated on every dev/build start (the `subset-fonts`
+ * plugin in vite.config.ts) and is gitignored.
  */
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import subsetFont from "subset-font";
 
-/**
- * Code points the subset keeps, as inclusive [lo, hi] pairs. Must match the
- * `unicode-range` of the latin-ext face in src/fonts.css exactly
- * (asserted by src/lib/fonts.test.ts). The Vietnamese letters inside
- * Extended-A are left out: the vietnamese face already covers them, and
- * claiming them here is what made Vietnamese pages fetch this file.
- */
-export const LATIN_EXT_RANGES: ReadonlyArray<readonly [number, number]> = [
-  [0x0100, 0x0101],
-  [0x0104, 0x010f],
-  [0x0112, 0x0127],
-  [0x012a, 0x0130],
-  [0x0132, 0x0151],
-  [0x0154, 0x0167],
-  [0x016a, 0x017f],
-  [0x2020, 0x2020],
-  [0x20a0, 0x20aa],
-  [0x20ad, 0x20c0],
-  [0x2113, 0x2113],
+type Range = readonly [number, number];
+
+/** Google Fonts' `latin` subset, the same range Fontsource used. */
+const LATIN: readonly Range[] = [
+  [0x0000, 0x00ff],
+  [0x0131, 0x0131],
+  [0x0152, 0x0153],
+  [0x02bb, 0x02bc],
+  [0x02c6, 0x02c6],
+  [0x02da, 0x02da],
+  [0x02dc, 0x02dc],
+  [0x0304, 0x0304],
+  [0x0308, 0x0308],
+  [0x0329, 0x0329],
+  [0x2000, 0x206f],
+  [0x20ac, 0x20ac],
+  [0x2122, 0x2122],
+  [0x2191, 0x2191],
+  [0x2193, 0x2193],
+  [0x2212, 0x2212],
+  [0x2215, 0x2215],
+  [0xfeff, 0xfeff],
+  [0xfffd, 0xfffd],
 ];
 
-/** `LATIN_EXT_RANGES` in CSS `unicode-range` syntax. */
-export function latinExtUnicodeRange(): string {
+/** Google Fonts' `vietnamese` subset. */
+const VIETNAMESE: readonly Range[] = [
+  [0x0102, 0x0103],
+  [0x0110, 0x0111],
+  [0x0128, 0x0129],
+  [0x0168, 0x0169],
+  [0x01a0, 0x01a1],
+  [0x01af, 0x01b0],
+  [0x0300, 0x0301],
+  [0x0303, 0x0304],
+  [0x0308, 0x0309],
+  [0x0323, 0x0323],
+  [0x0329, 0x0329],
+  [0x1ea0, 0x1ef9],
+  [0x20ab, 0x20ab],
+];
+
+/**
+ * The part of Google's `latin-ext` the live feed needs: Latin Extended-A
+ * (European names such as Łukasz and Jiří, the loanword macrons ā and ō) and
+ * the rupee sign. Scanning /?lang=vi, /?lang=en and /api/feed?days=14 found
+ * no other code point from the rest of the 1,000-character block. The rest
+ * of the currency block would add 2.3 KB to every reader for signs the feed
+ * never printed.
+ */
+const LATIN_EXT: readonly Range[] = [
+  [0x0100, 0x017f],
+  [0x20b9, 0x20b9],
+];
+
+/** ← and →: the story page's back link prints ←, which `latin` leaves out. */
+const ARROWS: readonly Range[] = [[0x2190, 0x2193]];
+
+/** Sorted, merged union of every range each face keeps. */
+export const FONT_RANGES: readonly Range[] = (() => {
+  const sorted = [...LATIN, ...VIETNAMESE, ...LATIN_EXT, ...ARROWS].toSorted(
+    (a, b) => a[0] - b[0]
+  );
+  const out: [number, number][] = [];
+  for (const [lo, hi] of sorted) {
+    const last = out.at(-1);
+    if (last && lo <= last[1] + 1) last[1] = Math.max(last[1], hi);
+    else out.push([lo, hi]);
+  }
+  return out;
+})();
+
+/** `FONT_RANGES` in CSS `unicode-range` syntax. */
+export function fontUnicodeRange(): string {
   const hex = (n: number) => n.toString(16).toUpperCase().padStart(4, "0");
-  return LATIN_EXT_RANGES.map(([lo, hi]) =>
+  return FONT_RANGES.map(([lo, hi]) =>
     lo === hi ? `U+${hex(lo)}` : `U+${hex(lo)}-${hex(hi)}`
   ).join(", ");
 }
 
+/**
+ * OpenType features kept: the union of what Fontsource's latin and
+ * vietnamese files carried. ccmp, mark and mkmk stack the Vietnamese tone
+ * marks; tnum backs `font-variant-numeric: tabular-nums`. Keeping every
+ * feature instead adds stylistic sets and small caps and doubles the file.
+ */
+const LAYOUT_FEATURES = [
+  "ccmp",
+  "dnom",
+  "frac",
+  "kern",
+  "liga",
+  "locl",
+  "mark",
+  "mkmk",
+  "numr",
+  "pnum",
+  "rlig",
+  "tnum",
+];
+
 const appRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const require = createRequire(join(appRoot, "package.json"));
+const fontsDir = join(appRoot, "src", "fonts");
 
-export const LATIN_EXT_SOURCE = require.resolve(
-  "@fontsource-variable/source-sans-3/files/source-sans-3-latin-ext-wght-normal.woff2"
-);
+export interface WebFont {
+  family: string;
+  /** Vendored upstream file in src/fonts/source. */
+  source: string;
+  /** Output basename in src/fonts/generated, referenced by src/fonts.css. */
+  output: string;
+  /** Axes pinned to one value; the wght axis always stays variable. */
+  pin?: Record<string, number>;
+}
 
-/** Same basename as the Fontsource file, so emitted asset names stay stable. */
-export const LATIN_EXT_OUTPUT = join(
-  appRoot,
-  "src",
-  "fonts",
-  "generated",
-  "source-sans-3-latin-ext-wght-normal.woff2"
-);
+export const WEB_FONTS: readonly WebFont[] = [
+  {
+    family: "Source Sans 3 Variable",
+    source: "source-sans-3-wght.woff2",
+    output: "source-sans-3-wght-normal.woff2",
+  },
+  {
+    family: "EB Garamond Variable",
+    source: "eb-garamond-wght.woff2",
+    output: "eb-garamond-wght-normal.woff2",
+  },
+  {
+    family: "Source Serif 4 Variable",
+    source: "source-serif-4-opsz-wght.woff2",
+    output: "source-serif-4-wght-normal.woff2",
+    // The optical size Fontsource's wght-only files were instanced at
+    // (glyph advances match exactly), so text sets as it did before.
+    pin: { opsz: 14 },
+  },
+];
 
-export async function subsetLatinExt(): Promise<Buffer> {
+export const sourcePath = (font: WebFont) =>
+  join(fontsDir, "source", font.source);
+export const outputPath = (font: WebFont) =>
+  join(fontsDir, "generated", font.output);
+
+export function fontText(): string {
   let text = "";
-  for (const [lo, hi] of LATIN_EXT_RANGES) {
+  for (const [lo, hi] of FONT_RANGES) {
     for (let c = lo; c <= hi; c++) text += String.fromCodePoint(c);
   }
-  // Variation axes are kept as-is, so the face still serves weights 200-900.
-  return subsetFont(readFileSync(LATIN_EXT_SOURCE), text, {
-    targetFormat: "woff2",
+  return text;
+}
+
+export function subsetWebFont(
+  font: WebFont,
+  targetFormat: "woff2" | "truetype" = "woff2"
+): Promise<Buffer> {
+  return subsetFont(readFileSync(sourcePath(font)), fontText(), {
+    targetFormat,
+    noHinting: true,
+    keepFeatures: LAYOUT_FEATURES,
+    ...(font.pin ? { variationAxes: font.pin } : {}),
   });
 }
 
-/** Write the subset atomically; dev and build may call this concurrently. */
+/** Write each subset atomically; dev and build may call this concurrently. */
 export async function writeSubsetFonts(): Promise<void> {
-  const out = await subsetLatinExt();
-  mkdirSync(dirname(LATIN_EXT_OUTPUT), { recursive: true });
-  const tmp = `${LATIN_EXT_OUTPUT}.${process.pid}.tmp`;
-  writeFileSync(tmp, out);
-  renameSync(tmp, LATIN_EXT_OUTPUT);
+  for (const font of WEB_FONTS) {
+    const out = await subsetWebFont(font);
+    const path = outputPath(font);
+    mkdirSync(dirname(path), { recursive: true });
+    const tmp = `${path}.${process.pid}.tmp`;
+    writeFileSync(tmp, out);
+    renameSync(tmp, path);
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   await writeSubsetFonts();
-  console.log(LATIN_EXT_OUTPUT);
+  for (const font of WEB_FONTS) {
+    const bytes = readFileSync(outputPath(font)).length;
+    console.log(`${outputPath(font)} ${bytes.toLocaleString()} B`);
+  }
 }
