@@ -37,14 +37,17 @@ export function readFactor(readCount = 0): number {
  * Correlated on `i.id` so each row reads its own `item_reads` primary-key
  * prefix. A grouped join scanned every row of today's reads once per feed
  * row (~175k rows read per homepage query). `+r.day` keeps the planner off
- * `idx_item_reads_day`, which would walk the whole day per row. */
+ * `idx_item_reads_day`, which would walk the whole day per row. Production
+ * stats picked `idx_items_status_fetched_at (status=?)` for the merged ids,
+ * every merged row per feed row (2.2M rows read), hence `INDEXED BY`. */
 export const READ_COUNT_COLUMN = `COALESCE((
     SELECT SUM(MIN(day_count, ${READ_DAY_CAP})) FROM (
       SELECT SUM(r.count) AS day_count
       FROM item_reads r
       WHERE r.item_id IN (
           SELECT i.id UNION ALL
-          SELECT m.id FROM items m WHERE m.duplicate_of = i.id AND m.status = 'merged')
+          SELECT m.id FROM items m INDEXED BY idx_items_merged_members
+          WHERE m.duplicate_of = i.id AND m.status = 'merged')
         AND +r.day >= date('now', '-1 day') AND r.kind = 'open'
       GROUP BY r.day
     )

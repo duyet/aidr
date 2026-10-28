@@ -60,6 +60,9 @@ function seed() {
   raw.exec(
     "CREATE TABLE items (id TEXT PRIMARY KEY, status TEXT, duplicate_of TEXT)"
   );
+  raw.exec(
+    "CREATE INDEX idx_items_merged_members ON items (duplicate_of) WHERE status = 'merged'"
+  );
   raw.exec(MIGRATION);
   raw.prepare("INSERT INTO items VALUES (?, 'published', NULL)").run(ITEM);
   raw.prepare("INSERT INTO items VALUES (?, 'merged', NULL)").run(MERGED);
@@ -342,6 +345,9 @@ describe("READ_COUNT_COLUMN", () => {
     ).map((r) => r.detail);
     expect(plan).toContain(
       "SEARCH r USING INDEX sqlite_autoindex_item_reads_1 (item_id=?)"
+    );
+    expect(plan.join("\n")).toMatch(
+      /SEARCH m USING (COVERING )?INDEX idx_items_merged_members \(duplicate_of=\?\)/
     );
     expect(plan.join("\n")).not.toMatch(
       /SCAN (r|item_reads)\b|idx_item_reads_day/

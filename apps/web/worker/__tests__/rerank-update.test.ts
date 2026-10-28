@@ -23,4 +23,17 @@ describe("RERANK_UPDATE_SQL", () => {
       { id: "c", rank_score: 0.25 },
     ]);
   });
+
+  it("reads the JSON once and finds items by primary key (defect: a correlated json_each rescanned the JSON per row, ~74k rows per re-rank)", () => {
+    const db = new DatabaseSync(":memory:");
+    db.exec("CREATE TABLE items (id TEXT PRIMARY KEY, rank_score REAL)");
+    const plan = (
+      db.prepare(`EXPLAIN QUERY PLAN ${RERANK_UPDATE_SQL}`).all("[]") as {
+        detail: string;
+      }[]
+    ).map((r) => r.detail);
+    expect(plan.filter((d) => d.includes("json_each"))).toHaveLength(1);
+    expect(plan.join("\n")).not.toContain("CORRELATED");
+    expect(plan.join("\n")).toMatch(/SEARCH items USING .*INDEX .*\(id=\?\)/);
+  });
 });

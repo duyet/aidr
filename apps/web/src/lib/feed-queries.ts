@@ -1,10 +1,7 @@
 import { enSummarySql } from "../../worker/en-summary.js";
 import { canonicalizeMediaUrl, publicStoryMedia } from "../../worker/media.js";
 import { VOTE_NET_COLUMN, VOTE_NET_JOIN_I } from "../../worker/ranking.js";
-import {
-  READ_COUNT_COLUMN,
-  readFactor,
-} from "../../worker/reads.js";
+import { READ_COUNT_COLUMN, readFactor } from "../../worker/reads.js";
 import { sourceFamily } from "../../worker/source-diversity.js";
 import {
   collectTrendingCandidates,
