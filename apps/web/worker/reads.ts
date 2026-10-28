@@ -33,21 +33,22 @@ export function readFactor(readCount = 0): number {
 /** Opens per published story today and yesterday UTC, each day capped at
  * `READ_DAY_CAP`, as `read_count` on `items i`. An open on an id that was
  * later merged counts for its canonical, inside that canonical's cap.
- * Outbound clicks are stored for /data but never order anything. */
-export const READ_COUNT_COLUMN =
-  "COALESCE(read_sum.read_count, 0) AS read_count";
-export const READ_COUNT_JOIN_I = `LEFT JOIN (
-    SELECT item_id, SUM(MIN(day_count, ${READ_DAY_CAP})) AS read_count
-    FROM (
-      SELECT COALESCE(m.duplicate_of, r.item_id) AS item_id, r.day,
-             SUM(r.count) AS day_count
+ * Outbound clicks are stored for /data but never order anything.
+ * Correlated on `i.id` so each row reads its own `item_reads` primary-key
+ * prefix. A grouped join scanned every row of today's reads once per feed
+ * row (~175k rows read per homepage query). `+r.day` keeps the planner off
+ * `idx_item_reads_day`, which would walk the whole day per row. */
+export const READ_COUNT_COLUMN = `COALESCE((
+    SELECT SUM(MIN(day_count, ${READ_DAY_CAP})) FROM (
+      SELECT SUM(r.count) AS day_count
       FROM item_reads r
-      LEFT JOIN items m ON m.id = r.item_id AND m.status = 'merged'
-      WHERE r.day >= date('now', '-1 day') AND r.kind = 'open'
-      GROUP BY 1, 2
+      WHERE r.item_id IN (
+          SELECT i.id UNION ALL
+          SELECT m.id FROM items m WHERE m.duplicate_of = i.id AND m.status = 'merged')
+        AND +r.day >= date('now', '-1 day') AND r.kind = 'open'
+      GROUP BY r.day
     )
-    GROUP BY item_id
-  ) AS read_sum ON read_sum.item_id = i.id`;
+  ), 0) AS read_count`;
 
 export interface ReadBeacon {
   itemId: string;
