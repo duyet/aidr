@@ -180,8 +180,15 @@ export function storyUrl(item: { id: string }, lang: Lang): string {
   return absoluteSiteUrl(storyPath(item), lang);
 }
 
-export function storyCardUrl(item: { id: string }, lang: Lang): string {
-  return absoluteSiteUrl(`/api/og/${item.id}.png`, lang);
+/** The static og.aidr.today card when it is rendered and current, else the
+ *  Worker route, which renders (and stores) the card on demand. */
+export function storyCardUrl(
+  item: { id: string; og_card_urls?: Partial<Record<Lang, string>> },
+  lang: Lang
+): string {
+  return (
+    item.og_card_urls?.[lang] ?? absoluteSiteUrl(`/api/og/${item.id}.png`, lang)
+  );
 }
 
 /**
@@ -741,6 +748,7 @@ export function articleHead(
     url?: string | null;
     published_at?: number | null;
     sources?: ItemSource[] | null;
+    og_card_urls?: Partial<Record<Lang, string>>;
   },
   lang: Lang = "vi",
   opts: { route?: RouteIndexabilityInput } = {}

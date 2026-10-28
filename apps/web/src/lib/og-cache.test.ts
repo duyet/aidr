@@ -96,15 +96,21 @@ describe("OG card keys", () => {
     );
   });
 
-  // Ingest rewrites counts every 30 minutes; keying on them would re-render
-  // every active story each run.
-  it("keeps the card when only the counts move", async () => {
+  // Ingest rewrites counts every 30 minutes, and the card no longer draws
+  // them: a static card at an immutable URL must not depend on them.
+  it("keeps the card whatever the counts are", async () => {
     expect(
       await storyOgObjectKey(item({ points: 500, comments: 900 }), "en")
     ).toBe(await storyOgObjectKey(item(), "en"));
-    expect(
-      await storyOgObjectKey(item({ points: 0, comments: 0 }), "en")
-    ).not.toBe(await storyOgObjectKey(item(), "en"));
+    expect(await storyOgObjectKey(item({ points: 0, comments: 0 }), "en")).toBe(
+      await storyOgObjectKey(item(), "en")
+    );
+  });
+
+  it("ends in .png so og.aidr.today serves it by its R2 key", async () => {
+    expect(await storyOgObjectKey(item(), "vi")).toMatch(
+      /^og-story\/[0-9a-f]{64}\/vi\.png$/
+    );
   });
 });
 

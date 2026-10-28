@@ -547,6 +547,30 @@ button; `DELETE` does not touch it. "message is not modified" counts as done,
 and a failed edit never fails the admin call: the response says what happened
 in `digest_button` (`updated`, `no sent digest`, `edit failed: …`).
 
+## Story share cards (og.aidr.today)
+
+A story card (1200×630 PNG, `src/lib/story-og.tsx`) draws title, host, date,
+category and photo, nothing else: no points or comments, so a card is a pure
+function of `storyOgHash` (every `storyOgCopy` field, the photo candidate
+URLs, `STORY_OG_RENDER_VERSION`). The Worker never renders a card on the
+normal path (Workers Free, 10 ms CPU):
+
+- `.github/workflows/og-cards.yml` runs `scripts/render-og-cards.ts` at :10
+  and :40 (and on `workflow_dispatch` / `repository_dispatch: og-cards`). It
+  reads `GET /api/admin/og-cards/pending` (admin bearer; published stories
+  of the last 14 days whose rendered hash differs from the current one, or a
+  photoless try older than 7 days), draws en and vi with the same renderer,
+  PUTs `og-story/<hash>/<lang>.png` to the `aidr-og` R2 bucket with
+  `Cache-Control: public, max-age=31536000, immutable`, then acks via
+  `POST /api/admin/og-cards/ack` into `story_og_cards` (migration 0078).
+- A card whose photo could not be drawn is acked as photoless and not
+  uploaded: a retry may draw the photo under the same key.
+- The story page names `https://og.aidr.today/og-story/<hash>/<lang>.png`
+  only when the stored hash equals the story's current hash and the card is
+  not photoless. Otherwise (new story, late VI title, admin edit) it names
+  `/api/og/<id>.png`, the slow path that renders on demand and caches in R2
+  under the same key. Day cards and the sitemap/thumb links are unchanged.
+
 ## Agent read surfaces
 
 Agents read the published edition. They never trigger a run. Every surface

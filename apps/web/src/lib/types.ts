@@ -45,6 +45,9 @@ export interface FeedItem {
    * the full story from /api/story on first expand. Never set by
    * /api/feed or /api/story — their items are always complete. */
   lazyDetail?: boolean;
+  /** og.aidr.today share card per language, set only by the story page
+   *  loader when the static card is rendered and current. */
+  og_card_urls?: Partial<Record<Lang, string>>;
 }
 
 export interface TldrBullet {

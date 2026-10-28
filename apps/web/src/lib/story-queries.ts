@@ -55,7 +55,7 @@ function asNumber(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
-function mapStoryRow(
+export function mapStoryRow(
   row: Record<string, unknown>,
   sourceRows: Record<string, unknown>[]
 ): FeedItem | null {

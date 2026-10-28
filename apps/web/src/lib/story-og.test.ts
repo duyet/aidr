@@ -28,6 +28,7 @@ import {
   storyOgImageCandidates,
   storyOgImageFromBytes,
   storyOgLanguage,
+  storyOgObjectKey,
 } from "./story-og";
 import type { FeedItem } from "./types";
 
@@ -544,8 +545,6 @@ describe("story OG copy and renderer", () => {
   it("selects the requested locale and never includes source URL/query text", () => {
     const copy = storyOgCopy(item(), "vi");
     expect(copy.title).toBe("Một câu chuyện AI hữu ích");
-    expect(copy.pointsLabel).toBe("điểm");
-    expect(copy.commentsLabel).toBe("bình luận");
     // Categories stay in the site's own taxonomy in every locale.
     expect(copy.category).toBe("Research");
     expect(copy.host).toBe("publisher.example.com");
@@ -592,7 +591,6 @@ describe("story OG copy and renderer", () => {
     expect(html).toContain("AI;DR");
     expect(html).toContain("aidr.today");
     expect(html).toContain("A useful AI story");
-    expect(html).toContain("82 points");
     expect(html).not.toContain("do-not-render");
     expect(html).not.toContain("<img");
   });
@@ -605,24 +603,58 @@ describe("story OG copy and renderer", () => {
     expect(first).toBe(second);
     expect(first).toContain("Một câu chuyện AI hữu ích");
     expect(first).toContain("BÀI VIẾT");
-    expect(first).toContain("82 điểm");
     expect(first).toContain("data:image/png;base64,");
     expect(first).not.toContain("do-not-render");
     expect(first).not.toContain("secret");
   });
 
-  it("leaves out the engagement counters when a story has none", () => {
-    // "0 points · 0 comments" on a fresh story reads as a dead post.
-    const quiet = renderToStaticMarkup(
-      storyOgCard(item({ points: 0, comments: 0 }), null, "vi")
-    );
-    expect(quiet).not.toContain("điểm");
-    expect(quiet).not.toContain("bình luận");
-    const commented = renderToStaticMarkup(
-      storyOgCard(item({ points: 0, comments: 3 }), null, "en")
-    );
-    expect(commented).toContain("0 points");
-    expect(commented).toContain("3 comments");
+  // The card is served at an immutable URL keyed by storyOgObjectKey, so
+  // anything it draws must be in the key and anything outside the key must
+  // not change a pixel. Counts move every ingest run; they are not drawn.
+  it("draws nothing the key leaves out", () => {
+    const image = storyOgImageFromBytes(PNG_BYTES);
+    for (const photo of [null, image]) {
+      for (const lang of ["en", "vi"] as const) {
+        const base = renderToStaticMarkup(storyOgCard(item(), photo, lang));
+        const moved = renderToStaticMarkup(
+          storyOgCard(
+            item({
+              points: 9_999,
+              comments: 4_321,
+              rank_score: 99,
+              summary: "changed",
+              summary_vi: "đã đổi",
+              tags: ["x"],
+            }),
+            photo,
+            lang
+          )
+        );
+        expect(moved).toBe(base);
+        expect(base).not.toContain("điểm");
+        expect(base).not.toContain("points");
+      }
+    }
+  });
+
+  it("keys on every drawn field", async () => {
+    const base = await storyOgObjectKey(item(), "en");
+    const changes: Partial<FeedItem>[] = [
+      { title: "Another headline" },
+      { url: "https://other-publisher.example.org/a" },
+      { published_at: item().published_at + 86_400 },
+      { category: "Models" },
+      { image_url: "https://images.example.com/other.png" },
+    ];
+    for (const change of changes) {
+      expect(await storyOgObjectKey(item(change), "en")).not.toBe(base);
+    }
+    expect(Object.keys(storyOgCopy(item(), "en")).sort()).toEqual([
+      "category",
+      "date",
+      "host",
+      "title",
+    ]);
   });
 
   it("uses the branded fallback when a payload would have rendered blank", () => {
@@ -635,7 +667,7 @@ describe("story OG copy and renderer", () => {
     expect(html).toContain("AI NEWS");
   });
 
-  it("only treats an exact vi query as Vietnamese and bounds invalid metrics", () => {
+  it("only treats an exact vi query as Vietnamese and bounds the title", () => {
     expect(storyOgLanguage("vi")).toBe("vi");
     expect(storyOgLanguage("en")).toBe("en");
     expect(storyOgLanguage("fr")).toBe("en");
@@ -644,8 +676,6 @@ describe("story OG copy and renderer", () => {
       "en"
     );
     expect(copy.title.length).toBeLessThanOrEqual(280);
-    expect(copy.points).toBe("0");
-    expect(copy.comments).toBe("0");
   });
 
   it("carries the ellipsis clamp that bounds the headline", () => {
