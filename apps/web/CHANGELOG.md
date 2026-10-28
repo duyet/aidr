@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.18](https://github.com/duyet/aidr/compare/web-v0.1.17...web-v0.1.18) (2026-10-28)
+
+
+### 🐛 Bug Fixes
+
+* **llm:** try the next model when an answer fails validate ([#1081](https://github.com/duyet/aidr/issues/1081)) ([4d2c43a](https://github.com/duyet/aidr/commit/4d2c43a648ad30192507bebd9a71854bc8cf6fcb)), closes [#1056](https://github.com/duyet/aidr/issues/1056)
+
 ## [0.1.17](https://github.com/duyet/aidr/compare/web-v0.1.16...web-v0.1.17) (2026-10-27)
 
 
