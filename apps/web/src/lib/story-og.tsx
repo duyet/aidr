@@ -845,3 +845,37 @@ function brandedCard(item: FeedItem, lang: Lang): ReactElement {
     </div>
   );
 }
+
+/** Bump when the story card's design changes. A day card change needs no
+ *  bump here: the two cards keep separate R2 keys. */
+export const STORY_OG_RENDER_VERSION = "1";
+
+/** R2 key for a story card: `og-story/<sha256>/<lang>`, a hash of what the
+ *  card draws. A later Vietnamese title, a title edit, or a new photo URL
+ *  gives a new key, so a stored card never needs a TTL. Points and comments
+ *  are left out because ingest rewrites them on every sighting; the card
+ *  keeps the counts from its first render, and only whether it shows them
+ *  at all is part of the key. Candidate URLs are hashed, not photo bytes:
+ *  fetching a photo to look up a cached card would cost the render it
+ *  saves. */
+export async function storyOgObjectKey(
+  item: FeedItem,
+  lang: Lang,
+  version: string = STORY_OG_RENDER_VERSION
+): Promise<string> {
+  const { points, comments, ...copy } = storyOgCopy(item, lang);
+  const inputs = JSON.stringify({
+    version,
+    copy,
+    hasMetrics: points !== "0" || comments !== "0",
+    images: storyOgImageCandidates(item),
+  });
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(inputs)
+  );
+  const hex = [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `og-story/${hex}/${lang}`;
+}

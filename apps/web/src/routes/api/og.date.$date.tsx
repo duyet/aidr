@@ -14,7 +14,7 @@ import {
 } from "../../lib/day-og";
 import { readSession } from "../../lib/db";
 import { getDayArchive } from "../../lib/feed-queries";
-import { cachedOgResponse } from "../../lib/og-cache";
+import { cachedOgResponse, dayOgObjectKey } from "../../lib/og-cache";
 import { loadOgFontAsset, loadStoryOgFonts } from "../../lib/og-fonts";
 import {
   fetchStoryOgImage,
@@ -175,6 +175,7 @@ export const Route = createFileRoute("/api/og/date/$date")({
           },
           {
             bucket: env?.OG_CACHE,
+            key: dayOgObjectKey(new URL(request.url)),
             // A settled day never changes; a recent one re-renders hourly.
             maxAgeSec: isSettledArchiveDate(date, Date.now())
               ? 30 * 86_400

@@ -16,6 +16,7 @@ import {
   storyOgCard,
   storyOgImageCandidates,
   storyOgLanguage,
+  storyOgObjectKey,
 } from "../../lib/story-og";
 import { getStory } from "../../lib/story-queries";
 
@@ -34,6 +35,10 @@ async function firstStoryOgImage(
  * edge-cacheable for a week. */
 const OG_CACHE_CONTROL =
   "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400";
+
+/** A card drawn without the photo its story names: one fetch failed, and a
+ *  later one may not, so this card is re-rendered after a week. */
+const PHOTOLESS_MAX_AGE_SEC = 7 * 86_400;
 
 export const Route = createFileRoute("/api/og/$id")({
   server: {
@@ -75,31 +80,39 @@ export const Route = createFileRoute("/api/og/$id")({
         if (!idPrefix) {
           return Response.json({ error: "not found" }, { status: 404 });
         }
+        const item = await getStory(readSession(db), idPrefix);
+        if (!item) {
+          return Response.json({ error: "not found" }, { status: 404 });
+        }
+        const lang = storyOgLanguage(
+          new URL(request.url).searchParams.get("lang")
+        );
         return cachedOgResponse(
           request,
           ctx,
           async () => {
-            const item = await getStory(readSession(db), idPrefix);
-            if (!item) {
-              return Response.json({ error: "not found" }, { status: 404 });
-            }
-
-            const lang = storyOgLanguage(
-              new URL(request.url).searchParams.get("lang")
-            );
             const [fonts, image] = await Promise.all([
               loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
               firstStoryOgImage(item, imagesBindingTranscoder(env?.IMAGES)),
             ]);
-            return await ImageResponse.async(storyOgCard(item, image, lang), {
-              ...storyOgRenderOptions(fonts),
-              headers: {
-                "Cache-Control": OG_CACHE_CONTROL,
-                "Content-Language": lang,
-              },
-            });
+            const response = await ImageResponse.async(
+              storyOgCard(item, image, lang),
+              {
+                ...storyOgRenderOptions(fonts),
+                headers: {
+                  "Cache-Control": OG_CACHE_CONTROL,
+                  "Content-Language": lang,
+                },
+              }
+            );
+            return !image && storyOgImageCandidates(item).length > 0
+              ? { response, maxAgeSec: PHOTOLESS_MAX_AGE_SEC }
+              : response;
           },
-          { bucket: env?.OG_CACHE, maxAgeSec: 7 * 86_400 }
+          {
+            bucket: env?.OG_CACHE,
+            key: await storyOgObjectKey(item, lang),
+          }
         );
       },
     },
