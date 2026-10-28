@@ -17,14 +17,14 @@ export const release: Release = {
   stats: [
     { value: "1", label: { en: "fix", vi: "bản sửa lỗi" } },
     {
-      value: "0 of 33",
+      value: "0/33",
       label: {
         en: "grouping calls that worked on Oct 27",
         vi: "lần gom tin thành công ngày 27/10",
       },
     },
     {
-      value: "4 of 4",
+      value: "4/4",
       label: {
         en: "grouping runs that worked after the fix",
         vi: "lượt gom tin thành công sau khi sửa",
