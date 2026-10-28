@@ -54,7 +54,7 @@ const CHANNEL_SQL = `SELECT r.channel AS name, SUM(r.count) AS reads
 const KIND_SQL = `SELECT r.kind AS name, SUM(r.count) AS reads
   ${WINDOW} GROUP BY name ORDER BY reads DESC, name`;
 
-// Reads on a merged id count for its canonical, as in READ_COUNT_JOIN_I.
+// Reads on a merged id count for its canonical, as in READ_COUNT_COLUMN.
 const MIN_OPENS_CASE = `CASE f.channel ${Object.entries(
   TOP_STORIES_MIN_OPENS_BY_CHANNEL
 )

@@ -756,9 +756,17 @@ manual `DELETE` or `UPDATE`):
    already applied and re-insert the ledger row. 0017 and 0032 overwrite
    source config again, so check `sources.config` afterwards.
 
+## 0077_workflow_runs_started_order.sql
+
+- Change: new expression index `idx_workflow_runs_started_order` on
+  `workflow_runs`, matching `WORKFLOW_RUN_STARTED_AT_ORDER_SQL, id`. Reads only;
+  no rows change.
+- Order: any. Without it the same queries return the same rows by scanning.
+- Rollback: `DROP INDEX IF EXISTS idx_workflow_runs_started_order;`. Nothing is
+  lost.
+
 ## Human steps
 
 These notes are untested against production. Confirming a Time Travel
 timestamp and running any destructive statement needs an operator with D1
 access; nothing here runs from CI.
-

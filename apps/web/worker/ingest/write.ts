@@ -259,11 +259,14 @@ export function demotedVoteConflictDelete(
 
 /** One statement for the whole re-rank: the scores travel as a single JSON
  *  bind, so ~400 rows stay one D1 query instead of ~400 (per-invocation
- *  query limit) and never hit the 100-bind-per-statement limit. */
-export const RERANK_UPDATE_SQL = `UPDATE items SET rank_score = (
-    SELECT json_extract(value, '$.r') FROM json_each(?1)
-    WHERE json_extract(value, '$.id') = items.id)
-  WHERE id IN (SELECT json_extract(value, '$.id') FROM json_each(?1))`;
+ *  query limit) and never hit the 100-bind-per-statement limit. UPDATE FROM
+ *  walks the JSON once and finds each item by primary key. A correlated
+ *  `SET = (SELECT … FROM json_each)` rescanned the JSON per row (n², ~74k
+ *  rows read per re-rank). */
+export const RERANK_UPDATE_SQL = `UPDATE items SET rank_score = j.r
+  FROM (SELECT json_extract(value, '$.id') AS id, json_extract(value, '$.r') AS r
+        FROM json_each(?1)) AS j
+  WHERE items.id = j.id`;
 
 /** Re-rank every published item from the last RANK_RECOMPUTE_WINDOW_SEC so
  * freshness decay and absorbed engagement show up. Rolling, not the UTC day:

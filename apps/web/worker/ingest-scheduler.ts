@@ -12,7 +12,11 @@ import {
 } from "./ingest-schedule.js";
 import { syncFacebookPostStats } from "./notify/facebook-insights.js";
 import type { Env } from "./types.js";
-import { type D1Runner, NOT_DRY_RUN_SQL } from "./workflow-run.js";
+import {
+  type D1Runner,
+  NOT_DRY_RUN_SQL,
+  WORKFLOW_RUN_STARTED_AT_ORDER_SQL,
+} from "./workflow-run.js";
 
 const LAST_STARTED_KEY = "last_started_at";
 
@@ -121,7 +125,7 @@ async function previousRunStillOpen(
       .prepare(
         `SELECT started_at, finished_at, error FROM workflow_runs
          WHERE ${NOT_DRY_RUN_SQL}
-         ORDER BY CASE WHEN started_at > 1000000000000 THEN started_at / 1000 ELSE started_at END DESC, id DESC
+         ORDER BY ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} DESC, id DESC
          LIMIT 1`
       )
       .bind()

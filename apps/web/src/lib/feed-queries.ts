@@ -1,11 +1,7 @@
 import { enSummarySql } from "../../worker/en-summary.js";
 import { canonicalizeMediaUrl, publicStoryMedia } from "../../worker/media.js";
 import { VOTE_NET_COLUMN, VOTE_NET_JOIN_I } from "../../worker/ranking.js";
-import {
-  READ_COUNT_COLUMN,
-  READ_COUNT_JOIN_I,
-  readFactor,
-} from "../../worker/reads.js";
+import { READ_COUNT_COLUMN, readFactor } from "../../worker/reads.js";
 import { sourceFamily } from "../../worker/source-diversity.js";
 import {
   collectTrendingCandidates,
@@ -69,7 +65,7 @@ const ITEM_SELECT_BASE = `
          ${VOTE_NET_COLUMN}{reads}{detail}
   FROM items i
   ${VOTE_NET_JOIN_I}
-  {read_join}LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
+  LEFT JOIN translations t ON t.item_id = i.id AND t.lang = 'vi'
   WHERE i.status = 'published'
 `;
 
@@ -88,7 +84,7 @@ const DETAIL_COLUMNS = `,
          (SELECT COUNT(*) FROM item_sources s WHERE s.item_id = i.id) AS source_count`;
 
 interface ItemSelectFlags {
-  /** Homepage only: join today's and yesterday's opens as `read_count`. */
+  /** Homepage only: select today's and yesterday's opens as `read_count`. */
   reads: boolean;
   /** false: no summary text, `has_detail` + `source_count` instead. */
   detail: boolean;
@@ -100,8 +96,7 @@ function itemSelectSql({ reads, detail }: ItemSelectFlags): string {
     detail ? SUMMARY_COLUMNS : COLLAPSED_COLUMNS
   )
     .replace("{detail}", detail ? "" : DETAIL_COLUMNS)
-    .replace("{reads}", reads ? `, ${READ_COUNT_COLUMN}` : "")
-    .replace("{read_join}", reads ? `${READ_COUNT_JOIN_I}\n  ` : "");
+    .replace("{reads}", reads ? `, ${READ_COUNT_COLUMN}` : "");
 }
 
 function toFeedItem(row: ItemRow, detail = true): FeedItem {

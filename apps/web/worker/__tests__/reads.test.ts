@@ -6,7 +6,6 @@ import {
   isBotUserAgent,
   parseReadBeacon,
   READ_COUNT_COLUMN,
-  READ_COUNT_JOIN_I,
   READ_DAY_CAP,
   READ_ROW_CAP,
   READER_READ_HALF,
@@ -60,6 +59,9 @@ function seed() {
   const raw = new DatabaseSync(":memory:");
   raw.exec(
     "CREATE TABLE items (id TEXT PRIMARY KEY, status TEXT, duplicate_of TEXT)"
+  );
+  raw.exec(
+    "CREATE INDEX idx_items_merged_members ON items (duplicate_of) WHERE status = 'merged'"
   );
   raw.exec(MIGRATION);
   raw.prepare("INSERT INTO items VALUES (?, 'published', NULL)").run(ITEM);
@@ -279,13 +281,11 @@ describe("readFactor", () => {
   });
 });
 
-describe("READ_COUNT_JOIN_I", () => {
+describe("READ_COUNT_COLUMN", () => {
   function readCount(raw: DatabaseSync, id: string) {
     return (
       raw
-        .prepare(
-          `SELECT ${READ_COUNT_COLUMN} FROM items i ${READ_COUNT_JOIN_I} WHERE i.id = ?`
-        )
+        .prepare(`SELECT ${READ_COUNT_COLUMN} FROM items i WHERE i.id = ?`)
         .get(id) as { read_count: number }
     ).read_count;
   }
@@ -332,5 +332,25 @@ describe("READ_COUNT_JOIN_I", () => {
         ('${ITEM}', date('now'), 'web', 'open', ${READ_DAY_CAP}),
         ('${MERGED}', date('now'), 'web', 'open', ${READ_DAY_CAP})`);
     expect(readCount(raw, ITEM)).toBe(READ_DAY_CAP);
+  });
+
+  it("looks up each row's reads by primary key (defect: a grouped join scanned all of today's reads per feed row, ~175k rows read per homepage query)", () => {
+    const { raw } = seed();
+    const plan = (
+      raw
+        .prepare(
+          `EXPLAIN QUERY PLAN SELECT ${READ_COUNT_COLUMN} FROM items i WHERE i.id = ?`
+        )
+        .all(ITEM) as { detail: string }[]
+    ).map((r) => r.detail);
+    expect(plan).toContain(
+      "SEARCH r USING INDEX sqlite_autoindex_item_reads_1 (item_id=?)"
+    );
+    expect(plan.join("\n")).toMatch(
+      /SEARCH m USING (COVERING )?INDEX idx_items_merged_members \(duplicate_of=\?\)/
+    );
+    expect(plan.join("\n")).not.toMatch(
+      /SCAN (r|item_reads)\b|idx_item_reads_day/
+    );
   });
 });
