@@ -60,6 +60,11 @@ Both paths coalesce: a new instance is skipped if one started in the last
 25 minutes. `POST /api/admin/ingest?force=1` (workflow_dispatch) bypasses
 the window.
 
+`INGEST_SCHEDULER_PAUSED=true` (a Worker var or secret) stops the
+scheduler: the alarm deletes itself, and every start is skipped, forced
+ones included. Use it to stop an old deployment publishing next to a new
+one. Unset it and hit `/api/system` once to re-arm.
+
 ## Audience metrics (GA4 snapshot)
 
 The `/data` **Audience** tab shows page views, DAU, MAU, where readers come

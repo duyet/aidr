@@ -33,6 +33,17 @@ export const INGEST_ALARM_ARM_DELAY_MS = 15_000;
 
 export const INGEST_SCHEDULER_NAME = "default";
 
+/** True when `INGEST_SCHEDULER_PAUSED` is "true", "1" or "on". A paused
+ * scheduler deletes its alarm and refuses every start, forced ones too, so
+ * a Worker that must stop publishing (an old account during a cutover) can
+ * be stopped with a var or secret instead of a code change. */
+export function isSchedulerPaused(env: {
+  INGEST_SCHEDULER_PAUSED?: string;
+}): boolean {
+  const flag = (env.INGEST_SCHEDULER_PAUSED ?? "").trim().toLowerCase();
+  return flag === "true" || flag === "1" || flag === "on";
+}
+
 const MARK_STARTED_ATTEMPTS = 3;
 
 export interface IngestTickResult {

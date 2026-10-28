@@ -66,3 +66,53 @@ describe("NewsIngestScheduler.startInstance", () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("NewsIngestScheduler with INGEST_SCHEDULER_PAUSED", () => {
+  function pausedScheduler(flag: string | undefined) {
+    const { db } = fakeRunsDb();
+    const create = vi.fn().mockResolvedValue({});
+    const storage = {
+      get: vi.fn().mockResolvedValue(undefined),
+      getAlarm: vi.fn().mockResolvedValue(null),
+      put: vi.fn().mockResolvedValue(undefined),
+      setAlarm: vi.fn().mockResolvedValue(undefined),
+      deleteAlarm: vi.fn().mockResolvedValue(undefined),
+    };
+    const scheduler = new NewsIngestScheduler(
+      { storage } as never,
+      {
+        DB: db,
+        NEWS_INGEST: { create },
+        INGEST_SCHEDULER_PAUSED: flag,
+      } as never
+    );
+    return { scheduler, create, storage };
+  }
+
+  // A paused old account must not publish a second edition next to the
+  // new one, so neither its own alarm nor a forced trigger may start a run.
+  it("starts nothing and drops the alarm, even when forced", async () => {
+    const { scheduler, create, storage } = pausedScheduler("true");
+
+    await scheduler.alarm();
+    const forced = await scheduler.tick({ force: true });
+    const gate = await scheduler.canStart({ force: true });
+    await scheduler.ensureArmed();
+
+    expect(forced).toMatchObject({ skipped: true, reason: "scheduler paused" });
+    expect(gate).toMatchObject({ skipped: true, reason: "scheduler paused" });
+    expect(create).not.toHaveBeenCalled();
+    expect(storage.setAlarm).not.toHaveBeenCalled();
+    expect(storage.deleteAlarm).toHaveBeenCalled();
+  });
+
+  it("runs as before when the flag is unset or off", async () => {
+    for (const flag of [undefined, "", "false"]) {
+      const { scheduler, create, storage } = pausedScheduler(flag);
+      await expect(scheduler.tick()).resolves.toMatchObject({ skipped: false });
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(storage.setAlarm).toHaveBeenCalled();
+      expect(storage.deleteAlarm).not.toHaveBeenCalled();
+    }
+  });
+});
