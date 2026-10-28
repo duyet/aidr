@@ -73,7 +73,7 @@ import {
 import type { Env } from "../../../worker/types.js";
 import {
   ackOgCards,
-  listPendingOgCards,
+  listOgCardCandidates,
   parseCardAcks,
 } from "../../lib/og-cards";
 
@@ -154,16 +154,17 @@ async function handle(
   if (authResponse) return authResponse;
 
   // Story share cards: the off-Worker renderer (scripts/render-og-cards.ts)
-  // lists cards to draw and acks the hashes it uploaded to R2.
+  // reads raw candidate rows (it hashes them itself, off the Worker's CPU
+  // budget) and acks the hashes it uploaded to R2.
   if (
     method === "GET" &&
     segments.length === 2 &&
     segments[0] === "og-cards" &&
-    segments[1] === "pending"
+    segments[1] === "candidates"
   ) {
-    const limit = Number(new URL(request.url).searchParams.get("limit") ?? 20);
+    const limit = Number(new URL(request.url).searchParams.get("limit") ?? 200);
     return Response.json({
-      stories: await listPendingOgCards(env.DB, { limit, now: Date.now() }),
+      rows: await listOgCardCandidates(env.DB, { limit, now: Date.now() }),
     });
   }
 

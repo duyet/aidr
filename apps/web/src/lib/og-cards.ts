@@ -16,11 +16,12 @@ export const OG_CARD_LANGS: readonly Lang[] = ["en", "vi"];
  *  the same rule the Worker route keeps for its R2 copy. */
 export const PHOTOLESS_RETRY_MS = 7 * 86_400_000;
 
-/** How far back the pending list looks, and how many stories it hashes per
- *  call. Older stories keep the Worker route. */
-const PENDING_WINDOW_SEC = 14 * 86_400;
-const PENDING_SCAN_LIMIT = 200;
-export const MAX_PENDING_LIMIT = 50;
+/** How far back the candidate list looks, and how many raw rows it returns.
+ *  Older stories keep the Worker route. */
+const CANDIDATE_WINDOW_SEC = 14 * 86_400;
+export const MAX_CANDIDATE_ROWS = 200;
+/** Ack batch cap. */
+const MAX_ACKS = 100;
 
 const HASH_RE = /^[0-9a-f]{64}$/;
 const ITEM_ID_RE = /^[0-9a-f]{8,64}$/;
@@ -118,16 +119,19 @@ export interface PendingStory {
   cards: PendingCard[];
 }
 
-/** Recent published stories with at least one card to draw, newest first. */
-export async function listPendingOgCards(
+/** Raw rows of recent published stories with their rendered card state,
+ *  newest first. The Worker does no mapping or hashing here (Workers Free
+ *  caps CPU at 10 ms; 200 rows mapped and hashed cost about 7 ms in Node).
+ *  The off-Worker renderer runs `pendingFromRows` on them. */
+export async function listOgCardCandidates(
   db: DbReader,
   options: { limit: number; now: number }
-): Promise<PendingStory[]> {
+): Promise<Record<string, unknown>[]> {
   const limit = Math.min(
     Math.max(Math.trunc(options.limit) || 1, 1),
-    MAX_PENDING_LIMIT
+    MAX_CANDIDATE_ROWS
   );
-  const since = Math.floor(options.now / 1000) - PENDING_WINDOW_SEC;
+  const since = Math.floor(options.now / 1000) - CANDIDATE_WINDOW_SEC;
   const { results } = await db
     .prepare(
       `SELECT ${CARD_ITEM_COLUMNS},
@@ -139,19 +143,27 @@ export async function listPendingOgCards(
          LEFT JOIN story_og_cards v ON v.item_id = i.id AND v.lang = 'vi'
         WHERE i.status = 'published' AND i.published_at >= ?
         ORDER BY i.published_at DESC
-        LIMIT ${PENDING_SCAN_LIMIT}`
+        LIMIT ${limit}`
     )
     .bind(since)
     .all<Record<string, unknown>>();
+  return results ?? [];
+}
+
+/** Stories with at least one card to draw. Maps each row with the same
+ *  `mapStoryRow` the story page uses, so both sides hash the same item. */
+export async function pendingFromRows(
+  rows: Record<string, unknown>[],
+  now: number
+): Promise<PendingStory[]> {
   const pending: PendingStory[] = [];
-  for (const row of results ?? []) {
-    if (pending.length >= limit) break;
+  for (const row of rows) {
     const item = mapStoryRow(row, []);
     if (!item) continue;
     const cards: PendingCard[] = [];
     for (const lang of OG_CARD_LANGS) {
       const hash = await storyOgHash(item, lang);
-      if (isCardPending(renderedFromRow(row, lang), hash, options.now)) {
+      if (isCardPending(renderedFromRow(row, lang), hash, now)) {
         cards.push({ lang, hash });
       }
     }
@@ -170,7 +182,7 @@ export interface CardAck {
 /** Validates an ack body; null when malformed. */
 export function parseCardAcks(body: unknown): CardAck[] | null {
   const cards = (body as { cards?: unknown } | null)?.cards;
-  if (!Array.isArray(cards) || cards.length > MAX_PENDING_LIMIT * 2) {
+  if (!Array.isArray(cards) || cards.length > MAX_ACKS) {
     return null;
   }
   const out: CardAck[] = [];

@@ -5,6 +5,7 @@ import {
   isCardServable,
   PHOTOLESS_RETRY_MS,
   parseCardAcks,
+  pendingFromRows,
   renderedStoryCardUrls,
 } from "./og-cards";
 import { storyCardUrl } from "./seo";
@@ -101,6 +102,39 @@ describe("story card URL on the page", () => {
 });
 
 describe("pending cards", () => {
+  // The renderer hashes raw D1 rows; the page hashes the row getStory maps.
+  // Both go through mapStoryRow, so an acked hash is the one the page asks.
+  it("hashes a raw candidate row as the page hashes the story", async () => {
+    const row = {
+      id: "a".repeat(64),
+      url: "https://publisher.example.com/story",
+      title: "A useful AI story",
+      title_vi: null,
+      category: "Research",
+      published_at: 1_790_000_000,
+      image_url: "https://images.example.com/photo.png",
+      media_manifest: null,
+      en_hash: null,
+      vi_hash: null,
+    };
+    const [pending] = await pendingFromRows([row], 0);
+    const story = item({ title_vi: null });
+    expect(pending.cards).toEqual([
+      { lang: "en", hash: await storyOgHash(story, "en") },
+      { lang: "vi", hash: await storyOgHash(story, "vi") },
+    ]);
+    const done = {
+      ...row,
+      en_hash: pending.cards[0].hash,
+      en_photoless: 0,
+      en_at: 1,
+      vi_hash: pending.cards[1].hash,
+      vi_photoless: 0,
+      vi_at: 1,
+    };
+    expect(await pendingFromRows([done], 0)).toEqual([]);
+  });
+
   const hash = "b".repeat(64);
   it("draws a card never rendered or rendered from older inputs", () => {
     expect(isCardPending(undefined, hash, 0)).toBe(true);

@@ -5,7 +5,8 @@
  * (Workers Free, 10 ms CPU) only hashes and lists; this script does the
  * drawing with the same renderer the `/api/og/$id` route uses.
  *
- * Flow: GET /api/admin/og-cards/pending → for each story, fetch its photo
+ * Flow: GET /api/admin/og-cards/candidates → hash here (off the Worker's
+ * CPU budget) → for each pending story, fetch its photo
  * once, draw en/vi → PUT og-story/<hash>/<lang>.png → POST
  * /api/admin/og-cards/ack. Re-running is safe: a card whose hash is acked
  * stops being pending, and a re-upload writes the same bytes to the same key.
@@ -23,15 +24,15 @@ import { fileURLToPath } from "node:url";
 import { ImageResponse } from "@cf-wasm/og/node";
 import { AwsClient } from "aws4fetch";
 import sharp from "sharp";
-import type { PendingStory } from "../src/lib/og-cards";
+import { type PendingStory, pendingFromRows } from "../src/lib/og-cards";
 import { loadStoryOgFonts, storyOgRenderOptions } from "../src/lib/og-fonts";
 import {
   fetchStoryOgImage,
   isCardSizedPhoto,
   type StoryOgImage,
   storyOgCard,
-  storyOgHash,
   storyOgImageCandidates,
+  storyOgStaticKey,
 } from "../src/lib/story-og";
 
 /** Public Account ID, as in wrangler.toml. */
@@ -95,15 +96,20 @@ async function firstPhoto(
   return null;
 }
 
-const pendingRes = await fetch(
-  `${base}/api/admin/og-cards/pending?limit=${limit}`,
-  { headers: auth }
-);
-if (!pendingRes.ok) {
-  throw new Error(`pending list failed: HTTP ${pendingRes.status}`);
+const candidatesRes = await fetch(`${base}/api/admin/og-cards/candidates`, {
+  headers: auth,
+});
+if (!candidatesRes.ok) {
+  throw new Error(`candidate list failed: HTTP ${candidatesRes.status}`);
 }
-const { stories } = (await pendingRes.json()) as { stories: PendingStory[] };
-console.log(`og-cards: ${stories.length} stories pending`);
+const { rows } = (await candidatesRes.json()) as {
+  rows: Record<string, unknown>[];
+};
+const pending = await pendingFromRows(rows, Date.now());
+const stories = pending.slice(0, limit);
+console.log(
+  `og-cards: ${rows.length} candidates, ${pending.length} pending, drawing ${stories.length}`
+);
 if (stories.length === 0) process.exit(0);
 
 const fonts = await loadStoryOgFonts(
@@ -125,14 +131,6 @@ for (const { item, cards } of stories) {
     const image = await firstPhoto(item);
     const photoless = !image && storyOgImageCandidates(item).length > 0;
     for (const { lang, hash } of cards) {
-      // The Worker and this checkout must agree on the key; a deploy in
-      // between would otherwise ack a card under a hash the page never asks.
-      if ((await storyOgHash(item, lang)) !== hash) {
-        console.warn(
-          `og-cards: ${item.id.slice(0, 8)}/${lang} hash skew, skipped`
-        );
-        continue;
-      }
       // A photoless card is not uploaded: a later try may draw the photo
       // under the same key, and og.aidr.today serves it as immutable. The
       // ack records the try so it is retried after a week.
@@ -143,14 +141,17 @@ for (const { item, cards } of stories) {
           storyOgRenderOptions(fonts)
         );
         const body = new Uint8Array(await png.arrayBuffer());
-        const put = await r2.fetch(`${r2Base}/og-story/${hash}/${lang}.png`, {
-          method: "PUT",
-          body,
-          headers: {
-            "Content-Type": "image/png",
-            "Cache-Control": IMMUTABLE,
-          },
-        });
+        const put = await r2.fetch(
+          `${r2Base}/${storyOgStaticKey(hash, lang)}`,
+          {
+            method: "PUT",
+            body,
+            headers: {
+              "Content-Type": "image/png",
+              "Cache-Control": IMMUTABLE,
+            },
+          }
+        );
         if (!put.ok) throw new Error(`R2 put HTTP ${put.status}`);
         uploaded++;
         console.log(

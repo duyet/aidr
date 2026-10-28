@@ -4,7 +4,7 @@ import {
   DAY_OG_RENDER_VERSION,
   dayOgObjectKey,
 } from "./og-cache";
-import { storyOgObjectKey } from "./story-og";
+import { storyOgObjectKey, storyOgStaticKey } from "./story-og";
 import type { FeedItem } from "./types";
 
 function item(overrides: Partial<FeedItem> = {}): FeedItem {
@@ -107,10 +107,14 @@ describe("OG card keys", () => {
     );
   });
 
-  it("ends in .png so og.aidr.today serves it by its R2 key", async () => {
-    expect(await storyOgObjectKey(item(), "vi")).toMatch(
-      /^og-story\/[0-9a-f]{64}\/vi\.png$/
-    );
+  // The Worker route writes its render on an R2 miss; the static card at
+  // og.aidr.today is immutable, so the two must never share a key.
+  it("keeps the Worker cache key apart from the static card key", async () => {
+    const workerKey = await storyOgObjectKey(item(), "vi");
+    const hash = workerKey.split("/")[1];
+    expect(workerKey).toMatch(/^og-story\/[0-9a-f]{64}\/vi$/);
+    expect(storyOgStaticKey(hash, "vi")).toBe(`og-story/${hash}/vi.png`);
+    expect(storyOgStaticKey(hash, "vi")).not.toBe(workerKey);
   });
 });
 

@@ -557,9 +557,11 @@ normal path (Workers Free, 10 ms CPU):
 
 - `.github/workflows/og-cards.yml` runs `scripts/render-og-cards.ts` at :10
   and :40 (and on `workflow_dispatch` / `repository_dispatch: og-cards`). It
-  reads `GET /api/admin/og-cards/pending` (admin bearer; published stories
-  of the last 14 days whose rendered hash differs from the current one, or a
-  photoless try older than 7 days), draws en and vi with the same renderer,
+  reads `GET /api/admin/og-cards/candidates` (admin bearer; raw rows of
+  published stories of the last 14 days with their rendered state, no
+  hashing on the Worker), hashes them itself, picks cards whose rendered hash
+  differs from the current one or whose photoless try is older than 7 days,
+  draws en and vi with the same renderer,
   PUTs `og-story/<hash>/<lang>.png` to the `aidr-og` R2 bucket with
   `Cache-Control: public, max-age=31536000, immutable`, then acks via
   `POST /api/admin/og-cards/ack` into `story_og_cards` (migration 0078).
@@ -569,7 +571,8 @@ normal path (Workers Free, 10 ms CPU):
   only when the stored hash equals the story's current hash and the card is
   not photoless. Otherwise (new story, late VI title, admin edit) it names
   `/api/og/<id>.png`, the slow path that renders on demand and caches in R2
-  under the same key. Day cards and the sitemap/thumb links are unchanged.
+  under `og-story/<hash>/<lang>` (no `.png`), so it never overwrites a
+  static card. Day cards and the sitemap/thumb links are unchanged.
 
 ## Agent read surfaces
 

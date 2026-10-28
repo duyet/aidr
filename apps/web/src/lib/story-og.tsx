@@ -824,7 +824,8 @@ export const STORY_OG_RENDER_VERSION = "2";
  *  the Worker. */
 export const STORY_OG_PUBLIC_ORIGIN = "https://og.aidr.today";
 
-/** R2 key for a story card: `og-story/<sha256>/<lang>.png`, a hash of
+/** R2 key the Worker route caches its on-demand render under:
+ *  `og-story/<sha256>/<lang>`, a hash of
  *  everything the card draws (every `storyOgCopy` field) plus its photo
  *  candidates. A later Vietnamese title, a title edit, or a new photo URL
  *  gives a new key, so a stored card is immutable. Candidate URLs are
@@ -837,7 +838,15 @@ export async function storyOgObjectKey(
   lang: Lang,
   version: string = STORY_OG_RENDER_VERSION
 ): Promise<string> {
-  return `og-story/${await storyOgHash(item, lang, version)}/${lang}.png`;
+  return `og-story/${await storyOgHash(item, lang, version)}/${lang}`;
+}
+
+/** R2 key of the static card the off-Worker renderer uploads, served at
+ *  og.aidr.today. It differs from the Worker route's key by the `.png`
+ *  suffix on purpose: the route writes its own render on a miss, and must
+ *  never overwrite bytes already served under an immutable URL. */
+export function storyOgStaticKey(hash: string, lang: Lang): string {
+  return `og-story/${hash}/${lang}.png`;
 }
 
 export async function storyOgHash(
@@ -861,5 +870,5 @@ export async function storyOgHash(
 
 /** Public card URL for a rendered hash. */
 export function storyOgPublicUrl(hash: string, lang: Lang): string {
-  return `${STORY_OG_PUBLIC_ORIGIN}/og-story/${hash}/${lang}.png`;
+  return `${STORY_OG_PUBLIC_ORIGIN}/${storyOgStaticKey(hash, lang)}`;
 }
