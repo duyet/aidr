@@ -1,0 +1,150 @@
+{
+  "$comment": "Copy and framing for the v0.1.18 film, music and effects only (no voice-over: the ElevenLabs quota was spent). Copy follows apps/web/src/content/releases/v0.1.18.ts. Each scene frames one station of the launch film's machine beside one real capture. Without a voice, a tag's `at` is seconds into its scene and `durations` sets each section's length. `view` / `view9` are the capture crop as fractions [x, y, w, h?] of the desktop / mobile capture.",
+  "version": "0.1.18",
+  "headline": "Duplicate stories merge again",
+  "dates": "Oct 27 – 28, 2026",
+  "closing": "1 fix",
+  "durations": {
+    "title": 4,
+    "scene": 7,
+    "close": 4.5
+  },
+  "captures": {
+    "pages": {
+      "algo": {
+        "path": "/release?lang=en#algorithm",
+        "desktop": {
+          "width": 600,
+          "height": 1100,
+          "deviceScaleFactor": 2
+        }
+      },
+      "algo-vi": {
+        "path": "/release?lang=vi#algorithm",
+        "desktop": {
+          "width": 600,
+          "height": 1100,
+          "deviceScaleFactor": 2
+        }
+      }
+    },
+    "files": {}
+  },
+  "scenes": [
+    {
+      "id": "dedupe",
+      "station": "dedupe",
+      "shot": "algo",
+      "url": "aidr.today/release",
+      "label": "Same story, one card",
+      "title": "Copies merge again",
+      "mark": "merge",
+      "view": [
+        0.02,
+        0.06,
+        0.96,
+        0.195
+      ],
+      "view9": [
+        0,
+        0.14,
+        1,
+        0.235
+      ],
+      "tags": [
+        {
+          "text": "first model answered in prose",
+          "at": 1.6
+        },
+        {
+          "text": "the next model takes over",
+          "at": 4
+        }
+      ]
+    },
+    {
+      "id": "score",
+      "station": "score",
+      "shot": "algo",
+      "url": "aidr.today/release",
+      "label": "Same rule elsewhere",
+      "title": "Same fallback in 5 steps",
+      "mark": "5 steps",
+      "view": [
+        0.02,
+        0.06,
+        0.96,
+        0.195
+      ],
+      "view9": [
+        0,
+        0.14,
+        1,
+        0.235
+      ],
+      "tags": [
+        {
+          "text": "scoring · translation repair",
+          "at": 1.6
+        },
+        {
+          "text": "captions · email summary",
+          "at": 4
+        }
+      ]
+    }
+  ],
+  "cover": {
+    "scene": "dedupe",
+    "hook": "Copies merge again",
+    "mark": "merge",
+    "sub": "when one model answers in prose, the next one takes over"
+  },
+  "vi": {
+    "headline": "Tin trùng lại được gom chung",
+    "dates": "27 – 28/10/2026",
+    "closing": "1 bản sửa lỗi",
+    "scenes": [
+      {
+        "shot": "algo-vi",
+        "url": "aidr.today/release?lang=vi",
+        "label": "Một tin, một mục",
+        "title": "Tin trùng lại được gom",
+        "mark": "gom",
+        "tags": [
+          {
+            "text": "model đầu trả lời bằng văn xuôi",
+            "at": 1.6
+          },
+          {
+            "text": "model kế tiếp nhận việc",
+            "at": 4
+          }
+        ]
+      },
+      {
+        "shot": "algo-vi",
+        "url": "aidr.today/release?lang=vi",
+        "label": "Áp dụng cả nơi khác",
+        "title": "Dự phòng ở cả 5 bước",
+        "mark": "5 bước",
+        "tags": [
+          {
+            "text": "chấm điểm · sửa bản dịch",
+            "at": 1.6
+          },
+          {
+            "text": "caption · tóm tắt email",
+            "at": 4
+          }
+        ]
+      }
+    ],
+    "cover": {
+      "hook": "Tin trùng lại được gom",
+      "mark": "gom",
+      "sub": "model trả lời sai định dạng thì model kế tiếp làm thay"
+    }
+  },
+  "feedLabel": "page"
+}
