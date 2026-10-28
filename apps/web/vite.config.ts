@@ -60,8 +60,8 @@ function configuredPublicProxyUrl(mode: string): string | undefined {
 function baseConfig(clerkProxyUrl: string): UserConfig {
   return {
     plugins: [
-      // src/fonts.css points at a subset woff2 that is generated from
-      // node_modules, not committed (scripts/subset-fonts.ts). `config` runs
+      // src/fonts.css points at subset woff2 files generated from
+      // src/fonts/source, not committed (scripts/subset-fonts.ts). `config` runs
       // once per dev/build start, before any CSS is transformed.
       {
         name: "subset-fonts",

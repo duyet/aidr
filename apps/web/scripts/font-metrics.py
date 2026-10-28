@@ -8,9 +8,9 @@ changes them is caught by `apps/web/src/lib/fonts.test.ts` instead of silently
 reintroducing the footer reflow.
 
     python3 apps/web/scripts/font-metrics.py \\
-      node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2 \\
-      node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-vietnamese-wght-normal.woff2 \\
-      node_modules/@fontsource-variable/eb-garamond/files/eb-garamond-latin-wght-normal.woff2
+      apps/web/src/fonts/generated/source-sans-3-wght-normal.woff2 \\
+      apps/web/src/fonts/generated/eb-garamond-wght-normal.woff2 \\
+      apps/web/src/fonts/generated/source-serif-4-wght-normal.woff2
 
 A plain `.ttf` needs nothing but the standard library, so the committed
 OG card weights (`apps/web/public/fonts/be-vietnam-pro-500.ttf`) are readable
