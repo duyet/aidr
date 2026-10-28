@@ -14,6 +14,9 @@ export interface Env {
   /** Singleton DO that arms a 30-minute alarm and coalesces ingest triggers.
    *  Optional so node tests can omit it; production wrangler always binds it. */
   NEWS_INGEST_SCHEDULER?: DurableObjectNamespace;
+  /** "true", "1" or "on" stops the scheduler: no alarm, no starts, forced
+   *  ones included (`isSchedulerPaused`). Unset in normal operation. */
+  INGEST_SCHEDULER_PAUSED?: string;
   /** One `POST /api/read` count per IP, story and kind a minute
    *  (`[[ratelimits]]`). Optional so node tests can omit it. */
   READ_LIMITER?: RateLimit;

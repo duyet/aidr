@@ -6,6 +6,7 @@ import {
   closeFailedCreate,
   type IngestTickOpts,
   type IngestTickResult,
+  isSchedulerPaused,
   nextAlarmAt,
   persistCreatedIngestRun,
   shouldSkipIngest,
@@ -23,6 +24,10 @@ const LAST_STARTED_KEY = "last_started_at";
  */
 export class NewsIngestScheduler extends DurableObject<Env> {
   async alarm(): Promise<void> {
+    if (isSchedulerPaused(this.env)) {
+      await this.ctx.storage.deleteAlarm();
+      return;
+    }
     await this.tick();
     // Audience sync rides the 30-minute alarm behind its own 24h gate: this
     // account cannot spend Worker cron slots, and GA4 does not resolve finer
@@ -47,6 +52,10 @@ export class NewsIngestScheduler extends DurableObject<Env> {
   }
 
   async canStart(opts: IngestTickOpts = {}): Promise<IngestTickResult> {
+    if (isSchedulerPaused(this.env)) {
+      await this.ctx.storage.deleteAlarm();
+      return { id: null, skipped: true, reason: "scheduler paused" };
+    }
     const now = Date.now();
     const lastStartedAt = await this.ctx.storage.get<number>(LAST_STARTED_KEY);
     if (opts.scheduled === false) {
@@ -102,6 +111,7 @@ export class NewsIngestScheduler extends DurableObject<Env> {
   }
 
   async ensureArmed(): Promise<void> {
+    if (isSchedulerPaused(this.env)) return;
     const existing = await this.ctx.storage.getAlarm();
     if (existing === null) {
       await this.ctx.storage.setAlarm(armAlarmAt(Date.now()));
