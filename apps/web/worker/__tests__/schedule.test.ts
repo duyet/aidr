@@ -87,26 +87,24 @@ describe("live AnyRouter model chains", () => {
     return match![1].split(",").map((s) => s.trim());
   }
 
-  // Claude Sonnet is paid, so it runs only after every free id failed. It
-  // stays off translate and summarize (a third id cuts Laguna's head slice
-  // from 50s to 30s), TL;DR (luna's EN-only retry slice drops from 40s to
-  // 20s), the VI→EN generator (capped at 2 ids, a third is dropped), and
-  // review (must stay disjoint from the generators).
-  const PAID_FALLBACK = "anthropic/claude-sonnet-5-5";
-
-  it("keeps Claude Sonnet as the last score fallback and off every other chain", () => {
-    expect(idsOf("ANYROUTER_MODEL").at(-1)).toBe(PAID_FALLBACK);
+  // Sonnet 5.5 went 404 (BYOK-only, upstream credit out) on 2026-10-29 after
+  // serving 17 of 23 cluster calls the day before. Its slot cost a call per
+  // cluster run and rescued none. The last cluster fallback is luna, which
+  // already heads TL;DR with 8 of 8 served.
+  it("keeps the dead Claude Sonnet id off every chain", () => {
     for (const name of [
+      "ANYROUTER_MODEL",
       "ANYROUTER_TRANSLATE_MODEL",
       "ANYROUTER_TLDR_MODEL",
       "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
       "ANYROUTER_REVIEW_MODEL",
     ]) {
-      expect(
-        idsOf(name).some((id) => id.startsWith("anthropic/")),
-        name
-      ).toBe(false);
+      expect(idsOf(name), name).not.toContain("anthropic/claude-sonnet-5-5");
     }
+  });
+
+  it("puts the cluster id that served on 2026-10-30 first", () => {
+    expect(idsOf("ANYROUTER_MODEL")[0]).toBe("z-ai/glm-latest");
   });
 
   const chains = [
@@ -145,11 +143,13 @@ describe("live AnyRouter model chains", () => {
   // 16 of 542 translate and summarize calls, none after 2026-10-12 03:16
   // UTC (#663). anyrouter/auto served 0 of 97 calls over 7 days to
   // 2026-10-16 (cluster 0/48, score 0/41) and 0 of 26 tldr calls before
-  // that; its slot only shrank the next id's slice (#672).
+  // that; its slot only shrank the next id's slice (#672). @preset/aidr served
+  // 0 of 22 cluster calls in the 24h to 2026-10-30.
   const KNOWN_DEAD = [
     "stealth/space-bunny-alpha",
     "google/gemma-4-31b",
     "anyrouter/auto",
+    "@preset/aidr",
   ];
 
   it("keeps known-dead model ids off every chain", () => {
