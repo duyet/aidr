@@ -432,6 +432,7 @@ function hoursSince(ms, now) {
 async function runPipeline() {
   const now = Date.now();
   const since24 = now - 24 * HOUR_MS;
+  const sinceStale = now - PIPELINE_RUN_STALE_H * HOUR_MS;
   let sets;
   try {
     sets = d1Query(
@@ -440,7 +441,7 @@ async function runPipeline() {
         `SELECT started_at, error, stats FROM workflow_runs WHERE (CASE WHEN started_at < 100000000000 THEN started_at * 1000 ELSE started_at END) >= ${since24} ORDER BY (CASE WHEN started_at < 100000000000 THEN started_at * 1000 ELSE started_at END) DESC LIMIT 100`,
         "SELECT channel, MAX(posted_at) AS last_posted_at, COUNT(*) AS total FROM notifications WHERE status = 'sent' GROUP BY channel",
         `SELECT channel, item_id, attempts, last_error, posted_at FROM notifications WHERE status IN ('failed', 'ambiguous') AND posted_at >= ${since24} ORDER BY posted_at DESC LIMIT 20`,
-        `SELECT task, COUNT(*) AS runs FROM (SELECT task, run_id FROM llm_calls WHERE ts >= ${since24} AND run_id IS NOT NULL GROUP BY task, run_id HAVING SUM(ok) = 0 AND SUM(COALESCE(error_status, 0) != 429) >= ${LLM_TASK_FAILING_MIN_ATTEMPTS}) GROUP BY task ORDER BY runs DESC`,
+        `SELECT task, COUNT(*) AS runs, SUM(last_ts >= ${sinceStale}) AS recent FROM (SELECT task, run_id, MAX(ts) AS last_ts FROM llm_calls WHERE ts >= ${since24} AND run_id IS NOT NULL GROUP BY task, run_id HAVING SUM(ok) = 0 AND SUM(COALESCE(error_status, 0) != 429) >= ${LLM_TASK_FAILING_MIN_ATTEMPTS}) GROUP BY task ORDER BY runs DESC`,
       ].join("; "),
     );
   } catch (e) {
@@ -477,9 +478,13 @@ async function runPipeline() {
   // A step can swallow a dead chain (clusterSimilar returns no clusters), so
   // read llm_calls with the health check's `LLM <task> chain down` rule: every
   // attempt failed and at least 3 were not 429s (429s have their own alert).
+  // Only a chain down in the last PIPELINE_RUN_STALE_H warns: a 24h count
+  // would keep doctor red for a day after the chain is fixed.
   const llmChainDownRuns24h = Object.fromEntries(chainsDown.map((r) => [r.task, r.runs]));
-  for (const [task, runs] of Object.entries(llmChainDownRuns24h)) {
-    warnings.push(`24h: ${task} LLM chain down in ${runs} of ${recent.length} runs`);
+  for (const r of chainsDown) {
+    if (r.recent > 0) {
+      warnings.push(`${r.task} LLM chain down in ${r.recent} run(s) in the last ${PIPELINE_RUN_STALE_H}h (${r.runs} of ${recent.length} in 24h)`);
+    }
   }
 
   const lastNotifications = lastPosts.map((r) => ({
