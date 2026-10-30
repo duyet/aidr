@@ -73,7 +73,7 @@ export const LLM_TASK_FAILING_MIN_ATTEMPTS = 3;
 export function llmTaskFailingKey(task: string): string {
   return `llm-task-failing:${task}`;
 }
-/** Below this many attempts the rate is noise. */
+/** Below this many chain calls the rate is noise. */
 export const LLM_MIN_CALLS = 4;
 export const TLDR_FAIL_STREAK = 3;
 export const SOURCE_FAILING_RUNS = 3;
@@ -127,8 +127,11 @@ export interface HealthInput {
   /** Newest successful post per Telegram channel, epoch ms. */
   telegramLastPostMs: Record<string, number>;
   llm: {
+    /** Chain calls (one `call_id`, all fallback attempts), not attempts. */
     total: number;
+    /** Chain calls that produced no output: every attempt failed. */
     failed: number;
+    /** Attempts, not calls. */
     rateLimited: number;
     tasks: LlmTaskCount[];
   };
@@ -196,7 +199,7 @@ export function evaluateHealth(input: HealthInput): HealthIssue[] {
       key: "llm-failure-rate",
       severity: "error",
       title: "LLM calls failing",
-      detail: `${failed}/${total} LLM attempts failed this run`,
+      detail: `${failed}/${total} LLM calls exhausted their whole fallback chain this run`,
     });
   }
 
@@ -365,7 +368,7 @@ function foldModelStats(rows: ModelStatRow[]): ModelStat[] {
 }
 
 /** Per-task counts for this run; the run totals are their sums. */
-async function readLlmCounts(
+export async function readLlmCounts(
   env: Env,
   runId: string
 ): Promise<HealthInput["llm"]> {
@@ -377,6 +380,16 @@ async function readLlmCounts(
   )
     .bind(runId)
     .all<ModelStatRow & { task: string }>();
+  // Final outcome per chain call: a call whose later fallback produced output
+  // is a success, so a flaky chain head does not page as an outage. Rows with
+  // no call_id (older writers) count as one call each.
+  const calls = await env.DB.prepare(
+    `SELECT COUNT(*) AS total, COALESCE(SUM(1 - ok), 0) AS failed FROM (
+       SELECT MAX(ok) AS ok FROM llm_calls WHERE run_id = ?
+       GROUP BY COALESCE(call_id, 'row:' || rowid))`
+  )
+    .bind(runId)
+    .all<{ total: number; failed: number }>();
   const rowsByTask = new Map<string, ModelStatRow[]>();
   for (const row of results ?? []) {
     const rows = rowsByTask.get(row.task) ?? [];
@@ -396,10 +409,9 @@ async function readLlmCounts(
   });
   const sum = (pick: (t: LlmTaskCount) => number) =>
     tasks.reduce((n, t) => n + pick(t), 0);
-  const total = sum((t) => t.total);
   return {
-    total,
-    failed: total - sum((t) => t.ok),
+    total: calls.results?.[0]?.total ?? 0,
+    failed: calls.results?.[0]?.failed ?? 0,
     rateLimited: sum((t) => t.rateLimited),
     tasks,
   };

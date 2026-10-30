@@ -681,7 +681,7 @@ ORDER BY week DESC, hits DESC
 - Just before close-run, the `health-check` step (`worker/health.ts`)
   reports to Sentry/Bugsink when: a Telegram channel has no post for >26h
   (a missed daily digest; checked during local 09–23h), >50% of the run's
-  LLM attempts failed (min 4), TL;DR failed 3 runs in a row, a step failed, or the run errored. Fired keys go
+  LLM chain calls (min 4) exhausted every fallback (a call that a later model served is a success; chain-down per task still counts attempts), TL;DR failed 3 runs in a row, a step failed, or the run errored. Fired keys go
   in `stats.alerts`; the same key is silent for 6h. External uptime
   monitors poll `GET /api/health` (503 when the newest run is down).
 - English left in Vietnamese (`worker/translation-english.ts`, same step,

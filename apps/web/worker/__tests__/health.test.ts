@@ -98,7 +98,7 @@ describe("evaluateHealth", () => {
     expect(keys({ telegramLastPostMs: quiet, localHour: 3 })).toEqual([]);
   });
 
-  it("flags only a run where more than half the LLM attempts failed", () => {
+  it("flags only a run where more than half the LLM chain calls exhausted", () => {
     expect(
       keys({ llm: { total: 10, failed: 6, rateLimited: 0, tasks: [] } })
     ).toEqual(["llm-failure-rate"]);
