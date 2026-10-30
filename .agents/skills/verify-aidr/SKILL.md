@@ -41,7 +41,7 @@ Pass requires:
 
 - `GET /api/public` → JSON 200 with parseable `{ tldr, stories }` (`tldr` null or `{ bullets_en, bullets_vi }`; stories are an array).
 - `GET /` with Chrome UA → HTML 200.
-- Homepage identity strings: `AI;DR`, `Hôm nay AI có gì mới?`, `AI News`, `aidr.today`, `AI News | ranked AI digest | aidr.today`.
+- Homepage identity strings: `AI;DR`, `Hôm nay AI có gì mới?`, `AI News`, `aidr.today`, `AI;DR | ranked AI digest | aidr.today`.
 
 - Pipeline check (below) is included when wrangler credentials work; if the D1 query cannot run, `pipeline` is `{ skipped: true, reason }` and does not fail doctor. Pipeline warnings do fail doctor.
 
@@ -55,7 +55,7 @@ Read-only. `/api/public` can be 200 while the hourly ingest or Telegram posting 
 .agents/skills/verify-aidr/bin/verify-aidr pipeline
 ```
 
-Reports the latest `workflow_runs` row (age, error), its per-step actions, 24h counts of failed `tldr` steps and `anyrouter chain exhausted`, the last sent `notifications` row per channel with hours since, failed notifications in 24h, and a tally of notify step reasons (for example `telegram.trending=below_min_rank`). `started_at` and `posted_at` are read as ms (prod rows mix ms and seconds, so ordering and the 24h window normalize both).
+Reports the latest `workflow_runs` row (age, error), its per-step actions, 24h counts of failed `tldr` steps and `anyrouter chain exhausted`, per LLM task the 24h runs in which every `llm_calls` attempt failed and at least 3 were not 429s, the health check's `LLM <task> chain down` rule (`llmChainDownRuns24h`; a step such as cluster can swallow a dead chain, so step text alone misses it), the last sent `notifications` row per channel with hours since, failed notifications in 24h, and a tally of notify step reasons (for example `telegram.trending=below_min_rank`). `started_at` and `posted_at` are read as ms (prod rows mix ms and seconds, so ordering and the 24h window normalize both).
 
 Warns (`ok: false`, non-zero exit) when the last run is over 2h old, the last run has an error, no Telegram post for over 26h (a missed daily digest), any failed or ambiguous notification in 24h, or any failed tldr / chain-exhausted run in 24h. `doctor` includes the same block under `pipeline`.
 
