@@ -570,7 +570,7 @@ export function workerChatChain(file = WRANGLER) {
 }
 
 /** The video scripts' model chain: `spec` (ANYROUTER_VIDEO_MODEL, a comma list) when set, else gpt-5.6-luna, which
- *  writes the script, then the Worker's chat chain, whose paid Claude id stays last. */
+ *  writes the script, then the Worker's chat chain. */
 export function videoModels(spec) {
   if (spec != null) return ids(spec);
   return [...new Set([SCRIPT_MODEL, ...workerChatChain()])];

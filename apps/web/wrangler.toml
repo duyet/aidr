@@ -133,13 +133,13 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 #                            writes reasoning prose before JSON: not used.
 #   openai/gpt-5.6-luna      2026-10-10: no longer BYOK-only on this key.
 #                            TL;DR 3 of 3, p50 37s; cluster 3 of 3, p50 4.4s.
-#   anthropic/claude-sonnet-5-5 2026-10-15: no longer BYOK-only on this key.
-#                            1-token probes HTTP 200 for claude-sonnet-5-5,
-#                            -5 and claude-sonnet-latest (served 5-5), no
-#                            streaming json_object probe on a real prompt
-#                            yet. Rejects temperature (llm.ts omits it for
-#                            anthropic/ ids). Paid, $2/$10 per 1M list, so
-#                            last on ANYROUTER_MODEL only.
+#   anthropic/claude-sonnet-5-5 Off the chains 2026-10-30. Served 17 of 23
+#                            cluster calls on 10-28, then 404 BYOK-only from
+#                            10-29 (0 of 19, 0 of 13 on 10-30). Not in the
+#                            /models list; claude-sonnet-latest answers 502
+#                            (both BYOK upstreams out of credit). Paid, $2/$10
+#                            per 1M list. Rejects temperature (llm.ts omits it
+#                            for anthropic/ ids).
 #   Not usable on this key 2026-10-10 (404 BYOK-only): gemini-flash-latest
 #   (→ gemini-3.8-flash), gemini-pro-latest (→ gemini-3.1-pro),
 #   qwen-flash-latest, claude-haiku-latest. claude-sonnet-latest was too,
@@ -171,13 +171,16 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # (gold band hit): gemma 0.60, laguna 0.20. Rolling aliases probed here:
 # google/gemma-latest → gemma-4-31b, z-ai/glm-latest → glm-5.2.
 # @preset/aidr now serves gemma-4-31b; anyrouter/auto serves laguna.
-# Claude Sonnet 5.5 is the paid last resort (2026-10-15). Over the 7 days
-# before, 100 calls reached anyrouter/auto (cluster 50, score 46, other 4)
-# and it served none; 25 of them were the 10-13 account-wide 429 window.
-# 2026-10-16: anyrouter/auto dropped (#672). When the cluster head stalls
-# for its 45s slice, Sonnet now gets 35s instead of 18s.
+# 2026-10-16: anyrouter/auto dropped (#672).
+# 2026-10-30: production llm_calls, cluster, 24h: glm-latest 16 of 38,
+# gemma-latest 3 of 41, @preset/aidr 0 of 22 (it now routes to rotating ids such
+# as recursive/flint-v1.0), Sonnet 0 of 22 (404). Every timeout sits at the
+# 20s first-token cap. So glm goes first, @preset/aidr and Sonnet leave, and
+# gpt-5.6-luna (cluster 3 of 3, p50 4.4s, F1 1.0 on 10-10; TL;DR 8 of 8 on
+# 10-30) takes the last slot. The timeout breaker is per task and model,
+# but the 429 skip is per model: a luna 429 on cluster also skips TL;DR's head.
 # Translate, summarize and TL;DR stay off Sonnet: see those chains.
-ANYROUTER_MODEL = "google/gemma-latest,z-ai/glm-latest,@preset/aidr,anthropic/claude-sonnet-5-5"
+ANYROUTER_MODEL = "z-ai/glm-latest,google/gemma-latest,openai/gpt-5.6-luna"
 # Translate tries Laguna first, then gemma-latest. Each extra id still
 # reserves a 20s fallback slice
 # (2026-10-02). Dropped @preset/aidr (11/87 ok over 24h,
