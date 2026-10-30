@@ -520,7 +520,7 @@ export async function readDailySummary(
   const [runs, posts, models] = await Promise.all([
     env.DB.prepare(
       `SELECT error, items_new, stats, ${STATS_FIELD_SQL("viEnglish")} AS vi_english
-       FROM workflow_runs WHERE started_at >= ? AND ${NOT_DRY_RUN_SQL}`
+       FROM workflow_runs WHERE ${WORKFLOW_RUN_STARTED_AT_ORDER_SQL} >= ? AND ${NOT_DRY_RUN_SQL}`
     )
       .bind(Math.floor(sinceMs / 1000))
       .all<{

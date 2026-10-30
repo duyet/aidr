@@ -403,7 +403,7 @@ test("a stat counts as spoken in any equivalent spoken form, but a different num
     assert.equal(statSpoken(voice, stat), false, `${stat} in "${voice}"`);
 });
 
-test("the video model chain is gpt-5.6-luna, then the Worker's chat chain read from wrangler.toml, paid Claude last", () => {
+test("the video model chain is gpt-5.6-luna, then the Worker's chat chain read from wrangler.toml", () => {
   const dir = mkdtempSync(join(tmpdir(), "aidr-chain-"));
   try {
     const toml = join(dir, "wrangler.toml");
@@ -427,7 +427,6 @@ test("the video model chain is gpt-5.6-luna, then the Worker's chat chain read f
     ...workerChatChain().filter((m) => m !== "openai/gpt-5.6-luna"),
   ]);
   assert.ok(chain.length >= 3, "at least two fallbacks after the head");
-  assert.match(chain.at(-1), /^anthropic\//, "the paid model is tried last");
   assert.deepEqual(videoModels(" x/one , y/two "), ["x/one", "y/two"]);
 });
 

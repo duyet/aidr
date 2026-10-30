@@ -3049,11 +3049,16 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 
 Score tries Jev (`typesafe/jev` via `/systemone`, 30s cap per item) first,
 then this chat chain:
+- `z-ai/glm-latest` (rolling alias, served `glm-5.2`). First since
+  2026-10-30: cluster 16 of 38 over 24h, against gemma-latest 3 of 41.
 - `google/gemma-latest` (rolling alias, served `gemma-4-31b` on 2026-10-10)
-- `z-ai/glm-latest` (rolling alias, served `glm-5.2`)
-- `@preset/aidr` (workspace preset, served `gemma-4-31b` on 2026-10-10)
-- `anthropic/claude-sonnet-5-5` (paid last resort, usable on this key since
-  2026-10-15)
+- `openai/gpt-5.6-luna` (last resort; cluster 3 of 3 in the 2026-10-10 bench)
+
+`@preset/aidr` and `anthropic/claude-sonnet-5-5` left this chain on
+2026-10-30. The preset served 0 of 22 cluster calls in 24h and now routes to
+rotating ids. Sonnet went 404 (BYOK-only, both upstream keys out of credit)
+on 10-29 after serving 17 of 23 cluster calls on 10-28. Every cluster timeout
+in the log sits at the 20s first-token cap.
 
 `anyrouter/auto` left this chain on 2026-10-16 (#672): it served 0 of 97
 calls in the 7 days before (cluster 0 of 48, score 0 of 41).
@@ -3062,8 +3067,7 @@ This chain also runs the cluster call. On the gold cluster set, Laguna
 scored F1 0.51, while Gemma, GLM 5.2 and the preset scored 1.0. TL;DR uses
 `openai/gpt-5.6-luna`, then Laguna (`anyrouter/auto` served 0 of 26 tldr
 calls over 7 days). Translate, summarize and the VI→EN generator run
-Laguna, then `google/gemma-latest`. Claude Sonnet stays off those chains
-and TL;DR. A third id there shrinks the head hop: translate's 50s slice in
+Laguna, then `google/gemma-latest`. A third id on those chains shrinks the head hop: translate's 50s slice in
 a 70s batch becomes 30s, and luna's EN-only TL;DR retry can drop from 40s to
 20s. The VI→EN generator keeps only its first 2 ids. On 2026-10-14 `google/gemini-3-flash`
 stopped serving (404, 502) and the `gemma-4-31b` :free route had served
@@ -3089,9 +3093,6 @@ heads `ANYROUTER_TLDR_MODEL`. Review timeouts no longer trip the id for
 TL;DR, but the 429 skip is model-wide, so a reviewer 429 on luna would move
 TL;DR onto its fallback for 2 minutes (#663). Re-enable after a measured probe on review prompts picks a
 reviewer; the probe needs `ANYROUTER_LOCAL_API_KEY` (#656).
-
-`@preset/aidr` is third on the score and cluster chain and on no other
-chain. It served 2 of 101 calls in the 7 days to 2026-10-14 (#663).
 
 An id that returns 404 (`model_not_found`, BYOK-only `model_unavailable`)
 is skipped by later calls of the same task in the same isolate for 15
