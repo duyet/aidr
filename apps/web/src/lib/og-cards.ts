@@ -17,8 +17,9 @@ export const OG_CARD_LANGS: readonly Lang[] = ["en", "vi"];
 export const PHOTOLESS_RETRY_MS = 7 * 86_400_000;
 
 /** How far back the candidate list looks, and how many raw rows it returns.
- *  Older stories keep the Worker route. */
-const CANDIDATE_WINDOW_SEC = 14 * 86_400;
+ *  Older stories are not rendered on demand either: the Worker route
+ *  redirects them to the home card unless one is already stored. */
+export const CANDIDATE_WINDOW_SEC = 14 * 86_400;
 export const MAX_CANDIDATE_ROWS = 200;
 /** Ack batch cap. */
 const MAX_ACKS = 100;

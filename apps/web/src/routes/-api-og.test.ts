@@ -94,7 +94,8 @@ const STORY: FeedItem = {
   summary: "",
   summary_vi: "",
   category: "Research",
-  published_at: 1_790_268_030,
+  // Inside the on-demand window; an archive story is covered by its own test.
+  published_at: Math.floor(Date.now() / 1000) - 3600,
   points: 82,
   comments: 144,
   rank_score: 1,
@@ -174,6 +175,33 @@ describe("api/og/$id locale wiring", () => {
     );
     expect(vi.headers.get("Content-Language")).toBe("vi");
     expect(enAgain.headers.get("Content-Language")).toBe("en");
+  });
+});
+
+describe("api/og/$id archive stories", () => {
+  it("redirects an unrendered story older than 14 days to the home card without rendering", async () => {
+    currentStory = {
+      ...STORY,
+      published_at: Math.floor(Date.now() / 1000) - 15 * 86_400,
+    };
+    const response = await call("/api/og/abcdef12deadbeef.png?lang=vi");
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe(
+      "https://aidr.today/og-home.jpg"
+    );
+    expect(response.headers.get("Cache-Control")).toContain("s-maxage=86400");
+    expect(captured).toBeNull();
+    expect(fetchedUrls).toEqual([]);
+  });
+
+  it("still renders a story inside the 14 day window", async () => {
+    currentStory = {
+      ...STORY,
+      published_at: Math.floor(Date.now() / 1000) - 13 * 86_400,
+    };
+    const response = await call("/api/og/abcdef12deadbeef.png?lang=en");
+    expect(response.status).toBe(200);
+    expect(captured).not.toBeNull();
   });
 });
 

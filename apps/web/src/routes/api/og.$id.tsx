@@ -2,11 +2,13 @@ import { cache, ImageResponse } from "@cf-wasm/og/workerd";
 import { createFileRoute } from "@tanstack/react-router";
 import { readSession } from "../../lib/db";
 import { cachedOgResponse } from "../../lib/og-cache";
+import { CANDIDATE_WINDOW_SEC } from "../../lib/og-cards";
 import {
   loadOgFontAsset,
   loadStoryOgFonts,
   storyOgRenderOptions,
 } from "../../lib/og-fonts";
+import { SITE_OG_HOME_IMAGE_PATH } from "../../lib/site";
 import { idPrefixFromSlug } from "../../lib/slug";
 import {
   fetchStoryOgImage,
@@ -39,6 +41,17 @@ const OG_CACHE_CONTROL =
 /** A card drawn without the photo its story names: one fetch failed, and a
  *  later one may not, so this card is re-rendered after a week. */
 const PHOTOLESS_MAX_AGE_SEC = 7 * 86_400;
+
+/** A story older than the off-Worker renderer's window (`CANDIDATE_WINDOW_SEC`)
+ *  that has no stored card is not rendered on demand: crawlers walking the
+ *  archive asked for ~200 such renders an hour, about 490 ms CPU each. They get
+ *  the home card instead. A card already in R2 is still served as is. */
+const ARCHIVE_FALLBACK_CACHE_CONTROL =
+  "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400";
+
+function isArchiveStory(publishedAtSec: number): boolean {
+  return Date.now() / 1000 - publishedAtSec > CANDIDATE_WINDOW_SEC;
+}
 
 export const Route = createFileRoute("/api/og/$id")({
   server: {
@@ -91,6 +104,21 @@ export const Route = createFileRoute("/api/og/$id")({
           request,
           ctx,
           async () => {
+            if (isArchiveStory(item.published_at)) {
+              return {
+                store: false as const,
+                response: new Response(null, {
+                  status: 302,
+                  headers: {
+                    Location: new URL(
+                      SITE_OG_HOME_IMAGE_PATH,
+                      request.url
+                    ).toString(),
+                    "Cache-Control": ARCHIVE_FALLBACK_CACHE_CONTROL,
+                  },
+                }),
+              };
+            }
             const [fonts, image] = await Promise.all([
               loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
               firstStoryOgImage(item, imagesBindingTranscoder(env?.IMAGES)),
