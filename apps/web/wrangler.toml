@@ -328,8 +328,19 @@ allowed_sender_addresses = ["digest@aidr.today", "notes@aidr.today"]
 [cache]
 enabled = true
 
+# Workers Logs bill per event (20M a month included, account-wide, then
+# $0.60 per million). Every request writes an invocation log, ~74K a day
+# unsampled, the largest source on the account. 5% keeps traffic and error
+# shape readable; exceptions still reach Bugsink (worker/bugsink.ts), which
+# is not sampled. Capped by src/lib/wrangler-observability.test.ts: raise it
+# temporarily to debug, never merge above the cap.
 [observability]
 enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 0.05
 
 [[routes]]
 pattern = "aidr.today"
