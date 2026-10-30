@@ -573,6 +573,10 @@ normal path (Workers Free, 10 ms CPU):
   `/api/og/<id>.png`, the slow path that renders on demand and caches in R2
   under `og-story/<hash>/<lang>` (no `.png`), so it never overwrites a
   static card. Day cards and the sitemap/thumb links are unchanged.
+- The slow path renders only stories inside the renderer's 14-day window.
+  An older story with no stored card gets a 302 to the home card
+  (`/og-home.jpg`), because archive crawlers asked for ~200 such renders an
+  hour at ~490 ms CPU each (measured 2026-10-30).
 
 ## Agent read surfaces
 
