@@ -11,6 +11,13 @@ import type { EarlierEntry } from "./earlier";
 
 export const ALGORITHM_ENTRIES: EarlierEntry[] = [
   {
+    date: "2026-10-30",
+    text: {
+      en: "Story grouping has a new model order: z-ai/glm-latest first, then google/gemma-latest, then openai/gpt-5.6-luna. Scoring (after typesafe/jev) and captions use the same order. In the last 24 hours the old first model, google/gemma-latest, finished 3 of 41 grouping calls. GLM finished 16 of 38. @preset/aidr finished none of 22 and anthropic/claude-sonnet-5-5 none of 22, because Claude stopped being available to us on Oct 29, so both are gone. When every model failed, copies of the same story stayed separate.",
+      vi: "Việc gom tin trùng giờ dùng thứ tự model mới: z-ai/glm-latest đầu tiên, rồi google/gemma-latest, rồi openai/gpt-5.6-luna. Chấm điểm (sau typesafe/jev) và viết caption dùng cùng thứ tự này. Trong 24 giờ qua, model đứng đầu trước đây là google/gemma-latest chỉ hoàn thành 3 trên 41 lần gom tin. GLM hoàn thành 16 trên 38. @preset/aidr không hoàn thành lần nào trong 22 lần và anthropic/claude-sonnet-5-5 cũng không lần nào trong 22 lần, vì từ 29/10 chúng tôi không còn dùng được Claude, nên cả hai đã bị bỏ. Khi mọi model đều lỗi, các bản tin trùng nhau vẫn được đăng riêng lẻ.",
+    },
+  },
+  {
     date: "2026-10-28",
     text: {
       en: "When a model answers in plain sentences instead of the format we asked for, the next model in the chain now gets the job. Before, that answer ended the chain. Since Oct 26 the first clustering model often replied in prose, so on Oct 27 all 33 clustering calls found no groups and copies of the same story published separately. The same now holds for scoring, translation repair, captions and the email summary.",
