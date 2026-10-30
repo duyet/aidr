@@ -41,7 +41,7 @@ Pass requires:
 
 - `GET /api/public` → JSON 200 with parseable `{ tldr, stories }` (`tldr` null or `{ bullets_en, bullets_vi }`; stories are an array).
 - `GET /` with Chrome UA → HTML 200.
-- Homepage identity strings: `AI;DR`, `Hôm nay AI có gì mới?`, `AI News`, `aidr.today`, `AI News | ranked AI digest | aidr.today`.
+- Homepage identity strings: `AI;DR`, `Hôm nay AI có gì mới?`, `AI News`, `aidr.today`, `AI;DR | ranked AI digest | aidr.today`.
 
 - Pipeline check (below) is included when wrangler credentials work; if the D1 query cannot run, `pipeline` is `{ skipped: true, reason }` and does not fail doctor. Pipeline warnings do fail doctor.
 

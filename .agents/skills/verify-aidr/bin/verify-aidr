@@ -42,7 +42,7 @@ const HOME_IDENTITY = [
   "Hôm nay AI có gì mới?",
   "aidr.today",
   "AI News",
-  "AI News | ranked AI digest | aidr.today",
+  "AI;DR | ranked AI digest | aidr.today",
 ];
 
 function usage() {
