@@ -21,7 +21,7 @@ Preconditions:
 
 - `verify-aidr doctor` reports `ok: true` against the launched base (default `https://aidr.today`).
 
-- **Open homepage.** Run `.agents/skills/verify-aidr/bin/verify-aidr drive homepage`. HTTP 200 HTML includes `AI;DR`, `Hôm nay AI có gì mới?`, `AI News | ranked AI digest | aidr.today`, `aidr.today`, `og:title`, and `/og.jpg`. Do not require a homepage `<h1>`.
+- **Open homepage.** Run `.agents/skills/verify-aidr/bin/verify-aidr drive homepage`. HTTP 200 HTML includes `AI;DR`, `Hôm nay AI có gì mới?`, `AI;DR | ranked AI digest | aidr.today`, `aidr.today`, `og:title`, and `/og.jpg`. Do not require a homepage `<h1>`.
 - **Feed rows.** The saved `homepage.html` contains at least one story permalink matching `/[0-9a-f]{8}` (no category segment).
 - **Feed API.** The same drive fetches `GET /api/feed` and requires `days[]` plus `categories[]`, with at least one day that has `items`.
 - **Mobile viewport.** If Chrome is available, run `.agents/skills/verify-aidr/bin/verify-aidr screenshot --path / --viewport mobile`. The PNG is optional proof; missing Chrome is a skip, not a product failure.
