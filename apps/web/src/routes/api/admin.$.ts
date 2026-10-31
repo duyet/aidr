@@ -75,6 +75,7 @@ import {
   ackOgCards,
   listOgCardCandidates,
   parseCardAcks,
+  storeOgCard,
 } from "../../lib/og-cards";
 
 async function resolveEnv(context: any): Promise<Env | undefined> {
@@ -155,7 +156,8 @@ async function handle(
 
   // Story share cards: the off-Worker renderer (scripts/render-og-cards.ts)
   // reads raw candidate rows (it hashes them itself, off the Worker's CPU
-  // budget) and acks the hashes it uploaded to R2.
+  // budget), uploads each card through the Worker's R2 binding, and acks
+  // the hashes it uploaded.
   if (
     method === "GET" &&
     segments.length === 2 &&
@@ -166,6 +168,10 @@ async function handle(
     return Response.json({
       rows: await listOgCardCandidates(env.DB, { limit, now: Date.now() }),
     });
+  }
+
+  if (method === "PUT" && segments.length === 3 && segments[0] === "og-cards") {
+    return storeOgCard(env.OG_CACHE, segments[1], segments[2], request);
   }
 
   if (

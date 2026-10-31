@@ -1,5 +1,5 @@
 import type { DbReader } from "./db";
-import { storyOgHash, storyOgPublicUrl } from "./story-og";
+import { storyOgHash, storyOgPublicUrl, storyOgStaticKey } from "./story-og";
 import { mapStoryRow } from "./story-queries";
 import type { FeedItem, Lang } from "./types";
 
@@ -230,4 +230,66 @@ export async function ackOgCards(
     )
   );
   return acks.length;
+}
+
+/** Largest card the upload route stores. Rendered cards measured 65 to
+ *  460 KB on 2026-10-31. */
+export const MAX_CARD_UPLOAD_BYTES = 1024 * 1024;
+
+/** og.aidr.today serves a card key as immutable: the hash names its inputs. */
+export const STATIC_CARD_CACHE_CONTROL = "public, max-age=31536000, immutable";
+
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const CARD_FILE_RE = /^(en|vi)\.png$/;
+
+function uploadError(status: number, error: string): Response {
+  return Response.json({ error }, { status });
+}
+
+/**
+ * `PUT /api/admin/og-cards/<hash>/<lang>.png`: the off-Worker renderer
+ * stores one card through the Worker's R2 binding, so it needs no R2 API
+ * keys. The caller is already an admin. The body must be a PNG of at most
+ * `MAX_CARD_UPLOAD_BYTES` with a matching Content-Length. A key is written
+ * once and never replaced, since its public URL is immutable; a repeat
+ * upload answers 200 with `stored: false`.
+ */
+export async function storeOgCard(
+  bucket: R2Bucket | undefined,
+  hash: string,
+  file: string,
+  request: Request
+): Promise<Response> {
+  const lang = CARD_FILE_RE.exec(file)?.[1] as Lang | undefined;
+  if (!(HASH_RE.test(hash) && lang)) return uploadError(400, "invalid key");
+  if (request.headers.get("content-type") !== "image/png") {
+    return uploadError(415, "body must be image/png");
+  }
+  const declared = Number(request.headers.get("content-length"));
+  if (!(declared > 0)) return uploadError(411, "content-length required");
+  if (declared > MAX_CARD_UPLOAD_BYTES) {
+    return uploadError(413, "card too large");
+  }
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (bytes.byteLength !== declared) {
+    return uploadError(400, "body does not match content-length");
+  }
+  if (!PNG_SIGNATURE.every((b, i) => bytes[i] === b)) {
+    return uploadError(415, "body is not a PNG");
+  }
+  if (!bucket) return uploadError(500, "R2 binding OG_CACHE not configured");
+  const key = storyOgStaticKey(hash, lang);
+  const stored = await bucket.put(key, bytes, {
+    httpMetadata: {
+      contentType: "image/png",
+      cacheControl: STATIC_CARD_CACHE_CONTROL,
+    },
+    onlyIf: new Headers({ "If-None-Match": "*" }),
+  });
+  return Response.json(
+    { key, stored: stored !== null },
+    {
+      status: stored ? 201 : 200,
+    }
+  );
 }
