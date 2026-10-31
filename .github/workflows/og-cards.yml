@@ -2,9 +2,9 @@ name: Story Cards
 
 # Renders pending story share cards off the Worker (Workers Free caps CPU at
 # 10 ms) and uploads them to the `aidr-og` R2 bucket, served as static files
-# at https://og.aidr.today. See apps/web/scripts/render-og-cards.ts and
-# ALGORITHM.md "Story share cards". Until the R2 secrets exist the script
-# exits 0 with a notice and pages keep the Worker route.
+# at https://og.aidr.today. Uploads go through the Worker's admin route and
+# its R2 binding, so the job needs only NEWS_ADMIN_TOKEN. See
+# apps/web/scripts/render-og-cards.ts and ALGORITHM.md "Story share cards".
 on:
   schedule:
     - cron: "10,40 * * * *"
@@ -27,14 +27,12 @@ jobs:
     environment: production
     env:
       NEWS_ADMIN_TOKEN: ${{ secrets.NEWS_ADMIN_TOKEN }}
-      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
     steps:
       - name: Check secrets
         id: secrets
         run: |
-          if [ -z "$NEWS_ADMIN_TOKEN" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then
-            echo "::notice::Story cards skipped: set NEWS_ADMIN_TOKEN, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY repo secrets."
+          if [ -z "$NEWS_ADMIN_TOKEN" ]; then
+            echo "::notice::Story cards skipped: set the NEWS_ADMIN_TOKEN secret."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"

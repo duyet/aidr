@@ -7,14 +7,13 @@
  *
  * Flow: GET /api/admin/og-cards/candidates → hash here (off the Worker's
  * CPU budget) → for each pending story, fetch its photo
- * once, draw en/vi → PUT og-story/<hash>/<lang>.png → POST
+ * once, draw en/vi → PUT /api/admin/og-cards/<hash>/<lang>.png, which the
+ * Worker stores at og-story/<hash>/<lang>.png through its R2 binding → POST
  * /api/admin/og-cards/ack. Re-running is safe: a card whose hash is acked
- * stops being pending, and a re-upload writes the same bytes to the same key.
+ * stops being pending, and the Worker never replaces a stored key.
  *
- * Env: NEWS_ADMIN_TOKEN, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY (an R2 API
- * token with Object Read & Write on `aidr-og`). Optional: AIDR_BASE_URL,
- * OG_CARDS_LIMIT. Missing secrets exit 0 with a notice, so the scheduled job
- * stays green until they exist.
+ * Env: NEWS_ADMIN_TOKEN. Optional: AIDR_BASE_URL, OG_CARDS_LIMIT. A missing
+ * token exits 0 with a notice, so the scheduled job stays green.
  *
  * Run: pnpm --filter @aidr/web exec tsx scripts/render-og-cards.ts
  */
@@ -22,7 +21,6 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ImageResponse } from "@cf-wasm/og/node";
-import { AwsClient } from "aws4fetch";
 import sharp from "sharp";
 import { type PendingStory, pendingFromRows } from "../src/lib/og-cards";
 import { loadStoryOgFonts, storyOgRenderOptions } from "../src/lib/og-fonts";
@@ -32,13 +30,7 @@ import {
   type StoryOgImage,
   storyOgCard,
   storyOgImageCandidates,
-  storyOgStaticKey,
 } from "../src/lib/story-og";
-
-/** Public Account ID, as in wrangler.toml. */
-const ACCOUNT_ID = "7df185a18b98382c3240fa7ac4a37075";
-const BUCKET = "aidr-og";
-const IMMUTABLE = "public, max-age=31536000, immutable";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const base = (process.env.AIDR_BASE_URL ?? "https://aidr.today").replace(
@@ -46,29 +38,13 @@ const base = (process.env.AIDR_BASE_URL ?? "https://aidr.today").replace(
   ""
 );
 const token = process.env.NEWS_ADMIN_TOKEN;
-const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
 const limit = Number(process.env.OG_CARDS_LIMIT ?? 20);
 
-const missing = Object.entries({
-  NEWS_ADMIN_TOKEN: token,
-  R2_ACCESS_KEY_ID: accessKeyId,
-  R2_SECRET_ACCESS_KEY: secretAccessKey,
-})
-  .filter(([, v]) => !v)
-  .map(([k]) => k);
-if (missing.length > 0) {
-  console.log(`og-cards: skipped, missing ${missing.join(", ")}`);
+if (!token) {
+  console.log("og-cards: skipped, missing NEWS_ADMIN_TOKEN");
   process.exit(0);
 }
 
-const r2 = new AwsClient({
-  accessKeyId: accessKeyId as string,
-  secretAccessKey: secretAccessKey as string,
-  service: "s3",
-  region: "auto",
-});
-const r2Base = `https://${ACCOUNT_ID}.r2.cloudflarestorage.com/${BUCKET}`;
 const auth = { Authorization: `Bearer ${token}` };
 
 /** WebP or oversized photo → JPEG ≤1200px, the job the Images binding does
@@ -141,18 +117,15 @@ for (const { item, cards } of stories) {
           storyOgRenderOptions(fonts)
         );
         const body = new Uint8Array(await png.arrayBuffer());
-        const put = await r2.fetch(
-          `${r2Base}/${storyOgStaticKey(hash, lang)}`,
+        const put = await fetch(
+          `${base}/api/admin/og-cards/${hash}/${lang}.png`,
           {
             method: "PUT",
             body,
-            headers: {
-              "Content-Type": "image/png",
-              "Cache-Control": IMMUTABLE,
-            },
+            headers: { ...auth, "Content-Type": "image/png" },
           }
         );
-        if (!put.ok) throw new Error(`R2 put HTTP ${put.status}`);
+        if (!put.ok) throw new Error(`card upload HTTP ${put.status}`);
         uploaded++;
         console.log(
           `og-cards: ${item.id.slice(0, 8)}/${lang} ${body.byteLength} B in ${Math.round(performance.now() - started)} ms`

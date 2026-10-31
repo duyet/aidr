@@ -562,8 +562,11 @@ normal path (Workers Free, 10 ms CPU):
   hashing on the Worker), hashes them itself, picks cards whose rendered hash
   differs from the current one or whose photoless try is older than 7 days,
   draws en and vi with the same renderer,
-  PUTs `og-story/<hash>/<lang>.png` to the `aidr-og` R2 bucket with
-  `Cache-Control: public, max-age=31536000, immutable`, then acks via
+  PUTs each PNG to `/api/admin/og-cards/<hash>/<lang>.png` (admin bearer,
+  at most 1 MiB), which the Worker stores once at `og-story/<hash>/<lang>.png`
+  in the `aidr-og` bucket through its R2 binding, with
+  `Cache-Control: public, max-age=31536000, immutable`. A stored key is never
+  replaced, and the job needs no R2 API keys. It then acks via
   `POST /api/admin/og-cards/ack` into `story_og_cards` (migration 0078).
 - A card whose photo could not be drawn is acked as photoless and not
   uploaded: a retry may draw the photo under the same key.
@@ -577,7 +580,7 @@ normal path (Workers Free, 10 ms CPU):
   An older story with no stored card gets a 302 to the home card
   (`/og-home.jpg`), because archive crawlers asked for ~200 such renders an
   hour at ~490 ms CPU each (measured 2026-10-30).
-- A bulk crawler (KakaoBot, Amazonbot, SEO and AI crawlers; not Telegram, X,
+- A bulk crawler (Kakao search, Amazonbot, SEO and AI crawlers; not KakaoTalk, Telegram, X,
   Slack or Facebook previews) gets the same 302 on a miss, with
   `private, max-age=3600`. A stored card is still served. Crawlers were ~97%
   of slow-path calls, ~1.5M CPU-ms a day (measured 2026-10-31).
