@@ -1,8 +1,10 @@
 import { useRef } from "react";
 import { storyMarkdownUrl } from "../lib/seo";
+import { storyShareText } from "../lib/share-text";
 import { sanitizeImageUrl } from "../lib/tldr-images";
 import type { FeedItem, Lang } from "../lib/types";
 import { useSuggestSelection } from "../lib/use-suggest-selection";
+import { CopyTextButton } from "./CopyTextButton";
 import { SuggestionBadge, SuggestTranslation } from "./SuggestTranslation";
 import { BilingualSummary } from "./story/BilingualSummary";
 import { splitParagraphs } from "./story/lib";
@@ -173,6 +175,13 @@ export function StoryDetail({
               onInitialTextConsumed={clearPending}
             />
             <SuggestionBadge itemId={item.id} expanded lang={lang} />
+            <CopyTextButton
+              text={storyShareText(item, lang)}
+              label={
+                lang === "vi" ? "Chép tiêu đề + link" : "Copy title + link"
+              }
+              lang={lang}
+            />
           </div>
 
           <StorySources sources={item.sources} lang={lang} itemId={item.id} />
