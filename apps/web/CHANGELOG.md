@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.1.19](https://github.com/duyet/aidr/compare/web-v0.1.18...web-v0.1.19) (2026-10-31)
+
+
+### ✨ Features
+
+* **ingest:** pause the scheduler with INGEST_SCHEDULER_PAUSED ([#1091](https://github.com/duyet/aidr/issues/1091)) ([0cfb8bd](https://github.com/duyet/aidr/commit/0cfb8bd5343bec851b24042210a438d18bf18a2c))
+* **og:** serve story cards as static files from og.aidr.today ([#1093](https://github.com/duyet/aidr/issues/1093)) ([51b2602](https://github.com/duyet/aidr/commit/51b2602e7e8d9834a380b7776ae99705c5c29db4))
+* **og:** upload story cards through an admin route, drop the R2 API keys ([#1107](https://github.com/duyet/aidr/issues/1107)) ([619e725](https://github.com/duyet/aidr/commit/619e725221274f54ca5e97001a0dcfa6b089810e))
+* **web:** copy a story or a whole day as title + link for social posts ([#1104](https://github.com/duyet/aidr/issues/1104)) ([82ef02e](https://github.com/duyet/aidr/commit/82ef02ead4da9e5a56d5c44f72593f87ccd51faa))
+* **web:** tag copied share links with utm_source=share ([#1109](https://github.com/duyet/aidr/issues/1109)) ([6093292](https://github.com/duyet/aidr/commit/6093292fb93e34761fd0e385c83f3c488ca402a0))
+
+
+### 🐛 Bug Fixes
+
+* **health:** daily summary skips legacy runs stored in epoch ms ([#1099](https://github.com/duyet/aidr/issues/1099)) ([2bf77be](https://github.com/duyet/aidr/commit/2bf77bea595ee1411690f678005731dd411d5670))
+* **health:** llm-failure-rate counts exhausted chains, not failed attempts ([#1097](https://github.com/duyet/aidr/issues/1097)) ([4be7144](https://github.com/duyet/aidr/commit/4be71440e1327d91741b4b8d3f046754c545f146))
+* **llm:** replace dead sonnet and preset in the cluster chain ([#1098](https://github.com/duyet/aidr/issues/1098)) ([91e40a9](https://github.com/duyet/aidr/commit/91e40a95933ca6e9ac1b120766f4cf832911c128))
+* **og:** raise the card upload cap to 2 MiB and skip, not fail, an oversized card ([#1108](https://github.com/duyet/aidr/issues/1108)) ([adf8783](https://github.com/duyet/aidr/commit/adf8783eb1c44b14dbc716aa33661f7f1f16c4ca))
+* **verify-aidr:** doctor checks the current title and dead LLM chains ([#1101](https://github.com/duyet/aidr/issues/1101)) ([f5a066f](https://github.com/duyet/aidr/commit/f5a066ff022625eba4b71a550db2fbbff5e86056))
+* **web:** serve each font family as one file so Vietnamese words never mix faces ([#1087](https://github.com/duyet/aidr/issues/1087)) ([4bdf9c5](https://github.com/duyet/aidr/commit/4bdf9c5419a510e3ccc5ccbb78005da0213815e9))
+
+
+### ⚡ Performance
+
+* **d1:** cut feed, re-rank and workflow_runs rows read ([#1089](https://github.com/duyet/aidr/issues/1089)) ([65dc7fb](https://github.com/duyet/aidr/commit/65dc7fbd511a5ed649a8a8c248b6e36385e7ed0d))
+* **og:** key story cards by their inputs, apart from day cards ([#1092](https://github.com/duyet/aidr/issues/1092)) ([d5768a4](https://github.com/duyet/aidr/commit/d5768a4b70e6cdacc01f23483e03f8fdc2156063))
+* **og:** redirect archive stories without a stored card to the home card ([#1094](https://github.com/duyet/aidr/issues/1094)) ([5b81e91](https://github.com/duyet/aidr/commit/5b81e91c3b6711faa095e6cc5b44394aad0f9b59))
+* **og:** send bulk crawlers the home card on a story card miss ([#1103](https://github.com/duyet/aidr/issues/1103)) ([f8d53e8](https://github.com/duyet/aidr/commit/f8d53e854a2362b5fe8219955421955512f441dc))
+* **web:** keep SEO-audit crawlers off the site, narrow the Kakao card match ([#1106](https://github.com/duyet/aidr/issues/1106)) ([e69a511](https://github.com/duyet/aidr/commit/e69a5116aca56ac60e5abad4172f42eaae77b774))
+* **web:** sample Workers Logs at 5% ([#1095](https://github.com/duyet/aidr/issues/1095)) ([f6c552e](https://github.com/duyet/aidr/commit/f6c552e3eed53bd317986f877a54dadcbc0b54d9))
+
 ## [0.1.18](https://github.com/duyet/aidr/compare/web-v0.1.17...web-v0.1.18) (2026-10-28)
 
 
