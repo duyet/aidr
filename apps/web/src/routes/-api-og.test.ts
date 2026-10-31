@@ -72,10 +72,11 @@ function context(env: Record<string, unknown> | null = { DB: FAKE_DB }) {
 async function call(
   url: string,
   id = "abcdef12deadbeef.png",
-  ctx: unknown = context()
+  ctx: unknown = context(),
+  headers: Record<string, string> = {}
 ): Promise<Response> {
   return get({
-    request: new Request(`https://aidr.today${url}`),
+    request: new Request(`https://aidr.today${url}`, { headers }),
     context: ctx,
     params: { id },
   });
@@ -202,6 +203,82 @@ describe("api/og/$id archive stories", () => {
     const response = await call("/api/og/abcdef12deadbeef.png?lang=en");
     expect(response.status).toBe(200);
     expect(captured).not.toBeNull();
+  });
+});
+
+describe("api/og/$id bulk crawlers", () => {
+  const KAKAO =
+    "Mozilla/5.0 (compatible; KakaoBot/1.0; +https://cs.kakao.com/helps_html/1073213012)";
+
+  it("sends a crawler the home card on a miss without rendering", async () => {
+    const response = await call(
+      "/api/og/abcdef12deadbeef.png?lang=vi",
+      undefined,
+      undefined,
+      { "user-agent": KAKAO }
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe(
+      "https://aidr.today/og-home.jpg"
+    );
+    // Never a shared-cache entry: a reader on the same URL gets the real card.
+    expect(response.headers.get("Cache-Control")).toBe("private, max-age=3600");
+    expect(captured).toBeNull();
+    expect(fetchedUrls).toEqual([]);
+  });
+
+  it("serves a crawler a card that is already stored", async () => {
+    const stored = new Map<string, ArrayBuffer>();
+    const bucket = {
+      get: async (key: string) =>
+        stored.has(key)
+          ? {
+              body: stored.get(key),
+              customMetadata: { cacheControl: "public, max-age=60" },
+            }
+          : null,
+      put: async (key: string, bytes: ArrayBuffer) =>
+        void stored.set(key, bytes),
+    };
+    const ctx = context({ DB: FAKE_DB, OG_CACHE: bucket });
+    const reader = await call(
+      "/api/og/abcdef12deadbeef.png?lang=vi",
+      undefined,
+      ctx
+    );
+    expect(reader.status).toBe(200);
+    expect(stored.size).toBe(1);
+
+    captured = null;
+    const crawler = await call(
+      "/api/og/abcdef12deadbeef.png?lang=vi",
+      undefined,
+      ctx,
+      { "user-agent": KAKAO }
+    );
+    expect(crawler.status).toBe(200);
+    expect(crawler.headers.get("content-type")).toBe("image/png");
+    expect(captured).toBeNull();
+  });
+
+  it("still renders for link-preview bots and readers", async () => {
+    for (const ua of [
+      "TelegramBot (like TwitterBot)",
+      "Twitterbot/1.0",
+      "facebookexternalhit/1.1",
+      "Slackbot-LinkExpanding 1.0",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/537.36",
+    ]) {
+      captured = null;
+      const response = await call(
+        "/api/og/abcdef12deadbeef.png?lang=en",
+        undefined,
+        undefined,
+        { "user-agent": ua }
+      );
+      expect(response.status, ua).toBe(200);
+      expect(captured, ua).not.toBeNull();
+    }
   });
 });
 
