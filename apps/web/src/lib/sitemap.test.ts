@@ -8,6 +8,7 @@ import { SITE_URL } from "./site";
 import {
   buildSitemapXml,
   escapeXml,
+  ROBOTS_BLOCKED_CRAWLERS,
   robotsTxt,
   safeSitemapResponse,
   staticSitemapUrls,
@@ -136,6 +137,22 @@ const KNOWN_ROBOTS_DIRECTIVES = new Set([
   "host",
 ]);
 
+/** Disallow paths per `User-agent` group. */
+function robotsGroups(text: string): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
+  let current: string[] = [];
+  for (const line of text.split("\n")) {
+    const agent = /^User-agent: (.+)$/.exec(line);
+    if (agent?.[1]) {
+      current = [];
+      groups.set(agent[1], current);
+    }
+    const path = /^Disallow: (.+)$/.exec(line)?.[1];
+    if (path) current.push(path);
+  }
+  return groups;
+}
+
 describe("robotsTxt", () => {
   it("points crawlers at the sitemap", () => {
     const text = robotsTxt();
@@ -145,9 +162,7 @@ describe("robotsTxt", () => {
   });
 
   it("keeps crawlers off the auth pages and never off a sitemap page", () => {
-    const disallowed = [...robotsTxt().matchAll(/^Disallow: (.+)$/gm)].map(
-      (m) => m[1]
-    );
+    const disallowed = robotsGroups(robotsTxt()).get("*") ?? [];
     expect(disallowed).toEqual(["/sign-in", "/sign-up"]);
     const blocked = (path: string) =>
       disallowed.some((prefix) => prefix && path.startsWith(prefix));
@@ -163,6 +178,18 @@ describe("robotsTxt", () => {
     for (const { loc } of storySitemapUrls(story)) {
       expect(blocked(new URL(loc).pathname), loc).toBe(false);
     }
+  });
+
+  it("keeps each SEO-audit crawler off the whole site and no one else", () => {
+    const groups = robotsGroups(robotsTxt());
+    // A named group replaces `*` for that crawler, so anything short of
+    // `Disallow: /` would reopen the auth pages to it.
+    for (const name of ROBOTS_BLOCKED_CRAWLERS) {
+      expect(groups.get(name), name).toEqual(["/"]);
+    }
+    expect([...groups.keys()].sort()).toEqual(
+      ["*", ...ROBOTS_BLOCKED_CRAWLERS].sort()
+    );
   });
 
   it("keeps the llms.txt pointer as a comment, never a directive", () => {

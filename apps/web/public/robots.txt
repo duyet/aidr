@@ -3,5 +3,17 @@ Allow: /
 Disallow: /sign-in
 Disallow: /sign-up
 
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: DataForSeoBot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
 Sitemap: https://aidr.today/sitemap.xml
 # LLMs-txt: https://aidr.today/llms.txt
