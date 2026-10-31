@@ -563,7 +563,7 @@ normal path (Workers Free, 10 ms CPU):
   differs from the current one or whose photoless try is older than 7 days,
   draws en and vi with the same renderer,
   PUTs each PNG to `/api/admin/og-cards/<hash>/<lang>.png` (admin bearer,
-  at most 1 MiB), which the Worker stores once at `og-story/<hash>/<lang>.png`
+  at most 2 MiB), which the Worker stores once at `og-story/<hash>/<lang>.png`
   in the `aidr-og` bucket through its R2 binding, with
   `Cache-Control: public, max-age=31536000, immutable`. A stored key is never
   replaced, and the job needs no R2 API keys. It then acks via

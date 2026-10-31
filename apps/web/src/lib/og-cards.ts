@@ -232,9 +232,11 @@ export async function ackOgCards(
   return acks.length;
 }
 
-/** Largest card the upload route stores. Rendered cards measured 65 to
- *  460 KB on 2026-10-31. */
-export const MAX_CARD_UPLOAD_BYTES = 1024 * 1024;
+/** Largest card the upload route stores. Of 6,867 cards in R2 on
+ *  2026-10-31 the largest was 1.25 MB and 84 were over 1 MiB, all photo
+ *  cards: a photo does not deflate, and re-encoding it losslessly saves
+ *  nothing. */
+export const MAX_CARD_UPLOAD_BYTES = 2 * 1024 * 1024;
 
 /** og.aidr.today serves a card key as immutable: the hash names its inputs. */
 export const STATIC_CARD_CACHE_CONTROL = "public, max-age=31536000, immutable";

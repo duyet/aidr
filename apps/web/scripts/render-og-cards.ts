@@ -22,7 +22,11 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ImageResponse } from "@cf-wasm/og/node";
 import sharp from "sharp";
-import { type PendingStory, pendingFromRows } from "../src/lib/og-cards";
+import {
+  MAX_CARD_UPLOAD_BYTES,
+  type PendingStory,
+  pendingFromRows,
+} from "../src/lib/og-cards";
 import { loadStoryOgFonts, storyOgRenderOptions } from "../src/lib/og-fonts";
 import {
   fetchStoryOgImage,
@@ -96,6 +100,7 @@ if (fonts.length !== 2) throw new Error("story card fonts missing");
 
 let uploaded = 0;
 let failed = 0;
+let skipped = 0;
 for (const { item, cards } of stories) {
   const acks: {
     item_id: string;
@@ -117,6 +122,14 @@ for (const { item, cards } of stories) {
           storyOgRenderOptions(fonts)
         );
         const body = new Uint8Array(await png.arrayBuffer());
+        // Left unacked, so the page keeps the Worker route for this card.
+        if (body.byteLength > MAX_CARD_UPLOAD_BYTES) {
+          skipped++;
+          console.log(
+            `::warning::og-cards: ${item.id.slice(0, 8)}/${lang} is ${body.byteLength} B, over the upload cap; skipped`
+          );
+          continue;
+        }
         const put = await fetch(
           `${base}/api/admin/og-cards/${hash}/${lang}.png`,
           {
@@ -151,5 +164,7 @@ for (const { item, cards } of stories) {
   }
 }
 
-console.log(`og-cards: uploaded ${uploaded}, failed ${failed}`);
+console.log(
+  `og-cards: uploaded ${uploaded}, skipped ${skipped}, failed ${failed}`
+);
 if (failed > 0) process.exitCode = 1;
