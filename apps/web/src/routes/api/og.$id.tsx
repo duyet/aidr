@@ -57,9 +57,12 @@ function isArchiveStory(publishedAtSec: number): boolean {
  *  they were ~97% of /api/og calls (KakaoBot alone ~3.3K a day, each a
  *  distinct card at ~400 ms CPU, ~1.5M CPU-ms a day). On a miss they get the
  *  home card; a card already rendered is still served. Link-preview bots for
- *  shares (Telegram, X, Slack, Discord, Facebook) are not listed. */
+ *  shares (Telegram, X, Slack, Discord, Facebook) are not listed. Kakao's
+ *  search robot is matched by its help page, not "KakaoBot": KakaoTalk
+ *  previews come as `kakaotalk-scrap`, and the
+ *  `KakaoBot/1.0; +https://developers.kakao.com/bot` variant may be one. */
 const BULK_CRAWLER =
-  /KakaoBot|Amazonbot|PerplexityBot|GPTBot|ClaudeBot|Bytespider|meta-externalagent|ExaSearchBot|AhrefsBot|SemrushBot|MJ12bot|DotBot|PetalBot|YandexBot/i;
+  /cs\.kakao\.com\/helps_html|Amazonbot|PerplexityBot|GPTBot|ClaudeBot|Bytespider|meta-externalagent|ExaSearchBot|AhrefsBot|SemrushBot|MJ12bot|DotBot|PetalBot|YandexBot/i;
 
 function isBulkCrawler(userAgent: string | null): boolean {
   return userAgent !== null && BULK_CRAWLER.test(userAgent);

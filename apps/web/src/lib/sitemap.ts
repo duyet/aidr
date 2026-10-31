@@ -124,8 +124,21 @@ export function buildSitemapXml(urls: SitemapUrl[]): string {
  *  the week to 2026-10-26. The pages are already noindex. */
 export const ROBOTS_DISALLOW_PATHS = ["/sign-in", "/sign-up"] as const;
 
+/** SEO-audit crawlers, kept off the whole site. They send no readers, and in
+ *  the 24h to 2026-10-31 they rendered about 3.4K story pages for roughly
+ *  510K CPU-ms. Each documents that it obeys robots.txt. */
+export const ROBOTS_BLOCKED_CRAWLERS = [
+  "SemrushBot",
+  "AhrefsBot",
+  "DataForSeoBot",
+  "DotBot",
+] as const;
+
 export function robotsTxt(): string {
-  return `User-agent: *\nAllow: /\n${ROBOTS_DISALLOW_PATHS.map((path) => `Disallow: ${path}\n`).join("")}\nSitemap: ${SITE_URL}/sitemap.xml\n# LLMs-txt: ${SITE_URL}/llms.txt\n`;
+  const blocked = ROBOTS_BLOCKED_CRAWLERS.map(
+    (name) => `User-agent: ${name}\nDisallow: /\n\n`
+  ).join("");
+  return `User-agent: *\nAllow: /\n${ROBOTS_DISALLOW_PATHS.map((path) => `Disallow: ${path}\n`).join("")}\n${blocked}Sitemap: ${SITE_URL}/sitemap.xml\n# LLMs-txt: ${SITE_URL}/llms.txt\n`;
 }
 
 /**

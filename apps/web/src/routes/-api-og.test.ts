@@ -264,6 +264,8 @@ describe("api/og/$id bulk crawlers", () => {
   it("still renders for link-preview bots and readers", async () => {
     for (const ua of [
       "TelegramBot (like TwitterBot)",
+      "facebookexternalhit/1.1; kakaotalk-scrap/1.0; +https://devtalk.kakao.com/t/scrap/33984",
+      "Mozilla/5.0 (compatible; KakaoBot/1.0; +https://developers.kakao.com/bot)",
       "Twitterbot/1.0",
       "facebookexternalhit/1.1",
       "Slackbot-LinkExpanding 1.0",
