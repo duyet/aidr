@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Home, Newspaper } from "lucide-react";
+import { CopyTextButton } from "../components/CopyTextButton";
 import { DayBriefing } from "../components/DayBriefing";
 import { DaySection } from "../components/DaySection";
 import { DayVideo } from "../components/DayVideo";
@@ -23,6 +24,7 @@ import { notFoundCopy } from "../lib/not-found";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { usePrefs } from "../lib/prefs";
 import { localizedPageHead, notFoundHead } from "../lib/seo";
+import { dayShareText } from "../lib/share-text";
 import { storyPath } from "../lib/slug";
 import { displayTldrBullets } from "../lib/tldr-fallback";
 import type { Lang } from "../lib/types";
@@ -233,9 +235,18 @@ function DayContent({ archive, lang }: { archive: DayArchive; lang: Lang }) {
   return (
     <div>
       <DayNav archive={archive} lang={lang} />
-      <h1 className="font-serif text-3xl font-medium tracking-tight">
-        {heading}
-      </h1>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <h1 className="font-serif text-3xl font-medium tracking-tight">
+          {heading}
+        </h1>
+        {items.length > 0 && (
+          <CopyTextButton
+            text={dayShareText(archive.date, items, lang)}
+            label={lang === "vi" ? "Chép để đăng" : "Copy for social"}
+            lang={lang}
+          />
+        )}
+      </div>
       {hero ? (
         <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           {hero}
