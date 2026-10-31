@@ -2,14 +2,15 @@ import type { Channel } from "../src/lib/analytics/events.js";
 import { isSiteUrl } from "../src/lib/locale-url.js";
 
 /**
- * One UTM convention for every link we post: email, Telegram, Facebook, RSS
- * (the video scripts and yt-meta.py follow it too, see
+ * One UTM convention for every link we post: email, Telegram, Facebook, RSS,
+ * and the text a reader copies to share (`src/lib/share-text.ts`) (the video scripts and yt-meta.py follow it too, see
  * videos/daily-news/scripts/site-links.mjs).
  *
  * - `utm_source`: the channel, one of `CHANNELS` (`events.ts`), so
  *   `channel_landing` attributes it by name instead of to `other`.
  * - `utm_medium`: the mail kind for email (`digest`, `welcome`, `notes`),
- *   `social` for Telegram and Facebook (GA4 groups it as Organic Social),
+ *   `social` for Telegram, Facebook and copied share text (GA4 groups it as
+ *   Organic Social),
  *   `feed` for RSS.
  * - `utm_campaign`: the edition (`digest-YYYY-MM-DD`, `weekly-…`) or `story`.
  * - `utm_content`: the slot in the post (`lead`, `button`, `link`, …). A story

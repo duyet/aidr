@@ -41,6 +41,7 @@ export const CHANNELS = [
   "facebook",
   "youtube",
   "rss",
+  "share",
   "other",
 ] as const;
 export type Channel = (typeof CHANNELS)[number];
