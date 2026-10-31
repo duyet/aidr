@@ -577,6 +577,10 @@ normal path (Workers Free, 10 ms CPU):
   An older story with no stored card gets a 302 to the home card
   (`/og-home.jpg`), because archive crawlers asked for ~200 such renders an
   hour at ~490 ms CPU each (measured 2026-10-30).
+- A bulk crawler (KakaoBot, Amazonbot, SEO and AI crawlers; not Telegram, X,
+  Slack or Facebook previews) gets the same 302 on a miss, with
+  `private, max-age=3600`. A stored card is still served. Crawlers were ~97%
+  of slow-path calls, ~1.5M CPU-ms a day (measured 2026-10-31).
 
 ## Agent read surfaces
 
