@@ -53,6 +53,34 @@ function isArchiveStory(publishedAtSec: number): boolean {
   return Date.now() / 1000 - publishedAtSec > CANDIDATE_WINDOW_SEC;
 }
 
+/** Bulk crawlers that walk story cards no reader asked for. On 2026-10-31
+ *  they were ~97% of /api/og calls (KakaoBot alone ~3.3K a day, each a
+ *  distinct card at ~400 ms CPU, ~1.5M CPU-ms a day). On a miss they get the
+ *  home card; a card already rendered is still served. Link-preview bots for
+ *  shares (Telegram, X, Slack, Discord, Facebook) are not listed. */
+const BULK_CRAWLER =
+  /KakaoBot|Amazonbot|PerplexityBot|GPTBot|ClaudeBot|Bytespider|meta-externalagent|ExaSearchBot|AhrefsBot|SemrushBot|MJ12bot|DotBot|PetalBot|YandexBot/i;
+
+function isBulkCrawler(userAgent: string | null): boolean {
+  return userAgent !== null && BULK_CRAWLER.test(userAgent);
+}
+
+/** A crawler's home-card redirect must not be reused for a reader. */
+const CRAWLER_FALLBACK_CACHE_CONTROL = "private, max-age=3600";
+
+function homeCardRedirect(request: Request, cacheControl: string) {
+  return {
+    store: false as const,
+    response: new Response(null, {
+      status: 302,
+      headers: {
+        Location: new URL(SITE_OG_HOME_IMAGE_PATH, request.url).toString(),
+        "Cache-Control": cacheControl,
+      },
+    }),
+  };
+}
+
 export const Route = createFileRoute("/api/og/$id")({
   server: {
     handlers: {
@@ -105,19 +133,10 @@ export const Route = createFileRoute("/api/og/$id")({
           ctx,
           async () => {
             if (isArchiveStory(item.published_at)) {
-              return {
-                store: false as const,
-                response: new Response(null, {
-                  status: 302,
-                  headers: {
-                    Location: new URL(
-                      SITE_OG_HOME_IMAGE_PATH,
-                      request.url
-                    ).toString(),
-                    "Cache-Control": ARCHIVE_FALLBACK_CACHE_CONTROL,
-                  },
-                }),
-              };
+              return homeCardRedirect(request, ARCHIVE_FALLBACK_CACHE_CONTROL);
+            }
+            if (isBulkCrawler(request.headers.get("user-agent"))) {
+              return homeCardRedirect(request, CRAWLER_FALLBACK_CACHE_CONTROL);
             }
             const [fonts, image] = await Promise.all([
               loadStoryOgFonts((path) => loadOgFontAsset(env, path)),
