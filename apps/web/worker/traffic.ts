@@ -16,7 +16,7 @@ import type { Env } from "./types.js";
 /** Both match `apps/web/wrangler.toml` (`name`, `account_id`); a test
  * reads the file. */
 export const TRAFFIC_SCRIPT_NAME = "aidr";
-export const CF_ACCOUNT_ID = "7df185a18b98382c3240fa7ac4a37075";
+export const CF_ACCOUNT_ID = "18bb51bef63a88086717388ed7f3008e";
 
 const HOUR_MS = 3600 * 1000;
 export const TRAFFIC_WINDOW_HOURS = 48;

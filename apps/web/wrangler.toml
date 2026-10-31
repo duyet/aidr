@@ -1,5 +1,5 @@
 name = "aidr"
-account_id = "7df185a18b98382c3240fa7ac4a37075"
+account_id = "18bb51bef63a88086717388ed7f3008e"
 main = "src/server.ts"
 compatibility_date = "2026-05-14"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
@@ -68,7 +68,7 @@ bucket_name = "aidr-og"
 # Create the namespace, then paste its id here before deploying.
 [[kv_namespaces]]
 binding = "HTML_CACHE"
-id = "e6c453cdbe0a4badb19bca4af69f2293"
+id = "de22f7aaa8434ed894978d6bf2b9f7a1"
 
 [version_metadata]
 binding = "CF_VERSION_METADATA"
@@ -85,16 +85,16 @@ namespace_id = "8220"
   limit = 1
   period = 60
 
-# Aggregate request counts (src/lib/usage.ts): surface, route template, MCP
-# tool, client bucket and status. No IP, user agent or query string.
-[[analytics_engine_datasets]]
-binding = "USAGE"
-dataset = "aidr_usage"
+# USAGE (src/lib/usage.ts) is off until Analytics Engine is enabled on this
+# account (deploy fails with error 10089). Re-add when it is:
+# [[analytics_engine_datasets]]
+# binding = "USAGE"
+# dataset = "aidr_usage"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "aidr"
-database_id = "0c8f3efe-0427-4268-8d9f-bb1a4bcbe427"
+database_id = "7ec0478c-d9b0-4d55-8812-c0bd37409b32"
 
 [vars]
 ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"

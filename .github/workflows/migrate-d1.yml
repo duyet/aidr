@@ -73,7 +73,7 @@ jobs:
         run: pnpm --filter @aidr/web d1:migrate
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: "7df185a18b98382c3240fa7ac4a37075"
+          CLOUDFLARE_ACCOUNT_ID: "18bb51bef63a88086717388ed7f3008e"
 
       - name: Verify live sources total
         if: ${{ inputs.verify-live != false }}

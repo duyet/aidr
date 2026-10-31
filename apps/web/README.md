@@ -465,7 +465,7 @@ ledger, and the media-manifest schema) plus `pnpm run
 verify:translation-schema` first and fails closed if any required
 translation-review or media migration is pending; it never applies them. Run
 `pnpm run d1:migrate` separately: it performs the read-only local-order and
-remote-ledger checks before `cf d1 migrations apply 0c8f3efe-0427-4268-8d9f-bb1a4bcbe427 --dir migrations`. Apply migrations in numeric order: 0023 translation
+remote-ledger checks before `cf d1 migrations apply 7ec0478c-d9b0-4d55-8812-c0bd37409b32 --dir migrations`. Apply migrations in numeric order: 0023 translation
 QA, 0024 media, then 0025 run identity when #161 is integrated, then 0026
 `clerk_users` (#198, the D1 mirror behind the `/data` signups metric).
 Translation QA is complete in 0023; do not add a competing 0025 translation
