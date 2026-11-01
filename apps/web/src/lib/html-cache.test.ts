@@ -33,6 +33,7 @@ const NON_HTML_FILES = new Set([
   "src/lib/lang.ts",
   "src/lib/llms-txt.ts",
   "src/lib/og-cache.ts",
+  "src/lib/og-cards.ts",
   "src/lib/page-markdown.ts",
   "src/lib/public-api.ts",
   "src/lib/rss.ts",
