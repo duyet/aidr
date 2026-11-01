@@ -55,7 +55,7 @@ const FLOW = flowLines().join("\n");
 
 function PipelineDiagram() {
   return (
-    <pre className="not-typeset mt-4 w-full overflow-hidden whitespace-pre-wrap rounded-2xl border border-border bg-card px-4 py-4 text-left font-mono text-xs leading-relaxed text-foreground sm:px-6 sm:text-[13px]">
+    <pre className="not-typeset mt-4 w-full overflow-hidden whitespace-pre-wrap rounded-lg border border-border bg-card px-4 py-4 text-left font-mono text-xs leading-relaxed text-foreground sm:px-6 sm:text-[13px]">
       {FLOW}
     </pre>
   );
@@ -99,7 +99,7 @@ const REPO_LINKS = [
 
 function AboutPage() {
   return (
-    <div className="py-12" lang="en">
+    <div className="pt-5 pb-10" lang="en">
       <div className="typeset typeset-page">
         <h1>About AI;DR</h1>
         <p>

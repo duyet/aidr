@@ -13,7 +13,7 @@ export function ContentPage({
   children: ReactNode;
 }) {
   return (
-    <article className="typeset typeset-page py-12" lang="en">
+    <article className="typeset typeset-page pt-5 pb-10" lang="en">
       <h1>{title}</h1>
       <p className="text-muted-foreground">{lede}</p>
       {children}
