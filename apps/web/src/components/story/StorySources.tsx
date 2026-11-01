@@ -6,7 +6,7 @@ import { publisherHost } from "../../lib/publisher-host";
 import type { FeedItem, ItemSource, Lang } from "../../lib/types";
 import { fmtTime } from "./lib";
 
-function safeSourceUrl(value: string | null): string | null {
+export function safeSourceUrl(value: string | null): string | null {
   if (!value?.trim()) return null;
   try {
     const url = new URL(value.trim());
@@ -56,14 +56,14 @@ function hasTimestamp(
  * metadata. The API contract allows metadata-empty rows (e.g. `{ kind:
  * "source" }`); rendering those would leave a lone, meaningless `SOURCE`
  * label with no content beside it. */
-function hasRowContent(source: ItemSource): boolean {
+export function hasRowContent(source: ItemSource): boolean {
   if (source.author) return true;
   if (hasTimestamp(source)) return true;
   if (source.quote) return true;
   return safeSourceUrl(source.url) != null;
 }
 
-function SourceRow({
+export function SourceRow({
   source,
   lang,
   itemId,
