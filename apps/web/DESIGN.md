@@ -83,7 +83,12 @@ a metric-matched "Inter Fallback" (Arial at 107%). See `src/fonts.css`.
   negative tracking. `font-heading` and `font-serif` (an older name kept for
   the same role) both resolve to it.
 - `--reader-font-serif`: Source Serif 4, only when a reader picks "Serif".
-- `--editorial-font-mono`: the system mono, for eyebrows and `kbd`.
+- `--editorial-font-mono`: the system mono, for eyebrows and `kbd`. No mono
+  file ships, and system monos such as DejaVu Sans Mono lack the stacked
+  Vietnamese capitals ("ĐỀ" draws as "ĐÊ`"). So on Vietnamese pages an
+  uppercase mono label (`font-mono uppercase`) is set in Inter by one rule
+  in `styles.css`. A JetBrains Mono subset would cost 28,468 B at one
+  weight, over the 60,000 B font budget.
 - Italics are synthesized (no italic file ships). Avoid long italic runs.
 
 Scale (compact):
@@ -134,6 +139,11 @@ Numbers in rows and stats use `tabular-nums`.
 - **Keyword highlights**: `.kw-num` for numbers, money and percentages,
   `.kw-entity` for companies, products and people. Color plus weight 600,
   no background, no underline. Use at most a few per title or paragraph.
+  `KeywordText` (`lib/keyword-highlight.ts`) applies them everywhere a
+  title or AI;DR bullet is shown. Topic and category hues live only in the
+  small color dots, never in title text.
+- **Vote thumb**: a compact 14px glyph and count; on touch screens
+  (`pointer: coarse`) an invisible 44px box around it takes the tap.
 
 ## Focus and keyboard
 
@@ -144,8 +154,9 @@ Numbers in rows and stats use `tabular-nums`.
 - Never remove the outline without putting a ring in its place.
 - A keyboard-highlighted row or panel (j/k navigation) uses the same ring,
   with a 6px radius, and scrolls into view. The mouse hover never shows it.
-- Shortcuts are listed behind `?`. Hide `kbd` hints on touch devices
-  (`@media (hover: none)`).
+- Shortcuts are listed behind `?` in one `ShortcutSheet`, with a list per
+  page (story page, home feed). A "? Shortcuts" hint sits in the page's
+  meta row. Hide `kbd` hints on touch devices (`@media (hover: none)`).
 
 ## Responsive
 
