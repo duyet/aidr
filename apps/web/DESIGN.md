@@ -112,7 +112,7 @@ Numbers in rows and stats use `tabular-nums`.
 
 ## Components
 
-- **Header**: 48px bar, canvas color with blur, one hairline under it. Logo
+- **Header**: 52px bar (36px controls, 8px above and below), canvas color with blur, one hairline under it. Logo
   mark (20px yellow square with ";" in ink) plus "AI;DR" in Inter 600 16px.
   Nav links 13px in mute, the current page in fg (`aria-current="page"`),
   shown from 1024px. Outline pill for EN/VI, solid pill for "Get AI;DR".
