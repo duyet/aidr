@@ -23,9 +23,9 @@ export function TrendingChips({
   return (
     <div
       ref={scrollRef}
-      className="edge-fade-x scrollbar-hide flex items-center gap-2 overflow-x-auto whitespace-nowrap py-3"
+      className="edge-fade-x scrollbar-hide flex items-center gap-1.5 overflow-x-auto whitespace-nowrap px-0.5 pt-1.5 pb-3"
     >
-      <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <span className="mr-1 flex shrink-0 items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
         <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
         {label}
       </span>
@@ -45,10 +45,10 @@ export function TrendingChips({
               onSelectTag(next);
             }}
             aria-pressed={selected}
-            className={`topic-colored flex shrink-0 items-baseline gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-[border-color] duration-150 ${
+            className={`topic-colored inline-flex h-11 shrink-0 sm:h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-[background-color,border-color] duration-150 ${
               selected
-                ? "border-current bg-muted/40"
-                : "border-border/80 hover:border-current"
+                ? "border-current bg-muted"
+                : "border-border hover:border-current"
             }`}
             style={
               {
@@ -62,7 +62,7 @@ export function TrendingChips({
                 count toward whatever background is behind the chip, so the same
                 class rendered a different (failing) ratio on every reader
                 background. The token keeps the hue and the AA floor. */}
-            <span className="topic-muted text-xs font-semibold">{t.count}</span>
+            <span className="topic-muted text-xs tabular-nums">{t.count}</span>
           </button>
         );
       })}

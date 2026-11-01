@@ -27,14 +27,20 @@ export function DayBriefing({
   imageByItemId: Map<string, string>;
 }) {
   return (
-    <section className="flex h-full flex-col overflow-hidden rounded-2xl border border-border/80 bg-card">
-      <header className="flex items-baseline justify-between gap-3 border-b border-border/60 px-4 py-3">
-        <h2 className="font-serif text-xl font-medium tracking-tight">AI;DR</h2>
-        <span className="text-xs tabular-nums text-muted-foreground">
+    <section className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card">
+      <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <h2 className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-accent">
+          <span
+            aria-hidden="true"
+            className="size-1.5 shrink-0 rounded-full bg-signal"
+          />
+          AI;DR
+        </h2>
+        <span className="font-mono text-[11px] uppercase tracking-[0.1em] tabular-nums text-muted-foreground">
           {date} · {bullets.length} {lang === "vi" ? "tin" : "stories"}
         </span>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-1">
         <TldrBulletList
           shown={bullets}
           mid={bullets.length}

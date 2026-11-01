@@ -81,41 +81,52 @@ export function TldrSection({
 
   return (
     <section
-      className="my-2 overflow-hidden rounded-2xl border border-border/80 bg-card"
+      className="my-3 overflow-hidden rounded-lg border border-border bg-card"
       data-aidr-layout={layout}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#f5c518] px-4 py-3 text-[#0a0a0a] sm:px-5">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 sm:px-[18px]">
+        <div className="flex min-w-0 items-center gap-3">
           {dateParts ? (
             <>
-              <span className="text-4xl font-bold leading-none tracking-tighter sm:text-5xl">
+              <span className="text-[28px] font-semibold leading-none tracking-[-0.03em] text-foreground tabular-nums">
                 {dateParts.day}
               </span>
-              {dateHref ? (
-                <a
-                  href={dateHref}
-                  className="flex flex-col text-[11px] font-bold uppercase leading-snug tracking-[0.2em] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a0a0a]"
-                >
-                  <span>{dateParts.weekday}</span>
-                  <span>{dateParts.monthYear}</span>
-                </a>
-              ) : (
-                <span className="flex flex-col text-[11px] font-bold uppercase leading-snug tracking-[0.2em]">
-                  <span>{dateParts.weekday}</span>
-                  <span>{dateParts.monthYear}</span>
+              <span className="flex min-w-0 flex-col font-mono text-[11px] uppercase leading-[1.45] tracking-[0.1em]">
+                <span className="inline-flex items-center gap-1.5 font-medium text-accent">
+                  <span
+                    aria-hidden="true"
+                    className="size-1.5 shrink-0 rounded-full bg-signal"
+                  />
+                  AI;DR
                 </span>
-              )}
+                {dateHref ? (
+                  <a
+                    href={dateHref}
+                    className="truncate rounded-[6px] text-muted-foreground hover:text-foreground"
+                  >
+                    {dateParts.weekday} · {dateParts.monthYear}
+                  </a>
+                ) : (
+                  <span className="truncate text-muted-foreground">
+                    {dateParts.weekday} · {dateParts.monthYear}
+                  </span>
+                )}
+              </span>
             </>
           ) : (
-            <h2 className="font-serif text-2xl font-medium tracking-tight">
+            <h2 className="flex items-center gap-2 text-[20px] font-semibold leading-tight tracking-[-0.015em] text-foreground">
+              <span
+                aria-hidden="true"
+                className="size-1.5 shrink-0 rounded-full bg-signal"
+              />
               AI;DR{" "}
-              <span className="font-sans text-xs font-normal">
+              <span className="font-mono text-[11px] font-normal uppercase tracking-[0.1em] text-muted-foreground">
                 {lang === "vi" ? "24 giờ qua" : "past 24 hours"}
               </span>
             </h2>
           )}
           {layoutLabeled && (
-            <span className="rounded-full border border-[#0a0a0a]/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+            <span className="rounded-full border border-input px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
               Layout {layout.toUpperCase()}
             </span>
           )}
@@ -133,7 +144,7 @@ export function TldrSection({
             />
           ) : null}
           {options.length > 0 && (
-            <div className="flex gap-1 rounded-full bg-[#0a0a0a]/10 p-0.5 text-xs">
+            <div className="flex gap-0.5 rounded-full border border-input p-0.5 text-[13px]">
               {options.map((o) => (
                 <button
                   key={o.nominal}
@@ -146,10 +157,10 @@ export function TldrSection({
                     setPrefs({ tldrCount: o.nominal });
                   }}
                   aria-pressed={selectedOption === o}
-                  className={`rounded-full px-2.5 py-1 transition-[background-color,color] duration-150 ${
+                  className={`inline-flex h-11 min-w-11 items-center sm:h-8 sm:min-w-9 justify-center rounded-full px-2.5 tabular-nums transition-[background-color,color] duration-150 ${
                     selectedOption === o
-                      ? "bg-[#0a0a0a] font-medium text-white"
-                      : "text-[#0a0a0a]/70 hover:text-[#0a0a0a]"
+                      ? "bg-primary font-medium text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
                   {o.effective}
@@ -160,7 +171,7 @@ export function TldrSection({
         </div>
       </div>
 
-      <div className="px-4 py-5 sm:px-5">
+      <div className="px-4 pt-1 pb-3 sm:px-[18px]">
         {snapshotDate && dateHref ? (
           <DayCardView
             date={snapshotDate}
@@ -193,7 +204,7 @@ export function TldrSection({
                 });
                 setPrefs({ tldrCount: nextOption.nominal });
               }}
-              className="mt-3 text-xs font-semibold text-accent hover:underline"
+              className="mt-1 inline-flex h-11 items-center rounded-[6px] sm:h-8 text-[13px] font-medium text-accent hover:underline"
             >
               {lang === "vi" ? "Xem thêm ↓" : "Show more ↓"}
             </button>
@@ -208,31 +219,35 @@ export function TldrSection({
                   });
                   setPrefs({ tldrCount: options[0].nominal });
                 }}
-                className="mt-3 text-xs font-semibold text-accent hover:underline"
+                className="mt-1 inline-flex h-11 items-center rounded-[6px] sm:h-8 text-[13px] font-medium text-accent hover:underline"
               >
                 {lang === "vi" ? "Thu gọn" : "Show less ↑"}
               </button>
             )
           )}
         </div>
+      </div>
 
-        <div className="mt-4 flex justify-between text-xs text-muted-foreground">
-          <span>
-            {totalStories} {lang === "vi" ? "tin" : "stories"}
-          </span>
-          {!showFreshness ? null : lastFetchedAt ? (
-            <Link
-              to="/data"
-              suppressHydrationWarning
-              className="rounded-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {lang === "vi" ? "Cập nhật" : "Updated"}{" "}
-              {timeAgo(lastFetchedAt, updatedAt, lang)}
-            </Link>
-          ) : (
-            <span>{lang === "vi" ? "Cập nhật lúc" : "News as of"}</span>
-          )}
-        </div>
+      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-[12px] text-muted-foreground tabular-nums sm:px-[18px]">
+        <span>
+          {totalStories} {lang === "vi" ? "tin" : "stories"}
+        </span>
+        {!showFreshness ? null : lastFetchedAt ? (
+          <Link
+            to="/data"
+            suppressHydrationWarning
+            className="inline-flex items-center gap-1.5 rounded-[6px] hover:text-foreground"
+          >
+            <span
+              aria-hidden="true"
+              className="size-1.5 shrink-0 rounded-full bg-signal"
+            />
+            {lang === "vi" ? "Cập nhật" : "Updated"}{" "}
+            {timeAgo(lastFetchedAt, updatedAt, lang)}
+          </Link>
+        ) : (
+          <span>{lang === "vi" ? "Cập nhật lúc" : "News as of"}</span>
+        )}
       </div>
     </section>
   );

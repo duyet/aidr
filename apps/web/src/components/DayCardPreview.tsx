@@ -29,7 +29,7 @@ export function DayCardViewSwitch({
   return (
     <fieldset
       aria-label={lang === "vi" ? "Kiểu hiển thị" : "View"}
-      className="m-0 flex min-w-0 gap-1 rounded-full border-0 bg-[#0a0a0a]/10 p-0.5"
+      className="m-0 flex min-w-0 gap-0.5 rounded-full border border-input p-0.5"
       onPointerEnter={onIntent}
       onFocus={onIntent}
     >
@@ -43,10 +43,10 @@ export function DayCardViewSwitch({
             aria-label={label}
             title={label}
             onClick={() => onChange(image)}
-            className={`inline-flex h-6 w-8 items-center justify-center rounded-full transition-[background-color,color] duration-150 ${
+            className={`inline-flex h-11 w-11 items-center sm:h-8 sm:w-9 justify-center rounded-full transition-[background-color,color] duration-150 ${
               active
-                ? "bg-[#0a0a0a] text-white"
-                : "text-[#0a0a0a]/70 hover:text-[#0a0a0a]"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
             <Icon className="size-3.5" aria-hidden />

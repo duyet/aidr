@@ -523,6 +523,27 @@
   }
 }
 
+/* A topic or category color dot beside a neutral mono label (the AI;DR rows,
+   the feed's category column). The dot carries the hue so the label can stay
+   in the mute token. Decorative: the label next to it is the text. */
+.topic-dot {
+  background-color: var(--muted-foreground);
+}
+
+@supports (color: color-mix(in srgb, red, blue)) {
+  .topic-dot {
+    background-color: color-mix(
+      in srgb,
+      var(--tc-light) 85%,
+      var(--foreground)
+    );
+  }
+
+  .dark .topic-dot {
+    background-color: color-mix(in srgb, var(--tc-dark) 85%, var(--foreground));
+  }
+}
+
 /* Category text uses the palette hue as an accent, but mixes it with the
    current semantic foreground so it stays AA on muted, reader-tinted, and
    gray reader surfaces. The base rule is a high-contrast fallback for
@@ -600,15 +621,13 @@
   .dark .topic-hl-row {
     background-color: color-mix(in srgb, var(--tc-dark) 14%, transparent);
   }
+}
 
-  /* Dense feed table: the day's top 3 rows get a soft accent band. */
-  .story-row-top {
-    background-color: color-mix(in srgb, var(--accent) 7%, transparent);
-  }
-
-  .dark .story-row-top {
-    background-color: color-mix(in srgb, var(--accent) 12%, transparent);
-  }
+/* Dense feed table: the day's top 3 rows show their rank in the accent, the
+   one sparing use of the signal color in the list (DESIGN.md). */
+.story-row-top .story-rank {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 /* Keyword highlights in story titles and summaries (DESIGN.md "Keyword

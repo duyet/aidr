@@ -52,15 +52,13 @@ export function TldrBulletList({
           <ol
             key={col[0]?.text ?? ci}
             start={ci * mid + 1}
-            // Row gap and line height follow the reader Density pref, the
-            // same vars StoryRow uses, so the AI;DR card tightens and loosens
-            // with the feed instead of staying fixed. Compact (the default)
-            // keeps the old look: 0.5rem gap, 1.55 - 0.175 = 1.375 leading.
-            className={
-              numbered
-                ? "list-decimal space-y-[var(--reader-pad,0.5rem)] pl-6 leading-[calc(var(--reader-leading,1.55)_-_0.175)] marker:text-muted-foreground"
-                : "list-none space-y-[var(--reader-pad,0.5rem)] pl-0 leading-[calc(var(--reader-leading,1.55)_-_0.175)]"
-            }
+            // Line height (here) and row padding (TldrBulletRow) follow the
+            // reader Density pref, the same vars StoryRow uses, so the AI;DR
+            // card tightens and loosens with the feed. Hairlines split the
+            // rows; the rank numbers are drawn by the row, not ::marker.
+            className={`list-none divide-y divide-border pl-0 leading-[calc(var(--reader-leading,1.55)_-_0.175)] ${
+              ci > 0 ? "border-t border-border md:border-t-0" : ""
+            }`}
           >
             {col.map((b, i) => {
               const n = ci * mid + i + 1;
@@ -103,13 +101,12 @@ export function TldrBulletList({
                   lang={lang}
                   fullText={b.text}
                   linked={Boolean(primaryId)}
+                  numbered={numbered}
                   priority={n <= 6}
                 >
                   {color && tag && (
                     <span
-                      className={`${
-                        categoryTopic ? "category-colored" : "topic-colored"
-                      } mr-1.5 text-xs font-semibold uppercase tracking-wide`}
+                      className="mr-2 inline-flex items-baseline gap-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground"
                       style={
                         {
                           "--tc-light": color.light,
@@ -117,12 +114,16 @@ export function TldrBulletList({
                         } as CSSProperties
                       }
                     >
+                      <span
+                        aria-hidden="true"
+                        className="topic-dot size-1.5 shrink-0 self-center rounded-full"
+                      />
                       {tag}
                     </span>
                   )}
                   {highlighted}
                   {otherIds.length > 0 && (
-                    <span className="ml-1 text-[11px] font-semibold text-muted-foreground">
+                    <span className="ml-1.5 font-mono text-[11px] text-muted-foreground tabular-nums">
                       +{otherIds.length}
                     </span>
                   )}
@@ -152,7 +153,8 @@ export function TldrBulletList({
                           relatedIds: otherIds,
                         });
                       }}
-                      className="group block text-inherit no-underline"
+                      data-keynav=""
+                      className="group block scroll-my-16 rounded-[6px] text-inherit no-underline"
                     >
                       {row}
                     </a>
