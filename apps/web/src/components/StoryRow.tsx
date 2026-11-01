@@ -38,6 +38,7 @@ function shortTimeAgo(epochSec: number, lang: Lang): string {
 function StoryRowHeader({
   hasDetails,
   expanded,
+  closeOnEscape,
   top,
   matchColor,
   onToggle,
@@ -45,6 +46,8 @@ function StoryRowHeader({
 }: {
   hasDetails: boolean;
   expanded: boolean;
+  /** Feed rows close on Esc; a row the story page renders open does not. */
+  closeOnEscape: boolean;
   /** Top 3 of the day: the rank number takes the accent color. */
   top: boolean;
   matchColor: TopicColor | null;
@@ -55,7 +58,9 @@ function StoryRowHeader({
     ? "bg-muted/60"
     : matchColor
       ? "topic-hl-row"
-      : "hover:bg-muted/60";
+      : hasDetails
+        ? "hover:bg-muted/60"
+        : "";
   // The focus ring sits inside the row (negative offset): the day section
   // uses content-visibility, which clips anything painted outside it.
   const className = `story-row ${STORY_ROW_COLS} items-baseline scroll-my-16 rounded-[6px] focus-visible:-outline-offset-2 ${
@@ -87,7 +92,7 @@ function StoryRowHeader({
           if (
             e.key === "Enter" ||
             e.key === " " ||
-            (e.key === "Escape" && expanded)
+            (e.key === "Escape" && expanded && closeOnEscape)
           ) {
             e.preventDefault();
             onToggle();
@@ -251,6 +256,7 @@ export function StoryRow({
       <StoryRowHeader
         hasDetails={hasDetails}
         expanded={expanded}
+        closeOnEscape={!defaultExpanded}
         top={index <= 3}
         matchColor={matchColor}
         onToggle={toggleExpanded}

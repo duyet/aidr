@@ -76,7 +76,7 @@ export function FeedDays({
                 setLoadingOlder(false);
               }
             }}
-            className="inline-flex h-9 items-center rounded-full border border-input px-5 text-[13px] font-medium text-foreground hover:bg-muted disabled:opacity-50"
+            className="inline-flex h-11 items-center rounded-full sm:h-9 border border-input px-5 text-[13px] font-medium text-foreground hover:bg-muted disabled:opacity-50"
           >
             {loadingOlder
               ? lang === "vi"

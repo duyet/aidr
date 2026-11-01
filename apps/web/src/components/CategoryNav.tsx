@@ -32,7 +32,7 @@ export function CategoryNav({
           for (const name of selected) onToggle(name);
         }}
         aria-pressed={selected.size === 0}
-        className={`inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-[13px] font-medium transition-[background-color,color,border-color] duration-150 ${
+        className={`inline-flex h-11 shrink-0 sm:h-8 items-center rounded-full border px-3 text-[13px] font-medium transition-[background-color,color,border-color] duration-150 ${
           selected.size === 0
             ? "border-primary bg-primary text-primary-foreground"
             : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -52,7 +52,7 @@ export function CategoryNav({
               onToggle(c.name);
             }}
             aria-pressed={isSelected}
-            className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] transition-[background-color,color,border-color] duration-150 ${
+            className={`inline-flex h-11 shrink-0 sm:h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] transition-[background-color,color,border-color] duration-150 ${
               isSelected
                 ? "border-primary bg-primary font-medium text-primary-foreground"
                 : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"

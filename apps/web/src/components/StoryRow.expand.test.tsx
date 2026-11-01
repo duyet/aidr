@@ -195,6 +195,12 @@ describe("keyboard", () => {
     expect(row().getAttribute("aria-expanded")).toBe("false");
   });
 
+  it("keeps a row the story page renders open open on Esc", () => {
+    render(<StoryRow item={item} index={1} lang="en" defaultExpanded />);
+    fireEvent.keyDown(row(), { key: "Escape" });
+    expect(row().getAttribute("aria-expanded")).toBe("true");
+  });
+
   it("is a j/k target", () => {
     render(<StoryRow item={item} index={1} lang="en" />);
     expect(row().hasAttribute("data-keynav")).toBe(true);

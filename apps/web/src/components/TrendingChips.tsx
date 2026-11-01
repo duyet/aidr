@@ -45,7 +45,7 @@ export function TrendingChips({
               onSelectTag(next);
             }}
             aria-pressed={selected}
-            className={`topic-colored inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-[background-color,border-color] duration-150 ${
+            className={`topic-colored inline-flex h-11 shrink-0 sm:h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-[background-color,border-color] duration-150 ${
               selected
                 ? "border-current bg-muted"
                 : "border-border hover:border-current"

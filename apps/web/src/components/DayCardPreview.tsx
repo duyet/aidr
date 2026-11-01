@@ -43,7 +43,7 @@ export function DayCardViewSwitch({
             aria-label={label}
             title={label}
             onClick={() => onChange(image)}
-            className={`inline-flex h-8 w-9 items-center justify-center rounded-full transition-[background-color,color] duration-150 ${
+            className={`inline-flex h-11 w-11 items-center sm:h-8 sm:w-9 justify-center rounded-full transition-[background-color,color] duration-150 ${
               active
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"

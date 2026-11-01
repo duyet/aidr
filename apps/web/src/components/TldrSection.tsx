@@ -157,7 +157,7 @@ export function TldrSection({
                     setPrefs({ tldrCount: o.nominal });
                   }}
                   aria-pressed={selectedOption === o}
-                  className={`inline-flex h-8 min-w-9 items-center justify-center rounded-full px-2.5 tabular-nums transition-[background-color,color] duration-150 ${
+                  className={`inline-flex h-11 min-w-11 items-center sm:h-8 sm:min-w-9 justify-center rounded-full px-2.5 tabular-nums transition-[background-color,color] duration-150 ${
                     selectedOption === o
                       ? "bg-primary font-medium text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -204,7 +204,7 @@ export function TldrSection({
                 });
                 setPrefs({ tldrCount: nextOption.nominal });
               }}
-              className="mt-1 inline-flex h-8 items-center rounded-[6px] text-[13px] font-medium text-accent hover:underline"
+              className="mt-1 inline-flex h-11 items-center rounded-[6px] sm:h-8 text-[13px] font-medium text-accent hover:underline"
             >
               {lang === "vi" ? "Xem thêm ↓" : "Show more ↓"}
             </button>
@@ -219,7 +219,7 @@ export function TldrSection({
                   });
                   setPrefs({ tldrCount: options[0].nominal });
                 }}
-                className="mt-1 inline-flex h-8 items-center rounded-[6px] text-[13px] font-medium text-accent hover:underline"
+                className="mt-1 inline-flex h-11 items-center rounded-[6px] sm:h-8 text-[13px] font-medium text-accent hover:underline"
               >
                 {lang === "vi" ? "Thu gọn" : "Show less ↑"}
               </button>
