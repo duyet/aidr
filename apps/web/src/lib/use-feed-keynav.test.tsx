@@ -8,7 +8,7 @@
  */
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useFeedKeyNav } from "./use-feed-keynav";
+import { type FeedKeyHandlers, useFeedKeyNav } from "./use-feed-keynav";
 
 function Feed({ modal = false }: { modal?: boolean }) {
   useFeedKeyNav();
@@ -89,5 +89,40 @@ describe("feed j/k navigation", () => {
     render(<Feed modal />);
     fireEvent.keyDown(document.body, { key: "j" });
     expect(document.activeElement).toBe(document.body);
+  });
+});
+
+// `?` is how a reader finds j/k at all (DESIGN.md: "Shortcuts are listed
+// behind `?`"). It is typed with Shift, so the shift guard that keeps J and
+// K plain must not swallow it, while typing "?" in the search box must not
+// open the list.
+describe("feed shortcut list", () => {
+  function Help({ onHelp, onEscape }: FeedKeyHandlers) {
+    useFeedKeyNav({ onHelp, onEscape });
+    return <input aria-label="search" />;
+  }
+
+  it("asks for the list on ? even though it is typed with Shift", () => {
+    const onHelp = vi.fn();
+    render(<Help onHelp={onHelp} />);
+    fireEvent.keyDown(document.body, { key: "?", shiftKey: true });
+    expect(onHelp).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves ? typed in a field or under a modifier alone", () => {
+    const onHelp = vi.fn();
+    const { getByLabelText } = render(<Help onHelp={onHelp} />);
+    const input = getByLabelText("search");
+    input.focus();
+    fireEvent.keyDown(input, { key: "?", shiftKey: true });
+    fireEvent.keyDown(document.body, { key: "?", metaKey: true });
+    expect(onHelp).not.toHaveBeenCalled();
+  });
+
+  it("passes Esc on so the list can close", () => {
+    const onEscape = vi.fn();
+    render(<Help onEscape={onEscape} />);
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(onEscape).toHaveBeenCalledTimes(1);
   });
 });

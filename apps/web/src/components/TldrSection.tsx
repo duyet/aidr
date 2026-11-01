@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { type ReactElement, useState } from "react";
+import { type ReactElement, type ReactNode, useState } from "react";
 import { type AidrLayout, DEFAULT_AIDR_LAYOUT } from "../lib/aidr-layout";
 import { track } from "../lib/analytics/track";
 import { dayOgDateParts } from "../lib/day-og";
@@ -28,6 +28,7 @@ export function TldrSection({
   dateHref,
   singleColumn = false,
   showFreshness = true,
+  footerHint,
 }: {
   bullets: TldrBullet[];
   defaultCount: TldrCount;
@@ -54,6 +55,8 @@ export function TldrSection({
   singleColumn?: boolean;
   /** The live "Updated …" footer; off for archived days. */
   showFreshness?: boolean;
+  /** A small footer extra, such as the home feed's "? Shortcuts" hint. */
+  footerHint?: ReactNode;
 }): ReactElement | null {
   const { setPrefs } = usePrefs();
   const [preview, setPreview] = useState(false);
@@ -229,8 +232,11 @@ export function TldrSection({
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-[12px] text-muted-foreground tabular-nums sm:px-[18px]">
-        <span>
-          {totalStories} {lang === "vi" ? "tin" : "stories"}
+        <span className="flex items-center gap-4">
+          <span>
+            {totalStories} {lang === "vi" ? "tin" : "stories"}
+          </span>
+          {footerHint}
         </span>
         {!showFreshness ? null : lastFetchedAt ? (
           <Link
