@@ -40,28 +40,29 @@ export const FONT_PRELOAD_DECISION =
  * they load on demand at normal priority instead of competing with the
  * stylesheet.
  *
- *   eb-garamond   55 KB  headings only ("AI;DR", a date)
+ *   source-serif-4   63 KB  opt-in reader serif ("Serif" / "Có chân")
  *
- * `source-sans-3` (38 KB, latin + Vietnamese + Latin Extended-A in one file)
- * is the one the first paint needs. scripts/subset-fonts.ts explains why each
- * family is a single file.
+ * `inter` (54 KB, latin + Vietnamese + Latin Extended-A in one file) is the
+ * one the first paint needs, for body text and headings alike.
+ * scripts/subset-fonts.ts explains why each family is a single file.
  */
-export const NON_CRITICAL_FONT_SUBSETS = ["eb-garamond-wght"] as const;
+export const NON_CRITICAL_FONT_SUBSETS = ["source-serif-4-wght"] as const;
 
 /**
- * How wide Source Sans 3 sets real feed copy, as a share of the same copy in
- * Arial (measured with Liberation Sans, which has Arial's advance widths).
- * Under `font-display: optional` a first visit keeps the fallback for the
- * whole page view, so this is what a new reader sees.
+ * How wide Inter sets real feed copy, as a share of the same copy in Arial
+ * (measured with Liberation Sans, which has Arial's advance widths). Under
+ * `font-display: optional` a first visit keeps the fallback for the whole
+ * page view, so this is what a new reader sees.
  *
- * Chromium, 63 live titles and AI;DR bullets from 2026-10-16, weight 400,
+ * Chromium canvas measureText, 34 EN and 34 VI live titles and AI;DR bullets
+ * from /api/public on 2026-11-01, weight 400, the Inter subset at opsz 14,
  * total run width, webfont / fallback:
  *
- *   at 100 px (unhinted, as on macOS and iOS)   EN 0.925   VI 0.915
- *   at 16 px (hinted, Linux)                     EN 0.940   VI 0.926
+ *   at 100 px (unhinted, as on macOS and iOS)   EN 1.069   VI 1.058
+ *   at 16 px (hinted, Linux)                     EN 1.081   VI 1.077
  *
- * At size-adjust 100% the fallback set rows 6-9% wider than the webfont,
- * so cold rows wrapped and truncated earlier and looked a size larger. The
- * `Source Sans 3 Fallback` face scales Arial by a value inside this band.
+ * At size-adjust 100% the fallback would set rows 6-8% narrower than the
+ * webfont, so cold rows would wrap later and look a size smaller. The
+ * `Inter Fallback` face scales Arial by a value inside this band.
  */
-export const SANS_FALLBACK_WIDTH_RATIO = { min: 0.915, max: 0.94 } as const;
+export const SANS_FALLBACK_WIDTH_RATIO = { min: 1.058, max: 1.081 } as const;

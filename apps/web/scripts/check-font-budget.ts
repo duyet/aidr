@@ -27,23 +27,25 @@ const distAssets = join(appRoot, "dist", "client", "assets");
 /**
  * Bytes the first paint is allowed to need from the body font.
  *
- * Today: Source Sans 3 in one file (latin, the Vietnamese alphabet and Latin
- * Extended-A), 38,136 B. The LCP element is a story row in Source Sans 3.
- * Before the families became one file each, the same coverage took latin
- * (28,740) + vietnamese (10,324) = 39,064 B, plus a 15 KB latin-ext file on
- * any page with a macron.
+ * Today: Inter in one file (latin, the Vietnamese alphabet and Latin
+ * Extended-A, opsz pinned to 14), 54,300 B. The LCP element is a story row
+ * in Inter. Source Sans 3 was 38,136 B, so the first-paint file grew by about
+ * 16 KB when the site moved to Inter (the xAI-style restyle, see
+ * apps/web/DESIGN.md). In exchange headings no longer need a second family:
+ * the default page's whole font stack fell from 92,956 B (Source Sans 3 plus
+ * EB Garamond) to the one 54,300 B file.
  */
-const CRITICAL_BODY_BUDGET_BYTES = 45_000;
+const CRITICAL_BODY_BUDGET_BYTES = 60_000;
 
 /**
  * Bytes the whole font stack may declare, excluding the opt-in reader serif:
- * Source Sans 3 (38,136) and EB Garamond (54,820, headings like "AI;DR", a
- * date and "Bảng tin theo ngày").
+ * Inter (54,300) only, for body text and headings alike.
  *
  * The 2026-09-27 baseline transferred 143,488 B over four requests. The
- * budget sits just above today's total so a stray subset cannot come back.
+ * budget sits just above today's total so a stray family or subset cannot
+ * come back unnoticed.
  */
-const TOTAL_BUDGET_BYTES = 100_000;
+const TOTAL_BUDGET_BYTES = 60_000;
 
 /**
  * Source Serif 4, one file, 62,924 B. Opt-in:
@@ -132,7 +134,7 @@ if (fontPreloads.length > 0) {
 }
 
 // The metric-matched fallbacks must stay local()-only: they cost zero bytes.
-for (const family of ["Source Sans 3", "EB Garamond", READER_SERIF_FAMILY]) {
+for (const family of ["Inter", READER_SERIF_FAMILY]) {
   if (!stylesCss.includes(`"${family} Fallback"`)) {
     fail(`a font stack in styles.css lost "${family} Fallback"`);
   }
@@ -154,7 +156,7 @@ if (useBuilt) {
     const bytes = statSync(join(distAssets, file)).size;
     if (face.family.includes(READER_SERIF_FAMILY)) readerSerif += bytes;
     else total += bytes;
-    const isFirstPaint = face.family.includes("Source Sans 3");
+    const isFirstPaint = face.family.includes("Inter");
     if (isFirstPaint) criticalBody += bytes;
     console.log(
       `  ${face.url} -> ${bytes.toLocaleString()} B${

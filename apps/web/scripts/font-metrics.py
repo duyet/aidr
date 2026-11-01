@@ -8,8 +8,7 @@ changes them is caught by `apps/web/src/lib/fonts.test.ts` instead of silently
 reintroducing the footer reflow.
 
     python3 apps/web/scripts/font-metrics.py \\
-      apps/web/src/fonts/generated/source-sans-3-wght-normal.woff2 \\
-      apps/web/src/fonts/generated/eb-garamond-wght-normal.woff2 \\
+      apps/web/src/fonts/generated/inter-wght-normal.woff2 \\
       apps/web/src/fonts/generated/source-serif-4-wght-normal.woff2
 
 A plain `.ttf` needs nothing but the standard library, so the committed

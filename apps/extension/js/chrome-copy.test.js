@@ -16,8 +16,8 @@ test("new tab matches site chrome copy and typefaces", () => {
   assert.match(html, /https:\/\/duyet\.net/);
   assert.match(html, /https:\/\/aidr\.today\/subscribe/);
   assert.doesNotMatch(html, /chromewebstore\.google\.com\/detail\/aidr/);
-  assert.match(css, /Source Sans 3/);
-  assert.match(css, /EB Garamond/);
+  assert.match(css, /font-family: "Inter Variable";/);
+  assert.match(css, /inter-wght-normal\.woff2/);
   // Reader serif carries the Vietnamese subset so diacritics render.
   assert.match(css, /source-serif-4-vietnamese-wght-normal\.woff2/);
   assert.doesNotMatch(js, /story-host/);

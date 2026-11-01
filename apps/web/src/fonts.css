@@ -1,8 +1,7 @@
 /*
  * Critical web fonts for the first paint (issue #229).
  *
- * These two families used to be pulled in with
- *   @import "@fontsource-variable/eb-garamond/wght.css";
+ * The body family used to be pulled in with
  *   @import "@fontsource-variable/source-sans-3/wght.css";
  * inside src/styles.css. Vite inlines an @import at build time, so that was
  * not an extra round trip — but the *font fetches* could not start until the
@@ -28,7 +27,8 @@
  * There is deliberately NO <link rel="preload" as="font"> for these, which
  * is the opposite of what issue #229 suggested. Under `optional` a preload
  * can only pay off if the file lands inside the block period, and 28 KB
- * cannot cross a 1.6 Mbps link in 100 ms. Measured cold, median of 3:
+ * cannot cross a 1.6 Mbps link in 100 ms (Inter's 54 KB file even less so).
+ * Measured cold with Source Sans 3, the body font at the time, median of 3:
  *
  *     optional, no preload      1,016 ms LCP element render delay
  *     optional, preload latin   1,100 ms
@@ -41,7 +41,7 @@
  * One file per family, never one file per subset.
  *   Each family used to be three faces (latin, vietnamese, latin-ext), and
  *   `optional` decides per face. When latin landed inside the block period
- *   and vietnamese did not, "đầu" painted d and u in Source Sans 3 and đ, ầ
+ *   and vietnamese did not, "đầu" painted d and u in the webfont and đ, ầ
  *   in Arial for the whole page view: 59 mixed text nodes on a /?lang=vi
  *   view that followed an English one. A single face per family is all or
  *   nothing, so a word is either all webfont or all metric-matched fallback.
@@ -51,31 +51,20 @@
  *   src/fonts/source, keeping latin, the whole Vietnamese alphabet, Latin
  *   Extended-A and the rupee sign. The output is gitignored.
  *
- *     Source Sans 3   38 KB  (was latin 28.7 KB + vietnamese 10.3 KB)
- *     EB Garamond     55 KB  (was latin 44.3 KB + vietnamese 11.0 KB)
- *     Source Serif 4  63 KB  (was latin 50.9 KB + vietnamese 13.5 KB)
+ *     Inter           54 KB  (opsz pinned to 14; body text and headings)
+ *     Source Serif 4  63 KB  (opt-in reader serif)
+ *
+ * Inter replaced Source Sans 3 (body, 38 KB) and EB Garamond (headings,
+ * 55 KB) in the xAI-style restyle (apps/web/DESIGN.md). One family now sets
+ * both, so the default page needs one font file instead of two.
  */
 
 @font-face {
-  font-family: "Source Sans 3 Variable";
+  font-family: "Inter Variable";
   font-style: normal;
-  font-weight: 200 900;
+  font-weight: 100 900;
   font-display: optional;
-  src: url("./fonts/generated/source-sans-3-wght-normal.woff2")
-    format("woff2-variations");
-  unicode-range:
-    U+0000-017F, U+01A0-01A1, U+01AF-01B0, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329,
-    U+1EA0-1EF9, U+2000-206F, U+20AB-20AC, U+20B9, U+2122, U+2190-2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: "EB Garamond Variable";
-  font-style: normal;
-  font-weight: 400 800;
-  font-display: optional;
-  src: url("./fonts/generated/eb-garamond-wght-normal.woff2")
+  src: url("./fonts/generated/inter-wght-normal.woff2")
     format("woff2-variations");
   unicode-range:
     U+0000-017F, U+01A0-01A1, U+01AF-01B0, U+02BB-02BC, U+02C6, U+02DA,
@@ -86,12 +75,9 @@
 
 /*
  * Reader serif ("Serif" / "Có chân" in the prefs panel). Source Serif 4 is
- * the text serif of the Source superfamily, so it shares Source Sans 3's
- * proportions and x-height, and its Vietnamese marks are drawn for body
- * sizes. EB Garamond stays the display serif for headings: its small
- * x-height and fine stacked diacritics read poorly at 16px body text.
- * Opt-in only: no first-paint rule uses this family, so the browser fetches
- * it only for a reader who picked serif.
+ * a text serif with a generous x-height, and its Vietnamese marks are drawn
+ * for body sizes. Opt-in only: no first-paint rule uses this family, so the
+ * browser fetches it only for a reader who picked serif.
  */
 
 @font-face {
@@ -116,43 +102,30 @@
  * overrides are the webfont's own vertical metrics, read out of the shipped
  * files rather than eyeballed:
  *
- *   scripts/font-metrics.py reports, for both families,
- *     unitsPerEm=1000 ascent=1024 descent=400  lineGap=0   (Source Sans 3)
- *     unitsPerEm=1000 ascent=1007 descent=298  lineGap=0   (EB Garamond)
+ *   scripts/font-metrics.py reports
+ *     unitsPerEm=2048 ascent=1984 descent=494  lineGap=0   (Inter 4.001)
  *     unitsPerEm=1000 ascent=1036 descent=335  lineGap=0   (Source Serif 4)
  *
- * So the fallback's line box is forced to the same 1024/400 and 1007/298
- * split, which is what removes the 22 px row reflow and the footer-nav grid
- * re-flow the swap caused.
+ * So the fallback's line box is forced to the same 96.88%/24.12% and
+ * 103.6%/33.5% split, which is what keeps a late webfont from re-flowing
+ * the rows and the footer nav grid.
  *
  * size-adjust scales the overrides too, so each override is the webfont
- * metric divided by size-adjust. The sans fallback is 92%: Arial sets feed
- * copy 6-9% wider than Source Sans 3 (SANS_FALLBACK_WIDTH_RATIO in
- * src/lib/fonts.ts has the measurement). Arial, Liberation Sans and Arimo
- * share advance widths, so one value fits the whole local() list. The serif
- * fallbacks stay at 100%: Georgia and Times differ in width, and one value
- * cannot fit both.
+ * metric divided by size-adjust. The sans fallback is 107%: Inter sets feed
+ * copy 6-8% wider than Arial (SANS_FALLBACK_WIDTH_RATIO in src/lib/fonts.ts
+ * has the measurement). Arial, Liberation Sans and Arimo share advance
+ * widths, so one value fits the whole local() list. The serif fallback stays
+ * at 100%: Georgia and Times differ in width, and one value cannot fit both.
  */
 
 @font-face {
-  font-family: "Source Sans 3 Fallback";
+  font-family: "Inter Fallback";
   src:
     local("Arial"), local("Liberation Sans"), local("Arimo"),
     local("Helvetica Neue"), local("Helvetica");
-  size-adjust: 92%;
-  ascent-override: 111.3%;
-  descent-override: 43.48%;
-  line-gap-override: 0%;
-}
-
-@font-face {
-  font-family: "EB Garamond Fallback";
-  src:
-    local("Georgia"), local("Times New Roman"), local("Liberation Serif"),
-    local("DejaVu Serif");
-  size-adjust: 100%;
-  ascent-override: 100.7%;
-  descent-override: 29.8%;
+  size-adjust: 107%;
+  ascent-override: 90.54%;
+  descent-override: 22.54%;
   line-gap-override: 0%;
 }
 
