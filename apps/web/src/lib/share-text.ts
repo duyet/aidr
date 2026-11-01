@@ -5,6 +5,7 @@ import {
   type UtmTag,
   withUtm,
 } from "../../worker/utm.js";
+import { splitParagraphs } from "../components/story/lib";
 import { dayArchivePath } from "./day-archive";
 import { localizedTitle } from "./display-title";
 import { formatDayHeading } from "./lang";
@@ -60,4 +61,77 @@ export function dayShareText(
   const more =
     lang === "vi" ? `Xem tất cả: ${dayUrl}` : `All stories: ${dayUrl}`;
   return [heading, ...stories, more].join("\n\n");
+}
+
+/** Copy formats on the story page's "Copy for social" sheet. Each tags its
+ *  link with its own `utm_content` slot, so a landing names the format that
+ *  was pasted: `aidr-`, `copy-` (the same link as `storyShareText`) and
+ *  `x-`, plus `link-` for "Copy link". */
+export const STORY_POST_FORMATS = ["aidr", "title", "x"] as const;
+export type StoryPostFormat = (typeof STORY_POST_FORMATS)[number];
+
+type PostItem = ShareItem & {
+  summary: string | null;
+  summary_vi: string | null;
+};
+
+/** X counts a link as 23 characters and Threads allows 500. Counting the
+ *  real link length keeps the post inside 280 on every platform. */
+export const X_POST_LIMIT = 280;
+
+function storyLink(item: ShareItem, lang: Lang, slot: string): string {
+  return withUtm(
+    absoluteSiteUrl(storyPath(item), lang),
+    shareTag(STORY_CAMPAIGN, postContent(slot, item.id))
+  );
+}
+
+/** The bare story link for "Copy link". */
+export function storyShareLink(item: ShareItem, lang: Lang): string {
+  return storyLink(item, lang, "link");
+}
+
+/** The summary the story page shows for `lang`: the Vietnamese text when
+ *  there is one, else the English summary the page falls back to. */
+export function storySummaryFor(item: PostItem, lang: Lang): string {
+  const text =
+    lang === "vi" && item.summary_vi?.trim() ? item.summary_vi : item.summary;
+  return splitParagraphs(text).join(" ");
+}
+
+/** Cut `text` to at most `max` characters on a word boundary, ending "…". */
+export function trimToLength(text: string, max: number): string {
+  const chars = Array.from(text);
+  if (chars.length <= max) return text;
+  if (max < 2) return "";
+  const cut = chars.slice(0, max - 1).join("");
+  const space = cut.lastIndexOf(" ");
+  const head = space > cut.length / 2 ? cut.slice(0, space) : cut;
+  return `${head.replace(/[\s,.;:-]+$/u, "")}…`;
+}
+
+/**
+ * Post text for one copy format:
+ * - `aidr`: title, blank line, "AI;DR: " and the summary, blank line, link.
+ *   A story with no summary gets the title and the link.
+ * - `title`: title, then link: exactly `storyShareText`.
+ * - `x`: the title trimmed so title, newline and link fit in 280 characters.
+ */
+export function storyPostText(
+  item: PostItem,
+  lang: Lang,
+  format: StoryPostFormat
+): string {
+  if (format === "title") return storyShareText(item, lang);
+  const title = localizedTitle(item, lang).text;
+  if (format === "x") {
+    const url = storyLink(item, lang, "x");
+    const room = X_POST_LIMIT - Array.from(url).length - 1;
+    return `${trimToLength(title, room)}\n${url}`;
+  }
+  const url = storyLink(item, lang, "aidr");
+  const summary = storySummaryFor(item, lang);
+  return summary
+    ? `${title}\n\nAI;DR: ${summary}\n\n${url}`
+    : `${title}\n${url}`;
 }
