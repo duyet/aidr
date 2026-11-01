@@ -23,7 +23,7 @@ export function CategoryNav({
   return (
     <nav
       ref={scrollRef}
-      className="edge-fade-x scrollbar-hide flex items-center gap-1.5 overflow-x-auto whitespace-nowrap py-3"
+      className="edge-fade-x scrollbar-hide flex items-center gap-1.5 overflow-x-auto whitespace-nowrap px-0.5 pt-4 pb-1.5"
     >
       <button
         type="button"
@@ -32,10 +32,10 @@ export function CategoryNav({
           for (const name of selected) onToggle(name);
         }}
         aria-pressed={selected.size === 0}
-        className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-[background-color,color] duration-150 ${
+        className={`inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-[13px] font-medium transition-[background-color,color,border-color] duration-150 ${
           selected.size === 0
-            ? "bg-primary text-primary-foreground"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
         }`}
       >
         {lang === "vi" ? "Tất cả" : "All"}
@@ -52,10 +52,10 @@ export function CategoryNav({
               onToggle(c.name);
             }}
             aria-pressed={isSelected}
-            className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm transition-[background-color,color] duration-150 ${
+            className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] transition-[background-color,color,border-color] duration-150 ${
               isSelected
-                ? "bg-primary font-medium text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                ? "border-primary bg-primary font-medium text-primary-foreground"
+                : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
             <CategoryLabel
@@ -63,7 +63,7 @@ export function CategoryNav({
               lang={lang}
               colored={!isSelected}
               dot={isSelected}
-            />{" "}
+            />
             {/* Semantic quiet tokens, not an opacity utility: element opacity
                 composites toward the surface behind the pill (the per-user
                 reader background included), so it declared no color the
@@ -71,8 +71,8 @@ export function CategoryNav({
             <span
               className={
                 isSelected
-                  ? "text-primary-foreground-quiet text-xs"
-                  : "text-quiet-foreground text-xs"
+                  ? "text-primary-foreground-quiet text-xs tabular-nums"
+                  : "text-quiet-foreground text-xs tabular-nums"
               }
             >
               {c.count}

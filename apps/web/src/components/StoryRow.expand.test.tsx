@@ -170,3 +170,33 @@ describe("read beacons", () => {
     expect(recordRead).toHaveBeenCalledExactlyOnceWith(item.id, "outbound");
   });
 });
+
+// Keyboard readers move with j/k and open with Enter. Esc has to close the
+// row they are on, or the only way back is Enter again on a row whose top
+// may be off screen. Esc on a closed row stays free for anything above it.
+describe("keyboard", () => {
+  it("Enter opens the row and Esc closes it", () => {
+    render(<StoryRow item={item} index={1} lang="en" />);
+    fireEvent.keyDown(row(), { key: "Enter" });
+    expect(row().getAttribute("aria-expanded")).toBe("true");
+    fireEvent.keyDown(row(), { key: "Escape" });
+    expect(row().getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("leaves Esc alone on a closed row", () => {
+    render(<StoryRow item={item} index={1} lang="en" />);
+    const event = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    row().dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(row().getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("is a j/k target", () => {
+    render(<StoryRow item={item} index={1} lang="en" />);
+    expect(row().hasAttribute("data-keynav")).toBe(true);
+  });
+});

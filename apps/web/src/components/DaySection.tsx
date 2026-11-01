@@ -53,13 +53,13 @@ export function DaySection({
     // sections below the fold; SSR markup stays intact for SEO and
     // find-in-page. contain-intrinsic-size keeps the scrollbar estimate
     // sane until a section first renders (~a day of stories ≈ 1600px).
-    <section className="pt-8 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-border pb-3">
-        <h2 className="font-serif text-2xl font-medium tracking-tight">
+    <section className="pt-7 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border pb-2.5">
+        <h2 className="text-[18px] font-semibold leading-tight tracking-[-0.015em] text-foreground sm:text-[20px]">
           {linkToDay ? (
             <a
               href={dayArchivePath(day.date, lang)}
-              className="rounded-sm hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded-[6px] hover:text-accent"
             >
               {formatDayHeading(day.date, lang)}
             </a>
@@ -67,14 +67,16 @@ export function DaySection({
             formatDayHeading(day.date, lang)
           )}
         </h2>
-        <span className="text-xs text-muted-foreground">
+        <span className="font-mono text-[11px] uppercase tracking-[0.1em] tabular-nums text-muted-foreground">
           {total} {lang === "vi" ? "tin" : total === 1 ? "story" : "stories"}
         </span>
-        <span className="hidden flex-wrap gap-x-3 text-xs text-muted-foreground md:flex">
+        <span className="hidden flex-wrap gap-x-3.5 text-[12px] text-muted-foreground md:flex">
           {shown.map(([name, count]) => (
             <span key={name}>
-              <CategoryLabel name={name} lang={lang} />{" "}
-              <span className="font-medium text-foreground/80">{count}</span>
+              <CategoryLabel name={name} lang={lang} quiet />{" "}
+              <span className="font-medium text-foreground tabular-nums">
+                {count}
+              </span>
             </span>
           ))}
           {more > 0 && (
@@ -83,7 +85,7 @@ export function DaySection({
         </span>
       </div>
       <div
-        className={`story-legend ${STORY_ROW_COLS} border-b border-border/60 pb-1.5 pt-2 text-[0.72rem] uppercase tracking-[0.08em] text-muted-foreground`}
+        className={`story-legend ${STORY_ROW_COLS} border-b border-border pb-1.5 pt-2.5 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground`}
         aria-hidden="true"
       >
         <span className="text-right">#</span>
@@ -92,7 +94,7 @@ export function DaySection({
         <span className="hidden text-right sm:block">{t("Time", "Lúc")}</span>
         <span className="text-right">{t("Score", "Điểm")}</span>
       </div>
-      <div className="divide-y divide-border/60">
+      <div className="divide-y divide-border">
         {visible.map((item, i) => (
           <StoryRow
             key={item.id}
@@ -105,12 +107,12 @@ export function DaySection({
         ))}
       </div>
       {hidden > 0 && (
-        <div className="border-t border-border/60">
+        <div className="border-t border-border pt-2">
           <button
             type="button"
             disabled={loading}
             onClick={loadMore}
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm px-2 py-2.5 text-sm font-medium text-muted-foreground tabular-nums hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-input px-4 text-[13px] font-medium text-foreground tabular-nums hover:bg-muted disabled:opacity-50"
           >
             <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
             {loading

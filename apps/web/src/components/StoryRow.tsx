@@ -25,9 +25,10 @@ import { StoryVotes } from "./story/StoryVotes";
  * Dense-table columns shared by every row and the day's legend row.
  * Phone: rank | title (wraps, topic + time under it) | score.
  * >=640px: rank | title (one line) | topic | time | score.
+ * The rank cell fits the chevron plus a two-digit mono rank.
  */
 export const STORY_ROW_COLS =
-  "grid grid-cols-[1.4rem_minmax(0,1fr)_3rem] gap-x-3 px-2 sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.6rem]";
+  "grid grid-cols-[2rem_minmax(0,1fr)_3rem] gap-x-3 px-2 sm:grid-cols-[2.25rem_minmax(0,1fr)_8rem_4.5rem_3.5rem]";
 
 /** Short relative time for the Time column: "7 giờ" / "7h". */
 function shortTimeAgo(epochSec: number, lang: Lang): string {
@@ -44,7 +45,7 @@ function StoryRowHeader({
 }: {
   hasDetails: boolean;
   expanded: boolean;
-  /** Top 3 of the day: a soft accent band. */
+  /** Top 3 of the day: the rank number takes the accent color. */
   top: boolean;
   matchColor: TopicColor | null;
   onToggle: () => void;
@@ -54,12 +55,12 @@ function StoryRowHeader({
     ? "bg-muted/60"
     : matchColor
       ? "topic-hl-row"
-      : top
-        ? "story-row-top"
-        : "";
-  const className = `story-row ${STORY_ROW_COLS} items-baseline ${
+      : "hover:bg-muted/60";
+  // The focus ring sits inside the row (negative offset): the day section
+  // uses content-visibility, which clips anything painted outside it.
+  const className = `story-row ${STORY_ROW_COLS} items-baseline scroll-my-16 rounded-[6px] focus-visible:-outline-offset-2 ${
     hasDetails ? "cursor-pointer" : ""
-  } ${band}`;
+  } ${top ? "story-row-top" : ""} ${band}`;
   // Tighter than the reader pad, but it still scales with it.
   const style = {
     paddingTop: "calc(var(--reader-pad, 0.5rem) * 0.6)",
@@ -80,9 +81,14 @@ function StoryRowHeader({
         role="button"
         tabIndex={0}
         aria-expanded={expanded}
+        data-keynav=""
         onClick={onToggle}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+          if (
+            e.key === "Enter" ||
+            e.key === " " ||
+            (e.key === "Escape" && expanded)
+          ) {
             e.preventDefault();
             onToggle();
           }
@@ -249,13 +255,13 @@ export function StoryRow({
         matchColor={matchColor}
         onToggle={toggleExpanded}
       >
-        <span className="story-rank inline-flex items-baseline justify-end gap-0.5 text-right text-sm tabular-nums text-muted-foreground">
+        <span className="story-rank inline-flex items-baseline justify-end gap-0.5 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
           {hasDetails && (
             <ChevronDown
               data-testid="story-row-chevron"
               data-expanded={expanded ? "true" : "false"}
               aria-hidden="true"
-              className={`h-3.5 w-3.5 shrink-0 self-center opacity-60 transition-transform motion-reduce:transition-none ${
+              className={`h-3.5 w-3.5 shrink-0 self-center text-quiet-foreground transition-transform motion-reduce:transition-none ${
                 expanded ? "rotate-180" : ""
               }`}
             />
@@ -263,13 +269,15 @@ export function StoryRow({
           {index}
         </span>
         <span
-          className={`story-title min-w-0 leading-snug sm:truncate ${
-            matchColor ? "topic-colored font-medium" : "font-medium"
+          className={`story-title min-w-0 text-[15px] leading-[1.4] sm:truncate ${
+            matchColor
+              ? "topic-colored font-medium"
+              : "font-medium text-foreground"
           }`}
         >
           {hot && (
             <TrendingUp
-              className="mr-1 inline h-4 w-4 align-[-2px] text-muted-foreground"
+              className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-accent"
               role="img"
               aria-label={
                 lang === "vi" ? "Tin hàng đầu hôm nay" : "Top story today"
@@ -287,14 +295,14 @@ export function StoryRow({
               href={storyPath(item, lang)}
               lang={fallbackFromEnglish ? "en" : undefined}
               onClick={onTitleClick}
-              className="hover:underline hover:underline-offset-2"
+              className="hover:underline hover:underline-offset-2 focus-visible:rounded-[6px]"
             >
               <HighlightedText text={title} tags={item.tags} />
             </a>
           </TitleTag>
           {fallbackFromEnglish && (
             <span
-              className="ml-1 align-middle text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+              className="ml-1.5 align-middle font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground"
               title={
                 lang === "vi"
                   ? "Tiêu đề gốc tiếng Anh — chưa có bản dịch"
@@ -314,7 +322,7 @@ export function StoryRow({
                 track("source_click", { item_id: item.id, placement: "row" });
                 recordRead(item.id, "outbound");
               }}
-              className="ml-1 text-xs font-normal text-muted-foreground hover:text-foreground"
+              className="ml-1.5 whitespace-nowrap rounded-[6px] text-[12px] font-normal text-muted-foreground hover:text-foreground"
               aria-label={lang === "vi" ? "Mở bài gốc" : "Open original"}
             >
               <SpriteIcon
@@ -325,20 +333,22 @@ export function StoryRow({
             </a>
           )}
           {/* Phone: topic and time leave their columns for one line here. */}
-          <span className="story-meta-phone mt-0.5 flex flex-wrap items-baseline gap-x-2 text-xs tabular-nums font-normal text-muted-foreground sm:hidden">
+          <span className="story-meta-phone mt-1 flex flex-wrap items-baseline gap-x-3 text-[12px] font-normal text-muted-foreground sm:hidden">
             {item.category ? (
-              <CategoryLabel name={item.category} lang={lang} dot />
+              <CategoryLabel name={item.category} lang={lang} quiet />
             ) : null}
-            <span suppressHydrationWarning>{time}</span>
+            <span className="font-mono tabular-nums" suppressHydrationWarning>
+              {time}
+            </span>
           </span>
         </span>
-        <span className="story-topic hidden truncate text-sm sm:block">
+        <span className="story-topic hidden truncate text-[13px] text-muted-foreground sm:block">
           {item.category ? (
-            <CategoryLabel name={item.category} lang={lang} dot />
+            <CategoryLabel name={item.category} lang={lang} quiet />
           ) : null}
         </span>
         <span
-          className="story-time hidden whitespace-nowrap text-right text-sm tabular-nums text-muted-foreground sm:block"
+          className="story-time hidden whitespace-nowrap text-right font-mono text-[12px] tabular-nums text-muted-foreground sm:block"
           suppressHydrationWarning
         >
           {time}
@@ -357,7 +367,7 @@ export function StoryRow({
       </StoryRowHeader>
 
       {detailsOpen && (
-        <div className="overflow-hidden rounded-b-2xl border border-border/70 bg-card px-5 py-5 md:px-6 md:py-6">
+        <div className="mb-2 overflow-hidden rounded-b-lg border border-t-0 border-border bg-card px-4 py-4 md:px-5 md:py-5">
           <StoryDetail item={detail ?? item} lang={lang} showVotes />
           {item.lazyDetail && !detail && (
             <p className="mt-3 text-xs text-muted-foreground">

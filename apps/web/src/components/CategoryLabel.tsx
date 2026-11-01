@@ -17,12 +17,17 @@ export function CategoryLabel({
   className,
   colored = true,
   dot = false,
+  quiet = false,
 }: {
   name: string | null | undefined;
   lang: Lang;
   className?: string;
   colored?: boolean;
   dot?: boolean;
+  /** Feed meta: the label takes the surrounding (mute) color and the hue
+   * moves to a dot drawn on the page surface (`.topic-dot`), not the one
+   * mixed for a selected pill. Implies `dot`. */
+  quiet?: boolean;
 }) {
   if (!name) return null;
 
@@ -39,13 +44,18 @@ export function CategoryLabel({
         .join(" ")}
       style={style}
     >
-      {dot ? (
+      {quiet ? (
+        <span
+          aria-hidden="true"
+          className="topic-dot size-1.5 shrink-0 self-center rounded-full"
+        />
+      ) : dot ? (
         <span
           aria-hidden="true"
           className="category-filter-dot size-1.5 shrink-0 self-center rounded-full"
         />
       ) : null}
-      <span className={colored ? "category-colored" : undefined}>
+      <span className={colored && !quiet ? "category-colored" : undefined}>
         {categoryLabel(name, lang)}
       </span>
     </span>

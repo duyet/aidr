@@ -18,7 +18,7 @@ const gallery = readFileSync(
 describe("expanded story panel chrome", () => {
   it("sits flush under the row: flat top, no extra margin or shadow", () => {
     expect(row).toContain(
-      'className="overflow-hidden rounded-b-2xl border border-border/70 bg-card px-5 py-5 md:px-6 md:py-6"'
+      'className="mb-2 overflow-hidden rounded-b-lg border border-t-0 border-border bg-card px-4 py-4 md:px-5 md:py-5"'
     );
     expect(row).not.toContain("mb-3 overflow-hidden rounded-2xl");
     expect(row).not.toContain("shadow-sm");
