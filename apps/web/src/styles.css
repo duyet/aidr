@@ -645,6 +645,34 @@
   font-weight: 600;
 }
 
+/* Story page: the suggest-an-edit trigger (a button or a sign-in link that
+   SuggestTranslation renders) sits in the action row as an outline pill.
+   Status text and the open form keep their own look. */
+.story-suggest > :is(button, a) {
+  display: inline-flex;
+  align-items: center;
+  height: 2.25rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--input);
+  border-radius: 999px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* Room under the footer for the story page phone action bar (44px pill,
+   10px above and below, a hairline, the safe area). */
+@media (max-width: 519px) {
+  body:has([data-story-dock]) {
+    padding-bottom: calc(65px + env(safe-area-inset-bottom));
+  }
+}
+
+.story-suggest > :is(button, a):hover {
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
+}
+
 /* Horizontal-scroll rows (topics chips, trending chips) that shouldn't show
    a visible scrollbar when their content overflows on narrow screens. */
 .scrollbar-hide {

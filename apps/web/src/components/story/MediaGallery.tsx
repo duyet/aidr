@@ -107,7 +107,7 @@ const FRAME_HEIGHT = 360;
 const FRAME_CLASS =
   "aspect-[16/9] w-full rounded-xl border border-border bg-muted object-cover";
 
-const MEDIA_COPY = {
+export const MEDIA_COPY = {
   en: {
     group: "Story media",
     imageAlt: (index: number, total: number, host: string | null) =>
@@ -133,7 +133,7 @@ const MEDIA_COPY = {
   },
 } as const;
 
-function MediaImage({
+export function MediaImage({
   asset,
   alt,
   label,
@@ -204,7 +204,7 @@ function MediaImage({
   );
 }
 
-function MediaVideo({
+export function MediaVideo({
   asset,
   label,
   lang,

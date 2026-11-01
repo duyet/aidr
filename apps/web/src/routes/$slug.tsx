@@ -1,11 +1,8 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { LoadErrorPage } from "../components/LoadErrorPage";
 import { NotFoundPage } from "../components/NotFoundPage";
-import { StoryRow } from "../components/StoryRow";
-import { ARTICLE_DATE_TAG, ARTICLE_TITLE_TAG } from "../lib/article-headings";
-import { archiveDateOfSec, dayArchivePath } from "../lib/day-archive";
+import { StoryPage as StoryPermalink } from "../components/story-page/StoryPage";
 import { headRouteInput } from "../lib/head-route";
-import { formatDayHeading } from "../lib/lang";
 import { useLang } from "../lib/lang-context";
 import { loadErrorHead, loadErrorHeaders } from "../lib/load-error";
 import { notFoundCopy } from "../lib/not-found";
@@ -91,48 +88,6 @@ function NotFoundStory({ lang }: { lang: Lang }) {
   );
 }
 
-function StoryContent({ item, lang }: { item: FeedItem; lang: Lang }) {
-  // A row with no usable timestamp still renders; only the day heading is dropped.
-  // The heading names the same Asia/Ho_Chi_Minh day the archive link opens.
-  const archiveDate = archiveDateOfSec(item.published_at);
-
-  return (
-    <div>
-      <div className="flex items-center justify-between py-4 text-sm">
-        <Link
-          to="/"
-          search={{ lang }}
-          className="text-muted-foreground hover:text-accent"
-        >
-          ← {lang === "vi" ? "Về trang chính" : "Back to live feed"}
-        </Link>
-        <span className="text-muted-foreground">
-          1 {lang === "vi" ? "tin" : "story"}
-        </span>
-      </div>
-      {archiveDate && (
-        <div className="border-b-2 border-foreground/80 pb-2">
-          <ARTICLE_DATE_TAG className="text-xl font-bold">
-            <a
-              href={dayArchivePath(archiveDate, lang)}
-              className="hover:text-accent hover:underline"
-            >
-              {formatDayHeading(archiveDate, lang)}
-            </a>
-          </ARTICLE_DATE_TAG>
-        </div>
-      )}
-      <StoryRow
-        item={item}
-        index={1}
-        lang={lang}
-        defaultExpanded
-        titleAs={ARTICLE_TITLE_TAG}
-      />
-    </div>
-  );
-}
-
 function StoryPage() {
   const data = Route.useLoaderData();
   const { slug } = Route.useParams();
@@ -145,5 +100,5 @@ function StoryPage() {
       <NotFoundPage />
     );
   }
-  return <StoryContent item={data.item} lang={lang} />;
+  return <StoryPermalink item={data.item} lang={lang} />;
 }
