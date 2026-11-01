@@ -23,25 +23,25 @@ copying the block into `styles.css`.
 
 ## Color tokens
 
-| Role | Token | Dark | Light |
-|---|---|---|---|
-| Canvas (page) | `--background` | `#0a0a0a` | `#fafaf9` |
-| Panel (cards, popovers) | `--card`, `--popover` | `#131416` | `#ffffff` |
-| Sunk (chips, wells, hover) | `--muted`, `--secondary` | `#1a1c20` | `#f1f1ef` |
-| Fg (titles, labels) | `--foreground` | `#ffffff` | `#0a0a0a` |
-| Body (long text) | `--body` | `#d4d6da` | `#2c2d30` |
-| Mute (meta, captions) | `--muted-foreground` | `#8d9197` | `#55595f` |
-| Quiet (one step under mute) | `--quiet-foreground` | `#868a90` | `#575b61` |
-| Line (hairlines) | `--border` | `#ffffff17` | `#0a0a0a14` |
-| Line 2 (outline pills, inputs) | `--input` | `#ffffff2e` | `#0a0a0a2e` |
-| Signal (logo mark, dot) | `--signal`, `--brand` | `#f5c518` | `#f5c518` |
-| Ink on signal | `--signal-ink` | `#0a0a0a` | `#0a0a0a` |
-| CTA (solid pill) | `--primary` | `#ffffff` | `#0a0a0a` |
-| Ink on CTA | `--primary-foreground` | `#0a0a0a` | `#ffffff` |
-| Accent text (links, category) | `--accent` | `#f5c518` | `#a14a07` |
-| Focus ring | `--ring` | `#f5c518` | `#b45309` |
-| Keyword: numbers | `--kw-num` | `#f5c518` | `#a14a07` |
-| Keyword: entities | `--kw-entity` | `#a0c3ec` | `#1d4ed8` |
+| Role                           | Token                    | Dark        | Light       |
+| ------------------------------ | ------------------------ | ----------- | ----------- |
+| Canvas (page)                  | `--background`           | `#0a0a0a`   | `#fafaf9`   |
+| Panel (cards, popovers)        | `--card`, `--popover`    | `#131416`   | `#ffffff`   |
+| Sunk (chips, wells, hover)     | `--muted`, `--secondary` | `#1a1c20`   | `#f1f1ef`   |
+| Fg (titles, labels)            | `--foreground`           | `#ffffff`   | `#0a0a0a`   |
+| Body (long text)               | `--body`                 | `#d4d6da`   | `#2c2d30`   |
+| Mute (meta, captions)          | `--muted-foreground`     | `#8d9197`   | `#55595f`   |
+| Quiet (one step under mute)    | `--quiet-foreground`     | `#868a90`   | `#575b61`   |
+| Line (hairlines)               | `--border`               | `#ffffff17` | `#0a0a0a14` |
+| Line 2 (outline pills, inputs) | `--input`                | `#ffffff2e` | `#0a0a0a2e` |
+| Signal (logo mark, dot)        | `--signal`, `--brand`    | `#f5c518`   | `#f5c518`   |
+| Ink on signal                  | `--signal-ink`           | `#0a0a0a`   | `#0a0a0a`   |
+| CTA (solid pill)               | `--primary`              | `#ffffff`   | `#0a0a0a`   |
+| Ink on CTA                     | `--primary-foreground`   | `#0a0a0a`   | `#ffffff`   |
+| Accent text (links, category)  | `--accent`               | `#f5c518`   | `#a14a07`   |
+| Focus ring                     | `--ring`                 | `#f5c518`   | `#b45309`   |
+| Keyword: numbers               | `--kw-num`               | `#f5c518`   | `#a14a07`   |
+| Keyword: entities              | `--kw-entity`            | `#a0c3ec`   | `#1d4ed8`   |
 
 Rules:
 
@@ -54,17 +54,17 @@ Rules:
 
 ### Contrast (WCAG, text needs 4.5:1)
 
-| Text | Canvas | Panel | Sunk | Other |
-|---|---|---|---|---|
-| Dark mute `#8d9197` | 6.25 | 5.82 | 5.39 | black 6.63 |
-| Dark quiet `#868a90` | 5.71 | 5.31 | 4.92 | black 6.05 |
-| Dark kw-num `#f5c518` | 12.14 | 11.31 | 10.47 | |
-| Dark kw-entity `#a0c3ec` | 10.85 | 10.10 | 9.35 | |
-| Light mute `#55595f` | 6.75 | 7.05 | 6.23 | gray 5.24 |
-| Light quiet `#575b61` | 6.54 | 6.83 | 6.04 | gray 5.08 |
-| Light kw-num / accent `#a14a07` | 5.75 | 6.00 | 5.31 | cream 5.56 |
-| Light kw-entity `#1d4ed8` | 6.42 | 6.70 | 5.93 | gray 4.98 |
-| Light ring `#b45309` (needs 3:1) | 4.81 | 5.02 | 4.44 | gray 3.73 |
+| Text                             | Canvas | Panel | Sunk  | Other      |
+| -------------------------------- | ------ | ----- | ----- | ---------- |
+| Dark mute `#8d9197`              | 6.25   | 5.82  | 5.39  | black 6.63 |
+| Dark quiet `#868a90`             | 5.71   | 5.31  | 4.92  | black 6.05 |
+| Dark kw-num `#f5c518`            | 12.14  | 11.31 | 10.47 |            |
+| Dark kw-entity `#a0c3ec`         | 10.85  | 10.10 | 9.35  |            |
+| Light mute `#55595f`             | 6.75   | 7.05  | 6.23  | gray 5.24  |
+| Light quiet `#575b61`            | 6.54   | 6.83  | 6.04  | gray 5.08  |
+| Light kw-num / accent `#a14a07`  | 5.75   | 6.00  | 5.31  | cream 5.56 |
+| Light kw-entity `#1d4ed8`        | 6.42   | 6.70  | 5.93  | gray 4.98  |
+| Light ring `#b45309` (needs 3:1) | 4.81   | 5.02  | 4.44  | gray 3.73  |
 
 Light mute is one step darker than the mockup's `#62666c`: the cream and gray
 reader backgrounds reuse the light text steps (`contrast-tokens.test.ts`), and
@@ -88,15 +88,15 @@ a metric-matched "Inter Fallback" (Arial at 107%). See `src/fonts.css`.
 
 Scale (compact):
 
-| Use | Desktop | Phone (under 820px) |
-|---|---|---|
-| Display (story h1, page h1) | 34px / 1.12, 500, -0.025em | 24px / 1.18 |
-| Section heading | 20px / 1.3, 600, -0.015em | 18px |
-| AI;DR summary (story main text) | 17px / 1.6, fg | 17px / 1.6 |
-| Body | 16px / 1.6, body color | 16px |
-| Row title | 15px / 1.4, 500, fg | 15px |
-| Meta, nav, buttons | 13px | 13px (14px in the phone bar) |
-| Eyebrow | 11px mono, uppercase, +0.1em | 11px |
+| Use                             | Desktop                      | Phone (under 820px)          |
+| ------------------------------- | ---------------------------- | ---------------------------- |
+| Display (story h1, page h1)     | 34px / 1.12, 500, -0.025em   | 24px / 1.18                  |
+| Section heading                 | 20px / 1.3, 600, -0.015em    | 18px                         |
+| AI;DR summary (story main text) | 17px / 1.6, fg               | 17px / 1.6                   |
+| Body                            | 16px / 1.6, body color       | 16px                         |
+| Row title                       | 15px / 1.4, 500, fg          | 15px                         |
+| Meta, nav, buttons              | 13px                         | 13px (14px in the phone bar) |
+| Eyebrow                         | 11px mono, uppercase, +0.1em | 11px                         |
 
 Numbers in rows and stats use `tabular-nums`.
 
