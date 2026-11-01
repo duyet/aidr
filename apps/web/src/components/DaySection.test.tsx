@@ -106,7 +106,7 @@ describe("dense story table", () => {
     const legend = vi.match(/<div class="story-legend[^"]*"[^>]*>/)?.[0] ?? "";
     expect(legend).toContain('aria-hidden="true"');
     expect(legend).toContain(
-      "sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.6rem]"
+      "sm:grid-cols-[2.25rem_minmax(0,1fr)_8rem_4.5rem_3.5rem]"
     );
     for (const label of ["#", "Tin", "Chủ đề", "Lúc", "Điểm"]) {
       expect(vi).toContain(`>${label}<`);
@@ -120,9 +120,9 @@ describe("dense story table", () => {
   it("lays each row out in five columns with a three-column phone fallback", () => {
     const html = renderToStaticMarkup(<DaySection day={day} lang="en" />);
     const row = html.match(/<div class="story-row[^"]*"/)?.[0] ?? "";
-    expect(row).toContain("grid-cols-[1.4rem_minmax(0,1fr)_3rem]");
+    expect(row).toContain("grid-cols-[2rem_minmax(0,1fr)_3rem]");
     expect(row).toContain(
-      "sm:grid-cols-[1.6rem_minmax(0,1fr)_7.5rem_5.5rem_3.6rem]"
+      "sm:grid-cols-[2.25rem_minmax(0,1fr)_8rem_4.5rem_3.5rem]"
     );
     expect(html).toMatch(/class="story-title[^"]*sm:truncate/);
     expect(html).toMatch(/class="story-topic hidden[^"]*sm:block/);
@@ -133,7 +133,7 @@ describe("dense story table", () => {
     expect(score).not.toContain("lucide-thumbs-down");
   });
 
-  it("bands only the top 3 rows", () => {
+  it("marks only the top 3 rows (their rank takes the accent)", () => {
     const html = renderToStaticMarkup(<DaySection day={rows(5)} lang="en" />);
     expect(html.match(/story-row-top/g)).toHaveLength(3);
   });

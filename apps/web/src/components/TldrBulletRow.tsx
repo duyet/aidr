@@ -12,6 +12,7 @@ export function TldrBulletRow({
   lang,
   fullText,
   linked,
+  numbered = false,
   priority,
   children,
 }: {
@@ -24,26 +25,45 @@ export function TldrBulletRow({
   lang?: Lang;
   fullText: string;
   linked?: boolean;
+  /** Draw the mono rank before the text (layout A); the list is still an
+   * <ol>, so the number is decorative for screen readers. */
+  numbered?: boolean;
   priority?: boolean;
   children: ReactNode;
 }): ReactElement {
   const copy = (
     <span
-      className={`min-w-0 flex-1 line-clamp-2 break-words ${
-        linked
-          ? "underline decoration-border underline-offset-2 group-hover:decoration-accent"
-          : ""
+      className={`min-w-0 flex-1 line-clamp-2 break-words text-[15px] text-foreground ${
+        linked ? "underline-offset-2 group-hover:underline" : ""
       }`}
       title={fullText}
     >
       {children}
     </span>
   );
+  // Row padding follows the reader Density pref (--reader-pad).
+  const row =
+    "flex min-h-[2lh] items-start gap-3 py-[var(--reader-pad,0.5rem)]";
   switch (layout) {
     case "a":
     case "b":
       return (
-        <span className="flex min-h-[2lh] items-stretch gap-2">
+        <span className={row}>
+          {numbered && (
+            // The outer span shares the text's size and line height, so the
+            // small mono rank sits on the first line's baseline.
+            <span aria-hidden="true" className="w-5 shrink-0 text-[15px]">
+              <span
+                className={`font-mono text-[11px] tabular-nums ${
+                  n === 1
+                    ? "font-semibold text-accent"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {String(n).padStart(2, "0")}
+              </span>
+            </span>
+          )}
           {copy}
           <StoryThumb
             src={thumbSrc}
@@ -56,7 +76,7 @@ export function TldrBulletRow({
       );
     case "c":
       return (
-        <span className="flex min-h-[2lh] items-stretch gap-2">
+        <span className={row}>
           {copy}
           <span className="relative shrink-0 self-stretch">
             <StoryThumb
