@@ -81,9 +81,10 @@ test("web styles.css tokens match the shared tokens", () => {
 
 test("font stacks resolve to the extension's bundled faces", () => {
   const newtab = read("../../apps/extension/css/newtab.css");
-  for (const family of ["Source Sans 3", "EB Garamond"]) {
+  for (const family of ["Inter Variable", "Source Serif 4"]) {
     assert.match(newtab, new RegExp(`font-family: "${family}";`));
   }
-  assert.match(light["content-font-sans"], /"Source Sans 3"/);
-  assert.match(light["editorial-font-serif"], /"EB Garamond"/);
+  assert.match(light["content-font-sans"], /^"Inter Variable"/);
+  assert.match(light["editorial-font-heading"], /^"Inter Variable"/);
+  assert.match(light["reader-font-serif"], /"Source Serif 4"/);
 });

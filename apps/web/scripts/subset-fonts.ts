@@ -140,14 +140,13 @@ export interface WebFont {
 
 export const WEB_FONTS: readonly WebFont[] = [
   {
-    family: "Source Sans 3 Variable",
-    source: "source-sans-3-wght.woff2",
-    output: "source-sans-3-wght-normal.woff2",
-  },
-  {
-    family: "EB Garamond Variable",
-    source: "eb-garamond-wght.woff2",
-    output: "eb-garamond-wght-normal.woff2",
+    family: "Inter Variable",
+    source: "inter-opsz-wght.woff2",
+    output: "inter-wght-normal.woff2",
+    // Text optical size. Keeping opsz variable costs 83,656 B against
+    // 54,300 B pinned; display sizes get their tight look from negative
+    // tracking instead (apps/web/DESIGN.md).
+    pin: { opsz: 14 },
   },
   {
     family: "Source Serif 4 Variable",

@@ -47,7 +47,7 @@ export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
-          variant="ghost"
+          variant={compact ? "ghost" : "default"}
           size={compact ? "icon-lg" : "sm"}
           className={compact ? PHONE_GET_AIDR_TRIGGER_CLASS : undefined}
           data-header-menu-trigger="get-ai-dr"

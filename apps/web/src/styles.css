@@ -36,6 +36,11 @@
   --color-ring: var(--ring);
   --color-brand: var(--brand);
   --color-brand-soft: var(--brand-soft);
+  --color-body: var(--body);
+  --color-signal: var(--signal);
+  --color-signal-ink: var(--signal-ink);
+  --color-kw-num: var(--kw-num);
+  --color-kw-entity: var(--kw-entity);
   --color-heat-1: var(--heat-1);
   --color-heat-2: var(--heat-2);
   --color-heat-3: var(--heat-3);
@@ -48,9 +53,12 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --font-sans: var(--content-font-sans);
-  --font-serif: var(--editorial-font-serif);
+  /* `font-serif` is the heading face too (Inter since the xAI restyle), so
+     the existing `font-serif` headings follow the token. The reader serif
+     is `--reader-font-serif`. See apps/web/DESIGN.md "Type". */
+  --font-serif: var(--editorial-font-heading);
   --font-mono: var(--editorial-font-mono);
-  --font-heading: var(--editorial-font-serif);
+  --font-heading: var(--editorial-font-heading);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -75,71 +83,76 @@
 }
 
 :root {
-  /* Slashy-inspired craft: soft off-white page, elevated white cards,
-     serif display + Source Sans UI. Prefer hex+alpha over rgb()/color-mix()
-     so LightningCSS doesn't emit invalid `oklch(... none / a)`. */
-  --editorial-bg: #f7f7f5;
+  /* xAI-inspired reader (apps/web/DESIGN.md): near-white canvas, white
+     panels, hairline dividers, one yellow signal. Inter for text and
+     headings. Prefer hex+alpha over rgb()/color-mix() so LightningCSS
+     doesn't emit invalid `oklch(... none / a)`. */
+  --editorial-bg: #fafaf9;
   --editorial-fg: #0a0a0a;
-  --editorial-muted: #6b6b6b;
+  --editorial-muted: #55595f;
   --editorial-faint: #0a0a0a0a;
   --editorial-hairline: #0a0a0a14;
-  --editorial-accent: #b45309;
+  --editorial-accent: #a14a07;
   /* Metric-matched fallbacks sit directly after each webfont so the
-     font-display: optional fallback keeps the webfont's line box. */
-  --editorial-font-serif:
-    "EB Garamond Variable", "EB Garamond", "EB Garamond Fallback", Garamond,
-    "Apple Garamond", ui-serif, serif;
-  /* Body serif for the reader "Serif" pref (src/fonts.css explains why it
-     is not EB Garamond). */
+     font-display: optional fallback keeps the webfont's line box. Headings
+     and body share Inter; headings differ by weight and tracking only. */
+  --editorial-font-heading:
+    "Inter Variable", "Inter", "Inter Fallback", ui-sans-serif, system-ui,
+    -apple-system, sans-serif;
+  /* Body serif for the reader "Serif" pref, opt-in only. */
   --reader-font-serif:
     "Source Serif 4 Variable", "Source Serif 4", "Source Serif 4 Fallback",
     Georgia, ui-serif, serif;
   --editorial-font-sans:
-    "Source Sans 3 Variable", "Source Sans 3", "Source Sans 3 Fallback",
-    ui-sans-serif, system-ui, -apple-system, sans-serif;
+    "Inter Variable", "Inter", "Inter Fallback", ui-sans-serif, system-ui,
+    -apple-system, sans-serif;
   --editorial-font-mono:
     "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
 
   --content-font-sans:
-    "Source Sans 3 Variable", "Source Sans 3", "Source Sans 3 Fallback",
-    ui-sans-serif, system-ui, -apple-system, sans-serif;
+    "Inter Variable", "Inter", "Inter Fallback", ui-sans-serif, system-ui,
+    -apple-system, sans-serif;
 
-  /* --accent stays a NEUTRAL hover surface at :root (shared chrome).
-     Amber brand is scoped under .news-content. Primary CTAs are
-     high-contrast near-black pills (Slashy inverted for light). */
-  --background: #f7f7f5;
+  /* Palette: canvas --background, panel --card, sunk --muted, fg
+     --foreground, body --body, mute --muted-foreground, line --border,
+     line-2 --input, cta --primary. Contrast table in apps/web/DESIGN.md. */
+  --background: #fafaf9;
   --foreground: #0a0a0a;
+  --body: #2c2d30;
   --card: #ffffff;
   --card-foreground: #0a0a0a;
   --popover: #ffffff;
   --popover-foreground: #0a0a0a;
-  --muted: #e5e5e3;
-  --muted-foreground: #474747;
-  /* Quietest text step that still clears WCAG AA (4.5:1) on EVERY light
-     surface the app can paint behind text: the #dedede gray reader
-     background is the worst case (4.97:1), #f7f7f5 the default page
-     (6.5:1). Replaces the opacity fade that used to sit on an already-themed
-     color, which composited toward the active background instead of
-     declaring one. Same role as --muted-foreground one step further from
-     --foreground. */
-  --quiet-foreground: #5c5c5c;
+  --muted: #f1f1ef;
+  --muted-foreground: #55595f;
+  /* Quietest text step that still clears WCAG AA (4.5:1) on every light
+     surface. The worst case is the #dedede gray reader background (5.08:1);
+     6.04:1 on the #f1f1ef sunk surface, 6.54:1 on the canvas. */
+  --quiet-foreground: #575b61;
   /* The same quiet step on the inverted --primary pill surface (selected
      category pills), where the quiet tone has to be light, not dark. */
   --primary-foreground-quiet: #cacaca;
-  --secondary: #e5e5e3;
+  --secondary: #f1f1ef;
   --secondary-foreground: #0a0a0a;
   --border: #0a0a0a14;
-  --accent: #b45309;
+  --accent: #a14a07;
   --accent-foreground: #fffefb;
   --primary: #0a0a0a;
-  --primary-foreground: #fafafa;
+  --primary-foreground: #ffffff;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --ring: #0a0a0a33;
+  /* Focus ring: amber on light, 4.81:1 on the canvas. */
+  --ring: #b45309;
 
   --brand: #f5c518;
   --brand-soft: #fdf6d8;
-  /* Header calendar heat ramp (brand yellow); -fg is the tile number color. */
+  /* The yellow signal (logo mark, category dot). Text in yellow on light
+     uses --kw-num / --accent instead: #f5c518 is 1.6:1 on white. */
+  --signal: #f5c518;
+  --signal-ink: #0a0a0a;
+  /* Keyword highlights in titles and summaries: color + weight 600. */
+  --kw-num: #a14a07;
+  --kw-entity: #1d4ed8;
   --heat-1: #fbeeb4;
   --heat-2: #f8dc6a;
   --heat-3: #f5c518;
@@ -148,72 +161,76 @@
   --heat-2-fg: #0a0a0a;
   --heat-3-fg: #0a0a0a;
   --heat-4-fg: #0a0a0a;
-  --input: #0a0a0a14;
+  --input: #0a0a0a2e;
   --chart-1: #f5c518;
   --chart-2: #d97706;
   --chart-3: #b45309;
   --chart-4: #92400e;
   --chart-5: #78350f;
-  --radius: 1rem;
+  --radius: 0.625rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #0a0a0a;
-  --sidebar-primary: #b45309;
+  --sidebar-primary: #a14a07;
   --sidebar-primary-foreground: #fffefb;
-  --sidebar-accent: #efefed;
+  --sidebar-accent: #f1f1ef;
   --sidebar-accent-foreground: #0a0a0a;
   --sidebar-border: #0a0a0a14;
-  --sidebar-ring: #0a0a0a33;
+  --sidebar-ring: #b45309;
 }
 
 :root.dark,
 .dark {
-  --editorial-bg: #0c0c0c;
-  --editorial-fg: #fafafa;
-  --editorial-muted: #a3a3a3;
-  --editorial-faint: #fafafa0f;
-  --editorial-hairline: #ffffff1a;
-  --editorial-accent: #f59e0b;
+  --editorial-bg: #0a0a0a;
+  --editorial-fg: #ffffff;
+  --editorial-muted: #8d9197;
+  --editorial-faint: #ffffff0f;
+  --editorial-hairline: #ffffff17;
+  --editorial-accent: #f5c518;
 
-  --background: #0c0c0c;
-  --foreground: #fafafa;
-  --card: #171717;
-  --card-foreground: #fafafa;
-  --popover: #171717;
-  --popover-foreground: #fafafa;
-  --primary: #fafafa;
+  --background: #0a0a0a;
+  --foreground: #ffffff;
+  --body: #d4d6da;
+  --card: #131416;
+  --card-foreground: #ffffff;
+  --popover: #131416;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
   --primary-foreground: #0a0a0a;
-  --secondary: #2a2a2a;
-  --secondary-foreground: #fafafa;
-  --muted: #2a2a2a;
-  --muted-foreground: #a3a3a3;
+  --secondary: #1a1c20;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1c20;
+  --muted-foreground: #8d9197;
   /* Mirror of the light --quiet-foreground: the darkest tone that still
-     clears AA on the lightest dark surface, the #2a2a2a muted chip/row
-     (5.1:1), and 4.95:1 on #0c0c0c. Dark-mode quiet therefore moves TOWARD
-     the background, exactly as it does in light mode. */
-  --quiet-foreground: #9a9a9a;
+     clears AA on the lightest dark surface, the #1a1c20 sunk surface
+     (4.92:1), and 5.71:1 on #0a0a0a. */
+  --quiet-foreground: #868a90;
   --primary-foreground-quiet: #3a3a3a;
-  --accent: #f59e0b;
-  --accent-foreground: #fffefb;
+  --accent: #f5c518;
+  --accent-foreground: #0a0a0a;
   --destructive: #f87171;
-  --border: #ffffff1a;
-  --input: #ffffff26;
-  --ring: #ffffff40;
+  --border: #ffffff17;
+  --input: #ffffff2e;
+  --ring: #f5c518;
   --chart-1: #f59e0b;
   --chart-2: #fbbf24;
   --chart-3: #e8926e;
   --chart-4: #d97706;
   --chart-5: #b45309;
-  --sidebar: #171717;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #f59e0b;
-  --sidebar-primary-foreground: #1c1917;
-  --sidebar-accent: #f59e0b;
-  --sidebar-accent-foreground: #fffefb;
-  --sidebar-border: #ffffff1a;
-  --sidebar-ring: #ffffff40;
+  --sidebar: #131416;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #f5c518;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #1a1c20;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #ffffff17;
+  --sidebar-ring: #f5c518;
 
   --brand: #f5c518;
   --brand-soft: #292209;
+  --signal: #f5c518;
+  --signal-ink: #0a0a0a;
+  --kw-num: #f5c518;
+  --kw-entity: #a0c3ec;
   --heat-1: #3a300b;
   --heat-2: #6b5612;
   --heat-3: #b8930f;
@@ -255,6 +272,13 @@
   }
   * {
     @apply border-border outline-ring/50;
+  }
+  /* Keyboard focus: a solid 2px ring, yellow on dark and amber on light
+     (DESIGN.md "Focus"). Components with their own focus-visible ring
+     utilities still win, since utilities sit above this layer. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
   body {
     @apply bg-background text-foreground;
@@ -391,7 +415,7 @@
 /* Long-form pages (about, privacy, changelog, extension guide). */
 .typeset-page {
   --typeset-font-body: var(--content-font-sans);
-  --typeset-font-heading: var(--editorial-font-serif);
+  --typeset-font-heading: var(--editorial-font-heading);
   --typeset-font-mono: var(--font-mono);
   --typeset-size: 16px;
   --typeset-leading: 1.75;
@@ -439,15 +463,18 @@
 .app-shell[data-reader-bg="cream"] {
   --background: #faf6ec;
   --foreground: #2b2620;
-  --muted-foreground: #474747;
-  --quiet-foreground: #5c5c5c;
+  --muted-foreground: #55595f;
+  --quiet-foreground: #575b61;
 }
 
 .app-shell[data-reader-bg="gray"] {
   --background: #dedede;
   --foreground: #1c1c1a;
-  --muted-foreground: #474747;
-  --quiet-foreground: #5c5c5c;
+  --muted-foreground: #55595f;
+  --quiet-foreground: #575b61;
+  /* #a14a07 is 4.46:1 on #dedede; one step darker clears AA (5.33:1). */
+  --editorial-accent: #8f4106;
+  --kw-num: #8f4106;
 }
 
 .app-shell[data-reader-bg="black"] {
@@ -582,6 +609,21 @@
   .dark .story-row-top {
     background-color: color-mix(in srgb, var(--accent) 12%, transparent);
   }
+}
+
+/* Keyword highlights in story titles and summaries (DESIGN.md "Keyword
+   highlights"): numbers, money and percentages in .kw-num, companies,
+   products and people in .kw-entity. Color and weight only, never a
+   background, so a highlighted word keeps the line's rhythm. Both tokens
+   clear 4.5:1 on the canvas and the panel in both themes. */
+.kw-num {
+  color: var(--kw-num);
+  font-weight: 600;
+}
+
+.kw-entity {
+  color: var(--kw-entity);
+  font-weight: 600;
 }
 
 /* Horizontal-scroll rows (topics chips, trending chips) that shouldn't show

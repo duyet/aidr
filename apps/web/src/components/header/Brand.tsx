@@ -10,12 +10,23 @@ export function Brand({ lang }: { lang: Lang }) {
       to="/"
       search={{ lang: navigationLang }}
       onClick={() => track("nav_click", { to: "/", placement: "header" })}
-      className="flex min-w-0 shrink-0 items-baseline gap-2"
+      className="flex min-w-0 shrink-0 items-center gap-2 rounded-md"
     >
-      <span className="font-serif text-lg font-medium tracking-tight text-foreground">
+      {/* The yellow ";" mark (DESIGN.md "Logo"). Decorative: the link's
+          name stays "AI;DR". */}
+      <span
+        aria-hidden
+        className="grid size-5 shrink-0 place-items-center rounded-[4px] bg-signal text-[13px] font-bold leading-none text-signal-ink"
+      >
+        ;
+      </span>
+      <span className="font-heading text-base font-semibold tracking-[-0.01em] text-foreground">
         AI;DR
       </span>
-      <span className="hidden truncate text-sm text-muted-foreground xl:inline">
+      {/* The tagline stays in the link's name for screen readers. On screen
+          the nav links took its place: from 1024px the bar holds the nav,
+          and the tagline next to it squeezed search to about 70px. */}
+      <span className="sr-only">
         {lang === "vi"
           ? "Hôm nay AI có gì mới?"
           : "What's happening in AI today?"}

@@ -14,7 +14,7 @@
  *     measured 0.089 CLS was.
  *  4. Splitting a family back into per-subset faces. `optional` decides per
  *     face, so a late vietnamese file painted đ and ầ in Arial inside words
- *     whose other letters were Source Sans 3.
+ *     whose other letters were the webfont.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -196,7 +196,7 @@ describe("self-hosted font stack (#229)", () => {
   });
 
   it("covers the whole Vietnamese alphabet in the body font", () => {
-    const sans = webfaces.filter((f) => f.family.includes("Source Sans 3"));
+    const sans = webfaces.filter((f) => f.family.includes("Inter"));
     const missing = [
       ...new Set([...vietnameseAlphabet()].filter((ch) => ch.trim() === "")),
     ];
@@ -207,7 +207,7 @@ describe("self-hosted font stack (#229)", () => {
     );
     expect(
       uncovered,
-      `these Vietnamese characters are not in any Source Sans 3 subset: ${uncovered
+      `these Vietnamese characters are not in the Inter face: ${uncovered
         .map(
           (c) => `${c} U+${(c.codePointAt(0) ?? 0).toString(16).toUpperCase()}`
         )
@@ -236,7 +236,7 @@ describe("self-hosted font stack (#229)", () => {
     // the family must be reachable solely through the serif reader pref.
     const stack = (name: string) =>
       new RegExp(`${name}:([^;]*);`).exec(stylesCss)?.[1] ?? "";
-    for (const name of ["--content-font-sans", "--editorial-font-serif"]) {
+    for (const name of ["--content-font-sans", "--editorial-font-heading"]) {
       expect(stack(name)).not.toContain("Source Serif 4");
     }
     expect(stack("--reader-font-serif")).toMatch(
@@ -253,7 +253,7 @@ describe("self-hosted font stack (#229)", () => {
     // /?lang=vi, and neither is in the latin or vietnamese subsets — so the
     // latin-ext range is load-bearing and must not be dropped as "unused".
     const loanwords = ["ā", "ē", "ī", "ō", "ū", "Ā", "Ē", "Ī", "Ō", "Ū"];
-    const sans = webfaces.filter((f) => f.family.includes("Source Sans 3"));
+    const sans = webfaces.filter((f) => f.family.includes("Inter"));
     const uncovered = loanwords.filter(
       (ch) => !sans.some((face) => coveredBy(face, ch.codePointAt(0) ?? 0))
     );
@@ -261,11 +261,7 @@ describe("self-hosted font stack (#229)", () => {
   });
 
   it("declares a metric-matched fallback face for each webfont family", () => {
-    for (const family of [
-      "Source Sans 3 Variable",
-      "EB Garamond Variable",
-      "Source Serif 4 Variable",
-    ]) {
+    for (const family of ["Inter Variable", "Source Serif 4 Variable"]) {
       const fallback = faces.find(
         (f) => f.family === `${family.split(" Variable")[0]} Fallback`
       );
@@ -293,15 +289,13 @@ describe("self-hosted font stack (#229)", () => {
 
   it("gives the fallback faces the webfont's own vertical metrics", () => {
     // Read by scripts/font-metrics.py out of the shipped woff2/ttf files:
-    //   Source Sans 3  unitsPerEm=1000 ascent=1024 descent=400  lineGap=0
-    //   EB Garamond    unitsPerEm=1000 ascent=1007 descent=298  lineGap=0
+    //   Inter 4.001    unitsPerEm=2048 ascent=1984 descent=494  lineGap=0
     //   Source Serif 4 unitsPerEm=1000 ascent=1036 descent=335  lineGap=0
     // size-adjust scales the overrides as well, so the line box is the
     // product. An override left unscaled after a size-adjust change makes
     // every fallback row shorter than the webfont row.
     const expected: Record<string, [number, number]> = {
-      "Source Sans 3 Fallback": [102.4, 40],
-      "EB Garamond Fallback": [100.7, 29.8],
+      "Inter Fallback": [(1984 / 2048) * 100, (494 / 2048) * 100],
       "Source Serif 4 Fallback": [103.6, 33.5],
     };
     for (const [family, [ascent, descent]] of Object.entries(expected)) {
@@ -319,11 +313,10 @@ describe("self-hosted font stack (#229)", () => {
     }
   });
 
-  it("scales the sans fallback to Source Sans 3's measured width", () => {
-    // At 100% Arial set feed rows 6-9% wider, so a first visit wrapped and
-    // truncated rows earlier than every later one.
-    const scale =
-      percent(fallbackBlock("Source Sans 3 Fallback"), "size-adjust") / 100;
+  it("scales the sans fallback to Inter's measured width", () => {
+    // At 100% Arial set feed rows 6-8% narrower than Inter, so a first visit
+    // wrapped rows later and looked a size smaller than every later one.
+    const scale = percent(fallbackBlock("Inter Fallback"), "size-adjust") / 100;
     expect(scale).toBeGreaterThanOrEqual(SANS_FALLBACK_WIDTH_RATIO.min);
     expect(scale).toBeLessThanOrEqual(SANS_FALLBACK_WIDTH_RATIO.max);
   });
@@ -331,18 +324,30 @@ describe("self-hosted font stack (#229)", () => {
   it("puts the metric-matched fallback in each font stack", () => {
     // Declaring the face is not enough: it has to be reachable from the
     // family that renders the LCP row, or the overrides never apply.
+    expect(stylesCss).toMatch(/--content-font-sans:[^;]*"Inter Fallback"/);
+    expect(stylesCss).toMatch(/--editorial-font-heading:[^;]*"Inter Fallback"/);
+  });
+
+  it("sets headings in the first-paint face, not a second family", () => {
+    // Headings use `font-heading`, `font-serif` (the older name for the same
+    // role) and `.typeset-page` headings. Pointing any of them at another
+    // family adds a second font download to every page with a heading,
+    // which is what EB Garamond cost before Inter (55 KB).
+    for (const token of ["--font-heading", "--font-serif"]) {
+      expect(stylesCss).toMatch(
+        new RegExp(`${token}: var\\(--editorial-font-heading\\);`)
+      );
+    }
     expect(stylesCss).toMatch(
-      /--content-font-sans:[^;]*"Source Sans 3 Fallback"/
+      /\.typeset-page \{[^}]*--typeset-font-heading: var\(--editorial-font-heading\)/
     );
-    expect(stylesCss).toMatch(
-      /--editorial-font-serif:[^;]*"EB Garamond Fallback"/
-    );
+    expect(stylesCss).toMatch(/--editorial-font-heading:\s*"Inter Variable"/);
   });
 
   it("serves each webfont family from exactly one face", () => {
     // font-display: optional picks per face. With latin and vietnamese as
     // two faces, a reader whose cache held only latin saw "đầu" with d and u
-    // in Source Sans 3 and đ, ầ in Arial. One face makes it all or nothing.
+    // in the webfont and đ, ầ in Arial. One face makes it all or nothing.
     const perFamily = new Map<string, number>();
     for (const face of webfaces) {
       perFamily.set(face.family, (perFamily.get(face.family) ?? 0) + 1);
