@@ -20,6 +20,7 @@ import { homepageHead } from "../lib/seo";
 import { storyPath } from "../lib/slug";
 import { displayTldrBullets } from "../lib/tldr-fallback";
 import type { DayGroup, FeedResponse } from "../lib/types";
+import { useFeedKeyNav } from "../lib/use-feed-keynav";
 
 export interface IndexSearch {
   q?: string;
@@ -72,6 +73,7 @@ function IndexPage() {
   const { q, tag, category, aidr } = Route.useSearch();
   const lang = useLang();
   const { prefs } = usePrefs();
+  useFeedKeyNav();
   const loaderFeed = Route.useLoaderData();
   const [feed, setFeed] = useState<FeedResponse | null>(
     () => loaderFeed ?? null
