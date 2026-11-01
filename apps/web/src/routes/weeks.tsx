@@ -5,6 +5,7 @@ import { WeeklySubscribeCta } from "../components/WeeklySubscribeCta";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
 import { loadErrorHead, loadErrorHeaders } from "../lib/load-error";
+import { EYEBROW, PAGE_TITLE } from "../lib/page-style";
 import { localizedPageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
 import { formatWeekRange, WEEKS_INDEX_PATH, weekPath } from "../lib/week";
@@ -68,41 +69,37 @@ function WeeksPage() {
   const lang = useLang();
   const vi = lang === "vi";
   return (
-    <div className="mx-auto max-w-3xl py-8">
-      <header className="border-y-4 border-double border-foreground py-4 text-center">
-        <h1 className="font-serif text-4xl font-bold tracking-tight sm:text-6xl">
-          {weeklyTitle(lang)}
-        </h1>
-        <p className="mt-2 font-serif italic text-muted-foreground">
-          {vi ? "Lưu trữ các số báo" : "The archive"}
-        </p>
+    <div className="mx-auto max-w-3xl pt-5 pb-10 max-sm:pt-4">
+      <header>
+        <p className={EYEBROW}>{vi ? "Lưu trữ các số báo" : "The archive"}</p>
+        <h1 className={`mt-2 ${PAGE_TITLE}`}>{weeklyTitle(lang)}</h1>
       </header>
       <WeeklySubscribeCta lang={lang} />
       {weeks.length === 0 ? (
-        <p className="py-12 text-center font-serif text-lg italic text-muted-foreground">
+        <p className="border-t border-border py-10 text-center text-[15px] text-muted-foreground">
           {vi
             ? "Số đầu tiên sẽ ra sau khi tuần này kết thúc. Đăng ký ở trên để nhận ngay khi có."
             : "The first issue comes out once this week closes. Subscribe above to get it the moment it lands."}
         </p>
       ) : (
-        <ol className="divide-y divide-border">
+        <ol className="divide-y divide-border border-y border-border">
           {weeks.map((week) => {
             const text = teaser(week, lang);
             return (
-              <li key={week.week} className="py-5">
+              <li key={week.week}>
                 <a
                   href={weekPath(week.week, lang)}
-                  className="group block rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
+                  className="group -mx-2 block rounded-[6px] px-2 py-3.5 hover:bg-muted/60"
                 >
-                  <p className="font-sans text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  <p className={`${EYEBROW} tabular-nums`}>
                     {vi ? `Số ${week.issue}` : `Issue No. ${week.issue}`} ·{" "}
                     {week.week} · {storyCount(week.stories, vi)}
                   </p>
-                  <h2 className="mt-1 font-serif text-2xl font-semibold group-hover:underline">
+                  <h2 className="mt-1 text-[17px] font-semibold leading-[1.35] tracking-[-0.01em] text-foreground group-hover:text-accent">
                     {formatWeekRange(week.start_date, week.end_date, lang)}
                   </h2>
                   {text ? (
-                    <p className="mt-2 font-serif leading-relaxed text-foreground/80">
+                    <p className="mt-1 text-[14px] leading-[1.55] text-body">
                       {text}
                     </p>
                   ) : null}
