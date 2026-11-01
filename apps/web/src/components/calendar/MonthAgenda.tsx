@@ -39,15 +39,15 @@ export function MonthAgenda({
               }}
             >
               <span className="pt-0.5 text-center">
-                <span className="block font-serif text-3xl leading-none tabular-nums">
+                <span className="block text-[26px] font-medium leading-none tracking-[-0.02em] tabular-nums">
                   {Number(day.date.slice(8))}
                 </span>
-                <span className="font-mono text-[11px] uppercase text-muted-foreground">
+                <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                   {weekdayShort(day.date, lang)}
                 </span>
               </span>
               <span className="min-w-0">
-                <span className="line-clamp-3 font-semibold leading-snug group-hover:underline group-hover:underline-offset-2">
+                <span className="line-clamp-3 text-[15px] font-medium leading-[1.4] text-foreground group-hover:text-accent">
                   {title ? (
                     <KeywordText text={title} tags={day.tags} />
                   ) : vi ? (

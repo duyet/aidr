@@ -14,7 +14,7 @@ import { MonthGrid } from "./MonthGrid";
 import { HEADER_HEAT_CLASS, monthTitle } from "./shared";
 
 const ROUND =
-  "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border";
+  "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-input text-foreground max-sm:size-11";
 const ROUND_LINK = `${ROUND} transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`;
 const ROUND_OFF = `${ROUND} pointer-events-none opacity-40`;
 
@@ -48,27 +48,27 @@ export function CalendarPage({
   const weeks = monthWeeks(month, today);
 
   return (
-    <div className="mx-auto max-w-5xl py-8">
+    <div className="mx-auto max-w-5xl pt-5 pb-10 max-sm:pt-4">
       <div className="grid gap-6 min-[860px]:grid-cols-[minmax(0,1fr)_20rem] min-[860px]:items-start">
         <section aria-labelledby="calendar-month">
           <header className="mb-4 flex items-center gap-2">
             <h1
               id="calendar-month"
-              className="flex-1 font-serif text-2xl font-medium tracking-tight sm:text-3xl"
+              className="flex-1 text-[24px] font-medium leading-[1.18] tracking-[-0.025em] text-foreground min-[820px]:text-[34px] min-[820px]:leading-[1.12]"
             >
               {monthTitle(month, lang, true)}
             </h1>
             {onCurrentMonth ? (
               <span
                 aria-disabled="true"
-                className="rounded-full border border-border px-3 py-1.5 text-sm font-semibold opacity-40"
+                className="inline-flex h-9 items-center rounded-full border border-input px-3.5 text-[13px] font-medium opacity-40 max-sm:h-11"
               >
                 {vi ? "Hôm nay" : "Today"}
               </span>
             ) : (
               <a
                 href={calendarPath(cal.lastMonth, lang)}
-                className="rounded-full border border-border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex h-9 items-center rounded-full border border-input px-3.5 text-[13px] font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-11"
               >
                 {vi ? "Hôm nay" : "Today"}
               </a>
@@ -132,7 +132,7 @@ export function CalendarPage({
             </span>
             <span className="flex items-center gap-1">
               <i
-                className="inline-block size-3 rounded-sm border border-dashed border-border"
+                className="inline-block size-3 rounded-sm border border-border"
                 aria-hidden
               />
               {vi ? "Chưa có số báo" : "No edition"}
@@ -152,7 +152,7 @@ export function CalendarPage({
               aria-label={vi ? "Bản tin tuần" : "Weekly editions"}
               className="mt-5"
             >
-              <h2 className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              <h2 className="mb-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                 {vi ? "Bản tin tuần" : "Weekly editions"}
               </h2>
               <ul className="flex flex-wrap gap-2">
@@ -162,9 +162,9 @@ export function CalendarPage({
                     <li key={week}>
                       <a
                         href={weekPath(week, lang)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-full border border-input px-3 text-[13px] text-foreground tabular-nums transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-11"
                       >
-                        <span className="font-mono text-xs font-semibold">
+                        <span className="font-mono text-[11px] font-medium text-accent">
                           {week.slice(5)}
                         </span>
                         {b ? (

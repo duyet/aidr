@@ -30,7 +30,7 @@ export function CopyTextButton({
         e.stopPropagation();
         void copy();
       }}
-      className="not-typeset inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="not-typeset inline-flex h-8 items-center gap-1.5 rounded-full border border-input px-3 text-[13px] font-medium text-foreground hover:bg-muted max-sm:h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {copied ? (
         <Check className="h-3.5 w-3.5" aria-hidden />

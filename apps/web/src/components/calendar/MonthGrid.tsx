@@ -27,7 +27,7 @@ const TILE =
   "relative flex aspect-square items-center justify-center rounded-[10px] tabular-nums";
 const TILE_PAGE =
   "relative flex aspect-square flex-col justify-between rounded-xl p-1.5 text-left tabular-nums sm:p-2";
-const RING = " ring-2 ring-foreground";
+const RING = " ring-1 ring-foreground ring-offset-2 ring-offset-background";
 const DOT =
   "absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-current";
 const PAGE_DOT = "absolute right-1.5 top-1.5 size-1.5 rounded-full bg-current";
@@ -120,7 +120,7 @@ export function MonthGrid({
               <li key={date}>
                 <span
                   aria-current={current}
-                  className={`${tile} ${text} text-muted-foreground${page ? " border border-dashed border-border" : ""}${ring}`}
+                  className={`${tile} ${text} text-muted-foreground${page ? " border border-border" : ""}${ring}`}
                 >
                   {num}
                   {dot}
