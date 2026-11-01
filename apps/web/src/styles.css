@@ -642,6 +642,14 @@
   text-decoration: none;
 }
 
+/* Room under the footer for the story page phone action bar (44px pill,
+   10px above and below, a hairline, the safe area). */
+@media (max-width: 519px) {
+  body:has([data-story-dock]) {
+    padding-bottom: calc(65px + env(safe-area-inset-bottom));
+  }
+}
+
 .story-suggest > :is(button, a):hover {
   background: color-mix(in srgb, var(--muted) 60%, transparent);
 }

@@ -123,7 +123,7 @@ export function CopySheet({
             variant="outline"
             size="sm"
             onClick={onClose}
-            aria-label={copy.close}
+            aria-label={`Esc: ${copy.close}`}
             className="font-mono text-[11px] uppercase"
           >
             Esc

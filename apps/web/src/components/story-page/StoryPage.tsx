@@ -329,12 +329,13 @@ export function StoryPage({
         <StoryMedia item={item} lang={lang} />
       </div>
 
-      {/* Phone action bar. The spacer keeps it off the footer. */}
+      {/* Phone action bar. Fixed, since the app shell clips overflow and
+          would stop a sticky bar; styles.css pads the page bottom by its
+          height so it never covers the footer. */}
       <div
-        aria-hidden
-        className="h-[calc(64px+env(safe-area-inset-bottom))] min-[520px]:hidden"
-      />
-      <div className="fixed inset-x-0 bottom-0 z-30 flex gap-2 border-t border-border bg-background px-4 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] min-[520px]:hidden">
+        data-story-dock=""
+        className="fixed inset-x-0 bottom-0 z-30 flex gap-2 border-t border-border bg-background px-4 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] min-[520px]:hidden"
+      >
         {item.url && (
           <Button asChild className="h-11 flex-1 text-sm">
             <a
