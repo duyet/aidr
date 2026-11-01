@@ -4,7 +4,8 @@
  * The day heading used the UTC calendar day while the archive link used
  * the Asia/Ho_Chi_Minh day. A story published at 19:00Z is already the
  * next day in Vietnam, so the heading said 3 Oct and opened 4 Oct. The
- * words and the link have to name the same day.
+ * words and the link have to name the same day. The page now shows the
+ * day as a short date in its eyebrow; the rule is the same.
  *
  * A missing slug kept the language from the first loader run. Changing
  * ?lang= updates the request language without fetching the story again,
@@ -14,8 +15,8 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { shortDayLabel } from "../components/story-page/lib";
 import { archiveDateOfSec, dayArchivePath } from "../lib/day-archive";
-import { formatDayHeading } from "../lib/lang";
 import { LangContext } from "../lib/lang-context";
 import { notFoundCopy } from "../lib/not-found";
 import type { FeedItem, Lang } from "../lib/types";
@@ -121,7 +122,7 @@ describe("story permalink day heading", () => {
       renderStory({ kind: "story", item: story(EVENING_UTC) }, "en", "abcdef01")
     );
     expect(link.href).toBe(dayArchivePath("2026-10-04", "en"));
-    expect(link.text).toBe(formatDayHeading("2026-10-04", "en"));
+    expect(link.text).toBe(shortDayLabel("2026-10-04", "en"));
   });
 
   it("keeps the heading on the UTC day when Vietnam is still that day", () => {
@@ -132,7 +133,7 @@ describe("story permalink day heading", () => {
       renderStory({ kind: "story", item: story(MORNING_UTC) }, "en", "abcdef01")
     );
     expect(link.href).toBe(dayArchivePath("2026-10-03", "en"));
-    expect(link.text).toBe(formatDayHeading("2026-10-03", "en"));
+    expect(link.text).toBe(shortDayLabel("2026-10-03", "en"));
   });
 });
 
