@@ -8,6 +8,7 @@ import { Brand } from "./Brand";
 import { CalendarButton } from "./CalendarButton";
 import { GetAIDRMenu } from "./GetAIDRMenu";
 import { HeaderAuth } from "./HeaderAuth";
+import { HeaderNav } from "./HeaderNav";
 import { IntroVideoButton } from "./IntroVideo";
 
 export function WideHeaderRow({
@@ -23,9 +24,10 @@ export function WideHeaderRow({
 }) {
   return (
     <div
-      className={`${WIDE_HEADER_ROW_CLASS} mx-auto max-w-[1080px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8`}
+      className={`${WIDE_HEADER_ROW_CLASS} mx-auto max-w-[1080px] items-center gap-3 px-4 py-2 sm:px-6 lg:gap-5 lg:px-8`}
     >
       <Brand lang={lang} />
+      <HeaderNav lang={lang} />
       <div className="min-w-0 flex-1">
         <SearchBox placeholder={searchPlaceholder} lang={lang} />
       </div>

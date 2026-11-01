@@ -18,7 +18,7 @@ export function LangToggle({
     <div
       className={`${
         containerClassName ??
-        "inline-flex items-center rounded-2xl border border-border p-0.5"
+        "inline-flex items-center rounded-full border border-input p-0.5"
       } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
       title={
         disabled

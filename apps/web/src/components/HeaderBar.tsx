@@ -16,7 +16,7 @@ export function HeaderBar({
   const searchPlaceholder = lang === "vi" ? "Tìm kiếm..." : "Search AI news...";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/80 backdrop-blur-md transition-[background-color,border-color] duration-150">
+    <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md transition-[background-color,border-color] duration-150">
       <WideHeaderRow
         lang={lang}
         onLangChange={onLangChange}
