@@ -1,7 +1,7 @@
 import type { CalendarDay } from "../../lib/calendar";
 import { dayArchivePath } from "../../lib/day-archive";
 import type { Lang } from "../../lib/types";
-import { HighlightedText } from "../HighlightedText";
+import { KeywordText } from "../KeywordText";
 import {
   BLANK_IF_BROKEN,
   dayTitle,
@@ -49,7 +49,7 @@ export function MonthAgenda({
               <span className="min-w-0">
                 <span className="line-clamp-3 font-semibold leading-snug group-hover:underline group-hover:underline-offset-2">
                   {title ? (
-                    <HighlightedText text={title} tags={day.tags} />
+                    <KeywordText text={title} tags={day.tags} />
                   ) : vi ? (
                     "Xem các tin trong ngày"
                   ) : (

@@ -1,10 +1,12 @@
 import type { ReactElement } from "react";
-import { highlightKeywords } from "../../lib/keyword-highlight";
+import { highlightKeywords } from "../lib/keyword-highlight";
 
 const KIND_CLASS = { num: "kw-num", entity: "kw-entity" } as const;
 
-/** Story-page text with `.kw-num` / `.kw-entity` spans. Plain text only,
- * never HTML, so a summary cannot inject markup. */
+/** Titles, AI;DR bullets and summaries with `.kw-num` / `.kw-entity` spans
+ * (DESIGN.md "Keyword highlights"), the same on the feed, the digest, the
+ * calendar and the story page. Plain text only, never HTML, so a summary
+ * cannot inject markup. */
 export function KeywordText({
   text,
   tags,
