@@ -73,7 +73,7 @@ reader backgrounds reuse the light text steps (`contrast-tokens.test.ts`), and
 
 ## Type
 
-One family: **Inter** (variable, `wght` 100 to 900, `opsz` pinned to 14),
+One family by default: **Inter** (variable, `wght` 100 to 900, `opsz` pinned to 14),
 self-hosted through `scripts/subset-fonts.ts` as one file with latin, the
 whole Vietnamese alphabet and Latin Extended-A. `font-display: optional` with
 a metric-matched "Inter Fallback" (Arial at 107%). See `src/fonts.css`.
@@ -82,7 +82,10 @@ a metric-matched "Inter Fallback" (Arial at 107%). See `src/fonts.css`.
 - `--editorial-font-heading`: Inter. Headings use weight 500 or 600 and
   negative tracking. `font-heading` and `font-serif` (an older name kept for
   the same role) both resolve to it.
-- `--reader-font-serif`: Source Serif 4, only when a reader picks "Serif".
+- `--reader-font-serif`: Source Serif 4, when a reader picks "Serif", and
+  on the AI;DR Weekly pages (`/weeks`, `/week/$week`). Their root carries
+  `.newspaper`, which points the heading face at the serif so the weekly
+  reads as a printed paper.
 - `--editorial-font-mono`: the system mono, for eyebrows and `kbd`.
 - Italics are synthesized (no italic file ships). Avoid long italic runs.
 

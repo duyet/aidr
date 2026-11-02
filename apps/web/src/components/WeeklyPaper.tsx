@@ -149,7 +149,7 @@ export function WeeklyPaper({
   const days = weekDates(edition.week) ?? [];
 
   return (
-    <div className="mx-auto max-w-6xl py-6">
+    <div className="newspaper mx-auto max-w-6xl py-6">
       <nav
         aria-label={vi ? "Chuyển tuần" : "Week navigation"}
         className="flex flex-wrap items-center justify-between gap-3 pb-4"
