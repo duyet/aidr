@@ -4,13 +4,20 @@ import type { Lang } from "./types";
 
 const PROBE_ORIGIN = "https://return.invalid";
 const AUTH_PATHS = ["/sign-in", "/sign-up"];
+/** Campaign tags describe how one visitor arrived. The page that renders this
+ *  link is cached and shared, so keeping them would hand the first visitor's
+ *  tags to every later reader's sign-in. */
+const RETURN_PARAMS = SAFE_PARAMS.filter(
+  (name) => name !== "ref" && !name.startsWith("utm_")
+);
 
 /**
  * `returnTo` as a path on this site, or null. Resolving against a probe
  * origin rejects anything a browser would send elsewhere: `//host`,
  * `/\host`, `https://host`, `javascript:`. Auth routes are rejected too, so
  * sign-in never returns to itself. The path goes to Clerk, so only
- * SAFE_PARAMS survive (a mailed subscriber token must not) and the hash is
+ * SAFE_PARAMS that are not campaign tags survive (a mailed subscriber token
+ * must not) and the hash is
  * dropped, which the server never sees and so could not render.
  */
 export function sameOriginReturnPath(returnTo: string): string | null {
@@ -25,7 +32,7 @@ export function sameOriginReturnPath(returnTo: string): string | null {
   if (AUTH_PATHS.some((p) => path === p || path.startsWith(`${p}/`))) {
     return null;
   }
-  const back = sanitizeUrl(url.href, SAFE_PARAMS).slice(PROBE_ORIGIN.length);
+  const back = sanitizeUrl(url.href, RETURN_PARAMS).slice(PROBE_ORIGIN.length);
   // Dot segments collapse during parsing, so `/..//host` comes out as
   // `//host`. Check the path a browser will read, not the one written.
   if (back.startsWith("//") || back.startsWith("/\\")) return null;

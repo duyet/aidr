@@ -29,6 +29,15 @@ describe("signInHref", () => {
     expect(back).toBe("/subscribe?lang=en");
   });
 
+  // The header renders this link into HTML the edge cache shares, so one
+  // newsletter click's tags would otherwise follow every reader to Clerk.
+  it("drops campaign tags so a cached page does not share one visit's", () => {
+    const back = sameOriginReturnPath(
+      "/?lang=en&utm_source=email&utm_medium=digest&utm_campaign=weekly&utm_content=header&utm_term=x&ref=extension&tab=rss"
+    );
+    expect(back).toBe("/?lang=en&tab=rss");
+  });
+
   it.each([
     "//evil.example/abcdef12",
     "/\\evil.example/abcdef12",
