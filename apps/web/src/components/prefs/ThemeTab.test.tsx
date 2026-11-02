@@ -43,45 +43,71 @@ function renderTab(initial: Partial<Prefs> = {}) {
 const click = (name: string) =>
   fireEvent.click(screen.getByRole("button", { name }));
 
-describe("ThemeTab text size stepper", () => {
-  it("steps 5% at a time, keeping the values the old slider saved", () => {
-    const prefs = renderTab();
-    click("Larger text");
-    expect(prefs().fontSize).toBe(1.05);
-    expect(screen.getByText("105%")).toBeTruthy();
-    click("Smaller text");
-    click("Smaller text");
-    expect(prefs().fontSize).toBe(0.95);
+function menu(name: string): HTMLSelectElement {
+  const el = screen.getByRole("combobox", { name });
+  if (!(el instanceof HTMLSelectElement))
+    throw new Error(`${name} is not a select`);
+  return el;
+}
+
+const pick = (name: string, option: string) => {
+  const select = menu(name);
+  const match = [...select.options].find((o) => o.text === option);
+  if (!match) throw new Error(`no "${option}" option in ${name}`);
+  fireEvent.change(select, { target: { value: match.value } });
+  return select;
+};
+
+describe("ThemeTab text size menu", () => {
+  it("offers 85% to 125% in 5% steps, the values the old slider saved", () => {
+    renderTab();
+    const select = menu("Text size");
+    expect([...select.options].map((o) => o.text)).toEqual([
+      "85%",
+      "90%",
+      "95%",
+      "100%",
+      "105%",
+      "110%",
+      "115%",
+      "120%",
+      "125%",
+    ]);
   });
 
-  it("stops at 85% and 125% so the reader cannot step off the range", () => {
-    renderTab({ fontSize: 1.25 });
-    const larger = screen.getByRole("button", { name: "Larger text" });
-    expect((larger as HTMLButtonElement).disabled).toBe(true);
-    cleanup();
-    renderTab({ fontSize: 0.85 });
-    const smaller = screen.getByRole("button", { name: "Smaller text" });
-    expect((smaller as HTMLButtonElement).disabled).toBe(true);
+  it("saves the picked size and shows it as selected", () => {
+    const prefs = renderTab();
+    const select = pick("Text size", "115%");
+    expect(prefs().fontSize).toBe(1.15);
+    expect(select.selectedOptions[0]?.text).toBe("115%");
+  });
+
+  it("shows the nearest step for a size stored between steps", () => {
+    renderTab({ fontSize: 1.02 });
+    const select = menu("Text size");
+    expect(select.selectedOptions[0]?.text).toBe("100%");
   });
 });
 
-describe("ThemeTab density stepper", () => {
-  it("walks the same density list the slider used, with a named label", () => {
-    const prefs = renderTab({ density: "medium" });
-    click("Looser");
-    expect(prefs().density).toBe("comfortable");
-    expect(screen.getByText("Comfortable")).toBeTruthy();
-    click("Tighter");
-    click("Tighter");
-    expect(prefs().density).toBe("compact");
+describe("ThemeTab density menu", () => {
+  it("lists every density by name, tightest first", () => {
+    renderTab();
+    const select = menu("Density");
+    expect([...select.options].map((o) => o.text)).toEqual([
+      "Dense",
+      "Compact",
+      "Medium",
+      "Comfortable",
+      "Relaxed",
+      "Spacious",
+      "Airy",
+    ]);
   });
 
-  it("disables the ends of the list", () => {
-    renderTab({ density: "dense" });
-    expect(
-      (screen.getByRole("button", { name: "Tighter" }) as HTMLButtonElement)
-        .disabled
-    ).toBe(true);
+  it("saves the picked density", () => {
+    const prefs = renderTab({ density: "medium" });
+    pick("Density", "Airy");
+    expect(prefs().density).toBe("airy");
   });
 });
 
