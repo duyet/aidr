@@ -155,7 +155,7 @@ test("new tab follows the live digest masthead, day links, and intro video", () 
   assert.match(css, /\.story-vote \{[^}]*width:\s*0\.875rem/);
   assert.match(js, /tynoWx03zDc/);
   assert.match(js, /youtube-nocookie\.com/);
-  assert.match(css, /\.tldr-head \.tldr-counts button\[aria-pressed="true"\][\s\S]*?#fff/);
+  assert.match(css, /\.tldr-head \.tldr-counts button\[aria-pressed="true"\][\s\S]*?var\(--primary-foreground\)/);
   assert.doesNotMatch(js, /story-host/);
 });
 
@@ -196,7 +196,7 @@ test("masthead image | text switch replaces the day card chip", () => {
   // Styled like the 8 | 12 count pills: 32x24 buttons, 14px icons.
   assert.match(
     css,
-    /\.day-card-switch \{[^}]*padding:\s*2px;[^}]*background:\s*#0a0a0a1a/
+    /\.day-card-switch \{[^}]*padding:\s*2px;[^}]*border-radius:\s*999px/
   );
   assert.match(
     css,
@@ -204,7 +204,7 @@ test("masthead image | text switch replaces the day card chip", () => {
   );
   assert.match(
     css,
-    /\.day-card-switch button\[aria-pressed="true"\] \{\s*background:\s*#0a0a0a;\s*color:\s*#fff/
+    /\.day-card-switch button\[aria-pressed="true"\] \{\s*background:\s*var\(--primary\);\s*color:\s*var\(--primary-foreground\)/
   );
   assert.match(css, /\.day-card-switch svg \{\s*width:\s*0\.875rem/);
 });

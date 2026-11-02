@@ -10,6 +10,19 @@
   src: url("../fonts/inter-wght-normal.woff2") format("woff2-variations");
 }
 
+/* Metric-matched fallback (Arial at 107%), same as apps/web/src/fonts.css, so
+   the first paint keeps Inter's line box. */
+@font-face {
+  font-family: "Inter Fallback";
+  src:
+    local("Arial"), local("Liberation Sans"), local("Arimo"),
+    local("Helvetica Neue"), local("Helvetica");
+  size-adjust: 107%;
+  ascent-override: 90.54%;
+  descent-override: 22.54%;
+  line-gap-override: 0%;
+}
+
 /* Reader serif (the "Serif" pref), matching the web app: Source Serif 4
    draws Vietnamese marks for body sizes. */
 @font-face {
@@ -48,12 +61,14 @@
   --font: var(--content-font-sans);
   --content-font: var(--content-font-sans);
   --size: 16px;
-  /* Minimal pass: one 12px radius for cards, 8px for controls. */
-  --radius-card: 0.75rem;
+  /* DESIGN.md: 10px panels, 6px thumbnails, 999px pills, 8px controls. */
+  --radius-card: var(--radius);
   --radius-control: 0.5rem;
   /* Density "medium" (default); mirrors web readerCssVars. */
   --pad: 0.625rem;
   --leading: 1.62;
+  /* Mono is for eyebrows and kbd only: the system mono (DESIGN.md). */
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: light;
 }
 
@@ -298,11 +313,28 @@ html[data-theme="dark"] .news-content {
 
 .brand-mark {
   font-family: var(--editorial-font-heading);
-  font-size: 1.125rem;
-  font-weight: 500;
-  letter-spacing: -0.025em;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
   line-height: 1.75rem;
   color: var(--foreground);
+}
+
+/* Logo mark: 20px yellow square with ";" in ink (DESIGN.md header). */
+.brand-mark::before {
+  content: ";";
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.5rem;
+  border-radius: 4px;
+  background: var(--signal);
+  color: var(--signal-ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: -0.2em;
 }
 
 .brand-tagline {
@@ -310,7 +342,7 @@ html[data-theme="dark"] .news-content {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.875rem;
+  font-size: 13px;
   font-weight: 400;
   line-height: 1.35;
   color: var(--muted-foreground);
@@ -355,7 +387,7 @@ html[data-theme="dark"] .news-content {
 .search input {
   width: 100%;
   border: 1px solid transparent;
-  border-radius: calc(var(--radius) * 1.4);
+  border-radius: 999px;
   padding: 0.35rem 0.75rem 0.35rem 2rem;
   background: color-mix(in srgb, var(--border) 50%, transparent);
   color: var(--foreground);
@@ -366,7 +398,7 @@ html[data-theme="dark"] .news-content {
 .search-compact input {
   height: 44px;
   min-height: 44px;
-  border-radius: calc(var(--radius) * 1.4);
+  border-radius: 999px;
   padding: 0 0.75rem 0 2.25rem;
   font-size: 0.8125rem;
 }
@@ -490,7 +522,7 @@ html[data-theme="dark"] .news-content {
   min-height: 2.25rem;
   align-items: center;
   gap: 0.5rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-card);
   padding: 0.5rem 0.75rem;
   color: inherit;
   font-size: 0.875rem;
@@ -879,7 +911,7 @@ html[data-theme="dark"] .news-content {
   align-items: center;
   padding: 0.125rem;
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) * 1.8);
+  border-radius: var(--radius);
   box-sizing: border-box;
   font-size: 0.75rem;
   font-weight: 600;
@@ -1030,9 +1062,10 @@ html[data-theme="dark"] .news-content {
   align-items: center;
   gap: 0.35rem;
   color: var(--muted-foreground);
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -1122,51 +1155,52 @@ html[data-theme="dark"]
 }
 
 .page.is-brief .tldr-head {
-  margin: calc(-1 * (var(--pad) + 1rem)) -1.5rem 0.75rem;
-  padding: 0.75rem 1.5rem;
+  margin: 0 0 0.25rem;
+  padding: 0 0 0.75rem;
 }
 
 .tldr {
   margin: 0.25rem 0 0;
-  padding: calc(var(--pad) + 0.5rem) 1.125rem;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: calc(var(--radius) * 1.8);
+  padding: calc(var(--pad) + 0.375rem) 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   background: var(--card);
   overflow: hidden;
 }
 
-/* Yellow masthead, same band as the web TldrSection / day card. */
+/* Masthead: a hairline-separated header row in the panel (DESIGN.md), the
+   date block is fg on the card, yellow stays the one signal dot. */
 .tldr-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin: calc(-1 * (var(--pad) + 0.5rem)) -1.125rem 0.75rem;
-  padding: 0.75rem 1.125rem;
-  background: var(--brand);
-  color: #0a0a0a;
+  margin: 0 0 0.25rem;
+  padding: 0 0 0.75rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
 }
 
 .tldr-head .muted {
-  color: #0a0a0a;
-  font-weight: 700;
-  letter-spacing: 0.2em;
+  color: var(--muted-foreground);
+  font-family: var(--mono);
+  font-weight: 400;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  font-size: 0.6875rem;
+  font-size: 11px;
 }
 
-.tldr-head .tldr-counts {
-  background: #0a0a0a1a;
-}
-
-.tldr-head .tldr-counts button {
-  color: #0a0a0a;
+.tldr-head .tldr-counts,
+.day-card-switch {
+  background: transparent;
+  border: 1px solid var(--input);
 }
 
 .tldr-head .tldr-counts button[aria-pressed="true"] {
-  background: #0a0a0a;
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: none;
 }
 
 .tldr-head-actions {
@@ -1182,20 +1216,22 @@ html[data-theme="dark"]
 }
 
 .tldr-day {
-  font-size: 2.25rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 500;
   line-height: 1;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
 }
 
 .tldr-date {
   display: flex;
   flex-direction: column;
-  color: inherit;
+  color: var(--muted-foreground);
+  font-family: var(--mono);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.35;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.1em;
   text-decoration: none;
   text-transform: uppercase;
 }
@@ -1205,7 +1241,7 @@ html[data-theme="dark"]
 }
 
 .tldr-date:focus-visible {
-  outline: 2px solid #0a0a0a;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
@@ -1218,7 +1254,6 @@ html[data-theme="dark"]
   border: 0;
   padding: 2px;
   border-radius: 999px;
-  background: #0a0a0a1a;
 }
 
 .day-card-switch[hidden] {
@@ -1234,7 +1269,7 @@ html[data-theme="dark"]
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #0a0a0ab3;
+  color: var(--muted-foreground);
   cursor: pointer;
   padding: 0;
   transition:
@@ -1243,16 +1278,16 @@ html[data-theme="dark"]
 }
 
 .day-card-switch button:hover {
-  color: #0a0a0a;
+  color: var(--foreground);
 }
 
 .day-card-switch button[aria-pressed="true"] {
-  background: #0a0a0a;
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .day-card-switch button:focus-visible {
-  outline: 2px solid #0a0a0a;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
@@ -1299,7 +1334,7 @@ html[data-theme="dark"]
   max-height: min(70vh, 630px);
   width: auto;
   height: auto;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-card);
   object-fit: contain;
   box-shadow: 0 10px 24px rgb(0 0 0 / 18%);
 }
@@ -1320,7 +1355,7 @@ html[data-theme="dark"]
 
 @media (min-width: 640px) {
   .tldr-day {
-    font-size: 3rem;
+    font-size: 2.25rem;
   }
 }
 
@@ -1335,7 +1370,7 @@ html[data-theme="dark"]
   gap: 0.15rem;
   padding: 0.15rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--muted) 80%, transparent);
+  background: var(--muted);
   font-size: 0.75rem;
 }
 
@@ -1383,7 +1418,12 @@ html[data-theme="dark"]
 }
 
 .tldr-list > li {
-  margin: 0 0 var(--pad);
+  margin: 0;
+  padding: calc(var(--pad) * 0.8) 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .tldr-list > li::marker {
@@ -1391,7 +1431,7 @@ html[data-theme="dark"]
 }
 
 .tldr-list > li:last-child {
-  margin-bottom: 0;
+  border-bottom: 0;
 }
 
 .bullet {
@@ -1425,9 +1465,10 @@ html[data-theme="dark"]
 
 .topic-tag {
   margin-right: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -1453,7 +1494,7 @@ html[data-theme="dark"]
   align-self: stretch;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: calc(var(--radius) * 1.4);
+  border-radius: 6px;
   background: var(--muted);
   object-fit: cover;
 }
@@ -1605,7 +1646,7 @@ html[data-theme="dark"]
 }
 
 .story-row {
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-bottom: 1px solid var(--border);
 }
 
 .story-head {
@@ -1638,6 +1679,7 @@ html[data-theme="dark"]
   min-width: 0;
   flex: 1;
   align-self: baseline;
+  font-size: 15px;
   font-weight: 500;
 }
 
@@ -1760,7 +1802,7 @@ html[data-theme="dark"]
   min-width: 1rem;
   text-align: center;
   color: var(--muted-foreground);
-  font-size: 0.875rem;
+  font-size: 13px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -1772,7 +1814,7 @@ html[data-theme="dark"]
   flex-shrink: 0;
   overflow: hidden;
   color: var(--muted-foreground);
-  font-size: 0.875rem;
+  font-size: 13px;
   text-align: right;
   white-space: nowrap;
 }
@@ -1802,7 +1844,7 @@ html[data-theme="dark"]
   margin: 0 0 0.5rem;
   padding: 0.75rem 1rem;
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-card);
   background: color-mix(in srgb, var(--muted) 40%, transparent);
 }
 
@@ -2024,7 +2066,7 @@ html[data-theme="dark"]
   align-items: center;
   gap: 0.75rem;
   border: 0;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-card);
   padding: 0 0.75rem;
   background: transparent;
   color: inherit;
@@ -2646,7 +2688,7 @@ html[data-theme="dark"] .story-topic-colored {
 .story-dialog-thumbnail {
   width: 100%;
   max-height: 12rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-card);
   border: 1px solid var(--border);
   object-fit: cover;
   cursor: zoom-in;
@@ -2706,7 +2748,7 @@ html[data-theme="dark"] .story-topic-colored {
 .thumb-lightbox img {
   max-height: 90vh;
   max-width: 100%;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-card);
   object-fit: contain;
 }
 

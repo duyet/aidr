@@ -62,8 +62,8 @@ export function ModelAttribution() {
   }
   if (state.error) {
     return (
-      <Card className="min-w-0 rounded-md border-border/70 bg-card shadow-none">
-        <CardContent className="p-4">
+      <Card className="min-w-0 rounded-lg border-border bg-card shadow-none">
+        <CardContent className="px-3.5 py-3 sm:px-4">
           <div role="status" aria-live="polite" className="space-y-1">
             <p className="text-sm font-medium text-foreground">
               Model routes unavailable
@@ -93,8 +93,8 @@ export function AttributionView({ models }: { models: ModelChains }) {
   const titleId = useId();
 
   return (
-    <Card className="min-w-0 rounded-md border-border/70 bg-card shadow-none">
-      <CardContent className="p-4">
+    <Card className="min-w-0 rounded-lg border-border bg-card shadow-none">
+      <CardContent className="px-3.5 py-3 sm:px-4">
         <section aria-labelledby={titleId}>
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             {/* The mark is a sibling of the baseline-aligned title/subtitle

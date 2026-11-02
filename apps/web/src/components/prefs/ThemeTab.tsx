@@ -11,7 +11,7 @@ import {
   type ReaderFont,
   usePrefs,
 } from "../../lib/prefs";
-import { PrefsRow, Segmented, Stepper } from "./Segmented";
+import { PrefsRow, PrefsSelect, Segmented } from "./Segmented";
 
 const BG_SWATCHES: {
   key: ReaderBg;
@@ -119,24 +119,19 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
     setTheme("system");
   };
 
-  const sizeIndex = FONT_SIZES.findIndex(
-    (v) => Math.abs(v - prefs.fontSize) < 0.001
+  // A stored size can sit between steps (clampFontSize keeps any value in
+  // range), so the menu shows the nearest step.
+  const sizeValue = String(
+    FONT_SIZES.reduce((best, v) =>
+      Math.abs(v - prefs.fontSize) < Math.abs(best - prefs.fontSize) ? v : best
+    )
   );
-  const stepSize = (dir: -1 | 1) => {
-    const from =
-      sizeIndex >= 0
-        ? sizeIndex
-        : FONT_SIZES.findIndex((v) => v >= prefs.fontSize);
-    const next = FONT_SIZES[from + dir];
-    if (next === undefined) return;
+  const setSize = (value: string) => {
     track("prefs_change", { pref: "fontSize" });
-    setPrefs({ fontSize: next });
+    setPrefs({ fontSize: Number(value) });
   };
 
-  const densityIndex = READER_DENSITIES.indexOf(prefs.density);
-  const stepDensity = (dir: -1 | 1) => {
-    const density = READER_DENSITIES[densityIndex + dir];
-    if (!density) return;
+  const setDensity = (density: ReaderDensity) => {
     track("prefs_change", { pref: "density", pref_value: density });
     setPrefs({ density });
   };
@@ -232,30 +227,26 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
       </PrefsRow>
 
       <PrefsRow id="prefs-size" label={t("Text size", "Cỡ chữ")}>
-        <Stepper
+        <PrefsSelect
           labelledBy="prefs-size"
-          display={`${Math.round(prefs.fontSize * 100)}%`}
-          canDecrease={prefs.fontSize > FONT_SIZES[0] + 0.001}
-          canIncrease={
-            prefs.fontSize < FONT_SIZES[FONT_SIZES.length - 1] - 0.001
-          }
-          onDecrease={() => stepSize(-1)}
-          onIncrease={() => stepSize(1)}
-          decreaseLabel={t("Smaller text", "Chữ nhỏ hơn")}
-          increaseLabel={t("Larger text", "Chữ lớn hơn")}
+          value={sizeValue}
+          onChange={setSize}
+          options={FONT_SIZES.map((v) => ({
+            value: String(v),
+            label: `${Math.round(v * 100)}%`,
+          }))}
         />
       </PrefsRow>
 
       <PrefsRow id="prefs-density" label={t("Density", "Mật độ")}>
-        <Stepper
+        <PrefsSelect
           labelledBy="prefs-density"
-          display={t(...DENSITY_LABELS[prefs.density])}
-          canDecrease={densityIndex > 0}
-          canIncrease={densityIndex < READER_DENSITIES.length - 1}
-          onDecrease={() => stepDensity(-1)}
-          onIncrease={() => stepDensity(1)}
-          decreaseLabel={t("Tighter", "Sát hơn")}
-          increaseLabel={t("Looser", "Thoáng hơn")}
+          value={prefs.density}
+          onChange={setDensity}
+          options={READER_DENSITIES.map((d) => ({
+            value: d,
+            label: t(...DENSITY_LABELS[d]),
+          }))}
         />
       </PrefsRow>
 

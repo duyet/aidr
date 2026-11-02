@@ -106,7 +106,7 @@ export function RunsList({ runs, lang, focusRunId }: RunsListProps) {
 
   const vi = lang === "vi";
   return (
-    <div className="overflow-hidden rounded-md border border-border">
+    <div className="overflow-hidden rounded-lg border border-border">
       <div
         aria-hidden
         className={`hidden gap-x-4 border-b border-border bg-muted/30 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground md:grid ${RUN_ROW_GRID}`}

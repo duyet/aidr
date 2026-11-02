@@ -412,6 +412,13 @@
   --typeset-leading: var(--reader-leading-dark, 1.75);
 }
 
+/* AI;DR Weekly (/weeks and /week/$week) prints as a newspaper: serif
+   mastheads, headlines and copy. `font-serif` compiles to this token
+   (@theme inline), so overriding it here re-faces only these pages. */
+.newspaper {
+  --editorial-font-heading: var(--reader-font-serif);
+}
+
 /* Long-form pages (about, privacy, changelog, extension guide). */
 .typeset-page {
   --typeset-font-body: var(--content-font-sans);
@@ -433,8 +440,7 @@
   line-height: 1.2;
 }
 
-/* Pipeline /data dashboard: Geist (shadcn) sans + standard type scale,
-   not the feed's Source Sans 3 reader font. Keeps news accent tokens. */
+/* Pipeline /data dashboard: Inter at a compact 14px base. */
 .news-content.news-data {
   font-family: var(--font-sans);
   font-size: 0.875rem;

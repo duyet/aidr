@@ -1,4 +1,4 @@
-import { Minus, Plus } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
 const FOCUS =
@@ -62,55 +62,35 @@ export function Segmented<T extends string | number>({
   );
 }
 
-export function Stepper({
+export function PrefsSelect<T extends string>({
   labelledBy,
-  display,
-  canDecrease,
-  canIncrease,
-  onDecrease,
-  onIncrease,
-  decreaseLabel,
-  increaseLabel,
+  value,
+  options,
+  onChange,
 }: {
   labelledBy: string;
-  display: string;
-  canDecrease: boolean;
-  canIncrease: boolean;
-  onDecrease: () => void;
-  onIncrease: () => void;
-  decreaseLabel: string;
-  increaseLabel: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (value: T) => void;
 }) {
-  const btn = `flex size-6 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35 ${FOCUS}`;
   return (
-    <fieldset
-      aria-labelledby={labelledBy}
-      className="inline-flex shrink-0 items-center rounded-md border border-border p-0.5"
-    >
-      <button
-        type="button"
-        aria-label={decreaseLabel}
-        disabled={!canDecrease}
-        onClick={onDecrease}
-        className={btn}
+    <span className="relative inline-flex shrink-0">
+      <select
+        aria-labelledby={labelledBy}
+        value={value}
+        onChange={(e) => onChange(e.target.value as T)}
+        className={`h-7 min-w-[7.5rem] cursor-pointer appearance-none rounded-md border border-border bg-card py-0 pr-7 pl-2.5 text-xs font-medium tabular-nums text-foreground transition-colors hover:bg-muted ${FOCUS}`}
       >
-        <Minus className="size-3.5" aria-hidden />
-      </button>
-      <output
-        aria-live="polite"
-        className="min-w-[5.5rem] text-center text-xs font-medium tabular-nums"
-      >
-        {display}
-      </output>
-      <button
-        type="button"
-        aria-label={increaseLabel}
-        disabled={!canIncrease}
-        onClick={onIncrease}
-        className={btn}
-      >
-        <Plus className="size-3.5" aria-hidden />
-      </button>
-    </fieldset>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute top-1/2 right-2 size-3.5 -translate-y-1/2 text-muted-foreground"
+        aria-hidden
+      />
+    </span>
   );
 }

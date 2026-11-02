@@ -52,7 +52,7 @@
  *   Extended-A and the rupee sign. The output is gitignored.
  *
  *     Inter           54 KB  (opsz pinned to 14; body text and headings)
- *     Source Serif 4  63 KB  (opt-in reader serif)
+ *     Source Serif 4  63 KB  (opt-in reader serif; AI;DR Weekly pages)
  *
  * Inter replaced Source Sans 3 (body, 38 KB) and EB Garamond (headings,
  * 55 KB) in the xAI-style restyle (apps/web/DESIGN.md). One family now sets
@@ -76,8 +76,9 @@
 /*
  * Reader serif ("Serif" / "Có chân" in the prefs panel). Source Serif 4 is
  * a text serif with a generous x-height, and its Vietnamese marks are drawn
- * for body sizes. Opt-in only: no first-paint rule uses this family, so the
- * browser fetches it only for a reader who picked serif.
+ * for body sizes. The browser fetches it for a reader who picked serif, and
+ * on the AI;DR Weekly pages (`.newspaper` in styles.css), which set it by
+ * default. No other first-paint rule uses this family.
  */
 
 @font-face {

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { CategoryNav } from "../components/CategoryNav";
 import { FeedDays } from "../components/FeedDays";
 import { FeedSkeleton } from "../components/FeedSkeleton";
+import { HomeSections } from "../components/HomeSections";
 import { TldrSection } from "../components/TldrSection";
 import { TrendingChips } from "../components/TrendingChips";
 import { parseAidrLayout } from "../lib/aidr-layout";
@@ -344,6 +345,7 @@ function IndexPage() {
             return null;
         }
       })}
+      {q ? null : <HomeSections lang={lang} />}
     </div>
   );
 }

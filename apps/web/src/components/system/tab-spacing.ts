@@ -4,4 +4,4 @@
  * spacing step. `space-y-*` broke here: CardData's `contents` wrapper has no
  * box, so the margin it was given vanished and the tiles touched the cards.
  */
-export const TAB_PANEL = "mt-4 flex flex-col gap-3";
+export const TAB_PANEL = "mt-3 flex flex-col gap-3";

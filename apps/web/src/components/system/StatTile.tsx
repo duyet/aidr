@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 
 /** Shared tile height so the loading placeholder and the loaded tile never
  *  shift the metric row when one endpoint resolves before the other. */
-export const STAT_TILE_MIN_HEIGHT = "min-h-[5.25rem]";
+export const STAT_TILE_MIN_HEIGHT = "min-h-[4.75rem]";
 
 interface StatTileProps {
   label: string;
@@ -26,31 +26,29 @@ export function StatTile({
   return (
     <Card
       className={cn(
-        "h-full rounded-md border-border/70 bg-card shadow-none",
+        "h-full rounded-lg border-border bg-card shadow-none",
         STAT_TILE_MIN_HEIGHT
       )}
     >
-      <CardContent className="flex h-full flex-col p-4">
-        <p className="flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-          {Icon ? (
-            <Icon className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
-          ) : null}
+      <CardContent className="flex h-full flex-col px-3.5 py-3 sm:px-4">
+        <p className="flex min-w-0 items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+          {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
           <span className="truncate">{label}</span>
         </p>
         {value === null ? (
-          <Skeleton className="mt-2 h-6 w-14" />
+          <Skeleton className="mt-1.5 h-[22px] w-14" />
         ) : (
           <p
             className={cn(
-              "mt-1.5 font-semibold leading-none tracking-tight text-foreground",
-              numeric ? "font-mono text-2xl tabular-nums" : "font-sans text-lg"
+              "mt-1.5 font-semibold leading-none tracking-[-0.02em] text-foreground",
+              numeric ? "text-[22px] tabular-nums" : "text-base"
             )}
           >
             {value}
           </p>
         )}
         {sublabel ? (
-          <p className="mt-1.5 min-w-0 text-[11px] leading-tight text-muted-foreground">
+          <p className="mt-1 min-w-0 text-[11px] leading-tight text-muted-foreground">
             {sublabel}
           </p>
         ) : null}
@@ -61,5 +59,5 @@ export function StatTile({
 
 /** Same box as StatTile with no copy, for a section that is still in flight. */
 export function StatTileSkeleton() {
-  return <Skeleton className={cn("rounded-md", STAT_TILE_MIN_HEIGHT)} />;
+  return <Skeleton className={cn("rounded-lg", STAT_TILE_MIN_HEIGHT)} />;
 }

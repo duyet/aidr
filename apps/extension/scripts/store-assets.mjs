@@ -510,14 +510,12 @@ function promoHtml({ width, height, hero, layout }) {
   return `<!doctype html>
 <html><head><meta charset="utf-8">
 <style>
-  @font-face { font-family: "EB Garamond"; font-weight: 700; src: url(/fonts/eb-garamond-latin-700.woff2) format("woff2"); }
-  @font-face { font-family: "Source Sans 3"; font-weight: 600; src: url(/fonts/source-sans-3-latin-600.woff2) format("woff2"); }
-  @font-face { font-family: "Source Sans 3"; font-weight: 400; src: url(/fonts/source-sans-3-latin-400.woff2) format("woff2"); }
+  @font-face { font-family: "Inter Variable"; font-weight: 100 900; src: url(/fonts/inter-wght-normal.woff2) format("woff2-variations"); }
   * { margin: 0; box-sizing: border-box; }
   html, body { width: ${width}px; height: ${height}px; overflow: hidden; background: ${BRAND.yellow}; }
-  body { position: relative; color: ${BRAND.ink}; font-family: "Source Sans 3", sans-serif; }
+  body { position: relative; color: ${BRAND.ink}; font-family: "Inter Variable", sans-serif; }
   .copy { position: absolute; left: ${pad}px; top: ${marquee ? 104 : 30}px; width: ${marquee ? 470 : 180}px; }
-  .mark { font-family: "EB Garamond", serif; font-weight: 700; font-size: ${mark}px; line-height: .9; letter-spacing: -.01em; color: ${BRAND.logoInk}; }
+  .mark { font-weight: 600; font-size: ${mark}px; line-height: .9; letter-spacing: -.03em; color: ${BRAND.logoInk}; }
   .rule { height: ${marquee ? 2 : 1.5}px; width: ${marquee ? 96 : 44}px; background: ${BRAND.ink}; margin: ${marquee ? 30 : 16}px 0 ${marquee ? 26 : 12}px; }
   .head { font-weight: 600; font-size: ${head}px; line-height: 1.18; }
   .sub { font-weight: 400; font-size: ${sub}px; line-height: 1.3; margin-top: ${marquee ? 10 : 6}px; }
