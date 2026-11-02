@@ -21,7 +21,7 @@ interface RunDurationChartProps {
 }
 
 const CONFIG: ChartConfig = {
-  seconds: { label: "Duration", color: "blue" },
+  seconds: { label: "Duration", color: "amber" },
 };
 
 /** Axis ticks are raw seconds, so the formatter switches unit at 60 — and

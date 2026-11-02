@@ -26,10 +26,10 @@ export function ChartCard({
   action,
 }: ChartCardProps) {
   return (
-    <Card className={cn("rounded-md border-border/70 shadow-none", className)}>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 px-4 pb-0 pt-3.5">
+    <Card className={cn("rounded-lg border-border shadow-none", className)}>
+      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 px-3.5 pb-0 pt-3 sm:px-4">
         <div className="min-w-0 space-y-0.5">
-          <CardTitle className="font-sans text-sm font-medium tracking-tight text-foreground">
+          <CardTitle className="text-[15px] font-medium leading-snug tracking-[-0.01em] text-foreground">
             {title}
           </CardTitle>
           {subtitle ? (
@@ -42,7 +42,9 @@ export function ChartCard({
           <div className="flex shrink-0 items-center">{action}</div>
         ) : null}
       </CardHeader>
-      <CardContent className="px-4 pb-4 pt-3">{children}</CardContent>
+      <CardContent className="px-3.5 pb-3.5 pt-2.5 sm:px-4">
+        {children}
+      </CardContent>
     </Card>
   );
 }

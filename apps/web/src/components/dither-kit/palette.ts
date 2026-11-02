@@ -1,6 +1,7 @@
 export type Rgb = [number, number, number]
 
 export type DitherColor =
+  | "amber"
   | "green"
   | "blue"
   | "purple"
@@ -12,6 +13,7 @@ export type DitherColor =
 export type Seed = { fill: Rgb; line: Rgb; star: Rgb }
 
 export const PALETTE: Record<DitherColor, Seed> = {
+  amber: { fill: [217, 119, 6], line: [245, 197, 24], star: [252, 226, 140] },
   green: { fill: [40, 210, 110], line: [150, 255, 180], star: [200, 255, 220] },
   blue: { fill: [53, 143, 243], line: [150, 200, 255], star: [205, 228, 255] },
   purple: {

@@ -28,7 +28,7 @@ const TABS: { value: DataTab; label: string }[] = [
 ];
 
 const TAB_TRIGGER =
-  "-mb-px h-9 rounded-none border-b-2 border-transparent bg-transparent px-3 py-0 text-sm text-muted-foreground shadow-none hover:text-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none";
+  "-mb-px h-8 rounded-none border-b-2 border-transparent bg-transparent px-2.5 py-0 text-[13px] text-muted-foreground shadow-none hover:text-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none";
 
 export function SystemPage() {
   // /data is an operator page: English only, whatever the site language.
@@ -42,15 +42,15 @@ export function SystemPage() {
       : (search.tab ?? "overview");
 
   return (
-    <div className="news-content news-data py-8 sm:py-10">
-      <div className="space-y-6">
+    <div className="news-content news-data pb-8 pt-4 sm:pt-5">
+      <div className="space-y-4">
         <header>
-          <h1 className="font-sans text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="font-heading text-2xl font-medium leading-[1.18] tracking-[-0.025em] text-foreground sm:text-[34px] sm:leading-[1.12]">
             Pipeline
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-[15px] text-muted-foreground">
             Live ingest, content, and token use.
-            <span className="mt-1 block font-mono text-xs">
+            <span className="mt-1.5 block font-mono text-[11px] uppercase tracking-[0.1em]">
               AI;DR {import.meta.env.VITE_AIDR_VERSION || "dev"}
               {import.meta.env.VITE_AIDR_SHA
                 ? ` · ${import.meta.env.VITE_AIDR_SHA}`
@@ -77,7 +77,7 @@ export function SystemPage() {
         >
           {/* Underline tabs on a hairline: the strip is navigation, not a
               surface, so it carries no fill; TAB_PANEL sets the gap below. */}
-          <TabsList className="h-auto w-full flex-wrap justify-start gap-0 rounded-none border-b border-border/70 bg-transparent p-0">
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
             {TABS.map(({ value, label }) => (
               <TabsTrigger key={value} value={value} className={TAB_TRIGGER}>
                 {label}

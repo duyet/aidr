@@ -440,8 +440,7 @@
   line-height: 1.2;
 }
 
-/* Pipeline /data dashboard: Geist (shadcn) sans + standard type scale,
-   not the feed's Source Sans 3 reader font. Keeps news accent tokens. */
+/* Pipeline /data dashboard: Inter at a compact 14px base. */
 .news-content.news-data {
   font-family: var(--font-sans);
   font-size: 0.875rem;
