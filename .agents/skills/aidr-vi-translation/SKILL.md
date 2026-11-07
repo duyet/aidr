@@ -30,6 +30,7 @@ Restate the news the way a Vietnamese tech journalist would say it out loud. Kee
 - Numbers: Vietnamese press style. `B` / billion = `tỷ`, `M` / million = `triệu`, `T` / trillion = `nghìn tỷ`. `$20B` is `20 tỷ USD`. A model size such as `7B` stays as written. Decimal comma: `2,5 tỷ USD`.
 - A vague word is not a number. `Countless` is not `hàng triệu`.
 - Do not swap who did what. If A accuses B, do not write B's thing of A.
+- Write news in the third person, not the source's own voice. A press release's, paper's, or blog's "we", "our", or "I" becomes the company or author the text names, else `nhóm tác giả` for a paper, `tác giả` for a blog post, `hãng` for a company announcement. Never name a speaker the text does not give. "You" the reader becomes `người dùng` or is dropped. Keep the first person only inside a direct quote. Drop a feed footer ("The post … appeared first on …").
 - Prefer everyday words (`dùng`, `hãng`) over formalese when they mean the same thing. Split a long English sentence. Drop a repeated subject Vietnamese would omit.
 - A complete summary is about as long as the English one, at least 80% when the source is long enough for the gate.
 - Only Vietnamese plus the kept English terms. No third-language word (`abonnement` is `gói thuê bao`) and no English word that has a plain Vietnamese one (`các senators` is `các thượng nghị sĩ`, `AI-powered` is `dùng AI`).
