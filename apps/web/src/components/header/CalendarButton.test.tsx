@@ -250,7 +250,7 @@ describe("CalendarButton phone sheet", () => {
   });
 });
 
-const RING_RE = /(^| )ring-2( |$)/;
+const RING_RE = /(^| )ring-1( |$)/;
 const pressEscape = () =>
   fireEvent.keyDown(document.activeElement ?? document.body, {
     key: "Escape",
