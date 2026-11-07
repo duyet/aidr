@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { MailPanel } from "../components/mail/MailPanel";
 import { useAdmin } from "../lib/admin";
 import { useLang } from "../lib/lang-context";
+import { PAGE_TITLE } from "../lib/page-style";
 
 export const Route = createFileRoute("/mail")({
   component: MailPage,
@@ -21,8 +22,8 @@ function MailPage() {
 
   if (!admin.isAdmin) {
     return (
-      <div className="news-content mx-auto max-w-md py-16">
-        <h1 className="text-lg font-semibold">Mail</h1>
+      <div className="news-content mx-auto max-w-md pt-5 pb-10">
+        <h1 className={PAGE_TITLE}>Mail</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Sign in with an admin account to manage the list and send notes.
         </p>

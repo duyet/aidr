@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
 import { useAdmin } from "../../lib/admin";
 import { type DataTab, dataTabSearch, parseDataTab } from "../../lib/data-tab";
+import { PAGE_TITLE } from "../../lib/page-style";
 import { formatTrack, parseTrack } from "../../lib/trends";
 import type { Lang } from "../../lib/types";
 import { Route } from "../../routes/data";
@@ -42,12 +43,10 @@ export function SystemPage() {
       : (search.tab ?? "overview");
 
   return (
-    <div className="news-content news-data py-8 sm:py-10">
+    <div className="news-content news-data pt-5 pb-10 max-sm:pt-4">
       <div className="space-y-6">
         <header>
-          <h1 className="font-sans text-2xl font-semibold tracking-tight text-foreground">
-            Pipeline
-          </h1>
+          <h1 className={PAGE_TITLE}>Pipeline</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Live ingest, content, and token use.
             <span className="mt-1 block font-mono text-xs">

@@ -14,6 +14,7 @@ import {
 } from "../components/mcp/McpSections";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
+import { PAGE_TITLE } from "../lib/page-style";
 import { localizedPageHead } from "../lib/seo";
 import { GITHUB_URL } from "../lib/site";
 
@@ -36,16 +37,14 @@ function McpPage() {
   const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
 
   return (
-    <div className="py-12">
+    <div className="pt-5 pb-10 max-sm:pt-4">
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-card text-muted-foreground">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-border bg-card text-muted-foreground">
           <Plug className="h-5 w-5" aria-hidden />
         </span>
-        <h1 className="font-serif text-3xl font-medium tracking-tight">
-          {t("MCP Server", "Máy chủ MCP")}
-        </h1>
+        <h1 className={PAGE_TITLE}>{t("MCP Server", "Máy chủ MCP")}</h1>
       </div>
-      <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+      <p className="mt-2 max-w-3xl text-[15px] leading-[1.6] text-muted-foreground">
         {t(
           "Read ranked AI news over MCP with no authentication, and run the ingest pipeline as an operator. Implements the",
           "Đọc tin AI đã xếp hạng qua MCP mà không cần xác thực, và điều khiển pipeline ingest ở vai trò vận hành. Triển khai theo"

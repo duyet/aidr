@@ -56,7 +56,7 @@ const ASSETS: { path: string; name: string; note: string; wide?: true }[] = [
 ];
 
 const BUTTON =
-  "rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground hover:bg-muted";
+  "inline-flex h-8 items-center rounded-full border border-input px-3 text-[13px] font-medium text-foreground hover:bg-muted max-sm:h-11";
 
 function CopyUrl({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
@@ -89,8 +89,8 @@ function Preview({
 }) {
   return (
     <div
-      className={`flex min-h-24 items-center justify-center rounded-lg border border-border/80 p-4 ${
-        dark ? "bg-stone-900" : "bg-stone-50"
+      className={`flex min-h-24 items-center justify-center rounded-lg border border-border p-4 ${
+        dark ? "bg-black" : "bg-white"
       }`}
     >
       <a href={src} target="_blank" rel="noopener noreferrer">
@@ -112,12 +112,12 @@ function BrandPage() {
       title="Brand"
       lede="Official AI;DR and aidr.today marks. Download a file or copy its URL. Please do not redraw them."
     >
-      <div className="mt-8 space-y-8">
+      <div className="mt-6 divide-y divide-border">
         {ASSETS.map(({ path, name, note, wide }) => {
           const url = `${SITE_URL}${path}`;
           return (
-            <section key={path}>
-              <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <section key={path} className="py-6 first:pt-0">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                 {name}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">{note}</p>

@@ -58,7 +58,7 @@ export function ChromeChannel({ lang }: { lang: Lang }) {
               alt=""
               width={56}
               height={56}
-              className="size-14 rounded-2xl border border-border"
+              className="size-14 rounded-[12px] border border-border"
             />
             <div className="space-y-1">
               <p className="font-medium leading-tight">aidr</p>
@@ -112,7 +112,7 @@ export function ChromeChannel({ lang }: { lang: Lang }) {
               </li>
             ))}
           </ul>
-          <Card className="border-dashed">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <RefreshCw className="size-4" aria-hidden />

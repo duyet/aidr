@@ -12,6 +12,7 @@ import {
   normalizeWeeklyDay,
   type WeeklyDay,
 } from "../../lib/mail-frequency";
+import { PAGE_TITLE } from "../../lib/page-style";
 import type { Lang } from "../../lib/types";
 import { FrequencyField } from "./FrequencyField";
 import { MailFontField } from "./MailFontField";
@@ -118,10 +119,8 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
     "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent";
 
   return (
-    <div className="mx-auto w-full max-w-md py-12">
-      <h1 className="font-serif text-3xl font-medium tracking-tight">
-        {t("Digest settings", "Cài đặt bản tin")}
-      </h1>
+    <div className="mx-auto w-full max-w-md pt-5 pb-10">
+      <h1 className={PAGE_TITLE}>{t("Digest settings", "Cài đặt bản tin")}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{masked}</p>
       <form onSubmit={onSave} className="mt-6 space-y-4">
         <FrequencyField

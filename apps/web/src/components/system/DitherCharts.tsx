@@ -45,7 +45,7 @@ export function ItemsAreaChart({
     items: d.count,
   }));
   const config: ChartConfig = {
-    items: { label: "Items", color: "green" },
+    items: { label: "Items", color: "orange" },
   };
   return (
     <BarChart
