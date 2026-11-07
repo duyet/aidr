@@ -1,7 +1,10 @@
 import type { ReactElement } from "react";
 import type { Lang } from "../../lib/types";
 
-const KEYS: Record<Lang, Array<[string[], string]>> = {
+export type ShortcutList = Record<Lang, Array<[string[], string]>>;
+
+/** The story page's shortcuts (use-story-keys.ts). */
+export const STORY_SHORTCUTS: ShortcutList = {
   en: [
     [["J", "K"], "Next / previous block"],
     [["Enter"], "Open the selected block"],
@@ -22,16 +25,34 @@ const KEYS: Record<Lang, Array<[string[], string]>> = {
   ],
 };
 
+/** The home feed's shortcuts (lib/use-feed-keynav.ts). */
+export const FEED_SHORTCUTS: ShortcutList = {
+  en: [
+    [["J", "K"], "Next / previous story"],
+    [["Enter"], "Open the selected story"],
+    [["Esc"], "Close an open story"],
+    [["?"], "Show or hide this list"],
+  ],
+  vi: [
+    [["J", "K"], "Tin tiếp / trước"],
+    [["Enter"], "Mở tin đang chọn"],
+    [["Esc"], "Đóng tin đang mở"],
+    [["?"], "Hiện hoặc ẩn danh sách này"],
+  ],
+};
+
 export const KBD_CLASS =
   "rounded border border-input border-b-2 px-1.5 font-mono text-[11px] font-medium text-foreground";
 
-/** The story page's shortcut list, behind `?`. Not modal: the page keeps
- * working under it, and Esc or `?` hides it. */
+/** A page's shortcut list behind `?`, on the story page and the home feed.
+ * Not modal: the page keeps working under it, and Esc or `?` hides it. */
 export function ShortcutSheet({
   lang,
+  keys = STORY_SHORTCUTS,
   onClose,
 }: {
   lang: Lang;
+  keys?: ShortcutList;
   onClose: () => void;
 }): ReactElement {
   const vi = lang === "vi";
@@ -53,10 +74,10 @@ export function ShortcutSheet({
         </button>
       </div>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
-        {KEYS[lang].map(([keys, label]) => (
+        {keys[lang].map(([combo, label]) => (
           <div key={label} className="contents">
             <dt className="flex gap-1">
-              {keys.map((k) => (
+              {combo.map((k) => (
                 <kbd key={k} className={KBD_CLASS}>
                   {k}
                 </kbd>

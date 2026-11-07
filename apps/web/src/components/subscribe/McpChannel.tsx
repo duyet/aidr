@@ -34,7 +34,7 @@ export function McpChannel({ lang }: { lang: Lang }) {
         </>
       }
       preview={
-        <div className="rounded-xl border border-border bg-card p-6 [&>section]:mt-0">
+        <div className="rounded-lg border border-border bg-card p-4 sm:p-5 [&>section]:mt-0">
           <ClientsSection />
         </div>
       }

@@ -1,5 +1,7 @@
+import { buttonVariants } from "@aidr/ui";
 import { Mail } from "lucide-react";
 import { withLang } from "../lib/locale-url";
+import { PANEL } from "../lib/page-style";
 import type { Lang } from "../lib/types";
 
 export const WEEKLY_SUBSCRIBE_PATH = "/subscribe?tab=email&freq=weekly";
@@ -14,20 +16,20 @@ export function WeeklySubscribeCta({ lang }: { lang: Lang }) {
   return (
     <aside
       aria-label={vi ? "Đăng ký bản tin tuần" : "Subscribe to the weekly email"}
-      className="my-8 flex flex-col gap-4 border-y-2 border-foreground py-5 sm:flex-row sm:items-center sm:justify-between"
+      className={`${PANEL} my-6 flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-[18px]`}
     >
       <div className="min-w-0">
-        <p className="font-serif text-xl font-semibold">
+        <p className="text-[15px] font-semibold leading-[1.4] text-foreground">
           {vi
             ? "Nhận AI;DR Tuần vào sáng thứ Hai"
             : "Get AI;DR Weekly every Monday"}
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-[13px] text-muted-foreground">
           {vi
             ? "Một email mỗi tuần với những tin AI đáng đọc nhất. Miễn phí, hủy bất cứ lúc nào."
             : "One email a week with the AI stories that mattered. Free, unsubscribe anytime."}
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-0.5 text-[13px] text-muted-foreground">
           {vi ? "Thích dùng trình đọc tin? " : "Prefer a feed reader? "}
           <a
             href={withLang(RSS_SUBSCRIBE_PATH, lang)}
@@ -39,7 +41,9 @@ export function WeeklySubscribeCta({ lang }: { lang: Lang }) {
       </div>
       <a
         href={weeklySubscribeHref(lang)}
-        className="inline-flex shrink-0 items-center justify-center gap-2 bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+        className={buttonVariants({
+          className: "max-sm:h-11 text-[13px]",
+        })}
       >
         <Mail className="size-4" aria-hidden />
         {vi ? "Đăng ký email tuần" : "Subscribe to the weekly email"}

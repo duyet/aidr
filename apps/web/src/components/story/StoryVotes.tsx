@@ -134,7 +134,7 @@ function Thumb({
   return (
     <button
       type="button"
-      className={`inline-flex items-baseline gap-1 text-sm leading-none tabular-nums transition-colors disabled:opacity-60 ${
+      className={`vote-hit relative inline-flex items-baseline gap-1 text-sm leading-none tabular-nums transition-colors disabled:opacity-60 ${
         pressed ? "text-primary" : "text-muted-foreground hover:text-foreground"
       }`}
       aria-pressed={pressed}

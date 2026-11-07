@@ -29,7 +29,7 @@ function YoutubeFacade({
     : "aspect-video w-full";
   return (
     <div
-      className={`${frame} relative overflow-hidden rounded-2xl border border-border/80 bg-black`}
+      className={`${frame} relative overflow-hidden rounded-[10px] border border-border bg-black`}
     >
       {playing ? (
         <iframe
@@ -63,15 +63,15 @@ function YoutubeFacade({
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
           />
           <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-16 text-left">
-            <span className="block text-[11px] font-semibold uppercase tracking-wider text-white/70">
+            <span className="block font-mono text-[11px] uppercase tracking-[0.1em] text-white/75">
               {lang === "vi" ? "Bản tin video" : "Video briefing"}
             </span>
-            <span className="mt-0.5 line-clamp-2 block font-serif text-lg leading-snug text-white">
+            <span className="mt-1 line-clamp-2 block text-[17px] font-semibold leading-[1.35] tracking-[-0.01em] text-white">
               {title}
             </span>
           </span>
           <span className="absolute inset-0 flex items-center justify-center">
-            <span className="flex h-14 w-20 items-center justify-center rounded-2xl bg-red-600 text-white shadow-lg transition-transform group-hover:scale-110">
+            <span className="flex size-14 items-center justify-center rounded-full bg-white/95 text-black shadow-lg transition-transform group-hover:scale-105">
               <svg
                 viewBox="0 0 24 24"
                 className="h-7 w-7"

@@ -105,7 +105,7 @@ export function FacebookChannel({ lang }: { lang: Lang }) {
             loading="lazy"
             width="500"
             height="640"
-            className="w-full max-w-[500px] rounded-xl border border-border bg-muted"
+            className="w-full max-w-[500px] rounded-lg border border-border bg-muted"
             allow="encrypted-media"
           />
         </div>

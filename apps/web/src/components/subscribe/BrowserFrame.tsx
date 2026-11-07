@@ -12,7 +12,7 @@ export function BrowserFrame({
 }) {
   return (
     <div
-      className="animate-in fade-in-0 slide-in-from-bottom-4 zoom-in-[0.98] overflow-hidden rounded-xl border border-border bg-card shadow-md shadow-foreground/5 duration-500"
+      className="animate-in fade-in-0 slide-in-from-bottom-4 zoom-in-[0.98] overflow-hidden rounded-lg border border-border bg-card shadow-md shadow-foreground/5 duration-500"
       style={{ animationFillMode: "backwards" }}
     >
       <div className="flex items-end gap-1.5 bg-muted/60 px-2.5 pt-1.5">

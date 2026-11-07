@@ -15,7 +15,7 @@ export function DayCard({ day, lang }: { day: CalendarDay; lang: Lang }) {
   const title = dayTitle(day, lang);
   const runners = runnerTitles(day, lang);
   return (
-    <article className="overflow-hidden rounded-2xl border border-border bg-background">
+    <article className="overflow-hidden rounded-lg border border-border bg-card">
       {day.image_url ? (
         <img
           key={day.image_url}
@@ -30,14 +30,14 @@ export function DayCard({ day, lang }: { day: CalendarDay; lang: Lang }) {
         />
       ) : null}
       <div className="grid gap-2 p-4">
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+        <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
           {formatDay(day.date, lang, "long")} · {storiesLabel(day.count, lang)}
         </p>
-        <h2 className="font-serif text-xl font-medium leading-tight">
+        <h2 className="text-[18px] font-semibold leading-[1.3] tracking-[-0.015em] text-foreground">
           {title ?? (vi ? "Xem các tin trong ngày" : "See the day's stories")}
         </h2>
         {runners.length > 0 ? (
-          <ul className="grid list-disc gap-1 pl-4 text-sm leading-snug text-muted-foreground">
+          <ul className="grid list-disc gap-1 pl-4 text-[14px] leading-[1.45] text-body marker:text-muted-foreground">
             {runners.map((t) => (
               <li key={t}>{t}</li>
             ))}
@@ -51,7 +51,7 @@ export function DayCard({ day, lang }: { day: CalendarDay; lang: Lang }) {
             {day.categories.map((c) => (
               <li
                 key={c}
-                className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                className="rounded-full border border-input px-2.5 py-0.5 text-[12px] text-muted-foreground"
               >
                 {categoryLabel(c, lang)}
               </li>
@@ -60,7 +60,7 @@ export function DayCard({ day, lang }: { day: CalendarDay; lang: Lang }) {
         ) : null}
         <a
           href={dayArchivePath(day.date, lang)}
-          className="mt-1 justify-self-start rounded-full bg-foreground px-3.5 py-1.5 text-sm font-semibold text-background hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="mt-1 inline-flex h-9 items-center justify-self-start rounded-full bg-primary px-4 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           {vi ? "Mở số báo →" : "Open edition →"}
         </a>

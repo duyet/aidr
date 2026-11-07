@@ -3,6 +3,7 @@ import {
   markUnsubscribed,
   wasUnsubscribed,
 } from "../../lib/analytics/url-privacy";
+import { PAGE_TITLE } from "../../lib/page-style";
 import type { Lang } from "../../lib/types";
 
 export function UnsubscribeView({
@@ -36,7 +37,7 @@ export function UnsubscribeView({
 
   return (
     <div className="mx-auto w-full max-w-md py-16 text-center">
-      <h1 className="font-serif text-3xl font-medium tracking-tight">
+      <h1 className={PAGE_TITLE}>
         {lang === "vi" ? "Hủy đăng ký" : "Unsubscribe"}
       </h1>
       <p className="mt-3 text-sm text-muted-foreground">

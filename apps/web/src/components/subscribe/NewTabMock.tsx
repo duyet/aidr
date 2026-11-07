@@ -2,7 +2,7 @@ import { ChevronDown, Menu, RotateCw, Search, TrendingUp } from "lucide-react";
 import type { CSSProperties } from "react";
 import { topicColor } from "../../lib/topic-color";
 import type { Lang } from "../../lib/types";
-import { HighlightedText } from "../HighlightedText";
+import { KeywordText } from "../KeywordText";
 
 /**
  * Sample content for the new-tab preview. Shapes follow what the extension
@@ -254,7 +254,7 @@ export function NewTabMock({ lang }: { lang: Lang }) {
                             {s.label}
                           </span>
                           <span className="underline decoration-border underline-offset-2">
-                            <HighlightedText text={t(s.en, s.vi)} tags={[]} />
+                            <KeywordText text={t(s.en, s.vi)} tags={[]} />
                           </span>
                         </span>
                         <span className="size-[3em] shrink-0 rounded-[0.75em] border border-border/80 bg-muted" />

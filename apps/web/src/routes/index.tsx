@@ -4,6 +4,11 @@ import { CategoryNav } from "../components/CategoryNav";
 import { FeedDays } from "../components/FeedDays";
 import { FeedSkeleton } from "../components/FeedSkeleton";
 import { HomeSections } from "../components/HomeSections";
+import {
+  FEED_SHORTCUTS,
+  KBD_CLASS,
+  ShortcutSheet,
+} from "../components/story-page/ShortcutSheet";
 import { TldrSection } from "../components/TldrSection";
 import { TrendingChips } from "../components/TrendingChips";
 import { parseAidrLayout } from "../lib/aidr-layout";
@@ -74,7 +79,11 @@ function IndexPage() {
   const { q, tag, category, aidr } = Route.useSearch();
   const lang = useLang();
   const { prefs } = usePrefs();
-  useFeedKeyNav();
+  const [keysOpen, setKeysOpen] = useState(false);
+  useFeedKeyNav({
+    onHelp: () => setKeysOpen((v) => !v),
+    onEscape: () => setKeysOpen(false),
+  });
   const loaderFeed = Route.useLoaderData();
   const [feed, setFeed] = useState<FeedResponse | null>(
     () => loaderFeed ?? null
@@ -322,6 +331,17 @@ function IndexPage() {
                   }
                   layout={parseAidrLayout(aidr)}
                   layoutLabeled={Boolean(aidr)}
+                  footerHint={
+                    <button
+                      type="button"
+                      onClick={() => setKeysOpen((v) => !v)}
+                      aria-expanded={keysOpen}
+                      className="hidden items-center gap-1.5 rounded-[6px] hover:text-foreground sm:inline-flex [@media(hover:none)]:hidden"
+                    >
+                      <kbd className={KBD_CLASS}>?</kbd>
+                      {lang === "vi" ? "Phím tắt" : "Shortcuts"}
+                    </button>
+                  }
                 />
                 <span id={AIDR_END_ID} hidden />
               </div>
@@ -346,6 +366,13 @@ function IndexPage() {
         }
       })}
       {q ? null : <HomeSections lang={lang} />}
+      {keysOpen && (
+        <ShortcutSheet
+          lang={lang}
+          keys={FEED_SHORTCUTS}
+          onClose={() => setKeysOpen(false)}
+        />
+      )}
     </div>
   );
 }

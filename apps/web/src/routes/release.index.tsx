@@ -9,6 +9,7 @@ import {
 } from "../content/releases/earlier";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
+import { PAGE_TITLE, SECTION_TITLE } from "../lib/page-style";
 import { formatReleaseRange, releaseFilmId, t } from "../lib/releases/format";
 import { RELEASES } from "../lib/releases/index";
 import type { Release } from "../lib/releases/types";
@@ -55,36 +56,36 @@ function ReleaseRow({
         to="/release/$version"
         params={{ version: `v${release.version}` }}
         search={{ lang }}
-        className="group grid gap-5 py-8 sm:grid-cols-[1fr_12rem]"
+        className="group grid gap-4 py-6 sm:grid-cols-[1fr_12rem]"
       >
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] tabular-nums text-muted-foreground">
             <VersionBadge version={release.version} />
             <time dateTime={release.date}>
               {formatReleaseRange(release, lang)}
             </time>
             {hasFilm ? (
               <span className="inline-flex items-center gap-1 text-xs font-medium">
-                <PlayGlyph className="h-4 w-5 rounded bg-red-600 text-white" />
+                <PlayGlyph className="h-4 w-5 rounded bg-foreground text-background" />
                 {lang === "vi" ? "Phim" : "Film"}
               </span>
             ) : null}
           </div>
-          <h2 className="mt-2 font-serif text-2xl font-medium leading-snug tracking-tight group-hover:underline">
+          <h2 className="mt-2 text-[20px] font-semibold leading-[1.3] tracking-[-0.015em] text-foreground group-hover:text-accent">
             {t(release.title, lang)}
           </h2>
-          <p className="mt-2 line-clamp-3 text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mt-1.5 line-clamp-3 text-[15px] leading-[1.6] text-body">
             {t(release.intro, lang)}
           </p>
           {labels.length > 0 ? (
-            <p className="mt-3 text-sm text-foreground/80">
+            <p className="mt-2 text-[13px] text-muted-foreground">
               {labels.join(" · ")}
               {more > 0 ? (
                 <span className="text-muted-foreground"> · +{more}</span>
               ) : null}
             </p>
           ) : null}
-          <span className="mt-3 inline-block text-sm text-accent underline decoration-accent/40 underline-offset-[3px] group-hover:decoration-accent">
+          <span className="mt-2.5 inline-block text-[13px] font-medium text-accent">
             {lang === "vi" ? "Đọc ghi chú" : "Read the notes"} →
           </span>
         </div>
@@ -97,10 +98,10 @@ function ReleaseRow({
               alt=""
               loading="lazy"
               decoding="async"
-              className="aspect-[16/10] w-full rounded-lg border border-border object-cover object-top"
+              className="aspect-[16/10] w-full rounded-[10px] border border-border object-cover object-top"
             />
             {hasFilm ? (
-              <PlayGlyph className="absolute inset-0 m-auto h-9 w-12 rounded-xl bg-red-600 text-white shadow" />
+              <PlayGlyph className="absolute inset-0 m-auto size-11 rounded-full bg-white/95 text-black shadow" />
             ) : null}
           </div>
         ) : null}
@@ -121,10 +122,10 @@ function EarlierList({
       {entries.map((entry) => (
         <li key={entry.text.en} className="relative">
           <span className="absolute -left-[23px] top-1.5 h-2 w-2 rounded-full bg-accent" />
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="font-mono text-[11px] uppercase tracking-[0.1em] tabular-nums text-muted-foreground">
             {entry.date}
           </div>
-          <p className="mt-1 text-[15px] leading-relaxed">
+          <p className="mt-1 text-[15px] leading-[1.6] text-body">
             {t(entry.text, lang)}
           </p>
           {entry.image ? <Figure image={entry.image} lang={lang} /> : null}
@@ -137,14 +138,15 @@ function EarlierList({
 function ReleaseIndexPage(): ReactElement {
   const lang = useLang();
   const vi = lang === "vi";
-  const sectionHeading =
-    "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
+  const sectionHeading = SECTION_TITLE;
   return (
-    <div className="mx-auto max-w-[44rem] py-10 sm:py-14">
-      <h1 className="font-serif text-3xl font-medium tracking-tight sm:text-4xl">
+    <div className="mx-auto max-w-[44rem] pt-5 pb-10">
+      <h1 className={PAGE_TITLE}>
         {vi ? "Ghi chú phát hành" : "Release notes"}
       </h1>
-      <p className="mt-3 text-muted-foreground">{DESCRIPTION[lang]}</p>
+      <p className="mt-2 text-[16px] leading-[1.6] text-muted-foreground">
+        {DESCRIPTION[lang]}
+      </p>
 
       <ol className="mt-6 divide-y divide-border">
         {RELEASES.map((release) => (
@@ -152,7 +154,10 @@ function ReleaseIndexPage(): ReactElement {
         ))}
       </ol>
 
-      <section id="algorithm" className="mt-12 scroll-mt-20">
+      <section
+        id="algorithm"
+        className="mt-10 border-t border-border pt-6 scroll-mt-20"
+      >
         <h2 className={sectionHeading}>
           {vi ? "Cách chọn và viết tin" : "How stories are picked"}
         </h2>
@@ -164,7 +169,10 @@ function ReleaseIndexPage(): ReactElement {
         <EarlierList entries={ALGORITHM_ENTRIES} lang={lang} />
       </section>
 
-      <section id="chrome-extension" className="mt-12 scroll-mt-20">
+      <section
+        id="chrome-extension"
+        className="mt-10 border-t border-border pt-6 scroll-mt-20"
+      >
         <h2 className={sectionHeading}>
           {vi ? "Tiện ích Chrome" : "Chrome extension"}
         </h2>
@@ -182,7 +190,10 @@ function ReleaseIndexPage(): ReactElement {
         <EarlierList entries={EXTENSION_ENTRIES} lang={lang} />
       </section>
 
-      <section id="earlier" className="mt-12 scroll-mt-20">
+      <section
+        id="earlier"
+        className="mt-10 border-t border-border pt-6 scroll-mt-20"
+      >
         <h2 className={sectionHeading}>
           {vi ? "Trước v0.1.0" : "Before v0.1.0"}
         </h2>

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { type ReactElement, useState } from "react";
 import { youtubeEmbedUrl, youtubeThumbnailUrl } from "../lib/day-video";
+import { EYEBROW, PAGE_TITLE, SECTION_TITLE } from "../lib/page-style";
 import {
   CHANGE_KIND_LABEL,
   commitUrl,
@@ -26,7 +27,7 @@ const EXTERNAL =
 
 export function VersionBadge({ version }: { version: string }): ReactElement {
   return (
-    <span className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5 font-mono text-xs font-semibold tracking-tight text-accent">
+    <span className="inline-flex items-center rounded-full border border-input px-2.5 py-0.5 font-mono text-[11px] font-medium text-foreground">
       v{version}
     </span>
   );
@@ -49,7 +50,7 @@ export function Figure({
         alt={t(image.alt, lang)}
         loading="lazy"
         decoding="async"
-        className="h-auto w-full rounded-xl border border-border bg-card"
+        className="h-auto w-full rounded-[10px] border border-border bg-card"
       />
       {caption ? (
         <figcaption className="mt-2.5 text-center text-xs leading-relaxed text-muted-foreground">
@@ -86,7 +87,7 @@ export function ReleaseHero({
           alt={t(release.cover.alt, lang)}
           decoding="async"
           fetchPriority="high"
-          className="h-auto w-full rounded-xl border border-border bg-card"
+          className="h-auto w-full rounded-[10px] border border-border bg-card"
         />
         <figcaption className="absolute bottom-3 left-3 rounded-full bg-black/75 px-3 py-1 text-xs font-semibold text-white">
           {lang === "vi" ? "Video sắp ra mắt" : "Film coming soon"}
@@ -95,7 +96,7 @@ export function ReleaseHero({
     );
   }
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-black">
+    <div className="relative aspect-video w-full overflow-hidden rounded-[10px] border border-border bg-black">
       {playing ? (
         <iframe
           src={youtubeEmbedUrl(filmId)}
@@ -122,7 +123,7 @@ export function ReleaseHero({
             className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]"
           />
           <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-5 pb-4 pt-16 text-left">
-            <span className="block text-[11px] font-semibold uppercase tracking-wider text-white/70">
+            <span className="block font-mono text-[11px] uppercase tracking-[0.1em] text-white/75">
               {lang === "vi" ? "Phim phát hành" : "Release film"}
             </span>
             <span className="mt-0.5 block font-mono text-sm text-white">
@@ -130,7 +131,7 @@ export function ReleaseHero({
             </span>
           </span>
           <span className="absolute inset-0 flex items-center justify-center">
-            <PlayGlyph className="h-14 w-20 rounded-2xl bg-red-600 text-white shadow-lg transition-transform group-hover:scale-110" />
+            <PlayGlyph className="size-14 rounded-full bg-white/95 text-black shadow-lg transition-transform group-hover:scale-105" />
           </span>
         </button>
       )}
@@ -163,10 +164,10 @@ function Highlight({
   const label = t(item.label, lang);
   const text = t(item.text, lang);
   return (
-    <li className="pt-6 first:pt-0">
-      <p className="text-base leading-relaxed sm:text-[17px]">
+    <li className="pt-4 first:pt-0">
+      <p className="text-[16px] leading-[1.6]">
         <strong className="font-semibold text-foreground">{label}.</strong>{" "}
-        <span className="text-foreground/85">{text}</span>
+        <span className="text-body">{text}</span>
         {item.href ? (
           <>
             {" "}
@@ -238,13 +239,13 @@ function OtherReleases({
   lang: Lang;
 }): ReactElement {
   const card =
-    "group flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm transition-colors hover:border-foreground/30";
+    "group flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-[14px] transition-colors hover:bg-muted/60";
   return (
     <nav
       aria-label={lang === "vi" ? "Các bản phát hành khác" : "Other releases"}
-      className="mt-12 border-t border-border pt-8"
+      className="mt-10 border-t border-border pt-6"
     >
-      <h2 className="font-serif text-xl font-medium tracking-tight">
+      <h2 className={SECTION_TITLE}>
         {lang === "vi" ? "Các bản phát hành khác" : "Other releases"}
       </h2>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
@@ -260,10 +261,10 @@ function OtherReleases({
               aria-hidden
             />
             <span className="min-w-0">
-              <span className="block font-mono text-xs text-muted-foreground">
+              <span className="block font-mono text-[11px] text-muted-foreground">
                 v{prev.version}
               </span>
-              <span className="block truncate group-hover:underline">
+              <span className="block truncate group-hover:text-accent">
                 {t(prev.title, lang)}
               </span>
             </span>
@@ -277,10 +278,10 @@ function OtherReleases({
             className={`${card} sm:text-right`}
           >
             <span className="min-w-0 flex-1">
-              <span className="block font-mono text-xs text-muted-foreground">
+              <span className="block font-mono text-[11px] text-muted-foreground">
                 v{next.version}
               </span>
-              <span className="block truncate group-hover:underline">
+              <span className="block truncate group-hover:text-accent">
                 {t(next.title, lang)}
               </span>
             </span>
@@ -322,22 +323,20 @@ export function ReleaseArticle({
   const groups = groupChanges(release.changes);
 
   return (
-    <article className="mx-auto max-w-[44rem] py-8 sm:py-12">
+    <article className="mx-auto max-w-[44rem] pt-5 pb-10">
       <ReleaseHero release={release} lang={lang} />
-      <p className="mt-8 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <p className={`mt-6 ${EYEBROW}`}>
         <Link to="/release" search={{ lang }} className="hover:text-foreground">
           {vi ? "Ghi chú phát hành" : "Release notes"}
         </Link>
       </p>
 
       <header className="mt-3">
-        <h1 className="font-serif text-3xl font-medium leading-[1.15] tracking-tight sm:text-[2.6rem]">
-          {title}
-        </h1>
-        <p className="mt-3 text-lg leading-relaxed text-muted-foreground sm:text-xl">
+        <h1 className={PAGE_TITLE}>{title}</h1>
+        <p className="mt-3 text-[17px] leading-[1.6] text-body">
           {t(release.intro, lang)}
         </p>
-        <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] tabular-nums text-muted-foreground">
           <VersionBadge version={release.version} />
           <time dateTime={release.date} className="text-foreground">
             {formatReleaseDate(release.date, lang)}
@@ -348,26 +347,24 @@ export function ReleaseArticle({
       </header>
 
       {release.stats.length > 0 ? (
-        <dl className="mt-8 flex flex-wrap gap-x-8 gap-y-4 border-y border-border py-5">
+        <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-y border-border py-4 sm:grid-cols-3">
           {release.stats.map((stat) => (
-            <div key={t(stat.label, "en")} className="min-w-[5rem]">
-              <dd className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
+            <div key={t(stat.label, "en")} className="min-w-0">
+              <dd className="text-[24px] font-semibold leading-tight tracking-[-0.02em] tabular-nums text-foreground">
                 {stat.value}
               </dd>
-              <dt className="mt-0.5 text-xs uppercase tracking-wider text-muted-foreground">
-                {t(stat.label, lang)}
-              </dt>
+              <dt className={`mt-1 ${EYEBROW}`}>{t(stat.label, lang)}</dt>
             </div>
           ))}
         </dl>
       ) : null}
 
       {release.highlights.length > 0 ? (
-        <section className="mt-10">
-          <h2 className="font-serif text-2xl font-medium tracking-tight">
+        <section className="mt-8">
+          <h2 className={SECTION_TITLE}>
             {vi ? "Điểm nổi bật" : "Highlights"}
           </h2>
-          <ol className="mt-4 divide-y divide-border/70">
+          <ol className="mt-3 divide-y divide-border">
             {release.highlights.map((item) => (
               <Highlight key={item.label.en} item={item} lang={lang} />
             ))}
@@ -376,19 +373,19 @@ export function ReleaseArticle({
       ) : null}
 
       {groups.length > 0 ? (
-        <section className="mt-12">
-          <h2 className="font-serif text-2xl font-medium tracking-tight">
+        <section className="mt-10">
+          <h2 className={SECTION_TITLE}>
             {vi ? "Nhật ký thay đổi" : "Changelog"}
           </h2>
           {groups.map((group) => (
             <div key={group.kind} className="mt-6">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className={EYEBROW}>
                 {t(CHANGE_KIND_LABEL[group.kind], lang)}
                 <span className="ml-1.5 font-mono font-normal normal-case tracking-normal">
                   {group.items.length}
                 </span>
               </h3>
-              <ul className="mt-1 divide-y divide-border/60">
+              <ul className="mt-1 divide-y divide-border">
                 {group.items.map((change) => (
                   <Change
                     key={`${change.commit ?? ""}:${change.text.en}`}

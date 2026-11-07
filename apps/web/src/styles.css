@@ -425,19 +425,41 @@
   --typeset-font-heading: var(--editorial-font-heading);
   --typeset-font-mono: var(--font-mono);
   --typeset-size: 16px;
-  --typeset-leading: 1.75;
-  --typeset-flow: 1.5em;
+  --typeset-leading: 1.65;
+  --typeset-flow: 1.15em;
   max-width: 42rem;
 }
 
 .dark .typeset-page {
-  --typeset-leading: 1.85;
+  --typeset-leading: 1.7;
 }
 
+/* DESIGN.md "Type": display 24px on phones and 34px from 820px, section
+   headings 18px then 20px. */
 .typeset-page h1 {
+  font-size: 24px;
   font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.025em;
+  line-height: 1.18;
+}
+
+.typeset-page h2 {
+  font-size: 18px;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+@media (min-width: 640px) {
+  .typeset-page h2 {
+    font-size: 20px;
+  }
+}
+
+@media (min-width: 820px) {
+  .typeset-page h1 {
+    font-size: 34px;
+    line-height: 1.12;
+  }
 }
 
 /* Pipeline /data dashboard: Inter at a compact 14px base. */
@@ -665,6 +687,34 @@
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
+}
+
+/* Vietnamese eyebrows ("CHỦ ĐỀ") set in Inter, not the mono. No mono ships
+   (the stack is the system one), and common system monos lack the stacked
+   capitals: DejaVu Sans Mono draws "ĐỀ" as "ĐÊ`". A self-hosted JetBrains
+   Mono cut like Inter is 28,468 B at one weight, over the 60,000 B font
+   budget (Inter alone is 54,300 B), and under font-display: optional a
+   cold first view would still miss it. Inter covers the alphabet for 0 B;
+   the caller's uppercase and letter-spacing keep it reading as an eyebrow,
+   and tabular figures keep numbers aligned. See DESIGN.md "Type". */
+:lang(vi) .font-mono.uppercase {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The vote thumb is a 14px glyph, too small to tap. On touch screens an
+   invisible 44px box centred on it takes the tap (DESIGN.md "Every touch
+   target is at least 44px on phones"); a mouse keeps the compact row. */
+@media (pointer: coarse) {
+  .vote-hit::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
 }
 
 /* Room under the footer for the story page phone action bar (44px pill,

@@ -36,7 +36,7 @@ const FOOTER_LINKS = [
 ] as const satisfies readonly { to: NavTarget; label: string }[];
 
 const linkClass =
-  "text-sm text-muted-foreground transition-colors hover:text-foreground";
+  "text-[13px] text-muted-foreground transition-colors hover:text-foreground";
 
 export function NewsFooter() {
   const navigationLang = useLang();
@@ -68,21 +68,29 @@ export function NewsFooter() {
     : null;
 
   return (
-    <footer className="mt-10 border-t border-border/80 bg-card/40 py-12 text-sm text-muted-foreground">
+    <footer className="mt-10 border-t border-border py-10 text-[13px] text-muted-foreground max-sm:py-8">
       <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-8 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
           <div className="space-y-2">
-            <p className="font-serif text-xl font-medium tracking-tight text-foreground">
+            <p className="flex items-center gap-2 text-base font-semibold tracking-[-0.01em] text-foreground">
+              <span
+                aria-hidden
+                className="grid size-5 shrink-0 place-items-center rounded-[4px] bg-signal text-[13px] font-bold leading-none text-signal-ink"
+              >
+                ;
+              </span>
               AI;DR
             </p>
-            <p className="max-w-xs text-sm leading-relaxed">{SITE_SLOGAN}</p>
+            <p className="max-w-xs text-[13px] leading-relaxed">
+              {SITE_SLOGAN}
+            </p>
           </div>
           <nav
             aria-label="Footer"
             className="grid grid-cols-2 gap-x-10 gap-y-3 sm:grid-cols-3"
           >
-            <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/90">
+            <div className="space-y-2.5">
+              <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                 Site
               </p>
               {FOOTER_LINKS.map((link) => (
@@ -98,8 +106,8 @@ export function NewsFooter() {
                 </Link>
               ))}
             </div>
-            <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/90">
+            <div className="space-y-2.5">
+              <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                 Connect
               </p>
               <Link
@@ -157,8 +165,8 @@ export function NewsFooter() {
                 GitHub
               </a>
             </div>
-            <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">
+            <div className="space-y-2.5">
+              <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                 More
               </p>
               <a
@@ -193,7 +201,7 @@ export function NewsFooter() {
             </div>
           </nav>
         </div>
-        <div className="flex flex-col gap-2 border-t border-border/60 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 border-t border-border pt-5 text-[12px] sm:flex-row sm:items-center sm:justify-between">
           <span>
             {`© ${year} AI;DR`}
             {lastFetchedAt !== null && (

@@ -21,6 +21,7 @@ import { useLang } from "../lib/lang-context";
 import { loadErrorHead, loadErrorHeaders } from "../lib/load-error";
 import { absoluteSiteUrl } from "../lib/locale-url";
 import { notFoundCopy } from "../lib/not-found";
+import { PAGE_TITLE } from "../lib/page-style";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { usePrefs } from "../lib/prefs";
 import { localizedPageHead, notFoundHead } from "../lib/seo";
@@ -112,16 +113,16 @@ export const Route = createFileRoute("/date/$date")({
 
 function DayNav({ archive, lang }: { archive: DayArchive; lang: Lang }) {
   const pill =
-    "inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card px-3 py-1.5 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground";
+    "inline-flex h-8 items-center gap-1.5 rounded-full border border-input px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-muted max-sm:h-11";
   const muted = `${pill} pointer-events-none opacity-40`;
   const prevLabel = lang === "vi" ? "Ngày trước" : "Previous day";
   const nextLabel = lang === "vi" ? "Ngày sau" : "Next day";
   return (
     <nav
       aria-label={lang === "vi" ? "Chuyển ngày" : "Day navigation"}
-      className="flex flex-wrap items-center justify-between gap-3 py-4 text-sm"
+      className="flex flex-wrap items-center justify-between gap-2 py-4"
     >
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {archive.prevDate ? (
           <a
             href={dayArchivePath(archive.prevDate, lang)}
@@ -148,7 +149,7 @@ function DayNav({ archive, lang }: { archive: DayArchive; lang: Lang }) {
           </span>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {archive.week ? (
           <a href={weekPath(archive.week, lang)} className={pill}>
             <Newspaper className="size-4" aria-hidden />
@@ -195,7 +196,7 @@ function DayContent({ archive, lang }: { archive: DayArchive; lang: Lang }) {
       href={dayArchiveOgPath(archive.date, lang)}
       target="_blank"
       rel="noopener"
-      className="block overflow-hidden rounded-2xl border border-border/80 bg-[#f5c518]"
+      className="block overflow-hidden rounded-[10px] border border-border bg-muted"
     >
       <img
         src={dayArchiveOgPath(archive.date, lang)}
@@ -236,7 +237,7 @@ function DayContent({ archive, lang }: { archive: DayArchive; lang: Lang }) {
     <div>
       <DayNav archive={archive} lang={lang} />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h1 className="font-serif text-3xl font-medium tracking-tight">
+        <h1 className={PAGE_TITLE}>
           {heading}
         </h1>
         {items.length > 0 && (

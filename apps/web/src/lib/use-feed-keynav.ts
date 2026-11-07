@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /** Elements j/k step through: AI;DR items and story rows, in page order. */
 export const FEED_KEYNAV_SELECTOR = "[data-keynav]";
@@ -45,21 +45,43 @@ export function nextKeyNavTarget(
   );
 }
 
+export interface FeedKeyHandlers {
+  /** `?`: show or hide the shortcut list (ShortcutSheet). */
+  onHelp?: () => void;
+  /** Esc anywhere on the page, e.g. to hide that list. */
+  onEscape?: () => void;
+}
+
 /**
  * Home feed keyboard navigation: j and k move focus between the AI;DR items
  * and the story rows. Enter opens (the row and link handlers already do that)
- * and Esc on an open row closes it (StoryRow). Keys typed into a field, with
- * a modifier, or while a modal dialog is open are left alone, so the search
- * box, the prefs panel and the story dialog keep their own handling.
+ * and Esc on an open row closes it (StoryRow). `?` toggles the shortcut list.
+ * Keys typed into a field, with a modifier, or while a modal dialog is open
+ * are left alone, so the search box, the prefs panel and the story dialog
+ * keep their own handling.
  */
-export function useFeedKeyNav(): void {
+export function useFeedKeyNav(handlers: FeedKeyHandlers = {}): void {
+  const ref = useRef(handlers);
+  ref.current = handlers;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "j" && e.key !== "k") return;
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.shiftKey || e.isComposing) return;
-      if (isEditable(e.target)) return;
+      if (e.isComposing || isEditable(e.target)) return;
       if (document.querySelector('[aria-modal="true"]')) return;
+      // `?` is Shift+/ on most layouts, so it is matched before the shift
+      // check below that keeps J and K plain.
+      if (e.key === "?") {
+        if (!ref.current.onHelp) return;
+        e.preventDefault();
+        ref.current.onHelp();
+        return;
+      }
+      if (e.key === "Escape") {
+        ref.current.onEscape?.();
+        return;
+      }
+      if (e.key !== "j" && e.key !== "k") return;
+      if (e.shiftKey) return;
       const next = nextKeyNavTarget(
         visibleTargets(),
         document.activeElement,

@@ -19,6 +19,7 @@ import { categoryLabel, formatDayHeading } from "../../lib/lang";
 import { storyMarkdownUrl } from "../../lib/seo";
 import type { FeedItem, Lang } from "../../lib/types";
 import { useSuggestSelection } from "../../lib/use-suggest-selection";
+import { KeywordText } from "../KeywordText";
 import { SuggestionBadge, SuggestTranslation } from "../SuggestTranslation";
 import { ContentHistory } from "../story/ContentHistory";
 import { splitParagraphs } from "../story/lib";
@@ -30,7 +31,6 @@ import {
   storyTokenCount,
 } from "../story/story-meta";
 import { CopySheet } from "./CopySheet";
-import { KeywordText } from "./KeywordText";
 import { shortDayLabel, storyByline, storyClock } from "./lib";
 import { ReadNext } from "./ReadNext";
 import { KBD_CLASS, ShortcutSheet } from "./ShortcutSheet";

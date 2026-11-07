@@ -46,7 +46,7 @@ export function CalendarPanel({
   const hasNext = next <= (bounds.current?.last ?? shown);
 
   const title = (
-    <p className="font-serif text-xl font-medium leading-tight">
+    <p className="text-[18px] font-semibold leading-tight tracking-[-0.015em]">
       {monthTitle(
         shown,
         lang,

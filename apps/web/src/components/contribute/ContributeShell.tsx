@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Send } from "lucide-react";
 import { useClerkModule } from "../../lib/clerk-user";
 import { useLang } from "../../lib/lang-context";
+import { PAGE_TITLE } from "../../lib/page-style";
 import { SITE_URL, SUBMIT_EMAIL } from "../../lib/site";
 import { SubmitGate } from "../submit/SubmitGate";
 
@@ -11,9 +12,9 @@ export function ContributeShell({ mode }: { mode: "list" | "new" }) {
   const { mod, publishableKey } = useClerkModule();
 
   return (
-    <div className="py-6">
-      <h1 className="flex items-center gap-2 text-xl font-bold">
-        <Send className="h-4 w-4 text-accent" aria-hidden />
+    <div className="pt-5 pb-10 max-sm:pt-4">
+      <h1 className={`flex items-center gap-2.5 ${PAGE_TITLE}`}>
+        <Send className="size-5 shrink-0 text-accent" aria-hidden />
         {mode === "new"
           ? lang === "vi"
             ? "Gửi bài viết"

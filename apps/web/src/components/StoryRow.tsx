@@ -16,8 +16,8 @@ import { storyPath } from "../lib/slug";
 import { type TopicColor, topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
 import { CategoryLabel } from "./CategoryLabel";
-import { HighlightedText } from "./HighlightedText";
 import { SpriteIcon } from "./IconSprite";
+import { KeywordText } from "./KeywordText";
 import { StoryDetail } from "./StoryDetail";
 import { StoryVotes } from "./story/StoryVotes";
 
@@ -303,7 +303,7 @@ export function StoryRow({
               onClick={onTitleClick}
               className="hover:underline hover:underline-offset-2 focus-visible:rounded-[6px]"
             >
-              <HighlightedText text={title} tags={item.tags} />
+              <KeywordText text={title} tags={item.tags} />
             </a>
           </TitleTag>
           {fallbackFromEnglish && (

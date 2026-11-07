@@ -4,7 +4,7 @@ import type { AidrLayout } from "../lib/aidr-layout";
 import { storyPath } from "../lib/slug";
 import { categoryColor, isKnownCategory, topicColor } from "../lib/topic-color";
 import type { Lang, TldrBullet } from "../lib/types";
-import { HighlightedText } from "./HighlightedText";
+import { KeywordText } from "./KeywordText";
 import { StoryDialog } from "./StoryDialog";
 import { TldrBulletRow } from "./TldrBulletRow";
 
@@ -88,9 +88,7 @@ export function TldrBulletList({
                 (primaryId ? imageByItemId?.get(primaryId) : undefined) ??
                 null;
               const thumbItemId = b.image_item_id ?? primaryId;
-              const highlighted = (
-                <HighlightedText text={b.text} tags={itemTags} />
-              );
+              const highlighted = <KeywordText text={b.text} tags={itemTags} />;
               const row = (
                 <TldrBulletRow
                   layout={layout}
