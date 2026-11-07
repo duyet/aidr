@@ -11,6 +11,13 @@ import type { EarlierEntry } from "./earlier";
 
 export const ALGORITHM_ENTRIES: EarlierEntry[] = [
   {
+    date: "2026-11-07",
+    text: {
+      en: "Vietnamese translation now tries google/gemma-latest first, then poolside/laguna-s-2.1. English translation uses the same order. Laguna stays as the fallback when Gemma fails, so a Gemma outage never blocks publishing.",
+      vi: "Bản dịch sang tiếng Việt giờ thử google/gemma-latest trước, rồi tới poolside/laguna-s-2.1. Dịch sang tiếng Anh dùng cùng thứ tự. Laguna vẫn là dự phòng khi Gemma lỗi, nên Gemma mất kết nối thì tin vẫn đăng được.",
+    },
+  },
+  {
     date: "2026-10-30",
     text: {
       en: "Story grouping has a new model order: z-ai/glm-latest first, then google/gemma-latest, then openai/gpt-5.6-luna. Scoring (after typesafe/jev) and captions use the same order. In the last 24 hours the old first model, google/gemma-latest, finished 3 of 41 grouping calls. GLM finished 16 of 38. @preset/aidr finished none of 22 and anthropic/claude-sonnet-5-5 none of 22, because Claude stopped being available to us on Oct 29, so both are gone. When every model failed, copies of the same story stayed separate.",

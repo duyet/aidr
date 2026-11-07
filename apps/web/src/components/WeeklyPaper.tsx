@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { dayArchivePath } from "../lib/day-archive";
 import { categoryLabel } from "../lib/lang";
 import { withLang } from "../lib/locale-url";
@@ -169,7 +169,8 @@ export function WeeklyPaper({
           ) : null}
         </div>
         <a href={withLang(WEEKS_INDEX_PATH, lang)} className={pill}>
-          {vi ? "Tất cả các số" : "All issues"}
+          <ArrowLeft className="size-4" aria-hidden />
+          {vi ? "Quay lại tất cả các tuần" : "Back to all weeks"}
         </a>
       </nav>
 
@@ -254,6 +255,16 @@ export function WeeklyPaper({
           <span />
         )}
       </nav>
+
+      <div className="flex justify-center pt-4">
+        <a
+          href={withLang(WEEKS_INDEX_PATH, lang)}
+          className="inline-flex items-center gap-1.5 font-sans text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          {vi ? "Quay lại tất cả các tuần" : "Back to all weeks"}
+        </a>
+      </div>
 
       <footer className="mt-6 border-t-2 border-foreground pt-4 font-sans text-sm text-muted-foreground">
         <p className="font-semibold uppercase tracking-[0.14em] text-[0.7rem]">

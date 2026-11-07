@@ -1,7 +1,6 @@
-import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
+import { Button } from "@aidr/ui";
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "../lib/lang-context";
-import { SettingsTab } from "./prefs/SettingsTab";
 import { ThemeTab } from "./prefs/ThemeTab";
 
 export function PrefsPanel({
@@ -54,22 +53,7 @@ export function PrefsPanel({
           aria-label={t("Reader preferences", "Tuỳ chỉnh hiển thị")}
           className="absolute right-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-border bg-card p-3 text-sm shadow-md"
         >
-          <Tabs defaultValue="display">
-            <TabsList className="mb-1 grid h-9 w-full grid-cols-2">
-              <TabsTrigger value="display" className="h-full py-0 text-xs">
-                {t("Display", "Hiển thị")}
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="h-full py-0 text-xs">
-                {t("Settings", "Cài đặt")}
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="display">
-              <ThemeTab t={t} />
-            </TabsContent>
-            <TabsContent value="settings">
-              <SettingsTab t={t} />
-            </TabsContent>
-          </Tabs>
+          <ThemeTab t={t} />
         </div>
       )}
     </div>

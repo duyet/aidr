@@ -181,10 +181,10 @@ ANYROUTER_BASE_URL = "https://anyrouter.dev/api/v1"
 # but the 429 skip is per model: a luna 429 on cluster also skips TL;DR's head.
 # Translate, summarize and TL;DR stay off Sonnet: see those chains.
 ANYROUTER_MODEL = "z-ai/glm-latest,google/gemma-latest,openai/gpt-5.6-luna"
-# Translate tries Laguna first, then gemma-latest. Each extra id still
-# reserves a 20s fallback slice
-# (2026-10-02). Dropped @preset/aidr (11/87 ok over 24h,
-# 44 rate-limited) and anyrouter/auto (prod translate 0 of 8).
+# Translate tries Gemma first, then Laguna (2026-11-07). User directive for
+# better Vietnamese translation. Each extra id still reserves a 20s fallback
+# slice (2026-10-02). Laguna stays second as the proven fallback: it served
+# 19/22 translate calls since 2026-10-14.
 # gemma-latest (30/30 served, fidelity 0.944 in the 2026-10-10 bake-off)
 # before the gemma-4-31b :free route, kept until duyet/anyrouter#4798.
 # 2026-10-11 (llm_calls, 7d, translate ok/n): gemini-3-flash 819/1035,
@@ -199,14 +199,16 @@ ANYROUTER_MODEL = "z-ai/glm-latest,google/gemma-latest,openai/gpt-5.6-luna"
 # third id cuts the head's slice in the 70s batch from 50s to 30s, under
 # Laguna's 32.5s translate p95. Claude Sonnet stays off for the same reason.
 # 2026-10-25 (#1056): gemma-latest went 0/22 on translate. NVIDIA
-# Nemotron 3.5 Bolt E4B (free) replaces it as the fallback. Eval on the
+# Nemotron 3.5 Bolt E4B (free) replaced it as the fallback. Eval on the
 # vi-natural set (36 stories, 12 batches): it served 7 of 12 full batches
 # (the other 5 returned a 502 or timed out on all 3 tries), at a call p50
 # of 12s against Laguna's 28s. On those 7 batches, two blind judges
 # preferred its Vietnamese (more natural 32 of 42, more faithful 25 of 42;
 # lost facts 36 against 68), with no draft-check issues. It stays second
 # because of those 5 batches. Two ids keep Laguna's slice.
-ANYROUTER_TRANSLATE_MODEL = "poolside/laguna-s-2.1,nvidia/nemotron-3.5-bolt-e4b"
+# 2026-11-07 (user directive): Gemma first for better Vietnamese, Laguna
+# second as fallback. Nemotron drops off this chain.
+ANYROUTER_TRANSLATE_MODEL = "google/gemma-latest,poolside/laguna-s-2.1"
 # TL;DR keeps two ids: every extra id reserves a 20s fallback slice out of
 # the first hop's budget, and Laguna needs 102-119s on the 26K VI prompt.
 # 2026-10-10 tldr bench (3 cases): gpt-5.6-luna quality 1.0, p50 37s,
@@ -222,10 +224,10 @@ ANYROUTER_TLDR_MODEL = "openai/gpt-5.6-luna,poolside/laguna-s-2.1"
 # Explicit generator for the real VI→EN candidate path; source language is
 # persisted as metadata and never inferred by the reviewer. Concrete ids only
 # (router aliases and presets are filtered out of this chain). Same order
-# as ANYROUTER_TRANSLATE_MODEL (#663). The 26B id stays off this chain.
+# as ANYROUTER_TRANSLATE_MODEL (2026-11-07: Gemma first, Laguna fallback).
 # resolveEnglishGeneratorChain keeps the first 2 ids, so a third id (such
 # as Claude Sonnet) would be dropped without a warning.
-ANYROUTER_ENGLISH_TRANSLATE_MODEL = "poolside/laguna-s-2.1,google/gemma-latest"
+ANYROUTER_ENGLISH_TRANSLATE_MODEL = "google/gemma-latest,poolside/laguna-s-2.1"
 # Translation semantic review: explicit concrete ids, disjoint from every
 # generator id; missing/overlapping config fails closed. Max 2 ids.
 # Review probe on 3 prod pairs with provider.require_parameters (first
