@@ -8,7 +8,7 @@
       "label": "Bugsink triage",
       "agentName": "bugsink-desk",
       "playbook": ".agents/skills/bugsink-triage/playbook.md",
-      "agent": { "ladder": ["claude", "codex"], "permission": "yolo" },
+      "agent": { "ladder": ["opencode", "claude", "codex"], "permission": "yolo" },
       "maxChildren": 5,
       "schedule": "20 */3 * * *"
     }
