@@ -89,7 +89,7 @@ export function StoryRankingPanel({
         {copy.title}
       </button>
       {open ? (
-        <div className="mt-1 min-w-0 border-l border-border pl-2 text-[11px] leading-relaxed">
+        <div className="mt-1 min-w-0 border-l border-border pl-2 text-[calc(11px*var(--reader-font-size,1))] leading-relaxed">
           {ranking ? (
             <>
               <dl className="grid grid-cols-2 gap-x-3 gap-y-1">

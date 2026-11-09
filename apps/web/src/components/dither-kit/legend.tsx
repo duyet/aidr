@@ -46,7 +46,7 @@ export function Legend({
             onFocus={() => chart.setFocusDataKey(name)}
             onBlur={() => chart.setFocusDataKey(null)}
             className={cn(
-              "flex items-center gap-1.5 font-mono text-[11px] transition-colors",
+              "flex items-center gap-1.5 font-mono text-[calc(11px*var(--reader-font-size,1))] transition-colors",
               isClickable &&
                 "pointer-events-auto cursor-pointer hover:text-foreground",
               // A non-emphasised series is dimmed with the quiet text token,

@@ -94,7 +94,7 @@ export function MonthGrid({
         {WEEKDAY_INITIALS[lang].map((w, i) => (
           <span
             key={i}
-            className="text-center font-mono text-[11px] text-muted-foreground"
+            className="text-center font-mono text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground"
           >
             {w}
           </span>
@@ -162,7 +162,7 @@ export function MonthGrid({
                   {num}
                   {dot}
                   {page ? (
-                    <span className="font-mono text-[10px] opacity-75 max-[480px]:hidden">
+                    <span className="font-mono text-[calc(10px*var(--reader-font-size,1))] opacity-75 max-[480px]:hidden">
                       {day.count}
                     </span>
                   ) : null}

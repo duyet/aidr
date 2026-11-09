@@ -60,7 +60,7 @@ export function AdminLlmCalls({ calls }: { calls: LlmCall[] }) {
                   </td>
                   <td className="py-1 pr-2">
                     {call.error || call.error_code || call.error_status ? (
-                      <span className="font-mono text-[11px] text-muted-foreground">
+                      <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground">
                         {call.error ?? "—"}
                         {call.error_code ? ` · ${call.error_code}` : ""}
                         {call.error_status

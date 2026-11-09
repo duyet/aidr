@@ -30,7 +30,7 @@ export function DayCard({ day, lang }: { day: CalendarDay; lang: Lang }) {
         />
       ) : null}
       <div className="grid gap-2 p-4">
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+        <p className="font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.08em] text-muted-foreground">
           {formatDay(day.date, lang, "long")} · {storiesLabel(day.count, lang)}
         </p>
         <h2 className="font-serif text-xl font-medium leading-tight">

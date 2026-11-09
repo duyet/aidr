@@ -171,7 +171,7 @@ export function SourcesIngestTable({
                   ) : null}
                   <div>
                     <div className="font-medium">{source.name}</div>
-                    <div className="font-mono text-[11px] text-muted-foreground">
+                    <div className="font-mono text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground">
                       {source.id}
                     </div>
                   </div>

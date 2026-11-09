@@ -261,7 +261,7 @@ export function StoryRow({
         matchColor={matchColor}
         onToggle={toggleExpanded}
       >
-        <span className="story-rank inline-flex items-baseline justify-end gap-0.5 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+        <span className="story-rank inline-flex items-baseline justify-end gap-0.5 text-right font-mono text-[calc(12px*var(--reader-font-size,1))] tabular-nums text-muted-foreground">
           {hasDetails && (
             <ChevronDown
               data-testid="story-row-chevron"
@@ -275,7 +275,7 @@ export function StoryRow({
           {index}
         </span>
         <span
-          className={`story-title min-w-0 text-[15px] leading-[1.4] sm:truncate ${
+          className={`story-title min-w-0 text-[calc(15px*var(--reader-font-size,1))] leading-[1.4] sm:truncate ${
             matchColor
               ? "topic-colored font-medium"
               : "font-medium text-foreground"
@@ -308,7 +308,7 @@ export function StoryRow({
           </TitleTag>
           {fallbackFromEnglish && (
             <span
-              className="ml-1.5 align-middle font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground"
+              className="ml-1.5 align-middle font-mono text-[calc(10px*var(--reader-font-size,1))] uppercase tracking-[0.1em] text-muted-foreground"
               title={
                 lang === "vi"
                   ? "Tiêu đề gốc tiếng Anh — chưa có bản dịch"
@@ -328,7 +328,7 @@ export function StoryRow({
                 track("source_click", { item_id: item.id, placement: "row" });
                 recordRead(item.id, "outbound");
               }}
-              className="ml-1.5 whitespace-nowrap rounded-[6px] text-[12px] font-normal text-muted-foreground hover:text-foreground"
+              className="ml-1.5 whitespace-nowrap rounded-[6px] text-[calc(12px*var(--reader-font-size,1))] font-normal text-muted-foreground hover:text-foreground"
               aria-label={lang === "vi" ? "Mở bài gốc" : "Open original"}
             >
               <SpriteIcon
@@ -339,7 +339,7 @@ export function StoryRow({
             </a>
           )}
           {/* Phone: topic and time leave their columns for one line here. */}
-          <span className="story-meta-phone mt-1 flex flex-wrap items-baseline gap-x-3 text-[12px] font-normal text-muted-foreground sm:hidden">
+          <span className="story-meta-phone mt-1 flex flex-wrap items-baseline gap-x-3 text-[calc(12px*var(--reader-font-size,1))] font-normal text-muted-foreground sm:hidden">
             {item.category ? (
               <CategoryLabel name={item.category} lang={lang} quiet />
             ) : null}
@@ -348,13 +348,13 @@ export function StoryRow({
             </span>
           </span>
         </span>
-        <span className="story-topic hidden truncate text-[13px] text-muted-foreground sm:block">
+        <span className="story-topic hidden truncate text-[calc(13px*var(--reader-font-size,1))] text-muted-foreground sm:block">
           {item.category ? (
             <CategoryLabel name={item.category} lang={lang} quiet />
           ) : null}
         </span>
         <span
-          className="story-time hidden whitespace-nowrap text-right font-mono text-[12px] tabular-nums text-muted-foreground sm:block"
+          className="story-time hidden whitespace-nowrap text-right font-mono text-[calc(12px*var(--reader-font-size,1))] tabular-nums text-muted-foreground sm:block"
           suppressHydrationWarning
         >
           {time}

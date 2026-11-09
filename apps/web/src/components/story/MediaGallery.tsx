@@ -245,7 +245,7 @@ export function MediaVideo({
             className="h-full w-full rounded-lg object-cover"
           />
         ) : (
-          <span className="text-[10px] leading-tight text-muted-foreground">
+          <span className="text-[calc(10px*var(--reader-font-size,1))] leading-tight text-muted-foreground">
             {copy.videoUnavailable}
           </span>
         )}
@@ -254,7 +254,7 @@ export function MediaVideo({
           target="_blank"
           rel="noopener noreferrer"
           onClick={trackOpen}
-          className="text-[10px] font-medium text-accent underline underline-offset-2"
+          className="text-[calc(10px*var(--reader-font-size,1))] font-medium text-accent underline underline-offset-2"
         >
           {copy.videoLink}
         </a>
@@ -279,7 +279,7 @@ export function MediaVideo({
       className={`${FRAME_CLASS} motion-reduce:transition-none`}
     >
       {/* Spec-defined fallback: rendered when the source cannot be played. */}
-      <p className="p-2 text-[10px] text-muted-foreground">
+      <p className="p-2 text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground">
         {copy.videoFallback}{" "}
         <a
           href={asset.url}

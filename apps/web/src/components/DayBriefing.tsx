@@ -29,14 +29,14 @@ export function DayBriefing({
   return (
     <section className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card">
       <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <h2 className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-accent">
+        <h2 className="inline-flex items-center gap-1.5 font-mono text-[calc(11px*var(--reader-font-size,1))] font-medium uppercase tracking-[0.1em] text-accent">
           <span
             aria-hidden="true"
             className="size-1.5 shrink-0 rounded-full bg-signal"
           />
           AI;DR
         </h2>
-        <span className="font-mono text-[11px] uppercase tracking-[0.1em] tabular-nums text-muted-foreground">
+        <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.1em] tabular-nums text-muted-foreground">
           {date} · {bullets.length} {lang === "vi" ? "tin" : "stories"}
         </span>
       </header>

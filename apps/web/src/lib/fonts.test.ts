@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   fontUnicodeRange,
+  rangesOf,
   subsetWebFont,
   WEB_FONTS,
 } from "../../scripts/subset-fonts";
@@ -220,7 +221,7 @@ describe("self-hosted font stack (#229)", () => {
     // would render tone marks in Georgia mid-word, which is the "looks
     // broken" bug a Vietnamese reader sees first.
     const serif = webfaces.filter(
-      (f) => f.family === "Source Serif 4 Variable"
+      (f) => f.family === "Newsreader Variable"
     );
     expect(serif.length).toBe(1);
     const uncovered = [...new Set([...vietnameseAlphabet()])].filter(
@@ -237,10 +238,10 @@ describe("self-hosted font stack (#229)", () => {
     const stack = (name: string) =>
       new RegExp(`${name}:([^;]*);`).exec(stylesCss)?.[1] ?? "";
     for (const name of ["--content-font-sans", "--editorial-font-heading"]) {
-      expect(stack(name)).not.toContain("Source Serif 4");
+      expect(stack(name)).not.toContain("Newsreader");
     }
     expect(stack("--reader-font-serif")).toMatch(
-      /^\s*"Source Serif 4 Variable",[^;]*"Source Serif 4 Fallback"/
+      /^\s*"Newsreader Variable",[^;]*"Newsreader Fallback"/
     );
     expect(stylesCss).toMatch(
       /\[data-reader-font="serif"\][^{]*\{[^}]*var\(--reader-font-serif\)/
@@ -261,7 +262,7 @@ describe("self-hosted font stack (#229)", () => {
   });
 
   it("declares a metric-matched fallback face for each webfont family", () => {
-    for (const family of ["Inter Variable", "Source Serif 4 Variable"]) {
+    for (const family of ["Inter Variable", "Newsreader Variable"]) {
       const fallback = faces.find(
         (f) => f.family === `${family.split(" Variable")[0]} Fallback`
       );
@@ -290,13 +291,13 @@ describe("self-hosted font stack (#229)", () => {
   it("gives the fallback faces the webfont's own vertical metrics", () => {
     // Read by scripts/font-metrics.py out of the shipped woff2/ttf files:
     //   Inter 4.001    unitsPerEm=2048 ascent=1984 descent=494  lineGap=0
-    //   Source Serif 4 unitsPerEm=1000 ascent=1036 descent=335  lineGap=0
+    //   Newsreader unitsPerEm=2000 ascent=1470 descent=530  lineGap=0
     // size-adjust scales the overrides as well, so the line box is the
     // product. An override left unscaled after a size-adjust change makes
     // every fallback row shorter than the webfont row.
     const expected: Record<string, [number, number]> = {
       "Inter Fallback": [(1984 / 2048) * 100, (494 / 2048) * 100],
-      "Source Serif 4 Fallback": [103.6, 33.5],
+      "Newsreader Fallback": [73.5, 26.5],
     };
     for (const [family, [ascent, descent]] of Object.entries(expected)) {
       const block = fallbackBlock(family);
@@ -459,12 +460,22 @@ describe("build-time font subsets", () => {
     it(`declares exactly the range the subsetter keeps for ${font.family}`, () => {
       // A code point in the CSS range but not in the file renders as
       // .notdef instead of falling back to the next font in the stack.
-      expect(face?.unicodeRange.replace(/\s+/g, " ")).toBe(fontUnicodeRange());
+      expect(face?.unicodeRange.replace(/\s+/g, " ")).toBe(
+        fontUnicodeRange(rangesOf(font))
+      );
     });
 
     it(`keeps every letter a title needs in ${font.family}`, async () => {
+      // A title character the face does not claim (or claim and lack) can
+      // only come from the next stack family, so hold each face to its
+      // own declared range.
+      const keep = rangesOf(font);
+      const requiredHere = required.filter((ch) => {
+        const cp = ch.codePointAt(0) ?? 0;
+        return keep.some(([lo, hi]) => cp >= lo && cp <= hi);
+      });
       const cmap = cmapCodePoints(await subsetWebFont(font, "truetype"));
-      const missing = required.filter(
+      const missing = requiredHere.filter(
         (ch) => !cmap.has(ch.codePointAt(0) ?? 0)
       );
       expect(missing).toEqual([]);
@@ -474,10 +485,13 @@ describe("build-time font subsets", () => {
       const woff2 = await subsetWebFont(font);
       // "wOF2" signature.
       expect([...woff2.subarray(0, 4)]).toEqual([0x77, 0x4f, 0x46, 0x32]);
-      // The full upstream fonts are 170-430 KB. Hinting and stylistic
-      // features stay out, so each subset is close to Fontsource's latin
-      // and vietnamese files added together.
-      expect(woff2.length).toBeLessThan(70_000);
+      // The full upstream fonts are 170-450 KB. Hinting and stylistic
+      // features stay out. Newsreader carries the same latin + Vietnamese
+      // + Latin Extended-A coverage as Inter's 54,300 B, plus more glyphs,
+      // and measures 82 KB; Inter itself must stay under 70 KB.
+      expect(woff2.length).toBeLessThan(
+        font.family === "Inter Variable" ? 70_000 : 90_000
+      );
       // The wght axis must survive, or every weight renders as one.
       const sfnt = await subsetWebFont(font, "truetype");
       expect(sfnt.includes(Buffer.from("fvar"))).toBe(true);

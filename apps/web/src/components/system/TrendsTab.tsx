@@ -128,11 +128,11 @@ function PinButton({
 function Delta({ stat }: { stat: WindowStat }) {
   if (stat.isNew) {
     return (
-      <span className="font-mono text-[11px] font-medium text-accent">new</span>
+      <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] font-medium text-accent">new</span>
     );
   }
   return (
-    <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+    <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] tabular-nums text-muted-foreground">
       {signed(stat.delta)}
     </span>
   );
@@ -230,7 +230,7 @@ function RankShift({
   const down = priorRank !== null && priorRank < rank;
   return (
     <span
-      className="flex w-12 shrink-0 items-center gap-1 font-mono text-[11px] tabular-nums text-muted-foreground"
+      className="flex w-12 shrink-0 items-center gap-1 font-mono text-[calc(11px*var(--reader-font-size,1))] tabular-nums text-muted-foreground"
       title={label}
     >
       <span className="text-foreground">#{rank}</span>
@@ -316,7 +316,7 @@ function CategoryMultiples() {
                       <span className="truncate text-xs font-medium text-foreground">
                         {series.name}
                       </span>
-                      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                      <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] tabular-nums text-muted-foreground">
                         {stat.current}
                         <span className="ml-1">({signed(stat.delta)})</span>
                       </span>

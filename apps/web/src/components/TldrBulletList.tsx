@@ -106,7 +106,7 @@ export function TldrBulletList({
                 >
                   {color && tag && (
                     <span
-                      className="mr-2 inline-flex items-baseline gap-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground"
+                      className="mr-2 inline-flex items-baseline gap-1.5 font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.08em] text-muted-foreground"
                       style={
                         {
                           "--tc-light": color.light,
@@ -123,7 +123,7 @@ export function TldrBulletList({
                   )}
                   {highlighted}
                   {otherIds.length > 0 && (
-                    <span className="ml-1.5 font-mono text-[11px] text-muted-foreground tabular-nums">
+                    <span className="ml-1.5 font-mono text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground tabular-nums">
                       +{otherIds.length}
                     </span>
                   )}

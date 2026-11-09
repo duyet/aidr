@@ -122,7 +122,7 @@ export function ReleaseHero({
             className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]"
           />
           <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent px-5 pb-4 pt-16 text-left">
-            <span className="block text-[11px] font-semibold uppercase tracking-wider text-white/70">
+            <span className="block text-[calc(11px*var(--reader-font-size,1))] font-semibold uppercase tracking-wider text-white/70">
               {lang === "vi" ? "Phim phát hành" : "Release film"}
             </span>
             <span className="mt-0.5 block font-mono text-sm text-white">
@@ -164,7 +164,7 @@ function Highlight({
   const text = t(item.text, lang);
   return (
     <li className="pt-6 first:pt-0">
-      <p className="text-base leading-relaxed sm:text-[17px]">
+      <p className="text-base leading-relaxed sm:text-[calc(17px*var(--reader-font-size,1))]">
         <strong className="font-semibold text-foreground">{label}.</strong>{" "}
         <span className="text-foreground/85">{text}</span>
         {item.href ? (
@@ -193,9 +193,9 @@ function Change({
   lang: Lang;
 }): ReactElement {
   return (
-    <li className="flex flex-wrap items-baseline gap-x-2 gap-y-1 py-2.5 text-[15px] leading-relaxed">
+    <li className="flex flex-wrap items-baseline gap-x-2 gap-y-1 py-2.5 text-[calc(15px*var(--reader-font-size,1))] leading-relaxed">
       {change.scope ? (
-        <span className="rounded border border-border bg-card px-1.5 py-px font-mono text-[11px] text-muted-foreground">
+        <span className="rounded border border-border bg-card px-1.5 py-px font-mono text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground">
           {change.scope}
         </span>
       ) : null}

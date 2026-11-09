@@ -217,6 +217,16 @@ function RootComponent() {
   const [prefs, setPrefsState] = useState<Prefs>(DEFAULT_PREFS);
   const prefsLoadedRef = useRef(false);
 
+  // `?font=serif|sans` overrides the reader font for this visit, so a
+  // shared link can show the page in the sharer's face:
+  // https://aidr.today/<story>?lang=vi&font=serif. It never writes to
+  // storage; the prefs panel still holds the reader's own choice.
+  const [urlFont, setUrlFont] = useState<Prefs["font"] | null>(null);
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("font");
+    if (raw === "serif" || raw === "sans") setUrlFont(raw);
+  }, []);
+
   useEffect(() => {
     setPrefsState(loadPrefs());
     prefsLoadedRef.current = true;
@@ -254,7 +264,7 @@ function RootComponent() {
                   <div
                     className="news-content relative z-10 flex flex-grow flex-col"
                     style={readerCssVars(prefs)}
-                    data-reader-font={prefs.font}
+                    data-reader-font={urlFont ?? prefs.font}
                   >
                     <HeaderBar lang={lang} onLangChange={handleLangChange} />
 

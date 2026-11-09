@@ -42,7 +42,7 @@ export function MonthAgenda({
                 <span className="block font-serif text-3xl leading-none tabular-nums">
                   {Number(day.date.slice(8))}
                 </span>
-                <span className="font-mono text-[11px] uppercase text-muted-foreground">
+                <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase text-muted-foreground">
                   {weekdayShort(day.date, lang)}
                 </span>
               </span>

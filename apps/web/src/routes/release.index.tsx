@@ -73,7 +73,7 @@ function ReleaseRow({
           <h2 className="mt-2 font-serif text-2xl font-medium leading-snug tracking-tight group-hover:underline">
             {t(release.title, lang)}
           </h2>
-          <p className="mt-2 line-clamp-3 text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mt-2 line-clamp-3 text-[calc(15px*var(--reader-font-size,1))] leading-relaxed text-muted-foreground">
             {t(release.intro, lang)}
           </p>
           {labels.length > 0 ? (
@@ -124,7 +124,7 @@ function EarlierList({
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {entry.date}
           </div>
-          <p className="mt-1 text-[15px] leading-relaxed">
+          <p className="mt-1 text-[calc(15px*var(--reader-font-size,1))] leading-relaxed">
             {t(entry.text, lang)}
           </p>
           {entry.image ? <Figure image={entry.image} lang={lang} /> : null}

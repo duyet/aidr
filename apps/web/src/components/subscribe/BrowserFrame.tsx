@@ -16,7 +16,7 @@ export function BrowserFrame({
       style={{ animationFillMode: "backwards" }}
     >
       <div className="flex items-end gap-1.5 bg-muted/60 px-2.5 pt-1.5">
-        <div className="flex h-7 max-w-44 items-center gap-1.5 rounded-t-lg border border-b-0 border-border bg-card px-3 text-[11px]">
+        <div className="flex h-7 max-w-44 items-center gap-1.5 rounded-t-lg border border-b-0 border-border bg-card px-3 text-[calc(11px*var(--reader-font-size,1))]">
           <img src="/favicon.svg" alt="" className="size-3.5" />
           <span className="truncate">{tab}</span>
           <X className="size-3 shrink-0 text-muted-foreground" aria-hidden />
@@ -32,7 +32,7 @@ export function BrowserFrame({
           <ArrowRight className="size-3.5" />
           <RotateCw className="size-3.5" />
         </div>
-        <div className="flex h-6 min-w-0 flex-1 items-center gap-1.5 rounded-full bg-muted/60 px-3 text-[11px] text-muted-foreground">
+        <div className="flex h-6 min-w-0 flex-1 items-center gap-1.5 rounded-full bg-muted/60 px-3 text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground">
           <Lock className="size-3 shrink-0" aria-hidden />
           <span className="truncate">{address}</span>
         </div>

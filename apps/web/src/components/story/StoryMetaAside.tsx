@@ -110,7 +110,7 @@ function StoryTokenPanel({
       id={panelId}
       tabIndex={-1}
       aria-label={copy.story}
-      className="mt-2 min-w-0 border-0 border-l border-border p-0 pl-2 text-[11px] leading-relaxed"
+      className="mt-2 min-w-0 border-0 border-l border-border p-0 pl-2 text-[calc(11px*var(--reader-font-size,1))] leading-relaxed"
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.preventDefault();
@@ -120,7 +120,7 @@ function StoryTokenPanel({
         }
       }}
     >
-      <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="mb-1 text-[calc(10px*var(--reader-font-size,1))] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         {copy.story}
       </p>
       <dl className="grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">

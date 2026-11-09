@@ -194,7 +194,7 @@ export interface WeeklyMailMeta {
 }
 
 function weeklyTag(meta: WeeklyMailMeta, lang: MailLang): string {
-  const label = lang === "vi" ? "AI;DR Tuần" : "AI;DR Weekly";
+  const label = lang === "vi" ? "AI;DR Tuần Này" : "AI;DR Weekly";
   return meta.issue ? `${label} #${meta.issue}` : label;
 }
 

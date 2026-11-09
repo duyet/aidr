@@ -88,10 +88,10 @@ export function TldrSection({
         <div className="flex min-w-0 items-center gap-3">
           {dateParts ? (
             <>
-              <span className="text-[28px] font-semibold leading-none tracking-[-0.03em] text-foreground tabular-nums">
+              <span className="text-[calc(28px*var(--reader-font-size,1))] font-semibold leading-none tracking-[-0.03em] text-foreground tabular-nums">
                 {dateParts.day}
               </span>
-              <span className="flex min-w-0 flex-col font-mono text-[11px] uppercase leading-[1.45] tracking-[0.1em]">
+              <span className="flex min-w-0 flex-col font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase leading-[1.45] tracking-[0.1em]">
                 <span className="inline-flex items-center gap-1.5 font-medium text-accent">
                   <span
                     aria-hidden="true"
@@ -114,19 +114,19 @@ export function TldrSection({
               </span>
             </>
           ) : (
-            <h2 className="flex items-center gap-2 text-[20px] font-semibold leading-tight tracking-[-0.015em] text-foreground">
+            <h2 className="flex items-center gap-2 text-[calc(20px*var(--reader-font-size,1))] font-semibold leading-tight tracking-[-0.015em] text-foreground">
               <span
                 aria-hidden="true"
                 className="size-1.5 shrink-0 rounded-full bg-signal"
               />
               AI;DR{" "}
-              <span className="font-mono text-[11px] font-normal uppercase tracking-[0.1em] text-muted-foreground">
+              <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] font-normal uppercase tracking-[0.1em] text-muted-foreground">
                 {lang === "vi" ? "24 giờ qua" : "past 24 hours"}
               </span>
             </h2>
           )}
           {layoutLabeled && (
-            <span className="rounded-full border border-input px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            <span className="rounded-full border border-input px-2 py-0.5 font-mono text-[calc(10px*var(--reader-font-size,1))] uppercase tracking-[0.1em] text-muted-foreground">
               Layout {layout.toUpperCase()}
             </span>
           )}
@@ -144,7 +144,7 @@ export function TldrSection({
             />
           ) : null}
           {options.length > 0 && (
-            <div className="flex gap-0.5 rounded-full border border-input p-0.5 text-[13px]">
+            <div className="flex gap-0.5 rounded-full border border-input p-0.5 text-[calc(13px*var(--reader-font-size,1))]">
               {options.map((o) => (
                 <button
                   key={o.nominal}
@@ -204,7 +204,7 @@ export function TldrSection({
                 });
                 setPrefs({ tldrCount: nextOption.nominal });
               }}
-              className="mt-1 inline-flex h-11 items-center rounded-[6px] sm:h-8 text-[13px] font-medium text-accent hover:underline"
+              className="mt-1 inline-flex h-11 items-center rounded-[6px] sm:h-8 text-[calc(13px*var(--reader-font-size,1))] font-medium text-accent hover:underline"
             >
               {lang === "vi" ? "Xem thêm ↓" : "Show more ↓"}
             </button>
@@ -219,7 +219,7 @@ export function TldrSection({
                   });
                   setPrefs({ tldrCount: options[0].nominal });
                 }}
-                className="mt-1 inline-flex h-11 items-center rounded-[6px] sm:h-8 text-[13px] font-medium text-accent hover:underline"
+                className="mt-1 inline-flex h-11 items-center rounded-[6px] sm:h-8 text-[calc(13px*var(--reader-font-size,1))] font-medium text-accent hover:underline"
               >
                 {lang === "vi" ? "Thu gọn" : "Show less ↑"}
               </button>
@@ -228,7 +228,7 @@ export function TldrSection({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-[12px] text-muted-foreground tabular-nums sm:px-[18px]">
+      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-[calc(12px*var(--reader-font-size,1))] text-muted-foreground tabular-nums sm:px-[18px]">
         <span>
           {totalStories} {lang === "vi" ? "tin" : "stories"}
         </span>

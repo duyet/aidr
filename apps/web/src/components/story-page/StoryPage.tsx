@@ -39,7 +39,7 @@ import { StorySourceLine } from "./StorySourceLine";
 import { focusBlock, useStoryKeys } from "./use-story-keys";
 
 const EYEBROW =
-  "font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground";
+  "font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.1em] text-muted-foreground";
 
 const COPY = {
   en: {
@@ -68,9 +68,11 @@ const COPY = {
 
 /**
  * The story permalink (`/<id>`): a news page whose main text is the
- * AI;DR. Eyebrow, headline and byline, then the AI;DR, actions, sources
- * and story details beside a sticky media rail; one column under 820px
- * with the photo first, and a sticky action bar under 520px.
+ * AI;DR. Eyebrow, headline and byline, then the AI;DR beside a sticky
+ * media rail; Read Next closes the story proper. Sources, tags and the
+ * ranking details sit at the very bottom in one quiet footer cluster,
+ * under a hairline rule. One column under 820px with the photo first,
+ * and a sticky action bar under 520px.
  *
  * The home feed's inline expansion and StoryDialog keep StoryDetail; this
  * layout is the permalink's own.
@@ -195,14 +197,16 @@ export function StoryPage({
       <ARTICLE_TITLE_TAG
         data-suggest-field="title"
         lang={fallbackFromEnglish ? "en" : undefined}
-        className="mt-2.5 max-w-[36ch] text-balance text-[24px] leading-[1.18] font-medium tracking-[-0.025em] text-foreground [overflow-wrap:anywhere] min-[820px]:text-[34px] min-[820px]:leading-[1.12]"
+        className="mt-2.5 max-w-[36ch] text-balance text-[calc(24px*var(--reader-font-size,1))] leading-[1.18] font-medium tracking-[-0.025em] text-foreground [overflow-wrap:anywhere] min-[820px]:text-[calc(34px*var(--reader-font-size,1))] min-[820px]:leading-[1.12]"
       >
         <KeywordText text={title} tags={item.tags} />
       </ARTICLE_TITLE_TAG>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         {byline && (
-          <p className="text-[13px] text-muted-foreground">{byline}</p>
+          <p className="text-[calc(13px*var(--reader-font-size,1))] text-muted-foreground">
+            {byline}
+          </p>
         )}
         <StoryVotes itemId={item.id} voteNet={item.vote_net ?? 0} lang={lang} />
       </div>
@@ -217,25 +221,13 @@ export function StoryPage({
               data-testid="story-aidr"
               className="grid gap-2 rounded-md"
             >
-              <div className="flex items-center justify-between gap-2.5">
-                <span className="font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-kw-num">
-                  AI;DR
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSheetOpen(true)}
-                  data-kb-primary=""
-                  className="h-8 px-2.5 text-xs font-normal text-muted-foreground"
-                >
-                  <Copy aria-hidden className="size-3.5" />
-                  {copy.copyShort}
-                </Button>
-              </div>
+              <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] font-medium uppercase tracking-[0.1em] text-kw-num">
+                AI;DR
+              </span>
               <div
                 data-suggest-field="summary"
                 lang={summaryIsVi ? "vi" : "en"}
-                className="grid max-w-[64ch] gap-2.5 text-[17px] leading-[1.6] text-foreground [overflow-wrap:anywhere]"
+                className="grid max-w-[64ch] gap-2.5 text-[calc(17px*var(--reader-font-size,1))] leading-[1.6] text-foreground [overflow-wrap:anywhere]"
               >
                 {paragraphs.map((p) => (
                   <p key={p}>
@@ -248,7 +240,10 @@ export function StoryPage({
 
           <div className="flex flex-wrap items-center gap-2">
             {item.url && (
-              <Button asChild className="text-[13px] max-[519px]:hidden">
+              <Button
+                asChild
+                className="text-[calc(13px*var(--reader-font-size,1))] max-[519px]:hidden"
+              >
                 <a
                   ref={originalRef}
                   href={item.url}
@@ -262,7 +257,10 @@ export function StoryPage({
                 </a>
               </Button>
             )}
-            {copyButton(copy.copyLong, "text-[13px] max-[519px]:hidden")}
+            {copyButton(
+              copy.copyLong,
+              "text-[calc(13px*var(--reader-font-size,1))] max-[519px]:hidden"
+            )}
             <span className="story-suggest contents">
               <SuggestTranslation
                 itemId={item.id}
@@ -275,59 +273,62 @@ export function StoryPage({
             <SuggestionBadge itemId={item.id} expanded lang={lang} />
           </div>
 
-          <StorySourceLine item={item} lang={lang} sectionRef={sourcesRef} />
-
-          <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1.5 text-[13px] text-muted-foreground">
-            {item.tags.map((tag) => (
-              <a
-                key={tag}
-                href={`/?tag=${encodeURIComponent(tag)}&lang=${lang}`}
-                className="hover:text-foreground"
-              >
-                #{tag}
-              </a>
-            ))}
-            <a
-              href={storyMarkdownUrl(item, lang)}
-              className="hover:text-foreground"
-            >
-              {copy.markdown}
-            </a>
-            <ContentHistory
-              item={item}
-              lang={lang}
-              className="[&[open]]:basis-full"
-            />
-            <span className="tabular-nums">
-              {copy.score} {formatStoryScore(item.rank_score)}
-            </span>
-            {tokens != null && tokens > 0 && (
-              <a
-                href="/data?tab=runs"
-                className="tabular-nums hover:text-foreground"
-              >
-                {formatStoryTokens(tokens)} {copy.tokens}
-              </a>
-            )}
-            <div className="[&>div]:mt-0">
-              <StoryRankingPanel item={item} lang={lang} />
-            </div>
-            <button
-              type="button"
-              onClick={() => setKeysOpen((v) => !v)}
-              aria-expanded={keysOpen}
-              className="inline-flex items-center gap-1.5 hover:text-foreground [@media(hover:none)]:hidden"
-            >
-              <kbd className={KBD_CLASS}>?</kbd>
-              {copy.keys}
-            </button>
-          </div>
-
           <ReadNext item={item} lang={lang} />
         </div>
 
         <StoryMedia item={item} lang={lang} />
       </div>
+
+      {/* Everything below the fold of the story: sources, tags, the
+          ranking details — one quiet cluster, well under the hairline. */}
+      <footer className="mt-8 border-t border-border pt-4 text-[calc(13px*var(--reader-font-size,1))] text-muted-foreground">
+        <StorySourceLine item={item} lang={lang} sectionRef={sourcesRef} />
+        <div className="mt-3 flex flex-wrap items-baseline gap-x-3.5 gap-y-1.5">
+          {item.tags.map((tag) => (
+            <a
+              key={tag}
+              href={`/?tag=${encodeURIComponent(tag)}&lang=${lang}`}
+              className="hover:text-foreground"
+            >
+              #{tag}
+            </a>
+          ))}
+          <a
+            href={storyMarkdownUrl(item, lang)}
+            className="hover:text-foreground"
+          >
+            {copy.markdown}
+          </a>
+          <ContentHistory
+            item={item}
+            lang={lang}
+            className="[&[open]]:basis-full"
+          />
+          <span className="tabular-nums">
+            {copy.score} {formatStoryScore(item.rank_score)}
+          </span>
+          {tokens != null && tokens > 0 && (
+            <a
+              href="/data?tab=runs"
+              className="tabular-nums hover:text-foreground"
+            >
+              {formatStoryTokens(tokens)} {copy.tokens}
+            </a>
+          )}
+          <div className="[&>div]:mt-0">
+            <StoryRankingPanel item={item} lang={lang} />
+          </div>
+          <button
+            type="button"
+            onClick={() => setKeysOpen((v) => !v)}
+            aria-expanded={keysOpen}
+            className="inline-flex items-center gap-1.5 hover:text-foreground [@media(hover:none)]:hidden"
+          >
+            <kbd className={KBD_CLASS}>?</kbd>
+            {copy.keys}
+          </button>
+        </div>
+      </footer>
 
       {/* Phone action bar. Fixed, since the app shell clips overflow and
           would stop a sticky bar; styles.css pads the page bottom by its

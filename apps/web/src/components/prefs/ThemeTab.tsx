@@ -1,4 +1,4 @@
-import { Check, Moon, RotateCcw, Sun } from "lucide-react";
+import { Check, Moon, RotateCcw, Rows2, Rows4, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { track } from "../../lib/analytics/track";
@@ -11,7 +11,7 @@ import {
   type ReaderFont,
   usePrefs,
 } from "../../lib/prefs";
-import { PrefsRow, PrefsSelect, Segmented } from "./Segmented";
+import { PrefsRow, PrefsSlider, Segmented } from "./Segmented";
 
 const BG_SWATCHES: {
   key: ReaderBg;
@@ -52,7 +52,8 @@ const BG_SWATCHES: {
   },
 ];
 
-const FONT_SIZES = [0.85, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.2, 1.25];
+const FONT_SIZE_MIN = 0.85;
+const FONT_SIZE_MAX = 1.25;
 
 const DENSITY_LABELS: Record<ReaderDensity, [string, string]> = {
   dense: ["Dense", "Rất sát"],
@@ -119,17 +120,18 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
     setTheme("system");
   };
 
-  // A stored size can sit between steps (clampFontSize keeps any value in
-  // range), so the menu shows the nearest step.
-  const sizeValue = String(
-    FONT_SIZES.reduce((best, v) =>
-      Math.abs(v - prefs.fontSize) < Math.abs(best - prefs.fontSize) ? v : best
-    )
+  const sizeValue = Math.min(
+    FONT_SIZE_MAX,
+    Math.max(FONT_SIZE_MIN, prefs.fontSize)
   );
-  const setSize = (value: string) => {
+  const setSize = (value: number) => {
     track("prefs_change", { pref: "fontSize" });
-    setPrefs({ fontSize: Number(value) });
+    setPrefs({ fontSize: value });
   };
+
+  const densityIndex = Math.max(0, READER_DENSITIES.indexOf(prefs.density));
+  const setDensityIndex = (index: number) =>
+    setDensity(READER_DENSITIES[index] ?? "medium");
 
   const setDensity = (density: ReaderDensity) => {
     track("prefs_change", { pref: "density", pref_value: density });
@@ -226,29 +228,39 @@ export function ThemeTab({ t }: { t: (en: string, vi: string) => string }) {
         />
       </PrefsRow>
 
-      <PrefsRow id="prefs-size" label={t("Text size", "Cỡ chữ")}>
-        <PrefsSelect
-          labelledBy="prefs-size"
-          value={sizeValue}
-          onChange={setSize}
-          options={FONT_SIZES.map((v) => ({
-            value: String(v),
-            label: `${Math.round(v * 100)}%`,
-          }))}
-        />
-      </PrefsRow>
+      <PrefsSlider
+        id="prefs-size"
+        label={t("Text size", "Cỡ chữ")}
+        min={FONT_SIZE_MIN}
+        max={FONT_SIZE_MAX}
+        step={0.05}
+        value={sizeValue}
+        onChange={setSize}
+        readout={`${Math.round(prefs.fontSize * 100)}%`}
+        start={
+          <span className="text-[calc(10px*var(--reader-font-size,1))] leading-none">
+            A
+          </span>
+        }
+        end={
+          <span className="text-[calc(15px*var(--reader-font-size,1))] leading-none">
+            A
+          </span>
+        }
+      />
 
-      <PrefsRow id="prefs-density" label={t("Density", "Mật độ")}>
-        <PrefsSelect
-          labelledBy="prefs-density"
-          value={prefs.density}
-          onChange={setDensity}
-          options={READER_DENSITIES.map((d) => ({
-            value: d,
-            label: t(...DENSITY_LABELS[d]),
-          }))}
-        />
-      </PrefsRow>
+      <PrefsSlider
+        id="prefs-density"
+        label={t("Density", "Mật độ")}
+        min={0}
+        max={READER_DENSITIES.length - 1}
+        step={1}
+        value={densityIndex}
+        onChange={setDensityIndex}
+        readout={t(...DENSITY_LABELS[prefs.density])}
+        start={<Rows4 className="size-3.5" strokeWidth={2} />}
+        end={<Rows2 className="size-3.5" strokeWidth={2} />}
+      />
 
       <div className="flex justify-end border-t border-border pt-1.5 mt-1.5">
         <button

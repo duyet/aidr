@@ -36,7 +36,7 @@ function HeroImage({
           setOpen(true);
           track("media_open", { media: "image", index: 1, item_id: itemId });
         }}
-        className="block w-full cursor-zoom-in overflow-hidden p-0 min-[820px]:rounded-[10px]"
+        className="block w-full cursor-zoom-in overflow-hidden border border-border bg-muted p-0 max-[819px]:rounded-none min-[820px]:rounded-[10px]"
       >
         <img
           src={src}

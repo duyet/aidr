@@ -43,71 +43,54 @@ function renderTab(initial: Partial<Prefs> = {}) {
 const click = (name: string) =>
   fireEvent.click(screen.getByRole("button", { name }));
 
-function menu(name: string): HTMLSelectElement {
-  const el = screen.getByRole("combobox", { name });
-  if (!(el instanceof HTMLSelectElement))
-    throw new Error(`${name} is not a select`);
+function slider(name: string): HTMLInputElement {
+  const el = screen.getByRole("slider", { name });
+  if (!(el instanceof HTMLInputElement))
+    throw new Error(`${name} is not a range input`);
   return el;
 }
 
-const pick = (name: string, option: string) => {
-  const select = menu(name);
-  const match = [...select.options].find((o) => o.text === option);
-  if (!match) throw new Error(`no "${option}" option in ${name}`);
-  fireEvent.change(select, { target: { value: match.value } });
-  return select;
+const slide = (name: string, value: string) => {
+  fireEvent.change(slider(name), { target: { value } });
 };
 
-describe("ThemeTab text size menu", () => {
-  it("offers 85% to 125% in 5% steps, the values the old slider saved", () => {
+describe("ThemeTab text size slider", () => {
+  it("offers 85% to 125% in 5% steps", () => {
     renderTab();
-    const select = menu("Text size");
-    expect([...select.options].map((o) => o.text)).toEqual([
-      "85%",
-      "90%",
-      "95%",
-      "100%",
-      "105%",
-      "110%",
-      "115%",
-      "120%",
-      "125%",
-    ]);
+    const control = slider("Text size");
+    expect(control.min).toBe("0.85");
+    expect(control.max).toBe("1.25");
+    expect(control.step).toBe("0.05");
   });
 
-  it("saves the picked size and shows it as selected", () => {
+  it("saves the slid size and shows the percent readout", () => {
     const prefs = renderTab();
-    const select = pick("Text size", "115%");
+    slide("Text size", "1.15");
     expect(prefs().fontSize).toBe(1.15);
-    expect(select.selectedOptions[0]?.text).toBe("115%");
+    expect(screen.getByText("115%")).toBeTruthy();
   });
 
-  it("shows the nearest step for a size stored between steps", () => {
+  it("shows the stored size even between steps", () => {
     renderTab({ fontSize: 1.02 });
-    const select = menu("Text size");
-    expect(select.selectedOptions[0]?.text).toBe("100%");
+    expect(slider("Text size").value).toBe("1.02");
+    expect(screen.getByText("102%")).toBeTruthy();
   });
 });
 
-describe("ThemeTab density menu", () => {
-  it("lists every density by name, tightest first", () => {
+describe("ThemeTab density slider", () => {
+  it("steps through every density by name, tightest first", () => {
     renderTab();
-    const select = menu("Density");
-    expect([...select.options].map((o) => o.text)).toEqual([
-      "Dense",
-      "Compact",
-      "Medium",
-      "Comfortable",
-      "Relaxed",
-      "Spacious",
-      "Airy",
-    ]);
+    expect(slider("Density").max).toBe("6");
+    expect(screen.getByText("Medium")).toBeTruthy();
   });
 
-  it("saves the picked density", () => {
+  it("saves the slid density and shows its name", () => {
     const prefs = renderTab({ density: "medium" });
-    pick("Density", "Airy");
+    slide("Density", "6");
     expect(prefs().density).toBe("airy");
+    expect(screen.getByText("Airy")).toBeTruthy();
+    slide("Density", "0");
+    expect(prefs().density).toBe("dense");
   });
 });
 

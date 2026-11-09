@@ -109,7 +109,7 @@ export function RunsList({ runs, lang, focusRunId }: RunsListProps) {
     <div className="overflow-hidden rounded-lg border border-border">
       <div
         aria-hidden
-        className={`hidden gap-x-4 border-b border-border bg-muted/30 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground md:grid ${RUN_ROW_GRID}`}
+        className={`hidden gap-x-4 border-b border-border bg-muted/30 px-3 py-2 text-[calc(10px*var(--reader-font-size,1))] font-medium uppercase tracking-[0.08em] text-muted-foreground md:grid ${RUN_ROW_GRID}`}
       >
         <span>{vi ? "Trạng thái" : "Status"}</span>
         <span>{vi ? "Bắt đầu" : "Started"}</span>

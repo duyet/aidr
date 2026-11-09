@@ -20,7 +20,7 @@ export function ModelLogo({ model }: { model: string }) {
   return (
     <span
       aria-hidden
-      className={`inline-flex size-3.5 shrink-0 select-none items-center justify-center rounded-[3px] font-sans text-[7px] font-bold leading-none text-white ${mark.tone}`}
+      className={`inline-flex size-3.5 shrink-0 select-none items-center justify-center rounded-[3px] font-sans text-[calc(7px*var(--reader-font-size,1))] font-bold leading-none text-white ${mark.tone}`}
     >
       {mark.letters}
     </span>

@@ -31,7 +31,7 @@ export function StatTile({
       )}
     >
       <CardContent className="flex h-full flex-col px-3.5 py-3 sm:px-4">
-        <p className="flex min-w-0 items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+        <p className="flex min-w-0 items-center gap-1.5 font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.1em] text-muted-foreground">
           {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
           <span className="truncate">{label}</span>
         </p>
@@ -41,14 +41,14 @@ export function StatTile({
           <p
             className={cn(
               "mt-1.5 font-semibold leading-none tracking-[-0.02em] text-foreground",
-              numeric ? "text-[22px] tabular-nums" : "text-base"
+              numeric ? "text-[calc(22px*var(--reader-font-size,1))] tabular-nums" : "text-base"
             )}
           >
             {value}
           </p>
         )}
         {sublabel ? (
-          <p className="mt-1 min-w-0 text-[11px] leading-tight text-muted-foreground">
+          <p className="mt-1 min-w-0 text-[calc(11px*var(--reader-font-size,1))] leading-tight text-muted-foreground">
             {sublabel}
           </p>
         ) : null}

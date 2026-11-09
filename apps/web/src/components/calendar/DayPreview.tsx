@@ -30,7 +30,7 @@ export function DayPreview({ day, lang }: { day: CalendarDay; lang: Lang }) {
         <span className="size-16 shrink-0 rounded-xl bg-muted" aria-hidden />
       )}
       <span className="min-w-0">
-        <span className="block font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+        <span className="block font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.08em] text-muted-foreground">
           {formatDay(day.date, lang, "short")} · {day.count}
         </span>
         <span className="mt-1 line-clamp-2 block font-semibold leading-snug">

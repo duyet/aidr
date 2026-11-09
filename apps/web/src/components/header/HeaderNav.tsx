@@ -27,7 +27,7 @@ export function HeaderNav({ lang }: { lang: Lang }) {
   return (
     <nav
       aria-label={lang === "vi" ? "Chính" : "Main"}
-      className="hidden shrink-0 items-center gap-4 text-[13px] lg:flex"
+      className="hidden shrink-0 items-center gap-4 text-[calc(13px*var(--reader-font-size,1))] lg:flex"
     >
       {HEADER_NAV.map((item) => {
         const current = path === item.href;

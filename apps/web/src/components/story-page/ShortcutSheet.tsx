@@ -23,7 +23,7 @@ const KEYS: Record<Lang, Array<[string[], string]>> = {
 };
 
 export const KBD_CLASS =
-  "rounded border border-input border-b-2 px-1.5 font-mono text-[11px] font-medium text-foreground";
+  "rounded border border-input border-b-2 px-1.5 font-mono text-[calc(11px*var(--reader-font-size,1))] font-medium text-foreground";
 
 /** The story page's shortcut list, behind `?`. Not modal: the page keeps
  * working under it, and Esc or `?` hides it. */
@@ -38,7 +38,7 @@ export function ShortcutSheet({
   return (
     <section
       aria-label={vi ? "Phím tắt" : "Keyboard shortcuts"}
-      className="fixed right-4 bottom-[calc(16px+env(safe-area-inset-bottom))] z-40 w-[min(280px,calc(100%-32px))] rounded-xl border border-input bg-card px-4 py-3.5 text-[13px] shadow-lg"
+      className="fixed right-4 bottom-[calc(16px+env(safe-area-inset-bottom))] z-40 w-[min(280px,calc(100%-32px))] rounded-xl border border-input bg-card px-4 py-3.5 text-[calc(13px*var(--reader-font-size,1))] shadow-lg"
     >
       <div className="flex items-center justify-between gap-2">
         <h2 className="font-semibold text-foreground">

@@ -33,7 +33,7 @@ export function TldrBulletRow({
 }): ReactElement {
   const copy = (
     <span
-      className={`min-w-0 flex-1 line-clamp-2 break-words text-[15px] text-foreground ${
+      className={`min-w-0 flex-1 line-clamp-2 break-words text-[calc(15px*var(--reader-font-size,1))] text-foreground ${
         linked ? "underline-offset-2 group-hover:underline" : ""
       }`}
       title={fullText}
@@ -52,9 +52,9 @@ export function TldrBulletRow({
           {numbered && (
             // The outer span shares the text's size and line height, so the
             // small mono rank sits on the first line's baseline.
-            <span aria-hidden="true" className="w-5 shrink-0 text-[15px]">
+            <span aria-hidden="true" className="w-5 shrink-0 text-[calc(15px*var(--reader-font-size,1))]">
               <span
-                className={`font-mono text-[11px] tabular-nums ${
+                className={`font-mono text-[calc(11px*var(--reader-font-size,1))] tabular-nums ${
                   n === 1
                     ? "font-semibold text-accent"
                     : "text-muted-foreground"
@@ -86,7 +86,7 @@ export function TldrBulletRow({
               lang={lang}
               priority={priority}
             />
-            <span className="absolute bottom-0.5 left-0.5 flex h-4 min-w-4 items-center justify-center rounded-sm bg-foreground/80 px-0.5 text-[10px] font-bold tabular-nums text-background">
+            <span className="absolute bottom-0.5 left-0.5 flex h-4 min-w-4 items-center justify-center rounded-sm bg-foreground/80 px-0.5 text-[calc(10px*var(--reader-font-size,1))] font-bold tabular-nums text-background">
               {n}
             </span>
           </span>

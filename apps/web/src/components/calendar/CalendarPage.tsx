@@ -152,7 +152,7 @@ export function CalendarPage({
               aria-label={vi ? "Bản tin tuần" : "Weekly editions"}
               className="mt-5"
             >
-              <h2 className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              <h2 className="mb-2 font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.08em] text-muted-foreground">
                 {vi ? "Bản tin tuần" : "Weekly editions"}
               </h2>
               <ul className="flex flex-wrap gap-2">

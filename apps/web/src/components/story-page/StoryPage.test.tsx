@@ -3,17 +3,25 @@
  * These render checks hold the owner's asks: the summary shows once (no
  * second box repeating it), in the page language and marked with the
  * language it is really in, the sources sit on one line with the rest
- * behind "+ N more", the copy-for-social button is there, and the page
- * keeps exactly one h1.
+ * behind "+ N more" inside the quiet footer cluster at the very bottom
+ * (Read Next comes before it), the copy-for-social button renders once,
+ * and the page keeps exactly one h1.
  *
  * Server-rendered, like the other story markup tests: happy-dom is the Vite
  * client graph and cannot import the story's server functions.
  */
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { countHeadings, headingTexts } from "../../lib/article-headings";
 import type { FeedItem, Lang } from "../../lib/types";
 import { StoryPage } from "./StoryPage";
+
+// The real ReadNext hydrates its rows client-side and renders null on the
+// server; the stub marks its position in the markup so the order can be
+// asserted.
+vi.mock("./ReadNext", () => ({
+  ReadNext: () => <section data-testid="read-next" />,
+}));
 
 const item: FeedItem = {
   id: "affa220c0123456789abcdef01234567",
@@ -107,12 +115,32 @@ describe("story page", () => {
     expect(html).toContain("Less than half");
   });
 
-  it("offers copy for social and the original article", () => {
+  it("offers copy for social and the original article, once each", () => {
     const html = render(item, "vi");
-    expect(html).toContain("Chép để đăng");
-    expect(html).toContain("Chép AI;DR để đăng");
+    // One desktop copy button in the actions row; the phone dock carries
+    // the short form. No copy button inside the AI;DR module.
+    expect(html.match(/Chép AI;DR để đăng/g)?.length).toBe(1);
+    expect(html.match(/Chép để đăng/g)?.length).toBe(1);
     expect(html).toContain("Đọc bài gốc");
     expect(html).toContain('href="https://www.wsj.com/tech/openai-raise"');
+    const aidr =
+      /<section[^>]*data-testid="story-aidr"[\s\S]*?<\/section>/.exec(
+        html
+      )?.[0];
+    expect(aidr).toBeTruthy();
+    expect(aidr).not.toContain("Chép");
+  });
+
+  it("closes with Read Next, then the quiet footer cluster", () => {
+    const html = render(item, "en");
+    const readNext = html.indexOf('data-testid="read-next"');
+    const sources = html.indexOf(">Sources</h2>");
+    const tags = html.indexOf("#openai");
+    const why = html.indexOf("Why this ranks");
+    expect(readNext).toBeGreaterThan(-1);
+    expect(sources).toBeGreaterThan(readNext);
+    expect(tags).toBeGreaterThan(sources);
+    expect(why).toBeGreaterThan(sources);
   });
 
   it("keeps the story tools reachable", () => {

@@ -16,7 +16,7 @@ export function Brand({ lang }: { lang: Lang }) {
           name stays "AI;DR". */}
       <span
         aria-hidden
-        className="grid size-5 shrink-0 place-items-center rounded-[4px] bg-signal text-[13px] font-bold leading-none text-signal-ink"
+        className="grid size-5 shrink-0 place-items-center rounded-[4px] bg-signal text-[calc(13px*var(--reader-font-size,1))] font-bold leading-none text-signal-ink"
       >
         ;
       </span>

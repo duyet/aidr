@@ -1,4 +1,3 @@
-import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
 const FOCUS =
@@ -61,36 +60,67 @@ export function Segmented<T extends string | number>({
     </fieldset>
   );
 }
-
-export function PrefsSelect<T extends string>({
-  labelledBy,
+export function PrefsSlider({
+  id,
+  label,
+  min,
+  max,
+  step,
   value,
-  options,
   onChange,
+  readout,
+  start,
+  end,
 }: {
-  labelledBy: string;
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (value: T) => void;
+  id: string;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange: (value: number) => void;
+  /** Trailing readout, e.g. "110%" or "Medium". */
+  readout: string;
+  /** Optional decorative marks at the slider ends. */
+  start?: ReactNode;
+  end?: ReactNode;
 }) {
   return (
-    <span className="relative inline-flex shrink-0">
-      <select
-        aria-labelledby={labelledBy}
-        value={value}
-        onChange={(e) => onChange(e.target.value as T)}
-        className={`h-7 min-w-[7.5rem] cursor-pointer appearance-none rounded-md border border-border bg-card py-0 pr-7 pl-2.5 text-xs font-medium tabular-nums text-foreground transition-colors hover:bg-muted ${FOCUS}`}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        className="pointer-events-none absolute top-1/2 right-2 size-3.5 -translate-y-1/2 text-muted-foreground"
-        aria-hidden
-      />
-    </span>
+    <div className="mb-1.5">
+      <div className="flex min-h-8 items-center justify-between gap-3">
+        <label htmlFor={id} className="shrink-0 text-xs text-muted-foreground">
+          {label}
+        </label>
+        <output
+          htmlFor={id}
+          className="text-xs font-medium tabular-nums text-foreground"
+        >
+          {readout}
+        </output>
+      </div>
+      <div className="flex items-center gap-2">
+        {start != null ? (
+          <span aria-hidden className="shrink-0 text-muted-foreground">
+            {start}
+          </span>
+        ) : null}
+        <input
+          id={id}
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          style={{ accentColor: "var(--ring)" }}
+          className={`h-6 w-full cursor-pointer rounded-full ${FOCUS}`}
+        />
+        {end != null ? (
+          <span aria-hidden className="shrink-0 text-muted-foreground">
+            {end}
+          </span>
+        ) : null}
+      </div>
+    </div>
   );
 }

@@ -40,13 +40,13 @@ export const FONT_PRELOAD_DECISION =
  * they load on demand at normal priority instead of competing with the
  * stylesheet.
  *
- *   source-serif-4   63 KB  opt-in reader serif ("Serif" / "Có chân")
+ *   newsreader       opt-in reader serif ("Serif" / "Có chân")
  *
  * `inter` (54 KB, latin + Vietnamese + Latin Extended-A in one file) is the
  * one the first paint needs, for body text and headings alike.
  * scripts/subset-fonts.ts explains why each family is a single file.
  */
-export const NON_CRITICAL_FONT_SUBSETS = ["source-serif-4-wght"] as const;
+export const NON_CRITICAL_FONT_SUBSETS = ["newsreader-wght"] as const;
 
 /**
  * How wide Inter sets real feed copy, as a share of the same copy in Arial

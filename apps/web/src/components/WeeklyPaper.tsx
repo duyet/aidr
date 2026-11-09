@@ -24,7 +24,7 @@ import {
 import { WeeklySubscribeCta } from "./WeeklySubscribeCta";
 
 export function weeklyTitle(lang: Lang): string {
-  return lang === "vi" ? "AI;DR Tuần" : "AI;DR Weekly";
+  return lang === "vi" ? "AI;DR Tuần Này" : "AI;DR Weekly";
 }
 
 /** Headline in `lang` only: the title in that language, else the edition's
@@ -174,12 +174,16 @@ export function WeeklyPaper({
       </nav>
 
       <header className="border-y-4 border-double border-foreground py-4 text-center">
-        <p className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2 font-sans text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          <span>
+        <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-border pb-2 uppercase tracking-[0.08em]">
+          <span className="text-lg font-extrabold text-accent">
             {vi ? `Số ${edition.issue}` : `Issue No. ${edition.issue}`}
           </span>
-          <span>{range}</span>
-          <span>{vi ? `Tuần ${weekNo}` : `Week ${weekNo}`}</span>
+          <span className="text-lg font-semibold normal-case tracking-normal text-foreground tabular-nums">
+            {range}
+          </span>
+          <span className="text-lg font-extrabold text-accent">
+            {vi ? `Tuần ${weekNo}` : `Week ${weekNo}`}
+          </span>
         </p>
         <h1 className="mt-3 font-serif text-5xl font-bold tracking-tight sm:text-7xl">
           {weeklyTitle(lang)}
@@ -214,46 +218,6 @@ export function WeeklyPaper({
       </div>
 
       <WeeklySubscribeCta lang={lang} />
-
-      <nav
-        aria-label={vi ? "Số trước và số sau" : "Previous and next issue"}
-        className="grid grid-cols-2 gap-3 border-t border-border pt-4 font-sans"
-      >
-        {edition.prevWeek ? (
-          <a
-            href={weekPath(edition.prevWeek, lang)}
-            rel="prev"
-            className="group flex flex-col rounded-sm border border-border px-3 py-2 hover:border-foreground focus-visible:outline-2 focus-visible:outline-foreground"
-          >
-            <span className="inline-flex items-center gap-1 text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              <ChevronLeft className="size-3.5" aria-hidden />
-              {vi ? "Số trước" : "Previous issue"}
-            </span>
-            <span className="mt-1 font-serif text-base font-semibold group-hover:underline">
-              {edition.prevWeek}
-            </span>
-          </a>
-        ) : (
-          <span />
-        )}
-        {edition.nextWeek ? (
-          <a
-            href={weekPath(edition.nextWeek, lang)}
-            rel="next"
-            className="group flex flex-col items-end rounded-sm border border-border px-3 py-2 text-right hover:border-foreground focus-visible:outline-2 focus-visible:outline-foreground"
-          >
-            <span className="inline-flex items-center gap-1 text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              {vi ? "Số sau" : "Next issue"}
-              <ChevronRight className="size-3.5" aria-hidden />
-            </span>
-            <span className="mt-1 font-serif text-base font-semibold group-hover:underline">
-              {edition.nextWeek}
-            </span>
-          </a>
-        ) : (
-          <span />
-        )}
-      </nav>
 
       <footer className="mt-6 border-t-2 border-foreground pt-4 font-sans text-sm text-muted-foreground">
         <p className="font-semibold uppercase tracking-[0.14em] text-[0.7rem]">

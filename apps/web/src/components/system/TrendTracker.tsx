@@ -92,7 +92,7 @@ function Chips({ track, onTrackChange }: TrackProps) {
             type="button"
             onClick={() => onTrackChange(track.filter((t) => t !== name))}
             aria-label={`Stop tracking ${name}`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 font-mono text-[11px] text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 font-mono text-[calc(11px*var(--reader-font-size,1))] text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span
               className="size-2 rounded-[1px]"
@@ -200,7 +200,7 @@ export function TrendTracker({ track, onTrackChange }: TrackProps) {
                         key={name}
                         type="button"
                         onClick={() => onTrackChange([...names, name])}
-                        className="rounded-full border border-border px-2.5 py-1 font-mono text-[11px] text-foreground hover:bg-muted"
+                        className="rounded-full border border-border px-2.5 py-1 font-mono text-[calc(11px*var(--reader-font-size,1))] text-foreground hover:bg-muted"
                       >
                         + {name}
                       </button>

@@ -119,7 +119,7 @@ function ContributionDetail({
       {c.kind === "suggestion" ? (
         <>
           <div>
-            <p className="mb-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+            <p className="mb-1 text-[calc(10px*var(--reader-font-size,1))] uppercase tracking-[0.08em] text-muted-foreground">
               {vi ? "Bạn đã viết" : "You wrote"}
             </p>
             <p className="whitespace-pre-wrap rounded-md bg-muted/40 p-3">

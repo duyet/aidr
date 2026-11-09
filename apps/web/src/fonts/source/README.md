@@ -6,7 +6,7 @@ subsets `src/fonts.css` serves. They are never served directly.
 | File                             | Upstream                                       | Commit     | Font revision |
 | -------------------------------- | ---------------------------------------------- | ---------- | ------------- |
 | `inter-opsz-wght.woff2`          | `ofl/inter/Inter[opsz,wght].ttf`               | `0b58fb37` | 4.001         |
-| `source-serif-4-opsz-wght.woff2` | `ofl/sourceserif4/SourceSerif4[opsz,wght].ttf` | `ddf386ba` | 4.004         |
+| `newsreader-opsz-wght.woff2`      | `ofl/newsreader/Newsreader[opsz,wght].ttf`      | `8b0a1d0f` | 1.003         |
 
 Both come from [google/fonts](https://github.com/google/fonts), rewrapped
 losslessly as woff2 with `fonttools ttLib.woff2 compress` to keep the repo
@@ -15,13 +15,14 @@ same commit.
 
 - Inter: commit `0b58fb370093f9a9f4ff785d94405710b79de67c`. The subsetter
   pins the `opsz` axis to 14 (text size) and keeps `wght` variable.
-- Source Serif 4: commit `ddf386ba1b9fbc6b2c818f1ddcd9148f54ced94b`, the
-  revision `@fontsource-variable` 5.3.x shipped, so glyphs did not change when
-  the site moved off Fontsource's per-subset files. The subsetter pins `opsz`
-  to 14.
+- Newsreader: commit `8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5`. The
+  reading serif for AI;DR Weekly and the "Serif" reader pref; replaces
+  Source Serif 4 (Production Type drew it for news streams and publishing
+  platforms; full Vietnamese coverage). The subsetter pins `opsz` to 14.
 
 Source Sans 3 and EB Garamond were removed when Inter became the site's only
-UI and heading face (see `apps/web/DESIGN.md`).
+UI and heading face; Source Serif 4 was swapped for Newsreader in the same
+role (see `apps/web/DESIGN.md`).
 
 To upgrade, download the new `.ttf` at a pinned commit, compress it to the same
 file name, update this table, and run `pnpm --filter @aidr/web test`.

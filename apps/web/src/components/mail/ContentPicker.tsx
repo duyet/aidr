@@ -27,7 +27,7 @@ export function ContentPicker({
                   selected ? "bg-muted" : "hover:bg-muted/50"
                 }`}
               >
-                <span className="mr-2 font-mono text-[10px] uppercase text-muted-foreground">
+                <span className="mr-2 font-mono text-[calc(10px*var(--reader-font-size,1))] uppercase text-muted-foreground">
                   {item.kind}
                 </span>
                 <span className="font-medium">{item.title}</span>

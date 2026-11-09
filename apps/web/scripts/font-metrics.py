@@ -9,7 +9,7 @@ reintroducing the footer reflow.
 
     python3 apps/web/scripts/font-metrics.py \\
       apps/web/src/fonts/generated/inter-wght-normal.woff2 \\
-      apps/web/src/fonts/generated/source-serif-4-wght-normal.woff2
+      apps/web/src/fonts/generated/newsreader-wght-normal.woff2
 
 A plain `.ttf` needs nothing but the standard library, so the committed
 OG card weights (`apps/web/public/fonts/be-vietnam-pro-500.ttf`) are readable

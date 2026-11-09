@@ -151,7 +151,7 @@ export function ReadNext({
       aria-label={lang === "vi" ? "Đọc tiếp" : "Read next"}
       className="border-t border-border pt-3.5"
     >
-      <h2 className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+      <h2 className="font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.1em] text-muted-foreground">
         {lang === "vi" ? "Đọc tiếp" : "Read next"}
       </h2>
       <ul className="mt-1">

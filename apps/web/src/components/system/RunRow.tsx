@@ -159,7 +159,7 @@ export function RunRow({
         {/* Status, plus how the run was asked to run */}
         <span className="flex flex-col items-start gap-0.5">
           <span
-            className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium ${style.pill}`}
+            className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[calc(10px*var(--reader-font-size,1))] font-medium ${style.pill}`}
             title={status === "error" ? formatSafeError(r.error) : undefined}
           >
             <span
@@ -170,7 +170,7 @@ export function RunRow({
           </span>
           {mode ? (
             <span
-              className="rounded border border-dashed border-border px-1.5 text-[10px] text-muted-foreground"
+              className="rounded border border-dashed border-border px-1.5 text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground"
               title={
                 mode === "dry-run"
                   ? "No email or Telegram; TL;DR previewed only"
@@ -223,7 +223,7 @@ export function RunRow({
           </span>
           {sourceLine ? (
             <span
-              className="block truncate text-[10px] text-muted-foreground"
+              className="block truncate text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground"
               title={sourceLine}
             >
               {sourceLine}
@@ -235,7 +235,7 @@ export function RunRow({
                 <Badge
                   key={b.label}
                   variant="outline"
-                  className="whitespace-nowrap px-1.5 py-0 text-[10px] font-normal text-muted-foreground"
+                  className="whitespace-nowrap px-1.5 py-0 text-[calc(10px*var(--reader-font-size,1))] font-normal text-muted-foreground"
                 >
                   {b.label}
                   {b.value > 1 ? ` ${b.value}` : ""}
@@ -271,7 +271,7 @@ export function RunRow({
           ) : (
             <span className="text-foreground">{tokenLabel}</span>
           )}
-          <span className="block text-[10px] text-muted-foreground">
+          <span className="block text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground">
             {llm ? formatMs(llm.durationMs) : "—"}
             {tokenSummary.cached !== null && tokenSummary.cached > 0 ? (
               <span className="text-emerald-700 dark:text-emerald-400">
@@ -302,7 +302,7 @@ export function RunRow({
           >
             <header className="flex items-center gap-3 border-b border-border px-5 py-3">
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium ${style.pill}`}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[calc(10px*var(--reader-font-size,1))] font-medium ${style.pill}`}
               >
                 <span
                   aria-hidden

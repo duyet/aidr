@@ -46,7 +46,7 @@ export function renderWeekMarkdown(edition: WeekEdition, lang: Lang): string {
   const range = formatWeekRange(edition.start_date, edition.end_date, lang);
   const lines: string[] = [
     vi
-      ? `# AI;DR Tuần số ${edition.issue}: ${range}`
+      ? `# AI;DR Tuần Này số ${edition.issue}: ${range}`
       : `# AI;DR Weekly No. ${edition.issue}: ${range}`,
     "",
     `- ${vi ? "Trang HTML" : "HTML page"}: ${absoluteSiteUrl(weekPath(edition.week), lang)}`,

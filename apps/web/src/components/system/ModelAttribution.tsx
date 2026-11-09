@@ -106,11 +106,11 @@ export function AttributionView({ models }: { models: ModelChains }) {
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <CardTitle
                   id={titleId}
-                  className="font-sans text-[13px] font-semibold tracking-tight text-foreground"
+                  className="font-sans text-[calc(13px*var(--reader-font-size,1))] font-semibold tracking-tight text-foreground"
                 >
                   Powered by AnyRouter
                 </CardTitle>
-                <p className="text-[11px] leading-tight text-muted-foreground">
+                <p className="text-[calc(11px*var(--reader-font-size,1))] leading-tight text-muted-foreground">
                   Lead model + fallback depth · public config only
                 </p>
               </div>
@@ -120,7 +120,7 @@ export function AttributionView({ models }: { models: ModelChains }) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Open AnyRouter in a new tab"
-              className="inline-flex shrink-0 items-center gap-1 rounded-sm text-[11px] font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex shrink-0 items-center gap-1 rounded-sm text-[calc(11px*var(--reader-font-size,1))] font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Explore AnyRouter
               <ExternalLink className="h-3 w-3" aria-hidden />
@@ -144,7 +144,7 @@ export function AttributionView({ models }: { models: ModelChains }) {
                   className="min-w-0 border-t border-border/60 pt-2.5 sm:border-t-0 sm:pt-0 sm:first:border-t-0 lg:border-l lg:border-t-0 lg:pl-4 lg:first:border-l-0 lg:first:pl-0"
                 >
                   <div className="flex min-w-0 items-center justify-between gap-1.5">
-                    <dt className="flex min-w-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <dt className="flex min-w-0 items-center gap-1.5 text-[calc(10px*var(--reader-font-size,1))] font-semibold uppercase tracking-wider text-muted-foreground">
                       <Icon
                         className="h-3 w-3 shrink-0 text-accent"
                         aria-hidden
@@ -153,7 +153,7 @@ export function AttributionView({ models }: { models: ModelChains }) {
                     </dt>
                     <dd
                       title={chain.length ? hops.title : undefined}
-                      className="shrink-0 rounded-full border border-border/70 px-1.5 py-0.5 text-[9px] leading-none tabular-nums text-muted-foreground"
+                      className="shrink-0 rounded-full border border-border/70 px-1.5 py-0.5 text-[calc(9px*var(--reader-font-size,1))] leading-none tabular-nums text-muted-foreground"
                     >
                       {chain.length ? hops.text : "unavailable"}
                     </dd>
@@ -176,7 +176,7 @@ export function AttributionView({ models }: { models: ModelChains }) {
                       </span>
                     )}
                   </dd>
-                  <dd className="mt-0.5 min-w-0 text-[10px] leading-tight text-muted-foreground">
+                  <dd className="mt-0.5 min-w-0 text-[calc(10px*var(--reader-font-size,1))] leading-tight text-muted-foreground">
                     {fallbacks.length
                       ? `${counted(
                           fallbacks.length,

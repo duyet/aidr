@@ -35,11 +35,11 @@ export function StorySourceLine({
       aria-labelledby={headingId}
       tabIndex={-1}
       data-kb=""
-      className="grid gap-2 rounded-md border-t border-border pt-3.5 text-sm"
+      className="grid gap-1.5 rounded-md text-sm"
     >
       <h2
         id={headingId}
-        className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground"
+        className="font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.1em] text-muted-foreground"
       >
         {vi ? "Nguồn" : "Sources"}
       </h2>

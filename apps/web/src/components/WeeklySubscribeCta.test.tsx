@@ -14,7 +14,7 @@ describe("WeeklySubscribeCta", () => {
     const en = renderToStaticMarkup(<WeeklySubscribeCta lang="en" />);
     expect(en).toContain("Subscribe to the weekly email");
     const vi = renderToStaticMarkup(<WeeklySubscribeCta lang="vi" />);
-    expect(vi).toContain("Đăng ký email tuần");
+    expect(vi).toContain("Đăng ký bản tin tuần");
     expect(vi).not.toContain("Subscribe to the weekly email");
   });
 });

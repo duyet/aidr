@@ -52,7 +52,7 @@
  *   Extended-A and the rupee sign. The output is gitignored.
  *
  *     Inter           54 KB  (opsz pinned to 14; body text and headings)
- *     Source Serif 4  63 KB  (opt-in reader serif; AI;DR Weekly pages)
+ *     Newsreader      (opt-in reader serif; AI;DR Weekly pages)
  *
  * Inter replaced Source Sans 3 (body, 38 KB) and EB Garamond (headings,
  * 55 KB) in the xAI-style restyle (apps/web/DESIGN.md). One family now sets
@@ -74,24 +74,25 @@
 }
 
 /*
- * Reader serif ("Serif" / "Có chân" in the prefs panel). Source Serif 4 is
- * a text serif with a generous x-height, and its Vietnamese marks are drawn
- * for body sizes. The browser fetches it for a reader who picked serif, and
- * on the AI;DR Weekly pages (`.newspaper` in styles.css), which set it by
- * default. No other first-paint rule uses this family.
+ * Reader serif ("Serif" / "Có chân" in the prefs panel). Newsreader is
+ * Production Type's reading serif for news streams and publishing platforms,
+ * with full Vietnamese coverage and an optical size axis; the subsetter
+ * pins `opsz` to 14 (body sizes). The browser fetches it for a reader who
+ * picked serif, and on the AI;DR Weekly pages (`.newspaper` in styles.css),
+ * which set it by default. No other first-paint rule uses this family.
  */
 
 @font-face {
-  font-family: "Source Serif 4 Variable";
+  font-family: "Newsreader Variable";
   font-style: normal;
-  font-weight: 200 900;
+  font-weight: 200 800;
   font-display: optional;
-  src: url("./fonts/generated/source-serif-4-wght-normal.woff2")
+  src: url("./fonts/generated/newsreader-wght-normal.woff2")
     format("woff2-variations");
   unicode-range:
     U+0000-017F, U+01A0-01A1, U+01AF-01B0, U+02BB-02BC, U+02C6, U+02DA,
     U+02DC, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329,
-    U+1EA0-1EF9, U+2000-206F, U+20AB-20AC, U+20B9, U+2122, U+2190-2193,
+    U+1EA0-1EF9, U+2000-206F, U+20AB-20AC, U+20B9, U+2122,
     U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
@@ -105,7 +106,7 @@
  *
  *   scripts/font-metrics.py reports
  *     unitsPerEm=2048 ascent=1984 descent=494  lineGap=0   (Inter 4.001)
- *     unitsPerEm=1000 ascent=1036 descent=335  lineGap=0   (Source Serif 4)
+ *     unitsPerEm=2000 ascent=1470 descent=530  lineGap=0   (Newsreader)
  *
  * So the fallback's line box is forced to the same 96.88%/24.12% and
  * 103.6%/33.5% split, which is what keeps a late webfont from re-flowing
@@ -131,12 +132,12 @@
 }
 
 @font-face {
-  font-family: "Source Serif 4 Fallback";
+  font-family: "Newsreader Fallback";
   src:
     local("Georgia"), local("Times New Roman"), local("Liberation Serif"),
     local("DejaVu Serif");
   size-adjust: 100%;
-  ascent-override: 103.6%;
-  descent-override: 33.5%;
+  ascent-override: 73.5%;
+  descent-override: 26.5%;
   line-gap-override: 0%;
 }

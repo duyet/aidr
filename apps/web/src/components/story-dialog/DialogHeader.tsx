@@ -108,7 +108,7 @@ export function DialogHeader({
         </button>
       </div>
       {item ? (
-        <div className="min-w-0 text-pretty text-[15px] leading-snug sm:text-base">
+        <div className="min-w-0 text-pretty text-[calc(15px*var(--reader-font-size,1))] leading-snug sm:text-base">
           <a
             href={pageUrl}
             lang={fallbackFromEnglish ? "en" : undefined}
@@ -116,7 +116,7 @@ export function DialogHeader({
           >
             {title}
             {fallbackFromEnglish && (
-              <span className="ml-1 align-middle text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="ml-1 align-middle text-[calc(10px*var(--reader-font-size,1))] font-semibold uppercase tracking-wide text-muted-foreground">
                 EN
               </span>
             )}

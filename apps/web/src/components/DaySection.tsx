@@ -55,7 +55,7 @@ export function DaySection({
     // sane until a section first renders (~a day of stories ≈ 1600px).
     <section className="pt-7 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border pb-2.5">
-        <h2 className="text-[18px] font-semibold leading-tight tracking-[-0.015em] text-foreground sm:text-[20px]">
+        <h2 className="text-[calc(18px*var(--reader-font-size,1))] font-semibold leading-tight tracking-[-0.015em] text-foreground sm:text-[calc(20px*var(--reader-font-size,1))]">
           {linkToDay ? (
             <a
               href={dayArchivePath(day.date, lang)}
@@ -67,10 +67,10 @@ export function DaySection({
             formatDayHeading(day.date, lang)
           )}
         </h2>
-        <span className="font-mono text-[11px] uppercase tracking-[0.1em] tabular-nums text-muted-foreground">
+        <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.1em] tabular-nums text-muted-foreground">
           {total} {lang === "vi" ? "tin" : total === 1 ? "story" : "stories"}
         </span>
-        <span className="hidden flex-wrap gap-x-3.5 text-[12px] text-muted-foreground md:flex">
+        <span className="hidden flex-wrap gap-x-3.5 text-[calc(12px*var(--reader-font-size,1))] text-muted-foreground md:flex">
           {shown.map(([name, count]) => (
             <span key={name}>
               <CategoryLabel name={name} lang={lang} quiet />{" "}
@@ -85,7 +85,7 @@ export function DaySection({
         </span>
       </div>
       <div
-        className={`story-legend ${STORY_ROW_COLS} border-b border-border pb-1.5 pt-2.5 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground`}
+        className={`story-legend ${STORY_ROW_COLS} border-b border-border pb-1.5 pt-2.5 font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.1em] text-muted-foreground`}
         aria-hidden="true"
       >
         <span className="text-right">#</span>
@@ -112,7 +112,7 @@ export function DaySection({
             type="button"
             disabled={loading}
             onClick={loadMore}
-            className="inline-flex h-11 w-full items-center sm:h-9 justify-center gap-1.5 rounded-full border border-input px-4 text-[13px] font-medium text-foreground tabular-nums hover:bg-muted disabled:opacity-50"
+            className="inline-flex h-11 w-full items-center sm:h-9 justify-center gap-1.5 rounded-full border border-input px-4 text-[calc(13px*var(--reader-font-size,1))] font-medium text-foreground tabular-nums hover:bg-muted disabled:opacity-50"
           >
             <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
             {loading

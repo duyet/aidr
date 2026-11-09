@@ -82,7 +82,7 @@ a metric-matched "Inter Fallback" (Arial at 107%). See `src/fonts.css`.
 - `--editorial-font-heading`: Inter. Headings use weight 500 or 600 and
   negative tracking. `font-heading` and `font-serif` (an older name kept for
   the same role) both resolve to it.
-- `--reader-font-serif`: Source Serif 4, when a reader picks "Serif", and
+- `--reader-font-serif`: Newsreader, when a reader picks "Serif", and
   on the AI;DR Weekly pages (`/weeks`, `/week/$week`). Their root carries
   `.newspaper`, which points the heading face at the serif so the weekly
   reads as a printed paper.

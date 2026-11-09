@@ -121,7 +121,7 @@ function StepDetail({
     <div className="space-y-2 rounded-md border border-border bg-background p-3 text-xs">
       <div className="flex flex-wrap items-baseline gap-x-2">
         <span
-          className={`rounded border px-1.5 font-mono text-[10px] ${NODE_STYLE[state]}`}
+          className={`rounded border px-1.5 font-mono text-[calc(10px*var(--reader-font-size,1))] ${NODE_STYLE[state]}`}
         >
           {NODE_MARK[state]} {name}
         </span>
@@ -135,14 +135,14 @@ function StepDetail({
         </p>
       ) : null}
       {hint ? (
-        <p className="rounded bg-muted/60 px-2 py-1 text-[11px] text-foreground">
+        <p className="rounded bg-muted/60 px-2 py-1 text-[calc(11px*var(--reader-font-size,1))] text-foreground">
           <span className="font-medium">Why: </span>
           {hint}
         </p>
       ) : null}
       {task ? (
         <div className="space-y-1.5 border-t border-border/60 pt-2">
-          <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="text-[calc(10px*var(--reader-font-size,1))] uppercase tracking-[0.08em] text-muted-foreground">
             LLM · {task}
             {shared.length > 0 ? ` · shared with ${shared.join(", ")}` : ""}
           </p>
@@ -157,11 +157,11 @@ function StepDetail({
                       key={`${g.model}-${g.errorCode}-${g.error}`}
                       className="flex items-baseline gap-2"
                     >
-                      <span className="shrink-0 rounded bg-destructive/10 px-1.5 font-mono text-[10px] tabular-nums text-destructive">
+                      <span className="shrink-0 rounded bg-destructive/10 px-1.5 font-mono text-[calc(10px*var(--reader-font-size,1))] tabular-nums text-destructive">
                         {g.count}×
                       </span>
                       <span className="min-w-0 break-words">
-                        <span className="inline-flex items-center gap-1 font-mono text-[11px]">
+                        <span className="inline-flex items-center gap-1 font-mono text-[calc(11px*var(--reader-font-size,1))]">
                           <ModelLogo model={g.model} />
                           {shortModel(g.model)}
                         </span>
@@ -214,7 +214,7 @@ export function RunWorkflowGraph({
               </span>
             ) : null}
             <span className="flex items-center gap-1 rounded-md border border-border/60 py-1 pl-1.5 pr-1">
-              <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              <span className="text-[calc(9px*var(--reader-font-size,1))] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 {phase.label}
               </span>
               {phase.steps.map((name) => {
@@ -240,7 +240,7 @@ export function RunWorkflowGraph({
                     onClick={() =>
                       setSelected((current) => (current === name ? null : name))
                     }
-                    className={`inline-flex items-center gap-1 rounded border px-1.5 py-px font-mono text-[10px] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
+                    className={`inline-flex items-center gap-1 rounded border px-1.5 py-px font-mono text-[calc(10px*var(--reader-font-size,1))] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
                       NODE_STYLE[state]
                     } ${selected === name ? "ring-2 ring-ring/60" : ""}`}
                   >
@@ -266,7 +266,7 @@ export function RunWorkflowGraph({
           attempts={attempts}
         />
       ) : (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground">
           Click a step for its details and LLM calls.
         </p>
       )}
@@ -274,7 +274,7 @@ export function RunWorkflowGraph({
       <button
         type="button"
         aria-expanded={showAll}
-        className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        className="text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
         onClick={() => setShowAll((value) => !value)}
       >
         {showAll ? "Hide all steps" : "All steps"}

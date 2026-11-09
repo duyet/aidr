@@ -63,7 +63,7 @@ function YoutubeFacade({
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
           />
           <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-16 text-left">
-            <span className="block text-[11px] font-semibold uppercase tracking-wider text-white/70">
+            <span className="block text-[calc(11px*var(--reader-font-size,1))] font-semibold uppercase tracking-wider text-white/70">
               {lang === "vi" ? "Bản tin video" : "Video briefing"}
             </span>
             <span className="mt-0.5 line-clamp-2 block font-serif text-lg leading-snug text-white">

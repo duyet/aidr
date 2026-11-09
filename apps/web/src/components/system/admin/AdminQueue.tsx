@@ -76,7 +76,7 @@ export function AdminQueue({
         <div className="mt-2 space-y-4">
           {suggestions.length > 0 && (
             <div className="overflow-x-auto">
-              <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <p className="mb-1 text-[calc(10px*var(--reader-font-size,1))] uppercase tracking-wide text-muted-foreground">
                 Suggestions
               </p>
               <table className="w-full text-xs">
@@ -116,7 +116,7 @@ export function AdminQueue({
           )}
           {submissions.length > 0 && (
             <div className="overflow-x-auto">
-              <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <p className="mb-1 text-[calc(10px*var(--reader-font-size,1))] uppercase tracking-wide text-muted-foreground">
                 Submissions
               </p>
               <table className="w-full text-xs">

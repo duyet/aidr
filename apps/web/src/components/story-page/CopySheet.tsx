@@ -116,7 +116,7 @@ export function CopySheet({
         className="relative max-h-[calc(100dvh-24px)] w-full max-w-[520px] overflow-y-auto rounded-2xl border border-input bg-background p-4 text-foreground shadow-xl mb-[env(safe-area-inset-bottom)]"
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 id={titleId} className="text-[17px] font-semibold">
+          <h2 id={titleId} className="text-[calc(17px*var(--reader-font-size,1))] font-semibold">
             {copy.title}
           </h2>
           <Button
@@ -124,7 +124,7 @@ export function CopySheet({
             size="sm"
             onClick={onClose}
             aria-label={`Esc: ${copy.close}`}
-            className="font-mono text-[11px] uppercase"
+            className="font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase"
           >
             Esc
           </Button>
@@ -142,7 +142,7 @@ export function CopySheet({
                 setFormat(f);
                 setStatus("");
               }}
-              className="min-h-9 rounded-full px-3 text-[13px] text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+              className="min-h-9 rounded-full px-3 text-[calc(13px*var(--reader-font-size,1))] text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground"
             >
               {copy.labels[f]}
             </button>
@@ -201,7 +201,7 @@ export function CopySheet({
           <span
             role="status"
             aria-live="polite"
-            className="text-[13px] text-muted-foreground"
+            className="text-[calc(13px*var(--reader-font-size,1))] text-muted-foreground"
           >
             {status}
           </span>
