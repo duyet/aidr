@@ -8,14 +8,12 @@ import type { Lang } from "../../lib/types";
  *  other destination stays in the phone menu and the footer. */
 export const HEADER_NAV: {
   id: NavTarget;
-  href: "/" | "/calendar" | "/weeks" | "/data";
+  href: "/calendar" | "/weeks";
   en: string;
   vi: string;
 }[] = [
-  { id: "/", href: "/", en: "Today", vi: "Hôm nay" },
   { id: "/calendar", href: "/calendar", en: "Calendar", vi: "Lịch" },
   { id: "/weeks", href: "/weeks", en: "Weekly", vi: "Bản tin tuần" },
-  { id: "/data", href: "/data", en: "Data", vi: "Dữ liệu" },
 ];
 
 /** Muted links, the current page in the foreground color. Shown from the
