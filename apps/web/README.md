@@ -38,6 +38,7 @@ Do not use GitHub `releases/latest` — that may be a website (`web-v*`) release
 `GET /api/feed` is the full
 homepage payload (~360KB) and does not send CORS for `chrome-extension://`
 origins. Use this instead:
+
 - **URL:** `https://aidr.today/api/public?lang=vi` (or `?lang=en`)
 - **Auth:** none. Failures return a bilingual `{ "error": "unavailable", ... }`
   object with no D1/admin detail.

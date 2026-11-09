@@ -2,6 +2,7 @@
 
 How each `NewsIngestWorkflow` run turns raw sources into the ranked,
 bilingual feed.
+
 - [Overview](#overview)
 - [Scheduling & coalesce](#scheduling--coalesce)
 - [Audience metrics (GA4 snapshot)](#audience-metrics-ga4-snapshot)
@@ -39,6 +40,7 @@ One ingest run does three jobs. The scheduler starts one every 30 minutes, with 
 | Publish | The same edition, per language, with no cross-language fill-in                                     | `worker/digest/edition.ts`                                |
 
 Publish has two deliveries and they do not share a clock or a table:
+
 - **Email** (`worker/subscribe/send.ts`) — two lanes, English and Vietnamese. From 07:00 in each subscriber's timezone. Size 3/5/10 (default 5) and layout (`no-images`, `design`, `large` or `text`, see `src/lib/mail-format.ts`) and headline font (`sans` or `serif`, see `src/lib/mail-font.ts`, `subscribers.mail_font`) come from that subscriber. The subject leads with the top headlines plus "+N more"; the preheader is written, not story text (§11). Idempotency is `subscribers.last_sent_date`. Subscribers with `frequency = weekly` skip these lanes and get the weekly edition on Monday morning instead (§11, idempotency `last_weekly_sent`). A browser preview through the same `renderEditionEmail` is `GET /api/subscribe/preview?lang=&n=&format=&font=`.
 - **Telegram** (`worker/notify/`) — VI (`telegram`) and EN (`telegram-en`), from 08:00 `Asia/Ho_Chi_Minh`, one message with the day card's 6 stories, once per channel per local date in `notifications`. Trending stories use the same caps on every notifier.
 - **Facebook** (`worker/notify/facebook.ts`) — English Page (`facebook-en`) when `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` are set. Same digest hour and the same trending bar, cap and gap. One Graph `/{page-id}/feed` link post per send. Facebook scrapes that site for the preview. The Worker uploads no photo or video. Unset Page id and token leave the channel off. A policy or auth error is not retried. `pnpm facebook:mint` writes a new Page token into `.env.local`. Story links carry `utm_content=post-<id8>` (Telegram: `button-<id8>`, `link-<id8>`), the story id's first 8 characters. Once a day, behind the ingest alarm, `worker/notify/facebook-insights.ts` reads `post_media_view` and `post_clicks` for the last 12 sent posts into `post_stats` (migration 0073). A token without `read_insights` ends the run with NULL rows and no retry that day.
@@ -70,6 +72,7 @@ one. Unset it and hit `/api/system` once to re-arm.
 The `/data` **Audience** tab shows page views, DAU, MAU, where readers come
 from, and the subscriber breakdowns. Traffic comes from GA4; subscribers come
 from D1. They are never mixed.
+
 - **GA4 is pulled, never read live.** The browser's GA4 events are not
   readable by the Worker, so `worker/ga4/insights.ts` signs a read-only
   service-account assertion and runs six `properties.runReport` calls: a
@@ -148,6 +151,7 @@ backfill-translate, backfill-en-summary, backfill-score, qa-translations, inboun
 review-suggestions, review-submissions, freshness, tldr, weekly, email, notify`. In a dry run
 `inbound-email` only classifies the pending batch (no rows written, no
 acknowledgements sent).
+
 - **`dryRun: true`** — `sendEmailDigest` and `notifyChannels` return before
   calling `sendDailyTldr` / `dispatchStoryNotifications` and record
   `skipped` / `dry run: no email or telegram`. The TL;DR step runs as
@@ -177,6 +181,7 @@ acknowledgements sent).
   the chain reached translate.
 
 What a dry run **still does** (it gates distribution, not D1):
+
 - `write` inserts fetched items and re-ranks today: new items appear on the
   site, API, MCP and feeds at once, and the next real run's notify step can
   post them to Telegram / email (notify reads D1).
@@ -250,6 +255,7 @@ sharing a `group` under one canonical are one story (aggregator twins). It
 is a dry run unless `dryRun: false`. `agent unmerge <pairs.json>` plans
 locally from production D1 through `wrangler d1 execute`, SELECT only, and
 `--apply` posts to the endpoint. `worker/unmerge/` holds the planner.
+
 - A restored group is replayed through the merge planner and
   `planNewItemWrite` as ingest would have written it without the wrong
   canonical: one lead row, its twins merged into it, its own sources and
@@ -376,6 +382,7 @@ id. Those rows are hidden and no row holds their story.
 restores them (`agent unmerge --dangling [decisions.json] [--apply]`, a dry
 run by default, the same SELECT-only local plan). It finds every merged row
 whose `duplicate_of` names no item and needs no pairs file.
+
 - Stories: rows are one story when `sameStoryRule` says so (one URL, one
   aggregator slug hash, one article id, an exact title from another
   source). Among rows that one cluster call gave the same made-up id, a
@@ -462,6 +469,7 @@ unmerge apply reports `untaggedCanonicals`. It is a dry run unless
 `dryRun: false`. `agent backfill-tags` plans locally from production D1
 through `wrangler d1 execute`, SELECT only, and `--apply` posts to the
 endpoint, which re-plans from live rows. Neither calls a model.
+
 - Each untagged published story gets `fallbackTags` on its own title and
   source. The plan sorts the stories into three lists:
   - `tag`: stories it names something for, with the tags to write;
@@ -590,6 +598,7 @@ normal path (Workers Free, 10 ms CPU):
 Agents read the published edition. They never trigger a run. Every surface
 renders from the same D1 reads as the pages, one language per response, with
 no fill-in from the other language.
+
 - Markdown twins: `/index.md` (the homepage, from `getPublicDigest`),
   `/date/YYYY-MM-DD.md` (TL;DR, video, up to 100 ranked stories with host and
   a summary for the top ten, capped at 44,000 bytes and the rest counted),
@@ -948,6 +957,7 @@ that refuse Workers egress and adds the probation sources in the table below.
 | `genk-ai`                                                                 | `rss` (`sourceLang: "vi"`, `timezone: "+07:00"`) | `vi-press`    | probation, 2 per run | Second Vietnamese row, so the VI→EN path runs again while `vnexpress-tech` is off.                                                                                                             |
 
 Decisions behind the table:
+
 - **GitHub releases use the API, not `releases.atom`.** `github.com/robots.txt`
   disallows `/*.atom$` for `User-agent: *`, and no source may fetch what a
   robots.txt disallows. `api.github.com` serves no robots.txt. Titles are
@@ -995,6 +1005,7 @@ Decisions behind the table:
 
 A new source starts with `probation: true` in the catalog. The rule, held by
 `worker/__tests__/source-catalog.test.ts`:
+
 - at most 2 items per run (1 for the `oss-release` family);
 - no `engagement: "reader"`, and no `points` or `comments` from the adapter;
 - `official` only for a first-party feed on its own host (it makes a row the
@@ -1015,6 +1026,7 @@ and miss the others. The seed upserts name, type and config (never
 `sources` rows, so nothing can undo the seed (#871). An operator can also add or enable an `rss` row at
 runtime through `upsert_source` with no deploy — see
 [`worker/README.md`](worker/README.md) → "Add a source without a deploy".
+
 - **Flood gate.** A high-volume feed is cut before the scorer sees it, in
   this order: event promos drop (see the next bullet), an optional named title pre-filter (`keywordFilter: "ai"`,
   the same regex HN uses; it admits inflections such as agents,
@@ -1161,6 +1173,7 @@ posters stay nested on the video asset and are never emitted as extra image
 candidates. HTML entities in media URLs (including double-escaped `&amp;`
 in query strings) are decoded before storage, so thumbs are real article
 images rather than a broken-src fallback.
+
 - **The trigger is a missing picture, not missing media.** A new item is
   fetched when its summary is empty or cut off, or when it has no thumbnail
   (`primaryThumbnailUrl`): no image asset, and no poster on the first-ranked
@@ -1266,6 +1279,7 @@ images rather than a broken-src fallback.
 ### 4. Score (decision router, then Jev, then LLM)
 
 Batches of 5.
+
 - `ANYROUTER_DECISION_MODEL` is an optional System One router (such as
   `anyrouter/decision`) tried on each item before Jev, with the same
   questions and a 15s cap. An answer is used only if the response's served
@@ -1433,6 +1447,7 @@ Batches of 5.
 
 One clustering call, plus a
 deterministic pass.
+
 - The clustering call compares new items (title, url, source) with the
   last 72h of published titles. It sees at most 100 new items
   (`MAX_NEW_ITEMS_IN_CLUSTER_PROMPT`, input order) and 300 published
@@ -1625,6 +1640,7 @@ Four raters read 400 stored rows of 2026-10-12..19 (72 rated fidelity
 and naturalness ≥ 4, "clean"). From them the gate gained five checks.
 `scripts/vi-audit.ts` replays the gate over stored rows (read-only) and
 counts rows per check; the numbers below come from it.
+
 - Calques seen in ≥ 3 rated rows join `CALQUES`: "lý luận"/"lập luận" for
   reasoning (use "suy luận"), "đa dạng (thức)" for multimodal, "sinh tạo"
   for generative, "quỹ đường" for trajectories, "trọng lượng" for model
@@ -1671,6 +1687,7 @@ replay of 2026-10-20 (`scripts/telegram-gate-replay.ts`, below under
 Notify). Each change fixed a class of false refusals. The calque, garble,
 magnitude, version, decimal and dollar rules are unchanged; the keep-term
 check now matches the jargon sense only.
+
 - Stutter: a doubled syllable is not a stutter when each copy belongs to a
   neighbour, the first ending a two-syllable word and the second starting
   one or standing alone (`worker/vi-compounds.ts`: "quy mô mô hình",
@@ -1724,6 +1741,7 @@ explicit `source_lang='vi'` is a real VI→EN pair: the bounded QA runtime can
 create a missing English candidate with `ANYROUTER_ENGLISH_TRANSLATE_MODEL`,
 then independently reviews that candidate. The review path lives in
 `worker/translation-qa.ts`:
+
 - `ANYROUTER_REVIEW_MODEL` (legacy: explicit `ANYROUTER_QA_MODEL`) is
   required. The reviewer chain must be concrete and disjoint from every
   `ANYROUTER_TRANSLATE_MODEL` id; missing/overlapping config fails closed
@@ -1866,6 +1884,7 @@ Constants live in `worker/ranking.ts` (`IMPORTANCE_EXPONENT`,
 `READER_VOTE_GAIN`, `READER_VOTE_CAP`, `STORY_KIND_WEIGHTS`). Why each
 rule exists, from the 2026-10-11 audit, the 2026-10-16 story-kind replay
 and `rank-replay` (below):
+
 - **Decay ramp and boost cap.** 5 of the top 30 were older than 36h. After
   24h the decay steepens, and `engagement × sourceBoost` stops at 3.25 so
   HN volume plus many outlets cannot hold a stale story up.
@@ -1941,6 +1960,7 @@ A story's cluster is the canonical item plus every `merged` item whose
 `duplicate_of` points at it. `rankSignals` reads it one way everywhere
 (insert, merge recompute, 72h re-rank, backfill, admin rate/preview;
 SQL via `RANK_SIGNAL_COLUMNS` + `RANK_SIGNAL_JOIN`):
+
 - `sourceCount` = distinct source **families** in the cluster
   (`family` in `worker/sources/catalog.ts`, else the source id). One
   outlet gets no boost; HN + TechCrunch + Verge gets 1.24. Tweets in
@@ -2006,6 +2026,7 @@ inside its day, and so across the homepage's 30-story first view (from #33
 at most on the day simulated below).
 `worker/__tests__/feed-reads.integration.test.ts` holds a test per surface.
 Collection:
+
 - The browser counts a story once per tab, kind and UTC day with a key in
   `sessionStorage`. That is client-side only; the server cannot enforce it.
 - The server drops bot user agents, `Sec-Fetch-Site: cross-site`, unknown
@@ -2169,6 +2190,7 @@ boosting) is not built; it waits for shadow data and the owner's thresholds.
 ### 10. TL;DR (LLM)
 
 Every run (30 minutes).
+
 - Generate today's **local** snapshot (`Asia/Ho_Chi_Minh` date key —
   same identity the Telegram digest looks up for once-per-local-day
   send) if missing, thin, EN-only (`bullets_vi` empty), or
@@ -2261,6 +2283,7 @@ Every run (30 minutes).
 
 `worker/weekly.ts`, step `weekly` (after `tldr`), table `weekly_snapshots`
 (0056). Pure week rules: `src/lib/week.ts`.
+
 - **Key.** The ISO week (`YYYY-Www`, Monday..Sunday) of audience-zone dates:
   the same seven days as the `tldr_snapshots` rows and `/date/` pages. The
   first run after Monday 00:00 ICT builds the week that just closed.
@@ -2419,6 +2442,7 @@ retries next run. Preview: `GET /api/subscribe/preview?lang=&n=&format=&freq=wee
 Pluggable channel adapters (Telegram, the English Facebook Page,
 plus optional JSON/Slack webhook via `NOTIFY_WEBHOOK_URL`),
 deliberately non-spammy.
+
 - A normalized `AlertEvent` (severity, source, title, summary, metrics,
   links, optional health snapshot) is the internal shape. Adapters in
   `worker/notify/adapters.ts` render Telegram HTML, Slack
@@ -3044,6 +3068,7 @@ deterministic metrics first. Datasets hold no user ids, names or IP hashes.
 ## LLM transport
 
 All calls go through `callAnyrouter` (`worker/llm.ts`):
+
 - Streaming SSE (bypasses anyrouter's queue for long prompts).
 - JSON mode.
 - `temperature` 0, except on `anthropic/` ids: current Claude ids (5.5)
@@ -3063,6 +3088,7 @@ All calls go through `callAnyrouter` (`worker/llm.ts`):
 
 Score tries Jev (`typesafe/jev` via `/systemone`, 30s cap per item) first,
 then this chat chain:
+
 - `z-ai/glm-latest` (rolling alias, served `glm-5.2`). First since
   2026-10-30: cluster 16 of 38 over 24h, against gemma-latest 3 of 41.
 - `google/gemma-latest` (rolling alias, served `gemma-4-31b` on 2026-10-10)
@@ -3217,6 +3243,7 @@ omitted, and stealth/ox-alpha was removed after AnyRouter delisted it.
 Translate runs in batches of 3 (summaries clipped, title-only retry) and
 each backfill slice is its own Workflow step so a finished batch is written
 even if a later slice times out.
+
 - Score batches of 5. One model attempt stays on the 70s hang-cap. The chat
   chain passes `timeoutMs` so two batches — decision 15s, Jev 30s, then
   chat — stay inside the 5-minute `LLM_STEP` (the 120s default made two
@@ -3237,6 +3264,7 @@ collapses. If a future source set does not fit, the number to lower is the
 source row's `maxItems` — never a hang-cap, never a batch size.
 
 A hang, empty sanitize, timeout, or 402 advances the chain:
+
 - `raceTimeout` aborts the fetch.
 - Leftover reserves a 20s floor for two fallbacks and hang-caps at 25s so
   leftover actually reaches them.
