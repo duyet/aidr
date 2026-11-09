@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { KeywordText } from "../components/KeywordText";
 import { LoadErrorPage } from "../components/LoadErrorPage";
 import { ShareWeekButton } from "../components/ShareWeekButton";
+import { KeywordText } from "../components/story-page/KeywordText";
 import { weeklyTitle } from "../components/WeeklyPaper";
 import { WeeklySubscribeCta } from "../components/WeeklySubscribeCta";
 import { headRouteInput } from "../lib/head-route";
@@ -107,7 +107,9 @@ function WeeksPage() {
       <header className="rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
         <p className={`${EYEBROW} flex flex-wrap items-center gap-x-3 gap-y-1`}>
           <span className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 font-sans text-[calc(11px*var(--reader-font-size,1))] font-bold uppercase tracking-[0.08em] text-accent-foreground">
-            {vi ? `Số ${weeks[0]?.issue ?? ""}` : `Issue No. ${weeks[0]?.issue ?? ""}`}
+            {vi
+              ? `Số ${weeks[0]?.issue ?? ""}`
+              : `Issue No. ${weeks[0]?.issue ?? ""}`}
           </span>
           <span className="tabular-nums">
             {weeks[0]

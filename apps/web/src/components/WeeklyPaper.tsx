@@ -183,7 +183,9 @@ export function WeeklyPaper({
 
       <header className="mt-3 rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className={`${EYEBROW} flex flex-wrap items-center gap-x-3 gap-y-1.5 tabular-nums`}>
+          <p
+            className={`${EYEBROW} flex flex-wrap items-center gap-x-3 gap-y-1.5 tabular-nums`}
+          >
             <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-1 font-sans text-[calc(11px*var(--reader-font-size,1))] font-bold uppercase tracking-[0.08em] text-accent-foreground">
               {vi ? `Số ${edition.issue}` : `Issue No. ${edition.issue}`}
             </span>

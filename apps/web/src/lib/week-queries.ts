@@ -99,9 +99,11 @@ export async function listWeekEditions(db: DbReader): Promise<WeekSummary[]> {
   const leads = await getItemsByIds(
     db,
     rows
-      .map((r) => parseJsonArray(r.item_ids).find(
-        (id): id is string => typeof id === "string"
-      ))
+      .map((r) =>
+        parseJsonArray(r.item_ids).find(
+          (id): id is string => typeof id === "string"
+        )
+      )
       .filter((id): id is string => Boolean(id))
   );
   const byId = new Map(leads.map((item) => [item.id, item]));

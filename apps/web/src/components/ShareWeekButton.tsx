@@ -1,10 +1,10 @@
 import { Check, Share2 } from "lucide-react";
 import { useState } from "react";
+import { withUtm } from "../../worker/utm.js";
 import { track } from "../lib/analytics/track";
 import { absoluteSiteUrl, withLang } from "../lib/locale-url";
 import type { Lang } from "../lib/types";
 import { formatWeekRange, weekPath } from "../lib/week";
-import { withUtm } from "../../worker/utm.js";
 
 type WeekLike = {
   week: string;
@@ -34,7 +34,11 @@ export function ShareWeekButton({
   const [state, setState] = useState<"idle" | "shared" | "copied">("idle");
 
   const label =
-    state === "idle" ? copy.share : state === "shared" ? copy.shared : copy.copied;
+    state === "idle"
+      ? copy.share
+      : state === "shared"
+        ? copy.shared
+        : copy.copied;
   const Icon = state === "idle" ? Share2 : Check;
 
   const onShare = async () => {
@@ -43,10 +47,12 @@ export function ShareWeekButton({
       lang === "vi"
         ? `AI;DR Tuần Này số ${week.issue} · ${range}`
         : `AI;DR Weekly No. ${week.issue} · ${range}`;
-    const url = withUtm(
-      absoluteSiteUrl(weekPath(week.week), lang),
-      { source: "share", medium: "social", campaign: `weekly-${week.week}`, content: "share" }
-    );
+    const url = withUtm(absoluteSiteUrl(weekPath(week.week), lang), {
+      source: "share",
+      medium: "social",
+      campaign: `weekly-${week.week}`,
+      content: "share",
+    });
     const text = `${title}\n\n${url}`;
     track("source_click", { item_id: week.week, placement: "row" });
     try {
