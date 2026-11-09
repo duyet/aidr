@@ -202,14 +202,11 @@ export function StoryPage({
         <KeywordText text={title} tags={item.tags} />
       </ARTICLE_TITLE_TAG>
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        {byline && (
-          <p className="text-[calc(13px*var(--reader-font-size,1))] text-muted-foreground">
-            {byline}
-          </p>
-        )}
-        <StoryVotes itemId={item.id} voteNet={item.vote_net ?? 0} lang={lang} />
-      </div>
+      {byline && (
+        <p className="mt-2 text-[calc(13px*var(--reader-font-size,1))] text-muted-foreground">
+          {byline}
+        </p>
+      )}
 
       <div className="mt-3 grid grid-cols-1 items-start gap-3.5 min-[820px]:mt-4 min-[820px]:grid-cols-[minmax(0,1fr)_360px] min-[820px]:gap-8">
         <div className="grid min-w-0 gap-4">
@@ -271,6 +268,12 @@ export function StoryPage({
               />
             </span>
             <SuggestionBadge itemId={item.id} expanded lang={lang} />
+            <span aria-hidden className="h-4 w-px bg-border" />
+            <StoryVotes
+              itemId={item.id}
+              voteNet={item.vote_net ?? 0}
+              lang={lang}
+            />
           </div>
 
           <ReadNext item={item} lang={lang} />
@@ -281,18 +284,19 @@ export function StoryPage({
 
       {/* Everything below the fold of the story: sources, tags, the
           ranking details — one quiet cluster, well under the hairline. */}
-      <footer className="mt-8 border-t border-border pt-4 text-[calc(13px*var(--reader-font-size,1))] text-muted-foreground">
+      <footer className="mt-8 border-t border-border pt-3.5 text-[calc(12px*var(--reader-font-size,1))] text-muted-foreground">
         <StorySourceLine item={item} lang={lang} sectionRef={sourcesRef} />
-        <div className="mt-3 flex flex-wrap items-baseline gap-x-3.5 gap-y-1.5">
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 gap-y-1.5">
           {item.tags.map((tag) => (
             <a
               key={tag}
               href={`/?tag=${encodeURIComponent(tag)}&lang=${lang}`}
-              className="hover:text-foreground"
+              className="rounded-full bg-muted/60 px-2 py-0.5 text-[calc(12px*var(--reader-font-size,1))] font-medium text-accent transition-colors hover:bg-muted hover:text-foreground"
             >
               #{tag}
             </a>
           ))}
+          <span aria-hidden className="h-3.5 w-px bg-border" />
           <a
             href={storyMarkdownUrl(item, lang)}
             className="hover:text-foreground"

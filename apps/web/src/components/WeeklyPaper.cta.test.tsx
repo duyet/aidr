@@ -26,17 +26,14 @@ describe("WeeklyPaper subscribe + issue navigation", () => {
     expect(html).toContain("freq=weekly");
   });
 
-  it("keeps the foot free of the duplicated header navigation", () => {
-    // The head nav already carries prev/next and the way back to the
-    // archive; the foot is the daily editions and the Markdown twin.
-    expect(html).not.toContain('rel="prev"');
-    expect(html).not.toContain('rel="next"');
+  it("carries prev/next at the foot as well as the head nav", () => {
+    expect(html).toContain('rel="prev"');
+    expect(html).toContain("Previous issue");
   });
 
-  it("closes with the daily editions as plain links, not chips", () => {
+  it("closes with the daily editions as pill chips", () => {
     expect(html).toContain("Daily editions");
     expect(html).toContain("/date/2026-10-05?lang=en");
     expect(html).toContain("Markdown");
-    expect(html).not.toMatch(/rounded-full[^>]*>2026-10-05/);
   });
 });

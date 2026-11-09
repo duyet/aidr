@@ -10,6 +10,7 @@ import {
   Scripts,
   useNavigate,
 } from "@tanstack/react-router";
+import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { ClerkRootProvider } from "../components/ClerkRootProvider";
 import { HeaderBar } from "../components/HeaderBar";
@@ -186,6 +187,19 @@ export const Route = createRootRoute({
   component: RootComponent,
 });
 
+/** Prefs vars, with the `?fs=` visit override winning when present. */
+export function resolveReaderVars(
+  prefs: Prefs,
+  urlFontSize: number | null
+): CSSProperties {
+  return {
+    ...readerCssVars(prefs),
+    ...(urlFontSize !== null
+      ? { "--reader-font-size": String(urlFontSize) }
+      : {}),
+  } as CSSProperties;
+}
+
 function RootComponent() {
   const routeContext = Route.useRouteContext();
   const [lang, setLang] = useState<Lang>(routeContext.lang);
@@ -217,14 +231,24 @@ function RootComponent() {
   const [prefs, setPrefsState] = useState<Prefs>(DEFAULT_PREFS);
   const prefsLoadedRef = useRef(false);
 
-  // `?font=serif|sans` overrides the reader font for this visit, so a
-  // shared link can show the page in the sharer's face:
-  // https://aidr.today/<story>?lang=vi&font=serif. It never writes to
-  // storage; the prefs panel still holds the reader's own choice.
+  // `?font=serif|sans` and `?fs=0.85..1.25` override the reader font
+  // face / text size for this visit, so a shared link can show the page in
+  // the sharer's style: https://aidr.today/<story>?lang=vi&font=serif&fs=1.15.
+  // They never write to storage; the prefs panel still holds the reader's
+  // own choice.
   const [urlFont, setUrlFont] = useState<Prefs["font"] | null>(null);
+  const [urlFontSize, setUrlFontSize] = useState<number | null>(null);
   useEffect(() => {
-    const raw = new URLSearchParams(window.location.search).get("font");
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("font");
     if (raw === "serif" || raw === "sans") setUrlFont(raw);
+    const fsRaw = params.get("fs");
+    if (fsRaw !== null) {
+      const n = Number(fsRaw);
+      if (Number.isFinite(n)) {
+        setUrlFontSize(Math.min(1.25, Math.max(0.85, n)));
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -239,6 +263,8 @@ function RootComponent() {
 
   const setPrefs = (update: Partial<Prefs>) =>
     setPrefsState((p) => ({ ...p, ...update }));
+
+  const readerVars = resolveReaderVars(prefs, urlFontSize);
 
   return (
     <html lang={lang} suppressHydrationWarning>
@@ -263,7 +289,7 @@ function RootComponent() {
                       swatch is on .app-shell so it paints the whole page. */}
                   <div
                     className="news-content relative z-10 flex flex-grow flex-col"
-                    style={readerCssVars(prefs)}
+                    style={readerVars}
                     data-reader-font={urlFont ?? prefs.font}
                   >
                     <HeaderBar lang={lang} onLangChange={handleLangChange} />
