@@ -36,6 +36,10 @@ export interface WeekSummary {
   intro_en: string | null;
   intro_vi: string | null;
   stories: number;
+  /** Lead story publisher photo | null when it has none. */
+  image_url: string | null;
+  /** Lead story tags, for keyword highlights in the weeks teaser. */
+  lead_tags: string[];
 }
 
 export function parseJsonArray(raw: unknown): unknown[] {

@@ -84,21 +84,46 @@ export async function getWeekEdition(
 }
 
 /** Newest first, for `/weeks`. A failed read throws, so the edge-cached
- * index never stores an empty list it did not read. */
+ * index never stores an empty list it did not read. Each row also carries
+ * the lead story's photo + tags for the index thumbnail and the teaser
+ * keyword highlights. */
 export async function listWeekEditions(db: DbReader): Promise<WeekSummary[]> {
   const { results } = await db
     .prepare(
       `SELECT week, issue, start_date, end_date, intro_en, intro_vi,
-         json_array_length(item_ids) AS stories
+         item_ids, json_array_length(item_ids) AS stories
        FROM weekly_snapshots ORDER BY week DESC LIMIT ${WEEKS_INDEX_LIMIT}`
     )
-    .all<WeekSummary>();
-  return (results ?? []).map((r) => ({
-    ...r,
-    intro_en: r.intro_en?.trim() || null,
-    intro_vi: r.intro_vi?.trim() || null,
-    stories: Number(r.stories) || 0,
-  }));
+    .all<WeekSummary & { item_ids: string }>();
+  const rows = results ?? [];
+  const leads = await getItemsByIds(
+    db,
+    rows
+      .map((r) =>
+        parseJsonArray(r.item_ids).find(
+          (id): id is string => typeof id === "string"
+        )
+      )
+      .filter((id): id is string => Boolean(id))
+  );
+  const byId = new Map(leads.map((item) => [item.id, item]));
+  return rows.map((r) => {
+    const leadId = parseJsonArray(r.item_ids).find(
+      (id): id is string => typeof id === "string"
+    );
+    const lead = leadId ? byId.get(leadId) : undefined;
+    return {
+      week: r.week,
+      issue: r.issue,
+      start_date: r.start_date,
+      end_date: r.end_date,
+      intro_en: r.intro_en?.trim() || null,
+      intro_vi: r.intro_vi?.trim() || null,
+      stories: Number(r.stories) || 0,
+      image_url: lead?.image_url ?? null,
+      lead_tags: lead?.tags ?? [],
+    };
+  });
 }
 
 /** Whether the week has an edition. A cheap probe for the day page's

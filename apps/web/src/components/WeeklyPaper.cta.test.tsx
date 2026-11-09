@@ -26,14 +26,17 @@ describe("WeeklyPaper subscribe + issue navigation", () => {
     expect(html).toContain("freq=weekly");
   });
 
-  it("carries prev/next at the foot as well as the head nav", () => {
-    expect(html).toContain('rel="prev"');
-    expect(html).toContain("Previous issue");
+  it("has no footer prev/next nav; the head nav carries it", () => {
+    expect(html).not.toContain('rel="prev"');
+    expect(html).not.toContain('rel="next"');
   });
 
-  it("closes with the daily editions as pill chips", () => {
-    expect(html).toContain("Daily editions");
-    expect(html).toContain("/date/2026-10-05?lang=en");
-    expect(html).toContain("Markdown");
+  it("links back to the weeks archive at the top and bottom", () => {
+    expect(html).toContain("Back to all weeks");
+    expect(html.match(/Back to all weeks/g)?.length).toBe(2);
+  });
+
+  it("offers a share-week action in the masthead", () => {
+    expect(html).toContain(">Share</button>");
   });
 });
