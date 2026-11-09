@@ -2,7 +2,7 @@ import { Check, Share2 } from "lucide-react";
 import { useState } from "react";
 import { withUtm } from "../../worker/utm.js";
 import { track } from "../lib/analytics/track";
-import { absoluteSiteUrl, withLang } from "../lib/locale-url";
+import { absoluteSiteUrl } from "../lib/locale-url";
 import type { Lang } from "../lib/types";
 import { formatWeekRange, weekPath } from "../lib/week";
 
