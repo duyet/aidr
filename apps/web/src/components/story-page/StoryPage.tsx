@@ -292,7 +292,7 @@ export function StoryPage({
           ranking details — one quiet cluster, well under the hairline. */}
       <footer className="mt-8 border-t border-border pt-3.5 text-[calc(12px*var(--reader-font-size,1))] text-muted-foreground">
         <StorySourceLine item={item} lang={lang} sectionRef={sourcesRef} />
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 gap-y-1.5">
+        <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
           {item.tags.map((tag) => (
             <a
               key={tag}
@@ -303,17 +303,6 @@ export function StoryPage({
             </a>
           ))}
           <span aria-hidden className="h-3.5 w-px bg-border" />
-          <a
-            href={storyMarkdownUrl(item, lang)}
-            className="hover:text-foreground"
-          >
-            {copy.markdown}
-          </a>
-          <ContentHistory
-            item={item}
-            lang={lang}
-            className="[&[open]]:basis-full"
-          />
           <span className="tabular-nums">
             {copy.score} {formatStoryScore(item.rank_score)}
           </span>
@@ -325,6 +314,17 @@ export function StoryPage({
               {formatStoryTokens(tokens)} {copy.tokens}
             </a>
           )}
+          <a
+            href={storyMarkdownUrl(item, lang)}
+            className="hover:text-foreground"
+          >
+            {copy.markdown}
+          </a>
+          <ContentHistory
+            item={item}
+            lang={lang}
+            className="[&[open]]:basis-full"
+          />
           <div className="[&>div]:mt-0">
             <StoryRankingPanel item={item} lang={lang} />
           </div>
@@ -332,7 +332,7 @@ export function StoryPage({
             type="button"
             onClick={() => setKeysOpen((v) => !v)}
             aria-expanded={keysOpen}
-            className="inline-flex items-center gap-1.5 hover:text-foreground [@media(hover:none)]:hidden"
+            className="inline-flex items-center gap-1 hover:text-foreground [@media(hover:none)]:hidden"
           >
             <kbd className={KBD_CLASS}>?</kbd>
             {copy.keys}
