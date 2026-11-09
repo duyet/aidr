@@ -22,6 +22,7 @@ import {
   weekStoriesFor,
   weekStoryText,
 } from "../lib/week-model";
+import { ShareWeekButton } from "./ShareWeekButton";
 import { WeeklySubscribeCta } from "./WeeklySubscribeCta";
 
 export function weeklyTitle(lang: Lang): string {
@@ -180,16 +181,25 @@ export function WeeklyPaper({
         </a>
       </nav>
 
-      <header className="mt-3 border-b border-border pb-5">
-        <p className={`${EYEBROW} flex flex-wrap gap-x-3 gap-y-1 tabular-nums`}>
-          <span className="text-accent">
-            {vi ? `Số ${edition.issue}` : `Issue No. ${edition.issue}`}
-          </span>
-          <span>{range}</span>
-          <span>{vi ? `Tuần ${weekNo}` : `Week ${weekNo}`}</span>
-        </p>
-        <h1 className={`mt-2 ${PAGE_TITLE}`}>{weeklyTitle(lang)}</h1>
-        <p className="mt-1.5 text-[15px] text-muted-foreground">
+      <header className="mt-3 rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className={`${EYEBROW} flex flex-wrap items-center gap-x-3 gap-y-1.5 tabular-nums`}>
+            <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-1 font-sans text-[calc(11px*var(--reader-font-size,1))] font-bold uppercase tracking-[0.08em] text-accent-foreground">
+              {vi ? `Số ${edition.issue}` : `Issue No. ${edition.issue}`}
+            </span>
+            <span className="text-[calc(13px*var(--reader-font-size,1))] font-semibold text-foreground">
+              {range}
+            </span>
+            <span>{vi ? `Tuần ${weekNo}` : `Week ${weekNo}`}</span>
+          </p>
+          <ShareWeekButton week={edition} lang={lang} />
+        </div>
+        <h1
+          className={`mt-3 ${PAGE_TITLE} text-[calc(28px*var(--reader-font-size,1))] min-[820px]:text-[calc(40px*var(--reader-font-size,1))]`}
+        >
+          {weeklyTitle(lang)}
+        </h1>
+        <p className="mt-1.5 text-[calc(15px*var(--reader-font-size,1))] leading-[1.6] text-muted-foreground">
           {vi
             ? `${stories.length} tin AI đáng đọc nhất trong tuần`
             : `The ${stories.length} AI stories that mattered this week`}
@@ -219,46 +229,6 @@ export function WeeklyPaper({
       </div>
 
       <WeeklySubscribeCta lang={lang} />
-
-      <nav
-        aria-label={vi ? "Số trước và số sau" : "Previous and next issue"}
-        className="grid grid-cols-2 gap-3"
-      >
-        {edition.prevWeek ? (
-          <a
-            href={weekPath(edition.prevWeek, lang)}
-            rel="prev"
-            className="group flex min-w-0 flex-col rounded-lg border border-border px-4 py-3 transition-colors hover:bg-muted/60"
-          >
-            <span className={`${EYEBROW} inline-flex items-center gap-1`}>
-              <ChevronLeft className="size-3.5" aria-hidden />
-              {vi ? "Số trước" : "Previous issue"}
-            </span>
-            <span className="mt-1 text-[15px] font-medium tabular-nums text-foreground group-hover:text-accent">
-              {edition.prevWeek}
-            </span>
-          </a>
-        ) : (
-          <span />
-        )}
-        {edition.nextWeek ? (
-          <a
-            href={weekPath(edition.nextWeek, lang)}
-            rel="next"
-            className="group flex min-w-0 flex-col items-end rounded-lg border border-border px-4 py-3 text-right transition-colors hover:bg-muted/60"
-          >
-            <span className={`${EYEBROW} inline-flex items-center gap-1`}>
-              {vi ? "Số sau" : "Next issue"}
-              <ChevronRight className="size-3.5" aria-hidden />
-            </span>
-            <span className="mt-1 text-[15px] font-medium tabular-nums text-foreground group-hover:text-accent">
-              {edition.nextWeek}
-            </span>
-          </a>
-        ) : (
-          <span />
-        )}
-      </nav>
 
       <div className="flex justify-center pt-4">
         <a
