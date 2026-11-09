@@ -211,8 +211,8 @@ export function StoryPage({
       <div className="mt-3 grid grid-cols-1 items-start gap-3.5 min-[820px]:mt-4 min-[820px]:grid-cols-[minmax(0,1fr)_360px] min-[820px]:gap-8">
         {/* Left content matches the right rail's thumbnail height
             (360px wide, 16:9), so a screenshot of the content lines up
-            with the thumbnail and never catches Read Next. The action
-            row sits at that bottom edge; Read Next starts below it. */}
+            with the thumbnail and never catches the suggest/vote row
+            or Read Next; both start below the block. */}
         <div className="grid min-w-0 gap-4">
           <div className="flex flex-col gap-4 min-[820px]:min-h-[calc(360px*9/16)]">
             {paragraphs.length > 0 && (
@@ -263,23 +263,25 @@ export function StoryPage({
                 copy.copyLong,
                 "text-[calc(13px*var(--reader-font-size,1))] max-[519px]:hidden"
               )}
-              <span className="story-suggest contents">
-                <SuggestTranslation
-                  itemId={item.id}
-                  lang={lang}
-                  initialText={pendingSuggestion?.text}
-                  suggestionAttempt={suggestionAttempt}
-                  onInitialTextConsumed={clearPending}
-                />
-              </span>
-              <SuggestionBadge itemId={item.id} expanded lang={lang} />
-              <span aria-hidden className="h-4 w-px bg-border" />
-              <StoryVotes
-                itemId={item.id}
-                voteNet={item.vote_net ?? 0}
-                lang={lang}
-              />
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="story-suggest contents">
+              <SuggestTranslation
+                itemId={item.id}
+                lang={lang}
+                initialText={pendingSuggestion?.text}
+                suggestionAttempt={suggestionAttempt}
+                onInitialTextConsumed={clearPending}
+              />
+            </span>
+            <SuggestionBadge itemId={item.id} expanded lang={lang} />
+            <StoryVotes
+              itemId={item.id}
+              voteNet={item.vote_net ?? 0}
+              lang={lang}
+            />
           </div>
 
           <ReadNext item={item} lang={lang} />
