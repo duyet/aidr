@@ -78,15 +78,15 @@ export function SourceRow({
   const linkLabel = sourceLinkLabel(kind, lang);
   const roleTone =
     kind === "source"
-      ? "text-accent"
+      ? "text-foreground"
       : kind === "support"
         ? "text-foreground/80"
         : "text-muted-foreground";
 
   return (
-    <li className="flex items-baseline gap-x-1.5 text-sm leading-relaxed">
+    <li className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm leading-relaxed">
       <span
-        className={`shrink-0 text-[0.6875rem] font-bold uppercase tracking-[0.08em] ${roleTone}`}
+        className={`shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] ${roleTone}`}
       >
         {sourceLabel(kind, lang)}
       </span>
