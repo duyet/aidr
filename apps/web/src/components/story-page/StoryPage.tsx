@@ -211,8 +211,8 @@ export function StoryPage({
       <div className="mt-3 grid grid-cols-1 items-start gap-3.5 min-[820px]:mt-4 min-[820px]:grid-cols-[minmax(0,1fr)_360px] min-[820px]:gap-8">
         {/* Left content matches the right rail's thumbnail height
             (360px wide, 16:9), so a screenshot of the content lines up
-            with the thumbnail and never catches the suggest/vote row
-            or Read Next; both start below the block. */}
+            with the thumbnail and never catches the one-line action
+            row or Read Next; both start below the block. */}
         <div className="grid min-w-0 gap-4">
           <div className="flex flex-col gap-4 min-[820px]:min-h-[calc(360px*9/16)]">
             {paragraphs.length > 0 && (
@@ -240,33 +240,31 @@ export function StoryPage({
               </section>
             )}
 
-            <div className="flex flex-wrap items-center gap-2 min-[820px]:mt-auto">
-              {item.url && (
-                <Button
-                  asChild
-                  className="text-[calc(13px*var(--reader-font-size,1))] max-[519px]:hidden"
-                >
-                  <a
-                    ref={originalRef}
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={openOriginal}
-                    data-kb=""
-                  >
-                    {copy.original}
-                    <ArrowUpRight aria-hidden />
-                  </a>
-                </Button>
-              )}
-              {copyButton(
-                copy.copyLong,
-                "text-[calc(13px*var(--reader-font-size,1))] max-[519px]:hidden"
-              )}
-            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="flex flex-wrap items-center gap-2 min-[820px]:flex-nowrap">
+            {item.url && (
+              <Button
+                asChild
+                className="h-8 shrink-0 text-[calc(12px*var(--reader-font-size,1))] max-[519px]:hidden"
+              >
+                <a
+                  ref={originalRef}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={openOriginal}
+                  data-kb=""
+                >
+                  {copy.original}
+                  <ArrowUpRight aria-hidden />
+                </a>
+              </Button>
+            )}
+            {copyButton(
+              copy.copyLong,
+              "h-8 shrink-0 text-[calc(12px*var(--reader-font-size,1))] max-[519px]:hidden"
+            )}
             <span className="story-suggest contents">
               <SuggestTranslation
                 itemId={item.id}
