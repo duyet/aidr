@@ -8,6 +8,7 @@ import {
   storyPostText,
   storyShareLink,
 } from "../../lib/share-text";
+import { usePrefs } from "../../lib/prefs";
 import type { FeedItem, Lang } from "../../lib/types";
 import { storyOgThumbUrl } from "../StoryThumb";
 import { useDialogLifecycle } from "../story-dialog/use-dialog-lifecycle";
@@ -78,8 +79,10 @@ export function CopySheet({
     copyRef.current?.focus();
   }, []);
   const [status, setStatus] = useState("");
+  const { prefs } = usePrefs();
+  const style = { font: prefs.font, fontSize: prefs.fontSize };
 
-  const post = storyPostText(item, lang, format);
+  const post = storyPostText(item, lang, format, style);
   const link = post.slice(post.lastIndexOf("\n") + 1);
   const body = post.slice(0, post.length - link.length);
   const card =
@@ -192,7 +195,7 @@ export function CopySheet({
             // same story link, tagged with the format's slot.
             onClick={() =>
               void write(
-                storyShareLink(item, lang),
+                storyShareLink(item, lang, style),
                 copy.linkCopied,
                 linkRef.current
               )

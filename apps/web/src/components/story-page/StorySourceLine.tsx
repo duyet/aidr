@@ -6,8 +6,8 @@ import { SourceRow } from "../story/StorySources";
 import { splitSources } from "./lib";
 
 /**
- * Sources, kept simple: one line of main source names split by dots, then
- * the supporting and discussion sources behind "+ N more" with their time
+ * Sources, kept compact: main sources as small pills, then the
+ * supporting and discussion sources behind "+ N more" with their time
  * and quote. The section is the `S` shortcut's target.
  */
 export function StorySourceLine({
@@ -35,23 +35,18 @@ export function StorySourceLine({
       aria-labelledby={headingId}
       tabIndex={-1}
       data-kb=""
-      className="grid gap-1.5 rounded-md text-sm"
+      className="grid gap-1 rounded-md"
     >
       <h2
         id={headingId}
-        className="font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase tracking-[0.1em] text-muted-foreground"
+        className="font-mono text-[calc(10px*var(--reader-font-size,1))] uppercase tracking-[0.1em] text-muted-foreground"
       >
         {vi ? "Nguồn" : "Sources"}
       </h2>
       {main.length > 0 && (
-        <ul className="flex flex-wrap items-baseline gap-y-1 text-foreground">
-          {main.map((s, i) => (
+        <ul className="flex flex-wrap gap-1.5 text-foreground">
+          {main.map((s) => (
             <li key={s.key} className="min-w-0 [overflow-wrap:anywhere]">
-              {i > 0 && (
-                <span aria-hidden className="mx-2 text-muted-foreground">
-                  ·
-                </span>
-              )}
               {s.href ? (
                 <a
                   href={s.href}
@@ -59,12 +54,17 @@ export function StorySourceLine({
                   rel="noopener noreferrer"
                   title={s.quote ?? undefined}
                   onClick={onOpen}
-                  className="underline-offset-[3px] hover:underline"
+                  className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[calc(12px*var(--reader-font-size,1))] font-medium text-foreground transition-colors hover:border-accent hover:text-accent"
                 >
                   {s.label}
                 </a>
               ) : (
-                <span title={s.quote ?? undefined}>{s.label}</span>
+                <span
+                  title={s.quote ?? undefined}
+                  className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[calc(12px*var(--reader-font-size,1))] font-medium"
+                >
+                  {s.label}
+                </span>
               )}
             </li>
           ))}
@@ -72,10 +72,10 @@ export function StorySourceLine({
       )}
       {more.length > 0 && (
         <details className="group">
-          <summary className="inline-flex min-h-7 cursor-pointer list-none items-center text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+          <summary className="inline-flex min-h-6 cursor-pointer list-none items-center rounded-full bg-muted/60 px-2 py-0.5 text-[calc(12px*var(--reader-font-size,1))] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&::-webkit-details-marker]:hidden">
             {vi ? `+ ${more.length} nguồn khác` : `+ ${more.length} more`}
           </summary>
-          <ol className="mt-1 list-none space-y-1">
+          <ol className="mt-1 list-none space-y-1 [&_li]:text-[calc(12px*var(--reader-font-size,1))]">
             {more.map((source, index) => (
               <SourceRow
                 key={`${source.kind}-${source.url ?? source.author ?? "source"}-${index}`}

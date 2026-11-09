@@ -78,8 +78,8 @@
  * Production Type's reading serif for news streams and publishing platforms,
  * with full Vietnamese coverage and an optical size axis; the subsetter
  * pins `opsz` to 14 (body sizes). The browser fetches it for a reader who
- * picked serif, and on the AI;DR Weekly pages (`.newspaper` in styles.css),
- * which set it by default. No other first-paint rule uses this family.
+ * picked serif, for one visit only via ?font=serif, or via the saved
+ * prefs choice. No other first-paint rule uses this family.
  */
 
 @font-face {

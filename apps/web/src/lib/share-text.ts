@@ -15,6 +15,18 @@ import type { Lang } from "./types";
 
 type ShareItem = { id: string; title: string; title_vi: string | null };
 
+/** Reader style overrides carried on shared story links (`?font=&fs=`). */
+export type StoryStyle = { font?: "sans" | "serif"; fontSize?: number };
+
+function styleQuery(style?: StoryStyle): string {
+  const parts: string[] = [];
+  if (style?.font && style.font !== "sans") parts.push(`font=${style.font}`);
+  if (style?.fontSize != null && style.fontSize !== 1) {
+    parts.push(`fs=${String(Math.round(style.fontSize * 100) / 100)}`);
+  }
+  return parts.length > 0 ? `&${parts.join("&")}` : "";
+}
+
 /** Stories a copied day lists; the day page link carries the rest. */
 export const DAY_SHARE_LIMIT = 10;
 
@@ -79,16 +91,27 @@ type PostItem = ShareItem & {
  *  real link length keeps the post inside 280 on every platform. */
 export const X_POST_LIMIT = 280;
 
-function storyLink(item: ShareItem, lang: Lang, slot: string): string {
-  return withUtm(
-    absoluteSiteUrl(storyPath(item), lang),
-    shareTag(STORY_CAMPAIGN, postContent(slot, item.id))
+function storyLink(
+  item: ShareItem,
+  lang: Lang,
+  slot: string,
+  style?: StoryStyle
+): string {
+  return (
+    withUtm(
+      absoluteSiteUrl(storyPath(item), lang),
+      shareTag(STORY_CAMPAIGN, postContent(slot, item.id))
+    ) + styleQuery(style)
   );
 }
 
 /** The bare story link for "Copy link". */
-export function storyShareLink(item: ShareItem, lang: Lang): string {
-  return storyLink(item, lang, "link");
+export function storyShareLink(
+  item: ShareItem,
+  lang: Lang,
+  style?: StoryStyle
+): string {
+  return storyLink(item, lang, "link", style);
 }
 
 /** The summary the story page shows for `lang`: the Vietnamese text when
@@ -120,16 +143,17 @@ export function trimToLength(text: string, max: number): string {
 export function storyPostText(
   item: PostItem,
   lang: Lang,
-  format: StoryPostFormat
+  format: StoryPostFormat,
+  style?: StoryStyle
 ): string {
   if (format === "title") return storyShareText(item, lang);
   const title = localizedTitle(item, lang).text;
   if (format === "x") {
-    const url = storyLink(item, lang, "x");
+    const url = storyLink(item, lang, "x", style);
     const room = X_POST_LIMIT - Array.from(url).length - 1;
     return `${trimToLength(title, room)}\n${url}`;
   }
-  const url = storyLink(item, lang, "aidr");
+  const url = storyLink(item, lang, "aidr", style);
   const summary = storySummaryFor(item, lang);
   return summary
     ? `${title}\n\nAI;DR: ${summary}\n\n${url}`
