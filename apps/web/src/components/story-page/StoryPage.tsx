@@ -35,7 +35,7 @@ import { shortDayLabel, storyByline, storyClock } from "./lib";
 import { ReadNext } from "./ReadNext";
 import { KBD_CLASS, ShortcutSheet } from "./ShortcutSheet";
 import { StoryMedia } from "./StoryMedia";
-import { StorySourceLine } from "./StorySourceLine";
+import { PILL, StorySourceLine } from "./StorySourceLine";
 import { focusBlock, useStoryKeys } from "./use-story-keys";
 
 const EYEBROW =
@@ -209,71 +209,77 @@ export function StoryPage({
       )}
 
       <div className="mt-3 grid grid-cols-1 items-start gap-3.5 min-[820px]:mt-4 min-[820px]:grid-cols-[minmax(0,1fr)_360px] min-[820px]:gap-8">
+        {/* Left content matches the right rail's thumbnail height
+            (360px wide, 16:9), so a screenshot of the content lines up
+            with the thumbnail and never catches Read Next. The action
+            row sits at that bottom edge; Read Next starts below it. */}
         <div className="grid min-w-0 gap-4">
-          {paragraphs.length > 0 && (
-            <section
-              aria-label="AI;DR"
-              tabIndex={-1}
-              data-kb=""
-              data-testid="story-aidr"
-              className="grid gap-2 rounded-md"
-            >
-              <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] font-medium uppercase tracking-[0.1em] text-kw-num">
-                AI;DR
-              </span>
-              <div
-                data-suggest-field="summary"
-                lang={summaryIsVi ? "vi" : "en"}
-                className="grid max-w-[64ch] gap-2.5 text-[calc(17px*var(--reader-font-size,1))] leading-[1.6] text-foreground [overflow-wrap:anywhere]"
+          <div className="flex flex-col gap-4 min-[820px]:min-h-[calc(360px*9/16)]">
+            {paragraphs.length > 0 && (
+              <section
+                aria-label="AI;DR"
+                tabIndex={-1}
+                data-kb=""
+                data-testid="story-aidr"
+                className="grid gap-2 rounded-md"
               >
-                {paragraphs.map((p) => (
-                  <p key={p}>
-                    <KeywordText text={p} tags={item.tags} />
-                  </p>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2">
-            {item.url && (
-              <Button
-                asChild
-                className="text-[calc(13px*var(--reader-font-size,1))] max-[519px]:hidden"
-              >
-                <a
-                  ref={originalRef}
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={openOriginal}
-                  data-kb=""
+                <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] font-medium uppercase tracking-[0.1em] text-kw-num">
+                  AI;DR
+                </span>
+                <div
+                  data-suggest-field="summary"
+                  lang={summaryIsVi ? "vi" : "en"}
+                  className="grid max-w-[64ch] gap-2.5 text-[calc(17px*var(--reader-font-size,1))] leading-[1.6] text-foreground [overflow-wrap:anywhere]"
                 >
-                  {copy.original}
-                  <ArrowUpRight aria-hidden />
-                </a>
-              </Button>
+                  {paragraphs.map((p) => (
+                    <p key={p}>
+                      <KeywordText text={p} tags={item.tags} />
+                    </p>
+                  ))}
+                </div>
+              </section>
             )}
-            {copyButton(
-              copy.copyLong,
-              "text-[calc(13px*var(--reader-font-size,1))] max-[519px]:hidden"
-            )}
-            <span className="story-suggest contents">
-              <SuggestTranslation
+
+            <div className="flex flex-wrap items-center gap-2 min-[820px]:mt-auto">
+              {item.url && (
+                <Button
+                  asChild
+                  className="text-[calc(13px*var(--reader-font-size,1))] max-[519px]:hidden"
+                >
+                  <a
+                    ref={originalRef}
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={openOriginal}
+                    data-kb=""
+                  >
+                    {copy.original}
+                    <ArrowUpRight aria-hidden />
+                  </a>
+                </Button>
+              )}
+              {copyButton(
+                copy.copyLong,
+                "text-[calc(13px*var(--reader-font-size,1))] max-[519px]:hidden"
+              )}
+              <span className="story-suggest contents">
+                <SuggestTranslation
+                  itemId={item.id}
+                  lang={lang}
+                  initialText={pendingSuggestion?.text}
+                  suggestionAttempt={suggestionAttempt}
+                  onInitialTextConsumed={clearPending}
+                />
+              </span>
+              <SuggestionBadge itemId={item.id} expanded lang={lang} />
+              <span aria-hidden className="h-4 w-px bg-border" />
+              <StoryVotes
                 itemId={item.id}
+                voteNet={item.vote_net ?? 0}
                 lang={lang}
-                initialText={pendingSuggestion?.text}
-                suggestionAttempt={suggestionAttempt}
-                onInitialTextConsumed={clearPending}
               />
-            </span>
-            <SuggestionBadge itemId={item.id} expanded lang={lang} />
-            <span aria-hidden className="h-4 w-px bg-border" />
-            <StoryVotes
-              itemId={item.id}
-              voteNet={item.vote_net ?? 0}
-              lang={lang}
-            />
+            </div>
           </div>
 
           <ReadNext item={item} lang={lang} />
@@ -291,7 +297,7 @@ export function StoryPage({
             <a
               key={tag}
               href={`/?tag=${encodeURIComponent(tag)}&lang=${lang}`}
-              className="rounded-full bg-muted/60 px-2 py-0.5 text-[calc(12px*var(--reader-font-size,1))] font-medium text-accent transition-colors hover:bg-muted hover:text-foreground"
+              className={PILL}
             >
               #{tag}
             </a>

@@ -5,10 +5,14 @@ import type { FeedItem, Lang } from "../../lib/types";
 import { SourceRow } from "../story/StorySources";
 import { splitSources } from "./lib";
 
+/** One pill look for sources, discussion labels and tags alike. */
+export const PILL =
+  "inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[calc(12px*var(--reader-font-size,1))] font-medium text-foreground transition-colors hover:border-accent hover:text-accent";
+
 /**
- * Sources, kept compact: main sources as small pills, then the
- * supporting and discussion sources behind "+ N more" with their time
- * and quote. The section is the `S` shortcut's target.
+ * Sources, kept compact: the heading sits inline with the main source
+ * pills, then the supporting and discussion sources behind "+ N more"
+ * with their time and quote. The section is the `S` shortcut's target.
  */
 export function StorySourceLine({
   item,
@@ -35,7 +39,7 @@ export function StorySourceLine({
       aria-labelledby={headingId}
       tabIndex={-1}
       data-kb=""
-      className="grid gap-1 rounded-md"
+      className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 rounded-md"
     >
       <h2
         id={headingId}
@@ -44,7 +48,7 @@ export function StorySourceLine({
         {vi ? "Nguồn" : "Sources"}
       </h2>
       {main.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5 text-foreground">
+        <ul className="flex flex-wrap items-center gap-1.5 text-foreground">
           {main.map((s) => (
             <li key={s.key} className="min-w-0 [overflow-wrap:anywhere]">
               {s.href ? (
@@ -54,15 +58,12 @@ export function StorySourceLine({
                   rel="noopener noreferrer"
                   title={s.quote ?? undefined}
                   onClick={onOpen}
-                  className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[calc(12px*var(--reader-font-size,1))] font-medium text-foreground transition-colors hover:border-accent hover:text-accent"
+                  className={PILL}
                 >
                   {s.label}
                 </a>
               ) : (
-                <span
-                  title={s.quote ?? undefined}
-                  className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[calc(12px*var(--reader-font-size,1))] font-medium"
-                >
+                <span title={s.quote ?? undefined} className={PILL}>
                   {s.label}
                 </span>
               )}
@@ -72,7 +73,7 @@ export function StorySourceLine({
       )}
       {more.length > 0 && (
         <details className="group">
-          <summary className="inline-flex min-h-6 cursor-pointer list-none items-center rounded-full bg-muted/60 px-2 py-0.5 text-[calc(12px*var(--reader-font-size,1))] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&::-webkit-details-marker]:hidden">
+          <summary className="inline-flex min-h-6 cursor-pointer list-none items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[calc(12px*var(--reader-font-size,1))] text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
             {vi ? `+ ${more.length} nguồn khác` : `+ ${more.length} more`}
           </summary>
           <ol className="mt-1 list-none space-y-1 [&_li]:text-[calc(12px*var(--reader-font-size,1))]">
