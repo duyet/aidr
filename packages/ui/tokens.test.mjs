@@ -86,5 +86,5 @@ test("font stacks resolve to the extension's bundled faces", () => {
   }
   assert.match(light["content-font-sans"], /^"Inter Variable"/);
   assert.match(light["editorial-font-heading"], /^"Inter Variable"/);
-  assert.match(light["reader-font-serif"], /"Source Serif 4"/);
+  assert.match(light["reader-font-serif"], /"Newsreader"/);
 });
