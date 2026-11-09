@@ -269,7 +269,11 @@ export function StoryPage({
             </span>
             <SuggestionBadge itemId={item.id} expanded lang={lang} />
             <span aria-hidden className="h-4 w-px bg-border" />
-            <StoryVotes itemId={item.id} voteNet={item.vote_net ?? 0} lang={lang} />
+            <StoryVotes
+              itemId={item.id}
+              voteNet={item.vote_net ?? 0}
+              lang={lang}
+            />
           </div>
 
           <ReadNext item={item} lang={lang} />

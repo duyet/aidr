@@ -88,7 +88,9 @@ function LeadStory({ story, lang }: { story: WeekStory; lang: Lang }) {
           </a>
         </h2>
         {deck ? (
-          <p className="mt-2.5 text-[calc(16px*var(--reader-font-size,1))] leading-(--reader-leading,1.6) text-body">{deck}</p>
+          <p className="mt-2.5 text-[calc(16px*var(--reader-font-size,1))] leading-(--reader-leading,1.6) text-body">
+            {deck}
+          </p>
         ) : null}
       </div>
     </article>
@@ -122,7 +124,9 @@ function ColumnStory({ story, lang }: { story: WeekStory; lang: Lang }) {
         </a>
       </h3>
       {deck ? (
-        <p className="mt-1.5 text-[calc(14px*var(--reader-font-size,1))] leading-(--reader-leading,1.55) text-body">{deck}</p>
+        <p className="mt-1.5 text-[calc(14px*var(--reader-font-size,1))] leading-(--reader-leading,1.55) text-body">
+          {deck}
+        </p>
       ) : null}
     </article>
   );

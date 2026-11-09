@@ -10,6 +10,7 @@ import {
   Scripts,
   useNavigate,
 } from "@tanstack/react-router";
+import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { ClerkRootProvider } from "../components/ClerkRootProvider";
 import { HeaderBar } from "../components/HeaderBar";
@@ -45,7 +46,6 @@ import {
   readerCssVars,
   savePrefs,
 } from "../lib/prefs";
-import type { CSSProperties } from "react";
 import { getRouteSearch, unavailableRouteSearch } from "../lib/route-search";
 import { routeRobotsMeta } from "../lib/seo";
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "../lib/site";

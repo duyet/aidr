@@ -187,8 +187,12 @@ describe("story style params", () => {
     expect(storyShareLink(item, "en", { font: "sans", fontSize: 1 })).toContain(
       "https://aidr.today/abcdef12?lang=en&"
     );
-    expect(storyShareLink(item, "en", { font: "sans", fontSize: 1 })).not.toContain("font=");
-    expect(storyShareLink(item, "en", { font: "sans", fontSize: 1 })).not.toContain("fs=");
+    expect(
+      storyShareLink(item, "en", { font: "sans", fontSize: 1 })
+    ).not.toContain("font=");
+    expect(
+      storyShareLink(item, "en", { font: "sans", fontSize: 1 })
+    ).not.toContain("fs=");
   });
 
   it("carries a serif face and larger text so the link keeps the style", () => {

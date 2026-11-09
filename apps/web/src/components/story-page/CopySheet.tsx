@@ -2,13 +2,13 @@ import { Button } from "@aidr/ui";
 import { Copy, Link2 } from "lucide-react";
 import { type ReactElement, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePrefs } from "../../lib/prefs";
 import {
   STORY_POST_FORMATS,
   type StoryPostFormat,
   storyPostText,
   storyShareLink,
 } from "../../lib/share-text";
-import { usePrefs } from "../../lib/prefs";
 import type { FeedItem, Lang } from "../../lib/types";
 import { storyOgThumbUrl } from "../StoryThumb";
 import { useDialogLifecycle } from "../story-dialog/use-dialog-lifecycle";
