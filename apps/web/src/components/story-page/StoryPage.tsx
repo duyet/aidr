@@ -239,7 +239,6 @@ export function StoryPage({
                 </div>
               </section>
             )}
-
           </div>
 
           <div className="flex flex-wrap items-center gap-2 min-[820px]:flex-nowrap">
