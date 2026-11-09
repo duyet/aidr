@@ -84,22 +84,20 @@ export function SourceRow({
         : "text-muted-foreground";
 
   return (
-    <li className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm leading-relaxed">
+    <li className="flex items-center gap-x-1.5 text-[calc(12px*var(--reader-font-size,1))] leading-none">
       <span
         className={`shrink-0 rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] ${roleTone}`}
       >
         {sourceLabel(kind, lang)}
       </span>
-      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-        {source.author && (
-          <span className="font-semibold">{source.author}</span>
-        )}
+      <span className="min-w-0 flex-1 truncate [overflow-wrap:anywhere]">
+        {source.author && <span className="font-medium">{source.author}</span>}
         {hasTimestamp(source) && (
           <>
             {source.author && <InlineDivider />}
             <time
               dateTime={new Date(source.posted_at * 1000).toISOString()}
-              className="text-xs text-muted-foreground"
+              className="text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground tabular-nums"
             >
               {fmtTime(source.posted_at, lang)}
             </time>
