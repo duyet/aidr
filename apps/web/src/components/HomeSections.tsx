@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   Check,
+  Home,
   LayoutGrid,
   Sparkles,
   TrendingUp,
@@ -44,22 +45,30 @@ const SECTION_TILES: {
   },
 ];
 
-/** The home page's own section picker, at the foot of the feed it shapes. */
+/** The home page's own section picker, at the foot of the feed it shapes:
+ *  one quiet card whose visible sections are toggle pills. */
 export function HomeSections({ lang }: { lang: Lang }) {
   const { prefs, setPrefs } = usePrefs();
   const vi = lang === "vi";
+  const onCount = SECTION_TILES.filter((t) => prefs.sections[t.key]).length;
   return (
     <section
       aria-labelledby="home-sections"
-      className="mt-10 border-t border-border pt-4 pb-2"
+      className="mt-10 rounded-2xl border border-border bg-card/60 px-4 py-3.5"
     >
-      <h2
-        id="home-sections"
-        className="mb-2 text-xs font-medium text-muted-foreground"
-      >
-        {vi ? "Hiện trên trang chủ" : "Show on home"}
-      </h2>
-      <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2
+          id="home-sections"
+          className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+        >
+          <Home className="size-3.5 shrink-0" aria-hidden />
+          {vi ? "Hiện trên trang chủ" : "Show on home"}
+        </h2>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+          {onCount}/{SECTION_TILES.length}
+        </span>
+      </div>
+      <div className="mt-2.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         {SECTION_TILES.map(({ key, en, vi: viLabel, icon }) => {
           const on = prefs.sections[key];
           return (
@@ -74,10 +83,10 @@ export function HomeSections({ lang }: { lang: Lang }) {
                 });
                 setPrefs({ sections: { ...prefs.sections, [key]: !on } });
               }}
-              className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-left text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 on
-                  ? "bg-muted font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  ? "border-accent/40 bg-accent/10 font-medium text-foreground"
+                  : "border-border text-muted-foreground hover:border-border hover:bg-muted/60 hover:text-foreground"
               }`}
             >
               {icon}
@@ -85,7 +94,7 @@ export function HomeSections({ lang }: { lang: Lang }) {
                 {vi ? viLabel : en}
               </span>
               <Check
-                className={`size-3.5 shrink-0 ${on ? "" : "invisible"}`}
+                className={`size-3.5 shrink-0 ${on ? "text-accent" : "invisible"}`}
                 aria-hidden
               />
             </button>

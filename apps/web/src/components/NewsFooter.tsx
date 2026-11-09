@@ -24,12 +24,10 @@ import {
   TELEGRAM_URL,
 } from "../lib/site";
 
-// Footer is always English, regardless of site language.
+// Footer is always English, regardless of site language. Kept to the few
+// destinations not already in the header.
 const FOOTER_LINKS = [
   { to: "/about", label: "About" },
-  { to: "/weeks", label: "Weekly edition" },
-  { to: "/data", label: "Data / Pipeline" },
-  { to: "/mcp", label: "MCP server" },
   { to: "/release", label: "Release notes" },
   { to: "/privacy", label: "Privacy" },
   { to: "/terms", label: "Terms" },
@@ -85,18 +83,20 @@ export function NewsFooter() {
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/90">
                 Site
               </p>
-              {FOOTER_LINKS.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={() =>
-                    track("nav_click", { to: link.to, placement: "footer" })
-                  }
-                  className={`block ${linkClass}`}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {FOOTER_LINKS.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    onClick={() =>
+                      track("nav_click", { to: link.to, placement: "footer" })
+                    }
+                    className={`block ${linkClass}`}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
             </div>
             <div className="space-y-3">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/90">
