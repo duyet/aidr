@@ -116,7 +116,9 @@ export function TelegramPreview({
           <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/90">
             {copy.story.summary}
           </p>
-          <p className="mt-1.5 text-[calc(11px*var(--reader-font-size,1))] text-accent">{copy.story.meta}</p>
+          <p className="mt-1.5 text-[calc(11px*var(--reader-font-size,1))] text-accent">
+            {copy.story.meta}
+          </p>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {copy.story.buttons.map((b) => (
               <span

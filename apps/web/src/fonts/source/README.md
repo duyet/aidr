@@ -3,10 +3,10 @@
 Full variable fonts that `scripts/subset-fonts.ts` cuts into the one-file-per-family
 subsets `src/fonts.css` serves. They are never served directly.
 
-| File                             | Upstream                                       | Commit     | Font revision |
-| -------------------------------- | ---------------------------------------------- | ---------- | ------------- |
-| `inter-opsz-wght.woff2`          | `ofl/inter/Inter[opsz,wght].ttf`               | `0b58fb37` | 4.001         |
-| `newsreader-opsz-wght.woff2`      | `ofl/newsreader/Newsreader[opsz,wght].ttf`      | `8b0a1d0f` | 1.003         |
+| File                         | Upstream                                   | Commit     | Font revision |
+| ---------------------------- | ------------------------------------------ | ---------- | ------------- |
+| `inter-opsz-wght.woff2`      | `ofl/inter/Inter[opsz,wght].ttf`           | `0b58fb37` | 4.001         |
+| `newsreader-opsz-wght.woff2` | `ofl/newsreader/Newsreader[opsz,wght].ttf` | `8b0a1d0f` | 1.003         |
 
 Both come from [google/fonts](https://github.com/google/fonts), rewrapped
 losslessly as woff2 with `fonttools ttLib.woff2 compress` to keep the repo

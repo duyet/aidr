@@ -220,9 +220,7 @@ describe("self-hosted font stack (#229)", () => {
     // The "Có chân" pref swaps story bodies to this face. A missing subset
     // would render tone marks in Georgia mid-word, which is the "looks
     // broken" bug a Vietnamese reader sees first.
-    const serif = webfaces.filter(
-      (f) => f.family === "Newsreader Variable"
-    );
+    const serif = webfaces.filter((f) => f.family === "Newsreader Variable");
     expect(serif.length).toBe(1);
     const uncovered = [...new Set([...vietnameseAlphabet()])].filter(
       (ch) =>

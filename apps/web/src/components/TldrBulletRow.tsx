@@ -52,7 +52,10 @@ export function TldrBulletRow({
           {numbered && (
             // The outer span shares the text's size and line height, so the
             // small mono rank sits on the first line's baseline.
-            <span aria-hidden="true" className="w-5 shrink-0 text-[calc(15px*var(--reader-font-size,1))]">
+            <span
+              aria-hidden="true"
+              className="w-5 shrink-0 text-[calc(15px*var(--reader-font-size,1))]"
+            >
               <span
                 className={`font-mono text-[calc(11px*var(--reader-font-size,1))] tabular-nums ${
                   n === 1

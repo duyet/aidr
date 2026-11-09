@@ -41,7 +41,9 @@ export function StatTile({
           <p
             className={cn(
               "mt-1.5 font-semibold leading-none tracking-[-0.02em] text-foreground",
-              numeric ? "text-[calc(22px*var(--reader-font-size,1))] tabular-nums" : "text-base"
+              numeric
+                ? "text-[calc(22px*var(--reader-font-size,1))] tabular-nums"
+                : "text-base"
             )}
           >
             {value}

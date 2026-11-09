@@ -128,7 +128,9 @@ function PinButton({
 function Delta({ stat }: { stat: WindowStat }) {
   if (stat.isNew) {
     return (
-      <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] font-medium text-accent">new</span>
+      <span className="font-mono text-[calc(11px*var(--reader-font-size,1))] font-medium text-accent">
+        new
+      </span>
     );
   }
   return (

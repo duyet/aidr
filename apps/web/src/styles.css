@@ -101,8 +101,8 @@
     -apple-system, sans-serif;
   /* Body serif for the reader "Serif" pref, opt-in only. */
   --reader-font-serif:
-    "Newsreader Variable", "Newsreader", "Newsreader Fallback",
-    Georgia, ui-serif, serif;
+    "Newsreader Variable", "Newsreader", "Newsreader Fallback", Georgia,
+    ui-serif, serif;
   --editorial-font-sans:
     "Inter Variable", "Inter", "Inter Fallback", ui-sans-serif, system-ui,
     -apple-system, sans-serif;

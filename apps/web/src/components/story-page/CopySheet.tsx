@@ -116,7 +116,10 @@ export function CopySheet({
         className="relative max-h-[calc(100dvh-24px)] w-full max-w-[520px] overflow-y-auto rounded-2xl border border-input bg-background p-4 text-foreground shadow-xl mb-[env(safe-area-inset-bottom)]"
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 id={titleId} className="text-[calc(17px*var(--reader-font-size,1))] font-semibold">
+          <h2
+            id={titleId}
+            className="text-[calc(17px*var(--reader-font-size,1))] font-semibold"
+          >
             {copy.title}
           </h2>
           <Button
