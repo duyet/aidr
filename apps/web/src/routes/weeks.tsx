@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { CalendarPage } from "../components/calendar/CalendarPage";
 import { LoadErrorPage } from "../components/LoadErrorPage";
 import { ShareWeekButton } from "../components/ShareWeekButton";
 import { KeywordText } from "../components/story-page/KeywordText";
 import { weeklyTitle } from "../components/WeeklyPaper";
 import { WeeklySubscribeCta } from "../components/WeeklySubscribeCta";
+import { fetchCalendarMonth } from "../lib/calendar-fn";
+import { latestArchiveDate } from "../lib/day-archive";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
-import { loadErrorHead, loadErrorHeaders } from "../lib/load-error";
+import { withLang } from "../lib/locale-url";
+import { loadErrorCopy, loadErrorHead, loadErrorHeaders } from "../lib/load-error";
 import { EYEBROW, PAGE_TITLE } from "../lib/page-style";
 import { localizedPageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
@@ -17,8 +21,26 @@ import type { WeekSummary } from "../lib/week-model";
 const INDEX_CACHE_CONTROL =
   "public, max-age=300, s-maxage=1800, stale-while-revalidate=3600";
 
+export interface WeeksSearch {
+  month?: string;
+}
+
 export const Route = createFileRoute("/weeks")({
-  loader: async () => ({ weeks: await fetchWeekIndex() }),
+  validateSearch: (search: Record<string, unknown>): WeeksSearch =>
+    typeof search.month === "string" && search.month
+      ? { month: search.month }
+      : {},
+  loaderDeps: ({ search }) => ({ month: search.month }),
+  // `today` is computed once here so the cached HTML and hydration agree
+  // across the UTC+7 midnight boundary. An invalid month clamps to the
+  // current month in `fetchCalendarMonth`.
+  loader: async ({ deps }) => {
+    const [weeks, cal] = await Promise.all([
+      fetchWeekIndex(),
+      fetchCalendarMonth({ data: { month: deps?.month } }),
+    ]);
+    return { weeks, cal, today: latestArchiveDate(Date.now()) };
+  },
   headers: ({ loaderData, match }): Record<string, string> => {
     // No loaderData: the read failed and Start answers 500. An empty index
     // here would be edge-cached as "no issues yet".
@@ -99,11 +121,11 @@ function WeekThumb({ week }: { week: WeekSummary }) {
 }
 
 function WeeksPage() {
-  const { weeks } = Route.useLoaderData();
+  const { weeks, cal, today } = Route.useLoaderData();
   const lang = useLang();
   const vi = lang === "vi";
   return (
-    <div className="mx-auto max-w-[860px] pt-5 pb-10 max-sm:pt-4">
+    <div className="mx-auto max-w-5xl pt-5 pb-10 max-sm:pt-4">
       <header className="rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
         <p className={`${EYEBROW} flex flex-wrap items-center gap-x-3 gap-y-1`}>
           <span className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 font-sans text-[calc(11px*var(--reader-font-size,1))] font-bold uppercase tracking-[0.08em] text-accent-foreground">
@@ -131,6 +153,26 @@ function WeeksPage() {
         </p>
       </header>
       <WeeklySubscribeCta lang={lang} />
+      {cal ? (
+        <CalendarPage
+          cal={cal}
+          lang={lang}
+          today={today}
+          headingAs="h2"
+          className="mt-2"
+          monthHref={(m) =>
+            withLang(`${WEEKS_INDEX_PATH}?month=${m}`, lang)
+          }
+          showWeeklyNav={false}
+        />
+      ) : (
+        <p
+          role="alert"
+          className="mt-4 rounded-2xl border border-dashed border-border px-5 py-6 text-center text-[calc(15px*var(--reader-font-size,1))] text-muted-foreground"
+        >
+          {loadErrorCopy("calendar", lang).body}
+        </p>
+      )}
       {weeks.length === 0 ? (
         <p className="border-t border-border py-10 text-center text-[calc(15px*var(--reader-font-size,1))] text-muted-foreground">
           {vi

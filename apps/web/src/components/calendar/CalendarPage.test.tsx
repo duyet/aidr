@@ -267,3 +267,37 @@ describe("CalendarPage keyboard and extras", () => {
     expect(screen.queryByTestId("calendar-weeks")).toBeNull();
   });
 });
+
+describe("CalendarPage embed mode", () => {
+  it("demotes the month heading, uses the embed links and hides the weekly strip", () => {
+    render(
+      <CalendarPage
+        cal={OCTOBER}
+        lang="en"
+        today="2026-10-11"
+        headingAs="h2"
+        className="mt-2"
+        monthHref={(m) => `/weeks?month=${m}&lang=en`}
+        showWeeklyNav={false}
+      />
+    );
+    expect(
+      screen.getByRole("heading", { level: 2, name: "October 2026" })
+    ).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Previous month" }).getAttribute("href")
+    ).toBe("/weeks?month=2026-09&lang=en");
+    expect(screen.queryByTestId("calendar-weeks")).toBeNull();
+  });
+
+  it("keeps the h1 and /calendar links by default", () => {
+    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "October 2026" })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Previous month" }).getAttribute("href")
+    ).toBe(calendarPath("2026-09", "en"));
+  });
+});

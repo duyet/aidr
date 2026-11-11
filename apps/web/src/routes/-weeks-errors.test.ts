@@ -6,10 +6,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const fetchWeekIndex = vi.hoisted(() => vi.fn());
+const fetchCalendarMonth = vi.hoisted(() => vi.fn());
 vi.mock("../lib/week-fn", () => ({ fetchWeekIndex }));
+vi.mock("../lib/calendar-fn", () => ({ fetchCalendarMonth }));
 
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { Route } from "./weeks";
+
+fetchCalendarMonth.mockResolvedValue(null);
 
 type HeadersFn = (ctx: {
   loaderData: unknown;
