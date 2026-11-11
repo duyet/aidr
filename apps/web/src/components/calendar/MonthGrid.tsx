@@ -214,8 +214,8 @@ export function MonthGrid({
             {num}
             {dot}
             {page ? (
-              <span className="font-mono text-[calc(10px*var(--reader-font-size,1))] opacity-75 max-[480px]:hidden">
-                {day.count}
+              <span className="font-mono text-[9px] leading-none tracking-tight whitespace-nowrap opacity-75 max-[480px]:hidden">
+                {storiesLabel(day.count, lang)}
               </span>
             ) : null}
           </a>

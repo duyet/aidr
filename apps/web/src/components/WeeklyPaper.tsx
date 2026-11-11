@@ -22,6 +22,7 @@ import {
   weekStoriesFor,
   weekStoryText,
 } from "../lib/week-model";
+import { BLANK_IF_BROKEN } from "./calendar/shared";
 import { ShareWeekButton } from "./ShareWeekButton";
 import { WeeklySubscribeCta } from "./WeeklySubscribeCta";
 
@@ -78,6 +79,7 @@ function LeadStory({ story, lang }: { story: WeekStory; lang: Lang }) {
             fetchPriority="high"
             referrerPolicy="no-referrer"
             className="aspect-[16/10] h-auto w-full object-cover"
+            {...BLANK_IF_BROKEN}
           />
         </a>
       ) : null}
@@ -113,6 +115,7 @@ function ColumnStory({ story, lang }: { story: WeekStory; lang: Lang }) {
             loading="lazy"
             referrerPolicy="no-referrer"
             className="aspect-[16/9] h-auto w-full object-cover"
+            {...BLANK_IF_BROKEN}
           />
         </a>
       ) : null}

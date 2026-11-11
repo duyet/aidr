@@ -8,13 +8,10 @@ import type { Lang } from "../../lib/types";
  *  other destination stays in the phone menu and the footer. */
 export const HEADER_NAV: {
   id: NavTarget;
-  href: "/calendar" | "/weeks";
+  href: "/weeks";
   en: string;
   vi: string;
-}[] = [
-  { id: "/calendar", href: "/calendar", en: "Calendar", vi: "Lịch" },
-  { id: "/weeks", href: "/weeks", en: "Weekly", vi: "Bản tin tuần" },
-];
+}[] = [{ id: "/weeks", href: "/weeks", en: "Weekly", vi: "Bản tin tuần" }];
 
 /** Muted links, the current page in the foreground color. Shown from the
  *  `lg` breakpoint; below it the row is full and the phone menu has them. */

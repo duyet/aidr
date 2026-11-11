@@ -1,6 +1,5 @@
 import {
   BookOpenText,
-  CalendarDays,
   Database,
   Globe,
   Info,
@@ -62,13 +61,6 @@ export const SITE_LINKS: {
     label: "Weekly",
     internal: true,
     icon: BookOpenText,
-  },
-  {
-    id: "/calendar",
-    href: "/calendar",
-    label: "Calendar",
-    internal: true,
-    icon: CalendarDays,
   },
   { id: "/about", href: "/about", label: "About", internal: true, icon: Info },
   {
