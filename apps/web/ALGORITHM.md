@@ -2320,13 +2320,29 @@ Every run (30 minutes).
   back to `title_vi` only; a story with neither has no VI line and is left
   out of the VI page. No model copy at all → title lines with `fallback = 1`.
   Nothing is persisted without at least one EN story.
-- **Surfaces.** `/week/YYYY-Www` (newspaper layout; 404 for a malformed,
-  pre-launch or open week and for a language with no stories), `/weeks`
-  index, `/week/YYYY-Www.md`, and language-neutral JSON
-  `GET /api/week/YYYY-Www` (both languages in separate fields; read by the
-  weekly video, `videos/daily-news/scripts/fetch-week.mjs`). Day pages link
-  to their week only when its row exists. Cache: explicit `?lang=` is
-  public, the newest week caches 5 minutes, older weeks a day.
+- **In-progress week (provisional).** Until Sunday midnight ICT, the week in
+  progress is served at the same `/week/YYYY-Www` URL as a provisional
+  edition (`provisional: true`). It ranks the live window with the closed
+  rules — `loadRangeCandidates` and `rankWeeklyCandidates` over
+  `start_date..today`, re-scored on every view, no model copy at all:
+  title fallback lines only, no intro, no `weekly_snapshots` row is
+  written, and nothing is predicted beyond the data. The page carries a
+  pulsing "In progress" marker and caches for 5 minutes so the ranking
+  stays current; a language with no lines 404s, the same rule as a closed
+  fallback edition. The URL upgrades to
+  the stored §10b edition once the week closes (snapshot wins at read
+  time). Deliberately not provided for the provisional week: the Markdown
+  twin and `GET /api/week/<week>` (both 404, so the weekly video script
+  can never consume a half-built ranking), and the sitemap.
+- **Surfaces.** `/week/YYYY-Www` (newspaper layout; 404 for a malformed
+  or pre-launch week; a language with no stories 404s in that language;
+  the in-progress week renders the provisional edition), `/weeks` index
+  (with a provisional row for the open week), `/week/YYYY-Www.md`, and
+  language-neutral JSON `GET /api/week/YYYY-Www` (both languages in
+  separate fields; read by the weekly video,
+  `videos/daily-news/scripts/fetch-week.mjs`). Day pages link to their
+  week only when its row exists. Cache: explicit `?lang=` is public, the
+  newest week caches 5 minutes, older weeks a day.
 - **No delivery yet.** The weekly edition is not emailed, posted to
   Telegram or Facebook; it is a page (and a video script, rendered by hand).
 

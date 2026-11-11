@@ -67,9 +67,15 @@ export const Route = createFileRoute("/week/$week")({
     // shareable; a cookie/Accept-Language pick stays private.
     const explicitLocale =
       match.search.lang !== undefined && match.search.locale === undefined;
+    // A provisional (in-progress) week re-ranks on every ingest; never let
+    // the edge hold it for long. Closed weeks keep the settled TTLs.
+    const provisional =
+      loaderData.kind === "week" && loaderData.edition.provisional === true;
     return {
       "Cache-Control": explicitLocale
-        ? weekCacheControl(loaderData.edition.week, Date.now())
+        ? provisional
+          ? "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+          : weekCacheControl(loaderData.edition.week, Date.now())
         : "private, no-store",
       "Content-Language": match.context.lang,
       ...(explicitLocale ? {} : { Vary: "Cookie, Accept-Language" }),

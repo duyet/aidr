@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CalendarPage } from "../components/calendar/CalendarPage";
 import { LoadErrorPage } from "../components/LoadErrorPage";
+import { OpenWeekRow } from "../components/OpenWeekRow";
 import { ShareWeekButton } from "../components/ShareWeekButton";
 import { KeywordText } from "../components/story-page/KeywordText";
 import { WeeklyMasthead } from "../components/WeeklyMasthead";
 import { weeklyTitle } from "../components/WeeklyPaper";
+import { WeekThumb } from "../components/WeekThumb";
 import { fetchCalendarMonth } from "../lib/calendar-fn";
 import { latestArchiveDate } from "../lib/day-archive";
 import { headRouteInput } from "../lib/head-route";
@@ -19,7 +21,7 @@ import { EYEBROW } from "../lib/page-style";
 import { localizedPageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
 import { formatWeekRange, WEEKS_INDEX_PATH, weekPath } from "../lib/week";
-import { fetchWeekIndex } from "../lib/week-fn";
+import { fetchCurrentOpenWeek, fetchWeekIndex } from "../lib/week-fn";
 import type { WeekSummary } from "../lib/week-model";
 
 const INDEX_CACHE_CONTROL =
@@ -39,11 +41,12 @@ export const Route = createFileRoute("/weeks")({
   // across the UTC+7 midnight boundary. An invalid month clamps to the
   // current month in `fetchCalendarMonth`.
   loader: async ({ deps }) => {
-    const [weeks, cal] = await Promise.all([
+    const [weeks, cal, open] = await Promise.all([
       fetchWeekIndex(),
       fetchCalendarMonth({ data: { month: deps?.month } }),
+      fetchCurrentOpenWeek(),
     ]);
-    return { weeks, cal, today: latestArchiveDate(Date.now()) };
+    return { weeks, cal, open, today: latestArchiveDate(Date.now()) };
   },
   headers: ({ loaderData, match }): Record<string, string> => {
     // No loaderData: the read failed and Start answers 500. An empty index
@@ -92,40 +95,8 @@ export function storyCount(n: number, vi: boolean): string {
   return n === 1 ? "1 story" : `${n} stories`;
 }
 
-/** Small cover chip on the left of each index row: the lead story's
- * publisher photo, or a week-number monogram when it has none. */
-function WeekThumb({ week }: { week: WeekSummary }) {
-  const label = `No. ${week.issue}`;
-  if (week.image_url) {
-    return (
-      <span className="block h-[72px] w-[72px] shrink-0 overflow-hidden rounded-lg border border-border bg-muted sm:h-[84px] sm:w-[84px]">
-        <img
-          src={week.image_url}
-          alt=""
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          className="h-full w-full object-cover"
-        />
-      </span>
-    );
-  }
-  return (
-    <span
-      aria-hidden
-      className="flex h-[72px] w-[72px] shrink-0 flex-col items-center justify-center rounded-lg border border-border bg-gradient-to-br from-muted to-muted/40 text-accent sm:h-[84px] sm:w-[84px]"
-    >
-      <span className="font-mono text-[10px] leading-none font-semibold uppercase tracking-[0.12em]">
-        {label}
-      </span>
-      <span className="mt-1 text-base leading-none font-bold tabular-nums">
-        {week.week.slice(-2)}
-      </span>
-    </span>
-  );
-}
-
 function WeeksPage() {
-  const { weeks, cal, today } = Route.useLoaderData();
+  const { weeks, cal, open, today } = Route.useLoaderData();
   const lang = useLang();
   const vi = lang === "vi";
   return (
@@ -149,7 +120,7 @@ function WeeksPage() {
           {loadErrorCopy("calendar", lang).body}
         </p>
       )}
-      {weeks.length === 0 ? (
+      {weeks.length === 0 && !open ? (
         <p className="border-t border-border py-10 text-center text-[calc(15px*var(--reader-font-size,1))] text-muted-foreground">
           {vi
             ? "Số đầu tiên sẽ ra sau khi tuần này kết thúc. Đăng ký ở trên để nhận ngay khi có."
@@ -157,6 +128,7 @@ function WeeksPage() {
         </p>
       ) : (
         <ol className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card px-2">
+          {open ? <OpenWeekRow open={open} lang={lang} /> : null}
           {weeks.map((week) => {
             const text = teaser(week, lang);
             return (

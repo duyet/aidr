@@ -310,8 +310,13 @@ describe("CalendarPage week column", () => {
         .getByRole("link", { name: /Weekly edition: No\. 1/ })
         .getAttribute("href")
     ).toBe(weekPath("2026-W40", "en"));
-    // The week containing today and later weeks have no edition to open.
-    expect(screen.queryByRole("link", { name: /2026-W41|No\. 2/ })).toBeNull();
+    // The week containing today (W41, Oct 5–11) links to the provisional
+    // edition, not a stored one.
+    expect(
+      screen
+        .getByRole("link", { name: /This week, in progress/ })
+        .getAttribute("href")
+    ).toBe(weekPath("2026-W41", "en"));
     expect(screen.queryByRole("link", { name: /No\. 3/ })).toBeNull();
   });
 

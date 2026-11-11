@@ -152,6 +152,7 @@ export function WeeklyPaper({
     ...story,
     rank: index + 1,
   }));
+  const open = edition.provisional === true;
   const [lead, ...rest] = stories;
   const intro = weekIntro(edition, lang);
   const range = formatWeekRange(edition.start_date, edition.end_date, lang);
@@ -196,6 +197,15 @@ export function WeeklyPaper({
               {range}
             </span>
             <span>{vi ? `Tuần ${weekNo}` : `Week ${weekNo}`}</span>
+            {open ? (
+              <span className="inline-flex items-center gap-1.5 font-sans text-[calc(11px*var(--reader-font-size,1))] font-bold uppercase tracking-[0.08em] text-foreground">
+                <span
+                  className="size-1.5 animate-pulse rounded-full bg-signal motion-reduce:animate-none"
+                  aria-hidden
+                />
+                {vi ? "Đang diễn ra" : "In progress"}
+              </span>
+            ) : null}
           </p>
           <ShareWeekButton week={edition} lang={lang} />
         </div>
@@ -205,13 +215,28 @@ export function WeeklyPaper({
           {weeklyTitle(lang)}
         </h1>
         <p className="mt-1.5 text-[calc(15px*var(--reader-font-size,1))] leading-[1.6] text-muted-foreground">
-          {vi
-            ? `${stories.length} tin AI đáng đọc nhất trong tuần`
-            : `The ${stories.length} AI stories that mattered this week`}
+          {open
+            ? vi
+              ? `Xếp hạng trực tiếp ${stories.length} tin AI đến hiện tại, cập nhật lại theo từng ngày.`
+              : `Live ranking of the ${stories.length} AI stories so far, re-scored as each day lands.`
+            : vi
+              ? `${stories.length} tin AI đáng đọc nhất trong tuần`
+              : `The ${stories.length} AI stories that mattered this week`}
         </p>
       </header>
 
-      {intro ? (
+      {open ? (
+        <section
+          aria-label={vi ? "Tuần đang mở" : "Week in progress"}
+          className="border-b border-border py-5"
+        >
+          <p className="max-w-[64ch] text-[15px] leading-[1.6] text-muted-foreground">
+            {vi
+              ? "Tuần này vẫn đang mở. Bảng xếp hạng cập nhật theo từng ngày; bản chính thức với phân tích của AI;DR được chốt vào sáng thứ Hai."
+              : "This week is still open. The list re-ranks as each day of stories lands; the full edition, with AI;DR's read of the week, is published on Monday morning."}
+          </p>
+        </section>
+      ) : intro ? (
         <section
           aria-label={vi ? "Lời mở đầu" : "From the editor"}
           className="border-b border-border py-5"
