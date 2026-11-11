@@ -9,8 +9,12 @@ import { fetchCalendarMonth } from "../lib/calendar-fn";
 import { latestArchiveDate } from "../lib/day-archive";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
+import {
+  loadErrorCopy,
+  loadErrorHead,
+  loadErrorHeaders,
+} from "../lib/load-error";
 import { withLang } from "../lib/locale-url";
-import { loadErrorCopy, loadErrorHead, loadErrorHeaders } from "../lib/load-error";
 import { EYEBROW, PAGE_TITLE } from "../lib/page-style";
 import { localizedPageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
@@ -160,9 +164,7 @@ function WeeksPage() {
           today={today}
           headingAs="h2"
           className="mt-2"
-          monthHref={(m) =>
-            withLang(`${WEEKS_INDEX_PATH}?month=${m}`, lang)
-          }
+          monthHref={(m) => withLang(`${WEEKS_INDEX_PATH}?month=${m}`, lang)}
           showWeeklyNav={false}
         />
       ) : (
