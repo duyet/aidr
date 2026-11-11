@@ -26,7 +26,7 @@ import { ShareWeekButton } from "./ShareWeekButton";
 import { WeeklySubscribeCta } from "./WeeklySubscribeCta";
 
 export function weeklyTitle(lang: Lang): string {
-  return lang === "vi" ? "AI;DR Tuần" : "AI;DR Weekly";
+  return lang === "vi" ? "AI;DR Tuần Này" : "AI;DR Weekly";
 }
 
 /** Headline in `lang` only: the title in that language, else the edition's
