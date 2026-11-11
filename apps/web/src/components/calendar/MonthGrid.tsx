@@ -33,7 +33,7 @@ const ARROWS = new Set([
 const TILE =
   "relative flex aspect-square items-center justify-center rounded-[10px] tabular-nums";
 const TILE_PAGE =
-  "relative flex aspect-square flex-col justify-between rounded-xl p-1.5 text-left tabular-nums sm:p-2";
+  "relative flex h-14 sm:h-16 flex-col justify-between rounded-xl p-1.5 text-left tabular-nums sm:p-2";
 const RING = " ring-2 ring-foreground";
 const DOT =
   "absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-current";
@@ -48,8 +48,8 @@ const PAGE_DOT = "absolute right-1.5 top-1.5 size-1.5 rounded-full bg-current";
  *
  * The calendar page uses the `xl` size: tiles stay links and show the day's
  * story count, hover or focus reports the day through `onPreview`, the ring
- * follows `selected`, and today gets a dot. The `xl` grid is Mon–Sun plus a
- * trailing `Wk` column; a row whose week has a weekly edition links to it,
+ * follows `selected`, and today gets a dot. The `xl` grid is a leading `Wk`
+ * column before Mon–Sun; a row whose week has a weekly edition links to it,
  * everything else stays a dashed, muted cell.
  */
 export function MonthGrid({
@@ -85,7 +85,7 @@ export function MonthGrid({
   const tile = page ? TILE_PAGE : TILE;
   const gap = page ? "gap-1 sm:gap-1.5" : size === "lg" ? "gap-1.5" : "gap-1";
   const gridCols = page
-    ? "grid-cols-[repeat(7,minmax(0,1fr))_3rem]"
+    ? "grid-cols-[3rem_repeat(7,minmax(0,1fr))]"
     : "grid-cols-7";
 
   // Complete weeks only: rows stay Mon–Sun, so each row maps to one ISO week.
@@ -120,7 +120,7 @@ export function MonthGrid({
                 ? `Bản tin tuần: Số ${issue}, ${formatWeekRange(bounds.start, bounds.end, lang)}`
                 : `Weekly edition: No. ${issue}, ${formatWeekRange(bounds.start, bounds.end, lang)}`
             }
-            className="flex h-full min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl border border-border font-mono transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-14 sm:h-16 flex-col items-center justify-center gap-0.5 rounded-xl border border-border font-mono transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="text-[11px] leading-none font-semibold">
               {week.slice(5)}
@@ -136,7 +136,7 @@ export function MonthGrid({
       <li
         key={`wk-${week}`}
         aria-hidden
-        className="flex h-full flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-border font-mono text-muted-foreground/60"
+        className="flex h-14 sm:h-16 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-border font-mono text-muted-foreground/60"
       >
         <span className="text-[11px] leading-none">{week.slice(5)}</span>
       </li>
@@ -227,6 +227,11 @@ export function MonthGrid({
   return (
     <div>
       <div className={`mb-1 grid ${gridCols} ${gap}`} aria-hidden>
+        {page ? (
+          <span className="text-center font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase text-muted-foreground">
+            {vi ? "Tuần" : "Wk"}
+          </span>
+        ) : null}
         {WEEKDAY_INITIALS[lang].map((w, i) => (
           <span
             key={i}
@@ -235,11 +240,6 @@ export function MonthGrid({
             {w}
           </span>
         ))}
-        {page ? (
-          <span className="text-center font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase text-muted-foreground">
-            {vi ? "Tuần" : "Wk"}
-          </span>
-        ) : null}
       </div>
       <ol
         className={`grid ${gridCols} ${gap}`}
@@ -247,8 +247,8 @@ export function MonthGrid({
       >
         {rows
           ? rows.flatMap((row, rowIdx) => [
-              ...row.map((date, i) => dayCell(date, `pad-${rowIdx}-${i}`)),
               weekCell(row, rowIdx),
+              ...row.map((date, i) => dayCell(date, `pad-${rowIdx}-${i}`)),
             ])
           : monthCells(cal.month).map((date, i) => dayCell(date, `pad-${i}`))}
       </ol>
