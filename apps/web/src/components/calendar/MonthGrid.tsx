@@ -8,6 +8,13 @@ import {
 import { dayArchivePath } from "../../lib/day-archive";
 import type { Lang } from "../../lib/types";
 import {
+  formatWeekRange,
+  isoWeekOfDate,
+  weekBounds,
+  weekIssue,
+  weekPath,
+} from "../../lib/week";
+import {
   dayTitle,
   formatDay,
   HEADER_HEAT_CLASS,
@@ -41,7 +48,9 @@ const PAGE_DOT = "absolute right-1.5 top-1.5 size-1.5 rounded-full bg-current";
  *
  * The calendar page uses the `xl` size: tiles stay links and show the day's
  * story count, hover or focus reports the day through `onPreview`, the ring
- * follows `selected`, and today gets a dot.
+ * follows `selected`, and today gets a dot. The `xl` grid is Mon–Sun plus a
+ * trailing `Wk` column; a row whose week has a weekly edition links to it,
+ * everything else stays a dashed, muted cell.
  */
 export function MonthGrid({
   cal,
@@ -63,6 +72,7 @@ export function MonthGrid({
   onPreview?: (date: string) => void;
   size?: "sm" | "lg" | "xl";
 }) {
+  const vi = lang === "vi";
   const byDate = new Map(cal.days.map((d) => [d.date, d]));
   const max = Math.max(0, ...cal.days.map((d) => d.count));
   const page = size === "xl";
@@ -74,6 +84,64 @@ export function MonthGrid({
       : "text-xs";
   const tile = page ? TILE_PAGE : TILE;
   const gap = page ? "gap-1 sm:gap-1.5" : size === "lg" ? "gap-1.5" : "gap-1";
+  const gridCols = page
+    ? "grid-cols-[repeat(7,minmax(0,1fr))_3rem]"
+    : "grid-cols-7";
+
+  // Complete weeks only: rows stay Mon–Sun, so each row maps to one ISO week.
+  const rows = page
+    ? (() => {
+        const padded = [...monthCells(cal.month)];
+        while (padded.length % 7 !== 0) padded.push(null);
+        const rows: (string | null)[][] = [];
+        for (let i = 0; i < padded.length; i += 7) {
+          rows.push(padded.slice(i, i + 7));
+        }
+        return rows;
+      })()
+    : undefined;
+  const currentWeek = page ? isoWeekOfDate(today) : null;
+
+  const weekCell = (row: (string | null)[], rowIdx: number) => {
+    const firstDay = row.find((d) => d !== null);
+    if (!firstDay || !currentWeek)
+      return <li key={`wk-${rowIdx}`} aria-hidden />;
+    const week = isoWeekOfDate(firstDay);
+    const bounds = weekBounds(week);
+    const issue = weekIssue(week);
+    const published = issue !== null && week < currentWeek && bounds;
+    if (published) {
+      return (
+        <li key={`wk-${week}`}>
+          <a
+            href={weekPath(week, lang)}
+            aria-label={
+              vi
+                ? `Bản tin tuần: Số ${issue}, ${formatWeekRange(bounds.start, bounds.end, lang)}`
+                : `Weekly edition: No. ${issue}, ${formatWeekRange(bounds.start, bounds.end, lang)}`
+            }
+            className="flex h-full min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl border border-border font-mono transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="text-[11px] leading-none font-semibold">
+              {week.slice(5)}
+            </span>
+            <span className="text-[9px] leading-none text-accent">
+              {vi ? `Số ${issue}` : `No. ${issue}`}
+            </span>
+          </a>
+        </li>
+      );
+    }
+    return (
+      <li
+        key={`wk-${week}`}
+        aria-hidden
+        className="flex h-full flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-border font-mono text-muted-foreground/60"
+      >
+        <span className="text-[11px] leading-none">{week.slice(5)}</span>
+      </li>
+    );
+  };
 
   const onGridKeyDown = (e: KeyboardEvent<HTMLOListElement>) => {
     const from = (e.target as HTMLElement).dataset?.date;
@@ -88,9 +156,77 @@ export function MonthGrid({
     e.currentTarget.querySelector<HTMLElement>(`[data-date="${to}"]`)?.focus();
   };
 
+  const dayCell = (date: string | null, padKey: string) => {
+    if (!date) return <li key={padKey} aria-hidden />;
+    const num = Number(date.slice(8));
+    const isToday = date === today;
+    const current = isToday ? "date" : undefined;
+    const ring = (picking ? date === selected : isToday) ? RING : "";
+    const dot =
+      picking && isToday ? (
+        <span className={page ? PAGE_DOT : DOT} aria-hidden />
+      ) : null;
+    const day = byDate.get(date);
+    if (!day) {
+      return (
+        <li key={date}>
+          <span
+            aria-current={current}
+            className={`${tile} ${text} text-muted-foreground${page ? " border border-dashed border-border" : ""}${ring}`}
+          >
+            {num}
+            {dot}
+          </span>
+        </li>
+      );
+    }
+    const title = dayTitle(day, lang);
+    const label = `${formatDay(date, lang, "long")}: ${storiesLabel(day.count, lang)}${title ? `. ${title}` : ""}`;
+    const hover = page
+      ? "hover:-translate-y-0.5 hover:shadow-md"
+      : "hover:scale-105";
+    const className = `${tile} ${text} font-medium transition-transform ${hover} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${HEADER_HEAT_CLASS[heatLevel(day.count, max)]}${ring}`;
+    return (
+      <li key={date}>
+        {onSelect ? (
+          <button
+            type="button"
+            aria-pressed={date === selected}
+            aria-current={current}
+            aria-label={label}
+            onClick={() => onSelect(date)}
+            className={`${className} w-full`}
+          >
+            {num}
+            {dot}
+          </button>
+        ) : (
+          <a
+            href={dayArchivePath(date, lang)}
+            data-date={date}
+            tabIndex={page && date !== selected ? -1 : undefined}
+            aria-current={current}
+            aria-label={label}
+            className={className}
+            onPointerEnter={onPreview && (() => onPreview(date))}
+            onFocus={onPreview && (() => onPreview(date))}
+          >
+            {num}
+            {dot}
+            {page ? (
+              <span className="font-mono text-[calc(10px*var(--reader-font-size,1))] opacity-75 max-[480px]:hidden">
+                {day.count}
+              </span>
+            ) : null}
+          </a>
+        )}
+      </li>
+    );
+  };
+
   return (
     <div>
-      <div className={`mb-1 grid grid-cols-7 ${gap}`} aria-hidden>
+      <div className={`mb-1 grid ${gridCols} ${gap}`} aria-hidden>
         {WEEKDAY_INITIALS[lang].map((w, i) => (
           <span
             key={i}
@@ -99,78 +235,22 @@ export function MonthGrid({
             {w}
           </span>
         ))}
+        {page ? (
+          <span className="text-center font-mono text-[calc(11px*var(--reader-font-size,1))] uppercase text-muted-foreground">
+            {vi ? "Tuần" : "Wk"}
+          </span>
+        ) : null}
       </div>
       <ol
-        className={`grid grid-cols-7 ${gap}`}
+        className={`grid ${gridCols} ${gap}`}
         onKeyDown={page ? onGridKeyDown : undefined}
       >
-        {monthCells(cal.month).map((date, i) => {
-          if (!date) return <li key={`pad-${i}`} aria-hidden />;
-          const num = Number(date.slice(8));
-          const isToday = date === today;
-          const current = isToday ? "date" : undefined;
-          const ring = (picking ? date === selected : isToday) ? RING : "";
-          const dot =
-            picking && isToday ? (
-              <span className={page ? PAGE_DOT : DOT} aria-hidden />
-            ) : null;
-          const day = byDate.get(date);
-          if (!day) {
-            return (
-              <li key={date}>
-                <span
-                  aria-current={current}
-                  className={`${tile} ${text} text-muted-foreground${page ? " border border-dashed border-border" : ""}${ring}`}
-                >
-                  {num}
-                  {dot}
-                </span>
-              </li>
-            );
-          }
-          const title = dayTitle(day, lang);
-          const label = `${formatDay(date, lang, "long")}: ${storiesLabel(day.count, lang)}${title ? `. ${title}` : ""}`;
-          const hover = page
-            ? "hover:-translate-y-0.5 hover:shadow-md"
-            : "hover:scale-105";
-          const className = `${tile} ${text} font-medium transition-transform ${hover} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${HEADER_HEAT_CLASS[heatLevel(day.count, max)]}${ring}`;
-          return (
-            <li key={date}>
-              {onSelect ? (
-                <button
-                  type="button"
-                  aria-pressed={date === selected}
-                  aria-current={current}
-                  aria-label={label}
-                  onClick={() => onSelect(date)}
-                  className={`${className} w-full`}
-                >
-                  {num}
-                  {dot}
-                </button>
-              ) : (
-                <a
-                  href={dayArchivePath(date, lang)}
-                  data-date={date}
-                  tabIndex={page && date !== selected ? -1 : undefined}
-                  aria-current={current}
-                  aria-label={label}
-                  className={className}
-                  onPointerEnter={onPreview && (() => onPreview(date))}
-                  onFocus={onPreview && (() => onPreview(date))}
-                >
-                  {num}
-                  {dot}
-                  {page ? (
-                    <span className="font-mono text-[calc(10px*var(--reader-font-size,1))] opacity-75 max-[480px]:hidden">
-                      {day.count}
-                    </span>
-                  ) : null}
-                </a>
-              )}
-            </li>
-          );
-        })}
+        {rows
+          ? rows.flatMap((row, rowIdx) => [
+              ...row.map((date, i) => dayCell(date, `pad-${rowIdx}-${i}`)),
+              weekCell(row, rowIdx),
+            ])
+          : monthCells(cal.month).map((date, i) => dayCell(date, `pad-${i}`))}
       </ol>
     </div>
   );
