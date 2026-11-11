@@ -301,3 +301,35 @@ describe("CalendarPage embed mode", () => {
     ).toBe(calendarPath("2026-09", "en"));
   });
 });
+
+describe("CalendarPage week column", () => {
+  it("links each closed week row to its weekly edition", () => {
+    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    expect(
+      screen
+        .getByRole("link", { name: /Weekly edition: No\. 1/ })
+        .getAttribute("href")
+    ).toBe(weekPath("2026-W40", "en"));
+    // The week containing today and later weeks have no edition to open.
+    expect(screen.queryByRole("link", { name: /2026-W41|No\. 2/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /No\. 3/ })).toBeNull();
+  });
+
+  it("labels the week cells for Vietnamese", () => {
+    render(<CalendarPage cal={OCTOBER} lang="vi" today="2026-10-11" />);
+    expect(
+      screen.getByRole("link", { name: /Bản tin tuần: Số 1/ })
+    ).toBeTruthy();
+    expect(screen.getByText("Tuần")).toBeTruthy();
+  });
+
+  it("marks unpublished weeks as dashed muted cells, not links", () => {
+    const { container } = render(
+      <CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />
+    );
+    const dashed = container.querySelectorAll(
+      "li[aria-hidden].rounded-xl.border-dashed"
+    );
+    expect(dashed.length).toBeGreaterThan(0);
+  });
+});
