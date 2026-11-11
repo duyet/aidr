@@ -160,7 +160,7 @@ function WeeksPage() {
           {weeks.map((week) => {
             const text = teaser(week, lang);
             return (
-              <li key={week.week} className="px-2 py-4">
+              <li key={week.week} className="px-2 py-3.5">
                 <div className="group flex items-start gap-4">
                   <WeekThumb week={week} />
                   <div className="min-w-0 flex-1">

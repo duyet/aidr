@@ -24,7 +24,7 @@ export function WeeklyMasthead({
   const href = latest ? weekPath(latest.week, lang) : undefined;
   return (
     <header className="rounded-2xl border border-border bg-card">
-      <div className="px-5 py-5 sm:px-6 sm:py-6">
+      <div className="px-4 py-4 sm:px-5 sm:py-5">
         <p className={`${EYEBROW} flex flex-wrap items-center gap-x-3 gap-y-1`}>
           {latest ? (
             <span className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 font-sans text-[calc(11px*var(--reader-font-size,1))] font-bold uppercase tracking-[0.08em] text-accent-foreground">
@@ -40,7 +40,7 @@ export function WeeklyMasthead({
           </span>
         </p>
         <h1
-          className={`mt-2.5 ${PAGE_TITLE} text-[calc(28px*var(--reader-font-size,1))] min-[820px]:text-[calc(40px*var(--reader-font-size,1))]`}
+          className={`mt-2.5 ${PAGE_TITLE} text-[calc(24px*var(--reader-font-size,1))] min-[820px]:text-[calc(32px*var(--reader-font-size,1))]`}
         >
           {href ? (
             <a
@@ -53,13 +53,13 @@ export function WeeklyMasthead({
             title
           )}
         </h1>
-        <p className="mt-1.5 text-[calc(15px*var(--reader-font-size,1))] leading-[1.6] text-muted-foreground">
+        <p className="mt-1 text-[calc(15px*var(--reader-font-size,1))] leading-[1.6] text-muted-foreground">
           {vi
             ? "Những tin AI đáng đọc nhất, mỗi tuần một số. Chia sẻ số bạn thích."
             : "The AI stories that mattered, one issue a week. Share the issue you liked."}
         </p>
       </div>
-      <div className="border-t border-border px-5 py-5 sm:px-6">
+      <div className="border-t border-border px-4 py-4 sm:px-5">
         <WeeklySubscribeBlock lang={lang} />
       </div>
     </header>

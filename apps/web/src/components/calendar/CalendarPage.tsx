@@ -34,7 +34,7 @@ export function CalendarPage({
   cal,
   lang,
   today,
-  className = "mx-auto max-w-5xl py-8",
+  className = "mx-auto max-w-5xl py-6",
   headingAs: Heading = "h1",
   monthHref,
   showWeeklyNav = true,
@@ -69,10 +69,10 @@ export function CalendarPage({
     <div className={className}>
       <div className="grid gap-6 min-[860px]:grid-cols-[minmax(0,1fr)_20rem] min-[860px]:items-start">
         <section aria-labelledby="calendar-month">
-          <header className="mb-4 flex items-center gap-2">
+          <header className="mb-3 flex items-center gap-2">
             <Heading
               id="calendar-month"
-              className="flex-1 font-serif text-2xl font-medium tracking-tight sm:text-3xl"
+              className="flex-1 font-serif text-xl font-medium tracking-tight sm:text-2xl"
             >
               {monthTitle(month, lang, true)}
             </Heading>
@@ -211,7 +211,7 @@ export function CalendarPage({
 
       <div
         data-testid="calendar-agenda"
-        className={`mt-8${preview ? " min-[860px]:hidden" : ""}`}
+        className={`mt-6${preview ? " min-[860px]:hidden" : ""}`}
       >
         <MonthAgenda days={cal.days} lang={lang} />
       </div>

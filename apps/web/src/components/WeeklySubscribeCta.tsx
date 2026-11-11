@@ -22,14 +22,14 @@ export function WeeklySubscribeBlock({ lang }: { lang: Lang }) {
       <div className="flex min-w-0 items-start gap-4">
         <span
           aria-hidden
-          className="relative grid size-12 shrink-0 place-items-center rounded-sm bg-foreground text-background transition-transform duration-300 ease-out group-hover:-translate-y-0.5 motion-reduce:transition-none"
+          className="relative grid size-10 shrink-0 place-items-center rounded-sm bg-foreground text-background transition-transform duration-300 ease-out group-hover:-translate-y-0.5 motion-reduce:transition-none"
         >
           <MailOpen className="size-5" strokeWidth={1.75} />
           {/* The AI;DR signal dot — one yellow spot, never decoration. */}
           <span className="absolute top-1 right-1 size-1.5 rounded-full bg-signal" />
         </span>
         <div className="min-w-0">
-          <p className="font-serif text-xl font-semibold leading-snug">
+          <p className="font-serif text-lg font-semibold leading-snug">
             {vi
               ? "Nhận AI;DR Tuần Này vào sáng thứ Hai"
               : "Get AI;DR Weekly every Monday"}
@@ -41,7 +41,7 @@ export function WeeklySubscribeBlock({ lang }: { lang: Lang }) {
           </p>
           <a
             href={withLang(RSS_SUBSCRIBE_PATH, lang)}
-            className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
+            className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
           >
             <Rss className="size-3.5" aria-hidden />
             {vi ? "Theo dõi qua RSS" : "Prefer RSS? Follow the feed"}
