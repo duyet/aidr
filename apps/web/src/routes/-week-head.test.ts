@@ -103,7 +103,7 @@ describe("week page hreflang", () => {
 });
 
 describe("week page og:image", () => {
-  it("prefers the lead story's stored OG card over the publisher image", () => {
+  it("prefers the lead story's stored OG card over the on-demand route", () => {
     const data = edition("Một dòng.");
     data.stories = [
       {
@@ -118,11 +118,13 @@ describe("week page og:image", () => {
       },
     ];
     expect(ogImage(data, "en")).toBe("https://og.aidr.today/abc/en.png");
-    // No VI card stored: falls back to the publisher image for VI.
-    expect(ogImage(data, "vi")).toContain("example.com/dead.jpg");
+    // No VI card stored: the on-demand route serves the unfurl instead.
+    expect(ogImage(data, "vi")).toBe(
+      "https://aidr.today/api/og/aaaaaaaa11111111.png?lang=vi"
+    );
   });
 
-  it("falls back to the publisher image when no card is stored", () => {
+  it("uses the on-demand card when the lead has no stored card", () => {
     const data = edition("Một dòng.");
     data.stories = [
       {
@@ -136,13 +138,14 @@ describe("week page og:image", () => {
         text_vi: "Một dòng.",
       },
     ];
-    expect(ogImage(data, "en")).toContain("unsplash");
-    expect(ogImage(data, "en")).toContain("w=1600");
+    expect(ogImage(data, "en")).toBe(
+      "https://aidr.today/api/og/aaaaaaaa11111111.png?lang=en"
+    );
   });
 
-  it("falls back to the site card when the lead has neither", () => {
-    expect(ogImage(edition("Một dòng."), "en")).toBe(
-      "https://aidr.today/og.jpg"
-    );
+  it("falls back to the site card when there is no lead story", () => {
+    const data = edition("Một dòng.");
+    data.stories = [];
+    expect(ogImage(data, "en")).toBe("https://aidr.today/og.jpg");
   });
 });

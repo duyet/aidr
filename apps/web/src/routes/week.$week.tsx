@@ -9,7 +9,6 @@ import { absoluteSiteUrl } from "../lib/locale-url";
 import { notFoundCopy } from "../lib/not-found";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { localizedPageHead, notFoundHead } from "../lib/seo";
-import { resizeCdnImageUrl } from "../lib/tldr-images";
 import type { Lang } from "../lib/types";
 import {
   formatWeekRange,
@@ -85,11 +84,15 @@ export const Route = createFileRoute("/week/$week")({
     const { edition } = loaderData;
     const range = formatWeekRange(edition.start_date, edition.end_date, lang);
     const lead = weekStoriesFor(edition, lang)[0];
-    // Prefer the lead story's stored OG card; a publisher link can 404
-    // upstream (W40's does, in every size). Otherwise the publisher image.
-    const leadImage =
-      lead?.item.og_card_urls?.[lang] ??
-      resizeCdnImageUrl(lead?.item.image_url, "full");
+    // Share unfurls get a URL that never 404s: the stored card when there
+    // is one, else the on-demand route — it serves a stored card
+    // regardless of age, a photoless card when the photo died upstream
+    // (W40's did, in every size), or the site home card for stories older
+    // than the renderer's window. Same chain as story pages.
+    const leadImage = lead
+      ? (lead.item.og_card_urls?.[lang] ??
+        absoluteSiteUrl(`/api/og/${lead.item.id}.png`, lang))
+      : undefined;
     const head = localizedPageHead({
       path: weekPath(edition.week),
       title:
