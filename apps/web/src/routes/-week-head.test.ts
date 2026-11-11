@@ -8,7 +8,7 @@ import type { FeedItem, Lang } from "../lib/types";
 import type { WeekEdition } from "../lib/week-model";
 import { Route } from "./week.$week";
 
-const item: FeedItem = {
+const baseItem: FeedItem = {
   id: "aaaaaaaa11111111",
   url: "https://example.com/a",
   title: "A story",
@@ -26,6 +26,7 @@ const item: FeedItem = {
   llm_tokens: 0,
   image_url: null,
 };
+const item: FeedItem = baseItem;
 
 function edition(textVi: string | null): WeekEdition {
   return {
@@ -42,6 +43,7 @@ function edition(textVi: string | null): WeekEdition {
   };
 }
 
+type HeadMeta = Record<string, string>;
 type HeadFn = (ctx: {
   loaderData: { kind: "week"; edition: WeekEdition };
   match: {
@@ -50,7 +52,21 @@ type HeadFn = (ctx: {
     pathname: string;
     status: string;
   };
-}) => { links: HeadLink[] };
+}) => { links: HeadLink[]; meta?: HeadMeta[] };
+
+function ogImage(data: WeekEdition, lang: Lang): string | null {
+  const head = Route.options.head as unknown as HeadFn;
+  const out = head({
+    loaderData: { kind: "week", edition: data },
+    match: {
+      context: { lang },
+      search: { lang },
+      pathname: "/week/2026-W41",
+      status: "success",
+    },
+  });
+  return out.meta?.find((m) => m.property === "og:image")?.content ?? null;
+}
 
 function links(data: WeekEdition, lang: Lang): HeadLink[] {
   const head = Route.options.head as unknown as HeadFn;
@@ -82,6 +98,51 @@ describe("week page hreflang", () => {
     expect(hreflangs(head)).toEqual([]);
     expect(head.find((link) => link.rel === "canonical")?.href).toBe(
       "https://aidr.today/week/2026-W41?lang=en"
+    );
+  });
+});
+
+describe("week page og:image", () => {
+  it("prefers the lead story's stored OG card over the publisher image", () => {
+    const data = edition("Một dòng.");
+    data.stories = [
+      {
+        rank: 1,
+        item: {
+          ...baseItem,
+          image_url: "https://example.com/dead.jpg",
+          og_card_urls: { en: "https://og.aidr.today/abc/en.png" },
+        },
+        text_en: "A line.",
+        text_vi: "Một dòng.",
+      },
+    ];
+    expect(ogImage(data, "en")).toBe("https://og.aidr.today/abc/en.png");
+    // No VI card stored: falls back to the publisher image for VI.
+    expect(ogImage(data, "vi")).toContain("example.com/dead.jpg");
+  });
+
+  it("falls back to the publisher image when no card is stored", () => {
+    const data = edition("Một dòng.");
+    data.stories = [
+      {
+        rank: 1,
+        item: {
+          ...baseItem,
+          image_url:
+            "https://images.unsplash.com/photo-123?auto=format&fit=crop&w=1200",
+        },
+        text_en: "A line.",
+        text_vi: "Một dòng.",
+      },
+    ];
+    expect(ogImage(data, "en")).toContain("unsplash");
+    expect(ogImage(data, "en")).toContain("w=1600");
+  });
+
+  it("falls back to the site card when the lead has neither", () => {
+    expect(ogImage(edition("Một dòng."), "en")).toBe(
+      "https://aidr.today/og.jpg"
     );
   });
 });

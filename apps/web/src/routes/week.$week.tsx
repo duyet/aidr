@@ -85,8 +85,11 @@ export const Route = createFileRoute("/week/$week")({
     const { edition } = loaderData;
     const range = formatWeekRange(edition.start_date, edition.end_date, lang);
     const lead = weekStoriesFor(edition, lang)[0];
-    // The lead story's publisher image; never a generated card.
-    const leadImage = resizeCdnImageUrl(lead?.item.image_url, "full");
+    // Prefer the lead story's stored OG card; a publisher link can 404
+    // upstream (W40's does, in every size). Otherwise the publisher image.
+    const leadImage =
+      lead?.item.og_card_urls?.[lang] ??
+      resizeCdnImageUrl(lead?.item.image_url, "full");
     const head = localizedPageHead({
       path: weekPath(edition.week),
       title:

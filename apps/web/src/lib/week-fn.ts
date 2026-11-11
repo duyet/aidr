@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { readSession } from "./db";
 import { stripItemDetail } from "./feed-fn";
+import { renderedStoryCardUrls } from "./og-cards";
+import type { Lang } from "./types";
 import { parseWeek } from "./week";
 import type { WeekEdition, WeekSummary } from "./week-model";
 import { getWeekEdition, listWeekEditions } from "./week-queries";
@@ -8,6 +10,34 @@ import { getWeekEdition, listWeekEditions } from "./week-queries";
 async function db(): Promise<D1Database | undefined> {
   const { env } = await import("cloudflare:workers");
   return (env as { DB?: D1Database }).DB;
+}
+
+/** Attach the per-language OG card URLs of the lead story when a card is
+ * stored and current, so the week page can unfurl even when the publisher
+ * image is gone upstream (the card route is the site's own). Best effort:
+ * a failed read leaves the publisher image as the og:image. */
+async function withLeadCards(
+  session: ReturnType<typeof readSession>,
+  edition: WeekEdition
+): Promise<WeekEdition> {
+  const lead = edition.stories[0];
+  let urls: Partial<Record<Lang, string>> | undefined;
+  try {
+    urls = lead ? await renderedStoryCardUrls(session, lead.item) : undefined;
+  } catch (error) {
+    console.error("week lead og card lookup failed", error);
+  }
+  return {
+    ...edition,
+    stories: edition.stories.map((s, i) => ({
+      ...s,
+      item: stripItemDetail(
+        i === 0 && urls && Object.keys(urls).length > 0
+          ? { ...s.item, og_card_urls: urls }
+          : s.item
+      ),
+    })),
+  };
 }
 
 /**
@@ -31,15 +61,7 @@ export const fetchWeekEdition = createServerFn({ method: "GET" })
       // Start serializes a loader error into the page; keep D1 text out.
       throw new Error("week_unavailable");
     }
-    return edition
-      ? {
-          ...edition,
-          stories: edition.stories.map((s) => ({
-            ...s,
-            item: stripItemDetail(s.item),
-          })),
-        }
-      : null;
+    return edition ? await withLeadCards(readSession(binding), edition) : null;
   });
 
 /** Server fn for `/weeks`: every edition, newest first. A failed read
