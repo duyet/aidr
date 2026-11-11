@@ -25,17 +25,35 @@ const ROUND_OFF = `${ROUND} pointer-events-none opacity-40`;
  * latest edition; on phones the card is hidden and the agenda lists the
  * month under the grid. Both are always rendered and swapped by CSS, so the
  * server markup does not depend on the viewport.
+ *
+ * Embeds (`/weeks`) pass `headingAs="h2"`, their own `monthHref`, `className`
+ * and `showWeeklyNav={false}`; the defaults keep the `/calendar` page
+ * self-sufficient.
  */
 export function CalendarPage({
   cal,
   lang,
   today,
+  className = "mx-auto max-w-5xl py-8",
+  headingAs: Heading = "h1",
+  monthHref,
+  showWeeklyNav = true,
 }: {
   cal: CalendarMonth;
   lang: Lang;
   today: string;
+  /** Outer wrapper; embeds pass tighter spacing than the page default. */
+  className?: string;
+  /** h1 on the standalone page; h2 under another page's h1. */
+  headingAs?: "h1" | "h2";
+  /** Where Today and the month arrows go; defaults to `/calendar?month=`. */
+  monthHref?: (month: string) => string;
+  /** Closed weeks of the month link to weekly editions; the /weeks archive
+   * lists them already, so embeds hide the strip. */
+  showWeeklyNav?: boolean;
 }) {
   const vi = lang === "vi";
+  const monthLink = monthHref ?? ((month: string) => calendarPath(month, lang));
   const [hovered, setHovered] = useState<string | undefined>(undefined);
   const { month } = cal;
   const preview = cal.days.find((d) => d.date === hovered) ?? cal.days.at(-1);
@@ -45,19 +63,19 @@ export function CalendarPage({
   const hasNext = next <= cal.lastMonth;
   const onCurrentMonth = month === cal.lastMonth;
   const max = Math.max(0, ...cal.days.map((d) => d.count));
-  const weeks = monthWeeks(month, today);
+  const weeks = showWeeklyNav ? monthWeeks(month, today) : [];
 
   return (
-    <div className="mx-auto max-w-5xl py-8">
+    <div className={className}>
       <div className="grid gap-6 min-[860px]:grid-cols-[minmax(0,1fr)_20rem] min-[860px]:items-start">
         <section aria-labelledby="calendar-month">
           <header className="mb-4 flex items-center gap-2">
-            <h1
+            <Heading
               id="calendar-month"
               className="flex-1 font-serif text-2xl font-medium tracking-tight sm:text-3xl"
             >
               {monthTitle(month, lang, true)}
-            </h1>
+            </Heading>
             {onCurrentMonth ? (
               <span
                 aria-disabled="true"
@@ -67,7 +85,7 @@ export function CalendarPage({
               </span>
             ) : (
               <a
-                href={calendarPath(cal.lastMonth, lang)}
+                href={monthLink(cal.lastMonth)}
                 className="rounded-full border border-border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {vi ? "Hôm nay" : "Today"}
@@ -75,7 +93,7 @@ export function CalendarPage({
             )}
             {hasPrev ? (
               <a
-                href={calendarPath(prev, lang)}
+                href={monthLink(prev)}
                 className={ROUND_LINK}
                 aria-label={vi ? "Tháng trước" : "Previous month"}
               >
@@ -88,7 +106,7 @@ export function CalendarPage({
             )}
             {hasNext ? (
               <a
-                href={calendarPath(next, lang)}
+                href={monthLink(next)}
                 className={ROUND_LINK}
                 aria-label={vi ? "Tháng sau" : "Next month"}
               >
@@ -146,7 +164,7 @@ export function CalendarPage({
             </span>
           </div>
 
-          {weeks.length > 0 ? (
+          {showWeeklyNav && weeks.length > 0 ? (
             <nav
               data-testid="calendar-weeks"
               aria-label={vi ? "Bản tin tuần" : "Weekly editions"}
