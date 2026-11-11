@@ -1,3 +1,4 @@
+import { ArrowRight } from "lucide-react";
 import { EYEBROW, PAGE_TITLE } from "../lib/page-style";
 import type { Lang } from "../lib/types";
 import { formatWeekRange, weekPath } from "../lib/week";
@@ -45,9 +46,14 @@ export function WeeklyMasthead({
           {href ? (
             <a
               href={href}
-              className="rounded-sm transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
+              className="group inline-flex items-center gap-[0.18em] rounded-sm transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
             >
               {title}
+              <ArrowRight
+                aria-hidden
+                strokeWidth={2.25}
+                className="size-[0.42em] transition-transform duration-300 ease-out group-hover:translate-x-[0.18em] motion-reduce:transition-none"
+              />
             </a>
           ) : (
             title

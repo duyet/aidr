@@ -24,6 +24,8 @@ describe("WeeklyMasthead", () => {
     expect(html).toContain("Issue No. 6");
     expect(html).toContain("AI;DR Weekly");
     expect(html).toContain("Nov 2 – 8, 2026");
+    // The link carries the arrow affordance.
+    expect(html).toContain("lucide-arrow-right");
   });
 
   it("carries the subscribe action and the RSS link on the same card", () => {
