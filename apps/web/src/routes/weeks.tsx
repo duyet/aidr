@@ -3,8 +3,8 @@ import { CalendarPage } from "../components/calendar/CalendarPage";
 import { LoadErrorPage } from "../components/LoadErrorPage";
 import { ShareWeekButton } from "../components/ShareWeekButton";
 import { KeywordText } from "../components/story-page/KeywordText";
+import { WeeklyMasthead } from "../components/WeeklyMasthead";
 import { weeklyTitle } from "../components/WeeklyPaper";
-import { WeeklySubscribeCta } from "../components/WeeklySubscribeCta";
 import { fetchCalendarMonth } from "../lib/calendar-fn";
 import { latestArchiveDate } from "../lib/day-archive";
 import { headRouteInput } from "../lib/head-route";
@@ -15,7 +15,7 @@ import {
   loadErrorHeaders,
 } from "../lib/load-error";
 import { withLang } from "../lib/locale-url";
-import { EYEBROW, PAGE_TITLE } from "../lib/page-style";
+import { EYEBROW } from "../lib/page-style";
 import { localizedPageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
 import { formatWeekRange, WEEKS_INDEX_PATH, weekPath } from "../lib/week";
@@ -130,33 +130,7 @@ function WeeksPage() {
   const vi = lang === "vi";
   return (
     <div className="mx-auto max-w-5xl pt-5 pb-10 max-sm:pt-4">
-      <header className="rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
-        <p className={`${EYEBROW} flex flex-wrap items-center gap-x-3 gap-y-1`}>
-          <span className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 font-sans text-[calc(11px*var(--reader-font-size,1))] font-bold uppercase tracking-[0.08em] text-accent-foreground">
-            {vi
-              ? `Số ${weeks[0]?.issue ?? ""}`
-              : `Issue No. ${weeks[0]?.issue ?? ""}`}
-          </span>
-          <span className="tabular-nums">
-            {weeks[0]
-              ? formatWeekRange(weeks[0].start_date, weeks[0].end_date, lang)
-              : vi
-                ? "Lưu trữ các số báo"
-                : "The archive"}
-          </span>
-        </p>
-        <h1
-          className={`mt-2.5 ${PAGE_TITLE} text-[calc(28px*var(--reader-font-size,1))] min-[820px]:text-[calc(40px*var(--reader-font-size,1))]`}
-        >
-          {weeklyTitle(lang)}
-        </h1>
-        <p className="mt-1.5 text-[calc(15px*var(--reader-font-size,1))] leading-[1.6] text-muted-foreground">
-          {vi
-            ? "Những tin AI đáng đọc nhất, mỗi tuần một số. Chia sẻ số bạn thích."
-            : "The AI stories that mattered, one issue a week. Share the issue you liked."}
-        </p>
-      </header>
-      <WeeklySubscribeCta lang={lang} />
+      <WeeklyMasthead latest={weeks[0] ?? null} lang={lang} />
       {cal ? (
         <CalendarPage
           cal={cal}

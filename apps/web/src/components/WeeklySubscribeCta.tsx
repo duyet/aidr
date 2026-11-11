@@ -10,17 +10,15 @@ export function weeklySubscribeHref(lang: Lang): string {
 }
 
 /**
- * The weekly-email strip: a newspaper double rule, one black masthead mark,
- * plain copy and one solid action. The icon lifts and the arrow nudges on
- * hover; `motion-reduce` stills both.
+ * The subscribe row: one black masthead mark, plain copy and one solid
+ * action. The icon lifts and the arrow nudges on hover; `motion-reduce`
+ * stills both. Shared by the strip on the weekly paper and the merged
+ * masthead on the archive index.
  */
-export function WeeklySubscribeCta({ lang }: { lang: Lang }) {
+export function WeeklySubscribeBlock({ lang }: { lang: Lang }) {
   const vi = lang === "vi";
   return (
-    <aside
-      aria-label={vi ? "Đăng ký bản tin tuần" : "Subscribe to the weekly email"}
-      className="group my-8 flex flex-col gap-4 border-y-2 border-foreground py-5 sm:flex-row sm:items-center sm:justify-between"
-    >
+    <div className="group flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-4">
         <span
           aria-hidden
@@ -60,6 +58,21 @@ export function WeeklySubscribeCta({ lang }: { lang: Lang }) {
           className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-0.5 motion-reduce:transition-none"
         />
       </a>
+    </div>
+  );
+}
+
+/**
+ * The weekly-email strip: a newspaper double rule around the subscribe row.
+ */
+export function WeeklySubscribeCta({ lang }: { lang: Lang }) {
+  const vi = lang === "vi";
+  return (
+    <aside
+      aria-label={vi ? "Đăng ký bản tin tuần" : "Subscribe to the weekly email"}
+      className="my-8 border-y-2 border-foreground py-5"
+    >
+      <WeeklySubscribeBlock lang={lang} />
     </aside>
   );
 }
