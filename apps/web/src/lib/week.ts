@@ -85,6 +85,21 @@ export function lastClosedWeek(nowMs: number): string {
   return isoWeekOfDate(isoDate(utcMs(today) - 7 * DAY_MS));
 }
 
+/** The in-progress ISO week of today, or null before the first weekly
+ * issue (`WEEKLY_FIRST_WEEK`). The open week has no snapshot yet; the
+ * provisional edition ranks it from the same rules. */
+export function currentOpenWeek(nowMs: number): string | null {
+  const today = localCalendarDate(nowMs, AUDIENCE_TIMEZONE);
+  const week = isoWeekOfDate(today);
+  return weekIssue(week) !== null ? week : null;
+}
+
+/** True when `week` is the in-progress week of today (not the recently
+ * closed one — that is already an edition). */
+export function isOpenWeek(week: string, nowMs: number): boolean {
+  return currentOpenWeek(nowMs) === week;
+}
+
 function weeksBetween(a: string, b: string): number | null {
   const da = weekDates(a);
   const db = weekDates(b);

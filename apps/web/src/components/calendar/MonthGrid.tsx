@@ -49,7 +49,8 @@ const PAGE_DOT = "absolute right-1.5 top-1.5 size-1.5 rounded-full bg-current";
  * The calendar page uses the `xl` size: tiles stay links and show the day's
  * story count, hover or focus reports the day through `onPreview`, the ring
  * follows `selected`, and today gets a dot. The `xl` grid is a leading `Wk`
- * column before Mon–Sun; a row whose week has a weekly edition links to it,
+ * column before Mon–Sun; a row whose week has a weekly edition links to it —
+ * including the in-progress week, which opens the provisional ranking.
  * everything else stays a dashed, muted cell.
  */
 export function MonthGrid({
@@ -109,17 +110,24 @@ export function MonthGrid({
     const week = isoWeekOfDate(firstDay);
     const bounds = weekBounds(week);
     const issue = weekIssue(week);
-    const published = issue !== null && week < currentWeek && bounds;
-    if (published) {
+    // Closed weeks link to their stored edition; the in-progress week
+    // links to the provisional ranking, which exists from the first story
+    // on. Future weeks stay dashed and silent.
+    const linked = issue !== null && bounds !== null && week <= currentWeek;
+    if (linked) {
+      const current = week === currentWeek;
+      const label = current
+        ? vi
+          ? `Tuần này, đang diễn ra: ${formatWeekRange(bounds.start, bounds.end, lang)}`
+          : `This week, in progress: ${formatWeekRange(bounds.start, bounds.end, lang)}`
+        : vi
+          ? `Bản tin tuần: Số ${issue}, ${formatWeekRange(bounds.start, bounds.end, lang)}`
+          : `Weekly edition: No. ${issue}, ${formatWeekRange(bounds.start, bounds.end, lang)}`;
       return (
         <li key={`wk-${week}`}>
           <a
             href={weekPath(week, lang)}
-            aria-label={
-              vi
-                ? `Bản tin tuần: Số ${issue}, ${formatWeekRange(bounds.start, bounds.end, lang)}`
-                : `Weekly edition: No. ${issue}, ${formatWeekRange(bounds.start, bounds.end, lang)}`
-            }
+            aria-label={label}
             className="flex h-14 sm:h-16 flex-col items-center justify-center gap-0.5 rounded-xl border border-border font-mono transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="text-[11px] leading-none font-semibold">
