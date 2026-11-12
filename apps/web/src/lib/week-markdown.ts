@@ -1,11 +1,12 @@
 /**
  * Markdown twin of a weekly edition: `/week/YYYY-Www.md`.
  *
- * Same read as the HTML page (`getWeekEdition`), one language per response,
- * same cache rule as the day Markdown (explicit `?lang=` is public; a
- * cookie/Accept-Language pick stays private). A language with no stories is
- * a 404: the other language is never printed in its place. Story text is
- * publisher/model data, so it goes through the day Markdown's `inlineText`.
+ * Same read as the HTML page (the stored edition, or the provisional one
+ * for the in-progress week), one language per response, same cache rule as
+ * the day Markdown (explicit `?lang=` is public; a cookie/Accept-Language
+ * pick stays private). A language with no stories is a 404: the other
+ * language is never printed in its place. Story text is publisher/model
+ * data, so it goes through the day Markdown's `inlineText`.
  */
 import { dayArchivePath } from "./day-archive";
 import {
@@ -14,13 +15,11 @@ import {
   markdownRequestLang,
   markdownTextResponse,
 } from "./day-markdown";
-import { readSession } from "./db";
 import { absoluteSiteUrl, localeCacheControl } from "./locale-url";
 import { storyPath } from "./slug";
 import type { Lang } from "./types";
 import {
   formatWeekRange,
-  parseWeek,
   weekCacheControl,
   weekDates,
   weekMarkdownPath,
@@ -33,7 +32,7 @@ import {
   weekStoriesFor,
   weekStoryText,
 } from "./week-model";
-import { getWeekEdition } from "./week-queries";
+import { loadWeekEdition } from "./week-open";
 
 const WEEK_MARKDOWN_PATH_RE = /^\/week\/([^/]*)\.md$/;
 
@@ -60,6 +59,16 @@ export function renderWeekMarkdown(edition: WeekEdition, lang: Lang): string {
   if (edition.nextWeek) {
     lines.push(
       `- ${vi ? "Số sau" : "Next issue"}: ${absoluteSiteUrl(weekMarkdownPath(edition.nextWeek), lang)}`
+    );
+  }
+  if (edition.provisional) {
+    lines.push(
+      "",
+      `> ${
+        vi
+          ? "Tuần này vẫn đang mở — bảng xếp hạng tạm thời, tính lại theo từng ngày."
+          : "This week is still open — provisional ranking, re-scored as each day lands."
+      }`
     );
   }
   const intro = weekIntro(edition, lang);
@@ -99,29 +108,33 @@ export async function handleWeekMarkdownRequest(
   if (lang instanceof Response) return lang;
   const method = request.method.toUpperCase();
   const url = new URL(request.url);
-  const week = parseWeek(WEEK_MARKDOWN_PATH_RE.exec(url.pathname)?.[1], nowMs);
-  if (!week) return markdownErrorResponse(404, "Week not found", method);
+  const rawWeek = WEEK_MARKDOWN_PATH_RE.exec(url.pathname)?.[1];
+  if (!rawWeek) return markdownErrorResponse(404, "Week not found", method);
   if (!db)
     return markdownErrorResponse(503, "Weekly edition unavailable", method);
 
-  let edition: WeekEdition | null;
+  let load: Awaited<ReturnType<typeof loadWeekEdition>>;
   try {
-    edition = await getWeekEdition(readSession(db), week);
+    load = await loadWeekEdition(db, rawWeek, nowMs);
   } catch (error) {
     console.error("week markdown failed", error);
     return markdownErrorResponse(500, "Weekly edition unavailable", method);
   }
-  if (!edition || isWeekEmptyIn(edition, lang)) {
+  if (!load || isWeekEmptyIn(load.edition, lang)) {
     return markdownErrorResponse(404, "Week not found", method);
   }
+  const edition = load.edition;
+  const provisional = edition.provisional === true;
   const { cacheControl, vary } = localeCacheControl(
     url.search,
-    weekCacheControl(week, nowMs)
+    provisional
+      ? "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+      : weekCacheControl(edition.week, nowMs)
   );
   return markdownTextResponse(renderWeekMarkdown(edition, lang), 200, method, {
     "Cache-Control": cacheControl,
     "Content-Language": lang,
-    Link: `<${absoluteSiteUrl(weekPath(week), lang)}>; rel="canonical"`,
+    Link: `<${absoluteSiteUrl(weekPath(edition.week), lang)}>; rel="canonical"`,
     ...(vary ? { Vary: vary } : {}),
   });
 }

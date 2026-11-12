@@ -2331,9 +2331,12 @@ Every run (30 minutes).
   stays current; a language with no lines 404s, the same rule as a closed
   fallback edition. The URL upgrades to
   the stored §10b edition once the week closes (snapshot wins at read
-  time). Deliberately not provided for the provisional week: the Markdown
-  twin and `GET /api/week/<week>` (both 404, so the weekly video script
-  can never consume a half-built ranking), and the sitemap.
+  time). The Markdown twin and `GET /api/week/<week>` serve the same
+  provisional edition through the same read, with a `provisional: true`
+  marker in the API JSON and a banner line in the Markdown; the weekly
+  video script (`videos/daily-news/scripts/fetch-week.mjs`) refuses a
+  provisional edition unless it is passed `--force`. The sitemap does
+  not list the provisional page.
 - **Surfaces.** `/week/YYYY-Www` (newspaper layout; 404 for a malformed
   or pre-launch week; a language with no stories 404s in that language;
   the in-progress week renders the provisional edition), `/weeks` index
