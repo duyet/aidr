@@ -173,6 +173,9 @@ export interface WeekApiResponse {
     votes: number;
   }[];
   created_at: number;
+  /** True while the week is still open: provisional data, re-ranked on
+   * every view; final when the closed edition is stored. */
+  provisional?: boolean;
 }
 
 export function weekApiBody(
@@ -206,5 +209,6 @@ export function weekApiBody(
       votes: s.item.vote_net ?? 0,
     })),
     created_at: edition.updated_at,
+    ...(edition.provisional ? { provisional: true } : {}),
   };
 }

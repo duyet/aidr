@@ -3,10 +3,14 @@ import { readSession } from "./db";
 import { stripItemDetail } from "./feed-fn";
 import { renderedStoryCardUrls } from "./og-cards";
 import type { Lang } from "./types";
-import { currentOpenWeek, parseWeek } from "./week";
+import { currentOpenWeek } from "./week";
 import type { OpenWeekSummary, WeekEdition, WeekSummary } from "./week-model";
-import { buildOpenWeekEdition } from "./week-open";
-import { getWeekEdition, listWeekEditions } from "./week-queries";
+import {
+  buildOpenWeekEdition,
+  loadWeekEdition,
+  type WeekEditionLoad,
+} from "./week-open";
+import { listWeekEditions } from "./week-queries";
 
 async function db(): Promise<D1Database | undefined> {
   const { env } = await import("cloudflare:workers");
@@ -64,29 +68,18 @@ export const fetchWeekEdition = createServerFn({ method: "GET" })
     const binding = await db();
     if (!binding) return null;
     const nowMs = Date.now();
-    const week = parseWeek(data.week, nowMs);
-    if (week) {
-      let edition: WeekEdition | null;
-      try {
-        edition = await getWeekEdition(readSession(binding), week);
-      } catch (error) {
-        console.error("week page failed", error);
-        // Start serializes a loader error into the page; keep D1 text out.
-        throw new Error("week_unavailable");
-      }
-      return edition
-        ? await withLeadCards(readSession(binding), edition)
-        : null;
-    }
-    // The in-progress week has no snapshot; rank it live instead. Replaced
-    // by the stored edition once the week closes.
+    let load: WeekEditionLoad | null;
     try {
-      const open = await buildOpenWeekEdition(binding, data.week, nowMs);
-      return open ? collapseEdition(open) : null;
+      load = await loadWeekEdition(binding, data.week, nowMs);
     } catch (error) {
-      console.error("open week page failed", error);
+      console.error("week page failed", error);
+      // Start serializes a loader error into the page; keep D1 text out.
       throw new Error("week_unavailable");
     }
+    if (!load) return null;
+    return load.stored
+      ? await withLeadCards(readSession(binding), load.edition)
+      : collapseEdition(load.edition);
   });
 
 /** Server fn for `/weeks`: every edition, newest first. A failed read

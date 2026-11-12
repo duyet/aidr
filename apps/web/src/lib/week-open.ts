@@ -15,11 +15,13 @@ import {
   rankWeeklyCandidates,
   WEEKLY_MAX_STORIES,
 } from "../../worker/weekly.js";
+import { readSession } from "./db";
 import { getItemsByIds } from "./feed-queries";
 import type { FeedItem, Lang } from "./types";
 import { isOpenWeek, lastClosedWeek, weekBounds, weekIssue } from "./week";
 import type { WeekEdition, WeekStory } from "./week-model";
 import { weekStoryText } from "./week-model";
+import { getWeekEdition } from "./week-queries";
 
 /** How many stories the provisional edition carries. Same cap as the closed
  * edition (`WEEKLY_MAX_STORIES`). */
@@ -27,6 +29,29 @@ export const OPEN_WEEK_MAX_STORIES = WEEKLY_MAX_STORIES;
 
 export interface OpenWeekEdition extends WeekEdition {
   provisional: true;
+}
+
+export interface WeekEditionLoad {
+  edition: WeekEdition;
+  /** True when a stored snapshot was served (the closed §10b path). */
+  stored: boolean;
+}
+
+/**
+ * The edition to render for a week, or null. Closed weeks serve the stored
+ * snapshot; the in-progress week ranks live under the same closed-week
+ * rules. A malformed, pre-launch or empty open week is null. A failed read
+ * propagates (pages answer 5xx, never an empty story list).
+ */
+export async function loadWeekEdition(
+  db: D1Database,
+  week: string,
+  nowMs: number
+): Promise<WeekEditionLoad | null> {
+  const stored = await getWeekEdition(readSession(db), week);
+  if (stored) return { edition: stored, stored: true };
+  const open = await buildOpenWeekEdition(db, week, nowMs);
+  return open ? { edition: open, stored: false } : null;
 }
 
 /**
