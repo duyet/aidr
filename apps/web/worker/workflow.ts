@@ -19,6 +19,7 @@ import { backfillEnSummaries } from "./ingest/backfill-en-summary.js";
 import { backfillScores } from "./ingest/backfill-score.js";
 import { backfillTranslations } from "./ingest/backfill-translate.js";
 import { type IngestContext, LLM_STEP } from "./ingest/context.js";
+import { prerenderDayCards } from "./ingest/day-card.js";
 import { dedupeNewRows } from "./ingest/dedupe.js";
 import { enrichNewRows } from "./ingest/enrich.js";
 import { fetchSources, loadSources, seedSourceHealth } from "./ingest/fetch.js";
@@ -374,6 +375,12 @@ export class NewsIngestWorkflow extends WorkflowEntrypoint<Env> {
         const weeklyStats = await generateWeekly(ctx);
         weeklyTokens = weeklyStats.tokens;
         weeklyPreview = weeklyStats.preview;
+      }
+
+      // Pre-render the day card PNGs before the digest sends, so channel
+      // image fetches read R2 instead of rendering on the request path.
+      if (!skipUnselectedStep(ctx, "day-card")) {
+        await prerenderDayCards(ctx);
       }
 
       if (!skipUnselectedStep(ctx, "email")) {

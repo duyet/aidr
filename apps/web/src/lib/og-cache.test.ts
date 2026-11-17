@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { pngFromPixels } from "./__fixtures__/raster";
+import { DAY_OG_HEIGHT, DAY_OG_WIDTH } from "./day-og";
 import {
   cachedOgResponse,
   DAY_OG_RENDER_VERSION,
   dayOgObjectKey,
+  putDayCardObject,
+  validateDayCardPng,
 } from "./og-cache";
 import { storyOgObjectKey, storyOgStaticKey } from "./story-og";
 import type { FeedItem } from "./types";
@@ -147,5 +151,129 @@ describe("cachedOgResponse", () => {
     vi.setSystemTime(Date.now() + 61_000);
     await cachedOgResponse(request, undefined, render, { bucket, key: "k" });
     expect(render).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("putDayCardObject", () => {
+  afterEach(() => vi.useRealTimers());
+
+  const DAY_KEY = "og-day/v1/api/og/date/2026-10-15.png/en";
+  const card = () =>
+    new Response(new Uint8Array([1, 2, 3]), {
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "public, max-age=600, s-maxage=3600",
+      },
+    });
+
+  // The ingest pre-render step and the request path must write one object
+  // shape, or a pre-rendered card would be fresh under different rules.
+  it("writes the same bytes and metadata as the request path (bounded TTL)", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-15T03:00:00Z"));
+    const viaRequest = {
+      get: vi.fn(async () => null),
+      put: vi.fn(async () => undefined),
+    } as unknown as R2Bucket;
+    await cachedOgResponse(
+      request,
+      undefined,
+      async () => ({ response: card(), maxAgeSec: 3600 }),
+      { bucket: viaRequest, key: DAY_KEY }
+    );
+    const viaStep = {
+      put: vi.fn(async () => undefined),
+    } as unknown as R2Bucket;
+    await putDayCardObject(viaStep, DAY_KEY, card(), 3600);
+    expect(viaStep.put).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(viaStep.put).mock.calls[0]).toEqual(
+      vi.mocked(viaRequest.put).mock.calls[0]
+    );
+  });
+
+  it("writes the same bytes and metadata as the request path (no expiry)", async () => {
+    const viaRequest = {
+      get: vi.fn(async () => null),
+      put: vi.fn(async () => undefined),
+    } as unknown as R2Bucket;
+    await cachedOgResponse(request, undefined, async () => card(), {
+      bucket: viaRequest,
+      key: DAY_KEY,
+    });
+    const viaStep = {
+      put: vi.fn(async () => undefined),
+    } as unknown as R2Bucket;
+    await putDayCardObject(viaStep, DAY_KEY, card());
+    expect(vi.mocked(viaStep.put).mock.calls[0]).toEqual(
+      vi.mocked(viaRequest.put).mock.calls[0]
+    );
+    const options = vi.mocked(viaStep.put).mock.calls[0]?.[2] as {
+      customMetadata: Record<string, string>;
+    };
+    expect(options.customMetadata.expiresAt).toBeUndefined();
+  });
+});
+
+describe("validateDayCardPng", () => {
+  /** A card-sized PNG with enough varied pixels to clear the size floor. */
+  const cardPng = () =>
+    pngFromPixels(DAY_OG_WIDTH, DAY_OG_HEIGHT, (x, y) => [
+      (x * 7 + y * 13) & 0xff,
+      (x + y * 3) & 0xff,
+      (x * y) & 0xff,
+    ]);
+
+  it("accepts a whole card-sized PNG", () => {
+    const bytes = cardPng();
+    expect(bytes.byteLength).toBeGreaterThanOrEqual(10_000);
+    expect(validateDayCardPng(bytes, DAY_OG_WIDTH, DAY_OG_HEIGHT)).toBe(true);
+  });
+
+  it("rejects a PNG of the wrong dimensions", () => {
+    const bytes = pngFromPixels(600, 315, (x, y) => [
+      (x * 7 + y * 13) & 0xff,
+      (x + y * 3) & 0xff,
+      (x * y) & 0xff,
+    ]);
+    expect(bytes.byteLength).toBeGreaterThanOrEqual(10_000);
+    expect(validateDayCardPng(bytes, DAY_OG_WIDTH, DAY_OG_HEIGHT)).toBe(false);
+  });
+
+  it("rejects a header-only render at the size floor", () => {
+    // Signature + the whole IHDR chunk, nothing after it: under the floor.
+    const bytes = cardPng().slice(0, 33);
+    expect(bytes.byteLength).toBeLessThan(2_000);
+    expect(validateDayCardPng(bytes, DAY_OG_WIDTH, DAY_OG_HEIGHT)).toBe(false);
+  });
+
+  it("rejects a render truncated above the size floor, with a valid IHDR", () => {
+    // The case the size floor cannot see: plenty of bytes, correct
+    // dimensions, but the stream stops before IEND.
+    const whole = cardPng();
+    const bytes = whole.slice(0, whole.byteLength - 12);
+    expect(bytes.byteLength).toBeGreaterThanOrEqual(2_000);
+    expect(validateDayCardPng(bytes, DAY_OG_WIDTH, DAY_OG_HEIGHT)).toBe(false);
+  });
+
+  it("rejects a whole-sized body whose IEND CRC is corrupted", () => {
+    const bytes = cardPng();
+    bytes[bytes.byteLength - 1] ^= 0xff;
+    expect(validateDayCardPng(bytes, DAY_OG_WIDTH, DAY_OG_HEIGHT)).toBe(false);
+  });
+
+  it("rejects bytes that are not a PNG at all", () => {
+    expect(
+      validateDayCardPng(
+        new Uint8Array(20_000).fill(7),
+        DAY_OG_WIDTH,
+        DAY_OG_HEIGHT
+      )
+    ).toBe(false);
+  });
+
+  it("rejects a card-sized body with a corrupted signature", () => {
+    const bytes = cardPng();
+    bytes[0] = 0;
+    expect(validateDayCardPng(bytes, DAY_OG_WIDTH, DAY_OG_HEIGHT)).toBe(false);
   });
 });

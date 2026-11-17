@@ -28,6 +28,7 @@ export const PIPELINE_STEPS = [
   "freshness",
   "tldr",
   "weekly",
+  "day-card",
   "email",
   "notify",
 ] as const;

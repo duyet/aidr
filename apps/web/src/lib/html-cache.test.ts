@@ -29,6 +29,7 @@ const HTML_POLICY_FILES: Record<string, string> = {
 /** Files whose cache-control literals never serve a page that loads `/assets/*`. */
 const NON_HTML_FILES = new Set([
   "src/lib/agent-discovery.ts",
+  "src/lib/day-og-render.ts",
   "src/lib/feed-freshness.ts",
   "src/lib/lang.ts",
   "src/lib/llms-txt.ts",

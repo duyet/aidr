@@ -121,16 +121,70 @@ export async function cachedOgResponse(
   if (bucket) {
     await background(
       ctx,
-      bucket.put(objectKey, bytes, {
-        httpMetadata: { contentType: "image/png" },
-        customMetadata: {
-          ...(maxAgeSec === undefined
-            ? {}
-            : { expiresAt: String(Date.now() + maxAgeSec * 1000) }),
-          cacheControl: res.headers.get("Cache-Control") ?? "",
-        },
-      })
+      putDayCardObject(bucket, objectKey, out.clone(), maxAgeSec)
     );
   }
   return out;
+}
+
+/** The one R2 put for a rendered card, shared by the request path above and
+ *  the ingest `day-card` pre-render step so their metadata cannot drift.
+ *  `contentVersion` is optional provenance: the step stamps the tile-id hash
+ *  it drew, so a later run can tell its own unchanged render from a
+ *  request-path put (which carries no stamp). Omitted keeps the exact
+ *  request-path metadata. */
+export async function putDayCardObject(
+  bucket: R2Bucket,
+  key: string,
+  response: Response,
+  maxAgeSec?: number,
+  contentVersion?: string
+): Promise<void> {
+  const bytes = await response.arrayBuffer();
+  await bucket.put(key, bytes, {
+    httpMetadata: { contentType: "image/png" },
+    customMetadata: {
+      ...(maxAgeSec === undefined
+        ? {}
+        : { expiresAt: String(Date.now() + maxAgeSec * 1000) }),
+      ...(contentVersion === undefined ? {} : { contentVersion }),
+      cacheControl: response.headers.get("Cache-Control") ?? "",
+    },
+  });
+}
+
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+/** A pre-rendered card must be a whole PNG of the card's own size before it
+ *  is stored: a truncated or error-body render would otherwise be served
+ *  from R2 until its TTL. Expected dimensions are passed in (the caller
+ *  knows `DAY_OG_WIDTH`/`DAY_OG_HEIGHT`) to keep this module free of the
+ *  card's React graph. The floor is a sanity bound, not a quality bar: a
+ *  settled day's near-empty card compresses small, and the route stores it
+ *  without validation, so rejecting it here would only add false failures. */
+export function validateDayCardPng(
+  bytes: Uint8Array,
+  width: number,
+  height: number
+): boolean {
+  if (bytes.byteLength < 2_000) return false;
+  for (let i = 0; i < PNG_SIGNATURE.length; i += 1) {
+    if (bytes[i] !== PNG_SIGNATURE[i]) return false;
+  }
+  // The first chunk is IHDR: 4-byte length, 4-byte type, then width/height.
+  if (String.fromCharCode(...bytes.subarray(12, 16)) !== "IHDR") return false;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (view.getUint32(16) !== width || view.getUint32(20) !== height) {
+    return false;
+  }
+  // Completeness check, not full PNG validation: a whole PNG ends with the
+  // IEND chunk (zero length, the type, the fixed CRC), and a render cut off
+  // mid-stream keeps a valid IHDR but loses this tail — the truncation the
+  // size floor cannot see. Chunk bodies and their CRCs are not walked.
+  const end = bytes.byteLength;
+  return (
+    view.getUint32(end - 12) === 0 &&
+    String.fromCharCode(...bytes.subarray(end - 8, end - 4)) === "IEND" &&
+    view.getUint32(end - 4) === 0xae426082
+  );
 }

@@ -22,6 +22,7 @@ bilingual feed.
   - [9. Backfill](#9-backfill)
   - [10. TL;DR (LLM)](#10-tldr-llm)
   - [10b. Weekly edition (LLM)](#10b-weekly-edition-llm)
+  - [10d. Day card pre-render](#10d-day-card-pre-render)
   - [11. Email digest](#11-email-digest)
   - [12. Notify (`worker/notify/`)](#12-notify-workernotify)
   - [13. Review gates (LLM, rating ≥ 0.6)](#13-review-gates-llm-rating--06)
@@ -145,12 +146,13 @@ inside the Workflow. The mode travels as `create({ id, params })` and
 `worker/ingest/mode.ts` owns the step names:
 `fetch, dedupe, score, translate, write, backfill-content,
 backfill-translate, backfill-en-summary, backfill-score, qa-translations, inbound-email,
-review-suggestions, review-submissions, freshness, tldr, weekly, email, notify`. In a dry run
+review-suggestions, review-submissions, freshness, tldr, weekly, day-card, email, notify`. In a dry run
 `inbound-email` only classifies the pending batch (no rows written, no
 acknowledgements sent).
 - **`dryRun: true`** — `sendEmailDigest` and `notifyChannels` return before
   calling `sendDailyTldr` / `dispatchStoryNotifications` and record
-  `skipped` / `dry run: no email or telegram`. The TL;DR step runs as
+  `skipped` / `dry run: no email or telegram`. `day-card` records the same
+  skip and renders nothing (no R2 writes). The TL;DR step runs as
   `tldr-preview`: same items, LLM, fallbacks and keep rule as `ensureDailyTldr`
   (a kept model digest reports `kept`, rated degraded like the live run, and its
   bullets show in the preview, not headlines), no
@@ -2323,6 +2325,54 @@ ones, `weeklyScore`, `pickDiverse`, top 10, one bilingual LLM call. A
 title-only fallback is retried after `WEEKLY_RETRY_MS` and never replaces
 real copy. Subscribers east of the audience zone reach D first and get the
 mail once the audience day turns and the row exists.
+
+### 10d. Day card pre-render
+
+`worker/ingest/day-card.ts`, step `day-card` (after `weekly`, before
+`email`). For each language it draws the audience day's card with
+`renderDayCard` (`src/lib/day-og-render.ts`, the same closure the
+`/api/og/date/<date>.png` route runs) and stores it in the `OG_CACHE` R2
+tier under the route's own `dayOgObjectKey`: the base URL the day page
+names as og:image, plus the `v`-stamped URL the digest will send (`v` from
+`loadDayCard`, the same card read `digestPage` does, so the versioned key matches
+Telegram's image fetch; Facebook attaches the day page and crawls the
+base key). Freshness follows the same `expiresAt` rule as
+`cachedOgResponse`, with the base-key demand rule below; an unsettled
+empty day is not stored; bytes must pass `validateDayCardPng` (PNG
+signature, 1200×630 IHDR, IEND tail, at least 2 KB) before
+`putDayCardObject` writes them with the route's metadata. Every failure is a `console.warn` plus a
+`failed` count on the step line (per-language
+rendered/fresh/empty/no-send/read-failed/unchanged/failed counts are the
+step's action); the step never throws and never blocks email/notify. URLs are
+unchanged: a miss or a failed pre-render still renders on demand in the
+route.
+
+The versioned (`v`) key is only the digest's link preview, so it is drawn
+only while a digest send is still pending for that language: one batched
+read of the same `notifications` rows the notify loop reads
+(`readDigestNotificationRows`, `DIGEST_ROW_SQL`), decided by notify's own
+pure `shouldSendDigest` on the language's Telegram row — the only channel
+whose digest fetches the versioned URL. No send pending
+(`skippedNoSend`) or a failed read (`readFailed`, e.g. the run's subrequest
+budget is spent) leaves the versioned card to the on-demand path. Before
+the send hour the read is skipped entirely. The base key is the day page's
+public og:image: the gate and a failed read never suppress it; its
+background refresh follows the demand rule below, and the route refreshes
+it on demand for whoever fetches it.
+The read is read-only; the step never writes `notifications`. One render
+per language supplies every stale key (base and versioned together), so a
+run draws each card at most once per language; an engine interruption
+records only its `interrupted` line, never a partial-success summary.
+
+The base key's background refresh is demand- and content-aligned: the step
+stamps its puts with the tile-id hash (`contentVersion`), and skips an
+expired base object whose stamp matches the current tile set
+(`skippedUnchanged`) — the route refreshes that on demand, per colo, for
+whoever fetches it. A different stamp re-renders even while fresh (new
+content warms ahead of the fetch); an expired object with no stamp (a
+request-path put, i.e. proven demand) still pre-renders. Validation is a
+completeness check (signature, IHDR dimensions, IEND tail), not a full
+chunk-by-chunk PNG validation.
 
 ### 11. Email digest
 

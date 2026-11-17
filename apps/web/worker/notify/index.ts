@@ -153,6 +153,41 @@ export function digestKey(localDate: string): string {
   return `digest:${localDate}`;
 }
 
+/** The one read behind `classifyDigestSkip` / `shouldSendDigest`, shared by
+ *  the notify loop and the ingest `day-card` step so both decide from the
+ *  same row shape. Read-only: neither caller writes notifications here. */
+export const DIGEST_ROW_SQL =
+  "SELECT status, attempts, posted_at FROM notifications WHERE channel = ? AND item_id = ?";
+
+export async function readDigestNotificationRow(
+  env: Pick<Env, "DB">,
+  channel: string,
+  key: string
+): Promise<NotificationRow | null> {
+  return (
+    (await env.DB.prepare(DIGEST_ROW_SQL).bind(channel, key).first<NotificationRow>()) ??
+    null
+  );
+}
+
+/** One D1 batch for several channels, for callers deciding ahead of the
+ *  notify loop. A failed read throws; the caller chooses its fallback. */
+export async function readDigestNotificationRows(
+  env: Pick<Env, "DB">,
+  channels: readonly string[],
+  key: string
+): Promise<Map<string, NotificationRow | null>> {
+  const batch = await env.DB.batch(
+    channels.map((channel) => env.DB.prepare(DIGEST_ROW_SQL).bind(channel, key))
+  );
+  return new Map(
+    channels.map((channel, i) => [
+      channel,
+      (batch[i]?.results?.[0] as NotificationRow | undefined) ?? null,
+    ])
+  );
+}
+
 /** The `notifications.item_id` of the post that repeats one of the digest's
  *  top stories (`pickDigestHighlight`). It sits under `digest:` so trending's daily count, gap and
  *  posted-events window leave it out; the story itself is already in
@@ -220,7 +255,7 @@ export function summarizeNotifyReasons(
   return parts.length > 0 ? parts.join("; ") : "no channels enabled";
 }
 
-interface NotificationRow {
+export interface NotificationRow {
   status: string;
   attempts: number;
   posted_at?: number | null;
@@ -1067,11 +1102,7 @@ export async function dispatchStoryNotifications(
     let budget = 0;
     const suppressed: SuppressionCounts = {};
 
-    const existing = await env.DB.prepare(
-      "SELECT status, attempts, posted_at FROM notifications WHERE channel = ? AND item_id = ?"
-    )
-      .bind(notifier.id, key)
-      .first<NotificationRow>();
+    const existing = await readDigestNotificationRow(env, notifier.id, key);
 
     const digestSkip = classifyDigestSkip(existing ?? null, hour);
     if (digestSkip) {
