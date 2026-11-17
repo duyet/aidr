@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.27](https://github.com/duyet/aidr/compare/aidr-v0.1.26...aidr-v0.1.27) (2026-11-17)
+
+
+### ✨ Features
+
+* **web:** design foundation: Inter, light and dark tokens, header ([#1111](https://github.com/duyet/aidr/issues/1111)) ([e340d14](https://github.com/duyet/aidr/commit/e340d145486bf2ded900f238bba25d5c18313eb3))
+* **web:** newspaper weekly, prefs dropdowns, /data restyle, extension design ([#1115](https://github.com/duyet/aidr/issues/1115)) ([00a653d](https://github.com/duyet/aidr/commit/00a653d99bd41e3ba5cdd7660ca93ff5af74b65f))
+* **web:** redesign v2 — layouts, prefs, tokens and font parity ([cf51008](https://github.com/duyet/aidr/commit/cf51008237172c60fa20922c4384755a4a8ad322))
+
 ## [0.1.26](https://github.com/duyet/aidr/compare/aidr-v0.1.25...aidr-v0.1.26) (2026-10-27)
 
 
