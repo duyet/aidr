@@ -26,6 +26,10 @@ export interface WeekEdition {
   prevWeek: string | null;
   nextWeek: string | null;
   updated_at: number;
+  /** True while the week is still open: ranked from the data so far with
+   * no model copy, for the page's notice and cache rules. Absent on the
+   * closed edition. */
+  provisional?: boolean;
 }
 
 export interface WeekSummary {
@@ -35,6 +39,26 @@ export interface WeekSummary {
   end_date: string;
   intro_en: string | null;
   intro_vi: string | null;
+  stories: number;
+  /** Lead story publisher photo | null when it has none. */
+  image_url: string | null;
+  /** Lead story tags, for keyword highlights in the weeks teaser. */
+  lead_tags: string[];
+}
+
+/** The provisional stand-in for the in-progress week on `/weeks`: same
+ * shape as `WeekSummary` where it matters, so the row renderer shares most
+ * of its markup. */
+export interface OpenWeekSummary {
+  week: string;
+  issue: number;
+  start_date: string;
+  end_date: string;
+  /** Lead story publisher photo | null when it has none. */
+  image_url: string | null;
+  /** Lead story tags, for keyword highlights in the teaser. */
+  lead_tags: string[];
+  /** Ranked stories so far (same cap as a closed edition). */
   stories: number;
 }
 

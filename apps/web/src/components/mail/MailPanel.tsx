@@ -282,7 +282,7 @@ export function MailPanel({ admin }: { admin: AdminState }) {
           <label className="block text-sm">
             Body (markdown)
             <textarea
-              className={`${fieldClass} mt-1 min-h-48 font-mono text-[13px]`}
+              className={`${fieldClass} mt-1 min-h-48 font-mono text-[calc(13px*var(--reader-font-size,1))]`}
               value={bodyMd}
               onChange={(e) => setBodyMd(e.target.value)}
             />

@@ -272,3 +272,74 @@ describe("CalendarPage keyboard and extras", () => {
     expect(screen.queryByTestId("calendar-weeks")).toBeNull();
   });
 });
+
+describe("CalendarPage embed mode", () => {
+  it("demotes the month heading, uses the embed links and hides the weekly strip", () => {
+    render(
+      <CalendarPage
+        cal={OCTOBER}
+        lang="en"
+        today="2026-10-11"
+        headingAs="h2"
+        className="mt-2"
+        monthHref={(m) => `/weeks?month=${m}&lang=en`}
+        showWeeklyNav={false}
+      />
+    );
+    expect(
+      screen.getByRole("heading", { level: 2, name: "October 2026" })
+    ).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Previous month" }).getAttribute("href")
+    ).toBe("/weeks?month=2026-09&lang=en");
+    expect(screen.queryByTestId("calendar-weeks")).toBeNull();
+  });
+
+  it("keeps the h1 and /calendar links by default", () => {
+    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "October 2026" })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Previous month" }).getAttribute("href")
+    ).toBe(calendarPath("2026-09", "en"));
+  });
+});
+
+describe("CalendarPage week column", () => {
+  it("links each closed week row to its weekly edition", () => {
+    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    expect(
+      screen
+        .getByRole("link", { name: /Weekly edition: No\. 1/ })
+        .getAttribute("href")
+    ).toBe(weekPath("2026-W40", "en"));
+    // The week containing today (W41, Oct 5–11) links to the provisional
+    // edition, not a stored one.
+    expect(
+      screen
+        .getByRole("link", { name: /This week, in progress/ })
+        .getAttribute("href")
+    ).toBe(weekPath("2026-W41", "en"));
+    expect(screen.queryByRole("link", { name: /No\. 3/ })).toBeNull();
+  });
+
+  it("labels the week cells for Vietnamese", () => {
+    render(<CalendarPage cal={OCTOBER} lang="vi" today="2026-10-11" />);
+    expect(
+      screen.getByRole("link", { name: /Bản tin tuần: Số 1/ })
+    ).toBeTruthy();
+    expect(screen.getByText("Tuần")).toBeTruthy();
+  });
+
+  it("marks unpublished weeks as dashed muted cells, not links", () => {
+    const { container } = render(
+      <CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />
+    );
+    const dashed = container.querySelectorAll(
+      "li[aria-hidden].rounded-xl.border-dashed"
+    );
+    expect(dashed.length).toBeGreaterThan(0);
+  });
+});

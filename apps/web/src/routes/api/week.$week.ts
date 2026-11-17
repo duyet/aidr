@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { readSession } from "../../lib/db";
 import { storyPath } from "../../lib/slug";
-import { parseWeek, weekCacheControl } from "../../lib/week";
-import { getWeekEdition, weekApiBody } from "../../lib/week-queries";
+import { weekCacheControl } from "../../lib/week";
+import { loadWeekEdition } from "../../lib/week-open";
+import { weekApiBody } from "../../lib/week-queries";
 
 // type alias (not interface): TanStack routeTree.gen must re-export handler
 // shapes; a non-exported interface triggers TS4023.
 type HandlerArgs = { request: Request; params: { week: string } };
+
+const OPEN_WEEK_CACHE =
+  "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
 
 function json(body: unknown, status: number, cacheControl: string): Response {
   return new Response(JSON.stringify(body), {
@@ -30,10 +33,6 @@ export const Route = createFileRoute("/api/week/$week")({
     handlers: {
       GET: async ({ params }: HandlerArgs) => {
         const nowMs = Date.now();
-        const week = parseWeek(params.week, nowMs);
-        if (!week) {
-          return json({ error: "week_not_found" }, 404, "private, no-store");
-        }
         let db: D1Database | undefined;
         try {
           db = ((await import("cloudflare:workers")).env as { DB?: D1Database })
@@ -45,14 +44,17 @@ export const Route = createFileRoute("/api/week/$week")({
           return json({ error: "unavailable" }, 503, "private, no-store");
         }
         try {
-          const edition = await getWeekEdition(readSession(db), week);
-          if (!edition) {
+          const load = await loadWeekEdition(db, params.week, nowMs);
+          if (!load) {
             return json({ error: "week_not_found" }, 404, "private, no-store");
           }
+          const { edition } = load;
           return json(
             weekApiBody(edition, (item) => storyPath(item)),
             200,
-            weekCacheControl(week, nowMs)
+            edition.provisional
+              ? OPEN_WEEK_CACHE
+              : weekCacheControl(edition.week, nowMs)
           );
         } catch (error) {
           console.error("week api failed", error);

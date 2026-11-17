@@ -6,10 +6,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const fetchWeekIndex = vi.hoisted(() => vi.fn());
-vi.mock("../lib/week-fn", () => ({ fetchWeekIndex }));
+const fetchCalendarMonth = vi.hoisted(() => vi.fn());
+const fetchCurrentOpenWeek = vi.hoisted(() => vi.fn());
+vi.mock("../lib/week-fn", () => ({ fetchWeekIndex, fetchCurrentOpenWeek }));
+vi.mock("../lib/calendar-fn", () => ({ fetchCalendarMonth }));
+
+fetchCurrentOpenWeek.mockResolvedValue(null);
 
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { Route } from "./weeks";
+
+fetchCalendarMonth.mockResolvedValue(null);
 
 type HeadersFn = (ctx: {
   loaderData: unknown;

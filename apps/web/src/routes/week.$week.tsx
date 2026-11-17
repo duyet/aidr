@@ -9,7 +9,6 @@ import { absoluteSiteUrl } from "../lib/locale-url";
 import { notFoundCopy } from "../lib/not-found";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
 import { localizedPageHead, notFoundHead } from "../lib/seo";
-import { resizeCdnImageUrl } from "../lib/tldr-images";
 import type { Lang } from "../lib/types";
 import {
   formatWeekRange,
@@ -68,9 +67,15 @@ export const Route = createFileRoute("/week/$week")({
     // shareable; a cookie/Accept-Language pick stays private.
     const explicitLocale =
       match.search.lang !== undefined && match.search.locale === undefined;
+    // A provisional (in-progress) week re-ranks on every ingest; never let
+    // the edge hold it for long. Closed weeks keep the settled TTLs.
+    const provisional =
+      loaderData.kind === "week" && loaderData.edition.provisional === true;
     return {
       "Cache-Control": explicitLocale
-        ? weekCacheControl(loaderData.edition.week, Date.now())
+        ? provisional
+          ? "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+          : weekCacheControl(loaderData.edition.week, Date.now())
         : "private, no-store",
       "Content-Language": match.context.lang,
       ...(explicitLocale ? {} : { Vary: "Cookie, Accept-Language" }),
@@ -85,8 +90,15 @@ export const Route = createFileRoute("/week/$week")({
     const { edition } = loaderData;
     const range = formatWeekRange(edition.start_date, edition.end_date, lang);
     const lead = weekStoriesFor(edition, lang)[0];
-    // The lead story's publisher image; never a generated card.
-    const leadImage = resizeCdnImageUrl(lead?.item.image_url, "full");
+    // Share unfurls get a URL that never 404s: the stored card when there
+    // is one, else the on-demand route — it serves a stored card
+    // regardless of age, a photoless card when the photo died upstream
+    // (W40's did, in every size), or the site home card for stories older
+    // than the renderer's window. Same chain as story pages.
+    const leadImage = lead
+      ? (lead.item.og_card_urls?.[lang] ??
+        absoluteSiteUrl(`/api/og/${lead.item.id}.png`, lang))
+      : undefined;
     const head = localizedPageHead({
       path: weekPath(edition.week),
       title:

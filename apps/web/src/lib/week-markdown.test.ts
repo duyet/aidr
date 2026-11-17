@@ -154,13 +154,61 @@ describe("week Markdown", () => {
     expect(res.status).toBe(404);
   });
 
-  it("404s the week that is still open", async () => {
+  it("503s when the database is missing", async () => {
     const res = await handleWeekMarkdownRequest(
       new Request("https://aidr.today/week/2026-W42.md?lang=en"),
       undefined,
       Date.parse("2026-10-12T03:00:00Z")
     );
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(503);
+  });
+
+  it("serves the still-open week as provisional markdown", async () => {
+    const published = Math.floor(Date.parse("2026-10-11T17:00:00Z") / 1000);
+    const candidate = {
+      id: "aaaaaaaa11111111",
+      source_id: "hn",
+      title: "Alpha open story",
+      title_vi: "Tin mới Alfa mở màn",
+      summary: null,
+      category: "Models",
+      llm_importance: 80,
+      llm_quality: null,
+      points: 10,
+      comments: 2,
+      signal_url: null,
+      merged_members: null,
+      vote_net: 0,
+    };
+    const row = item({
+      id: "aaaaaaaa11111111",
+      title: "Alpha open story",
+      published_at: published,
+      image_url: null,
+    });
+    const db = {
+      prepare: (sql: string) => ({
+        bind: () => ({
+          all: async () => {
+            if (sql.includes("llm_importance DESC"))
+              return { results: [candidate] };
+            if (sql.includes("json_each")) return { results: [row] };
+            return { results: [] };
+          },
+          first: async () => null,
+        }),
+      }),
+      batch: async () => [{ results: [] }, { results: [] }, { results: [] }],
+    } as unknown as D1Database;
+    const res = await handleWeekMarkdownRequest(
+      new Request("https://aidr.today/week/2026-W42.md?lang=en"),
+      db,
+      Date.parse("2026-10-12T03:00:00Z")
+    );
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("This week is still open");
+    expect(res.headers.get("Cache-Control")).toContain("max-age=60");
   });
 });
 
@@ -187,6 +235,7 @@ describe("week API body", () => {
   it("keeps both languages in separate fields for the video script", () => {
     const body = weekApiBody(edition, (i) => `/${i.id.slice(0, 8)}`);
     expect(body.intro_vi).toBe("");
+    expect(body).not.toHaveProperty("provisional");
     expect(body.stories[1]).toMatchObject({
       rank: 2,
       text_en: "Beta raised.",
@@ -195,5 +244,13 @@ describe("week API body", () => {
       source: "example.com",
       path: "/11111111",
     });
+  });
+
+  it("flags the provisional edition so scripts can refuse it", () => {
+    const body = weekApiBody(
+      { ...edition, provisional: true },
+      (i) => `/${i.id.slice(0, 8)}`
+    );
+    expect(body.provisional).toBe(true);
   });
 });

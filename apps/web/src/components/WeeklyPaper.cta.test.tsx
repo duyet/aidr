@@ -26,13 +26,17 @@ describe("WeeklyPaper subscribe + issue navigation", () => {
     expect(html).toContain("freq=weekly");
   });
 
-  it("repeats prev navigation at the foot with rel=prev, no next link", () => {
-    expect(html).toContain('rel="prev"');
+  it("has no footer prev/next nav; the head nav carries it", () => {
+    expect(html).not.toContain('rel="prev"');
     expect(html).not.toContain('rel="next"');
   });
 
   it("links back to the weeks archive at the top and bottom", () => {
     expect(html).toContain("Back to all weeks");
     expect(html.match(/Back to all weeks/g)?.length).toBe(2);
+  });
+
+  it("offers a share-week action in the masthead", () => {
+    expect(html).toContain(">Share</button>");
   });
 });

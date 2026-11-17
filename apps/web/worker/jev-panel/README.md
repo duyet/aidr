@@ -3,6 +3,7 @@
 Deterministic review-panel core from [#167](https://github.com/duyet/aidr/pull/167),
 plus the transport adapter and scoring-call-site integration added in
 [#203](https://github.com/duyet/aidr/issues/203).
+
 - `core.ts` — worker-neutral aggregation, quorum, diversity, bounded debate,
   idempotency keys, audit records. No `Env`, `fetch`, D1, or LLM dependency.
 - `config.ts` — `Env` to `JevPanelConfig`, including the diversity refusal.
@@ -45,6 +46,7 @@ Every panel run that is not a replay writes one row to `jev_panel_verdicts`
 and per-judge votes, claims, served model, latency, and tokens. Raw subject
 text is not stored. The write is best effort; a failed insert never changes
 the outcome. With the panel off, the table stays empty.
+
 - `GET /api/admin/jev-verdicts?limit=50&item=<id>` lists recent verdicts.
 - `POST /api/admin/jev-verdicts/<id>/override` with
   `{"decision":"uphold"|"overturn","note":"..."}` records an operator decision.

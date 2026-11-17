@@ -42,7 +42,7 @@ export function RunStepList({
               </span>
               <span className="text-muted-foreground"> — {action}</span>
               {step.reason ? (
-                <span className="block text-[11px] text-muted-foreground">
+                <span className="block text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground">
                   {formatSafeDetail(step.reason, 200)}
                 </span>
               ) : null}

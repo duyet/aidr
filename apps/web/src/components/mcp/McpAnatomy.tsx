@@ -338,7 +338,7 @@ export function McpAnatomy() {
               aria-pressed={part.id === activeId}
               onClick={() => pick(part.id)}
               onFocus={() => pick(part.id)}
-              className={`rounded-md border px-2 py-1 font-mono text-[11px] transition-colors ${
+              className={`rounded-md border px-2 py-1 font-mono text-[calc(11px*var(--reader-font-size,1))] transition-colors ${
                 part.id === activeId
                   ? "border-foreground/40 bg-foreground/5 text-foreground"
                   : "border-border text-muted-foreground hover:text-foreground"

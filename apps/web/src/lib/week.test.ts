@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  currentOpenWeek,
   formatWeekRange,
+  isOpenWeek,
   isoWeekOfDate,
   lastClosedWeek,
   parseWeek,
@@ -99,6 +101,38 @@ describe("formatWeekRange", () => {
     );
     expect(formatWeekRange("2026-10-05", "2026-10-11", "vi")).toBe(
       "5 – 11 tháng 10, 2026"
+    );
+  });
+});
+
+describe("currentOpenWeek", () => {
+  it("is the ISO week of today in the audience zone", () => {
+    // 2026-11-11T05:00Z is Wednesday 12:00 in Ho Chi Minh City, W46.
+    expect(currentOpenWeek(Date.parse("2026-11-11T05:00:00Z"))).toBe(
+      "2026-W46"
+    );
+    // 2026-10-11T18:00Z is Monday 01:00 ICT, so W42 just opened.
+    expect(currentOpenWeek(Date.parse("2026-10-11T18:00:00Z"))).toBe(
+      "2026-W42"
+    );
+  });
+
+  it("is null before the first weekly issue", () => {
+    // 2026-09-20T18:00Z is Monday 2026-09-21 01:00 ICT, the week before
+    // WEEKLY_FIRST_WEEK (2026-W40): nothing to publish yet.
+    expect(currentOpenWeek(Date.parse("2026-09-20T18:00:00Z"))).toBeNull();
+  });
+
+  it("is the same week on Sunday night ICT and false for the closed one", () => {
+    // Sunday 2026-11-15 00:30 ICT is 2026-11-14T17:30Z — still W46.
+    expect(currentOpenWeek(Date.parse("2026-11-14T17:30:00Z"))).toBe(
+      "2026-W46"
+    );
+    expect(isOpenWeek("2026-W45", Date.parse("2026-11-14T17:30:00Z"))).toBe(
+      false
+    );
+    expect(isOpenWeek("2026-W46", Date.parse("2026-11-14T17:30:00Z"))).toBe(
+      true
     );
   });
 });

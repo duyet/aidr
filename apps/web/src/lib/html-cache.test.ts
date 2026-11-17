@@ -19,6 +19,7 @@ const WEB_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const HTML_POLICY_FILES: Record<string, string> = {
   "src/lib/locale-response.ts": "/?lang=en",
   "src/routes/$slug.tsx": "/74c9e10c?lang=en",
+  "src/routes/week.$week.tsx": "/week/2026-W01?lang=en",
   "src/routes/calendar.tsx": "/calendar?lang=en",
   "src/routes/weeks.tsx": "/weeks?lang=en",
   "src/lib/day-archive.ts": "/date/2026-01-01?lang=en",
@@ -41,8 +42,10 @@ const NON_HTML_FILES = new Set([
   "src/lib/sitemap.ts",
   "src/lib/story-markdown.ts",
   "src/lib/system-api.ts",
+  "src/lib/week-markdown.ts",
   "src/routes/api/feed.ts",
   "src/routes/api/health.ts",
+  "src/routes/api/week.$week.ts",
   "src/routes/api/og.$id.tsx",
   "src/routes/api/og.date.$date.tsx",
   "src/routes/api/story.$id.ts",

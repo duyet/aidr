@@ -71,7 +71,7 @@ function Hop({ hop }: { hop: ChainAttempt }) {
   const error = hop.ok ? null : formatSafeError(hop.error);
   return (
     <span
-      className={`inline-flex min-w-0 flex-wrap items-center gap-x-1 rounded border px-1.5 py-0.5 font-mono text-[11px] ${
+      className={`inline-flex min-w-0 flex-wrap items-center gap-x-1 rounded border px-1.5 py-0.5 font-mono text-[calc(11px*var(--reader-font-size,1))] ${
         hop.ok
           ? "border-emerald-500/40 bg-emerald-500/5"
           : "border-destructive/40 bg-destructive/5"
@@ -93,15 +93,15 @@ function Hop({ hop }: { hop: ChainAttempt }) {
         </span>
       ) : null}
       {hop.provider ? (
-        <span className="font-sans text-[10px] text-muted-foreground">
+        <span className="font-sans text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground">
           via {formatSafeDetail(hop.provider, 60)}
         </span>
       ) : null}
-      <span className="text-[10px] text-muted-foreground tabular-nums">
+      <span className="text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground tabular-nums">
         {formatMs(hop.durationMs)}
       </span>
       {!hop.ok && (hop.errorCode || hop.errorStatus) ? (
-        <span className="text-[10px] text-destructive">
+        <span className="text-[calc(10px*var(--reader-font-size,1))] text-destructive">
           {hop.errorStatus ?? hop.errorCode}
         </span>
       ) : null}
@@ -166,7 +166,7 @@ export function RunAttemptRows({
               }`}
             />
             <div className="flex min-w-0 flex-wrap items-center gap-1">
-              <span className="rounded border border-border px-1.5 text-[10px] text-muted-foreground">
+              <span className="rounded border border-border px-1.5 text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground">
                 {formatSafeDetail(call.task, 80)}
               </span>
               {call.hops.map((hop, i) => (
@@ -183,14 +183,14 @@ export function RunAttemptRows({
                 </span>
               ))}
               {call.ok ? null : (
-                <p className="w-full break-words text-[11px] text-destructive">
+                <p className="w-full break-words text-[calc(11px*var(--reader-font-size,1))] text-destructive">
                   {formatSafeError(call.hops[call.hops.length - 1]?.error)}
                 </p>
               )}
             </div>
             <div className="text-right font-mono tabular-nums">
               <div>{formatMs(call.durationMs)}</div>
-              <div className="text-[10px] text-muted-foreground">
+              <div className="text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground">
                 {call.tokens === 0 ? "0" : formatTokens(call.tokens)}{" "}
                 {copy.tokens}
                 {call.costUsd !== null

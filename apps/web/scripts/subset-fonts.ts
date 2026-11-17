@@ -79,7 +79,10 @@ const LATIN_EXT: readonly Range[] = [
   [0x20b9, 0x20b9],
 ];
 
-/** ← and →: the story page's back link prints ←, which `latin` leaves out. */
+/** ← and →: the story page's back link prints ←, which `latin` leaves out.
+ * Only Inter carries them: Newsreader has no arrow glyphs, so its face
+ * keeps no arrow code points and the next family in the stack (Georgia /
+ * Liberation Serif, per-glyph fallback) sets them. */
 const ARROWS: readonly Range[] = [[0x2190, 0x2193]];
 
 /** Sorted, merged union of every range each face keeps. */
@@ -96,12 +99,25 @@ export const FONT_RANGES: readonly Range[] = (() => {
   return out;
 })();
 
-/** `FONT_RANGES` in CSS `unicode-range` syntax. */
-export function fontUnicodeRange(): string {
-  const hex = (n: number) => n.toString(16).toUpperCase().padStart(4, "0");
-  return FONT_RANGES.map(([lo, hi]) =>
-    lo === hi ? `U+${hex(lo)}` : `U+${hex(lo)}-${hex(hi)}`
-  ).join(", ");
+const hex = (n: number) => n.toString(16).toUpperCase().padStart(4, "0");
+
+/** `FONT_RANGES` minus the arrows: the reader serif's ranges. */
+export const SERIF_FONT_RANGES: readonly Range[] = FONT_RANGES.filter(
+  ([lo]) => lo !== 0x2190
+);
+
+/** The ranges a face actually keeps (defaults to the shared ones). */
+export function rangesOf(font: WebFont): readonly Range[] {
+  return font.ranges ?? FONT_RANGES;
+}
+
+/** The given ranges in CSS `unicode-range` syntax. */
+export function fontUnicodeRange(
+  ranges: readonly Range[] = FONT_RANGES
+): string {
+  return ranges
+    .map(([lo, hi]) => (lo === hi ? `U+${hex(lo)}` : `U+${hex(lo)}-${hex(hi)}`))
+    .join(", ");
 }
 
 /**
@@ -136,6 +152,8 @@ export interface WebFont {
   output: string;
   /** Axes pinned to one value; the wght axis always stays variable. */
   pin?: Record<string, number>;
+  /** Code points kept; defaults to FONT_RANGES. */
+  ranges?: readonly Range[];
 }
 
 export const WEB_FONTS: readonly WebFont[] = [
@@ -149,12 +167,13 @@ export const WEB_FONTS: readonly WebFont[] = [
     pin: { opsz: 14 },
   },
   {
-    family: "Source Serif 4 Variable",
-    source: "source-serif-4-opsz-wght.woff2",
-    output: "source-serif-4-wght-normal.woff2",
-    // The optical size Fontsource's wght-only files were instanced at
-    // (glyph advances match exactly), so text sets as it did before.
+    family: "Newsreader Variable",
+    source: "newsreader-opsz-wght.woff2",
+    output: "newsreader-wght-normal.woff2",
+    // Text optical size. Newsreader defaults to 18pt; pin 14 so the file
+    // carries the cut drawn for body sizes.
     pin: { opsz: 14 },
+    ranges: SERIF_FONT_RANGES,
   },
 ];
 
@@ -163,9 +182,9 @@ export const sourcePath = (font: WebFont) =>
 export const outputPath = (font: WebFont) =>
   join(fontsDir, "generated", font.output);
 
-export function fontText(): string {
+export function fontText(ranges: readonly Range[] = FONT_RANGES): string {
   let text = "";
-  for (const [lo, hi] of FONT_RANGES) {
+  for (const [lo, hi] of ranges) {
     for (let c = lo; c <= hi; c++) text += String.fromCodePoint(c);
   }
   return text;
@@ -175,7 +194,7 @@ export function subsetWebFont(
   font: WebFont,
   targetFormat: "woff2" | "truetype" = "woff2"
 ): Promise<Buffer> {
-  return subsetFont(readFileSync(sourcePath(font)), fontText(), {
+  return subsetFont(readFileSync(sourcePath(font)), fontText(rangesOf(font)), {
     targetFormat,
     noHinting: true,
     keepFeatures: LAYOUT_FEATURES,

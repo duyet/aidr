@@ -13,11 +13,11 @@ interface RankingExplainerProps {
 export function RankingExplainer({ models }: RankingExplainerProps) {
   return (
     <div className="space-y-2.5 text-sm">
-      <p className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-foreground">
+      <p className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[calc(11px*var(--reader-font-size,1))] leading-relaxed text-foreground">
         rankScore = importance^1.5 / √10 × qualityFactor × decay ×
         min(engagement × sources, 3.25) × votes × kind × breaking
       </p>
-      <ul className="grid gap-x-4 gap-y-1 text-[11px] leading-relaxed text-muted-foreground sm:grid-cols-2">
+      <ul className="grid gap-x-4 gap-y-1 text-[calc(11px*var(--reader-font-size,1))] leading-relaxed text-muted-foreground sm:grid-cols-2">
         <li>
           <span className="font-medium text-foreground">qualityFactor</span> =
           0.6 + 0.4 × (quality / 10)
@@ -55,7 +55,7 @@ export function RankingExplainer({ models }: RankingExplainerProps) {
           0.4 × exp(−age / 3h) for importance ≥ 8
         </li>
       </ul>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-[calc(11px*var(--reader-font-size,1))] leading-relaxed text-muted-foreground">
         Same-story outlets merge first; corroboration lifts rank and trending.
         Full pipeline:{" "}
         <a
@@ -106,7 +106,7 @@ function ModelChain({ label, chain }: { label: string; chain: string[] }) {
             >
               <Badge
                 variant="outline"
-                className="font-mono text-[10px] font-normal transition-colors hover:border-accent hover:text-accent"
+                className="font-mono text-[calc(10px*var(--reader-font-size,1))] font-normal transition-colors hover:border-accent hover:text-accent"
               >
                 {model}
               </Badge>

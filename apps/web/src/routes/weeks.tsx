@@ -1,23 +1,53 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bi } from "../components/Bi";
+import { CalendarPage } from "../components/calendar/CalendarPage";
 import { LoadErrorPage } from "../components/LoadErrorPage";
+import { OpenWeekRow } from "../components/OpenWeekRow";
+import { ShareWeekButton } from "../components/ShareWeekButton";
+import { KeywordText } from "../components/story-page/KeywordText";
+import { WeeklyMasthead } from "../components/WeeklyMasthead";
 import { weeklyTitle } from "../components/WeeklyPaper";
-import { WeeklySubscribeCta } from "../components/WeeklySubscribeCta";
+import { WeekThumb } from "../components/WeekThumb";
+import { fetchCalendarMonth } from "../lib/calendar-fn";
+import { latestArchiveDate } from "../lib/day-archive";
 import { headRouteInput } from "../lib/head-route";
 import { useLang } from "../lib/lang-context";
-import { loadErrorHead, loadErrorHeaders } from "../lib/load-error";
-import { EYEBROW, PAGE_TITLE } from "../lib/page-style";
+import {
+  loadErrorCopy,
+  loadErrorHead,
+  loadErrorHeaders,
+} from "../lib/load-error";
+import { withLang } from "../lib/locale-url";
+import { EYEBROW } from "../lib/page-style";
 import { localizedPageHead } from "../lib/seo";
 import type { Lang } from "../lib/types";
 import { formatWeekRange, WEEKS_INDEX_PATH, weekPath } from "../lib/week";
-import { fetchWeekIndex } from "../lib/week-fn";
+import { fetchCurrentOpenWeek, fetchWeekIndex } from "../lib/week-fn";
 import type { WeekSummary } from "../lib/week-model";
 
 const INDEX_CACHE_CONTROL =
   "public, max-age=300, s-maxage=1800, stale-while-revalidate=3600";
 
+export interface WeeksSearch {
+  month?: string;
+}
+
 export const Route = createFileRoute("/weeks")({
-  loader: async () => ({ weeks: await fetchWeekIndex() }),
+  validateSearch: (search: Record<string, unknown>): WeeksSearch =>
+    typeof search.month === "string" && search.month
+      ? { month: search.month }
+      : {},
+  loaderDeps: ({ search }) => ({ month: search.month }),
+  // `today` is computed once here so the cached HTML and hydration agree
+  // across the UTC+7 midnight boundary. An invalid month clamps to the
+  // current month in `fetchCalendarMonth`.
+  loader: async ({ deps }) => {
+    const [weeks, cal, open] = await Promise.all([
+      fetchWeekIndex(),
+      fetchCalendarMonth({ data: { month: deps?.month } }),
+      fetchCurrentOpenWeek(),
+    ]);
+    return { weeks, cal, open, today: latestArchiveDate(Date.now()) };
+  },
   headers: ({ loaderData, match }): Record<string, string> => {
     // No loaderData: the read failed and Start answers 500. An empty index
     // here would be edge-cached as "no issues yet".
@@ -66,55 +96,75 @@ export function storyCount(n: number, vi: boolean): string {
 }
 
 function WeeksPage() {
-  const { weeks } = Route.useLoaderData();
+  const { weeks, cal, open, today } = Route.useLoaderData();
   const lang = useLang();
   const vi = lang === "vi";
   return (
-    <div className="mx-auto max-w-3xl pt-5 pb-10 max-sm:pt-4">
-      <header>
-        <Bi
-          as="p"
-          className={EYEBROW}
-          vi="Lưu trữ các số báo"
-          en="The archive"
-        />
-        <h1 className={`mt-2 ${PAGE_TITLE}`}>{weeklyTitle(lang)}</h1>
-      </header>
-      <WeeklySubscribeCta lang={lang} />
-      {weeks.length === 0 ? (
-        <Bi
-          as="p"
-          className="py-10 text-center text-[15px] text-muted-foreground"
-          vi="Số đầu tiên sẽ ra sau khi tuần này kết thúc. Đăng ký ở trên để nhận ngay khi có."
-          en="The first issue comes out once this week closes. Subscribe above to get it the moment it lands."
+    <div className="mx-auto max-w-5xl pt-5 pb-10 max-sm:pt-4">
+      <WeeklyMasthead latest={weeks[0] ?? null} lang={lang} />
+      {cal ? (
+        <CalendarPage
+          cal={cal}
+          lang={lang}
+          today={today}
+          headingAs="h2"
+          className="mt-2"
+          monthHref={(m) => withLang(`${WEEKS_INDEX_PATH}?month=${m}`, lang)}
+          showWeeklyNav={false}
         />
       ) : (
-        <ol className="grid gap-1">
+        <p
+          role="alert"
+          className="mt-4 rounded-2xl border border-dashed border-border px-5 py-6 text-center text-[calc(15px*var(--reader-font-size,1))] text-muted-foreground"
+        >
+          {loadErrorCopy("calendar", lang).body}
+        </p>
+      )}
+      {weeks.length === 0 && !open ? (
+        <p className="border-t border-border py-10 text-center text-[calc(15px*var(--reader-font-size,1))] text-muted-foreground">
+          {vi
+            ? "Số đầu tiên sẽ ra sau khi tuần này kết thúc. Đăng ký ở trên để nhận ngay khi có."
+            : "The first issue comes out once this week closes. Subscribe above to get it the moment it lands."}
+        </p>
+      ) : (
+        <ol className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card px-2">
+          {open ? <OpenWeekRow open={open} lang={lang} /> : null}
           {weeks.map((week) => {
             const text = teaser(week, lang);
             return (
-              <li key={week.week}>
-                <a
-                  href={weekPath(week.week, lang)}
-                  className="group -mx-3 block rounded-xl px-3 py-3.5 hover:bg-muted"
-                >
-                  <p className={`${EYEBROW} tabular-nums`}>
-                    <Bi
-                      inline
-                      vi={`Số ${week.issue}`}
-                      en={`Issue No. ${week.issue}`}
-                    />{" "}
-                    · {week.week} · {storyCount(week.stories, vi)}
-                  </p>
-                  <h2 className="mt-1 text-[17px] font-semibold leading-[1.35] tracking-[-0.01em] text-foreground group-hover:text-accent">
-                    {formatWeekRange(week.start_date, week.end_date, lang)}
-                  </h2>
-                  {text ? (
-                    <p className="mt-1 text-[14px] leading-[1.55] text-body">
-                      {text}
-                    </p>
-                  ) : null}
-                </a>
+              <li key={week.week} className="px-2 py-3.5">
+                <div className="group flex items-start gap-4">
+                  <WeekThumb week={week} />
+                  <div className="min-w-0 flex-1">
+                    <a
+                      href={weekPath(week.week, lang)}
+                      className="block"
+                      aria-label={
+                        vi
+                          ? `${weeklyTitle(lang)} số ${week.issue}, ${formatWeekRange(week.start_date, week.end_date, lang)}`
+                          : `${weeklyTitle(lang)} No. ${week.issue}, ${formatWeekRange(week.start_date, week.end_date, lang)}`
+                      }
+                    >
+                      <p className={`${EYEBROW} tabular-nums`}>
+                        <span className="font-semibold text-accent">
+                          {vi ? `Số ${week.issue}` : `Issue No. ${week.issue}`}
+                        </span>{" "}
+                        · {week.week} · {storyCount(week.stories, vi)}
+                      </p>
+                      <h2 className="mt-1 text-[calc(17px*var(--reader-font-size,1))] leading-[1.35] font-semibold tracking-[-0.01em] text-foreground transition-colors group-hover:text-accent">
+                        {formatWeekRange(week.start_date, week.end_date, lang)}
+                      </h2>
+                      {text ? (
+                        <p className="mt-1 text-[calc(14px*var(--reader-font-size,1))] leading-[1.55] text-body">
+                          <KeywordText text={text} tags={week.lead_tags} />
+                        </p>
+                      ) : null}
+                    </a>
+                    <div className="mt-2">
+                      <ShareWeekButton week={week} lang={lang} />
+                    </div>
+                  </div>
+                </div>
               </li>
             );
           })}

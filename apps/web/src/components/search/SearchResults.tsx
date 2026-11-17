@@ -83,7 +83,7 @@ export function SearchResults({
                 end={m.matchEnd}
               />
             </span>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground">
               {m.item.category ? (
                 <CategoryLabel name={m.item.category} lang={lang} />
               ) : null}

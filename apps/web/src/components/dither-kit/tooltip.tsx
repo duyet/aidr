@@ -86,7 +86,7 @@ export function Tooltip({
           )}
         >
           {heading && (
-            <div className="mb-0.5 font-mono text-[10px] text-muted-foreground">
+            <div className="mb-0.5 font-mono text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground">
               {heading}
             </div>
           )}
@@ -94,7 +94,7 @@ export function Tooltip({
             {items.map((item) => (
               <div
                 key={item.name}
-                className="flex items-center gap-1.5 font-mono text-[11px] text-popover-foreground tabular-nums"
+                className="flex items-center gap-1.5 font-mono text-[calc(11px*var(--reader-font-size,1))] text-popover-foreground tabular-nums"
                 style={{ opacity: item.dimmed ? 0.4 : 1 }}
               >
                 <span
@@ -110,7 +110,7 @@ export function Tooltip({
               </div>
             ))}
             {showTotal && (
-              <div className="mt-0.5 flex items-center gap-1.5 border-t border-border pt-0.5 font-mono text-[11px] text-popover-foreground tabular-nums">
+              <div className="mt-0.5 flex items-center gap-1.5 border-t border-border pt-0.5 font-mono text-[calc(11px*var(--reader-font-size,1))] text-popover-foreground tabular-nums">
                 <span className="size-2" aria-hidden />
                 <span className="text-muted-foreground">{totalLabel}</span>
                 <span className="ml-auto pl-2 font-medium text-foreground">

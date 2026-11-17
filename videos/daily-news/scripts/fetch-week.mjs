@@ -24,6 +24,15 @@ if (!res.ok) {
   process.exit(1);
 }
 const data = await res.json();
+// Never pull a half-finished week: the provisional ranking re-scores on
+// every view and its intro and lines are title fallbacks, not the
+// edition. --force overrides when the cut is wanted anyway.
+if (data.provisional && !process.argv.includes("--force")) {
+  console.error(
+    `${week} is still open; GET /api/week/${week} returned the provisional edition (provisional=true). Refusing to build a video from it. Use --force to pull it anyway.`
+  );
+  process.exit(1);
+}
 const date = `week-${week}`;
 const dir = join(ROOT, "editions", date);
 // Same guard as fetch.mjs: a written script is tied to the edition it was written from.

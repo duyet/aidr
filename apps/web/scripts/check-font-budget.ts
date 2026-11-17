@@ -48,13 +48,15 @@ const CRITICAL_BODY_BUDGET_BYTES = 60_000;
 const TOTAL_BUDGET_BYTES = 60_000;
 
 /**
- * Source Serif 4, one file, 62,924 B. Opt-in:
- * only `[data-reader-font="serif"]` uses the family, so only a reader who
- * picked serif downloads it. Budgeted on its own so the default page's
- * total above stays honest.
+ * Newsreader, one file, 82,404 B (opsz pinned to 14). Opt-in: only
+ * `[data-reader-font="serif"]` uses the family, so only a reader who
+ * picked serif downloads it. It costs ~20 KB more than Source Serif 4 did
+ * for the same coverage; the whole Vietnamese alphabet stays load-bearing
+ * (apps/web/src/lib/fonts.test.ts), so the budget sits at 90 KB. Budgeted
+ * on its own so the default page's total above stays honest.
  */
-const READER_SERIF_FAMILY = "Source Serif 4";
-const READER_SERIF_BUDGET_BYTES = 70_000;
+const READER_SERIF_FAMILY = "Newsreader";
+const READER_SERIF_BUDGET_BYTES = 90_000;
 
 interface Face {
   family: string;

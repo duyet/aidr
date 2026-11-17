@@ -380,7 +380,7 @@ export async function sendWelcomeEmail(
     : "You're subscribed to AI;DR — aidr.today";
   const bodyMd = weekly
     ? vi
-      ? `Cảm ơn bạn đã đăng ký.\n\nMỗi sáng ${weekdayName(day, "vi")} (khoảng 7h theo giờ của bạn) chúng tôi gửi AI;DR Tuần — những tin AI đáng chú ý nhất của 7 ngày trước đó. Bạn có thể đổi ngày nhận hoặc chuyển sang bản tin hằng ngày trong phần cài đặt.\n`
+      ? `Cảm ơn bạn đã đăng ký.\n\nMỗi sáng ${weekdayName(day, "vi")} (khoảng 7h theo giờ của bạn) chúng tôi gửi AI;DR Tuần Này — những tin AI đáng chú ý nhất của 7 ngày trước đó. Bạn có thể đổi ngày nhận hoặc chuyển sang bản tin hằng ngày trong phần cài đặt.\n`
       : `Thanks for subscribing.\n\nEvery ${weekdayName(day, "en")} morning (around 7:00 in your timezone) we send AI;DR Weekly — the stories that mattered most in the 7 days before. You can change the day or switch to the daily digest in your settings.\n`
     : vi
       ? "Cảm ơn bạn đã đăng ký.\n\nMỗi sáng (khoảng 7h theo giờ của bạn) chúng tôi gửi bản tin AI;DR — số tin theo cài đặt của bạn.\n"

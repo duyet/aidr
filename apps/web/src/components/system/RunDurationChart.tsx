@@ -88,7 +88,7 @@ export function RunDurationChart({
     <div className="space-y-2">
       <dl
         aria-label="Run duration summary"
-        className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[11px]"
+        className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[calc(11px*var(--reader-font-size,1))]"
       >
         {(
           [

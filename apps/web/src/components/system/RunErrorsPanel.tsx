@@ -28,7 +28,7 @@ export function RunErrorsPanel({
   const hasFallback = fallback.length > 0;
   return (
     <div>
-      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="mb-1.5 text-[calc(10px*var(--reader-font-size,1))] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         {copy.errors}
       </p>
       {run.error ||
@@ -50,7 +50,7 @@ export function RunErrorsPanel({
                     key={`${t.task}-${t.from}-${t.to}`}
                     className="flex items-baseline gap-2"
                   >
-                    <span className="shrink-0 rounded bg-muted px-1.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+                    <span className="shrink-0 rounded bg-muted px-1.5 font-mono text-[calc(10px*var(--reader-font-size,1))] tabular-nums text-muted-foreground">
                       {t.count}×
                     </span>
                     <span className="min-w-0">
@@ -58,7 +58,7 @@ export function RunErrorsPanel({
                         {t.task}
                       </span>
                       {" · "}
-                      <span className="inline-flex flex-wrap items-center gap-x-1 font-mono text-[11px]">
+                      <span className="inline-flex flex-wrap items-center gap-x-1 font-mono text-[calc(11px*var(--reader-font-size,1))]">
                         <span className="inline-flex items-center gap-1">
                           <ModelLogo model={t.from} />
                           {shortModel(t.from)}
@@ -97,7 +97,7 @@ export function RunErrorsPanel({
                   key={`${group.task}-${group.model}-${group.errorCode}-${group.error}`}
                   className="flex items-baseline gap-2"
                 >
-                  <span className="shrink-0 rounded bg-destructive/10 px-1.5 font-mono text-[10px] tabular-nums text-destructive">
+                  <span className="shrink-0 rounded bg-destructive/10 px-1.5 font-mono text-[calc(10px*var(--reader-font-size,1))] tabular-nums text-destructive">
                     {group.count}×
                   </span>
                   <span className="min-w-0 break-words">
@@ -105,14 +105,14 @@ export function RunErrorsPanel({
                       {group.task}
                     </span>
                     {" · "}
-                    <span className="inline-flex items-center gap-1 font-mono text-[11px]">
+                    <span className="inline-flex items-center gap-1 font-mono text-[calc(11px*var(--reader-font-size,1))]">
                       <ModelLogo model={group.model} />
                       {shortModel(group.model)}
                     </span>
                     {" · "}
                     {group.error}
                     {group.errorCode ? (
-                      <span className="ml-1 font-mono text-[10px]">
+                      <span className="ml-1 font-mono text-[calc(10px*var(--reader-font-size,1))]">
                         {group.errorCode}
                       </span>
                     ) : null}

@@ -31,7 +31,7 @@ function JevDecisionsCard() {
                     href={anyrouterModelUrl(model)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-full font-mono text-[11px] text-accent underline underline-offset-2 hover:no-underline"
+                    className="rounded-full font-mono text-[calc(11px*var(--reader-font-size,1))] text-accent underline underline-offset-2 hover:no-underline"
                     title={`Open ${model} on AnyRouter`}
                   >
                     {model}

@@ -117,6 +117,7 @@ returned zero items, forward from the previous run's stats (a single-row
 read — surfacing staleness costs nothing on the request path). A source at or
 over its threshold is flagged `stale` in `/api/system/sources` and the `/data`
 Algo tab.
+
 - Default: **336 consecutive runs** (7 days at the 30-minute cadence). Chosen
   against measured cadence, not roundness: when the registry was verified
   live, 14 of 21 feeds returned nothing inside the 26h window — including
@@ -169,6 +170,7 @@ workflow, so a missing key is otherwise invisible until sign-in breaks.
 
 Both deploy paths assert the proxy is live, so a missing key fails the deploy
 instead of shipping:
+
 - `pnpm run smoke` (the local `cf:deploy:prod` path) checks
   `GET /__clerk/v1/environment` returns `200` with `auth_config`.
 - `.github/workflows/deploy-web.yml` runs an equivalent post-deploy
@@ -196,6 +198,7 @@ call to Clerk on every page view — a public dashboard endpoint must not fail
 because a third-party API is slow or rate-limited.
 
 Two writers keep that table current:
+
 - `POST /api/webhooks/clerk` (`src/routes/api/webhooks.clerk.ts`) handles
   `user.created`, `user.updated`, and `user.deleted`. Every request must carry
   Clerk's Svix headers (`svix-id`, `svix-timestamp`, `svix-signature`) and is
@@ -250,6 +253,7 @@ If both answer `200` from your network, read the zone settings for the URL GSC
 names. `aidr.today` is a Worker custom domain (`[[routes]] custom_domain` in
 `wrangler.toml`), so no WAF rule for these paths exists in this repository and
 the cause is in the zone:
+
 - `GET /zones/{zone_id}/security/bot_management` — bot fight mode / known bot
   actions, which can challenge or block a verified crawler.
 - `GET /zones/{zone_id}/security/settings` — Security Level and Browser
@@ -278,6 +282,7 @@ curl -s -o /dev/null -w '%{http_code} -> %{redirect_url}\n' \
 ```
 
 Then, in Google Search Console:
+
 1. Re-submit `https://aidr.today/sitemap.xml`.
 2. Pick a handful of the bare `/{8-hex}` permalinks that were reported as
    "Discovered - currently not indexed" and run **URL Inspection → Request

@@ -53,7 +53,7 @@ export function RunModelsCell({ llm }: { llm?: RunLlmSummary }) {
           </span>
         ) : null}
       </div>
-      <span className="text-[10px] text-muted-foreground">
+      <span className="text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground">
         {llm.calls} call{llm.calls === 1 ? "" : "s"}
         {llm.failures > 0 ? ` · ${llm.failures} fail` : ""}
       </span>

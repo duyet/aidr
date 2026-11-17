@@ -56,7 +56,7 @@ export function RunCollectedItems({
 
   return (
     <div>
-      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="mb-1.5 text-[calc(10px*var(--reader-font-size,1))] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         {vi ? "Tin đã lưu trong lần chạy" : "Items stored this run"}
       </p>
       {state === "loading" ? (
@@ -97,7 +97,7 @@ export function RunCollectedItems({
                     {label}
                   </span>
                 )}
-                <span className="block truncate font-mono text-[10px] text-muted-foreground">
+                <span className="block truncate font-mono text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground">
                   {item.url}
                 </span>
               </li>
@@ -106,7 +106,7 @@ export function RunCollectedItems({
         </ul>
       ) : null}
       {truncated ? (
-        <p className="mt-1 text-[10px] text-muted-foreground">
+        <p className="mt-1 text-[calc(10px*var(--reader-font-size,1))] text-muted-foreground">
           {vi
             ? "Chỉ hiện 200 tin mới nhất."
             : "Showing the 200 most recently stored."}

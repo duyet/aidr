@@ -4,7 +4,7 @@ import { formatSafeDetail, shortModel } from "./run-format";
 
 export function RunModelLinks({ models }: { models: string[] }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px]">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[calc(11px*var(--reader-font-size,1))]">
       {models.map((model, index) => (
         <span
           key={`${model}-${index}`}

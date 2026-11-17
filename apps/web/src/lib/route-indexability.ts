@@ -268,7 +268,8 @@ function isDayArchiveRoutePath(pathname: string): boolean {
   return /^\/date\/\d{4}-\d{2}-\d{2}$/.test(pathname);
 }
 
-/** `/week/YYYY-Www`; a missing or open week still 404s → error policy. */
+/** `/week/YYYY-Www`; a missing or closed week answers the error policy,
+ * the in-progress week renders its provisional edition. */
 function isWeekRoutePath(pathname: string): boolean {
   return /^\/week\/\d{4}-w\d{2}$/.test(pathname);
 }

@@ -38,7 +38,7 @@ interface RunDetailsProps {
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+      <dt className="text-[calc(10px*var(--reader-font-size,1))] uppercase tracking-[0.08em] text-muted-foreground">
         {label}
       </dt>
       <dd className="mt-0.5 break-words text-xs text-foreground">{children}</dd>
@@ -102,7 +102,7 @@ export function RunDetails({
       }}
     >
       <div>
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <p className="mb-1.5 text-[calc(10px*var(--reader-font-size,1))] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {copy.summary}
         </p>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
@@ -118,7 +118,7 @@ export function RunDetails({
           <Detail label={copy.status}>
             <Badge
               variant={statusVariant(status !== "error", status === "empty")}
-              className={`mt-0.5 px-1.5 py-0 text-[10px] font-normal ${
+              className={`mt-0.5 px-1.5 py-0 text-[calc(10px*var(--reader-font-size,1))] font-normal ${
                 status === "in_progress"
                   ? "border-border bg-muted text-muted-foreground"
                   : ""
@@ -157,7 +157,7 @@ export function RunDetails({
 
       <div className="grid gap-3 border-t border-border/60 pt-3 md:grid-cols-2">
         <div>
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="mb-1.5 text-[calc(10px*var(--reader-font-size,1))] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {copy.models}
           </p>
           {models.length > 0 ? (
@@ -185,7 +185,7 @@ export function RunDetails({
 
       {steps.length > 0 ? (
         <div className="border-t border-border/60 pt-3">
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="mb-1.5 text-[calc(10px*var(--reader-font-size,1))] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {copy.workflow}
           </p>
           <RunWorkflowGraph steps={steps} attempts={attempts} />
@@ -197,7 +197,7 @@ export function RunDetails({
       )}
 
       <details className="group border-t border-border/60 pt-3">
-        <summary className="mb-1.5 cursor-pointer list-none text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground">
+        <summary className="mb-1.5 cursor-pointer list-none text-[calc(10px*var(--reader-font-size,1))] font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground">
           <span
             aria-hidden
             className="mr-1 inline-block transition-transform group-open:rotate-90"
@@ -210,7 +210,7 @@ export function RunDetails({
         {attemptsState === "loading" ? (
           <>
             <Skeleton className="h-16 w-full" />
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground">
               {copy.attemptsLoading}
             </p>
           </>
@@ -218,7 +218,7 @@ export function RunDetails({
           <>
             <RunAttemptRows attempts={attempts} lang={lang} />
             {attemptsTruncated ? (
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-[calc(11px*var(--reader-font-size,1))] text-muted-foreground">
                 {copy.attemptsTruncated}
               </p>
             ) : null}

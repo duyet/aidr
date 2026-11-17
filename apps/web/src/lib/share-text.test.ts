@@ -181,3 +181,23 @@ describe("trimToLength", () => {
     expect(trimToLength("one two three four", 12)).toBe("one two…");
   });
 });
+
+describe("story style params", () => {
+  it("omits font and fs at the defaults", () => {
+    expect(storyShareLink(item, "en", { font: "sans", fontSize: 1 })).toContain(
+      "https://aidr.today/abcdef12?lang=en&"
+    );
+    expect(
+      storyShareLink(item, "en", { font: "sans", fontSize: 1 })
+    ).not.toContain("font=");
+    expect(
+      storyShareLink(item, "en", { font: "sans", fontSize: 1 })
+    ).not.toContain("fs=");
+  });
+
+  it("carries a serif face and larger text so the link keeps the style", () => {
+    const link = storyShareLink(item, "en", { font: "serif", fontSize: 1.15 });
+    expect(link).toContain("&font=serif");
+    expect(link).toContain("&fs=1.15");
+  });
+});
