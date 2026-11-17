@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CalendarPage } from "../components/calendar/CalendarPage";
+import { KeywordText } from "../components/KeywordText";
 import { LoadErrorPage } from "../components/LoadErrorPage";
 import { OpenWeekRow } from "../components/OpenWeekRow";
 import { ShareWeekButton } from "../components/ShareWeekButton";
-import { KeywordText } from "../components/story-page/KeywordText";
 import { WeeklyMasthead } from "../components/WeeklyMasthead";
 import { weeklyTitle } from "../components/WeeklyPaper";
 import { WeekThumb } from "../components/WeekThumb";

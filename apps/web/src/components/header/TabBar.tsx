@@ -3,7 +3,6 @@ import type { DrawerController } from "@ui-sdk/react/drawer";
 import { track } from "../../lib/analytics/track";
 import { useLang } from "../../lib/lang-context";
 import type { Lang } from "../../lib/types";
-import { Bi } from "../Bi";
 import { CalendarButton } from "./CalendarButton";
 import { NAV_ITEMS } from "./lib";
 import { PhoneMenuTrigger } from "./PhoneMenu";

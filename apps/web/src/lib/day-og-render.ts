@@ -9,12 +9,7 @@ import {
   isSettledArchiveDate,
   latestArchiveDate,
 } from "./day-archive";
-import {
-  DAY_OG_HEIGHT,
-  DAY_OG_WIDTH,
-  dayCardModel,
-  dayOgCard,
-} from "./day-og";
+import { DAY_OG_HEIGHT, DAY_OG_WIDTH, dayCardModel, dayOgCard } from "./day-og";
 import { readSession } from "./db";
 import { getDayArchive } from "./feed-queries";
 import { loadOgFontAsset, loadStoryOgFonts } from "./og-fonts";

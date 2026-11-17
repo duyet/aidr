@@ -29,8 +29,7 @@ vi.mock("../../src/lib/feed-queries.js", () => ({
 // Spy on the card read so one test can fail it without losing the real
 // implementation (and the v-stamp parity assertions) for the others.
 vi.mock("../notify/day-card.js", async (importOriginal) => {
-  const orig =
-    await importOriginal<typeof import("../notify/day-card.js")>();
+  const orig = await importOriginal<typeof import("../notify/day-card.js")>();
   return { ...orig, loadDayCard: vi.fn(orig.loadDayCard) };
 });
 
@@ -41,6 +40,7 @@ const { prerenderDayCards, summarizeDayCardStats } = await import(
 const { dayCardVersion } = await import("../notify/day-card.js");
 const { DRY_RUN_SKIP_REASON, PIPELINE_STEPS, skipUnselectedStep } =
   await import("../ingest/mode.js");
+
 import type { IngestContext } from "../ingest/context.js";
 import type { IngestMode } from "../ingest/mode.js";
 
@@ -362,7 +362,14 @@ describe("prerenderDayCards", () => {
     expect(stats.vi.rendered).toBe(2);
     // No put for either English key; the Vietnamese keys are stored.
     expect(objects.has(baseKey("en"))).toBe(false);
-    expect(objects.has(versionKey("en", ITEMS.map((i) => i.id)))).toBe(false);
+    expect(
+      objects.has(
+        versionKey(
+          "en",
+          ITEMS.map((i) => i.id)
+        )
+      )
+    ).toBe(false);
     expect(objects.has(baseKey("vi"))).toBe(true);
     expect(put).toHaveBeenCalledTimes(2);
     expect(warn).toHaveBeenCalledWith(

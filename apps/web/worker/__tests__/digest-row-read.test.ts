@@ -42,7 +42,11 @@ describe("shared digest notification read", () => {
   it("single and batched reads use the same query and return the same rows", async () => {
     const one = mockDb({ telegram: ROW });
     const many = mockDb({ telegram: ROW });
-    const single = await readDigestNotificationRow(one.env, "telegram", "digest:2026-10-15");
+    const single = await readDigestNotificationRow(
+      one.env,
+      "telegram",
+      "digest:2026-10-15"
+    );
     const batched = await readDigestNotificationRows(
       many.env,
       ["telegram", "telegram-en"],
@@ -59,7 +63,11 @@ describe("shared digest notification read", () => {
 
   it("binds channel and key in that order on every statement", async () => {
     const { env, prepare } = mockDb({});
-    await readDigestNotificationRows(env, ["telegram", "facebook-en"], "digest:2026-10-15");
+    await readDigestNotificationRows(
+      env,
+      ["telegram", "facebook-en"],
+      "digest:2026-10-15"
+    );
     expect(prepare.mock.calls).toHaveLength(2);
     const stmts = prepare.mock.results.map((r) => r.value);
     expect(stmts[0].args).toEqual(["telegram", "digest:2026-10-15"]);
@@ -68,9 +76,9 @@ describe("shared digest notification read", () => {
 
   it("a failed batch throws so the caller can choose its fallback", async () => {
     const { env } = mockDb({});
-    (env.DB as unknown as { batch: ReturnType<typeof vi.fn> }).batch.mockRejectedValue(
-      new Error("budget spent")
-    );
+    (
+      env.DB as unknown as { batch: ReturnType<typeof vi.fn> }
+    ).batch.mockRejectedValue(new Error("budget spent"));
     await expect(
       readDigestNotificationRows(env, ["telegram"], "digest:2026-10-15")
     ).rejects.toThrow("budget spent");

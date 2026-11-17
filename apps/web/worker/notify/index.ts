@@ -165,8 +165,9 @@ export async function readDigestNotificationRow(
   key: string
 ): Promise<NotificationRow | null> {
   return (
-    (await env.DB.prepare(DIGEST_ROW_SQL).bind(channel, key).first<NotificationRow>()) ??
-    null
+    (await env.DB.prepare(DIGEST_ROW_SQL)
+      .bind(channel, key)
+      .first<NotificationRow>()) ?? null
   );
 }
 

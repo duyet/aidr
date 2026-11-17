@@ -16,17 +16,17 @@ import { loadDayCard } from "../notify/day-card.js";
 import {
   DIGEST_LOCAL_HOUR,
   digestKey,
+  type NotificationRow,
   notifiers,
   readDigestNotificationRows,
   shouldSendDigest,
-  type NotificationRow,
 } from "../notify/index.js";
 import { digestCardUrl } from "../notify/telegram.js";
 import { recordStep } from "../run-stats.js";
 import { getLocalHourAndDate } from "../subscribe/send.js";
 import { AUDIENCE_TIMEZONE } from "../time.js";
 import type { Env } from "../types.js";
-import { safeStep, safeErrorMessage } from "../workflow-step.js";
+import { safeErrorMessage, safeStep } from "../workflow-step.js";
 import type { IngestContext } from "./context.js";
 import { DRY_RUN_SKIP_REASON } from "./mode.js";
 
@@ -136,7 +136,8 @@ export async function prerenderDayCards(
   const interrupted = steps
     .slice(from)
     .some((s) => s.name === "day-card" && s.action === "interrupted");
-  if (!interrupted) recordStep(steps, "day-card", summarizeDayCardStats(result));
+  if (!interrupted)
+    recordStep(steps, "day-card", summarizeDayCardStats(result));
   return result;
 }
 
@@ -175,14 +176,18 @@ async function prerenderLang(
   // gate open forever; enabled() is not checked because a half-configured
   // Telegram throws in assertNotifyConfig before any send.
   if (version) {
-    const telegram = notifiers.find((n) => n.lang === lang && n.id.startsWith("telegram"));
+    const telegram = notifiers.find(
+      (n) => n.lang === lang && n.id.startsWith("telegram")
+    );
     if (rows === null) {
       stats.readFailed++;
     } else if (
       telegram &&
       shouldSendDigest(rows.get(telegram.id) ?? null, hour)
     ) {
-      keys.push(dayOgObjectKey(new URL(digestCardUrl({ date, lang }, version))));
+      keys.push(
+        dayOgObjectKey(new URL(digestCardUrl({ date, lang }, version)))
+      );
     } else {
       stats.skippedNoSend++;
     }
@@ -227,7 +232,9 @@ async function prerenderLang(
   // on every run that selects this step (node tests import the workflow
   // without a workerd runtime).
   const { renderDayCard } = await import("../../src/lib/day-og-render.js");
-  const { DAY_OG_WIDTH, DAY_OG_HEIGHT } = await import("../../src/lib/day-og.js");
+  const { DAY_OG_WIDTH, DAY_OG_HEIGHT } = await import(
+    "../../src/lib/day-og.js"
+  );
   let bytes: Uint8Array<ArrayBuffer>;
   let maxAgeSec: number;
   let headers: Response;
@@ -271,7 +278,9 @@ async function prerenderLang(
       stats.rendered++;
     } catch (error) {
       stats.failed++;
-      console.warn(`day-card ${date} ${lang} ${key}: ${safeErrorMessage(error)}`);
+      console.warn(
+        `day-card ${date} ${lang} ${key}: ${safeErrorMessage(error)}`
+      );
     }
   }
 }

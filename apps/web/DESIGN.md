@@ -27,25 +27,25 @@ copying the block into `styles.css`.
 
 ## Color tokens
 
-| Role                           | Token                    | Dark        | Light       |
-| ------------------------------ | ------------------------ | ----------- | ----------- |
-| Canvas (page)                  | `--background`           | `#1f1e1d`   | `#ffffff`   |
-| Panel (cards, popovers)        | `--card`, `--popover`    | `#262624`   | `#ffffff`   |
-| Sunk (soft fills, hover)       | `--muted`, `--secondary` | `#30302e`   | `#f0eee6`   |
-| Fg (titles, labels)            | `--foreground`           | `#f5f4ee`   | `#1f1e1d`   |
-| Body (long text)               | `--body`                 | `#d6d4cc`   | `#3d3d3a`   |
-| Mute (meta, captions)          | `--muted-foreground`     | `#a19f96`   | `#64635d`   |
-| Quiet (one step under mute)    | `--quiet-foreground`     | `#9c9a92`   | `#66655f`   |
-| Line (the few lines left)      | `--border`               | `#ffffff1a` | `#1f1e1d1a` |
-| Line 2 (inputs)                | `--input`                | `#ffffff33` | `#1f1e1d33` |
-| Signal (logo mark, dot)        | `--signal`, `--brand`    | `#f5c518`   | `#f5c518`   |
-| Ink on signal                  | `--signal-ink`           | `#0a0a0a`   | `#0a0a0a`   |
-| CTA (primary button)           | `--primary`              | `#f5f4ee`   | `#1f1e1d`   |
-| Ink on CTA                     | `--primary-foreground`   | `#1f1e1d`   | `#ffffff`   |
-| Accent text (links)            | `--accent`               | `#f5c518`   | `#8f4300`   |
-| Focus ring                     | `--ring`                 | `#f5c518`   | `#b45309`   |
-| Keyword: numbers               | `--kw-num`               | `#f5c518`   | `#8f4300`   |
-| Keyword: entities              | `--kw-entity`            | `#a0c3ec`   | `#1d4ed8`   |
+| Role                        | Token                    | Dark        | Light       |
+| --------------------------- | ------------------------ | ----------- | ----------- |
+| Canvas (page)               | `--background`           | `#1f1e1d`   | `#ffffff`   |
+| Panel (cards, popovers)     | `--card`, `--popover`    | `#262624`   | `#ffffff`   |
+| Sunk (soft fills, hover)    | `--muted`, `--secondary` | `#30302e`   | `#f0eee6`   |
+| Fg (titles, labels)         | `--foreground`           | `#f5f4ee`   | `#1f1e1d`   |
+| Body (long text)            | `--body`                 | `#d6d4cc`   | `#3d3d3a`   |
+| Mute (meta, captions)       | `--muted-foreground`     | `#a19f96`   | `#64635d`   |
+| Quiet (one step under mute) | `--quiet-foreground`     | `#9c9a92`   | `#66655f`   |
+| Line (the few lines left)   | `--border`               | `#ffffff1a` | `#1f1e1d1a` |
+| Line 2 (inputs)             | `--input`                | `#ffffff33` | `#1f1e1d33` |
+| Signal (logo mark, dot)     | `--signal`, `--brand`    | `#f5c518`   | `#f5c518`   |
+| Ink on signal               | `--signal-ink`           | `#0a0a0a`   | `#0a0a0a`   |
+| CTA (primary button)        | `--primary`              | `#f5f4ee`   | `#1f1e1d`   |
+| Ink on CTA                  | `--primary-foreground`   | `#1f1e1d`   | `#ffffff`   |
+| Accent text (links)         | `--accent`               | `#f5c518`   | `#8f4300`   |
+| Focus ring                  | `--ring`                 | `#f5c518`   | `#b45309`   |
+| Keyword: numbers            | `--kw-num`               | `#f5c518`   | `#8f4300`   |
+| Keyword: entities           | `--kw-entity`            | `#a0c3ec`   | `#1d4ed8`   |
 
 Rules:
 
@@ -63,17 +63,17 @@ Rules:
 
 ### Contrast (WCAG, text needs 4.5:1)
 
-| Text                             | Canvas | Panel | Sunk | Other      |
-| -------------------------------- | ------ | ----- | ---- | ---------- |
-| Dark mute `#a19f96` | 6.27 | 5.71 | 4.98 | black 7.92 |
-| Dark quiet `#9c9a92` | 5.91 | 5.38 | 4.69 | black 7.45 |
-| Dark kw-num / accent `#f5c518` | 10.21 | 9.30 | 8.11 | black 12.88 |
-| Dark kw-entity `#a0c3ec` | 9.12 | 8.31 | 7.25 |  |
-| Light mute `#64635d` | 5.72 | 6.03 | 5.19 | gray 4.72 |
-| Light quiet `#66655f` | 5.55 | 5.85 | 5.03 | gray 4.58 |
-| Light kw-num / accent `#8f4300` | 6.71 | 7.07 | 6.09 | gray 5.54 |
-| Light kw-entity `#1d4ed8` | 6.36 | 6.70 | 5.77 | gray 5.25 |
-| Light ring `#b45309` (needs 3:1) | 4.77 | 5.02 | 4.32 | gray 3.94 |
+| Text                             | Canvas | Panel | Sunk | Other       |
+| -------------------------------- | ------ | ----- | ---- | ----------- |
+| Dark mute `#a19f96`              | 6.27   | 5.71  | 4.98 | black 7.92  |
+| Dark quiet `#9c9a92`             | 5.91   | 5.38  | 4.69 | black 7.45  |
+| Dark kw-num / accent `#f5c518`   | 10.21  | 9.30  | 8.11 | black 12.88 |
+| Dark kw-entity `#a0c3ec`         | 9.12   | 8.31  | 7.25 |             |
+| Light mute `#64635d`             | 5.72   | 6.03  | 5.19 | gray 4.72   |
+| Light quiet `#66655f`            | 5.55   | 5.85  | 5.03 | gray 4.58   |
+| Light kw-num / accent `#8f4300`  | 6.71   | 7.07  | 6.09 | gray 5.54   |
+| Light kw-entity `#1d4ed8`        | 6.36   | 6.70  | 5.77 | gray 5.25   |
+| Light ring `#b45309` (needs 3:1) | 4.77   | 5.02  | 4.32 | gray 3.94   |
 
 The accent choices (below) are checked the same way in
 `contrast-tokens.test.ts`.
@@ -87,13 +87,13 @@ violet. It recolors the logo mark (`--signal`, `--signal-ink`), links
 dark values. Every light value is at least 4.5:1 on canvas, panel, sunk, cream
 and gray, and every dark value on canvas, panel, sunk and black.
 
-| Accent | Light text and ring | Dark text and ring | Mark      | Ink on mark |
-| ------ | ------------------- | ------------------ | --------- | ----------- |
-| yellow | `#8f4300`, `#b45309`| `#f5c518`          | `#f5c518` | `#0a0a0a`   |
-| blue   | `#1d4ed8`           | `#8db4ff`          | `#4c8dff` | `#ffffff`   |
-| green  | `#0e7044`           | `#5bd39a`          | `#2bb673` | `#04140c`   |
-| rose   | `#b0264a`           | `#ff8da8`          | `#f0527a` | `#ffffff`   |
-| violet | `#6a3fd0`           | `#bba2ff`          | `#8b5cf6` | `#ffffff`   |
+| Accent | Light text and ring  | Dark text and ring | Mark      | Ink on mark |
+| ------ | -------------------- | ------------------ | --------- | ----------- |
+| yellow | `#8f4300`, `#b45309` | `#f5c518`          | `#f5c518` | `#0a0a0a`   |
+| blue   | `#1d4ed8`            | `#8db4ff`          | `#4c8dff` | `#ffffff`   |
+| green  | `#0e7044`            | `#5bd39a`          | `#2bb673` | `#04140c`   |
+| rose   | `#b0264a`            | `#ff8da8`          | `#f0527a` | `#ffffff`   |
+| violet | `#6a3fd0`            | `#bba2ff`          | `#8b5cf6` | `#ffffff`   |
 
 Green is one step darker than the prototype's `#117a4a`, which is 4.21:1 on
 the gray background.
@@ -142,16 +142,16 @@ a metric-matched "Inter Fallback" (Arial at 107%). See `src/fonts.css`.
 
 Scale (about 8%, then 7%, under the previous one):
 
-| Use                               | Desktop                       | Phone (under 700px) |
-| --------------------------------- | ----------------------------- | ------------------- |
-| Page and story headline           | 34.5px / 1.15, 600, -0.02em   | 26px (24px narrow)  |
-| Lead headline (home)              | 21px compact, 25.5px comfortable | 20.5px           |
-| AI;DR summary (story main text)   | 16.5px / 1.65                 | 16.5px              |
-| Body                              | 13 to 14px, body color        | 13 to 14px          |
-| Row title                         | 13.5px / 1.4, 500 (13px compact) | 13.5px           |
-| Meta, labels, nav                 | 12.5px                        | 12.5px              |
-| Buttons                           | 13px                          | 13px                |
-| Section label                     | 12.5px, uppercase, +0.07em    | 12.5px              |
+| Use                             | Desktop                          | Phone (under 700px) |
+| ------------------------------- | -------------------------------- | ------------------- |
+| Page and story headline         | 34.5px / 1.15, 600, -0.02em      | 26px (24px narrow)  |
+| Lead headline (home)            | 21px compact, 25.5px comfortable | 20.5px              |
+| AI;DR summary (story main text) | 16.5px / 1.65                    | 16.5px              |
+| Body                            | 13 to 14px, body color           | 13 to 14px          |
+| Row title                       | 13.5px / 1.4, 500 (13px compact) | 13.5px              |
+| Meta, labels, nav               | 12.5px                           | 12.5px              |
+| Buttons                         | 13px                             | 13px                |
+| Section label                   | 12.5px, uppercase, +0.07em       | 12.5px              |
 
 Numbers in rows and stats use `tabular-nums`. `styles.css` exposes the sizes
 that change by layout as `--headline-size`, `--lead-title-size`,
@@ -187,11 +187,11 @@ and a hover tint (`--muted`) separate things. The exceptions:
 The `layout` pref, on `.app-shell` as `data-layout`. A three-icon switch sits
 in the menu bar from 700px; under 700px it lives in Customize.
 
-| Layout      | `--row-pad` | `--list-title-size` | `--thumb-size` | Notes |
-| ----------- | ----------- | ------------------- | -------------- | ----- |
-| compact (default) | 7px   | 13px                | 44px           | Lead headline 21px, 30px chips. |
-| comfortable | 15px        | 13.5px              | 52px           | The roomier list. |
-| newspaper   | 12px        | 16.5px              | hidden         | Serif masthead and headlines, justified text, a drop cap on the story summary, the ranked list in 2 or 3 columns, square corners, no rules. |
+| Layout            | `--row-pad` | `--list-title-size` | `--thumb-size` | Notes                                                                                                                                       |
+| ----------------- | ----------- | ------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| compact (default) | 7px         | 13px                | 44px           | Lead headline 21px, 30px chips.                                                                                                             |
+| comfortable       | 15px        | 13.5px              | 52px           | The roomier list.                                                                                                                           |
+| newspaper         | 12px        | 16.5px              | hidden         | Serif masthead and headlines, justified text, a drop cap on the story summary, the ranked list in 2 or 3 columns, square corners, no rules. |
 
 Newspaper helpers in `styles.css` do nothing in the other layouts:
 `.np-only` (shown only in newspaper), `.np-hide`, `.np-masthead` with
@@ -220,7 +220,7 @@ portal to `<body>`, outside `.app-shell`, so they do not see these values.
   - `.btn-soft`: the secondary action, `--muted` fill, no border.
   - `.btn-link`: accent-colored text with an icon. Most secondary actions
     (copy, share, show more, read source, follow) are links.
-  On touch screens each gets an invisible 44px tap box.
+    On touch screens each gets an invisible 44px tap box.
 - **Chips** (`.chip`): soft `--muted` fill, no border, 12.5px, `--chip-h` high.
   A topic chip is dot, localized name, then a `.chip-count`. The selected chip
   (`aria-pressed="true"`) inverts to `--primary` and `--primary-foreground`.

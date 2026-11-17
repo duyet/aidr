@@ -2,7 +2,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { track } from "../../lib/analytics/track";
 import { useLang } from "../../lib/lang-context";
 import type { Lang } from "../../lib/types";
-import { Bi } from "../Bi";
 import { CalendarButton } from "./CalendarButton";
 import { NAV_ITEMS } from "./lib";
 

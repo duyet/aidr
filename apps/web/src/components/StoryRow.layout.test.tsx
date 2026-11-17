@@ -51,7 +51,9 @@ describe("row content", () => {
     // Same family (inherited Inter), size, weight and leading as the
     // numbered item titles in TldrBulletRow / TldrBulletList.
     expect(html).toContain("story-title block min-w-0 text-[15px]");
-    expect(html).toContain("leading-[calc(var(--reader-leading,1.55)_-_0.175)]");
+    expect(html).toContain(
+      "leading-[calc(var(--reader-leading,1.55)_-_0.175)]"
+    );
     expect(html).toContain("font-normal text-foreground");
   });
 

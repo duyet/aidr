@@ -1,9 +1,6 @@
 import { cache } from "@cf-wasm/og/workerd";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  isSettledArchiveDate,
-  parseArchiveDate,
-} from "../../lib/day-archive";
+import { isSettledArchiveDate, parseArchiveDate } from "../../lib/day-archive";
 import { renderDayCard } from "../../lib/day-og-render";
 import { cachedOgResponse, dayOgObjectKey } from "../../lib/og-cache";
 import { storyOgLanguage } from "../../lib/story-og";
