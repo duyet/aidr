@@ -45,3 +45,7 @@ pnpm dev                                # http://localhost:3014
 - English and Vietnamese columns never fall back to each other.
 - Changes to ranking, scoring, clustering, prompts or a model chain (`*_MODEL` vars in `apps/web/wrangler.toml`, `worker/llm`, `apps/web/ALGORITHM.md`) add an EN and VI entry to `apps/web/src/content/releases/algorithm.ts` in the same PR. It shows on /release (and /changelog, which redirects there). `algorithm.test.ts` fails when a chain model id is named in no entry.
 - Prove a change on the real surface with `.agents/skills/verify-aidr/bin/verify-aidr`, not only with unit tests.
+
+## ui-sdk
+
+Before using ui-sdk, follow the ui-sdk skill if it is installed, and read `node_modules/@ui-sdk/react/docs/llms.txt`. To build a new component, also search `node_modules/@ui-sdk/react/docs/core.md` by heading, and read `rendering.md` next to it.

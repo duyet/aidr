@@ -63,8 +63,8 @@ export function TelegramPreview({
 
   return (
     <BrowserFrame tab="Telegram" address={url.replace(/^https?:\/\//, "")}>
-      <div className="space-y-3 bg-[#f4f4f5] px-2.5 py-3 dark:bg-muted/30">
-        <div className="flex items-center gap-2.5 border-b border-border/70 pb-2.5">
+      <div className="space-y-3 bg-card px-2.5 py-3">
+        <div className="flex items-center gap-2.5 pb-1">
           <span
             className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#2AABEE] text-white"
             aria-hidden
@@ -84,7 +84,7 @@ export function TelegramPreview({
         {/* Digest message: bold header + linked bullets + one CTA button.
               A div, not an <article>: these are decorative mock bubbles, and
               an unnamed `article` would add noise to the landmark list. */}
-        <div className="max-w-full rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3 py-2.5 shadow-sm">
+        <div className="max-w-full rounded-2xl rounded-tl-sm bg-muted px-3 py-2.5">
           <p className="text-[13px] font-semibold leading-snug text-foreground">
             {t("AI news today", "AI hôm nay có gì")} — {copy.date}
           </p>
@@ -104,12 +104,12 @@ export function TelegramPreview({
               </li>
             ))}
           </ul>
-          <span className="mt-2.5 inline-flex rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
+          <span className="mt-2.5 inline-flex rounded-full bg-card px-2.5 py-1 text-[11px] font-medium text-foreground">
             {copy.cta}
           </span>
         </div>
 
-        <div className="max-w-full rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3 py-2.5 shadow-sm">
+        <div className="max-w-full rounded-2xl rounded-tl-sm bg-muted px-3 py-2.5">
           <p className="text-[13px] font-semibold leading-snug text-foreground">
             {copy.story.title}
           </p>
@@ -121,7 +121,7 @@ export function TelegramPreview({
             {copy.story.buttons.map((b) => (
               <span
                 key={b}
-                className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground"
+                className="rounded-full bg-card px-2.5 py-1 text-[11px] font-medium text-foreground"
               >
                 {b}
               </span>

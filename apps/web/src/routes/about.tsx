@@ -55,7 +55,7 @@ const FLOW = flowLines().join("\n");
 
 function PipelineDiagram() {
   return (
-    <pre className="not-typeset mt-4 w-full overflow-hidden whitespace-pre-wrap rounded-lg border border-border bg-card px-4 py-4 text-left font-mono text-xs leading-relaxed text-foreground sm:px-6 sm:text-[13px]">
+    <pre className="not-typeset mt-4 w-full overflow-hidden whitespace-pre-wrap rounded-lg bg-muted px-4 py-4 text-left font-mono text-xs leading-relaxed text-foreground sm:px-6 sm:text-[13px]">
       {FLOW}
     </pre>
   );
@@ -165,10 +165,10 @@ function AboutPage() {
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`inline-flex items-center gap-1 ${PAGE_LINK}`}
+                className="btn-link"
               >
                 {label}
-                <ExternalLink className="h-3 w-3" aria-hidden />
+                <ExternalLink aria-hidden />
               </a>
             ))}
           </p>

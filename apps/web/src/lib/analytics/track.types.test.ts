@@ -4,7 +4,20 @@
  * loosened registry type breaks the build, not just this file.
  */
 import { describe, expectTypeOf, it } from "vitest";
-import type { ReaderBg, ReaderDensity, TldrCount } from "../prefs";
+import type {
+  Accent,
+  BilingualFirst,
+  FeedDays,
+  Highlight,
+  Layout,
+  NewsCols,
+  ReaderBg,
+  ReaderDensity,
+  ReaderFont,
+  TldrCols,
+  TldrCount,
+  TldrView,
+} from "../prefs";
 import type { EventParams, PREF_VALUES } from "./events";
 import { feedTag, parseSlug, type Slug } from "./schema";
 import { track } from "./track";
@@ -15,6 +28,12 @@ describe("track() types", () => {
     track("media_open", { media: "thumb" });
     track("prefs_change", { pref: "bg", pref_value: "cream" });
     track("prefs_change", { pref: "reset" });
+    track("prefs_change", { pref: "layout", pref_value: "newspaper" });
+    track("prefs_change", { pref: "tldrCols", pref_value: "3" });
+    track("prefs_change", { pref: "infiniteDays", pref_value: "on" });
+    track("prefs_change", { pref: "look", pref_value: "night" });
+    track("prefs_change", { pref: "bilingual", pref_value: "on" });
+    track("prefs_change", { pref: "theme", pref_value: "auto" });
   });
 
   it("rejects an unknown or renamed event", () => {
@@ -49,6 +68,12 @@ describe("track() types", () => {
     track("prefs_change", { pref: "bg", pref_value: "serif" });
     // @ts-expect-error fontSize has no enum value
     track("prefs_change", { pref: "fontSize", pref_value: "on" });
+    // @ts-expect-error "serif" is a font, not a layout
+    track("prefs_change", { pref: "layout", pref_value: "serif" });
+    // @ts-expect-error newspaper columns are 2 or 3
+    track("prefs_change", { pref: "newsCols", pref_value: "1" });
+    // @ts-expect-error "comfortable" is a layout, not a quick look
+    track("prefs_change", { pref: "look", pref_value: "comfortable" });
   });
 
   it("reports every value of the enum-valued reader settings", () => {
@@ -61,6 +86,33 @@ describe("track() types", () => {
     expectTypeOf<
       (typeof PREF_VALUES)["tldrCount"][number]
     >().toEqualTypeOf<`${TldrCount}`>();
+    expectTypeOf<
+      (typeof PREF_VALUES)["font" | "headFont"][number]
+    >().toEqualTypeOf<ReaderFont>();
+    expectTypeOf<
+      (typeof PREF_VALUES)["layout"][number]
+    >().toEqualTypeOf<Layout>();
+    expectTypeOf<
+      (typeof PREF_VALUES)["accent"][number]
+    >().toEqualTypeOf<Accent>();
+    expectTypeOf<
+      (typeof PREF_VALUES)["highlight"][number]
+    >().toEqualTypeOf<Highlight>();
+    expectTypeOf<
+      (typeof PREF_VALUES)["bilingualFirst"][number]
+    >().toEqualTypeOf<BilingualFirst>();
+    expectTypeOf<
+      (typeof PREF_VALUES)["tldrCols"][number]
+    >().toEqualTypeOf<`${TldrCols}`>();
+    expectTypeOf<
+      (typeof PREF_VALUES)["tldrView"][number]
+    >().toEqualTypeOf<TldrView>();
+    expectTypeOf<
+      (typeof PREF_VALUES)["newsCols"][number]
+    >().toEqualTypeOf<`${NewsCols}`>();
+    expectTypeOf<
+      (typeof PREF_VALUES)["feedDays"][number]
+    >().toEqualTypeOf<`${FeedDays}`>();
     expectTypeOf<EventParams<"lang_change">["lang"]>().toEqualTypeOf<
       "vi" | "en"
     >();

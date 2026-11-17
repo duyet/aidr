@@ -22,6 +22,7 @@ import {
   weekStoriesFor,
   weekStoryText,
 } from "../lib/week-model";
+import { Bi } from "./Bi";
 import { WeeklySubscribeCta } from "./WeeklySubscribeCta";
 
 export function weeklyTitle(lang: Lang): string {
@@ -65,7 +66,7 @@ function LeadStory({ story, lang }: { story: WeekStory; lang: Lang }) {
   const image = resizeCdnImageUrl(story.item.image_url, "full");
   const href = storyPath(story.item, lang);
   return (
-    <article className="grid gap-4 border-b border-border pb-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:gap-8">
+    <article className="grid gap-4 pb-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:gap-8">
       {image ? (
         <a
           href={href}
@@ -100,7 +101,7 @@ function ColumnStory({ story, lang }: { story: WeekStory; lang: Lang }) {
   const image = resizeCdnImageUrl(story.item.image_url, "card");
   const href = storyPath(story.item, lang);
   return (
-    <article className="mb-5 min-w-0 break-inside-avoid border-b border-border pb-5">
+    <article className="mb-6 min-w-0 break-inside-avoid pb-2">
       {image && story.rank <= 4 ? (
         <a
           href={href}
@@ -128,11 +129,9 @@ function ColumnStory({ story, lang }: { story: WeekStory; lang: Lang }) {
   );
 }
 
-const pill =
-  "inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground max-sm:h-11";
+const pill = "btn-soft";
 
-const dayChip =
-  "inline-flex h-8 items-center rounded-full border border-input px-3 text-[13px] tabular-nums text-foreground transition-colors hover:bg-muted max-sm:h-11";
+const dayChip = "chip tabular-nums";
 
 export function WeeklyPaper({
   edition,
@@ -158,48 +157,52 @@ export function WeeklyPaper({
     <div className="mx-auto max-w-[1080px] pt-3 pb-10">
       <nav
         aria-label={vi ? "Chuyển tuần" : "Week navigation"}
-        className="-mx-2.5 flex flex-wrap items-center justify-between gap-2"
+        className="flex flex-wrap items-center justify-between gap-2"
       >
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {edition.prevWeek ? (
             <a href={weekPath(edition.prevWeek, lang)} className={pill}>
-              <ChevronLeft className="size-4" aria-hidden />
-              {vi ? "Số trước" : "Previous issue"}
+              <ChevronLeft aria-hidden />
+              <Bi inline vi="Số trước" en="Previous issue" />
             </a>
           ) : null}
           {edition.nextWeek ? (
             <a href={weekPath(edition.nextWeek, lang)} className={pill}>
-              {vi ? "Số sau" : "Next issue"}
-              <ChevronRight className="size-4" aria-hidden />
+              <Bi inline vi="Số sau" en="Next issue" />
+              <ChevronRight aria-hidden />
             </a>
           ) : null}
         </div>
-        <a href={withLang(WEEKS_INDEX_PATH, lang)} className={pill}>
-          <ArrowLeft className="size-4" aria-hidden />
-          {vi ? "Quay lại tất cả các tuần" : "Back to all weeks"}
+        <a href={withLang(WEEKS_INDEX_PATH, lang)} className="btn-link">
+          <ArrowLeft aria-hidden />
+          <Bi inline vi="Quay lại tất cả các tuần" en="Back to all weeks" />
         </a>
       </nav>
 
-      <header className="mt-3 border-b border-border pb-5">
+      <header className="mt-5 pb-5">
         <p className={`${EYEBROW} flex flex-wrap gap-x-3 gap-y-1 tabular-nums`}>
-          <span className="text-accent">
-            {vi ? `Số ${edition.issue}` : `Issue No. ${edition.issue}`}
-          </span>
+          <Bi
+            inline
+            className="text-accent"
+            vi={`Số ${edition.issue}`}
+            en={`Issue No. ${edition.issue}`}
+          />
           <span>{range}</span>
-          <span>{vi ? `Tuần ${weekNo}` : `Week ${weekNo}`}</span>
+          <Bi inline vi={`Tuần ${weekNo}`} en={`Week ${weekNo}`} />
         </p>
         <h1 className={`mt-2 ${PAGE_TITLE}`}>{weeklyTitle(lang)}</h1>
-        <p className="mt-1.5 text-[15px] text-muted-foreground">
-          {vi
-            ? `${stories.length} tin AI đáng đọc nhất trong tuần`
-            : `The ${stories.length} AI stories that mattered this week`}
-        </p>
+        <Bi
+          as="p"
+          className="mt-1.5 text-[15px] text-muted-foreground"
+          vi={`${stories.length} tin AI đáng đọc nhất trong tuần`}
+          en={`The ${stories.length} AI stories that mattered this week`}
+        />
       </header>
 
       {intro ? (
         <section
           aria-label={vi ? "Lời mở đầu" : "From the editor"}
-          className="border-b border-border py-5"
+          className="py-4"
         >
           <p className="max-w-[64ch] text-[17px] leading-[1.6] text-foreground">
             {intro}
@@ -228,11 +231,11 @@ export function WeeklyPaper({
           <a
             href={weekPath(edition.prevWeek, lang)}
             rel="prev"
-            className="group flex min-w-0 flex-col rounded-lg border border-border px-4 py-3 transition-colors hover:bg-muted/60"
+            className="group flex min-w-0 flex-col rounded-xl bg-muted px-4 py-3 transition-colors hover:bg-border"
           >
             <span className={`${EYEBROW} inline-flex items-center gap-1`}>
               <ChevronLeft className="size-3.5" aria-hidden />
-              {vi ? "Số trước" : "Previous issue"}
+              <Bi inline vi="Số trước" en="Previous issue" />
             </span>
             <span className="mt-1 text-[15px] font-medium tabular-nums text-foreground group-hover:text-accent">
               {edition.prevWeek}
@@ -245,10 +248,10 @@ export function WeeklyPaper({
           <a
             href={weekPath(edition.nextWeek, lang)}
             rel="next"
-            className="group flex min-w-0 flex-col items-end rounded-lg border border-border px-4 py-3 text-right transition-colors hover:bg-muted/60"
+            className="group flex min-w-0 flex-col items-end rounded-xl bg-muted px-4 py-3 text-right transition-colors hover:bg-border"
           >
             <span className={`${EYEBROW} inline-flex items-center gap-1`}>
-              {vi ? "Số sau" : "Next issue"}
+              <Bi inline vi="Số sau" en="Next issue" />
               <ChevronRight className="size-3.5" aria-hidden />
             </span>
             <span className="mt-1 text-[15px] font-medium tabular-nums text-foreground group-hover:text-accent">
@@ -261,17 +264,19 @@ export function WeeklyPaper({
       </nav>
 
       <div className="flex justify-center pt-4">
-        <a
-          href={withLang(WEEKS_INDEX_PATH, lang)}
-          className="inline-flex items-center gap-1.5 font-sans text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
-        >
-          <ArrowLeft className="size-4" aria-hidden />
-          {vi ? "Quay lại tất cả các tuần" : "Back to all weeks"}
+        <a href={withLang(WEEKS_INDEX_PATH, lang)} className="btn-link">
+          <ArrowLeft aria-hidden />
+          <Bi inline vi="Quay lại tất cả các tuần" en="Back to all weeks" />
         </a>
       </div>
 
-      <footer className="mt-6 border-t border-border pt-4">
-        <p className={EYEBROW}>{vi ? "Bản tin từng ngày" : "Daily editions"}</p>
+      <footer className="mt-6 pt-2">
+        <Bi
+          as="p"
+          className={EYEBROW}
+          vi="Bản tin từng ngày"
+          en="Daily editions"
+        />
         <ul className="mt-2.5 flex flex-wrap gap-2">
           {days.map((date) => (
             <li key={date}>
@@ -281,10 +286,7 @@ export function WeeklyPaper({
             </li>
           ))}
           <li>
-            <a
-              href={weekMarkdownPath(edition.week, lang)}
-              className={`${dayChip} text-muted-foreground`}
-            >
+            <a href={weekMarkdownPath(edition.week, lang)} className={dayChip}>
               Markdown
             </a>
           </li>

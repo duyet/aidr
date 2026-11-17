@@ -11,6 +11,7 @@ import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { recordRead } from "../lib/analytics/reads";
 import { track } from "../lib/analytics/track";
+import { LangContext } from "../lib/lang-context";
 import type { FeedItem } from "../lib/types";
 import { StoryRow } from "./StoryRow";
 
@@ -109,8 +110,12 @@ describe("expand chevron", () => {
 
 describe("original article link", () => {
   it("opens item.url in a new tab and never toggles the row", () => {
-    render(<StoryRow item={item} index={1} lang="vi" />);
-    const link = screen.getByLabelText("Mở bài gốc");
+    render(
+      <LangContext.Provider value="vi">
+        <StoryRow item={item} index={1} lang="vi" />
+      </LangContext.Provider>
+    );
+    const link = screen.getByRole("link", { name: "example.com" });
     expect(link.getAttribute("href")).toBe(item.url);
     expect(link.getAttribute("target")).toBe("_blank");
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");
@@ -166,7 +171,7 @@ describe("read beacons", () => {
 
   it("count an outbound click on the original link without counting an open", () => {
     render(<StoryRow item={item} index={1} lang="en" />);
-    fireEvent.click(screen.getByLabelText("Open original"));
+    fireEvent.click(screen.getByRole("link", { name: "example.com" }));
     expect(recordRead).toHaveBeenCalledExactlyOnceWith(item.id, "outbound");
   });
 });

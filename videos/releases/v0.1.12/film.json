@@ -7,7 +7,7 @@
     "day": "/date/2026-10-08?lang=en",
     "daycard": "/api/og/date/2026-10-08.png",
     "rows": "/?lang=en@700",
-    "why": "/90b333df?lang=en#Why this ranks",
+    "why": "/90b333df?lang=en",
     "home-vi": "/date/2026-10-08?lang=vi@450"
   },
   "scenes": [
@@ -274,7 +274,7 @@
       "day": "/date/2026-10-08?lang=vi",
       "daycard": "/api/og/date/2026-10-08.png?lang=vi",
       "rows": "/?lang=vi@700",
-      "why": "/90b333df?lang=vi#Vì sao xếp hạng này",
+      "why": "/90b333df?lang=vi",
       "home-vi": "/date/2026-10-08?lang=vi@450"
     },
     "scenes": [

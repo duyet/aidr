@@ -1,7 +1,10 @@
+import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { LangContext } from "../lib/lang-context";
 import type { DayGroup, FeedItem } from "../lib/types";
 import { DaySection } from "./DaySection";
+import { anyVotes } from "./StoryRow";
 
 const item: FeedItem = {
   id: "abcdef12deadbeef",
@@ -60,16 +63,16 @@ describe("day story limit", () => {
       id: `abcdef12deadbe${String(i).padStart(2, "0")}`,
     })),
   });
+  const inLang = (lang: "vi" | "en", node: ReactElement) =>
+    renderToStaticMarkup(
+      <LangContext.Provider value={lang}>{node}</LangContext.Provider>
+    );
 
   it("renders only `limit` rows and a bilingual Load more with the rest", () => {
-    const vi = renderToStaticMarkup(
-      <DaySection day={many(35)} lang="vi" limit={30} />
-    );
+    const vi = inLang("vi", <DaySection day={many(35)} lang="vi" limit={30} />);
     expect(vi.match(/id="item-/g)).toHaveLength(30);
     expect(vi).toContain("Xem thêm (5)");
-    const en = renderToStaticMarkup(
-      <DaySection day={many(35)} lang="en" limit={30} />
-    );
+    const en = inLang("en", <DaySection day={many(35)} lang="en" limit={30} />);
     expect(en).toContain("Load more (5)");
   });
 
@@ -88,11 +91,7 @@ describe("day story limit", () => {
   });
 });
 
-// Owner picked the dense-table layout: one line per story in fixed columns
-// (rank | title | topic | time | score) under a legend, with a phone
-// fallback that keeps rank | title | score and moves topic + time under the
-// title. These class names are the contract the layout hangs on.
-describe("dense story table", () => {
+describe("ranked list rows", () => {
   const rows = (n: number): DayGroup => ({
     ...day,
     items: Array.from({ length: n }, (_, i) => ({
@@ -101,41 +100,69 @@ describe("dense story table", () => {
     })),
   });
 
-  it("renders a bilingual aria-hidden legend on the same grid as rows", () => {
-    const vi = renderToStaticMarkup(<DaySection day={day} lang="vi" />);
-    const legend = vi.match(/<div class="story-legend[^"]*"[^>]*>/)?.[0] ?? "";
-    expect(legend).toContain('aria-hidden="true"');
-    expect(legend).toContain(
-      "sm:grid-cols-[2.25rem_minmax(0,1fr)_8rem_4.5rem_3.5rem]"
-    );
-    for (const label of ["#", "Tin", "Chủ đề", "Lúc", "Điểm"]) {
-      expect(vi).toContain(`>${label}<`);
-    }
-    const en = renderToStaticMarkup(<DaySection day={day} lang="en" />);
-    for (const label of ["Story", "Topic", "Time", "Score"]) {
-      expect(en).toContain(`>${label}<`);
-    }
+  it("has no legend row and no lines between rows", () => {
+    const html = renderToStaticMarkup(<DaySection day={rows(3)} lang="en" />);
+    expect(html).not.toContain("story-legend");
+    expect(html).not.toMatch(/divide-y|border-b|border-t/);
   });
 
-  it("lays each row out in five columns with a three-column phone fallback", () => {
-    const html = renderToStaticMarkup(<DaySection day={day} lang="en" />);
-    const row = html.match(/<div class="story-row[^"]*"/)?.[0] ?? "";
-    expect(row).toContain("grid-cols-[2rem_minmax(0,1fr)_3rem]");
-    expect(row).toContain(
-      "sm:grid-cols-[2.25rem_minmax(0,1fr)_8rem_4.5rem_3.5rem]"
+  it("lays the list out for the newspaper columns", () => {
+    const html = renderToStaticMarkup(<DaySection day={rows(3)} lang="en" />);
+    expect(html).toContain('class="np-columns"');
+  });
+
+  it("numbers rows from firstRank, under a label that replaces the date heading", () => {
+    const html = renderToStaticMarkup(
+      <DaySection day={rows(2)} lang="en" firstRank={2} label="Ranked today" />
     );
-    expect(html).toMatch(/class="story-title[^"]*sm:truncate/);
-    expect(html).toMatch(/class="story-topic hidden[^"]*sm:block/);
-    expect(html).toMatch(/class="story-time hidden[^"]*sm:block/);
-    expect(html).toMatch(/class="story-meta-phone[^"]*sm:hidden/);
-    const score = html.split('class="story-score')[1] ?? "";
-    expect(score.match(/aria-label="Upvote"/g)).toHaveLength(1);
-    expect(score).not.toContain("lucide-thumbs-down");
+    expect(html).toMatch(/<h3[^>]*>Ranked today<\/h3>/);
+    expect(html).not.toContain("<h2");
+    const ranks = [
+      ...html.matchAll(/story-rank[^>]*>(?:<svg.*?<\/svg>)?(\d+)</g),
+    ];
+    expect(ranks.map((m) => m[1])).toEqual(["2", "3"]);
   });
 
   it("marks only the top 3 rows (their rank takes the accent)", () => {
     const html = renderToStaticMarkup(<DaySection day={rows(5)} lang="en" />);
     expect(html.match(/story-row-top/g)).toHaveLength(3);
+  });
+
+  it("gives the day's first row the top-story icon, unless a lead story took rank 1", () => {
+    const first = renderToStaticMarkup(<DaySection day={rows(3)} lang="en" />);
+    expect(first.match(/aria-label="Top story today"/g)).toHaveLength(1);
+    const afterLead = renderToStaticMarkup(
+      <DaySection day={rows(3)} lang="en" firstRank={2} />
+    );
+    expect(afterLead).not.toContain("Top story today");
+  });
+
+  it("hides the vote column while every count is zero", () => {
+    const html = renderToStaticMarkup(<DaySection day={rows(3)} lang="en" />);
+    expect(html).not.toContain("story-score");
+    expect(html).not.toContain("Upvote");
+  });
+
+  it("shows the vote column once any story has a vote", () => {
+    const voted = rows(3);
+    voted.items[1] = { ...voted.items[1], vote_net: 4 };
+    const html = renderToStaticMarkup(<DaySection day={voted} lang="en" />);
+    expect(html.match(/story-score/g)).toHaveLength(3);
+    expect(html.match(/aria-label="Upvote"/g)).toHaveLength(3);
+  });
+
+  it("takes the page's say over its own day for the vote column", () => {
+    const voted = rows(2);
+    voted.items[0] = { ...voted.items[0], vote_net: 2 };
+    const html = renderToStaticMarkup(
+      <DaySection day={rows(2)} lang="en" showVotes />
+    );
+    expect(html.match(/story-score/g)).toHaveLength(2);
+    expect(
+      renderToStaticMarkup(
+        <DaySection day={voted} lang="en" showVotes={false} />
+      )
+    ).not.toContain("story-score");
   });
 
   it("shortens the Vietnamese time to '7 giờ'", () => {
@@ -166,5 +193,13 @@ describe("dense story table", () => {
     );
     expect(html).toContain(">7h<");
     expect(html).not.toContain("h ago");
+  });
+});
+
+describe("anyVotes", () => {
+  it("is false for zero, missing and negative counts, true for a positive one", () => {
+    expect(anyVotes([{ vote_net: 0 }, {}, { vote_net: -1 }])).toBe(false);
+    expect(anyVotes([{ vote_net: 0 }, { vote_net: 1 }])).toBe(true);
+    expect(anyVotes([])).toBe(false);
   });
 });

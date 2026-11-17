@@ -14,7 +14,7 @@ function Page() {
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center py-12">
-      <Card className="w-full max-w-md border-border shadow-none">
+      <Card className="w-full max-w-md border-0 bg-transparent shadow-none">
         <CardContent className="flex justify-center p-6">
           {SignUp ? <SignUp /> : null}
         </CardContent>

@@ -1,13 +1,17 @@
+import { ArrowRight } from "lucide-react";
 import { type ReactElement, useEffect, useState } from "react";
 import { fetchJson, getCachedJson } from "../../lib/client-cache";
 import { archiveDateOfSec } from "../../lib/day-archive";
-import { localizedTitle } from "../../lib/display-title";
 import { categoryLabel } from "../../lib/lang";
 import { withLang } from "../../lib/locale-url";
+import { usePrefs } from "../../lib/prefs";
 import { publisherHost } from "../../lib/publisher-host";
 import { storyPath } from "../../lib/slug";
 import { resizeCdnImageUrl, thumbRouteUrl } from "../../lib/tldr-images";
+import { topicStyle } from "../../lib/topic";
 import type { FeedItem, FeedResponse, Lang } from "../../lib/types";
+import { Bi } from "../Bi";
+import { titleParts } from "../story/story-text";
 import { nextArchiveDate } from "./lib";
 
 export const READ_NEXT_LIMIT = 3;
@@ -53,7 +57,11 @@ function ReadNextRow({
   item: FeedItem;
   lang: Lang;
 }): ReactElement {
-  const { text, fallbackFromEnglish } = localizedTitle(item, lang);
+  const { prefs } = usePrefs();
+  const titles = titleParts(item, lang, {
+    bilingual: prefs.bilingual,
+    first: prefs.bilingualFirst,
+  });
   // Same order as the feed thumb: the same-origin resizer, then the
   // publisher image, then the semicolon tile.
   const candidates = [
@@ -62,19 +70,40 @@ function ReadNextRow({
   ].filter((u): u is string => Boolean(u));
   const [failed, setFailed] = useState(0);
   const thumb = candidates[failed] ?? null;
-  const meta = [
-    item.category ? categoryLabel(item.category, lang) : null,
-    publisherHost(item.url),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const host = publisherHost(item.url);
   return (
-    <li>
+    <li style={topicStyle(item.category)}>
       <a
         href={storyPath(item, lang)}
         data-kb=""
-        className="grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 rounded-md py-2"
+        className="grid grid-cols-[minmax(0,1fr)_64px] items-start gap-3 rounded-md py-2.5 transition-colors hover:bg-muted/60"
       >
+        <span className="min-w-0">
+          <span className="block text-[13.5px] leading-[1.4] font-medium text-foreground [overflow-wrap:anywhere]">
+            {titles.map((part) => (
+              <span
+                key={part.lang}
+                lang={part.lang}
+                className={part.second ? "bi-second block" : "block"}
+              >
+                {part.text}
+              </span>
+            ))}
+          </span>
+          <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            {item.category && (
+              <span
+                aria-hidden
+                className="topic-dot inline-block size-2 shrink-0 rounded-full"
+              />
+            )}
+            <span className="min-w-0 truncate">
+              {[item.category ? categoryLabel(item.category, lang) : null, host]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          </span>
+        </span>
         {thumb ? (
           <img
             key={thumb}
@@ -82,33 +111,20 @@ function ReadNextRow({
             alt=""
             referrerPolicy="no-referrer"
             onError={() => setFailed((n) => n + 1)}
-            width={88}
-            height={50}
+            width={64}
+            height={40}
             loading="lazy"
             decoding="async"
-            className="aspect-video w-[88px] rounded-md bg-muted object-cover"
+            className="aspect-[16/10] w-16 rounded-lg bg-muted object-cover"
           />
         ) : (
           <span
             aria-hidden
-            className="grid aspect-video w-[88px] place-items-center rounded-md bg-muted font-semibold text-muted-foreground"
+            className="grid aspect-[16/10] w-16 place-items-center rounded-lg bg-muted font-semibold text-muted-foreground"
           >
             ;
           </span>
         )}
-        <span className="min-w-0">
-          <span
-            lang={fallbackFromEnglish ? "en" : undefined}
-            className="block text-sm leading-snug text-foreground [overflow-wrap:anywhere] hover:underline"
-          >
-            {text}
-          </span>
-          {meta && (
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              {meta}
-            </span>
-          )}
-        </span>
       </a>
     </li>
   );
@@ -123,9 +139,11 @@ function ReadNextRow({
 export function ReadNext({
   item,
   lang,
+  className,
 }: {
   item: FeedItem;
   lang: Lang;
+  className?: string;
 }): ReactElement | null {
   const [items, setItems] = useState<FeedItem[]>([]);
   useEffect(() => {
@@ -147,18 +165,19 @@ export function ReadNext({
 
   if (items.length === 0) return null;
   return (
-    <section
+    <aside
       aria-label={lang === "vi" ? "Đọc tiếp" : "Read next"}
-      className="border-t border-border pt-3.5"
+      className={className}
     >
-      <h2 className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-        {lang === "vi" ? "Đọc tiếp" : "Read next"}
+      <h2 className="flex items-center gap-1.5 text-[12.5px] font-bold tracking-[0.07em] text-foreground uppercase">
+        <ArrowRight className="size-[15px]" aria-hidden />
+        <Bi vi="Đọc tiếp" en="Read next" inline />
       </h2>
-      <ul className="mt-1">
+      <ul className="mt-2">
         {items.map((other) => (
           <ReadNextRow key={other.id} item={other} lang={lang} />
         ))}
       </ul>
-    </section>
+    </aside>
   );
 }

@@ -18,7 +18,7 @@ function renderSections(sections = DEFAULT_PREFS.sections) {
     <PrefsContext.Provider
       value={{ prefs: { ...DEFAULT_PREFS, sections }, setPrefs }}
     >
-      <HomeSections lang="en" />
+      <HomeSections />
     </PrefsContext.Provider>
   );
   return setPrefs;
@@ -41,5 +41,17 @@ describe("HomeSections", () => {
     expect(setPrefs).toHaveBeenCalledWith({
       sections: { ...DEFAULT_PREFS.sections, days: false },
     });
+  });
+
+  it("shows each section's state to assistive technology", () => {
+    renderSections({ ...DEFAULT_PREFS.sections, trending: false });
+    expect(
+      screen
+        .getByRole("button", { name: "Trending" })
+        .getAttribute("aria-pressed")
+    ).toBe("false");
+    expect(
+      screen.getByRole("button", { name: "AI;DR" }).getAttribute("aria-pressed")
+    ).toBe("true");
   });
 });

@@ -54,10 +54,10 @@ export function FrequencyField({
           return (
             <label
               key={frequency}
-              className={`flex cursor-pointer flex-col rounded-md border px-3 py-2 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent ${
+              className={`flex cursor-pointer flex-col rounded-xl px-3 py-2 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring ${
                 checked
-                  ? "border-accent bg-accent/10"
-                  : "border-border hover:bg-muted/50"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted hover:bg-border"
               }`}
             >
               <input
@@ -69,7 +69,13 @@ export function FrequencyField({
                 className="sr-only"
               />
               <span className="font-medium">{COPY[frequency].title[lang]}</span>
-              <span className="text-xs text-muted-foreground">
+              <span
+                className={`text-xs ${
+                  checked
+                    ? "text-primary-foreground-quiet"
+                    : "text-muted-foreground"
+                }`}
+              >
                 {COPY[frequency].hint[lang]}
               </span>
             </label>
@@ -95,10 +101,10 @@ export function FrequencyField({
                 <label
                   key={day}
                   title={full}
-                  className={`flex cursor-pointer items-center justify-center rounded-md border py-1.5 text-xs font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent ${
+                  className={`flex cursor-pointer items-center justify-center rounded-full py-1.5 text-xs font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring ${
                     checked
-                      ? "border-accent bg-accent text-accent-foreground"
-                      : "border-border hover:bg-muted/50"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-border"
                   }`}
                 >
                   <input

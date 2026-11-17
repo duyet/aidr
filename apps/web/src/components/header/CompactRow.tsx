@@ -1,44 +1,41 @@
-import {
-  COMPACT_CHROME_CLASS,
-  PHONE_PREFS_TRIGGER_CLASS,
-} from "../../lib/chrome";
+import type { DrawerController } from "@ui-sdk/react/drawer";
+import { PHONE_PREFS_TRIGGER_CLASS } from "../../lib/chrome";
 import type { Lang } from "../../lib/types";
 import { PrefsPanel } from "../PrefsPanel";
 import { SearchBox } from "../SearchBox";
 import { Brand } from "./Brand";
-import { CalendarButton } from "./CalendarButton";
-import { GetAIDRMenu } from "./GetAIDRMenu";
-import { PhoneMenu } from "./PhoneMenu";
+import { PhoneMenuTrigger } from "./PhoneMenu";
 
+/** The phone menu bar under 700px: logo, search, Aa and the AI;DR button.
+ *  Today, Weeks and Calendar live in the tab bar. */
 export function CompactHeaderRow({
   lang,
   onLangChange,
   langToggleDisabled,
   searchPlaceholder,
+  menu,
 }: {
   lang: Lang;
   onLangChange: (lang: Lang) => void;
   langToggleDisabled: boolean;
   searchPlaceholder: string;
+  menu: DrawerController;
 }) {
   return (
-    <div
-      className={`${COMPACT_CHROME_CLASS} mx-auto max-w-[1080px] items-center gap-2 px-3 py-1.5`}
-    >
+    <div className="flex h-12 items-center gap-1 px-3 min-[700px]:hidden">
       <Brand lang={lang} />
-      <div className="flex min-w-0 flex-1 items-center gap-1">
-        <div className="min-w-0 flex-1">
-          <SearchBox placeholder={searchPlaceholder} lang={lang} compact />
-        </div>
-        <CalendarButton lang={lang} surface="sheet" />
-        <GetAIDRMenu compact />
-        <PrefsPanel triggerClassName={PHONE_PREFS_TRIGGER_CLASS} />
-        <PhoneMenu
-          lang={lang}
-          onLangChange={onLangChange}
-          langToggleDisabled={langToggleDisabled}
-        />
+      <div className="min-w-0 flex-1">
+        <SearchBox placeholder={searchPlaceholder} lang={lang} compact />
       </div>
+      <PrefsPanel
+        onLangChange={onLangChange}
+        langDisabled={langToggleDisabled}
+        triggerClassName={PHONE_PREFS_TRIGGER_CLASS}
+      />
+      <PhoneMenuTrigger
+        controller={menu}
+        className="btn-primary h-9 shrink-0 gap-[7px] pr-3 pl-2"
+      />
     </div>
   );
 }

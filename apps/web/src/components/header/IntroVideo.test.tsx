@@ -163,7 +163,9 @@ describe("intro video copy and embed", () => {
   });
 
   // The dialog must not draw a card around the player: any border, radius,
-  // shadow or padding shows as a frame around the video.
+  // shadow or padding shows as a frame around the video. The content is a
+  // popover, whose browser defaults draw a border and padding, so it has to
+  // clear both.
   it("draws no card chrome around the player", async () => {
     introVideo.id = VIDEO_ID;
     render(<IntroVideoButton lang="en" />);
@@ -172,17 +174,14 @@ describe("intro video copy and embed", () => {
     );
 
     const dialog = await screen.findByRole("dialog");
-    for (const chrome of [
-      "rounded",
-      "border",
-      "shadow",
-      "bg-background",
-      "text-foreground",
-    ]) {
-      expect(dialog.className).not.toContain(chrome);
+    const classes = dialog.className.split(/\s+/);
+    for (const chrome of ["rounded", "shadow", "bg-background", "bg-card"]) {
+      expect(classes.filter((c) => c.startsWith(chrome))).toEqual([]);
     }
-    // Padding utilities only — a bare "p-" also matches "top-1/2".
-    expect(dialog.className).not.toMatch(/(^|\s)[pt][xy]?-\d/);
+    expect(classes.filter((c) => /^(border|p[xytrbl]?)-/.test(c))).toEqual([
+      "border-0",
+      "p-0",
+    ]);
     // Sized to the viewport in both axes, so a short window crops the
     // dialog rather than pushing the player off screen.
     expect(dialog.className).toContain("100dvh-1.5rem");

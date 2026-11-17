@@ -19,11 +19,7 @@ export function TemplatePicker({
             key={item.id}
             type="button"
             onClick={() => onApply(item)}
-            className={`rounded-md border px-3 py-1.5 text-sm ${
-              item.id === templateId
-                ? "border-foreground bg-foreground text-background"
-                : "border-border text-foreground hover:bg-muted"
-            }`}
+            className={item.id === templateId ? "btn-primary" : "btn-soft"}
           >
             {item.name}
           </button>

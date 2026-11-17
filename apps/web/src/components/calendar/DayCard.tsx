@@ -1,7 +1,10 @@
+import { ArrowRight } from "lucide-react";
 import type { CalendarDay } from "../../lib/calendar";
 import { dayArchivePath } from "../../lib/day-archive";
 import { categoryLabel } from "../../lib/lang";
+import { topicStyle } from "../../lib/topic";
 import type { Lang } from "../../lib/types";
+import { Bi } from "../Bi";
 import {
   BLANK_IF_BROKEN,
   dayTitle,
@@ -15,7 +18,7 @@ export function DayCard({ day, lang }: { day: CalendarDay; lang: Lang }) {
   const title = dayTitle(day, lang);
   const runners = runnerTitles(day, lang);
   return (
-    <article className="overflow-hidden rounded-lg border border-border bg-card">
+    <article className="overflow-hidden rounded-xl bg-muted">
       {day.image_url ? (
         <img
           key={day.image_url}
@@ -51,18 +54,20 @@ export function DayCard({ day, lang }: { day: CalendarDay; lang: Lang }) {
             {day.categories.map((c) => (
               <li
                 key={c}
-                className="rounded-full border border-input px-2.5 py-0.5 text-[12px] text-muted-foreground"
+                className="rounded-full bg-background px-2.5 py-0.5 text-[12px] font-medium"
+                style={topicStyle(c)}
               >
-                {categoryLabel(c, lang)}
+                <span className="topic-ink">{categoryLabel(c, lang)}</span>
               </li>
             ))}
           </ul>
         ) : null}
         <a
           href={dayArchivePath(day.date, lang)}
-          className="mt-1 inline-flex h-9 items-center justify-self-start rounded-full bg-primary px-4 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="btn-primary mt-1 justify-self-start"
         >
-          {vi ? "Mở số báo →" : "Open edition →"}
+          <Bi inline vi="Mở số báo" en="Open edition" />
+          <ArrowRight aria-hidden />
         </a>
       </div>
     </article>

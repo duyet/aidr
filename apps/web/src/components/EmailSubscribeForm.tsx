@@ -1,7 +1,5 @@
-import { Button } from "@aidr/ui";
 import { useState, useSyncExternalStore } from "react";
 import type { EventParams } from "../lib/analytics/events";
-import { track } from "../lib/analytics/track";
 import { withLang } from "../lib/locale-url";
 import type { MailFont } from "../lib/mail-font";
 import type { MailFormat } from "../lib/mail-format";
@@ -10,8 +8,14 @@ import {
   type WeeklyDay,
   weekdayName,
 } from "../lib/mail-frequency";
+import {
+  browserTimezone,
+  FALLBACK_TIMEZONE,
+  postSubscribe,
+} from "../lib/subscribe-post";
 import type { Lang } from "../lib/types";
 import { formAnnotationAttributes, webmcpForm } from "../lib/webmcp";
+import { Bi } from "./Bi";
 import { FrequencyField } from "./subscribe/FrequencyField";
 import { MailFontField } from "./subscribe/MailFontField";
 import { MailFormatField } from "./subscribe/MailFormatField";
@@ -29,26 +33,8 @@ export interface DigestPrefs {
   weeklyDay: WeeklyDay;
 }
 
-const FALLBACK_TIMEZONE = "Asia/Ho_Chi_Minh";
-
 const subscribeNever = () => () => {};
 const serverTimezone = () => null;
-function browserTimezone() {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-  } catch {
-    return FALLBACK_TIMEZONE;
-  }
-}
-
-/** Maps the /api/subscribe POST statuses (worker/subscribe/handlers.ts). */
-function subscribeErrorReason(
-  status: number
-): EventParams<"subscribe_error">["reason"] {
-  if (status === 400) return "invalid";
-  if (status === 429) return "rate_limited";
-  return "server";
-}
 
 export function EmailSubscribeForm({
   lang,
@@ -61,7 +47,6 @@ export function EmailSubscribeForm({
   prefs: DigestPrefs;
   onPrefsChange: (prefs: DigestPrefs) => void;
 }) {
-  const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
     "idle"
@@ -76,62 +61,46 @@ export function EmailSubscribeForm({
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("loading");
-    track("subscribe_submit", { source });
-    try {
-      const res = await fetch("/api/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          lang: prefs.lang,
-          timezone: timezone ?? FALLBACK_TIMEZONE,
-          source,
-          digest_size: prefs.size,
-          mail_format: prefs.format,
-          mail_font: prefs.font,
-          frequency: prefs.frequency,
-          weekly_day: prefs.weeklyDay,
-        }),
-      });
-      if (res.ok) {
-        track("subscribe_success", { source });
-        setStatus("done");
-      } else {
-        track("subscribe_error", {
-          source,
-          reason: subscribeErrorReason(res.status),
-        });
-        setStatus("error");
-      }
-    } catch {
-      track("subscribe_error", { source, reason: "network" });
-      setStatus("error");
-    }
+    const ok = await postSubscribe(source, {
+      email,
+      lang: prefs.lang,
+      timezone: timezone ?? FALLBACK_TIMEZONE,
+      digest_size: prefs.size,
+      mail_format: prefs.format,
+      mail_font: prefs.font,
+      frequency: prefs.frequency,
+      weekly_day: prefs.weeklyDay,
+    });
+    setStatus(ok ? "done" : "error");
   };
 
   if (status === "done") {
     return (
-      <div className="space-y-3 rounded-md border border-border bg-muted/40 p-4 text-sm">
+      <div className="space-y-3 rounded-2xl bg-muted p-4 text-sm">
         <p>
-          {t(
-            prefs.frequency === "weekly"
-              ? `Almost done — check your inbox and click the confirmation link. The weekly digest arrives ${weekdayName(prefs.weeklyDay, "en")} around 7:00 AM${zone}.`
-              : `Almost done — check your inbox and click the confirmation link. Digests start around 7:00 AM${zone} once confirmed.`,
-            prefs.frequency === "weekly"
-              ? `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Bản tin tuần đến vào sáng ${weekdayName(prefs.weeklyDay, "vi")}, khoảng 7:00${zone}.`
-              : `Sắp xong — hãy mở hộp thư và bấm link xác nhận. Bản tin bắt đầu khoảng 7:00 sáng${zone} sau khi xác nhận.`
-          )}
+          <Bi
+            en={`Almost done. Check your inbox and click the confirmation link. ${
+              prefs.frequency === "weekly"
+                ? `The weekly digest arrives ${weekdayName(prefs.weeklyDay, "en")} around 7:00 AM${zone}.`
+                : `Digests start around 7:00 AM${zone} once confirmed.`
+            }`}
+            vi={`Sắp xong. Hãy mở hộp thư và bấm link xác nhận. ${
+              prefs.frequency === "weekly"
+                ? `Bản tin tuần đến vào sáng ${weekdayName(prefs.weeklyDay, "vi")}, khoảng 7:00${zone}.`
+                : `Bản tin bắt đầu khoảng 7:00 sáng${zone} sau khi xác nhận.`
+            }`}
+          />
         </p>
         <p className="text-muted-foreground">
-          {t(
-            "Optional: add an account later to submit stories and suggest edits.",
-            "Tuỳ chọn: thêm tài khoản sau để gửi tin và gợi ý sửa."
-          )}{" "}
+          <Bi
+            en="Optional: add an account later to submit stories and suggest edits."
+            vi="Tùy chọn: thêm tài khoản sau để gửi tin và gợi ý sửa."
+          />{" "}
           <a
             href={withLang("/sign-up", lang)}
-            className="text-accent underline-offset-2 hover:underline"
+            className="btn-link inline-flex h-auto"
           >
-            {t("Create account", "Tạo tài khoản")}
+            <Bi en="Create account" vi="Tạo tài khoản" inline />
           </a>
         </p>
       </div>
@@ -139,7 +108,7 @@ export function EmailSubscribeForm({
   }
 
   const field =
-    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent";
+    "w-full rounded-xl bg-muted px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <form
@@ -152,7 +121,7 @@ export function EmailSubscribeForm({
           htmlFor="digest-email"
           className="mb-1 block text-sm font-medium"
         >
-          Email
+          <Bi en="Email" vi="Email" />
         </label>
         <input
           id="digest-email"
@@ -178,7 +147,7 @@ export function EmailSubscribeForm({
 
       <fieldset className="flex flex-wrap gap-4 text-sm">
         <legend className="mb-1 block font-medium">
-          {t("Language", "Ngôn ngữ")}
+          <Bi en="Language" vi="Ngôn ngữ" />
         </legend>
         <label className="flex items-center gap-1.5">
           <input
@@ -202,7 +171,7 @@ export function EmailSubscribeForm({
 
       <div>
         <label htmlFor="digest-size" className="mb-1 block text-sm font-medium">
-          {t("Stories per email", "Số tin mỗi email")}
+          <Bi en="Stories per email" vi="Số tin mỗi email" />
         </label>
         <select
           id="digest-size"
@@ -238,28 +207,38 @@ export function EmailSubscribeForm({
       />
 
       <p className="text-xs text-muted-foreground">
-        {t(
-          prefs.frequency === "weekly"
-            ? `${weekdayName(prefs.weeklyDay, "en")}s around 7:00 AM your time${zone}. No account required.`
-            : `Around 7:00 AM your time${zone}. No account required.`,
-          prefs.frequency === "weekly"
-            ? `Sáng ${weekdayName(prefs.weeklyDay, "vi")}, khoảng 7:00 theo giờ của bạn${zone}. Không cần tài khoản.`
-            : `Khoảng 7:00 sáng theo giờ của bạn${zone}. Không cần tài khoản.`
-        )}
+        <Bi
+          en={
+            prefs.frequency === "weekly"
+              ? `${weekdayName(prefs.weeklyDay, "en")}s around 7:00 AM your time${zone}. No account required.`
+              : `Around 7:00 AM your time${zone}. No account required.`
+          }
+          vi={
+            prefs.frequency === "weekly"
+              ? `Sáng ${weekdayName(prefs.weeklyDay, "vi")}, khoảng 7:00 theo giờ của bạn${zone}. Không cần tài khoản.`
+              : `Khoảng 7:00 sáng theo giờ của bạn${zone}. Không cần tài khoản.`
+          }
+        />
       </p>
 
-      <Button type="submit" disabled={status === "loading"}>
-        {status === "loading"
-          ? t("Submitting…", "Đang gửi…")
-          : t("Subscribe", "Đăng ký")}
-      </Button>
+      <button
+        type="submit"
+        className="btn-primary"
+        disabled={status === "loading"}
+      >
+        {status === "loading" ? (
+          <Bi en="Submitting…" vi="Đang gửi…" inline />
+        ) : (
+          <Bi en="Subscribe" vi="Đăng ký" inline />
+        )}
+      </button>
 
       {status === "error" && (
-        <p className="text-sm text-destructive">
-          {t(
-            "Something went wrong, please try again.",
-            "Có lỗi xảy ra, vui lòng thử lại."
-          )}
+        <p role="alert" className="text-sm text-destructive">
+          <Bi
+            en="Something went wrong, please try again."
+            vi="Có lỗi xảy ra, vui lòng thử lại."
+          />
         </p>
       )}
     </form>

@@ -1,12 +1,4 @@
-import {
-  Badge,
-  Button,
-  CardFooter,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@aidr/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@aidr/ui";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import {
@@ -16,7 +8,7 @@ import {
 } from "../../lib/deliver-tab";
 import { useLang } from "../../lib/lang-context";
 import type { MailFrequency } from "../../lib/mail-frequency";
-import { PAGE_TITLE } from "../../lib/page-style";
+import { EYEBROW, PAGE_TITLE } from "../../lib/page-style";
 import { DELIVER_CHANNELS } from "./channels";
 
 export function DeliverPage({
@@ -37,14 +29,7 @@ export function DeliverPage({
       {/* The heading keeps a readable measure; the channel rows below it need
           the full width for the controls/preview pair. */}
       <div className="max-w-3xl space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="outline"
-            className="gap-1.5 rounded-full border-input font-mono text-[11px] font-normal uppercase tracking-[0.1em] text-muted-foreground"
-          >
-            {t("How you get AI;DR", "Cách nhận AI;DR")}
-          </Badge>
-        </div>
+        <p className={EYEBROW}>{t("How you get AI;DR", "Cách nhận AI;DR")}</p>
         <div className="space-y-2">
           <h1 className={PAGE_TITLE}>
             {t("Get AI;DR delivered", "Nhận AI;DR")}
@@ -63,16 +48,16 @@ export function DeliverPage({
         onValueChange={(next) => onTabChange(parseDeliverTab(next))}
         className="w-full"
       >
-        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-[22px] border border-border bg-transparent p-1 sm:grid-cols-6 sm:rounded-full">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1.5 rounded-none bg-transparent p-0">
           {DELIVER_TABS.map((id) => {
             const { label, Icon } = DELIVER_CHANNELS[id];
             return (
               <TabsTrigger
                 key={id}
                 value={id}
-                className="h-11 gap-2 rounded-full text-[14px] text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none sm:h-9 sm:text-[13px]"
+                className="chip h-11 gap-1.5 bg-muted px-3 py-0 text-[13px] font-medium text-body hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none sm:h-[30px]"
               >
-                <Icon className="size-4" aria-hidden />
+                <Icon className="size-[15px]" aria-hidden />
                 {label}
               </TabsTrigger>
             );
@@ -94,30 +79,28 @@ export function DeliverPage({
         <button
           type="button"
           onClick={() => onTabChange("rss")}
-          className="font-medium text-foreground underline underline-offset-4"
+          className="btn-link h-auto font-medium"
         >
           {t("Subscribe to the RSS feed", "Đăng ký bản tin RSS")}
         </button>
         {t(
-          " — the same ranked stories, in any reader.",
-          " — cùng những tin đã xếp hạng, trong mọi trình đọc."
+          ". The same ranked stories, in any reader.",
+          ". Cùng những tin đã xếp hạng, trong mọi trình đọc."
         )}
       </p>
 
-      <CardFooter className="gap-2 px-0">
-        <Button variant="outline" asChild>
-          <Link to="/" search={{ lang }}>
-            {t("Back to the feed", "Về bảng tin")}
-            <ArrowRight data-icon="inline-end" aria-hidden />
-          </Link>
-        </Button>
-        <Button variant="ghost" asChild>
-          <Link to="/privacy">{t("Privacy", "Quyền riêng tư")}</Link>
-        </Button>
-        <Button variant="ghost" asChild>
-          <Link to="/terms">{t("Terms", "Điều khoản")}</Link>
-        </Button>
-      </CardFooter>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <Link to="/" search={{ lang }} className="btn-soft">
+          {t("Back to the feed", "Về bảng tin")}
+          <ArrowRight aria-hidden />
+        </Link>
+        <Link to="/privacy" className="btn-link text-muted-foreground">
+          {t("Privacy", "Quyền riêng tư")}
+        </Link>
+        <Link to="/terms" className="btn-link text-muted-foreground">
+          {t("Terms", "Điều khoản")}
+        </Link>
+      </div>
     </div>
   );
 }

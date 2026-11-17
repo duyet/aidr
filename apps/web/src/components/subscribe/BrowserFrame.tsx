@@ -12,18 +12,18 @@ export function BrowserFrame({
 }) {
   return (
     <div
-      className="animate-in fade-in-0 slide-in-from-bottom-4 zoom-in-[0.98] overflow-hidden rounded-lg border border-border bg-card shadow-md shadow-foreground/5 duration-500"
+      className="animate-in fade-in-0 slide-in-from-bottom-4 zoom-in-[0.98] overflow-hidden rounded-xl bg-muted duration-500"
       style={{ animationFillMode: "backwards" }}
     >
-      <div className="flex items-end gap-1.5 bg-muted/60 px-2.5 pt-1.5">
-        <div className="flex h-7 max-w-44 items-center gap-1.5 rounded-t-lg border border-b-0 border-border bg-card px-3 text-[11px]">
+      <div className="flex items-end gap-1.5 px-2.5 pt-1.5">
+        <div className="flex h-7 max-w-44 items-center gap-1.5 rounded-t-lg bg-card px-3 text-[11px]">
           <img src="/favicon.svg" alt="" className="size-3.5" />
           <span className="truncate">{tab}</span>
           <X className="size-3 shrink-0 text-muted-foreground" aria-hidden />
         </div>
         <Plus className="mb-2 size-3.5 text-muted-foreground" aria-hidden />
       </div>
-      <div className="flex items-center gap-2.5 border-b border-border bg-card px-3 py-2">
+      <div className="flex items-center gap-2.5 bg-card px-3 py-2">
         <div
           className="flex items-center gap-2.5 text-muted-foreground"
           aria-hidden

@@ -33,7 +33,7 @@ const item: FeedItem = {
 
 /** The column's own `lang` is the last one opened before its paragraph. */
 function langOf(html: string, text: string): string | null {
-  const at = html.indexOf(`<p>${text}</p>`);
+  const at = html.search(new RegExp(`<p[^>]*>${text}</p>`));
   if (at < 0) return null;
   const langs = [...html.slice(0, at).matchAll(/\slang="([^"]*)"/g)];
   return langs.at(-1)?.[1] ?? null;

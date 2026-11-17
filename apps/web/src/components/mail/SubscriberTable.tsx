@@ -11,10 +11,10 @@ export function SubscriberTable({
       {subscribers.length === 0 ? (
         <p className="text-sm text-muted-foreground">No subscribers yet.</p>
       ) : (
-        <div className="overflow-x-auto border-t border-border">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-muted-foreground">
+              <tr className="text-left text-muted-foreground">
                 <th className="py-2 pr-3 font-normal">Email</th>
                 <th className="py-2 pr-3 font-normal">Lang</th>
                 <th className="py-2 pr-3 font-normal">Source</th>
@@ -23,7 +23,7 @@ export function SubscriberTable({
             </thead>
             <tbody>
               {subscribers.map((row) => (
-                <tr key={row.email} className="border-b border-border/60">
+                <tr key={row.email}>
                   <td className="py-2 pr-3">{row.email}</td>
                   <td className="py-2 pr-3">{row.lang}</td>
                   <td className="py-2 pr-3">{row.source ?? "news"}</td>

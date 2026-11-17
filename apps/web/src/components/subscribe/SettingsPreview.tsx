@@ -18,14 +18,14 @@ export function SettingsPreview({ lang, src }: { lang: Lang; src: string }) {
       {!loaded && (
         <div
           role="status"
-          className="absolute inset-0 flex items-center justify-center rounded-md border border-border bg-background text-sm text-muted-foreground"
+          className="absolute inset-0 flex items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground"
         >
           {t("Loading preview…", "Đang tải bản xem trước…")}
         </div>
       )}
       <iframe
         title={t("Digest preview", "Xem trước bản tin")}
-        className={`h-96 w-full rounded-md border border-border bg-background transition-opacity duration-300 motion-reduce:transition-none ${
+        className={`h-96 w-full rounded-xl bg-muted transition-opacity duration-300 motion-reduce:transition-none ${
           loaded ? "opacity-100" : "opacity-0"
         }`}
         src={src}

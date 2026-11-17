@@ -15,7 +15,7 @@ export const Route = createFileRoute("/brand")({
       path: "/brand",
       title: "Brand | AI;DR",
       description:
-        "Official AI;DR / aidr.today marks — download or copy URLs for reuse.",
+        "Official AI;DR / aidr.today marks. Download or copy URLs for reuse.",
       route: headRouteInput(match),
     }),
   component: BrandPage,
@@ -55,8 +55,7 @@ const ASSETS: { path: string; name: string; note: string; wide?: true }[] = [
   },
 ];
 
-const BUTTON =
-  "inline-flex h-8 items-center rounded-full border border-input px-3 text-[13px] font-medium text-foreground hover:bg-muted max-sm:h-11";
+const BUTTON = "btn-soft";
 
 function CopyUrl({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
@@ -89,7 +88,7 @@ function Preview({
 }) {
   return (
     <div
-      className={`flex min-h-24 items-center justify-center rounded-lg border border-border p-4 ${
+      className={`flex min-h-24 items-center justify-center rounded-2xl p-4 ${
         dark ? "bg-black" : "bg-white"
       }`}
     >
@@ -112,11 +111,11 @@ function BrandPage() {
       title="Brand"
       lede="Official AI;DR and aidr.today marks. Download a file or copy its URL. Please do not redraw them."
     >
-      <div className="mt-6 divide-y divide-border">
+      <div className="mt-6">
         {ASSETS.map(({ path, name, note, wide }) => {
           const url = `${SITE_URL}${path}`;
           return (
-            <section key={path} className="py-6 first:pt-0">
+            <section key={path} className="py-7 first:pt-0">
               <h2 className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                 {name}
               </h2>

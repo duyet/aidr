@@ -27,8 +27,8 @@ export function DayBriefing({
   imageByItemId: Map<string, string>;
 }) {
   return (
-    <section className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card">
-      <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+    <section className="flex h-full flex-col overflow-hidden rounded-lg bg-card">
+      <header className="flex items-center justify-between gap-3 px-4 py-3">
         <h2 className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-accent">
           <span
             aria-hidden="true"
@@ -43,7 +43,7 @@ export function DayBriefing({
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-1">
         <TldrBulletList
           shown={bullets}
-          mid={bullets.length}
+          singleColumn
           layout={DEFAULT_AIDR_LAYOUT}
           numbered
           lang={lang}

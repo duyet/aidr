@@ -1,4 +1,3 @@
-import { Button } from "@aidr/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { subscribeLinkState } from "../../lib/analytics/url-privacy";
@@ -116,7 +115,7 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
   }
 
   const field =
-    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent";
+    "w-full rounded-xl bg-muted px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <div className="mx-auto w-full max-w-md pt-5 pb-10">
@@ -190,9 +189,13 @@ export function SettingsView({ token, lang }: { token: string; lang: Lang }) {
           lang={lang}
           src={`/api/subscribe/preview?lang=${prefLang}&n=${digestSize}&format=${format}&font=${font}&freq=${frequency}`}
         />
-        <Button type="submit" disabled={save === "saving"}>
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={save === "saving"}
+        >
           {save === "saving" ? t("Saving…", "Đang lưu…") : t("Save", "Lưu")}
-        </Button>
+        </button>
         {save === "done" && (
           <p className="text-sm text-muted-foreground">
             {t("Saved.", "Đã lưu.")}

@@ -1,4 +1,4 @@
-import { ChevronDown, TrendingUp } from "lucide-react";
+import { ArrowUpRight, ChevronDown, TrendingUp } from "lucide-react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { pageType } from "../lib/analytics/landing";
@@ -9,30 +9,31 @@ import {
   FEED_TITLE_TAG,
   type StoryTitleTag,
 } from "../lib/article-headings";
-import { localizedTitle } from "../lib/display-title";
 import { timeAgo } from "../lib/lang";
+import { usePrefs } from "../lib/prefs";
 import { publisherHost } from "../lib/publisher-host";
 import { storyPath } from "../lib/slug";
 import { type TopicColor, topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
+import { Bi } from "./Bi";
 import { CategoryLabel } from "./CategoryLabel";
-import { SpriteIcon } from "./IconSprite";
 import { KeywordText } from "./KeywordText";
+import { storySummaries, storyTitles } from "./row-text";
 import { StoryDetail } from "./StoryDetail";
+import { StoryThumb } from "./StoryThumb";
 import { StoryVotes } from "./story/StoryVotes";
-
-/**
- * Dense-table columns shared by every row and the day's legend row.
- * Phone: rank | title (wraps, topic + time under it) | score.
- * >=640px: rank | title (one line) | topic | time | score.
- * The rank cell fits the chevron plus a two-digit mono rank.
- */
-export const STORY_ROW_COLS =
-  "grid grid-cols-[2rem_minmax(0,1fr)_3rem] gap-x-3 px-2 sm:grid-cols-[2.25rem_minmax(0,1fr)_8rem_4.5rem_3.5rem]";
 
 /** Short relative time for the Time column: "7 giờ" / "7h". */
 function shortTimeAgo(epochSec: number, lang: Lang): string {
   return timeAgo(epochSec, Date.now(), lang).replace(/ (trước|ago)$/, "");
+}
+
+/** True when any story carries a vote. While every count is zero the vote
+ * column stays out of the list: a column of "0" says nothing. */
+export function anyVotes(
+  items: readonly Pick<FeedItem, "vote_net">[]
+): boolean {
+  return items.some((item) => (item.vote_net ?? 0) > 0);
 }
 
 function StoryRowHeader({
@@ -63,18 +64,15 @@ function StoryRowHeader({
         : "";
   // The focus ring sits inside the row (negative offset): the day section
   // uses content-visibility, which clips anything painted outside it.
-  const className = `story-row ${STORY_ROW_COLS} items-baseline scroll-my-16 rounded-[6px] focus-visible:-outline-offset-2 ${
+  const className = `story-row group flex items-center gap-x-3.5 py-(--row-pad) scroll-my-16 -mx-3 rounded-lg px-3 focus-visible:-outline-offset-2 ${
     hasDetails ? "cursor-pointer" : ""
   } ${top ? "story-row-top" : ""} ${band}`;
-  // Tighter than the reader pad, but it still scales with it.
-  const style = {
-    paddingTop: "calc(var(--reader-pad, 0.5rem) * 0.6)",
-    paddingBottom: "calc(var(--reader-pad, 0.5rem) * 0.6)",
-    ...(matchColor && {
-      "--tc-light": matchColor.light,
-      "--tc-dark": matchColor.dark,
-    }),
-  } as CSSProperties;
+  const style = matchColor
+    ? ({
+        "--tc-light": matchColor.light,
+        "--tc-dark": matchColor.dark,
+      } as CSSProperties)
+    : undefined;
 
   if (hasDetails) {
     return (
@@ -119,6 +117,7 @@ export function StoryRow({
   defaultExpanded,
   selectedTag,
   titleAs = FEED_TITLE_TAG,
+  showVotes = true,
 }: {
   item: FeedItem;
   index: number;
@@ -128,8 +127,11 @@ export function StoryRow({
   selectedTag?: string | null;
   /** Article route only — homepage feed keeps a non-heading title. */
   titleAs?: StoryTitleTag;
+  /** False while no story on the page has a vote (see `anyVotes`). */
+  showVotes?: boolean;
 }) {
   const TitleTag = titleAs;
+  const { prefs } = usePrefs();
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   // First expand loads /api/story when the row is a lean SSR item
   // (`lazyDetail`) or the feed omitted `content_log`. A permalink item
@@ -180,12 +182,13 @@ export function StoryRow({
     if (!(expanded && item.lazyDetail && !detail)) return;
     return loadDetail(lang);
   }, [lang]);
-  const { text: title, fallbackFromEnglish } = localizedTitle(item, lang);
-  const summary =
-    lang === "vi" && item.summary_vi ? item.summary_vi : item.summary;
+  const [title, secondTitle] = storyTitles(item, lang, prefs);
+  const newspaper = prefs.layout === "newspaper";
+  const summaries =
+    prefs.summaries || newspaper ? storySummaries(item, lang, prefs) : [];
   const hasDetails =
     Boolean(item.lazyDetail) ||
-    Boolean(summary) ||
+    Boolean(item.summary || item.summary_vi) ||
     item.tags.length > 0 ||
     item.sources.length > 0;
   useEffect(() => {
@@ -261,7 +264,7 @@ export function StoryRow({
         matchColor={matchColor}
         onToggle={toggleExpanded}
       >
-        <span className="story-rank inline-flex items-baseline justify-end gap-0.5 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
+        <span className="story-rank flex w-7 shrink-0 items-baseline justify-end gap-0.5 text-right text-[12.5px] tabular-nums text-muted-foreground max-[699px]:hidden in-data-[layout=newspaper]:hidden">
           {hasDetails && (
             <ChevronDown
               data-testid="story-row-chevron"
@@ -274,106 +277,157 @@ export function StoryRow({
           )}
           {index}
         </span>
-        <span
-          className={`story-title min-w-0 text-[15px] leading-[1.4] sm:truncate ${
-            matchColor
-              ? "topic-colored font-medium"
-              : "font-medium text-foreground"
-          }`}
-        >
-          {hot && (
-            <TrendingUp
-              className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-accent"
-              role="img"
-              aria-label={
-                lang === "vi" ? "Tin hàng đầu hôm nay" : "Top story today"
-              }
-            >
-              <title>
-                {lang === "vi" ? "Tin hàng đầu hôm nay" : "Top story today"}
-              </title>
-            </TrendingUp>
-          )}
-          <TitleTag
-            className={titleAs === ARTICLE_TITLE_TAG ? "inline" : undefined}
+        <span className="story-body min-w-0 flex-1">
+          <span
+            className={`story-title block min-w-0 text-[length:var(--list-title-size)] leading-[1.4] in-data-[layout=newspaper]:font-heading in-data-[layout=newspaper]:leading-[1.25] ${
+              matchColor
+                ? "topic-colored font-semibold"
+                : "font-semibold text-foreground"
+            }`}
           >
-            <a
-              href={storyPath(item, lang)}
-              lang={fallbackFromEnglish ? "en" : undefined}
-              onClick={onTitleClick}
-              className="hover:underline hover:underline-offset-2 focus-visible:rounded-[6px]"
-            >
-              <KeywordText text={title} tags={item.tags} />
-            </a>
-          </TitleTag>
-          {fallbackFromEnglish && (
-            <span
-              className="ml-1.5 align-middle font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground"
-              title={
-                lang === "vi"
-                  ? "Tiêu đề gốc tiếng Anh — chưa có bản dịch"
-                  : "Original English title — no Vietnamese translation yet"
-              }
-            >
-              EN
+            <span className="line-clamp-2">
+              {hot && (
+                <TrendingUp
+                  className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-accent"
+                  role="img"
+                  aria-label={
+                    lang === "vi" ? "Tin hàng đầu hôm nay" : "Top story today"
+                  }
+                >
+                  <title>
+                    {lang === "vi" ? "Tin hàng đầu hôm nay" : "Top story today"}
+                  </title>
+                </TrendingUp>
+              )}
+              <TitleTag
+                className={titleAs === ARTICLE_TITLE_TAG ? "inline" : undefined}
+              >
+                <a
+                  href={storyPath(item, lang)}
+                  lang={
+                    title.fallbackFromEnglish
+                      ? "en"
+                      : prefs.bilingual
+                        ? title.lang
+                        : undefined
+                  }
+                  onClick={onTitleClick}
+                  className="hover:underline hover:underline-offset-2 focus-visible:rounded-[6px]"
+                >
+                  <KeywordText
+                    text={title.text}
+                    tags={item.tags}
+                    ink
+                    category={item.category}
+                  />
+                </a>
+              </TitleTag>
+              {title.fallbackFromEnglish && (
+                <span
+                  className="ml-1.5 align-middle font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground"
+                  title={
+                    lang === "vi"
+                      ? "Tiêu đề gốc tiếng Anh — chưa có bản dịch"
+                      : "Original English title — no Vietnamese translation yet"
+                  }
+                >
+                  EN
+                </span>
+              )}
             </span>
-          )}{" "}
-          {item.url && (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => {
-                e.stopPropagation();
-                track("source_click", { item_id: item.id, placement: "row" });
-                recordRead(item.id, "outbound");
-              }}
-              className="ml-1.5 whitespace-nowrap rounded-[6px] text-[12px] font-normal text-muted-foreground hover:text-foreground"
-              aria-label={lang === "vi" ? "Mở bài gốc" : "Open original"}
+            {secondTitle && (
+              <span
+                lang={secondTitle.lang}
+                className="bi-second line-clamp-1 in-data-[layout=newspaper]:font-sans"
+              >
+                {secondTitle.text}
+              </span>
+            )}
+          </span>
+          {summaries.map((s, i) => (
+            <span
+              key={s.lang}
+              lang={s.lang}
+              className={`row-summary mt-1 line-clamp-2 text-[13px] leading-[1.5] np-justify ${
+                i === 0 ? "text-muted-foreground" : "bi-second"
+              }`}
             >
-              <SpriteIcon
-                name="external-link"
-                className="inline h-3 w-3 align-[-1px]"
-              />
-              {host && <span className="ml-1">{host}</span>}
-            </a>
-          )}
-          {/* Phone: topic and time leave their columns for one line here. */}
-          <span className="story-meta-phone mt-1 flex flex-wrap items-baseline gap-x-3 text-[12px] font-normal text-muted-foreground sm:hidden">
+              {s.text}
+            </span>
+          ))}
+          <span className="story-meta mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12.5px] text-muted-foreground">
             {item.category ? (
               <CategoryLabel name={item.category} lang={lang} quiet />
             ) : null}
-            <span className="font-mono tabular-nums" suppressHydrationWarning>
-              {time}
-            </span>
+            {host && (
+              <>
+                <span aria-hidden="true">·</span>
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    track("source_click", {
+                      item_id: item.id,
+                      placement: "row",
+                    });
+                    recordRead(item.id, "outbound");
+                  }}
+                  className="hover:text-accent hover:underline"
+                >
+                  {host}
+                </a>
+              </>
+            )}
+            {time && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="tabular-nums" suppressHydrationWarning>
+                  {time}
+                </span>
+              </>
+            )}
+            <a
+              href={storyPath(item, lang)}
+              onClick={(e) => e.stopPropagation()}
+              className="story-go ml-1 inline-flex items-center gap-1 whitespace-nowrap rounded-[6px] font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100"
+            >
+              <Bi vi="Trang tin" en="Story page" inline />
+              <ArrowUpRight
+                className="inline h-3 w-3 align-[-1px]"
+                aria-hidden
+              />
+            </a>
           </span>
         </span>
-        <span className="story-topic hidden truncate text-[13px] text-muted-foreground sm:block">
-          {item.category ? (
-            <CategoryLabel name={item.category} lang={lang} quiet />
-          ) : null}
-        </span>
-        <span
-          className="story-time hidden whitespace-nowrap text-right font-mono text-[12px] tabular-nums text-muted-foreground sm:block"
-          suppressHydrationWarning
-        >
-          {time}
-        </span>
-        {/* An open row moves its votes to the top of the details' media
-            column; the empty cell keeps the columns aligned. */}
-        <span className="story-score flex items-baseline justify-end">
-          {!detailsOpen && (
-            <StoryVotes
+        {prefs.thumbs && !newspaper && (
+          <span className="row-thumb shrink-0">
+            <StoryThumb
+              variant="row"
+              src={item.image_url}
               itemId={item.id}
-              voteNet={item.vote_net ?? 0}
               lang={lang}
             />
-          )}
-        </span>
+          </span>
+        )}
+        {/* An open row moves its votes to the top of the details' media
+            column; the empty cell keeps the columns aligned. */}
+        {showVotes && (
+          <span className="story-score flex w-11 shrink-0 items-center justify-end">
+            {!detailsOpen && (
+              <StoryVotes
+                itemId={item.id}
+                voteNet={item.vote_net ?? 0}
+                lang={lang}
+              />
+            )}
+          </span>
+        )}
       </StoryRowHeader>
 
       {detailsOpen && (
-        <div className="mb-2 overflow-hidden rounded-b-lg border border-t-0 border-border bg-card px-4 py-4 md:px-5 md:py-5">
+        <div className="mb-2 overflow-hidden rounded-lg bg-card px-4 py-4 md:px-5 md:py-5">
           <StoryDetail item={detail ?? item} lang={lang} showVotes />
           {item.lazyDetail && !detail && (
             <p className="mt-3 text-xs text-muted-foreground">

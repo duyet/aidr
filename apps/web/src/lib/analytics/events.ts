@@ -6,7 +6,20 @@
  * the question, do not add the event.
  */
 import type { Metric } from "web-vitals";
-import type { ReaderBg, ReaderDensity, TldrCount } from "../prefs";
+import type {
+  Accent,
+  BilingualFirst,
+  FeedDays,
+  Highlight,
+  Layout,
+  NewsCols,
+  ReaderBg,
+  ReaderDensity,
+  ReaderFont,
+  TldrCols,
+  TldrCount,
+  TldrView,
+} from "../prefs";
 import {
   count,
   dim,
@@ -112,6 +125,9 @@ const LINK_PLACEMENTS = [
   "phone_menu",
   "footer",
   "subscribe_page",
+  "tab_bar",
+  "story_end",
+  "home_rail",
 ] as const;
 /** Mirrors SUBSCRIBE_SOURCES in worker/subscribe/handlers.ts (test-enforced). */
 export const SUBSCRIBE_SOURCES = ["news", "extension"] as const;
@@ -139,6 +155,30 @@ const TLDR_COUNTS = [
   "12",
   "16",
 ] as const satisfies readonly `${TldrCount}`[];
+const READER_FONTS = ["sans", "serif"] as const satisfies readonly ReaderFont[];
+const LAYOUTS = [
+  "compact",
+  "comfortable",
+  "newspaper",
+] as const satisfies readonly Layout[];
+const ACCENTS = [
+  "yellow",
+  "blue",
+  "green",
+  "rose",
+  "violet",
+] as const satisfies readonly Accent[];
+const HIGHLIGHTS = [
+  "topic",
+  "one",
+  "none",
+] as const satisfies readonly Highlight[];
+const TLDR_COLS = ["1", "2", "3"] as const satisfies readonly `${TldrCols}`[];
+const TLDR_VIEWS = ["image", "text"] as const satisfies readonly TldrView[];
+const NEWS_COLS = ["2", "3"] as const satisfies readonly `${NewsCols}`[];
+const FEED_DAYS = ["1", "3", "7"] as const satisfies readonly `${FeedDays}`[];
+/** Quick looks in Customize: one event per look, then its prefs apply. */
+const LOOKS = ["compact", "newspaper", "night", "bilingual"] as const;
 
 /**
  * Each reader setting and the values `prefs_change` may report for it. An
@@ -147,8 +187,8 @@ const TLDR_COUNTS = [
  */
 export const PREF_VALUES = {
   bg: READER_BGS,
-  theme: ["light", "dark"],
-  font: ["sans", "serif"],
+  theme: ["auto", "light", "dark"],
+  font: READER_FONTS,
   fontSize: NO_VALUE,
   density: READER_DENSITIES,
   reset: NO_VALUE,
@@ -158,6 +198,20 @@ export const PREF_VALUES = {
   "sections.tldr": ON_OFF,
   "sections.days": ON_OFF,
   "sections.categories": ON_OFF,
+  layout: LAYOUTS,
+  accent: ACCENTS,
+  highlight: HIGHLIGHTS,
+  headFont: READER_FONTS,
+  bilingual: ON_OFF,
+  bilingualFirst: LANGS satisfies readonly BilingualFirst[],
+  tldrCols: TLDR_COLS,
+  tldrView: TLDR_VIEWS,
+  newsCols: NEWS_COLS,
+  thumbs: ON_OFF,
+  summaries: ON_OFF,
+  feedDays: FEED_DAYS,
+  infiniteDays: ON_OFF,
+  look: LOOKS,
 } as const satisfies Record<string, readonly string[]>;
 type PrefName = keyof typeof PREF_VALUES;
 type PrefValue = (typeof PREF_VALUES)[PrefName][number];

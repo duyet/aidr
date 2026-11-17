@@ -72,7 +72,7 @@ export function SearchResults({
             aria-selected={activeIndex === rowIndex}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onSelectStory(m.item)}
-            className={`flex w-full flex-col gap-0.5 border-t border-border px-3 py-2 text-left text-xs ${
+            className={`flex w-full flex-col gap-0.5 px-3 py-2 text-left text-xs ${
               activeIndex === rowIndex ? "bg-muted" : "hover:bg-muted"
             }`}
           >

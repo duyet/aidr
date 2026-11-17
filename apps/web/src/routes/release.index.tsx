@@ -118,10 +118,10 @@ function EarlierList({
   lang: Lang;
 }): ReactElement {
   return (
-    <ol className="mt-4 space-y-5 border-l border-border pl-5">
+    <ol className="mt-4 space-y-5 pl-5">
       {entries.map((entry) => (
         <li key={entry.text.en} className="relative">
-          <span className="absolute -left-[23px] top-1.5 h-2 w-2 rounded-full bg-accent" />
+          <span className="absolute -left-5 top-1.5 h-2 w-2 rounded-full bg-accent" />
           <div className="font-mono text-[11px] uppercase tracking-[0.1em] tabular-nums text-muted-foreground">
             {entry.date}
           </div>
@@ -148,16 +148,13 @@ function ReleaseIndexPage(): ReactElement {
         {DESCRIPTION[lang]}
       </p>
 
-      <ol className="mt-6 divide-y divide-border">
+      <ol className="mt-6 space-y-2">
         {RELEASES.map((release) => (
           <ReleaseRow key={release.version} release={release} lang={lang} />
         ))}
       </ol>
 
-      <section
-        id="algorithm"
-        className="mt-10 border-t border-border pt-6 scroll-mt-20"
-      >
+      <section id="algorithm" className="mt-12 scroll-mt-20">
         <h2 className={sectionHeading}>
           {vi ? "Cách chọn và viết tin" : "How stories are picked"}
         </h2>
@@ -169,10 +166,7 @@ function ReleaseIndexPage(): ReactElement {
         <EarlierList entries={ALGORITHM_ENTRIES} lang={lang} />
       </section>
 
-      <section
-        id="chrome-extension"
-        className="mt-10 border-t border-border pt-6 scroll-mt-20"
-      >
+      <section id="chrome-extension" className="mt-12 scroll-mt-20">
         <h2 className={sectionHeading}>
           {vi ? "Tiện ích Chrome" : "Chrome extension"}
         </h2>
@@ -190,10 +184,7 @@ function ReleaseIndexPage(): ReactElement {
         <EarlierList entries={EXTENSION_ENTRIES} lang={lang} />
       </section>
 
-      <section
-        id="earlier"
-        className="mt-10 border-t border-border pt-6 scroll-mt-20"
-      >
+      <section id="earlier" className="mt-12 scroll-mt-20">
         <h2 className={sectionHeading}>
           {vi ? "Trước v0.1.0" : "Before v0.1.0"}
         </h2>

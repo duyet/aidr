@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Plug } from "lucide-react";
+import { Bi } from "../components/Bi";
 import { ExtLink } from "../components/mcp/ExtLink";
 import { McpAnatomy } from "../components/mcp/McpAnatomy";
 import {
@@ -13,7 +14,6 @@ import {
   TrustSection,
 } from "../components/mcp/McpSections";
 import { headRouteInput } from "../lib/head-route";
-import { useLang } from "../lib/lang-context";
 import { PAGE_TITLE } from "../lib/page-style";
 import { localizedPageHead } from "../lib/seo";
 import { GITHUB_URL } from "../lib/site";
@@ -33,24 +33,23 @@ export const Route = createFileRoute("/mcp")({
 });
 
 function McpPage() {
-  const lang = useLang();
-  const t = (en: string, vi: string) => (lang === "vi" ? vi : en);
-
   return (
     <div className="pt-5 pb-10 max-sm:pt-4">
       <div className="flex items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-border bg-card text-muted-foreground">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-muted text-muted-foreground">
           <Plug className="h-5 w-5" aria-hidden />
         </span>
-        <h1 className={PAGE_TITLE}>{t("MCP Server", "Máy chủ MCP")}</h1>
+        <h1 className={PAGE_TITLE}>
+          <Bi en="MCP Server" vi="Máy chủ MCP" />
+        </h1>
       </div>
       <p className="mt-2 max-w-3xl text-[15px] leading-[1.6] text-muted-foreground">
-        {t(
-          "Read ranked AI news over MCP with no authentication, and run the ingest pipeline as an operator. Implements the",
-          "Đọc tin AI đã xếp hạng qua MCP mà không cần xác thực, và điều khiển pipeline ingest ở vai trò vận hành. Triển khai theo"
-        )}{" "}
+        <Bi
+          en="Read ranked AI news over MCP with no authentication, and run the ingest pipeline as an operator. Implements the"
+          vi="Đọc tin AI đã xếp hạng qua MCP mà không cần xác thực, và điều khiển pipeline ingest ở vai trò vận hành. Triển khai theo"
+        />{" "}
         <ExtLink href="https://modelcontextprotocol.io">
-          {t("Model Context Protocol", "chuẩn Model Context Protocol")}
+          <Bi en="Model Context Protocol" vi="chuẩn Model Context Protocol" />
         </ExtLink>
         .
       </p>
@@ -67,7 +66,7 @@ function McpPage() {
       <RestSection />
 
       <p className="mt-6 text-sm text-muted-foreground">
-        {t("Full API docs on", "Tài liệu API đầy đủ tại")}{" "}
+        <Bi en="Full API docs on" vi="Tài liệu API đầy đủ tại" />{" "}
         <a
           href={GITHUB_URL}
           target="_blank"

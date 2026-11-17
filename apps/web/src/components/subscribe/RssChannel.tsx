@@ -1,7 +1,7 @@
-import { Badge, Button } from "@aidr/ui";
 import { Check, Clock, Copy, ListOrdered, Rss, Text } from "lucide-react";
 import { useState } from "react";
 import { track } from "../../lib/analytics/track";
+import { EYEBROW } from "../../lib/page-style";
 import { feedLangsFor, feedUrl, RSS_READERS } from "../../lib/rss-subscribe";
 import type { Lang } from "../../lib/types";
 import { ChannelSplit } from "./ChannelSplit";
@@ -46,47 +46,42 @@ function FeedRow({ lang, feedLang }: { lang: Lang; feedLang: Lang }) {
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-border p-4">
+    <div className="space-y-2.5 rounded-xl bg-muted p-4">
       <p className="text-sm font-semibold">{FEED_LABEL[feedLang][lang]}</p>
       <div className="flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate rounded-md bg-muted px-2.5 py-2 text-xs">
+        <code className="min-w-0 flex-1 truncate rounded-lg bg-background px-2.5 py-2 text-xs">
           {url}
         </code>
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="sm"
+          className="btn-primary"
           onClick={() => void copy()}
           aria-label={t(
             `Copy ${FEED_LABEL[feedLang].en} URL`,
             `Sao chép địa chỉ ${FEED_LABEL[feedLang].vi.toLowerCase()}`
           )}
         >
-          {copied ? (
-            <Check className="size-4" aria-hidden />
-          ) : (
-            <Copy className="size-4" aria-hidden />
-          )}
+          {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
           {copied ? t("Copied", "Đã chép") : t("Copy", "Sao chép")}
-        </Button>
+        </button>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-xs text-muted-foreground">
           {t("Open in", "Mở bằng")}
         </span>
         {RSS_READERS.map((reader) => (
-          <Button key={reader.id} variant="secondary" size="sm" asChild>
-            <a
-              href={reader.href(url)}
-              target={reader.id === "feed" ? undefined : "_blank"}
-              rel="noopener noreferrer"
-              onClick={() =>
-                track("rss_subscribe", { target: reader.id, lang: feedLang })
-              }
-            >
-              {reader.label}
-            </a>
-          </Button>
+          <a
+            key={reader.id}
+            className="chip bg-background"
+            href={reader.href(url)}
+            target={reader.id === "feed" ? undefined : "_blank"}
+            rel="noopener noreferrer"
+            onClick={() =>
+              track("rss_subscribe", { target: reader.id, lang: feedLang })
+            }
+          >
+            {reader.label}
+          </a>
         ))}
       </div>
     </div>
@@ -113,11 +108,11 @@ export function RssChannel({ lang }: { lang: Lang }) {
         </>
       }
       preview={
-        <div className="space-y-4 rounded-lg border border-border bg-card p-4 sm:p-5">
-          <Badge variant="secondary" className="gap-1.5 rounded-full">
+        <div className="space-y-4">
+          <p className={`${EYEBROW} flex items-center gap-1.5`}>
             <Rss className="size-3.5" aria-hidden />
             {t("What's in the feed", "Bản tin có gì")}
-          </Badge>
+          </p>
           <ul className="space-y-3">
             {FEED_FACTS.map((f) => (
               <li

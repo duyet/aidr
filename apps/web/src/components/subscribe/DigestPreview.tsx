@@ -1,5 +1,5 @@
-import { Badge } from "@aidr/ui";
 import { useState } from "react";
+import { EYEBROW } from "../../lib/page-style";
 import type { Lang } from "../../lib/types";
 import { BrowserFrame } from "./BrowserFrame";
 
@@ -14,9 +14,9 @@ export function DigestPreview({ lang, src }: { lang: Lang; src: string }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary" className="rounded-full">
+        <p className={EYEBROW}>
           {t("What lands in your inbox", "Email bạn sẽ nhận")}
-        </Badge>
+        </p>
         <span className="text-xs text-muted-foreground">
           {t(
             "Live preview of the latest digest",
@@ -25,10 +25,10 @@ export function DigestPreview({ lang, src }: { lang: Lang; src: string }) {
         </span>
       </div>
       <BrowserFrame
-        tab={t("Inbox — AI;DR", "Hộp thư — AI;DR")}
+        tab={t("Inbox: AI;DR", "Hộp thư: AI;DR")}
         address="aidr.today/api/subscribe/preview"
       >
-        <div className="space-y-1 border-b border-border px-4 py-2.5 text-sm">
+        <div className="space-y-1 px-4 py-2.5 text-sm">
           <div className="flex gap-3">
             <span className="w-16 shrink-0 text-muted-foreground">
               {t("From", "Từ")}
@@ -70,8 +70,8 @@ export function DigestPreview({ lang, src }: { lang: Lang; src: string }) {
       </BrowserFrame>
       <p className="text-xs text-muted-foreground">
         {t(
-          "The actual latest digest — same layout arrives each morning around 7:00 your time.",
-          "Đây là bản tin mới nhất — cùng bố cục mỗi sáng khoảng 7:00 theo giờ của bạn."
+          "The actual latest digest. The same layout arrives each morning around 7:00 your time.",
+          "Đây là bản tin mới nhất. Cùng bố cục mỗi sáng khoảng 7:00 theo giờ của bạn."
         )}
       </p>
     </div>

@@ -79,27 +79,20 @@ describe("data tab spacing", () => {
     expect(read("SystemPage.tsx")).toContain("TAB_PANEL");
   });
 
-  it("renders the strip as underline tabs on a hairline, not a filled pill", () => {
+  it("renders the strip as chips with no rule under it", () => {
     const route = read("SystemPage.tsx");
     const tokens = (re: RegExp) => route.match(re)?.[1].split(/\s+/) ?? [];
 
     // Token-exact so `bg-muted/40` or `rounded-xl` creeping back fails here.
     const list = tokens(/<TabsList[\s\S]*?className="([^"]*)"/);
-    expect(list).toEqual(
-      expect.arrayContaining(["border-b", "bg-transparent", "p-0"])
-    );
+    expect(list).toEqual(expect.arrayContaining(["bg-transparent", "p-0"]));
+    expect(list.some((t) => t.startsWith("border"))).toBe(false);
     expect(
       list.some((t) => t.startsWith("rounded-") && t !== "rounded-none")
     ).toBe(false);
 
-    // Active state is the underline, so the active fill must stay off.
-    const trigger = tokens(/const TAB_TRIGGER =\s*"([^"]*)"/);
-    expect(trigger).toEqual(
-      expect.arrayContaining([
-        "border-b-2",
-        "data-[state=active]:border-foreground",
-        "data-[state=active]:bg-transparent",
-      ])
-    );
+    // The active tab is the selected chip (aria-selected), not an underline.
+    const trigger = tokens(/const TAB_TRIGGER = "([^"]*)"/);
+    expect(trigger).toEqual(["chip"]);
   });
 });

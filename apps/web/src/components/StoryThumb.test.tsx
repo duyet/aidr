@@ -139,3 +139,41 @@ describe("StoryThumb feed resizing", () => {
     expect(srcOf(container)).toBe(PUBLISHER);
   });
 });
+
+describe("StoryThumb row variant", () => {
+  it("sizes the image from the layout variable and never offers a zoom", () => {
+    const { container } = render(
+      <StoryThumb src={PUBLISHER} itemId={ITEM_ID} lang="en" variant="row" />
+    );
+    const img = container.querySelector("img");
+    expect(img?.className).toContain("size-(--thumb-size)");
+    expect(container.querySelector("button")).toBeNull();
+    expect(srcOf(container)).toBe(
+      `/api/thumb/${ITEM_ID}?u=${encodeURIComponent(PUBLISHER)}`
+    );
+  });
+
+  it("steps from the resizer to the publisher, then to the sized brand tile", () => {
+    const { container } = render(
+      <StoryThumb src={PUBLISHER} itemId={ITEM_ID} lang="en" variant="row" />
+    );
+    fireEvent.error(container.querySelector("img") as HTMLImageElement);
+    expect(srcOf(container)).toBe(PUBLISHER);
+    fireEvent.error(container.querySelector("img") as HTMLImageElement);
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("span[aria-hidden]")?.className).toContain(
+      "size-(--thumb-size)"
+    );
+  });
+
+  it("shows the brand tile for a story with no image", () => {
+    const { container } = render(
+      <StoryThumb src={null} itemId={ITEM_ID} lang="en" variant="row" />
+    );
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("span[aria-hidden]")?.className).toContain(
+      "size-(--thumb-size)"
+    );
+    expect(container.querySelector("button")).toBeNull();
+  });
+});

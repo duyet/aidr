@@ -165,7 +165,9 @@ export function SearchBox({
           onKeyDown={onKeyDown}
           placeholder={placeholder}
           className={
-            compact ? "h-11 min-h-[44px] rounded-xl pl-10" : "h-9 pl-8"
+            compact
+              ? "h-11 min-h-[44px] rounded-full border-0 bg-muted pl-10"
+              : "h-8 rounded-full border-0 bg-muted pl-8 text-[13px]"
           }
           role="combobox"
           aria-label="Search"

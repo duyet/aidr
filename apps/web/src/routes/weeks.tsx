@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Bi } from "../components/Bi";
 import { LoadErrorPage } from "../components/LoadErrorPage";
 import { weeklyTitle } from "../components/WeeklyPaper";
 import { WeeklySubscribeCta } from "../components/WeeklySubscribeCta";
@@ -71,29 +72,39 @@ function WeeksPage() {
   return (
     <div className="mx-auto max-w-3xl pt-5 pb-10 max-sm:pt-4">
       <header>
-        <p className={EYEBROW}>{vi ? "Lưu trữ các số báo" : "The archive"}</p>
+        <Bi
+          as="p"
+          className={EYEBROW}
+          vi="Lưu trữ các số báo"
+          en="The archive"
+        />
         <h1 className={`mt-2 ${PAGE_TITLE}`}>{weeklyTitle(lang)}</h1>
       </header>
       <WeeklySubscribeCta lang={lang} />
       {weeks.length === 0 ? (
-        <p className="border-t border-border py-10 text-center text-[15px] text-muted-foreground">
-          {vi
-            ? "Số đầu tiên sẽ ra sau khi tuần này kết thúc. Đăng ký ở trên để nhận ngay khi có."
-            : "The first issue comes out once this week closes. Subscribe above to get it the moment it lands."}
-        </p>
+        <Bi
+          as="p"
+          className="py-10 text-center text-[15px] text-muted-foreground"
+          vi="Số đầu tiên sẽ ra sau khi tuần này kết thúc. Đăng ký ở trên để nhận ngay khi có."
+          en="The first issue comes out once this week closes. Subscribe above to get it the moment it lands."
+        />
       ) : (
-        <ol className="divide-y divide-border border-y border-border">
+        <ol className="grid gap-1">
           {weeks.map((week) => {
             const text = teaser(week, lang);
             return (
               <li key={week.week}>
                 <a
                   href={weekPath(week.week, lang)}
-                  className="group -mx-2 block rounded-[6px] px-2 py-3.5 hover:bg-muted/60"
+                  className="group -mx-3 block rounded-xl px-3 py-3.5 hover:bg-muted"
                 >
                   <p className={`${EYEBROW} tabular-nums`}>
-                    {vi ? `Số ${week.issue}` : `Issue No. ${week.issue}`} ·{" "}
-                    {week.week} · {storyCount(week.stories, vi)}
+                    <Bi
+                      inline
+                      vi={`Số ${week.issue}`}
+                      en={`Issue No. ${week.issue}`}
+                    />{" "}
+                    · {week.week} · {storyCount(week.stories, vi)}
                   </p>
                   <h2 className="mt-1 text-[17px] font-semibold leading-[1.35] tracking-[-0.01em] text-foreground group-hover:text-accent">
                     {formatWeekRange(week.start_date, week.end_date, lang)}

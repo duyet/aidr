@@ -11,23 +11,23 @@
  */
 
 :root {
-  /* xAI-inspired reader (apps/web/DESIGN.md): near-white canvas, white
-     panels, hairline dividers, one yellow signal. Inter for text and
+  /* Warm reader (apps/web/DESIGN.md): white canvas, white panels,
+     spacing instead of divider lines, one yellow signal. Inter for text and
      headings. Prefer hex+alpha over rgb()/color-mix() so LightningCSS
      doesn't emit invalid `oklch(... none / a)`. */
-  --editorial-bg: #fafaf9;
-  --editorial-fg: #0a0a0a;
-  --editorial-muted: #55595f;
-  --editorial-faint: #0a0a0a0a;
-  --editorial-hairline: #0a0a0a14;
-  --editorial-accent: #a14a07;
+  --editorial-bg: #ffffff;
+  --editorial-fg: #1f1e1d;
+  --editorial-muted: #64635d;
+  --editorial-faint: #1f1e1d0a;
+  --editorial-hairline: #1f1e1d1a;
+  --editorial-accent: #8f4300;
   /* Metric-matched fallbacks sit directly after each webfont so the
      font-display: optional fallback keeps the webfont's line box. Headings
      and body share Inter; headings differ by weight and tracking only. */
   --editorial-font-heading:
     "Inter Variable", "Inter", "Inter Fallback", ui-sans-serif, system-ui,
     -apple-system, sans-serif;
-  /* Body serif for the reader "Serif" pref, opt-in only. */
+  /* Serif for the reader font prefs and the newspaper layout, opt-in only. */
   --reader-font-serif:
     "Source Serif 4 Variable", "Source Serif 4", "Source Serif 4 Fallback",
     Georgia, ui-serif, serif;
@@ -44,32 +44,32 @@
   /* Palette: canvas --background, panel --card, sunk --muted, fg
      --foreground, body --body, mute --muted-foreground, line --border,
      line-2 --input, cta --primary. Contrast table in apps/web/DESIGN.md. */
-  --background: #fafaf9;
-  --foreground: #0a0a0a;
-  --body: #2c2d30;
+  --background: #ffffff;
+  --foreground: #1f1e1d;
+  --body: #3d3d3a;
   --card: #ffffff;
-  --card-foreground: #0a0a0a;
+  --card-foreground: #1f1e1d;
   --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --muted: #f1f1ef;
-  --muted-foreground: #55595f;
+  --popover-foreground: #1f1e1d;
+  --muted: #f5f5f3;
+  /* Spec #6b6a64, darkened as far as contrast-tokens.test.ts needs: the gray reader background reuses this step, where #6b6a64 is 4.25:1. 4.72:1 on gray, 5.72:1 on the canvas. */
+  --muted-foreground: #64635d;
   /* Quietest text step that still clears WCAG AA (4.5:1) on every light
-     surface. The worst case is the #dedede gray reader background (5.08:1);
-     6.04:1 on the #f1f1ef sunk surface, 6.54:1 on the canvas. */
-  --quiet-foreground: #575b61;
+     surface. The worst case is the #e4e4df gray reader background (4.58:1, and the green topic count mixed from it 4.51:1); 5.03:1 on the #f0eee6 sunk surface, 5.55:1 on the canvas. */
+  --quiet-foreground: #66655f;
   /* The same quiet step on the inverted --primary pill surface (selected
      category pills), where the quiet tone has to be light, not dark. */
-  --primary-foreground-quiet: #cacaca;
-  --secondary: #f1f1ef;
-  --secondary-foreground: #0a0a0a;
-  --border: #0a0a0a14;
-  --accent: #a14a07;
+  --primary-foreground-quiet: #c9c7bf;
+  --secondary: #f5f5f3;
+  --secondary-foreground: #1f1e1d;
+  --border: #1f1e1d1a;
+  --accent: #8f4300;
   --accent-foreground: #fffefb;
-  --primary: #0a0a0a;
+  --primary: #1f1e1d;
   --primary-foreground: #ffffff;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  /* Focus ring: amber on light, 4.81:1 on the canvas. */
+  /* Focus ring: amber on light, 4.77:1 on the canvas. */
   --ring: #b45309;
 
   --brand: #f5c518;
@@ -79,7 +79,7 @@
   --signal: #f5c518;
   --signal-ink: #0a0a0a;
   /* Keyword highlights in titles and summaries: color + weight 600. */
-  --kw-num: #a14a07;
+  --kw-num: #8f4300;
   --kw-entity: #1d4ed8;
   --heat-1: #fbeeb4;
   --heat-2: #f8dc6a;
@@ -89,7 +89,7 @@
   --heat-2-fg: #0a0a0a;
   --heat-3-fg: #0a0a0a;
   --heat-4-fg: #0a0a0a;
-  --input: #0a0a0a2e;
+  --input: #1f1e1d33;
   --chart-1: #f5c518;
   --chart-2: #d97706;
   --chart-3: #b45309;
@@ -97,61 +97,61 @@
   --chart-5: #78350f;
   --radius: 0.625rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #0a0a0a;
-  --sidebar-primary: #a14a07;
+  --sidebar-foreground: #1f1e1d;
+  --sidebar-primary: #8f4300;
   --sidebar-primary-foreground: #fffefb;
-  --sidebar-accent: #f1f1ef;
-  --sidebar-accent-foreground: #0a0a0a;
-  --sidebar-border: #0a0a0a14;
+  --sidebar-accent: #f0eee6;
+  --sidebar-accent-foreground: #1f1e1d;
+  --sidebar-border: #1f1e1d1a;
   --sidebar-ring: #b45309;
 }
 
 :root.dark,
 .dark,
 html[data-theme="dark"] {
-  --editorial-bg: #0a0a0a;
-  --editorial-fg: #ffffff;
-  --editorial-muted: #8d9197;
+  --editorial-bg: #1f1e1d;
+  --editorial-fg: #f5f4ee;
+  --editorial-muted: #a19f96;
   --editorial-faint: #ffffff0f;
-  --editorial-hairline: #ffffff17;
+  --editorial-hairline: #ffffff1a;
   --editorial-accent: #f5c518;
 
-  --background: #0a0a0a;
-  --foreground: #ffffff;
-  --body: #d4d6da;
-  --card: #131416;
-  --card-foreground: #ffffff;
-  --popover: #131416;
-  --popover-foreground: #ffffff;
-  --primary: #ffffff;
-  --primary-foreground: #0a0a0a;
-  --secondary: #1a1c20;
-  --secondary-foreground: #ffffff;
-  --muted: #1a1c20;
-  --muted-foreground: #8d9197;
+  --background: #1f1e1d;
+  --foreground: #f5f4ee;
+  --body: #d6d4cc;
+  --card: #262624;
+  --card-foreground: #f5f4ee;
+  --popover: #262624;
+  --popover-foreground: #f5f4ee;
+  --primary: #f5f4ee;
+  --primary-foreground: #1f1e1d;
+  --secondary: #30302e;
+  --secondary-foreground: #f5f4ee;
+  --muted: #30302e;
+  --muted-foreground: #a19f96;
   /* Mirror of the light --quiet-foreground: the darkest tone that still
-     clears AA on the lightest dark surface, the #1a1c20 sunk surface
-     (4.92:1), and 5.71:1 on #0a0a0a. */
-  --quiet-foreground: #868a90;
-  --primary-foreground-quiet: #3a3a3a;
+     clears AA on the lightest dark surface, the #30302e sunk surface
+     (4.69:1), and 5.91:1 on #1f1e1d. */
+  --quiet-foreground: #9c9a92;
+  --primary-foreground-quiet: #4a4944;
   --accent: #f5c518;
   --accent-foreground: #0a0a0a;
   --destructive: #f87171;
-  --border: #ffffff17;
-  --input: #ffffff2e;
+  --border: #ffffff1a;
+  --input: #ffffff33;
   --ring: #f5c518;
   --chart-1: #f59e0b;
   --chart-2: #fbbf24;
   --chart-3: #e8926e;
   --chart-4: #d97706;
   --chart-5: #b45309;
-  --sidebar: #131416;
-  --sidebar-foreground: #ffffff;
+  --sidebar: #262624;
+  --sidebar-foreground: #f5f4ee;
   --sidebar-primary: #f5c518;
   --sidebar-primary-foreground: #0a0a0a;
-  --sidebar-accent: #1a1c20;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #ffffff17;
+  --sidebar-accent: #30302e;
+  --sidebar-accent-foreground: #f5f4ee;
+  --sidebar-border: #ffffff1a;
   --sidebar-ring: #f5c518;
 
   --brand: #f5c518;
@@ -172,49 +172,49 @@ html[data-theme="dark"] {
 
 @media (prefers-color-scheme: dark) {
   html[data-theme="system"] {
-    --editorial-bg: #0a0a0a;
-    --editorial-fg: #ffffff;
-    --editorial-muted: #8d9197;
+    --editorial-bg: #1f1e1d;
+    --editorial-fg: #f5f4ee;
+    --editorial-muted: #a19f96;
     --editorial-faint: #ffffff0f;
-    --editorial-hairline: #ffffff17;
+    --editorial-hairline: #ffffff1a;
     --editorial-accent: #f5c518;
 
-    --background: #0a0a0a;
-    --foreground: #ffffff;
-    --body: #d4d6da;
-    --card: #131416;
-    --card-foreground: #ffffff;
-    --popover: #131416;
-    --popover-foreground: #ffffff;
-    --primary: #ffffff;
-    --primary-foreground: #0a0a0a;
-    --secondary: #1a1c20;
-    --secondary-foreground: #ffffff;
-    --muted: #1a1c20;
-    --muted-foreground: #8d9197;
+    --background: #1f1e1d;
+    --foreground: #f5f4ee;
+    --body: #d6d4cc;
+    --card: #262624;
+    --card-foreground: #f5f4ee;
+    --popover: #262624;
+    --popover-foreground: #f5f4ee;
+    --primary: #f5f4ee;
+    --primary-foreground: #1f1e1d;
+    --secondary: #30302e;
+    --secondary-foreground: #f5f4ee;
+    --muted: #30302e;
+    --muted-foreground: #a19f96;
     /* Mirror of the light --quiet-foreground: the darkest tone that still
-       clears AA on the lightest dark surface, the #1a1c20 sunk surface
-       (4.92:1), and 5.71:1 on #0a0a0a. */
-    --quiet-foreground: #868a90;
-    --primary-foreground-quiet: #3a3a3a;
+       clears AA on the lightest dark surface, the #30302e sunk surface
+       (4.69:1), and 5.91:1 on #1f1e1d. */
+    --quiet-foreground: #9c9a92;
+    --primary-foreground-quiet: #4a4944;
     --accent: #f5c518;
     --accent-foreground: #0a0a0a;
     --destructive: #f87171;
-    --border: #ffffff17;
-    --input: #ffffff2e;
+    --border: #ffffff1a;
+    --input: #ffffff33;
     --ring: #f5c518;
     --chart-1: #f59e0b;
     --chart-2: #fbbf24;
     --chart-3: #e8926e;
     --chart-4: #d97706;
     --chart-5: #b45309;
-    --sidebar: #131416;
-    --sidebar-foreground: #ffffff;
+    --sidebar: #262624;
+    --sidebar-foreground: #f5f4ee;
     --sidebar-primary: #f5c518;
     --sidebar-primary-foreground: #0a0a0a;
-    --sidebar-accent: #1a1c20;
-    --sidebar-accent-foreground: #ffffff;
-    --sidebar-border: #ffffff17;
+    --sidebar-accent: #30302e;
+    --sidebar-accent-foreground: #f5f4ee;
+    --sidebar-border: #ffffff1a;
     --sidebar-ring: #f5c518;
 
     --brand: #f5c518;

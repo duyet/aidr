@@ -44,9 +44,9 @@ Each folder is its own HyperFrames project because one project may hold only one
 
 | Spec | Meaning |
 |------|---------|
-| `#Why this ranks` | click the element with that text |
+| `#Shortcuts` | click the element with that text |
 | `#button:Reader preferences` | click a button by its accessible name (retried until `aria-pressed` sticks) |
-| `#button:Show day card>button:Show text` | several clicks in order, joined by `>` (the two forms can be mixed) |
+| `#button:Reader preferences>Shortcuts` | several clicks in order, joined by `>` (the two forms can be mixed) |
 
 `/api/...` paths are downloaded as-is. The `button:` form and `>` chains land with the v0.1.13 release PR (#507); until it merges, `capture.sh` on master only has the text click.
 

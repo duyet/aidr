@@ -25,14 +25,14 @@ export function MonthAgenda({
     );
   }
   return (
-    <ol className="divide-y divide-border border-t border-border">
+    <ol className="grid">
       {[...days].reverse().map((day) => {
         const title = dayTitle(day, lang);
         return (
           <li key={day.date}>
             <a
               href={dayArchivePath(day.date, lang)}
-              className="group grid grid-cols-[3rem_1fr_auto] items-start gap-3.5"
+              className="group -mx-3 grid grid-cols-[3rem_1fr_auto] items-start gap-3.5 rounded-xl px-3 hover:bg-muted"
               style={{
                 paddingTop: "var(--reader-pad, 0.75rem)",
                 paddingBottom: "var(--reader-pad, 0.75rem)",

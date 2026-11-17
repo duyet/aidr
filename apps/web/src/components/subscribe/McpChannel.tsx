@@ -1,4 +1,3 @@
-import { Button } from "@aidr/ui";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { track } from "../../lib/analytics/track";
@@ -19,22 +18,21 @@ export function McpChannel({ lang }: { lang: Lang }) {
             )}
           </p>
           <ConnectSection />
-          <Button variant="outline" asChild>
-            <Link
-              to="/mcp"
-              search={{ lang }}
-              onClick={() =>
-                track("nav_click", { to: "/mcp", placement: "subscribe_page" })
-              }
-            >
-              {t("Tools and full setup", "Công cụ và hướng dẫn đầy đủ")}
-              <ArrowRight data-icon="inline-end" aria-hidden />
-            </Link>
-          </Button>
+          <Link
+            to="/mcp"
+            search={{ lang }}
+            className="btn-soft w-fit"
+            onClick={() =>
+              track("nav_click", { to: "/mcp", placement: "subscribe_page" })
+            }
+          >
+            {t("Tools and full setup", "Công cụ và hướng dẫn đầy đủ")}
+            <ArrowRight aria-hidden />
+          </Link>
         </>
       }
       preview={
-        <div className="rounded-lg border border-border bg-card p-4 sm:p-5 [&>section]:mt-0">
+        <div className="[&>section]:mt-0">
           <ClientsSection />
         </div>
       }

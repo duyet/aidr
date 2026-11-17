@@ -15,7 +15,7 @@ export function ContentPicker({
       <p className="mb-3 text-xs text-muted-foreground">
         Blog posts and today&apos;s news. Click to add, then AI wrap.
       </p>
-      <ul className="max-h-[420px] space-y-1 overflow-auto border-t border-border">
+      <ul className="max-h-[420px] space-y-1 overflow-auto">
         {content.map((item) => {
           const selected = picks.some((p) => p.url === item.url);
           return (
@@ -23,7 +23,7 @@ export function ContentPicker({
               <button
                 type="button"
                 onClick={() => onToggle(item)}
-                className={`w-full border-b border-border px-1 py-2 text-left text-sm ${
+                className={`w-full rounded-lg px-2 py-2 text-left text-sm ${
                   selected ? "bg-muted" : "hover:bg-muted/50"
                 }`}
               >

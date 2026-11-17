@@ -120,7 +120,7 @@ export function MonthGrid({
               <li key={date}>
                 <span
                   aria-current={current}
-                  className={`${tile} ${text} text-muted-foreground${page ? " border border-border" : ""}${ring}`}
+                  className={`${tile} ${text} text-muted-foreground${page ? " bg-muted/50" : ""}${ring}`}
                 >
                   {num}
                   {dot}

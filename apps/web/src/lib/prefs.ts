@@ -23,6 +23,49 @@ export const READER_DENSITIES: ReaderDensity[] = [
 export type ReaderBg = "default" | "cream" | "gray" | "dark" | "black";
 export type TldrCount = 8 | 12 | 16;
 
+export const READER_FONTS = [
+  "sans",
+  "serif",
+] as const satisfies readonly ReaderFont[];
+export const READER_BGS = [
+  "default",
+  "cream",
+  "gray",
+  "dark",
+  "black",
+] as const satisfies readonly ReaderBg[];
+export const TLDR_COUNTS = [8, 12, 16] as const satisfies readonly TldrCount[];
+
+/** Page layout: the default dense list, a roomier list, or the print look. */
+export const LAYOUTS = ["compact", "comfortable", "newspaper"] as const;
+export type Layout = (typeof LAYOUTS)[number];
+
+/** Recolors the logo mark, links and focus ring only. */
+export const ACCENTS = ["yellow", "blue", "green", "rose", "violet"] as const;
+export type Accent = (typeof ACCENTS)[number];
+
+/** Key-name color: each topic's own ink, the accent for all, or plain text. */
+export const HIGHLIGHTS = ["topic", "one", "none"] as const;
+export type Highlight = (typeof HIGHLIGHTS)[number];
+
+/** Which language leads when the page shows VI and EN together. */
+export const BILINGUAL_FIRSTS = ["vi", "en"] as const;
+export type BilingualFirst = (typeof BILINGUAL_FIRSTS)[number];
+
+export const TLDR_COLS = [1, 2, 3] as const;
+export type TldrCols = (typeof TLDR_COLS)[number];
+
+export const TLDR_VIEWS = ["image", "text"] as const;
+export type TldrView = (typeof TLDR_VIEWS)[number];
+
+/** Columns of the ranked list in the newspaper layout. */
+export const NEWS_COLS = [2, 3] as const;
+export type NewsCols = (typeof NEWS_COLS)[number];
+
+/** Days the home feed shows before "Older days". */
+export const FEED_DAYS = [1, 3, 7] as const;
+export type FeedDays = (typeof FEED_DAYS)[number];
+
 export type SectionKey = "trending" | "tldr" | "days" | "categories";
 
 export interface ReaderSections {
@@ -33,7 +76,10 @@ export interface ReaderSections {
 }
 
 export interface Prefs {
+  /** Body font. */
   font: ReaderFont;
+  /** Headline font, set apart from the body font. */
+  headFont: ReaderFont;
   fontSize: number;
   density: ReaderDensity;
   bg: ReaderBg;
@@ -43,6 +89,21 @@ export interface Prefs {
   tldrCount: TldrCount;
   /** Remembers the StoryDialog's EN|VI side-by-side toggle across stories. */
   bilingualDialog: boolean;
+  layout: Layout;
+  accent: Accent;
+  highlight: Highlight;
+  bilingualFirst: BilingualFirst;
+  /** Show the other language under the leading one. */
+  bilingual: boolean;
+  tldrCols: TldrCols;
+  tldrView: TldrView;
+  newsCols: NewsCols;
+  thumbs: boolean;
+  /** Summary lines under ranked-list titles. */
+  summaries: boolean;
+  feedDays: FeedDays;
+  /** Load older days when the end of the feed scrolls into view. */
+  infiniteDays: boolean;
 }
 
 export const DEFAULT_SECTION_ORDER: SectionKey[] = [
@@ -61,12 +122,61 @@ export const DEFAULT_PREFS: Prefs = {
   sectionOrder: [...DEFAULT_SECTION_ORDER],
   tldrCount: 8,
   bilingualDialog: false,
+  headFont: "sans",
+  layout: "compact",
+  accent: "yellow",
+  highlight: "topic",
+  bilingualFirst: "vi",
+  bilingual: false,
+  tldrCols: 2,
+  tldrView: "image",
+  newsCols: 2,
+  thumbs: true,
+  summaries: false,
+  feedDays: 3,
+  infiniteDays: false,
 };
 
 const STORAGE_KEY = "news_prefs";
 const FONT_SIZE_MIN = 0.85;
 const FONT_SIZE_MAX = 1.25;
-const TLDR_COUNTS: TldrCount[] = [8, 12, 16];
+
+/** The values each enumerated pref may take; anything else loads as default. */
+const PREF_CHOICES = {
+  font: READER_FONTS,
+  headFont: READER_FONTS,
+  bg: READER_BGS,
+  density: READER_DENSITIES,
+  tldrCount: TLDR_COUNTS,
+  layout: LAYOUTS,
+  accent: ACCENTS,
+  highlight: HIGHLIGHTS,
+  bilingualFirst: BILINGUAL_FIRSTS,
+  tldrCols: TLDR_COLS,
+  tldrView: TLDR_VIEWS,
+  newsCols: NEWS_COLS,
+  feedDays: FEED_DAYS,
+} as const satisfies { [K in keyof Prefs]?: readonly Prefs[K][] };
+
+type ChoicePref = keyof typeof PREF_CHOICES;
+type FlagPref = {
+  [K in keyof Prefs]: Prefs[K] extends boolean ? K : never;
+}[keyof Prefs];
+
+function choice<K extends ChoicePref>(
+  saved: Record<string, unknown>,
+  key: K
+): Prefs[K] {
+  const allowed: readonly unknown[] = PREF_CHOICES[key];
+  return allowed.includes(saved[key])
+    ? (saved[key] as Prefs[K])
+    : DEFAULT_PREFS[key];
+}
+
+function flag(saved: Record<string, unknown>, key: FlagPref): boolean {
+  const value = saved[key];
+  return typeof value === "boolean" ? value : DEFAULT_PREFS[key];
+}
 
 function clampFontSize(value: unknown): number {
   const n =
@@ -76,53 +186,67 @@ function clampFontSize(value: unknown): number {
   return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, n));
 }
 
-function validDensity(value: unknown): ReaderDensity {
-  return READER_DENSITIES.includes(value as ReaderDensity)
-    ? (value as ReaderDensity)
-    : DEFAULT_PREFS.density;
-}
-
-function clampTldrCount(value: unknown): TldrCount {
-  return TLDR_COUNTS.includes(value as TldrCount)
-    ? (value as TldrCount)
-    : DEFAULT_PREFS.tldrCount;
+/** Parses a stored `news_prefs` value. Keys saved by older builds keep their
+ * values, missing keys take defaults, and unknown keys are dropped. */
+export function parsePrefs(raw: string | null): Prefs {
+  if (!raw) return DEFAULT_PREFS;
+  let saved: unknown;
+  try {
+    saved = JSON.parse(raw);
+  } catch {
+    return DEFAULT_PREFS;
+  }
+  if (typeof saved !== "object" || saved === null) return DEFAULT_PREFS;
+  const s = saved as Record<string, unknown>;
+  const order = Array.isArray(s.sectionOrder)
+    ? (s.sectionOrder as unknown[]).filter(
+        (k): k is SectionKey =>
+          typeof k === "string" && k in DEFAULT_PREFS.sections
+      )
+    : null;
+  // Merge persisted order with any new default keys — keep existing order,
+  // append any keys that weren't in the saved value.
+  const sectionOrder: SectionKey[] = order
+    ? [
+        ...order.filter((k) => DEFAULT_SECTION_ORDER.includes(k)),
+        ...DEFAULT_SECTION_ORDER.filter((k) => !order.includes(k)),
+      ]
+    : [...DEFAULT_SECTION_ORDER];
+  const sections =
+    typeof s.sections === "object" && s.sections !== null
+      ? (s.sections as Partial<ReaderSections>)
+      : {};
+  return {
+    font: choice(s, "font"),
+    headFont: choice(s, "headFont"),
+    fontSize: clampFontSize(s.fontSize),
+    density: choice(s, "density"),
+    bg: choice(s, "bg"),
+    sections: { ...DEFAULT_PREFS.sections, ...sections },
+    sectionOrder,
+    tldrCount: choice(s, "tldrCount"),
+    bilingualDialog: flag(s, "bilingualDialog"),
+    bilingual: flag(s, "bilingual"),
+    layout: choice(s, "layout"),
+    accent: choice(s, "accent"),
+    highlight: choice(s, "highlight"),
+    bilingualFirst: choice(s, "bilingualFirst"),
+    tldrCols: choice(s, "tldrCols"),
+    tldrView: choice(s, "tldrView"),
+    newsCols: choice(s, "newsCols"),
+    thumbs: flag(s, "thumbs"),
+    summaries: flag(s, "summaries"),
+    feedDays: choice(s, "feedDays"),
+    infiniteDays: flag(s, "infiniteDays"),
+  };
 }
 
 export function loadPrefs(): Prefs {
   if (typeof window === "undefined") return DEFAULT_PREFS;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_PREFS;
-    const parsed = JSON.parse(raw) as Partial<Prefs>;
-    const order = Array.isArray(parsed.sectionOrder)
-      ? (parsed.sectionOrder as unknown[]).filter(
-          (k): k is SectionKey =>
-            typeof k === "string" && k in DEFAULT_PREFS.sections
-        )
-      : null;
-    // Merge persisted order with any new default keys — keep existing order,
-    // append any keys that weren't in the saved value.
-    const sectionOrder: SectionKey[] = order
-      ? [
-          ...order.filter((k) => DEFAULT_SECTION_ORDER.includes(k)),
-          ...DEFAULT_SECTION_ORDER.filter((k) => !order.includes(k)),
-        ]
-      : [...DEFAULT_SECTION_ORDER];
-    return {
-      ...DEFAULT_PREFS,
-      ...parsed,
-      fontSize: clampFontSize(parsed.fontSize),
-      density: validDensity(parsed.density),
-      tldrCount: clampTldrCount(parsed.tldrCount),
-      sections: { ...DEFAULT_PREFS.sections, ...parsed.sections },
-      sectionOrder,
-      bilingualDialog:
-        typeof parsed.bilingualDialog === "boolean"
-          ? parsed.bilingualDialog
-          : DEFAULT_PREFS.bilingualDialog,
-    };
+    return parsePrefs(localStorage.getItem(STORAGE_KEY));
   } catch {
-    // malformed/unavailable storage — fall back to defaults
+    // storage unavailable (private mode, blocked) — fall back to defaults
     return DEFAULT_PREFS;
   }
 }
@@ -168,6 +292,27 @@ export function readerCssVars(prefs: Prefs): Record<string, string> {
     "--reader-leading": rhythm.leading,
     "--reader-leading-dark": rhythm.leadingDark,
     "--reader-flow": rhythm.flow,
+  };
+}
+
+const onOff = (value: boolean) => (value ? "on" : "off");
+
+/** The `data-*` hooks on `.app-shell` that styles.css keys page-wide rules
+ * off (layout, accent, topic highlight, columns, row details, fonts). */
+export function readerDataAttrs(
+  prefs: Prefs
+): Record<`data-${string}`, string> {
+  return {
+    "data-reader-bg": prefs.bg,
+    "data-layout": prefs.layout,
+    "data-accent": prefs.accent,
+    "data-highlight": prefs.highlight,
+    "data-tldr-cols": String(prefs.tldrCols),
+    "data-news-cols": String(prefs.newsCols),
+    "data-thumbs": onOff(prefs.thumbs),
+    "data-summaries": onOff(prefs.summaries),
+    "data-head-font": prefs.headFont,
+    "data-bilingual": onOff(prefs.bilingual),
   };
 }
 

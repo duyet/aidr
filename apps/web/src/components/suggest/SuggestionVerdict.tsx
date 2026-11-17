@@ -61,12 +61,12 @@ export function SuggestionVerdict({
   const adjusted = !perField && isAdjusted(suggestion, appliedText);
   const tone =
     status === "accepted"
-      ? "border-accent text-accent"
-      : "border-border text-muted-foreground";
+      ? "bg-accent/10 text-accent"
+      : "bg-muted text-muted-foreground";
   return (
     <div className="space-y-1 text-xs">
       <div className="flex flex-wrap items-center gap-2">
-        <span className={`rounded-full border px-2 py-0 ${tone}`}>
+        <span className={`rounded-full px-2 py-0.5 ${tone}`}>
           {verdictLabel(status, adjusted, lang)}
         </span>
         {rating !== null && (
@@ -82,7 +82,7 @@ export function SuggestionVerdict({
               <p className="font-semibold uppercase tracking-wider text-muted-foreground">
                 {fieldLabel(change, lang)}
               </p>
-              <p className="whitespace-pre-wrap rounded-md border border-border p-2 text-sm">
+              <p className="whitespace-pre-wrap rounded-lg bg-muted p-2 text-sm">
                 {change.before
                   ? renderDiff(wordDiff(change.before, change.after))
                   : change.after}
@@ -91,7 +91,7 @@ export function SuggestionVerdict({
           ))
         : status === "accepted" &&
           appliedText && (
-            <p className="whitespace-pre-wrap rounded-md border border-border p-2 text-sm">
+            <p className="whitespace-pre-wrap rounded-lg bg-muted p-2 text-sm">
               {adjusted
                 ? renderDiff(wordDiff(suggestion, appliedText))
                 : appliedText}

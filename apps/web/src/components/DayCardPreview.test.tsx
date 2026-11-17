@@ -8,8 +8,11 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { track } from "../lib/analytics/track";
-import type { TldrBullet } from "../lib/types";
-import { TldrSection } from "./TldrSection";
+import {
+  ConnectedTldrSection,
+  makeBullets,
+  PrefsHarness,
+} from "./tldr-test-harness";
 
 // Bullet rows open story dialogs whose server fns import cloudflare:workers,
 // which happy-dom cannot resolve. Neither is used here.
@@ -23,24 +26,21 @@ vi.mock("../lib/vote-fn", () => ({
   fetchMyVotes: () => Promise.resolve({ votes: {}, nets: {} }),
 }));
 
-const bullets: TldrBullet[] = Array.from({ length: 8 }, (_, i) => ({
-  text: `Bullet ${i + 1}`,
-  item_ids: [`item${i}`],
-  image_url: null,
-}));
+const CARD_ALT = "AI;DR card for 2026-10-09";
 
-function renderSection() {
+function renderSection(tldrView: "image" | "text" = "text") {
   return render(
-    <TldrSection
-      bullets={bullets}
-      defaultCount={8}
-      lang="en"
-      totalStories={349}
-      updatedAt={Date.now()}
-      lastFetchedAt={null}
-      snapshotDate="2026-10-09"
-      dateHref="/date/2026-10-09"
-    />
+    <PrefsHarness initial={{ tldrView }}>
+      <ConnectedTldrSection
+        bullets={makeBullets(8)}
+        lang="en"
+        totalStories={349}
+        updatedAt={Date.now()}
+        lastFetchedAt={null}
+        snapshotDate="2026-10-09"
+        dateHref="/date/2026-10-09"
+      />
+    </PrefsHarness>
   );
 }
 
@@ -54,9 +54,9 @@ describe("day card image view", () => {
     renderSection();
     expect(screen.getByText("Bullet 1")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Show day card" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Show day card" }));
 
-    const card = screen.getByAltText("AI;DR card for 2026-10-09");
+    const card = screen.getByAltText(CARD_ALT);
     expect(card.getAttribute("src")).toBe(
       "/api/og/date/2026-10-09.png?lang=en"
     );
@@ -70,30 +70,38 @@ describe("day card image view", () => {
     expect(screen.getByText(/349 stories/)).toBeTruthy();
     expect(
       screen
-        .getByRole("button", { name: "Show day card" })
-        .getAttribute("aria-pressed")
+        .getByRole("radio", { name: "Show day card" })
+        .getAttribute("aria-checked")
     ).toBe("true");
   });
 
   it("brings the list back on text view", () => {
     renderSection();
-    fireEvent.click(screen.getByRole("button", { name: "Show day card" }));
-    fireEvent.click(screen.getByRole("button", { name: "Show text" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Show day card" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Show text" }));
 
     expect(screen.getByText("Bullet 1").closest("[hidden]")).toBeNull();
-    const card = screen.getByAltText("AI;DR card for 2026-10-09");
+    const card = screen.getByAltText(CARD_ALT);
     expect((card.parentElement as HTMLElement).hidden).toBe(true);
     expect(
       screen
-        .getByRole("button", { name: "Show text" })
-        .getAttribute("aria-pressed")
+        .getByRole("radio", { name: "Show text" })
+        .getAttribute("aria-checked")
     ).toBe("true");
+  });
+
+  it("opens on the card when the saved view is image", () => {
+    renderSection("image");
+    expect(screen.getByText("Bullet 1").closest("[hidden]")).not.toBeNull();
+    expect(
+      (screen.getByAltText(CARD_ALT).parentElement as HTMLElement).hidden
+    ).toBe(false);
   });
 
   it("reports each switch as tldr_toggle with the view chosen", () => {
     renderSection();
-    fireEvent.click(screen.getByRole("button", { name: "Show day card" }));
-    fireEvent.click(screen.getByRole("button", { name: "Show text" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Show day card" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Show text" }));
     expect(vi.mocked(track).mock.calls).toEqual([
       ["tldr_toggle", { view: "image" }],
       ["tldr_toggle", { view: "text" }],
@@ -109,7 +117,7 @@ describe("day card fetch", () => {
       act(() => {
         vi.advanceTimersByTime(10_000);
       });
-      expect(screen.queryByAltText("AI;DR card for 2026-10-09")).toBeNull();
+      expect(screen.queryByAltText(CARD_ALT)).toBeNull();
     } finally {
       vi.useRealTimers();
     }
@@ -117,8 +125,14 @@ describe("day card fetch", () => {
 
   it("warms the card when the pointer reaches the switch", () => {
     renderSection();
-    fireEvent.pointerEnter(screen.getByRole("group", { name: "View" }));
-    const card = screen.getByAltText("AI;DR card for 2026-10-09");
+    fireEvent.pointerEnter(screen.getByRole("radiogroup", { name: "View" }));
+    const card = screen.getByAltText(CARD_ALT);
     expect((card.parentElement as HTMLElement).hidden).toBe(true);
+  });
+
+  it("warms the card when keyboard focus reaches the switch", () => {
+    renderSection();
+    fireEvent.focus(screen.getByRole("radio", { name: "Show text" }));
+    expect(screen.getByAltText(CARD_ALT)).toBeTruthy();
   });
 });

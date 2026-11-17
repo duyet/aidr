@@ -27,7 +27,7 @@ const EXTERNAL =
 
 export function VersionBadge({ version }: { version: string }): ReactElement {
   return (
-    <span className="inline-flex items-center rounded-full border border-input px-2.5 py-0.5 font-mono text-[11px] font-medium text-foreground">
+    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 font-mono text-[11px] font-medium text-foreground">
       v{version}
     </span>
   );
@@ -243,7 +243,7 @@ function OtherReleases({
   return (
     <nav
       aria-label={lang === "vi" ? "Các bản phát hành khác" : "Other releases"}
-      className="mt-10 border-t border-border pt-6"
+      className="mt-12"
     >
       <h2 className={SECTION_TITLE}>
         {lang === "vi" ? "Các bản phát hành khác" : "Other releases"}
@@ -347,7 +347,7 @@ export function ReleaseArticle({
       </header>
 
       {release.stats.length > 0 ? (
-        <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-y border-border py-4 sm:grid-cols-3">
+        <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 py-4 sm:grid-cols-3">
           {release.stats.map((stat) => (
             <div key={t(stat.label, "en")} className="min-w-0">
               <dd className="text-[24px] font-semibold leading-tight tracking-[-0.02em] tabular-nums text-foreground">
@@ -364,7 +364,7 @@ export function ReleaseArticle({
           <h2 className={SECTION_TITLE}>
             {vi ? "Điểm nổi bật" : "Highlights"}
           </h2>
-          <ol className="mt-3 divide-y divide-border">
+          <ol className="mt-3 space-y-1">
             {release.highlights.map((item) => (
               <Highlight key={item.label.en} item={item} lang={lang} />
             ))}
@@ -385,7 +385,7 @@ export function ReleaseArticle({
                   {group.items.length}
                 </span>
               </h3>
-              <ul className="mt-1 divide-y divide-border">
+              <ul className="mt-1 space-y-1">
                 {group.items.map((change) => (
                   <Change
                     key={`${change.commit ?? ""}:${change.text.en}`}

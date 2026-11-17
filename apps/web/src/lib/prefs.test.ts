@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_PREFS, loadPrefs, readerCssVars, savePrefs } from "./prefs";
+import {
+  DEFAULT_PREFS,
+  loadPrefs,
+  readerCssVars,
+  readerDataAttrs,
+  savePrefs,
+} from "./prefs";
 
 function createLocalStorageStub() {
   let store: Record<string, string> = {};
@@ -147,6 +153,138 @@ describe("prefs", () => {
     expect(loadPrefs().density).toBe("compact");
     localStorage.setItem("news_prefs", JSON.stringify({ density: "huge" }));
     expect(loadPrefs().density).toBe("medium");
+  });
+
+  it("loads a blob saved before the redesign and fills the new keys", () => {
+    localStorage.setItem(
+      "news_prefs",
+      JSON.stringify({
+        font: "serif",
+        fontSize: 1.1,
+        density: "compact",
+        bg: "gray",
+        sections: { trending: false, tldr: true, days: true, categories: true },
+        sectionOrder: ["tldr", "trending", "days", "categories"],
+        tldrCount: 12,
+        bilingualDialog: true,
+      })
+    );
+    expect(loadPrefs()).toEqual({
+      font: "serif",
+      headFont: "sans",
+      fontSize: 1.1,
+      density: "compact",
+      bg: "gray",
+      sections: { trending: false, tldr: true, days: true, categories: true },
+      sectionOrder: ["tldr", "trending", "days", "categories"],
+      tldrCount: 12,
+      bilingualDialog: true,
+      layout: "compact",
+      accent: "yellow",
+      highlight: "topic",
+      bilingualFirst: "vi",
+      bilingual: false,
+      tldrCols: 2,
+      tldrView: "image",
+      newsCols: 2,
+      thumbs: true,
+      summaries: false,
+      feedDays: 3,
+      infiniteDays: false,
+    });
+  });
+
+  it("keeps each valid new pref and drops values outside its set", () => {
+    const valid = {
+      layout: "newspaper",
+      accent: "violet",
+      highlight: "none",
+      headFont: "serif",
+      bilingualFirst: "en",
+      tldrCols: 3,
+      tldrView: "text",
+      newsCols: 3,
+      thumbs: false,
+      summaries: true,
+      feedDays: 7,
+      infiniteDays: true,
+    };
+    localStorage.setItem("news_prefs", JSON.stringify(valid));
+    expect(loadPrefs()).toMatchObject(valid);
+
+    localStorage.setItem(
+      "news_prefs",
+      JSON.stringify({
+        layout: "magazine",
+        accent: "purple",
+        highlight: "all",
+        headFont: "mono",
+        bilingualFirst: "both",
+        tldrCols: "3",
+        tldrView: "video",
+        newsCols: 1,
+        thumbs: "false",
+        summaries: 1,
+        feedDays: 5,
+        infiniteDays: null,
+      })
+    );
+    expect(loadPrefs()).toMatchObject({
+      layout: "compact",
+      accent: "yellow",
+      highlight: "topic",
+      headFont: "sans",
+      bilingualFirst: "vi",
+      bilingual: false,
+      tldrCols: 2,
+      tldrView: "image",
+      newsCols: 2,
+      thumbs: true,
+      summaries: false,
+      feedDays: 3,
+      infiniteDays: false,
+    });
+  });
+
+  it("drops a corrupt font or background and any unknown key", () => {
+    localStorage.setItem(
+      "news_prefs",
+      JSON.stringify({ font: "comic", bg: "neon", layoutV0: "grid" })
+    );
+    const prefs = loadPrefs();
+    expect(prefs.font).toBe("sans");
+    expect(prefs.bg).toBe("default");
+    expect(prefs).not.toHaveProperty("layoutV0");
+    localStorage.setItem("news_prefs", "null");
+    expect(loadPrefs()).toEqual(DEFAULT_PREFS);
+  });
+
+  it("exposes the page-wide prefs as data attributes", () => {
+    expect(
+      readerDataAttrs({
+        ...DEFAULT_PREFS,
+        bg: "black",
+        layout: "newspaper",
+        accent: "rose",
+        highlight: "one",
+        tldrCols: 3,
+        newsCols: 3,
+        thumbs: false,
+        summaries: true,
+        headFont: "serif",
+      })
+    ).toEqual({
+      "data-reader-bg": "black",
+      "data-layout": "newspaper",
+      "data-accent": "rose",
+      "data-highlight": "one",
+      "data-tldr-cols": "3",
+      "data-news-cols": "3",
+      "data-thumbs": "off",
+      "data-summaries": "on",
+      "data-head-font": "serif",
+      "data-bilingual": "off",
+    });
   });
 
   it("returns defaults when window is unavailable (SSR)", () => {

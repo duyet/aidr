@@ -1,14 +1,9 @@
-import {
-  CalendarDays,
-  Check,
-  LayoutGrid,
-  Sparkles,
-  TrendingUp,
-} from "lucide-react";
+import { Toggle } from "@ui-sdk/react/toggle";
+import { CalendarDays, LayoutGrid, Sparkles, TrendingUp } from "lucide-react";
 import type { ReactElement } from "react";
 import { track } from "../lib/analytics/track";
 import { type Prefs, usePrefs } from "../lib/prefs";
-import type { Lang } from "../lib/types";
+import { Bi } from "./Bi";
 
 type Section = keyof Prefs["sections"];
 
@@ -22,73 +17,53 @@ const SECTION_TILES: {
     key: "categories",
     en: "Category nav",
     vi: "Danh mục",
-    icon: <LayoutGrid className="size-3.5 shrink-0" aria-hidden />,
+    icon: <LayoutGrid aria-hidden />,
   },
   {
     key: "trending",
     en: "Trending",
     vi: "Xu hướng",
-    icon: <TrendingUp className="size-3.5 shrink-0" aria-hidden />,
+    icon: <TrendingUp aria-hidden />,
   },
-  {
-    key: "tldr",
-    en: "AI;DR",
-    vi: "AI;DR",
-    icon: <Sparkles className="size-3.5 shrink-0" aria-hidden />,
-  },
+  { key: "tldr", en: "AI;DR", vi: "AI;DR", icon: <Sparkles aria-hidden /> },
   {
     key: "days",
     en: "Daily feed",
     vi: "Bảng tin theo ngày",
-    icon: <CalendarDays className="size-3.5 shrink-0" aria-hidden />,
+    icon: <CalendarDays aria-hidden />,
   },
 ];
 
 /** The home page's own section picker, at the foot of the feed it shapes. */
-export function HomeSections({ lang }: { lang: Lang }) {
+export function HomeSections() {
   const { prefs, setPrefs } = usePrefs();
-  const vi = lang === "vi";
   return (
-    <section
-      aria-labelledby="home-sections"
-      className="mt-10 border-t border-border pt-4 pb-2"
-    >
+    <section aria-labelledby="home-sections" className="pb-2">
       <h2
         id="home-sections"
-        className="mb-2 text-xs font-medium text-muted-foreground"
+        className="mb-2.5 text-[12.5px] font-bold uppercase tracking-[0.07em] text-foreground"
       >
-        {vi ? "Hiện trên trang chủ" : "Show on home"}
+        <Bi vi="Hiện trên trang chủ" en="Show on home" inline />
       </h2>
-      <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
-        {SECTION_TILES.map(({ key, en, vi: viLabel, icon }) => {
+      <div className="flex flex-wrap gap-2">
+        {SECTION_TILES.map(({ key, en, vi, icon }) => {
           const on = prefs.sections[key];
           return (
-            <button
+            <Toggle
               key={key}
-              type="button"
-              aria-pressed={on}
-              onClick={() => {
+              pressed={on}
+              onPressedChange={() => {
                 track("prefs_change", {
                   pref: `sections.${key}`,
                   pref_value: on ? "off" : "on",
                 });
                 setPrefs({ sections: { ...prefs.sections, [key]: !on } });
               }}
-              className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                on
-                  ? "bg-muted font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-              }`}
+              className="chip"
             >
               {icon}
-              <span className="min-w-0 flex-1 truncate">
-                {vi ? viLabel : en}
-              </span>
-              <Check
-                className={`size-3.5 shrink-0 ${on ? "" : "invisible"}`}
-                aria-hidden
-              />
-            </button>
+              <Bi vi={vi} en={en} inline />
+            </Toggle>
           );
         })}
       </div>

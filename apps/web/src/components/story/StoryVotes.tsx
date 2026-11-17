@@ -1,6 +1,13 @@
 import { useHydrated } from "@tanstack/react-router";
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@ui-sdk/react/dialog";
 import { ThumbsUp } from "lucide-react";
-import { Dialog as DialogPrimitive } from "radix-ui";
 import { useEffect, useRef, useState } from "react";
 import {
   bearerHeaders,
@@ -188,35 +195,31 @@ function SignInVotes({
         pressed={false}
         onClick={() => setOpen(true)}
       />
-      <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40" />
-          {/* React events bubble through portals; keep clicks off the row. */}
-          <DialogPrimitive.Content
-            className="fixed top-1/2 left-1/2 z-50 w-[min(calc(100%-2rem),20rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-background p-5 shadow-lg"
-            onClick={keepRowClosed}
-            onKeyDown={keepRowClosed}
-          >
-            <DialogPrimitive.Title className="text-base font-semibold text-foreground">
-              {copy.signInTitle}
-            </DialogPrimitive.Title>
-            <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
-              {copy.signInBody}
-            </DialogPrimitive.Description>
-            <div className="mt-4 flex justify-end gap-2">
-              <DialogPrimitive.Close className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
-                {copy.close}
-              </DialogPrimitive.Close>
-              <a
-                href={signInHref(lang, storyPath({ id: itemId }, lang))}
-                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                {copy.signIn}
-              </a>
-            </div>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogBackdrop className="fixed inset-0 bg-black/40" />
+        {/* React events bubble through portals; keep clicks off the row. */}
+        <DialogContent
+          className="fixed top-1/2 left-1/2 w-[min(calc(100%-2rem),20rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-card p-5 text-card-foreground shadow-lg"
+          onClick={keepRowClosed}
+          onKeyDown={keepRowClosed}
+        >
+          <DialogTitle className="text-base font-semibold text-foreground">
+            {copy.signInTitle}
+          </DialogTitle>
+          <DialogDescription className="mt-1 text-sm text-muted-foreground">
+            {copy.signInBody}
+          </DialogDescription>
+          <div className="mt-4 flex items-center justify-end gap-3">
+            <DialogClose className="btn-soft">{copy.close}</DialogClose>
+            <a
+              href={signInHref(lang, storyPath({ id: itemId }, lang))}
+              className="btn-primary"
+            >
+              {copy.signIn}
+            </a>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

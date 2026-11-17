@@ -1,12 +1,4 @@
 import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@aidr/ui";
-import {
   CheckCircle2,
   Languages,
   Newspaper,
@@ -31,8 +23,8 @@ const FEATURES = [
   },
   {
     icon: SlidersHorizontal,
-    en: "Reorder, hide, or add sections — Daily feed, Trending, AI;DR, Categories.",
-    vi: "Sắp xếp, ẩn hoặc thêm mục — Daily feed, Trending, AI;DR, Categories.",
+    en: "Reorder, hide, or add sections: Daily feed, Trending, AI;DR, Categories.",
+    vi: "Sắp xếp, ẩn hoặc thêm mục: Daily feed, Trending, AI;DR, Categories.",
   },
   {
     icon: Languages,
@@ -58,7 +50,7 @@ export function ChromeChannel({ lang }: { lang: Lang }) {
               alt=""
               width={56}
               height={56}
-              className="size-14 rounded-[12px] border border-border"
+              className="size-14 rounded-[12px]"
             />
             <div className="space-y-1">
               <p className="font-medium leading-tight">aidr</p>
@@ -76,22 +68,21 @@ export function ChromeChannel({ lang }: { lang: Lang }) {
               "Thay tab mới của Chrome bằng AI;DR hôm nay và tin nổi bật từ aidr.today. Cài đặt từ Chrome Web Store."
             )}
           </p>
-          <Button size="lg" asChild>
-            <a
-              href={CHROME_WEB_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() =>
-                track("channel_click", {
-                  channel: "extension",
-                  placement: "subscribe_page",
-                })
-              }
-            >
-              <ChromeMark className="mr-2 size-5" aria-hidden />
-              {t("Chrome Web Store", "Chrome Web Store")}
-            </a>
-          </Button>
+          <a
+            className="btn-primary w-fit"
+            href={CHROME_WEB_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() =>
+              track("channel_click", {
+                channel: "extension",
+                placement: "subscribe_page",
+              })
+            }
+          >
+            <ChromeMark className="size-4" aria-hidden />
+            {t("Chrome Web Store", "Chrome Web Store")}
+          </a>
           {/* One column once the preview takes the right half, so the feature
               lines keep their full measure. */}
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -112,20 +103,18 @@ export function ChromeChannel({ lang }: { lang: Lang }) {
               </li>
             ))}
           </ul>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <RefreshCw className="size-4" aria-hidden />
-                {t("Updates", "Cập nhật")}
-              </CardTitle>
-              <CardDescription>
-                {t(
-                  "The Chrome Web Store version auto-updates automatically when new versions are published.",
-                  "Phiên bản Chrome Web Store tự động cập nhật khi có phiên bản mới."
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-start gap-2 text-sm text-muted-foreground">
+          <div className="space-y-2 rounded-xl bg-muted p-4">
+            <h3 className="flex items-center gap-2 text-[15px] font-semibold">
+              <RefreshCw className="size-4" aria-hidden />
+              {t("Updates", "Cập nhật")}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {t(
+                "The Chrome Web Store version auto-updates automatically when new versions are published.",
+                "Phiên bản Chrome Web Store tự động cập nhật khi có phiên bản mới."
+              )}
+            </p>
+            <p className="flex items-start gap-2 text-sm text-muted-foreground">
               <CheckCircle2
                 className="mt-0.5 size-4 shrink-0 text-primary"
                 aria-hidden
@@ -136,8 +125,8 @@ export function ChromeChannel({ lang }: { lang: Lang }) {
                   "Cài đặt từ Chrome Web Store để có cập nhật tự động."
                 )}
               </span>
-            </CardContent>
-          </Card>
+            </p>
+          </div>
         </>
       }
       preview={
@@ -147,8 +136,8 @@ export function ChromeChannel({ lang }: { lang: Lang }) {
           </BrowserFrame>
           <p className="text-xs text-muted-foreground">
             {t(
-              "Sample stories — the new tab shows the live aidr.today feed.",
-              "Tin mẫu — tab mới hiển thị bảng tin aidr.today trực tiếp."
+              "Sample stories. The new tab shows the live aidr.today feed.",
+              "Tin mẫu. Tab mới hiển thị bảng tin aidr.today trực tiếp."
             )}
           </p>
         </div>

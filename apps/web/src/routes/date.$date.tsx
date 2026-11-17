@@ -21,8 +21,8 @@ import { useLang } from "../lib/lang-context";
 import { loadErrorHead, loadErrorHeaders } from "../lib/load-error";
 import { absoluteSiteUrl } from "../lib/locale-url";
 import { notFoundCopy } from "../lib/not-found";
-import { PAGE_TITLE } from "../lib/page-style";
 import { NOT_FOUND_HEADER } from "../lib/not-found-status";
+import { PAGE_TITLE } from "../lib/page-style";
 import { usePrefs } from "../lib/prefs";
 import { localizedPageHead, notFoundHead } from "../lib/seo";
 import { dayShareText } from "../lib/share-text";
@@ -112,8 +112,7 @@ export const Route = createFileRoute("/date/$date")({
 });
 
 function DayNav({ archive, lang }: { archive: DayArchive; lang: Lang }) {
-  const pill =
-    "inline-flex h-8 items-center gap-1.5 rounded-full border border-input px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-muted max-sm:h-11";
+  const pill = "btn-soft max-sm:h-11";
   const muted = `${pill} pointer-events-none opacity-40`;
   const prevLabel = lang === "vi" ? "Ngày trước" : "Previous day";
   const nextLabel = lang === "vi" ? "Ngày sau" : "Next day";
@@ -237,13 +236,13 @@ function DayContent({ archive, lang }: { archive: DayArchive; lang: Lang }) {
     <div>
       <DayNav archive={archive} lang={lang} />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h1 className={PAGE_TITLE}>
-          {heading}
-        </h1>
+        <h1 className={PAGE_TITLE}>{heading}</h1>
         {items.length > 0 && (
           <CopyTextButton
             text={dayShareText(archive.date, items, lang)}
-            label={lang === "vi" ? "Chép để đăng" : "Copy for social"}
+            label={
+              lang === "vi" ? "Chép AI;DR để đăng" : "Copy AI;DR for social"
+            }
             lang={lang}
           />
         )}

@@ -390,6 +390,53 @@ describe("muted text tokens", () => {
   });
 });
 
+/** Accent pref blocks: `.app-shell[data-accent]`, dark ones under `.dark`. */
+function accentBlocks(prefix: string): Record<string, Tokens> {
+  const out: Record<string, Tokens> = {};
+  const pattern = new RegExp(
+    `^${prefix}\\.app-shell\\[data-accent="([a-z]+)"\\] \\{([^}]*)\\}`,
+    "gm"
+  );
+  for (const match of css.matchAll(pattern)) {
+    out[match[1]] = parseTokens(match[2]);
+  }
+  return out;
+}
+
+describe("accent choices", () => {
+  const lightAccents = accentBlocks("");
+  const darkAccents = accentBlocks("\\.dark ");
+
+  it("declares a light and a dark block for every non-default accent", () => {
+    const prefsAccents = prefsSource
+      .match(/export const ACCENTS = \[([^\]]+)\]/)?.[1]
+      .match(/"[a-z]+"/g)
+      ?.map((quoted) => quoted.replaceAll('"', ""));
+    expect(prefsAccents).toEqual(["yellow", "blue", "green", "rose", "violet"]);
+    expect(Object.keys(lightAccents)).toEqual([
+      "blue",
+      "green",
+      "rose",
+      "violet",
+    ]);
+    expect(Object.keys(darkAccents)).toEqual(Object.keys(lightAccents));
+  });
+
+  it("keeps accent links at AA and the ring at 3:1 on every surface of their theme", () => {
+    for (const combination of COMBINATIONS) {
+      const blocks = combination.theme === "light" ? lightAccents : darkAccents;
+      for (const [accent, tokens] of Object.entries(blocks)) {
+        expect(tokens["editorial-accent"], accent).toBe(tokens.accent);
+        for (const surface of surfacesFor(combination)) {
+          const named = { ...surface, name: `${accent} on ${surface.name}` };
+          assertTokenAt(tokens, named, "accent", AA_TEXT);
+          assertTokenAt(tokens, named, "ring", AA_LARGE_OR_NON_TEXT);
+        }
+      }
+    }
+  });
+});
+
 describe("readers that repaint the page", () => {
   it("pins the light text steps on the light reader backgrounds", () => {
     // `.app-shell[data-reader-bg="cream"|"gray"]` repaints the page for a light
@@ -585,8 +632,13 @@ describe("text colors no longer composite toward the surface", () => {
   it("keeps the state a real token instead of deleting it", () => {
     const [trending, category, , legend] = textColorSources;
     expect(trending.source).toContain("topic-muted");
-    expect(category.source).toContain("text-quiet-foreground");
-    expect(category.source).toContain("text-primary-foreground-quiet");
+    expect(category.source).toContain("chip-count");
+    expect(css).toMatch(
+      /\.chip-count\s*\{[^}]*color:\s*var\(--quiet-foreground\);/
+    );
+    expect(css).toMatch(
+      /\.chip-count\s*\{[^}]*color:\s*var\(--primary-foreground-quiet\);/
+    );
     expect(legend.source).toContain("text-quiet-foreground");
     expect(buttonSource).toContain("hover:bg-primary/90");
   });

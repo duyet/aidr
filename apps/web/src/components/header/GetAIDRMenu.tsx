@@ -1,240 +1,36 @@
 import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@aidr/ui";
-import { Link } from "@tanstack/react-router";
-import {
-  ChevronDown,
-  Database,
-  ExternalLink,
-  Info,
-  Mail,
-  Plug,
-  Plus,
-  Rss,
-  Send,
-  Workflow,
-} from "lucide-react";
-import { track } from "../../lib/analytics/track";
-import {
-  PHONE_DROPDOWN_ITEM_CLASS,
-  PHONE_GET_AIDR_TRIGGER_CLASS,
-} from "../../lib/chrome";
-import { useLang } from "../../lib/lang-context";
-import {
-  EXTENSION_PATH,
-  FACEBOOK_URL,
-  TELEGRAM_EN_URL,
-  TELEGRAM_URL,
-} from "../../lib/site";
-import { ChromeMark } from "./ChromeMark";
-import { FacebookMark } from "./FacebookMark";
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@ui-sdk/react/popover";
+import { useState } from "react";
+import { Bi } from "../Bi";
+import { FollowList } from "./FollowList";
+import { LogoMark } from "./LogoMark";
 
-function ExternalMarker() {
-  return <ExternalLink className="ml-auto !size-3 opacity-70" aria-hidden />;
-}
-
-export function GetAIDRMenu({ compact = false }: { compact?: boolean }) {
-  const navigationLang = useLang();
-  const itemClassName = compact ? PHONE_DROPDOWN_ITEM_CLASS : undefined;
-
+/** The one primary button in the menu bar: the email field and every place
+ *  to follow AI;DR. */
+export function GetAIDRMenu() {
+  const [open, setOpen] = useState(false);
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant={compact ? "ghost" : "default"}
-          size={compact ? "icon-lg" : "sm"}
-          className={compact ? PHONE_GET_AIDR_TRIGGER_CLASS : undefined}
-          data-header-menu-trigger="get-ai-dr"
-          title="Get AI;DR"
-          aria-label="Get AI;DR menu"
-        >
-          <img
-            src="/logo-icon.png"
-            alt=""
-            className="size-4 shrink-0 rounded"
-            aria-hidden
-          />
-          {compact ? <span className="sr-only">Get AI;DR</span> : "Get AI;DR"}
-          <ChevronDown
-            aria-hidden
-            className="!size-3.5 shrink-0 transition-transform group-data-[state=open]/button:rotate-180"
-          />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem asChild className={itemClassName}>
-          <Link
-            to={EXTENSION_PATH}
-            search={{ lang: navigationLang }}
-            onClick={() =>
-              track("channel_click", {
-                channel: "extension",
-                placement: "header_menu",
-              })
-            }
-          >
-            <ChromeMark aria-hidden />
-            Chrome Extension
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className={itemClassName}>
-          <a
-            href={TELEGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() =>
-              track("channel_click", {
-                channel: "telegram",
-                placement: "header_menu",
-                lang: "vi",
-              })
-            }
-          >
-            <Send aria-hidden />
-            Telegram Channel (Vietnamese)
-            <ExternalMarker />
-          </a>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className={itemClassName}>
-          <a
-            href={TELEGRAM_EN_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() =>
-              track("channel_click", {
-                channel: "telegram",
-                placement: "header_menu",
-                lang: "en",
-              })
-            }
-          >
-            <Send aria-hidden />
-            Telegram Channel (English)
-            <ExternalMarker />
-          </a>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className={itemClassName}>
-          <a
-            href={FACEBOOK_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() =>
-              track("channel_click", {
-                channel: "facebook",
-                placement: "header_menu",
-                lang: "en",
-              })
-            }
-          >
-            <FacebookMark />
-            Facebook Page
-            <ExternalMarker />
-          </a>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className={itemClassName}>
-          <Link
-            to="/subscribe"
-            search={{ tab: "email", lang: navigationLang }}
-            onClick={() =>
-              track("channel_click", {
-                channel: "email",
-                placement: "header_menu",
-              })
-            }
-          >
-            <Mail aria-hidden />
-            Email Subscription
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className={itemClassName}>
-          <Link
-            to="/mcp"
-            search={{ lang: navigationLang }}
-            onClick={() =>
-              track("nav_click", { to: "/mcp", placement: "header_menu" })
-            }
-          >
-            <Plug aria-hidden />
-            MCP Server
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className={itemClassName}>
-          <Link
-            to="/subscribe"
-            search={{ tab: "rss", lang: navigationLang }}
-            onClick={() =>
-              track("channel_click", {
-                channel: "rss",
-                placement: "header_menu",
-              })
-            }
-          >
-            <Rss aria-hidden />
-            RSS Feed
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className={itemClassName}>
-          <Link
-            to="/contribute"
-            search={{ lang: navigationLang }}
-            onClick={() =>
-              track("nav_click", {
-                to: "/contribute",
-                placement: "header_menu",
-              })
-            }
-          >
-            <Plus aria-hidden />
-            Contribute
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className={itemClassName}>
-          <Link
-            to="/data"
-            onClick={() =>
-              track("nav_click", { to: "/data", placement: "header_menu" })
-            }
-          >
-            <Database aria-hidden />
-            Data Analytics
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className={itemClassName}>
-          <Link
-            to="/data"
-            search={{ tab: "algo" }}
-            onClick={() =>
-              track("nav_click", {
-                to: "/data/algo",
-                placement: "header_menu",
-              })
-            }
-          >
-            <Workflow aria-hidden />
-            Algorithms
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className={itemClassName}>
-          <Link
-            to="/about"
-            search={{ lang: navigationLang }}
-            onClick={() =>
-              track("nav_click", { to: "/about", placement: "header_menu" })
-            }
-          >
-            <Info aria-hidden />
-            About
-          </Link>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger className="btn-primary gap-[7px] pl-2.5">
+        <LogoMark size="sm" />
+        AI;DR
+      </PopoverTrigger>
+      <PopoverContent
+        side="bottom"
+        align="end"
+        sideOffset={8}
+        collisionPadding={12}
+        className="w-[320px] max-w-[calc(100vw-1.5rem)] rounded-2xl border-0 bg-popover p-2 text-popover-foreground shadow-xl outline-none"
+      >
+        <PopoverTitle className="sr-only">
+          <Bi vi="Theo dõi AI;DR" en="Follow AI;DR" />
+        </PopoverTitle>
+        <FollowList placement="header_menu" onSelect={() => setOpen(false)} />
+      </PopoverContent>
+    </Popover>
   );
 }

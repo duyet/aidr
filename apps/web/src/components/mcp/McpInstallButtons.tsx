@@ -1,9 +1,9 @@
-import { Button } from "@aidr/ui";
 import { Check, Copy, Download, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { track } from "../../lib/analytics/track";
 import { useLang } from "../../lib/lang-context";
 import { MCP_CLIENTS, type McpClient } from "../../lib/mcp-install";
+import { Bi } from "../Bi";
 
 type CopyClient = Extract<McpClient, { kind: "copy" }>;
 
@@ -26,25 +26,26 @@ function CopyButton({ client }: { client: CopyClient }) {
   }
 
   return (
-    <Button
+    <button
       type="button"
-      variant="outline"
-      size="sm"
+      className="btn-soft"
       onClick={() => void copy()}
       aria-label={t(
         `Copy ${client.label} ${what}`,
         `Sao chép ${what} cho ${client.label}`
       )}
     >
+      {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
       {copied ? (
-        <Check className="size-4" aria-hidden />
+        <Bi en="Copied" vi="Đã chép" inline />
       ) : (
-        <Copy className="size-4" aria-hidden />
+        <Bi
+          en={`${client.label}: copy ${what}`}
+          vi={`${client.label}: chép ${what}`}
+          inline
+        />
       )}
-      {copied
-        ? t("Copied", "Đã chép")
-        : `${client.label}: ${t(`copy ${what}`, `chép ${what}`)}`}
-    </Button>
+    </button>
   );
 }
 
@@ -58,15 +59,19 @@ export function McpInstallButtons() {
       <div className="flex flex-wrap gap-1.5">
         {MCP_CLIENTS.map((client) =>
           client.kind === "deeplink" ? (
-            <Button key={client.id} variant="secondary" size="sm" asChild>
-              <a
-                href={client.href}
-                onClick={() => track("mcp_install", { target: client.id })}
-              >
-                <Download className="size-4" aria-hidden />
-                {t(`Add to ${client.label}`, `Thêm vào ${client.label}`)}
-              </a>
-            </Button>
+            <a
+              key={client.id}
+              href={client.href}
+              className="btn-soft"
+              onClick={() => track("mcp_install", { target: client.id })}
+            >
+              <Download aria-hidden />
+              <Bi
+                en={`Add to ${client.label}`}
+                vi={`Thêm vào ${client.label}`}
+                inline
+              />
+            </a>
           ) : (
             <CopyButton key={client.id} client={client} />
           )

@@ -1,6 +1,6 @@
-import { Badge, Button } from "@aidr/ui";
 import { Languages, Newspaper, ShieldCheck } from "lucide-react";
 import { track } from "../../lib/analytics/track";
+import { EYEBROW } from "../../lib/page-style";
 import { FACEBOOK_URL } from "../../lib/site";
 import type { Lang } from "../../lib/types";
 import { ChannelSplit } from "./ChannelSplit";
@@ -75,37 +75,36 @@ export function FacebookChannel({ lang }: { lang: Lang }) {
               </li>
             ))}
           </ul>
-          <Button size="lg" className="w-full" asChild>
-            <a
-              href={FACEBOOK_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() =>
-                track("channel_click", {
-                  channel: "facebook",
-                  placement: "subscribe_page",
-                  lang: "en",
-                })
-              }
-            >
-              <FacebookMark className="mr-2 size-5" />
-              {t("Follow AI;DR on Facebook", "Theo dõi AI;DR trên Facebook")}
-            </a>
-          </Button>
+          <a
+            className="btn-primary w-full"
+            href={FACEBOOK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() =>
+              track("channel_click", {
+                channel: "facebook",
+                placement: "subscribe_page",
+                lang: "en",
+              })
+            }
+          >
+            <FacebookMark className="size-4" />
+            {t("Follow AI;DR on Facebook", "Theo dõi AI;DR trên Facebook")}
+          </a>
         </>
       }
       preview={
         <div className="space-y-4">
-          <Badge variant="secondary" className="rounded-full">
+          <p className={EYEBROW}>
             {t("Latest posts on the Page", "Bài mới trên Trang")}
-          </Badge>
+          </p>
           <iframe
             title={t("AI;DR Facebook Page", "Trang Facebook AI;DR")}
             src={PAGE_PLUGIN_SRC}
             loading="lazy"
             width="500"
             height="640"
-            className="w-full max-w-[500px] rounded-lg border border-border bg-muted"
+            className="w-full max-w-[500px] rounded-xl bg-muted"
             allow="encrypted-media"
           />
         </div>

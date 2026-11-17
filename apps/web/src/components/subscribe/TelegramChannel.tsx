@@ -1,6 +1,6 @@
-import { Badge, Button } from "@aidr/ui";
 import { Flame, Languages, Newspaper, Send, ShieldCheck } from "lucide-react";
 import { track } from "../../lib/analytics/track";
+import { EYEBROW } from "../../lib/page-style";
 import {
   TELEGRAM_EN_HANDLE,
   TELEGRAM_EN_URL,
@@ -19,8 +19,8 @@ export const TELEGRAM_FEATURES = [
   },
   {
     icon: Flame,
-    en: "Trending alerts when a story breaks out — max 6 a day.",
-    vi: "Cảnh báo khi tin nổi bật — tối đa 6 tin mỗi ngày.",
+    en: "Trending alerts when a story breaks out, max 6 a day.",
+    vi: "Cảnh báo khi tin nổi bật, tối đa 6 tin mỗi ngày.",
   },
   {
     icon: Languages,
@@ -60,8 +60,8 @@ export function TelegramChannel({ lang }: { lang: Lang }) {
         <>
           <p className="text-base leading-relaxed text-muted-foreground">
             {t(
-              "Get the same ranked AI news in Telegram. Open the public channel — no Chrome install required.",
-              "Nhận cùng tin AI đã xếp hạng trên Telegram. Mở kênh công khai — không cần cài Chrome."
+              "Get the same ranked AI news in Telegram. Open the public channel, no Chrome install required.",
+              "Nhận cùng tin AI đã xếp hạng trên Telegram. Mở kênh công khai, không cần cài Chrome."
             )}
           </p>
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -87,23 +87,22 @@ export function TelegramChannel({ lang }: { lang: Lang }) {
                   </p>
                   <p className="text-xs text-muted-foreground">{c.handle}</p>
                 </div>
-                <Button size="lg" className="w-full" asChild>
-                  <a
-                    href={c.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() =>
-                      track("channel_click", {
-                        channel: "telegram",
-                        placement: "subscribe_page",
-                        lang: c.channel,
-                      })
-                    }
-                  >
-                    <Send className="mr-2 size-5" aria-hidden />
-                    {t(`Open ${c.handle}`, `Mở ${c.handle}`)}
-                  </a>
-                </Button>
+                <a
+                  className="btn-primary w-full"
+                  href={c.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() =>
+                    track("channel_click", {
+                      channel: "telegram",
+                      placement: "subscribe_page",
+                      lang: c.channel,
+                    })
+                  }
+                >
+                  <Send aria-hidden />
+                  {t(`Open ${c.handle}`, `Mở ${c.handle}`)}
+                </a>
               </div>
             ))}
           </div>
@@ -112,13 +111,13 @@ export function TelegramChannel({ lang }: { lang: Lang }) {
       preview={
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="rounded-full">
+            <p className={EYEBROW}>
               {t("What lands in the channel", "Bạn sẽ nhận gì trong kênh")}
-            </Badge>
+            </p>
             <span className="text-xs text-muted-foreground">
               {t(
-                "Illustrative layout — the real digest is in the channel",
-                "Bố cục minh họa — bản tin thật nằm trong kênh"
+                "Illustrative layout. The real digest is in the channel",
+                "Bố cục minh họa. Bản tin thật nằm trong kênh"
               )}
             </span>
           </div>

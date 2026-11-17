@@ -1,5 +1,5 @@
-import { Button } from "@aidr/ui";
-import { ArrowUpRight, Copy } from "lucide-react";
+import { Button } from "@ui-sdk/react/button";
+import { ArrowUpRight, Copy, Keyboard } from "lucide-react";
 import {
   type ReactElement,
   type RefObject,
@@ -14,63 +14,45 @@ import {
   ARTICLE_TITLE_TAG,
 } from "../../lib/article-headings";
 import { archiveDateOfSec, dayArchivePath } from "../../lib/day-archive";
-import { localizedTitle } from "../../lib/display-title";
 import { categoryLabel, formatDayHeading } from "../../lib/lang";
+import { LangContext } from "../../lib/lang-context";
+import { usePrefs } from "../../lib/prefs";
 import { storyMarkdownUrl } from "../../lib/seo";
+import { topicStyle } from "../../lib/topic";
 import type { FeedItem, Lang } from "../../lib/types";
 import { useSuggestSelection } from "../../lib/use-suggest-selection";
+import { Bi } from "../Bi";
 import { KeywordText } from "../KeywordText";
 import { SuggestionBadge, SuggestTranslation } from "../SuggestTranslation";
 import { ContentHistory } from "../story/ContentHistory";
 import { splitParagraphs } from "../story/lib";
-import { StoryRankingPanel } from "../story/StoryRankingPanel";
 import { StoryVotes } from "../story/StoryVotes";
-import {
-  formatStoryScore,
-  formatStoryTokens,
-  storyTokenCount,
-} from "../story/story-meta";
+import { summaryField, summaryParts, titleParts } from "../story/story-text";
 import { CopySheet } from "./CopySheet";
-import { shortDayLabel, storyByline, storyClock } from "./lib";
+import { shortDayLabel, storyByline, storyClock, storyOutlets } from "./lib";
 import { ReadNext } from "./ReadNext";
+import { ShareLink } from "./ShareLink";
 import { KBD_CLASS, ShortcutSheet } from "./ShortcutSheet";
+import { StoryEndCard } from "./StoryEndCard";
 import { StoryMedia } from "./StoryMedia";
 import { StorySourceLine } from "./StorySourceLine";
 import { focusBlock, useStoryKeys } from "./use-story-keys";
 
-const EYEBROW =
-  "font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground";
+const LABEL =
+  "text-[12.5px] font-bold uppercase tracking-[0.07em] text-muted-foreground";
 
-const COPY = {
-  en: {
-    copyShort: "Copy for social",
-    copyLong: "Copy AI;DR for social",
-    original: "Read original",
-    sources: (n: number) => `${n} ${n === 1 ? "source" : "sources"}`,
-    score: "Score",
-    tokens: "tokens",
-    markdown: "Markdown",
-    keys: "Shortcuts",
-    titleFallback: "Original English title, no Vietnamese translation yet",
-  },
-  vi: {
-    copyShort: "Chép để đăng",
-    copyLong: "Chép AI;DR để đăng",
-    original: "Đọc bài gốc",
-    sources: (n: number) => `${n} nguồn`,
-    score: "Điểm",
-    tokens: "token",
-    markdown: "Bản Markdown",
-    keys: "Phím tắt",
-    titleFallback: "Tiêu đề gốc tiếng Anh, chưa có bản dịch",
-  },
+const TITLE_FALLBACK = {
+  en: "Original English title, no Vietnamese translation yet",
+  vi: "Tiêu đề gốc tiếng Anh, chưa có bản dịch",
 } as const;
 
 /**
- * The story permalink (`/<id>`): a news page whose main text is the
- * AI;DR. Eyebrow, headline and byline, then the AI;DR, actions, sources
- * and story details beside a sticky media rail; one column under 820px
- * with the photo first, and a sticky action bar under 520px.
+ * The story permalink (`/<id>`): a news page whose main text is the AI;DR.
+ * Three rows by two columns from 900px. Row 1 is the topic line, headline
+ * and byline; row 2 the AI;DR beside the lead image; row 3 the actions,
+ * sources, why it ranks and the end card beside a sticky "Read next".
+ * Under 900px it is one column: headline, image, AI;DR, actions, end card,
+ * read next. Nothing is pinned over the top block.
  *
  * The home feed's inline expansion and StoryDialog keep StoryDetail; this
  * layout is the permalink's own.
@@ -82,25 +64,22 @@ export function StoryPage({
   item: FeedItem;
   lang: Lang;
 }): ReactElement {
-  const copy = COPY[lang];
-  const vi = lang === "vi";
+  const { prefs } = usePrefs();
   const rootRef = useRef<HTMLElement | null>(null);
   const originalRef = useRef<HTMLAnchorElement | null>(null);
   const sourcesRef = useRef<HTMLElement | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [keysOpen, setKeysOpen] = useState(false);
 
-  const { text: title, fallbackFromEnglish } = localizedTitle(item, lang);
-  // Same rule as StoryDetail: Vietnamese text when there is some, else the
-  // English summary, marked as English.
-  const summaryIsVi = vi && Boolean(item.summary_vi?.trim());
-  const paragraphs = splitParagraphs(
-    summaryIsVi ? item.summary_vi : item.summary
-  );
+  const view = { bilingual: prefs.bilingual, first: prefs.bilingualFirst };
+  const titles = titleParts(item, lang, view);
+  const summaries = summaryParts(item, lang, view);
+  const fallbackFromEnglish = !prefs.bilingual && titles[0]?.lang !== lang;
+  const vietnameseShown =
+    lang === "vi" || summaries.some((part) => part.lang === "vi");
   const archiveDate = archiveDateOfSec(item.published_at);
   const clock = storyClock(item.published_at);
-  const byline = storyByline(item, lang);
-  const tokens = storyTokenCount(item.llm_tokens);
+  const outlets = storyOutlets(item);
 
   // The permalink is an open story: count the read once, as the expanded
   // row did before this page had its own layout.
@@ -114,7 +93,10 @@ export function StoryPage({
     acceptSelection,
     clearPending,
     suggestionAttempt,
-  } = useSuggestSelection(rootRef as RefObject<HTMLDivElement | null>, vi);
+  } = useSuggestSelection(
+    rootRef as RefObject<HTMLDivElement | null>,
+    vietnameseShown
+  );
 
   const openOriginal = () => {
     track("source_click", { item_id: item.id, placement: "row" });
@@ -129,140 +111,182 @@ export function StoryPage({
     escape: () => setKeysOpen(false),
   });
 
-  const copyButton = (label: string, className: string, primary = false) => (
-    <Button
-      variant="outline"
-      onClick={() => setSheetOpen(true)}
-      data-kb=""
-      {...(primary ? { "data-kb-primary": "" } : {})}
-      className={className}
-    >
-      <Copy aria-hidden />
-      {label}
-    </Button>
-  );
+  const byline = (l: Lang) => storyByline(item, l);
 
   return (
-    <article
-      ref={rootRef}
-      className="relative pt-5 pb-8 max-[819px]:pt-4"
-      data-testid="story-page"
-    >
-      {selectionButton && (
-        <button
-          type="button"
-          data-selection-button=""
-          style={{
-            position: "fixed",
-            top: selectionButton.top,
-            left: selectionButton.left,
-            zIndex: 1100,
-          }}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={acceptSelection}
-          className="rounded-full bg-foreground px-2.5 py-1 text-xs font-semibold text-background shadow-lg"
-        >
-          ✎ {vi ? "Góp ý" : "Suggest"}
-        </button>
-      )}
-
-      <ARTICLE_DATE_TAG
-        className={`${EYEBROW} flex flex-wrap gap-x-3.5 gap-y-1`}
+    <LangContext.Provider value={lang}>
+      <article
+        ref={rootRef}
+        style={topicStyle(item.category)}
+        className="relative mx-auto grid max-w-[1040px] grid-cols-1 gap-x-10 px-1 pt-7 pb-10 min-[900px]:grid-cols-[minmax(0,680px)_300px] min-[900px]:justify-center max-[699px]:pt-4"
+        data-testid="story-page"
       >
-        {item.category && (
-          <span className="text-accent">
-            ● {categoryLabel(item.category, lang)}
-          </span>
+        {selectionButton && (
+          <button
+            type="button"
+            data-selection-button=""
+            style={{
+              position: "fixed",
+              top: selectionButton.top,
+              left: selectionButton.left,
+              zIndex: 1100,
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={acceptSelection}
+            className="rounded-full bg-foreground px-2.5 py-1 text-xs font-semibold text-background shadow-lg"
+          >
+            ✎ {lang === "vi" ? "Góp ý" : "Suggest"}
+          </button>
         )}
-        {archiveDate && (
-          <span>
-            <a
-              href={dayArchivePath(archiveDate, lang)}
-              title={formatDayHeading(archiveDate, lang)}
-              className="hover:text-foreground"
-            >
-              {shortDayLabel(archiveDate, lang)}
-            </a>
-            {clock && <span suppressHydrationWarning> · {clock}</span>}
-          </span>
-        )}
-        {item.sources.length > 0 && (
-          <span>{copy.sources(item.sources.length)}</span>
-        )}
-        {fallbackFromEnglish && <span title={copy.titleFallback}>EN</span>}
-      </ARTICLE_DATE_TAG>
 
-      <ARTICLE_TITLE_TAG
-        data-suggest-field="title"
-        lang={fallbackFromEnglish ? "en" : undefined}
-        className="mt-2.5 max-w-[36ch] text-balance text-[24px] leading-[1.18] font-medium tracking-[-0.025em] text-foreground [overflow-wrap:anywhere] min-[820px]:text-[34px] min-[820px]:leading-[1.12]"
-      >
-        <KeywordText text={title} tags={item.tags} />
-      </ARTICLE_TITLE_TAG>
-
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        {byline && (
-          <p className="text-[13px] text-muted-foreground">{byline}</p>
-        )}
-        <StoryVotes itemId={item.id} voteNet={item.vote_net ?? 0} lang={lang} />
-      </div>
-
-      <div className="mt-3 grid grid-cols-1 items-start gap-3.5 min-[820px]:mt-4 min-[820px]:grid-cols-[minmax(0,1fr)_360px] min-[820px]:gap-8">
-        <div className="grid min-w-0 gap-4">
-          {paragraphs.length > 0 && (
-            <section
-              aria-label="AI;DR"
-              tabIndex={-1}
-              data-kb=""
-              data-testid="story-aidr"
-              className="grid gap-2 rounded-md"
-            >
-              <div className="flex items-center justify-between gap-2.5">
-                <span className="font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-kw-num">
-                  AI;DR
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSheetOpen(true)}
-                  data-kb-primary=""
-                  className="h-8 px-2.5 text-xs font-normal text-muted-foreground"
-                >
-                  <Copy aria-hidden className="size-3.5" />
-                  {copy.copyShort}
-                </Button>
-              </div>
-              <div
-                data-suggest-field="summary"
-                lang={summaryIsVi ? "vi" : "en"}
-                className="grid max-w-[64ch] gap-2.5 text-[17px] leading-[1.6] text-foreground [overflow-wrap:anywhere]"
-              >
-                {paragraphs.map((p) => (
-                  <p key={p}>
-                    <KeywordText text={p} tags={item.tags} />
-                  </p>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2">
-            {item.url && (
-              <Button asChild className="text-[13px] max-[519px]:hidden">
-                <a
-                  ref={originalRef}
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={openOriginal}
-                  data-kb=""
-                >
-                  {copy.original}
-                  <ArrowUpRight aria-hidden />
-                </a>
-              </Button>
+        <header className="min-w-0 min-[900px]:col-start-1 min-[900px]:row-start-1">
+          <ARTICLE_DATE_TAG
+            className={`${LABEL} flex flex-wrap items-center gap-x-2 gap-y-1`}
+          >
+            {item.category && (
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  aria-hidden
+                  className="topic-dot inline-block size-2 rounded-full"
+                />
+                {categoryLabel(item.category, lang)}
+              </span>
             )}
-            {copyButton(copy.copyLong, "text-[13px] max-[519px]:hidden")}
+            {archiveDate && (
+              <>
+                <span aria-hidden>·</span>
+                <span>
+                  <a
+                    href={dayArchivePath(archiveDate, lang)}
+                    title={formatDayHeading(archiveDate, lang)}
+                    className="hover:text-foreground"
+                  >
+                    {shortDayLabel(archiveDate, lang)}
+                  </a>
+                  {clock && <span suppressHydrationWarning> · {clock}</span>}
+                </span>
+              </>
+            )}
+            {outlets > 0 && (
+              <>
+                <span aria-hidden>·</span>
+                <Bi
+                  vi={`${outlets} nguồn`}
+                  en={`${outlets} ${outlets === 1 ? "source" : "sources"}`}
+                  inline
+                />
+              </>
+            )}
+            {fallbackFromEnglish && (
+              <span title={TITLE_FALLBACK[lang]}>EN</span>
+            )}
+          </ARTICLE_DATE_TAG>
+
+          <ARTICLE_TITLE_TAG
+            data-suggest-field="title"
+            lang={titles.length === 1 ? titles[0]?.lang : undefined}
+            className="mt-2.5 mb-3 max-w-[36ch] font-heading text-[length:var(--headline-size)] leading-[1.15] font-semibold tracking-[-0.02em] text-balance text-foreground [overflow-wrap:anywhere]"
+          >
+            {titles.length === 1
+              ? titles[0] && (
+                  <KeywordText varied text={titles[0].text} tags={item.tags} />
+                )
+              : titles.map((part) => (
+                  <span
+                    key={part.lang}
+                    lang={part.lang}
+                    className={
+                      part.second
+                        ? "bi-second mt-1.5 block text-[0.58em]! font-medium"
+                        : "block"
+                    }
+                  >
+                    <KeywordText varied text={part.text} tags={item.tags} />
+                  </span>
+                ))}
+          </ARTICLE_TITLE_TAG>
+
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <p className="text-[12.5px] text-muted-foreground">
+              <Bi inline vi={byline("vi")} en={byline("en")} />
+            </p>
+            <StoryVotes
+              itemId={item.id}
+              voteNet={item.vote_net ?? 0}
+              lang={lang}
+            />
+          </div>
+        </header>
+
+        <StoryMedia
+          item={item}
+          lang={lang}
+          className="mt-4 min-[900px]:col-start-2 min-[900px]:row-start-2 min-[900px]:mt-0.5 min-[900px]:self-start"
+        />
+
+        {summaries.length > 0 && (
+          <section
+            aria-label="AI;DR"
+            tabIndex={-1}
+            data-kb=""
+            data-testid="story-aidr"
+            className="mt-4 grid min-w-0 content-start gap-2 rounded-md min-[900px]:col-start-1 min-[900px]:row-start-2 min-[900px]:mt-0.5"
+          >
+            <span className={LABEL}>AI;DR</span>
+            <div className="np-justify grid gap-4 text-[14.5px] leading-[1.6] text-body min-[700px]:text-[length:var(--summary-size)] min-[700px]:leading-[1.65]">
+              {summaries.map((part, i) => (
+                <div
+                  key={part.lang}
+                  data-suggest-field={summaryField(part, prefs.bilingual)}
+                  lang={part.lang}
+                  className={`grid gap-2.5 [overflow-wrap:anywhere] ${part.second ? "bi-second" : ""}`}
+                >
+                  {splitParagraphs(part.text).map((p, n) => (
+                    <p
+                      key={p}
+                      className={i === 0 && n === 0 ? "drop-cap" : undefined}
+                    >
+                      <KeywordText varied text={p} tags={item.tags} />
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <div className="mt-5 grid min-w-0 content-start gap-4 min-[900px]:col-start-1 min-[900px]:row-start-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {item.url && (
+              <a
+                ref={originalRef}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={openOriginal}
+                data-kb=""
+                className="btn-primary"
+              >
+                <Bi vi="Đọc bài gốc" en="Read the source" inline />
+                <ArrowUpRight aria-hidden />
+              </a>
+            )}
+            <Button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              data-kb=""
+              data-kb-primary=""
+              className="btn-link"
+            >
+              <Copy aria-hidden />
+              <Bi vi="Chép bản tóm tắt" en="Copy AI;DR" inline />
+            </Button>
+            <ShareLink
+              item={item}
+              lang={lang}
+              title={titles[0]?.text ?? item.title}
+              onFallback={() => setSheetOpen(true)}
+            />
             <span className="story-suggest contents">
               <SuggestTranslation
                 itemId={item.id}
@@ -277,7 +301,7 @@ export function StoryPage({
 
           <StorySourceLine item={item} lang={lang} sectionRef={sourcesRef} />
 
-          <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1.5 text-[13px] text-muted-foreground">
+          <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1.5 text-[12.5px] text-muted-foreground">
             {item.tags.map((tag) => (
               <a
                 key={tag}
@@ -291,76 +315,46 @@ export function StoryPage({
               href={storyMarkdownUrl(item, lang)}
               className="hover:text-foreground"
             >
-              {copy.markdown}
+              <Bi vi="Bản Markdown" en="Markdown" inline />
             </a>
             <ContentHistory
               item={item}
               lang={lang}
               className="[&[open]]:basis-full"
             />
-            <span className="tabular-nums">
-              {copy.score} {formatStoryScore(item.rank_score)}
-            </span>
-            {tokens != null && tokens > 0 && (
-              <a
-                href="/data?tab=runs"
-                className="tabular-nums hover:text-foreground"
-              >
-                {formatStoryTokens(tokens)} {copy.tokens}
-              </a>
-            )}
-            <div className="[&>div]:mt-0">
-              <StoryRankingPanel item={item} lang={lang} />
-            </div>
-            <button
-              type="button"
+            <Button
               onClick={() => setKeysOpen((v) => !v)}
               aria-expanded={keysOpen}
               className="inline-flex items-center gap-1.5 hover:text-foreground [@media(hover:none)]:hidden"
             >
+              <Keyboard className="size-[15px]" aria-hidden />
               <kbd className={KBD_CLASS}>?</kbd>
-              {copy.keys}
-            </button>
+              <Bi vi="Phím tắt" en="Shortcuts" inline />
+            </Button>
           </div>
 
-          <ReadNext item={item} lang={lang} />
+          <div className="mt-3">
+            <StoryEndCard lang={lang} />
+          </div>
         </div>
 
-        <StoryMedia item={item} lang={lang} />
-      </div>
-
-      {/* Phone action bar. Fixed, since the app shell clips overflow and
-          would stop a sticky bar; styles.css pads the page bottom by its
-          height so it never covers the footer. */}
-      <div
-        data-story-dock=""
-        className="fixed inset-x-0 bottom-0 z-30 flex gap-2 border-t border-border bg-background px-4 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] min-[520px]:hidden"
-      >
-        {item.url && (
-          <Button asChild className="h-11 flex-1 text-sm">
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={openOriginal}
-            >
-              {copy.original}
-            </a>
-          </Button>
-        )}
-        {copyButton(copy.copyShort, "h-11 flex-1 text-sm")}
-      </div>
-
-      {sheetOpen && (
-        <CopySheet
+        <ReadNext
           item={item}
           lang={lang}
-          onClose={() => setSheetOpen(false)}
+          className="mt-8 min-w-0 min-[900px]:sticky min-[900px]:top-[72px] min-[900px]:col-start-2 min-[900px]:row-start-3 min-[900px]:mt-5 min-[900px]:self-start"
         />
-      )}
-      {keysOpen && (
-        <ShortcutSheet lang={lang} onClose={() => setKeysOpen(false)} />
-      )}
-    </article>
+
+        {sheetOpen && (
+          <CopySheet
+            item={item}
+            lang={lang}
+            onClose={() => setSheetOpen(false)}
+          />
+        )}
+        {keysOpen && (
+          <ShortcutSheet lang={lang} onClose={() => setKeysOpen(false)} />
+        )}
+      </article>
+    </LangContext.Provider>
   );
 }

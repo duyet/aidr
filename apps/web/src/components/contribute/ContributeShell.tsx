@@ -80,10 +80,7 @@ export function ContributeShell({ mode }: { mode: "list" | "new" }) {
                   }
                 >
                   <mod.SignInButton mode="modal">
-                    <button
-                      type="button"
-                      className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
-                    >
+                    <button type="button" className="btn-primary">
                       {lang === "vi"
                         ? "Đăng nhập để gửi bài"
                         : "Sign in to submit"}

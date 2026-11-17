@@ -1,9 +1,13 @@
+import { Toggle } from "@ui-sdk/react/toggle";
 import { feedTag } from "../lib/analytics/schema";
 import { track } from "../lib/analytics/track";
 import type { Lang } from "../lib/types";
 import { useHorizontalScroll } from "../lib/use-horizontal-scroll";
+import { Bi } from "./Bi";
 import { CategoryLabel } from "./CategoryLabel";
 
+/** One row of topic chips: dot, name and count. The selected chip inverts
+ * (`.chip`, styles.css), and picking chips filters the feed. */
 export function CategoryNav({
   categories,
   selected,
@@ -23,61 +27,44 @@ export function CategoryNav({
   return (
     <nav
       ref={scrollRef}
-      className="edge-fade-x scrollbar-hide flex items-center gap-1.5 overflow-x-auto whitespace-nowrap px-0.5 pt-4 pb-1.5"
+      aria-label={lang === "vi" ? "Chủ đề" : "Topics"}
+      className="edge-fade-x scrollbar-hide flex items-center gap-2 overflow-x-auto whitespace-nowrap px-0.5 py-1 in-data-[layout=newspaper]:justify-center in-data-[layout=newspaper]:gap-0.5"
     >
-      <button
-        type="button"
-        onClick={() => {
+      <Toggle
+        pressed={selected.size === 0}
+        onPressedChange={() => {
           track("topic_filter", { tag: "all", from: "nav" });
           for (const name of selected) onToggle(name);
         }}
-        aria-pressed={selected.size === 0}
-        className={`inline-flex h-11 shrink-0 sm:h-8 items-center rounded-full border px-3 text-[13px] font-medium transition-[background-color,color,border-color] duration-150 ${
-          selected.size === 0
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-        }`}
+        className="chip"
       >
-        {lang === "vi" ? "Tất cả" : "All"}
-      </button>
+        <Bi vi="Tất cả" en="All" inline />
+        <span className="chip-count">
+          {categories.reduce((sum, c) => sum + c.count, 0)}
+        </span>
+      </Toggle>
       {categories.map((c) => {
         const isSelected = selected.has(c.name);
         return (
-          <button
+          <Toggle
             key={c.name}
-            type="button"
-            onClick={() => {
+            pressed={isSelected}
+            onPressedChange={() => {
               const tag = feedTag(c.name, names);
               if (tag) track("topic_filter", { tag, from: "nav" });
               onToggle(c.name);
             }}
-            aria-pressed={isSelected}
-            className={`inline-flex h-11 shrink-0 sm:h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] transition-[background-color,color,border-color] duration-150 ${
-              isSelected
-                ? "border-primary bg-primary font-medium text-primary-foreground"
-                : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
+            className="chip"
           >
             <CategoryLabel
               name={c.name}
               lang={lang}
-              colored={!isSelected}
+              quiet={!isSelected}
               dot={isSelected}
+              colored={false}
             />
-            {/* Semantic quiet tokens, not an opacity utility: element opacity
-                composites toward the surface behind the pill (the per-user
-                reader background included), so it declared no color the
-                contrast test could assert. */}
-            <span
-              className={
-                isSelected
-                  ? "text-primary-foreground-quiet text-xs tabular-nums"
-                  : "text-quiet-foreground text-xs tabular-nums"
-              }
-            >
-              {c.count}
-            </span>
-          </button>
+            <span className="chip-count">{c.count}</span>
+          </Toggle>
         );
       })}
     </nav>

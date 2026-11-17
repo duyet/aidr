@@ -74,11 +74,15 @@ export function storyOgThumbUrl(
  * on the soft yellow ground. A 1200x630 story card cropped into this 2lh
  * square showed a few unreadable headline fragments instead.
  */
-function StoryThumbTile(): ReactElement {
+function StoryThumbTile({ row }: { row: boolean }): ReactElement {
   return (
     <span
       aria-hidden
-      className="flex size-[2lh] min-h-[2lh] min-w-[2lh] shrink-0 select-none items-center justify-center self-stretch rounded-xl border border-border/80 bg-brand-soft text-foreground dark:text-brand"
+      className={
+        row
+          ? "flex size-(--thumb-size) shrink-0 select-none items-center justify-center rounded-md bg-brand-soft text-foreground dark:text-brand"
+          : "flex size-[2lh] min-h-[2lh] min-w-[2lh] shrink-0 select-none items-center justify-center self-stretch rounded-xl border border-border/80 bg-brand-soft text-foreground dark:text-brand"
+      }
     >
       {/* Own span: a font size on the box would rescale its 2lh. */}
       <span className="font-serif text-3xl leading-none">;</span>
@@ -105,7 +109,8 @@ export function StoryThumb({
   thumbItemId?: string;
   /** Card language when the card variant falls back to `/api/og`. */
   lang?: Lang;
-  variant?: "feed" | "card";
+  /** `row`: a ranked-list thumbnail sized by `--thumb-size`, not zoomable. */
+  variant?: "feed" | "card" | "row";
 }): ReactElement {
   // Keep every URL that already failed. A later failure must not bring an
   // earlier one back, or the publisher image and the OG card load forever.
@@ -118,7 +123,7 @@ export function StoryThumb({
   // A feed thumb asks the same-origin resizer first; the route 302s to the
   // publisher on a miss, and a hard error here falls back to the direct URL.
   const resized =
-    variant === "feed" && url ? thumbRouteUrl(thumbItemId, src) : null;
+    variant !== "card" && url ? thumbRouteUrl(thumbItemId, src) : null;
   const remote =
     [resized, url].find(
       (candidate) => candidate && !failedSrcs.has(candidate)
@@ -144,20 +149,22 @@ export function StoryThumb({
    */
   const loading = priority ? "eager" : "lazy";
 
-  const tiled = variant === "feed" && !remote;
+  const tiled = variant !== "card" && !remote;
   const zoomTarget = tiled ? storyOgThumbUrl(itemId, lang) : zoomSrc;
 
   const imgClass =
-    variant === "card"
-      ? "max-h-56 w-full rounded-3xl border border-border object-cover transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none group-hover:scale-[1.04] group-focus-visible:scale-[1.04]"
-      : "size-[2lh] min-h-[2lh] min-w-[2lh] shrink-0 self-stretch overflow-hidden rounded-xl border border-border/80 bg-muted object-cover transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none group-hover:scale-[1.08] group-focus-visible:scale-[1.08]";
+    variant === "row"
+      ? "size-(--thumb-size) shrink-0 rounded-md bg-muted object-cover"
+      : variant === "card"
+        ? "max-h-56 w-full rounded-3xl border border-border object-cover transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none group-hover:scale-[1.04] group-focus-visible:scale-[1.04]"
+        : "size-[2lh] min-h-[2lh] min-w-[2lh] shrink-0 self-stretch overflow-hidden rounded-xl border border-border/80 bg-muted object-cover transition-transform duration-200 motion-reduce:transform-none motion-reduce:transition-none group-hover:scale-[1.08] group-focus-visible:scale-[1.08]";
 
   const img = (
     <img
       src={showSrc}
       alt={alt}
-      width={variant === "card" ? 640 : 48}
-      height={variant === "card" ? 192 : 48}
+      width={variant === "card" ? 640 : variant === "row" ? 52 : 48}
+      height={variant === "card" ? 192 : variant === "row" ? 52 : 48}
       loading={loading}
       fetchPriority="low"
       decoding="async"
@@ -180,8 +187,9 @@ export function StoryThumb({
     />
   );
 
-  const visual = tiled ? <StoryThumbTile /> : img;
+  const visual = tiled ? <StoryThumbTile row={variant === "row"} /> : img;
 
+  if (variant === "row") return visual;
   if (!zoomTarget) return visual;
 
   return (

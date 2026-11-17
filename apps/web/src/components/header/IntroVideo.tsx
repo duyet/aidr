@@ -1,30 +1,35 @@
-import { Button } from "@aidr/ui";
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@ui-sdk/react/dialog";
 import { CirclePlay } from "lucide-react";
-import { Dialog as DialogPrimitive } from "radix-ui";
 import { useState } from "react";
 import { track } from "../../lib/analytics/track";
-import { PHONE_MENU_LINK_CLASS } from "../../lib/chrome";
 import {
   INTRO_VIDEO_COPY,
   INTRO_VIDEO_YOUTUBE_ID,
   introVideoEmbedUrl,
 } from "../../lib/intro-video";
 import type { Lang } from "../../lib/types";
+import { Bi } from "../Bi";
+import { ROW_CLASS } from "./LinkRow";
 
 /**
- * Header control that plays the introduction video in a dialog. Renders
- * nothing until `INTRO_VIDEO_YOUTUBE_ID` is set. The iframe lives inside the
- * dialog content, so nothing loads from YouTube before the dialog opens and
- * closing it removes the player, which stops playback. The dialog is the bare
- * player: no header, no close button, no card chrome, so it closes with
- * Escape or a click outside.
+ * Plays the introduction video in a dialog. Renders nothing until
+ * `INTRO_VIDEO_YOUTUBE_ID` is set. The iframe lives inside the dialog content,
+ * so nothing loads from YouTube before the dialog opens and closing it removes
+ * the player, which stops playback. The dialog is the bare player: no header,
+ * no close button, no card chrome, so it closes with Escape or a click outside.
  */
 export function IntroVideoButton({
   lang,
   tile = false,
 }: {
   lang: Lang;
-  /** Large phone-menu tile instead of the wide header's icon button. */
+  /** A phone-menu row instead of the menu bar's icon button. */
   tile?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -33,7 +38,7 @@ export function IntroVideoButton({
   const copy = INTRO_VIDEO_COPY[lang];
 
   return (
-    <DialogPrimitive.Root
+    <Dialog
       open={open}
       onOpenChange={(next) => {
         if (next) {
@@ -44,53 +49,42 @@ export function IntroVideoButton({
         setOpen(next);
       }}
     >
-      <DialogPrimitive.Trigger asChild>
-        {tile ? (
-          <button
-            type="button"
-            className={`${PHONE_MENU_LINK_CLASS} hover:bg-muted`}
-          >
-            <CirclePlay aria-hidden />
-            {copy.menu}
-          </button>
-        ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            title={copy.open}
-            aria-label={copy.open}
-          >
-            <CirclePlay aria-hidden />
-          </Button>
-        )}
-      </DialogPrimitive.Trigger>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/70" />
-        <DialogPrimitive.Content
-          aria-describedby={undefined}
-          // The dialog IS the player: no card border, radius, shadow or
-          // padding, so nothing of ours is visible around the video. The width
-          // is the lesser of the viewport's width and the 16:9 box that fits
-          // its height, which keeps the whole player on screen on short and
-          // narrow viewports alike.
-          className="fixed top-1/2 left-1/2 z-50 w-[min(calc(100%-1.5rem),calc((100dvh-1.5rem)*16/9))] -translate-x-1/2 -translate-y-1/2 overflow-hidden bg-black"
+      {tile ? (
+        <DialogTrigger className={ROW_CLASS}>
+          <CirclePlay aria-hidden />
+          <Bi
+            vi={INTRO_VIDEO_COPY.vi.menu}
+            en={INTRO_VIDEO_COPY.en.menu}
+            inline
+          />
+        </DialogTrigger>
+      ) : (
+        <DialogTrigger
+          title={copy.open}
+          aria-label={copy.open}
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none [&_svg]:size-[15px]"
         >
-          <DialogPrimitive.Title className="sr-only">
-            {copy.title}
-          </DialogPrimitive.Title>
-          <div className="aspect-video w-full">
-            <iframe
-              src={introVideoEmbedUrl(videoId)}
-              title={copy.title}
-              className="size-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
-          </div>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+          <CirclePlay aria-hidden />
+        </DialogTrigger>
+      )}
+      <DialogBackdrop className="fixed inset-0 m-0 size-full max-h-none max-w-none border-0 bg-black/70 p-0" />
+      {/* The dialog IS the player. border-0 and p-0 clear the browser's own
+          popover frame. The width is the lesser of the viewport's width and
+          the 16:9 box that fits its height, so the whole player stays on
+          screen on short and narrow viewports alike. */}
+      <DialogContent className="m-auto w-[min(calc(100%-1.5rem),calc((100dvh-1.5rem)*16/9))] max-w-none overflow-hidden border-0 bg-black p-0 outline-none">
+        <DialogTitle className="sr-only">{copy.title}</DialogTitle>
+        <div className="aspect-video w-full">
+          <iframe
+            src={introVideoEmbedUrl(videoId)}
+            title={copy.title}
+            className="size-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

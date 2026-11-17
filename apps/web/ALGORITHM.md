@@ -2680,7 +2680,7 @@ deliberately non-spammy.
     blocked candidate is re-judged and re-counted every run until it ages out
     of the 24h window. The `notify` step line stays unchanged (240-character
     cap).
-- _Why this ranks_ (story page, "Chi tiết bài viết" aside): `GET /api/story/{id}?ranking=1`
+- _Why this ranks_ (story dialog, "Chi tiết bài viết" aside; the story page shows only a one-line "Ranked high because N outlets covered it"): `GET /api/story/{id}?ranking=1`
   adds `ranking` from `worker/notify/story-ranking.ts`: day rank (Asia/Ho_Chi_Minh day, `archiveDateOfSec`),
   `rank_score`, importance, the live bar (same `trendingRankBar`), and per
   channel (`telegram`, `telegram-en`) either the `notifications` post time or

@@ -1,4 +1,3 @@
-import { buttonVariants } from "@aidr/ui";
 import { Link } from "@tanstack/react-router";
 import { useLang } from "../lib/lang-context";
 import { notFoundCopy } from "../lib/not-found";
@@ -14,14 +13,7 @@ export function NotFoundPage() {
           {copy.heading}
         </h1>
         <p className="mt-3 text-[15px] text-muted-foreground">{copy.body}</p>
-        <Link
-          to="/"
-          search={{ lang }}
-          className={buttonVariants({
-            variant: "outline",
-            className: "mt-6 text-[13px] max-sm:h-11",
-          })}
-        >
+        <Link to="/" search={{ lang }} className="btn-soft mt-6 max-sm:h-11">
           {copy.home}
         </Link>
       </div>

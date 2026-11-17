@@ -26,7 +26,7 @@ describe("site chrome copy", () => {
     expect(footer).toContain("duyet.net");
     expect(footer).toContain("EXTENSION_PATH");
     expect(footer).toContain("/data");
-    expect(footer).toContain("Data / Pipeline");
+    expect(footer).toContain('<Bi vi="Dữ liệu" en="Data" inline />');
     expect(footer).not.toContain('label: "Brand"');
     expect(footer).not.toContain('to: "/brand"');
     expect(footer).not.toContain("CHROME_WEB_STORE_URL");
@@ -50,8 +50,9 @@ describe("site chrome copy", () => {
     expect(header).not.toContain('label: "Blog"');
     expect(header).not.toContain('label: "Subscribe"');
     expect(header).toContain('href: "/brand"');
-    expect(header).toContain('label: "Brand"');
-    expect(header).toContain('label: "Get AI;DR"');
+    expect(header).toContain('en: "Brand"');
+    expect(header).not.toContain("Get AI;DR");
+    expect(header).toContain("LogoMark");
   });
 
   it("hydrates the footer timestamp after mount instead of from module cache", () => {

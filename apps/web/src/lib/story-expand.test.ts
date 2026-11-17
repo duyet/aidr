@@ -18,8 +18,9 @@ const gallery = readFileSync(
 describe("expanded story panel chrome", () => {
   it("sits flush under the row: flat top, no extra margin or shadow", () => {
     expect(row).toContain(
-      'className="mb-2 overflow-hidden rounded-b-lg border border-t-0 border-border bg-card px-4 py-4 md:px-5 md:py-5"'
+      'className="mb-2 overflow-hidden rounded-lg bg-card px-4 py-4 md:px-5 md:py-5"'
     );
+    expect(row).not.toContain("border-t-0");
     expect(row).not.toContain("mb-3 overflow-hidden rounded-2xl");
     expect(row).not.toContain("shadow-sm");
     expect(row).not.toContain("md:mx-4");
@@ -37,9 +38,10 @@ describe("topics column", () => {
     expect(aside).toContain("Chủ đề");
     expect(aside).toContain("Topics");
     expect(aside).toContain("uppercase tracking-wider");
-    expect(aside).toContain("rounded-full border border-border");
-    expect(gallery).toContain('variant="card"');
-    expect(thumb).toContain("rounded-3xl");
+    expect(aside).not.toContain("rounded-full border border-border");
+    expect(gallery).toContain("<MediaImage");
+    expect(gallery).toContain("ImageZoom");
+    expect(gallery).toContain("rounded-xl");
   });
 });
 

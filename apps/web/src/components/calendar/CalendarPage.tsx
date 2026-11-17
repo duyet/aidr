@@ -8,14 +8,14 @@ import {
 } from "../../lib/calendar";
 import type { Lang } from "../../lib/types";
 import { formatWeekRange, weekBounds, weekPath } from "../../lib/week";
+import { Bi } from "../Bi";
 import { DayCard } from "./DayCard";
 import { MonthAgenda } from "./MonthAgenda";
 import { MonthGrid } from "./MonthGrid";
 import { HEADER_HEAT_CLASS, monthTitle } from "./shared";
 
-const ROUND =
-  "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-input text-foreground max-sm:size-11";
-const ROUND_LINK = `${ROUND} transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`;
+const ROUND = "btn-soft !size-8 !p-0 shrink-0 max-sm:!size-11";
+const ROUND_LINK = ROUND;
 const ROUND_OFF = `${ROUND} pointer-events-none opacity-40`;
 
 /**
@@ -59,18 +59,15 @@ export function CalendarPage({
               {monthTitle(month, lang, true)}
             </h1>
             {onCurrentMonth ? (
-              <span
-                aria-disabled="true"
-                className="inline-flex h-9 items-center rounded-full border border-input px-3.5 text-[13px] font-medium opacity-40 max-sm:h-11"
-              >
-                {vi ? "Hôm nay" : "Today"}
+              <span aria-disabled="true" className="btn-soft max-sm:!h-11">
+                <Bi inline vi="Hôm nay" en="Today" />
               </span>
             ) : (
               <a
                 href={calendarPath(cal.lastMonth, lang)}
-                className="inline-flex h-9 items-center rounded-full border border-input px-3.5 text-[13px] font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-11"
+                className="btn-soft max-sm:!h-11"
               >
-                {vi ? "Hôm nay" : "Today"}
+                <Bi inline vi="Hôm nay" en="Today" />
               </a>
             )}
             {hasPrev ? (
@@ -79,11 +76,11 @@ export function CalendarPage({
                 className={ROUND_LINK}
                 aria-label={vi ? "Tháng trước" : "Previous month"}
               >
-                <ChevronLeft className="size-4" aria-hidden />
+                <ChevronLeft aria-hidden />
               </a>
             ) : (
               <span className={ROUND_OFF} aria-hidden>
-                <ChevronLeft className="size-4" />
+                <ChevronLeft />
               </span>
             )}
             {hasNext ? (
@@ -92,11 +89,11 @@ export function CalendarPage({
                 className={ROUND_LINK}
                 aria-label={vi ? "Tháng sau" : "Next month"}
               >
-                <ChevronRight className="size-4" aria-hidden />
+                <ChevronRight aria-hidden />
               </a>
             ) : (
               <span className={ROUND_OFF} aria-hidden>
-                <ChevronRight className="size-4" />
+                <ChevronRight />
               </span>
             )}
           </header>
@@ -132,7 +129,7 @@ export function CalendarPage({
             </span>
             <span className="flex items-center gap-1">
               <i
-                className="inline-block size-3 rounded-sm border border-border"
+                className="inline-block size-3 rounded-sm bg-muted"
                 aria-hidden
               />
               {vi ? "Chưa có số báo" : "No edition"}
@@ -152,9 +149,12 @@ export function CalendarPage({
               aria-label={vi ? "Bản tin tuần" : "Weekly editions"}
               className="mt-5"
             >
-              <h2 className="mb-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                {vi ? "Bản tin tuần" : "Weekly editions"}
-              </h2>
+              <Bi
+                as="h2"
+                className="mb-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground"
+                vi="Bản tin tuần"
+                en="Weekly editions"
+              />
               <ul className="flex flex-wrap gap-2">
                 {weeks.map((week) => {
                   const b = weekBounds(week);
@@ -162,7 +162,7 @@ export function CalendarPage({
                     <li key={week}>
                       <a
                         href={weekPath(week, lang)}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-full border border-input px-3 text-[13px] text-foreground tabular-nums transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:h-11"
+                        className="chip tabular-nums"
                       >
                         <span className="font-mono text-[11px] font-medium text-accent">
                           {week.slice(5)}

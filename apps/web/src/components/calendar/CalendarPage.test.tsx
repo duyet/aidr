@@ -8,12 +8,21 @@ import {
   screen,
   within,
 } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CalendarDay, CalendarMonth } from "../../lib/calendar";
 import { calendarPath } from "../../lib/calendar";
 import { dayArchivePath } from "../../lib/day-archive";
+import { LangContext } from "../../lib/lang-context";
 import { weekPath } from "../../lib/week";
 import { CalendarPage } from "./CalendarPage";
+
+/** The page reads the language prop for links and the context for Bi text. */
+const Page = (props: ComponentProps<typeof CalendarPage>) => (
+  <LangContext.Provider value={props.lang}>
+    <CalendarPage {...props} />
+  </LangContext.Provider>
+);
 
 afterEach(cleanup);
 
@@ -59,7 +68,7 @@ const tile = (name: RegExp) =>
 
 describe("CalendarPage layout", () => {
   it("renders the sticky preview for wide screens and the agenda for phones", () => {
-    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="en" today="2026-10-11" />);
     const aside = screen.getByTestId("calendar-preview");
     expect(aside.className).toContain("hidden");
     expect(aside.className).toContain("min-[860px]:block");
@@ -71,11 +80,7 @@ describe("CalendarPage layout", () => {
 
   it("shows the agenda at every width, and no preview, for an empty month", () => {
     render(
-      <CalendarPage
-        cal={{ ...OCTOBER, days: [] }}
-        lang="en"
-        today="2026-10-11"
-      />
+      <Page cal={{ ...OCTOBER, days: [] }} lang="en" today="2026-10-11" />
     );
     expect(screen.queryByTestId("calendar-preview")).toBeNull();
     const agenda = screen.getByTestId("calendar-agenda");
@@ -84,7 +89,7 @@ describe("CalendarPage layout", () => {
   });
 
   it("links the month arrows and Today to real calendar URLs", () => {
-    render(<CalendarPage cal={OCTOBER} lang="vi" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="vi" today="2026-10-11" />);
     expect(
       screen.getByRole("link", { name: "Tháng trước" }).getAttribute("href")
     ).toBe(calendarPath("2026-09", "vi"));
@@ -94,7 +99,7 @@ describe("CalendarPage layout", () => {
 
   it("links Today back to the current month from an older one", () => {
     render(
-      <CalendarPage
+      <Page
         cal={{ ...OCTOBER, month: "2026-09", firstMonth: "2026-09" }}
         lang="vi"
         today="2026-10-11"
@@ -107,7 +112,7 @@ describe("CalendarPage layout", () => {
 
   it("drops the previous-month link at the first month", () => {
     render(
-      <CalendarPage
+      <Page
         cal={{ ...OCTOBER, month: "2026-09", firstMonth: "2026-09" }}
         lang="en"
         today="2026-10-11"
@@ -122,17 +127,17 @@ describe("CalendarPage layout", () => {
 
 describe("CalendarPage preview", () => {
   it("defaults to the latest edition day", () => {
-    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="en" today="2026-10-11" />);
     const p = preview();
     expect(p.getByRole("heading", { name: "Lead 2026-10-11" })).toBeTruthy();
     expect(p.getByText(/Sunday, October 11 · 33 stories/)).toBeTruthy();
     expect(
-      p.getByRole("link", { name: "Open edition →" }).getAttribute("href")
+      p.getByRole("link", { name: "Open edition" }).getAttribute("href")
     ).toBe(dayArchivePath("2026-10-11", "en"));
   });
 
   it("follows hover and focus, and keeps the last day when the pointer leaves", () => {
-    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="en" today="2026-10-11" />);
     fireEvent.pointerEnter(tile(/October 9:/));
     expect(preview().getByRole("heading").textContent).toBe("Lead 2026-10-09");
     fireEvent.focus(tile(/October 10:/));
@@ -142,7 +147,7 @@ describe("CalendarPage preview", () => {
   });
 
   it("rings the previewed tile and keeps every tile a link to its day archive", () => {
-    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="en" today="2026-10-11" />);
     expect(tile(/October 11:/).className).toContain("ring-foreground");
     fireEvent.pointerEnter(tile(/October 9:/));
     expect(tile(/October 9:/).className).toContain("ring-foreground");
@@ -153,7 +158,7 @@ describe("CalendarPage preview", () => {
   });
 
   it("lists runner-ups and the top three category chips", () => {
-    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="en" today="2026-10-11" />);
     const p = preview();
     expect(p.getAllByRole("listitem").map((li) => li.textContent)).toEqual([
       "Runner B",
@@ -165,19 +170,19 @@ describe("CalendarPage preview", () => {
   });
 
   it("omits runner-ups and chips when the day has none", () => {
-    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="en" today="2026-10-11" />);
     fireEvent.pointerEnter(tile(/October 10:/));
     expect(preview().queryAllByRole("listitem")).toHaveLength(0);
   });
 
   it("in Vietnamese shows only translated runner-ups and the Vietnamese headline", () => {
-    render(<CalendarPage cal={OCTOBER} lang="vi" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="vi" today="2026-10-11" />);
     const p = preview();
     expect(p.getByRole("heading").textContent).toBe("Tin chính 2026-10-11");
     expect(p.getByText("Phụ B")).toBeTruthy();
     expect(p.queryByText("Runner C")).toBeNull();
     expect(p.getByText(/Chủ Nhật, 11 tháng 10 · 33 tin/)).toBeTruthy();
-    expect(p.getByRole("link", { name: "Mở số báo →" })).toBeTruthy();
+    expect(p.getByRole("link", { name: "Mở số báo" })).toBeTruthy();
   });
 
   it("falls back to a neutral headline instead of the English one when untranslated", () => {
@@ -185,7 +190,7 @@ describe("CalendarPage preview", () => {
       ...OCTOBER,
       days: [day("2026-10-11", 2, { title_vi: null })],
     };
-    render(<CalendarPage cal={cal} lang="vi" today="2026-10-11" />);
+    render(<Page cal={cal} lang="vi" today="2026-10-11" />);
     expect(preview().getByRole("heading").textContent).toBe(
       "Xem các tin trong ngày"
     );
@@ -194,7 +199,7 @@ describe("CalendarPage preview", () => {
 
 describe("CalendarPage agenda", () => {
   it("lists the month's editions newest first with day number, weekday and count", () => {
-    render(<CalendarPage cal={OCTOBER} lang="vi" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="vi" today="2026-10-11" />);
     const rows = within(screen.getByTestId("calendar-agenda")).getAllByRole(
       "link"
     );
@@ -215,7 +220,7 @@ describe("CalendarPage agenda", () => {
 
 describe("CalendarPage keyboard and extras", () => {
   it("keeps one tab stop on the previewed tile and moves focus with arrows", () => {
-    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="en" today="2026-10-11" />);
     expect(tile(/October 11:/).getAttribute("tabindex")).toBeNull();
     expect(tile(/October 10:/).getAttribute("tabindex")).toBe("-1");
     tile(/October 11:/).focus();
@@ -231,7 +236,7 @@ describe("CalendarPage keyboard and extras", () => {
   });
 
   it("labels the legend scale, no-edition and today keys", () => {
-    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="en" today="2026-10-11" />);
     const legend = within(screen.getByTestId("calendar-legend"));
     expect(legend.getByText(/up to 33/)).toBeTruthy();
     expect(legend.getByText("No edition")).toBeTruthy();
@@ -239,14 +244,14 @@ describe("CalendarPage keyboard and extras", () => {
   });
 
   it("disables Today on the current month", () => {
-    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
-    expect(
-      screen.getByText("Today", { selector: "span[aria-disabled]" })
-    ).toBeTruthy();
+    render(<Page cal={OCTOBER} lang="en" today="2026-10-11" />);
+    expect(document.querySelector("span[aria-disabled]")?.textContent).toBe(
+      "Today"
+    );
   });
 
   it("links closed weeks of the month to their weekly edition", () => {
-    render(<CalendarPage cal={OCTOBER} lang="en" today="2026-10-11" />);
+    render(<Page cal={OCTOBER} lang="en" today="2026-10-11" />);
     const links = within(screen.getByTestId("calendar-weeks")).getAllByRole(
       "link"
     );
@@ -258,7 +263,7 @@ describe("CalendarPage keyboard and extras", () => {
 
   it("omits the weekly strip when no week of the month has an edition", () => {
     render(
-      <CalendarPage
+      <Page
         cal={{ ...OCTOBER, month: "2026-08", days: [] }}
         lang="en"
         today="2026-10-11"

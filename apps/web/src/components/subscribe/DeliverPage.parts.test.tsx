@@ -159,7 +159,7 @@ describe("DigestPreview", () => {
       <DigestPreview lang="vi" src="/api/subscribe/preview?lang=en&n=3" />
     );
     expect(html).toContain('src="/api/subscribe/preview?lang=en&amp;n=3"');
-    expect(html).toContain("Hộp thư — AI;DR");
+    expect(html).toContain("Hộp thư: AI;DR");
     // Pending state is visible and the frame respects reduced motion.
     expect(html).toContain("Đang tải bản xem trước");
     expect(html).toContain("motion-reduce:transition-none");

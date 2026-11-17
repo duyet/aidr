@@ -1,61 +1,6 @@
-import { AlignLeft, ImageIcon } from "lucide-react";
 import { useState } from "react";
 import { dayArchiveOgPath } from "../lib/day-archive";
 import type { Lang } from "../lib/types";
-
-export function DayCardViewSwitch({
-  lang,
-  showImage,
-  onChange,
-  onIntent,
-}: {
-  lang: Lang;
-  showImage: boolean;
-  onChange: (showImage: boolean) => void;
-  onIntent?: () => void;
-}) {
-  const views = [
-    {
-      image: true,
-      Icon: ImageIcon,
-      label: lang === "vi" ? "Xem ảnh tóm tắt" : "Show day card",
-    },
-    {
-      image: false,
-      Icon: AlignLeft,
-      label: lang === "vi" ? "Xem dạng chữ" : "Show text",
-    },
-  ];
-  return (
-    <fieldset
-      aria-label={lang === "vi" ? "Kiểu hiển thị" : "View"}
-      className="m-0 flex min-w-0 gap-0.5 rounded-full border border-input p-0.5"
-      onPointerEnter={onIntent}
-      onFocus={onIntent}
-    >
-      {views.map(({ image, Icon, label }) => {
-        const active = showImage === image;
-        return (
-          <button
-            key={label}
-            type="button"
-            aria-pressed={active}
-            aria-label={label}
-            title={label}
-            onClick={() => onChange(image)}
-            className={`inline-flex h-11 w-11 items-center sm:h-8 sm:w-9 justify-center rounded-full transition-[background-color,color] duration-150 ${
-              active
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            <Icon className="size-3.5" aria-hidden />
-          </button>
-        );
-      })}
-    </fieldset>
-  );
-}
 
 /**
  * The day card shown in place of the bullet list while the image view is

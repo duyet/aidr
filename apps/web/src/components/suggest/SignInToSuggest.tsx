@@ -97,7 +97,7 @@ export function SignInToSuggest({
             // ignore
           }
         }}
-        className="text-xs text-accent underline underline-offset-2 hover:no-underline"
+        className="btn-link"
       >
         {label}
       </button>
@@ -106,10 +106,7 @@ export function SignInToSuggest({
 
   return (
     <SignInButton mode="modal">
-      <button
-        type="button"
-        className="text-xs text-accent underline underline-offset-2 hover:no-underline"
-      >
+      <button type="button" className="btn-link">
         {label}
       </button>
     </SignInButton>

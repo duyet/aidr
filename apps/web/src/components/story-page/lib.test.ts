@@ -10,6 +10,7 @@ import {
   shortDayLabel,
   splitSources,
   storyByline,
+  storyOutlets,
 } from "./lib";
 import { pickReadNext, readNextUrl } from "./ReadNext";
 import { storyKeyAction } from "./use-story-keys";
@@ -141,7 +142,7 @@ describe("sources", () => {
         },
         "vi"
       )
-    ).toBe("Theo Berber Jin · wsj.com");
+    ).toBe("Từ Berber Jin · wsj.com");
     expect(storyByline({ url: base.url, sources: [] }, "en")).toBe(
       "From wsj.com"
     );
@@ -162,6 +163,24 @@ describe("sources", () => {
         "en"
       )
     ).toBe("From wsj.com");
+  });
+});
+
+describe("outlets", () => {
+  it("counts every source but discussion threads, so one number serves the eyebrow and the ranked line", () => {
+    const row = (kind: "source" | "support" | "discussion") => ({
+      kind,
+      author: null,
+      posted_at: null,
+      quote: null,
+      url: null,
+    });
+    expect(
+      storyOutlets({
+        sources: [row("source"), row("support"), row("discussion")],
+      })
+    ).toBe(2);
+    expect(storyOutlets({ sources: [] })).toBe(0);
   });
 });
 

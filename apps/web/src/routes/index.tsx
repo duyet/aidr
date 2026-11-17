@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CategoryNav } from "../components/CategoryNav";
+import { DayHeader, dayBefore } from "../components/DayHeader";
 import { FeedDays } from "../components/FeedDays";
 import { FeedSkeleton } from "../components/FeedSkeleton";
+import { HomeRail } from "../components/HomeRail";
 import { HomeSections } from "../components/HomeSections";
 import {
   FEED_SHORTCUTS,
@@ -10,7 +12,6 @@ import {
   ShortcutSheet,
 } from "../components/story-page/ShortcutSheet";
 import { TldrSection } from "../components/TldrSection";
-import { TrendingChips } from "../components/TrendingChips";
 import { parseAidrLayout } from "../lib/aidr-layout";
 import { AIDR_END_ID, AIDR_PAINT_GATE_LINK } from "../lib/aidr-paint-gate";
 import { dayArchivePath } from "../lib/day-archive";
@@ -25,7 +26,7 @@ import { usePrefs } from "../lib/prefs";
 import { homepageHead } from "../lib/seo";
 import { storyPath } from "../lib/slug";
 import { displayTldrBullets } from "../lib/tldr-fallback";
-import type { DayGroup, FeedResponse } from "../lib/types";
+import type { DayGroup, FeedResponse, TldrBullet } from "../lib/types";
 import { useFeedKeyNav } from "../lib/use-feed-keynav";
 
 export interface IndexSearch {
@@ -197,26 +198,6 @@ function IndexPage() {
     });
   };
 
-  const days =
-    selectedCategories.size === 0
-      ? feed.days
-      : feed.days
-          .map((day) => {
-            const items = day.items.filter(
-              (item) => item.category && selectedCategories.has(item.category)
-            );
-            const categoryCounts: Record<string, number> = {};
-            for (const item of items) {
-              if (item.category) {
-                categoryCounts[item.category] =
-                  (categoryCounts[item.category] ?? 0) + 1;
-              }
-            }
-            // A filtered day counts what it shows, not the day's full total.
-            return { ...day, items, categoryCounts, totalItems: undefined };
-          })
-          .filter((day) => day.items.length > 0);
-
   const browseChrome = showFeedBrowseChrome(q);
 
   function mergeOlderDays(older: FeedResponse) {
@@ -247,17 +228,27 @@ function IndexPage() {
     );
   }
 
-  const brief = !q && prefs.sections.tldr && !prefs.sections.days;
+  const inSelectedCategory = (bullet: TldrBullet) =>
+    bullet.item_ids?.some((id) => {
+      const category = categoryByItemId.get(id);
+      return category !== undefined && selectedCategories.has(category);
+    }) ?? false;
+  const chosen = (list: TldrBullet[]) =>
+    selectedCategories.size === 0 ? list : list.filter(inSelectedCategory);
+
+  const firstDay = feed.days[0];
+  const date = firstDay?.date ?? feed.tldr?.date;
+  const showList = Boolean(q) || prefs.sections.days;
 
   return (
-    <div className={brief ? "flex flex-1 flex-col" : undefined}>
+    <div className="flex flex-col gap-(--home-section-gap) pt-5">
       <h1 className="sr-only">
         {lang === "vi"
           ? "AI;DR: tin AI xếp hạng mỗi 30 phút"
           : "AI;DR: AI news, ranked every 30 minutes"}
       </h1>
       {q ? (
-        <p className="flex flex-wrap items-baseline justify-between gap-2 py-3 text-sm text-muted-foreground">
+        <p className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-muted-foreground">
           <span>
             {lang === "vi" ? "Kết quả cho" : "Results for"}{" "}
             <span className="font-semibold text-foreground">“{q}”</span> —{" "}
@@ -271,101 +262,106 @@ function IndexPage() {
           )}
         </p>
       ) : null}
-      {prefs.sectionOrder.map((section) => {
-        const visible = prefs.sections[section];
-        if (!visible) return null;
-        if (q && section !== "days") return null;
-        switch (section) {
-          case "categories":
-            if (!browseChrome) return null;
-            return (
-              <div key={section}>
-                <CategoryNav
-                  categories={feed.categories}
-                  selected={selectedCategories}
-                  onToggle={toggleCategory}
-                  lang={lang}
-                />
-              </div>
-            );
-          case "trending":
-            if (!browseChrome) return null;
-            return (
-              <div key={section}>
-                <TrendingChips
-                  trending={feed.trending}
-                  label={lang === "vi" ? "Xu hướng" : "Trending"}
-                  selectedTag={selectedTag}
-                  onSelectTag={setSelectedTag}
-                />
-              </div>
-            );
-          case "tldr":
-            if (q) return null;
-            return (
-              <div
-                key={section}
-                className={
-                  brief
-                    ? "flex flex-1 flex-col justify-center py-6 sm:py-10"
-                    : undefined
-                }
+      {browseChrome && (date || prefs.sections.categories) && (
+        <div className="flex flex-col gap-4">
+          {date && (
+            <DayHeader
+              date={date}
+              prevDate={
+                feed.days[1]?.date ?? (feed.hasMore ? dayBefore(date) : null)
+              }
+              total={
+                firstDay?.totalItems ??
+                firstDay?.items.length ??
+                feed.totalStories
+              }
+              updatedAt={feed.updatedAt}
+              lastFetchedAt={feed.lastFetchedAt}
+              lang={lang}
+            />
+          )}
+          {prefs.sections.categories && (
+            <CategoryNav
+              categories={feed.categories}
+              selected={selectedCategories}
+              onToggle={toggleCategory}
+              lang={lang}
+            />
+          )}
+        </div>
+      )}
+      {!q && prefs.sections.tldr && (
+        <div>
+          <TldrSection
+            bullets={chosen(bullets)}
+            secondBullets={
+              prefs.bilingual
+                ? chosen(
+                    displayTldrBullets(feed.tldr, lang === "vi" ? "en" : "vi")
+                  )
+                : undefined
+            }
+            defaultCount={prefs.tldrCount}
+            lang={lang}
+            totalStories={feed.totalStories}
+            updatedAt={feed.updatedAt}
+            lastFetchedAt={feed.lastFetchedAt}
+            topicByItemId={topicByItemId}
+            categoryByItemId={categoryByItemId}
+            pathByItemId={pathByItemId}
+            tagsByItemId={tagsByItemId}
+            imageByItemId={imageByItemId}
+            snapshotDate={feed.tldr?.date}
+            dateHref={
+              feed.tldr?.date ? dayArchivePath(feed.tldr.date, lang) : undefined
+            }
+            layout={parseAidrLayout(aidr)}
+            layoutLabeled={Boolean(aidr)}
+            footerHint={
+              <button
+                type="button"
+                onClick={() => setKeysOpen((v) => !v)}
+                aria-expanded={keysOpen}
+                className="hidden items-center gap-1.5 rounded-[6px] hover:text-foreground sm:inline-flex [@media(hover:none)]:hidden"
               >
-                <TldrSection
-                  bullets={bullets ?? []}
-                  defaultCount={prefs.tldrCount}
-                  lang={lang}
-                  totalStories={feed.totalStories}
-                  updatedAt={feed.updatedAt}
-                  lastFetchedAt={feed.lastFetchedAt}
-                  topicByItemId={topicByItemId}
-                  categoryByItemId={categoryByItemId}
-                  pathByItemId={pathByItemId}
-                  tagsByItemId={tagsByItemId}
-                  imageByItemId={imageByItemId}
-                  snapshotDate={feed.tldr?.date}
-                  dateHref={
-                    feed.tldr?.date
-                      ? dayArchivePath(feed.tldr.date, lang)
-                      : undefined
-                  }
-                  layout={parseAidrLayout(aidr)}
-                  layoutLabeled={Boolean(aidr)}
-                  footerHint={
-                    <button
-                      type="button"
-                      onClick={() => setKeysOpen((v) => !v)}
-                      aria-expanded={keysOpen}
-                      className="hidden items-center gap-1.5 rounded-[6px] hover:text-foreground sm:inline-flex [@media(hover:none)]:hidden"
-                    >
-                      <kbd className={KBD_CLASS}>?</kbd>
-                      {lang === "vi" ? "Phím tắt" : "Shortcuts"}
-                    </button>
-                  }
-                />
-                <span id={AIDR_END_ID} hidden />
-              </div>
-            );
-          case "days":
-            return (
-              <div key={section}>
-                <FeedDays
-                  feed={feed}
-                  days={days}
-                  lang={lang}
-                  selectedTag={selectedTag}
-                  q={q}
-                  selectedCategoryCount={selectedCategories.size}
-                  onMergeOlder={mergeOlderDays}
-                  onLoadDay={replaceDay}
-                />
-              </div>
-            );
-          default:
-            return null;
+                <kbd className={KBD_CLASS}>?</kbd>
+                {lang === "vi" ? "Phím tắt" : "Shortcuts"}
+              </button>
+            }
+          />
+          <span id={AIDR_END_ID} hidden />
+        </div>
+      )}
+      <div
+        className={
+          browseChrome
+            ? "grid items-start gap-x-(--home-col-gap) gap-y-(--home-section-gap) min-[900px]:grid-cols-[minmax(0,1fr)_var(--rail-width)] min-[900px]:in-data-[layout=newspaper]:grid-cols-[minmax(0,1fr)_270px]"
+            : undefined
         }
-      })}
-      {q ? null : <HomeSections lang={lang} />}
+      >
+        <div className="flex min-w-0 flex-col gap-(--home-section-gap) [--row-pad:var(--home-row-pad)] [--thumb-size:var(--home-thumb-size)]">
+          <FeedDays
+            feed={feed}
+            lang={lang}
+            selectedTag={selectedTag}
+            q={q}
+            selectedCategories={selectedCategories}
+            showList={showList}
+            onMergeOlder={mergeOlderDays}
+            onLoadDay={replaceDay}
+          />
+        </div>
+        {browseChrome && (
+          <HomeRail
+            feed={feed}
+            lang={lang}
+            selectedTag={selectedTag}
+            onSelectTag={setSelectedTag}
+            showTrending={prefs.sections.trending}
+          />
+        )}
+      </div>
+      {q ? null : <HomeSections />}
       {keysOpen && (
         <ShortcutSheet
           lang={lang}

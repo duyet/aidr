@@ -1,25 +1,16 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import type { NavTarget } from "../../lib/analytics/events";
 import { track } from "../../lib/analytics/track";
 import { useLang } from "../../lib/lang-context";
 import type { Lang } from "../../lib/types";
+import { Bi } from "../Bi";
+import { CalendarButton } from "./CalendarButton";
+import { NAV_ITEMS } from "./lib";
 
-/** The few routes the wide header names inline (DESIGN.md "Header"). Every
- *  other destination stays in the phone menu and the footer. */
-export const HEADER_NAV: {
-  id: NavTarget;
-  href: "/" | "/calendar" | "/weeks" | "/data";
-  en: string;
-  vi: string;
-}[] = [
-  { id: "/", href: "/", en: "Today", vi: "Hôm nay" },
-  { id: "/calendar", href: "/calendar", en: "Calendar", vi: "Lịch" },
-  { id: "/weeks", href: "/weeks", en: "Weekly", vi: "Bản tin tuần" },
-  { id: "/data", href: "/data", en: "Data", vi: "Dữ liệu" },
-];
+// Below 1024px the bar is full, so the labels move to screen readers only.
+const ITEM_CLASS =
+  "inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:bg-muted aria-[current=page]:text-foreground motion-reduce:transition-none [&_svg]:size-[15px] [&_svg]:shrink-0 max-lg:[&>span]:sr-only";
 
-/** Muted links, the current page in the foreground color. Shown from the
- *  `lg` breakpoint; below it the row is full and the phone menu has them. */
+/** Hôm nay, Tuần and Lịch. Lịch opens the month grid in a popover. */
 export function HeaderNav({ lang }: { lang: Lang }) {
   const navigationLang = useLang();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -27,27 +18,34 @@ export function HeaderNav({ lang }: { lang: Lang }) {
   return (
     <nav
       aria-label={lang === "vi" ? "Chính" : "Main"}
-      className="hidden shrink-0 items-center gap-4 text-[13px] lg:flex"
+      className="flex shrink-0 items-center gap-0.5"
     >
-      {HEADER_NAV.map((item) => {
-        const current = path === item.href;
-        return (
+      {NAV_ITEMS.map((item) =>
+        item.id === "/calendar" ? (
+          <CalendarButton
+            key={item.id}
+            lang={lang}
+            surface="popover"
+            className={ITEM_CLASS}
+          />
+        ) : (
           <Link
-            key={item.href}
+            key={item.id}
             to={item.href}
             search={{ lang: navigationLang }}
-            aria-current={current ? "page" : undefined}
+            aria-current={path === item.href ? "page" : undefined}
             onClick={() =>
               track("nav_click", { to: item.id, placement: "header" })
             }
-            className={`whitespace-nowrap rounded-sm transition-colors hover:text-foreground ${
-              current ? "text-foreground" : "text-muted-foreground"
-            }`}
+            className={ITEM_CLASS}
           >
-            {lang === "vi" ? item.vi : item.en}
+            <item.icon aria-hidden />
+            <span lang="en" className="leading-tight">
+              {item.en}
+            </span>
           </Link>
-        );
-      })}
+        )
+      )}
     </nav>
   );
 }

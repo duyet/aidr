@@ -110,7 +110,7 @@ function StoryTokenPanel({
       id={panelId}
       tabIndex={-1}
       aria-label={copy.story}
-      className="mt-2 min-w-0 border-0 border-l border-border p-0 pl-2 text-[11px] leading-relaxed"
+      className="mt-2 min-w-0 border-0 p-0 text-[11px] leading-relaxed"
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.preventDefault();
@@ -186,7 +186,7 @@ export function StoryMetaAside({
   const copy = STORY_DETAILS_COPY[lang];
 
   return (
-    <aside className="not-typeset min-w-0 space-y-5 md:border-l md:border-border md:pl-6">
+    <aside className="not-typeset min-w-0 space-y-5">
       {showVotes && (
         <StoryVotes itemId={item.id} voteNet={item.vote_net ?? 0} lang={lang} />
       )}
@@ -208,7 +208,7 @@ export function StoryMetaAside({
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             {item.category && (
-              <span className="rounded-full border border-border bg-background px-2 py-0 text-xs">
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs">
                 <CategoryLabel name={item.category} lang={lang} />
               </span>
             )}
@@ -217,7 +217,7 @@ export function StoryMetaAside({
               return (
                 <span
                   key={tag}
-                  className="rounded-full border border-border bg-background px-2 py-0 text-xs"
+                  className="rounded-full bg-muted px-2.5 py-0.5 text-xs"
                 >
                   <span
                     className="topic-colored"

@@ -172,11 +172,7 @@ function ClerkSuggest({
 
 function PendingSuggest({ lang }: { lang: Lang }) {
   return (
-    <button
-      type="button"
-      disabled
-      className="text-xs text-accent underline underline-offset-2 disabled:opacity-60"
-    >
+    <button type="button" disabled className="btn-link">
       {lang === "vi" ? "Góp ý chỉnh sửa" : "Suggest an edit"}
     </button>
   );

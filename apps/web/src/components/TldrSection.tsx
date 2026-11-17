@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { type ReactElement, type ReactNode, useState } from "react";
 import { type AidrLayout, DEFAULT_AIDR_LAYOUT } from "../lib/aidr-layout";
 import { track } from "../lib/analytics/track";
@@ -7,11 +8,14 @@ import { timeAgo } from "../lib/lang";
 import { type TldrCount, usePrefs } from "../lib/prefs";
 import { tldrCountOptions, tldrShownCount } from "../lib/tldr-links";
 import type { Lang, TldrBullet } from "../lib/types";
-import { DayCardView, DayCardViewSwitch } from "./DayCardPreview";
+import { Bi } from "./Bi";
+import { DayCardView } from "./DayCardPreview";
 import { TldrBulletList } from "./TldrBulletList";
+import { TldrCountSwitch, TldrViewSwitch } from "./TldrControls";
 
 export function TldrSection({
   bullets,
+  secondBullets = [],
   defaultCount,
   lang,
   totalStories,
@@ -31,6 +35,10 @@ export function TldrSection({
   footerHint,
 }: {
   bullets: TldrBullet[];
+  /** The other language's bullets, shown under each title in bilingual
+   * mode. Matched by the first story id; a bullet with no match shows no
+   * second line, never the leading language's text. */
+  secondBullets?: TldrBullet[];
   defaultCount: TldrCount;
   lang: Lang;
   totalStories: number;
@@ -58,11 +66,15 @@ export function TldrSection({
   /** A small footer extra, such as the home feed's "? Shortcuts" hint. */
   footerHint?: ReactNode;
 }): ReactElement | null {
-  const { setPrefs } = usePrefs();
-  const [preview, setPreview] = useState(false);
+  const { prefs, setPrefs } = usePrefs();
   const [cardWarm, setCardWarm] = useState(false);
 
   if (bullets.length === 0) return null;
+
+  // The day card needs a snapshot date and its archive link; without them
+  // the text list is the only view, whatever the pref says.
+  const hasCard = Boolean(snapshotDate && dateHref);
+  const showImage = hasCard && prefs.tldrView === "image";
 
   // The 8 | 12 | 16 arithmetic lives in `lib/tldr-links` so the homepage
   // JSON-LD ItemList (#224) resolves the same "how many bullets are painted"
@@ -73,26 +85,45 @@ export function TldrSection({
     options[options.length - 1];
 
   const shown = bullets.slice(0, tldrShownCount(bullets.length, defaultCount));
-  const mid = singleColumn ? shown.length : Math.ceil(shown.length / 2);
 
   const selectedIndex = selectedOption ? options.indexOf(selectedOption) : -1;
   const nextOption =
     selectedIndex >= 0 ? options[selectedIndex + 1] : undefined;
   const canCollapse = selectedIndex > 0;
   const numbered = layout === "a";
-  const dateParts = snapshotDate ? dayOgDateParts(snapshotDate, lang) : null;
+  const dates = snapshotDate
+    ? {
+        vi: dayOgDateParts(snapshotDate, "vi"),
+        en: dayOgDateParts(snapshotDate, "en"),
+      }
+    : null;
+  const dateLine = (l: Lang) =>
+    dates ? `${dates[l].weekday} · ${dates[l].monthYear}` : "";
+
+  const secondTextByItemId = prefs.bilingual
+    ? new Map(
+        secondBullets.flatMap((b) =>
+          b.item_ids?.[0] ? [[b.item_ids[0], b.text] as const] : []
+        )
+      )
+    : undefined;
+
+  const setCount = (nominal: TldrCount) => {
+    track("prefs_change", { pref: "tldrCount", pref_value: `${nominal}` });
+    setPrefs({ tldrCount: nominal });
+  };
 
   return (
     <section
-      className="my-3 overflow-hidden rounded-lg border border-border bg-card"
+      className="my-3 overflow-hidden rounded-lg"
       data-aidr-layout={layout}
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 sm:px-[18px]">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-[18px]">
         <div className="flex min-w-0 items-center gap-3">
-          {dateParts ? (
+          {dates ? (
             <>
               <span className="text-[28px] font-semibold leading-none tracking-[-0.03em] text-foreground tabular-nums">
-                {dateParts.day}
+                {dates[lang].day}
               </span>
               <span className="flex min-w-0 flex-col font-mono text-[11px] uppercase leading-[1.45] tracking-[0.1em]">
                 <span className="inline-flex items-center gap-1.5 font-medium text-accent">
@@ -107,12 +138,14 @@ export function TldrSection({
                     href={dateHref}
                     className="truncate rounded-[6px] text-muted-foreground hover:text-foreground"
                   >
-                    {dateParts.weekday} · {dateParts.monthYear}
+                    <Bi vi={dateLine("vi")} en={dateLine("en")} />
                   </a>
                 ) : (
-                  <span className="truncate text-muted-foreground">
-                    {dateParts.weekday} · {dateParts.monthYear}
-                  </span>
+                  <Bi
+                    className="truncate text-muted-foreground"
+                    vi={dateLine("vi")}
+                    en={dateLine("en")}
+                  />
                 )}
               </span>
             </>
@@ -123,53 +156,39 @@ export function TldrSection({
                 className="size-1.5 shrink-0 rounded-full bg-signal"
               />
               AI;DR{" "}
-              <span className="font-mono text-[11px] font-normal uppercase tracking-[0.1em] text-muted-foreground">
-                {lang === "vi" ? "24 giờ qua" : "past 24 hours"}
-              </span>
+              <Bi
+                className="font-mono text-[11px] font-normal uppercase tracking-[0.1em] text-muted-foreground"
+                vi="24 giờ qua"
+                en="past 24 hours"
+              />
             </h2>
           )}
           {layoutLabeled && (
-            <span className="rounded-full border border-input px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
               Layout {layout.toUpperCase()}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
-          {snapshotDate && dateHref ? (
-            <DayCardViewSwitch
+          {hasCard ? (
+            <TldrViewSwitch
               lang={lang}
-              showImage={preview}
-              onChange={(showImage) => {
-                track("tldr_toggle", { view: showImage ? "image" : "text" });
-                setPreview(showImage);
+              showImage={showImage}
+              onChange={(image) => {
+                const view = image ? "image" : "text";
+                track("tldr_toggle", { view });
+                setPrefs({ tldrView: view });
               }}
               onIntent={() => setCardWarm(true)}
             />
           ) : null}
-          {options.length > 0 && (
-            <div className="flex gap-0.5 rounded-full border border-input p-0.5 text-[13px]">
-              {options.map((o) => (
-                <button
-                  key={o.nominal}
-                  type="button"
-                  onClick={() => {
-                    track("prefs_change", {
-                      pref: "tldrCount",
-                      pref_value: `${o.nominal}`,
-                    });
-                    setPrefs({ tldrCount: o.nominal });
-                  }}
-                  aria-pressed={selectedOption === o}
-                  className={`inline-flex h-11 min-w-11 items-center sm:h-8 sm:min-w-9 justify-center rounded-full px-2.5 tabular-nums transition-[background-color,color] duration-150 ${
-                    selectedOption === o
-                      ? "bg-primary font-medium text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  {o.effective}
-                </button>
-              ))}
-            </div>
+          {selectedOption && (
+            <TldrCountSwitch
+              lang={lang}
+              options={options}
+              selected={selectedOption.nominal}
+              onChange={setCount}
+            />
           )}
         </div>
       </div>
@@ -179,63 +198,56 @@ export function TldrSection({
           <DayCardView
             date={snapshotDate}
             lang={lang}
-            open={preview}
+            open={showImage}
             warm={cardWarm}
           />
         ) : null}
-        <div hidden={preview}>
+        <div hidden={showImage}>
           <TldrBulletList
             shown={shown}
-            mid={mid}
             layout={layout}
             numbered={numbered}
             lang={lang}
+            singleColumn={singleColumn}
             topicByItemId={topicByItemId}
             categoryByItemId={categoryByItemId}
             pathByItemId={pathByItemId}
             tagsByItemId={tagsByItemId}
             imageByItemId={imageByItemId}
+            secondTextByItemId={secondTextByItemId}
           />
 
           {nextOption ? (
             <button
               type="button"
-              onClick={() => {
-                track("prefs_change", {
-                  pref: "tldrCount",
-                  pref_value: `${nextOption.nominal}`,
-                });
-                setPrefs({ tldrCount: nextOption.nominal });
-              }}
-              className="mt-1 inline-flex h-11 items-center rounded-[6px] sm:h-8 text-[13px] font-medium text-accent hover:underline"
+              onClick={() => setCount(nextOption.nominal)}
+              className="btn-link mt-1"
             >
-              {lang === "vi" ? "Xem thêm ↓" : "Show more ↓"}
+              <Bi inline vi="Xem thêm" en="Show more" />
+              <ChevronDown aria-hidden />
             </button>
           ) : (
             canCollapse && (
               <button
                 type="button"
-                onClick={() => {
-                  track("prefs_change", {
-                    pref: "tldrCount",
-                    pref_value: `${options[0].nominal}`,
-                  });
-                  setPrefs({ tldrCount: options[0].nominal });
-                }}
-                className="mt-1 inline-flex h-11 items-center rounded-[6px] sm:h-8 text-[13px] font-medium text-accent hover:underline"
+                onClick={() => setCount(options[0].nominal)}
+                className="btn-link mt-1"
               >
-                {lang === "vi" ? "Thu gọn" : "Show less ↑"}
+                <Bi inline vi="Thu gọn" en="Show less" />
+                <ChevronUp aria-hidden />
               </button>
             )
           )}
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-[12px] text-muted-foreground tabular-nums sm:px-[18px]">
+      <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] text-muted-foreground tabular-nums sm:px-[18px]">
         <span className="flex items-center gap-4">
-          <span>
-            {totalStories} {lang === "vi" ? "tin" : "stories"}
-          </span>
+          <Bi
+            inline
+            vi={`${totalStories} tin`}
+            en={`${totalStories} stories`}
+          />
           {footerHint}
         </span>
         {!showFreshness ? null : lastFetchedAt ? (
@@ -248,11 +260,14 @@ export function TldrSection({
               aria-hidden="true"
               className="size-1.5 shrink-0 rounded-full bg-signal"
             />
-            {lang === "vi" ? "Cập nhật" : "Updated"}{" "}
-            {timeAgo(lastFetchedAt, updatedAt, lang)}
+            <Bi
+              inline
+              vi={`Cập nhật ${timeAgo(lastFetchedAt, updatedAt, "vi")}`}
+              en={`Updated ${timeAgo(lastFetchedAt, updatedAt, "en")}`}
+            />
           </Link>
         ) : (
-          <span>{lang === "vi" ? "Cập nhật lúc" : "News as of"}</span>
+          <Bi inline vi="Cập nhật lúc" en="News as of" />
         )}
       </div>
     </section>

@@ -94,6 +94,13 @@ export function splitSources(item: Pick<FeedItem, "url" | "sources">): {
   return { main, more };
 }
 
+/** Outlets that carried the story: every source row but the discussion
+ * threads. The eyebrow count and the "ranked high because" line both read it,
+ * so the two numbers cannot disagree. */
+export function storyOutlets(item: Pick<FeedItem, "sources">): number {
+  return item.sources.filter((s) => s.kind !== "discussion").length;
+}
+
 /** "By Berber Jin · wsj.com": the author of the article link itself, never
  * an aggregator that reposted it. */
 export function storyByline(
@@ -112,10 +119,10 @@ export function storyByline(
     )
     ?.author?.trim();
   if (author && host && author !== host) {
-    return `${lang === "vi" ? "Theo" : "By"} ${author} · ${host}`;
+    return `${lang === "vi" ? "Từ" : "By"} ${author} · ${host}`;
   }
   if (author || host) {
-    return `${lang === "vi" ? "Theo" : "From"} ${author ?? host}`;
+    return `${lang === "vi" ? "Từ" : "From"} ${author ?? host}`;
   }
   return null;
 }

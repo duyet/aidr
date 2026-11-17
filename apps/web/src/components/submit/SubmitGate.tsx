@@ -57,7 +57,7 @@ export function SubmitGate({
         </Link>
       </div>
       <ContributionsList lang={lang} getToken={getToken} refreshKey={0} />
-      <div id="contribute-email" className="scroll-mt-20 border-t pt-4">
+      <div id="contribute-email" className="scroll-mt-20 pt-4">
         <ContributorEmails lang={lang} getToken={getToken} user={user} />
       </div>
     </div>

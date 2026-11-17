@@ -127,10 +127,8 @@ export function ContributorEmails({
     await address?.destroy().catch(() => undefined);
   };
 
-  const field =
-    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
-  const button =
-    "shrink-0 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-60";
+  const field = "w-full rounded-lg border-0 bg-muted px-3 py-2 text-sm";
+  const button = "btn-primary shrink-0";
 
   return (
     <section className="space-y-3">
@@ -143,7 +141,7 @@ export function ContributorEmails({
           : `Forward news, or reply to our mail, to ${SUBMIT_EMAIL}. We accept mail only from addresses verified on this account. You can add more below.`}
       </p>
       {rows && rows.length > 0 && (
-        <ul className="divide-y rounded-md border text-sm">
+        <ul className="text-sm">
           {rows.map((address) => (
             <li key={address} className="px-3 py-2">
               <span className="block truncate">{address}</span>
@@ -178,11 +176,7 @@ export function ContributorEmails({
             <button type="submit" disabled={busy} className={button}>
               {vi ? "Xác minh" : "Verify"}
             </button>
-            <button
-              type="button"
-              onClick={cancel}
-              className="px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
-            >
+            <button type="button" onClick={cancel} className="btn-link">
               {vi ? "Hủy" : "Cancel"}
             </button>
           </form>

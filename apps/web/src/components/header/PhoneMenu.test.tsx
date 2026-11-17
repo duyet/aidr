@@ -1,12 +1,4 @@
-/**
- * Radix lifecycle coverage runs in a DOM test environment. It does not
- * evaluate Tailwind media queries or layout, so real 600px/pixel assertions
- * remain a browser check when a Chrome/Playwright runtime is available.
- * happy-dom is dev-only; it avoids the jsdom/data-urls test dependency chain.
- * No static HTML snapshot is treated as computed-layout evidence.
- *
- * @vitest-environment happy-dom
- */
+/** @vitest-environment happy-dom */
 import {
   cleanup,
   fireEvent,
@@ -15,12 +7,20 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import {
+  createDrawerController,
+  type DrawerController,
+} from "@ui-sdk/react/drawer";
+import { type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { track } from "../../lib/analytics/track";
 import { introVideoEmbedUrl } from "../../lib/intro-video";
-import { GetAIDRMenu } from "./GetAIDRMenu";
-import { PhoneMenu } from "./PhoneMenu";
+import { LangContext } from "../../lib/lang-context";
+import { DEFAULT_PREFS, type Prefs, PrefsContext } from "../../lib/prefs";
+import type { Lang } from "../../lib/types";
+import { PhoneMenu, PhoneMenuTrigger } from "./PhoneMenu";
 
+const route = vi.hoisted(() => ({ path: "/" }));
 // The real id is `null` until the owner uploads the video, so every test
 // below runs with the control hidden unless it sets an id itself.
 const introVideo = vi.hoisted(() => ({ id: null as string | null }));
@@ -31,9 +31,7 @@ vi.mock("../../lib/intro-video", async (importOriginal) => ({
     return introVideo.id;
   },
 }));
-
 vi.mock("../../lib/analytics/track", () => ({ track: vi.fn() }));
-
 vi.mock("@tanstack/react-router", async () => {
   const React = await import("react");
   return {
@@ -55,10 +53,7 @@ vi.mock("@tanstack/react-router", async () => {
       }
       return React.createElement(
         "a",
-        {
-          ...props,
-          href: `${url.pathname}${url.search}${url.hash}`,
-        },
+        { ...props, href: `${url.pathname}${url.search}${url.hash}` },
         children
       );
     },
@@ -68,38 +63,19 @@ vi.mock("@tanstack/react-router", async () => {
       select: (state: {
         location: { pathname: string; href: string };
       }) => unknown;
-    }) => select({ location: { pathname: "/", href: "/?lang=en" } }),
+    }) =>
+      select({
+        location: { pathname: route.path, href: `${route.path}?lang=en` },
+      }),
   };
 });
 
-class TestResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: (query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: () => undefined,
-    removeListener: () => undefined,
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
-    dispatchEvent: () => false,
-  }),
-});
-
-Object.defineProperty(window, "ResizeObserver", {
-  writable: true,
-  value: TestResizeObserver,
-});
-
-beforeEach(() => {
-  document.body.style.overflow = "";
-});
+// Links in a DOM test must not navigate: happy-dom would fetch the page.
+const stopNavigation = (event: Event) => {
+  if ((event.target as Element).closest("a")) event.preventDefault();
+};
+beforeEach(() => document.addEventListener("click", stopNavigation));
+afterEach(() => document.removeEventListener("click", stopNavigation));
 
 afterEach(() => {
   cleanup();
@@ -107,385 +83,114 @@ afterEach(() => {
   vi.mocked(track).mockClear();
 });
 
-function renderPhoneMenu() {
-  return render(
-    <>
-      <button type="button" data-testid="outside-control">
-        Outside
-      </button>
+function Providers({ lang, children }: { lang: Lang; children: ReactNode }) {
+  const [prefs, setPrefsState] = useState<Prefs>(DEFAULT_PREFS);
+  return (
+    <LangContext.Provider value={lang}>
+      <PrefsContext.Provider
+        value={{
+          prefs,
+          setPrefs: (update) => setPrefsState((p) => ({ ...p, ...update })),
+        }}
+      >
+        {children}
+      </PrefsContext.Provider>
+    </LangContext.Provider>
+  );
+}
+
+function Harness({
+  lang,
+  onLangChange = () => undefined,
+  langToggleDisabled = false,
+}: {
+  lang: Lang;
+  onLangChange?: (lang: Lang) => void;
+  langToggleDisabled?: boolean;
+}) {
+  const [menu] = useState<DrawerController>(createDrawerController);
+  return (
+    <Providers lang={lang}>
+      <header>
+        <PhoneMenuTrigger controller={menu} className="bar" />
+      </header>
+      <nav aria-label="Tab bar">
+        <PhoneMenuTrigger controller={menu} className="tab" />
+      </nav>
       <PhoneMenu
-        lang="vi"
-        onLangChange={() => undefined}
-        langToggleDisabled={false}
+        controller={menu}
+        lang={lang}
+        onLangChange={onLangChange}
+        langToggleDisabled={langToggleDisabled}
       />
-      <GetAIDRMenu />
-    </>
+    </Providers>
   );
 }
 
-function focusableElements(container: HTMLElement) {
-  return Array.from(
-    container.querySelectorAll<HTMLElement>(
-      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    )
-  );
+async function openFrom(place: "header" | "Tab bar") {
+  const scope =
+    place === "header"
+      ? within(screen.getByRole("banner"))
+      : within(screen.getByRole("navigation", { name: "Tab bar" }));
+  const trigger = scope.getByRole("button", { name: "AI;DR" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = await screen.findByRole("dialog", { name: "AI;DR" });
+  return { trigger, dialog };
 }
 
-describe("PhoneMenu modal behavior", () => {
-  it("opens with close focus, locks the body, and makes background content inert", async () => {
-    renderPhoneMenu();
-    const trigger = screen.getByRole("button", { name: "Open menu" });
-    trigger.focus();
-    fireEvent.click(trigger);
-
-    const dialog = await screen.findByRole("dialog");
-    const close = screen.getByRole("button", { name: "Close menu" });
-    const outside = screen.getByTestId("outside-control");
-
-    await waitFor(() => expect(document.activeElement).toBe(close));
-    await waitFor(() => expect(document.body.dataset.scrollLocked).toBe("1"));
-    expect(document.body.style.pointerEvents).toBe("none");
-    expect(outside.closest('[aria-hidden="true"]')).not.toBeNull();
+describe("PhoneMenu sheet", () => {
+  it("opens from either AI;DR button as a modal bottom sheet and Escape returns focus to the one pressed", async () => {
+    render(<Harness lang="en" />);
+    const { trigger, dialog } = await openFrom("Tab bar");
     expect(dialog.getAttribute("aria-modal")).toBe("true");
-    expect(dialog.getAttribute("aria-describedby")).toBeNull();
-    expect(dialog.className).toContain("inset-3");
-    expect(dialog.className).toContain("min-[600px]:inset-4");
-    const navigation = within(dialog).getByRole("navigation", {
-      name: "Mobile navigation",
-    });
-    // Two columns of large tiles at every phone width, not one column of rows:
-    // nine full-width rows buried half the menu behind a scroll gesture.
-    expect(navigation.className).toContain("grid-cols-2");
-    expect(navigation.className).not.toContain("grid-cols-1");
-    const newsLink = within(navigation).getByRole("link", { name: "News" });
-    expect(newsLink.getAttribute("aria-current")).toBe("page");
-    expect(newsLink.getAttribute("href")).toBe("/?lang=en");
-    expect(
-      within(dialog).getByRole("link", { name: "Sign in" }).getAttribute("href")
-    ).toBe("/sign-in?lang=en&redirect_url=%2F%3Flang%3Den");
-  });
-
-  it("wraps Tab and Shift+Tab inside the dialog", async () => {
-    renderPhoneMenu();
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    const dialog = await screen.findByRole("dialog");
-    const focusable = focusableElements(dialog);
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-
-    expect(first).toBeTruthy();
-    expect(last).toBeTruthy();
-
-    last.focus();
-    fireEvent.keyDown(last, { key: "Tab" });
-    await waitFor(() => expect(document.activeElement).toBe(first));
-
-    first.focus();
-    fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
-    await waitFor(() => expect(document.activeElement).toBe(last));
-  });
-
-  it("closes from the close button and returns focus to the trigger", async () => {
-    renderPhoneMenu();
-    const trigger = screen.getByRole("button", { name: "Open menu" });
-    fireEvent.click(trigger);
-    await screen.findByRole("dialog");
-    fireEvent.click(screen.getByRole("button", { name: "Close menu" }));
-
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(document.activeElement).toBe(trigger);
-  });
-
-  it("closes when footer sign-in navigation is activated", async () => {
-    renderPhoneMenu();
-    const trigger = screen.getByRole("button", { name: "Open menu" });
-    fireEvent.click(trigger);
-    await screen.findByRole("dialog");
-
-    fireEvent.click(screen.getByRole("link", { name: "Sign in" }));
-
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(document.activeElement).toBe(trigger);
-  });
-
-  it("closes on Escape, restores the trigger, and releases the body lock", async () => {
-    renderPhoneMenu();
-    const trigger = screen.getByRole("button", { name: "Open menu" });
-    fireEvent.click(trigger);
-    await screen.findByRole("dialog");
-
-    fireEvent.keyDown(document, { key: "Escape" });
-
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(document.activeElement).toBe(trigger);
-    expect(document.body.style.overflow).toBe("");
-    expect(document.body.dataset.scrollLocked).toBeUndefined();
-    expect(trigger.closest('[aria-hidden="true"]')).toBeNull();
-  });
-
-  it("closes from the backdrop", async () => {
-    renderPhoneMenu();
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    await screen.findByRole("dialog");
-    fireEvent.pointerDown(screen.getByTestId("mobile-menu-backdrop"));
-
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  });
-
-  it("returns focus to a currently visible trigger after a breakpoint change", async () => {
-    renderPhoneMenu();
-    const trigger = screen.getByRole("button", { name: "Open menu" });
-    fireEvent.click(trigger);
-    await screen.findByRole("dialog");
-
-    trigger.style.display = "none";
-    const fallback = screen.getByRole("button", {
-      name: "Get AI;DR menu",
-      hidden: true,
-    });
-    fireEvent.keyDown(document, { key: "Escape" });
-
-    await waitFor(() => expect(document.activeElement).toBe(fallback));
-  });
-});
-
-describe("mobile action sizing", () => {
-  it("renders nav links as large icon-over-label tiles", async () => {
-    render(
-      <PhoneMenu
-        lang="vi"
-        onLangChange={() => undefined}
-        langToggleDisabled={false}
-      />
+    expect(dialog.getAttribute("data-side")).toBe("bottom");
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true)
     );
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    const dialog = await screen.findByRole("dialog");
-    const newsLink = within(dialog).getByRole("link", { name: "News" });
 
-    // A tile, not a list row: column layout with the icon above the label, and
-    // a target well past the 44px floor.
-    expect(newsLink.className).toContain("flex-col");
-    expect(newsLink.className).toContain("min-h-24");
-    expect(newsLink.className).toContain("min-[600px]:min-h-28");
-    expect(newsLink.className).toContain("items-center");
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(trigger);
   });
 
-  it("shows every site link as a tile, not a truncated list", async () => {
-    render(
-      <PhoneMenu
-        lang="vi"
-        onLangChange={() => undefined}
-        langToggleDisabled={false}
-      />
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    const dialog = await screen.findByRole("dialog");
-    const navigation = within(dialog).getByRole("navigation", {
-      name: "Mobile navigation",
-    });
-    // Mirrors SITE_LINKS: every entry still reachable, none dropped.
-    expect(
-      within(navigation)
-        .getAllByRole("link")
-        .map((link) => link.textContent)
-    ).toEqual([
-      "News",
-      "Weekly",
-      "Calendar",
-      "About",
-      "Brand",
-      "MCP",
-      "Get AI;DR",
-      "Telegram",
-      "Data",
-      "Contribute",
-      "duyet.net",
+  it("closes from its localized close button", async () => {
+    render(<Harness lang="vi" />);
+    const { dialog } = await openFrom("header");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Đóng menu" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("puts the email field first, then Telegram, Facebook, Chrome, MCP and RSS", async () => {
+    render(<Harness lang="en" />);
+    const { dialog } = await openFrom("header");
+    const email = within(dialog).getByRole("textbox", { name: "Email" });
+    const rows = within(dialog)
+      .getAllByRole("link")
+      .map((a) => a.textContent);
+    expect(rows.slice(0, 6)).toEqual([
+      "Pick the time and frequency",
+      "Telegram@aidr_today",
+      "FacebookEnglish Page",
+      "ChromeAI news on a new tab",
+      "MCP serverFor AI assistants",
+      "RSSFor feed readers",
     ]);
-  });
-
-  it("splits nav and settings side by side in landscape", async () => {
-    // A 375px-tall phone stacked leaves the grid ~1 row tall. From the 600px
-    // breakpoint the language/auth column moves beside the nav instead.
-    render(
-      <PhoneMenu
-        lang="vi"
-        onLangChange={() => undefined}
-        langToggleDisabled={false}
-      />
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    const dialog = await screen.findByRole("dialog");
-    const navigation = within(dialog).getByRole("navigation", {
-      name: "Mobile navigation",
-    });
-    const body = navigation.parentElement;
-    const footer = navigation.nextElementSibling;
-
-    expect(body?.className).toContain("min-[600px]:flex-row");
-    expect(footer?.className).toContain("min-[600px]:border-l");
-    expect(footer?.className).toContain("min-[600px]:border-t-0");
-  });
-
-  it("renders the language switch as a full-width segmented control", async () => {
-    render(
-      <PhoneMenu
-        lang="vi"
-        onLangChange={() => undefined}
-        langToggleDisabled={false}
-      />
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    const dialog = await screen.findByRole("dialog");
-    const vi = within(dialog).getByRole("button", { name: "vi" });
-    const container = vi.parentElement;
-
-    // Labelled and edge-to-edge rather than a small pill tucked in a corner.
-    expect(container?.className).toContain("grid-cols-2");
-    expect(container?.className).toContain("w-full");
-    const label = within(dialog).getByText("Ngôn ngữ");
-    const navigation = within(dialog).getByRole("navigation", {
-      name: "Mobile navigation",
-    });
+    const first = within(dialog).getAllByRole("link")[0];
     expect(
-      label.compareDocumentPosition(navigation) &
-        Node.DOCUMENT_POSITION_FOLLOWING
+      email.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
   });
 
-  it("keeps the disabled state on the segmented control, not just the buttons", () => {
-    // Regression risk from swapping the container class: a custom container
-    // must not drop the `cursor-not-allowed` / opacity the pill always had.
-    render(
-      <PhoneMenu lang="en" onLangChange={() => undefined} langToggleDisabled />
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    const dialog = screen.getByRole("dialog");
-    const en = within(dialog).getByRole("button", { name: "en" });
-    expect(en.parentElement?.className).toContain("cursor-not-allowed");
-    expect(en.parentElement?.className).toContain("opacity-50");
-  });
-
-  it("renders compact dropdown items and language controls with 44px classes", async () => {
-    render(
-      <>
-        <GetAIDRMenu compact />
-        <PhoneMenu
-          lang="vi"
-          onLangChange={() => undefined}
-          langToggleDisabled={false}
-        />
-      </>
-    );
-
-    const getAIDRTrigger = screen.getByRole("button", {
-      name: "Get AI;DR menu",
-    });
-    fireEvent.pointerDown(getAIDRTrigger, { button: 0, pointerType: "mouse" });
-    fireEvent.click(getAIDRTrigger);
-    const menu = await screen.findByRole("menu");
-    const items = within(menu).getAllByRole("menuitem");
-    expect(items.map((item) => item.textContent)).toEqual([
-      "Chrome Extension",
-      "Telegram Channel (Vietnamese)",
-      "Telegram Channel (English)",
-      "Facebook Page",
-      "Email Subscription",
-      "MCP Server",
-      "RSS Feed",
-      "Contribute",
-      "Data Analytics",
-      "Algorithms",
-      "About",
-    ]);
-    expect(items.length).toBeGreaterThan(0);
-    for (const item of items) {
-      expect(item.className).toContain("h-11");
-      expect(item.className).toContain("min-h-11");
-      expect(item.className).toContain("min-w-[44px]");
-    }
-
-    fireEvent.keyDown(document, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
-
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    await screen.findByRole("dialog");
-    // 56px halves of a full-width segmented control: a deliberately larger
-    // target than the 44px floor the dropdown items use.
-    for (const language of ["en", "vi"]) {
-      const button = screen.getByRole("button", { name: language });
-      expect(button.className).toContain("min-h-14");
-      expect(button.className).toContain("min-w-[44px]");
-    }
-  });
-
-  it("leaves the desktop dropdown on its existing compact sizing", async () => {
-    render(<GetAIDRMenu />);
-    const trigger = screen.getByRole("button", { name: "Get AI;DR menu" });
-    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
-    fireEvent.click(trigger);
-    const menu = await screen.findByRole("menu");
-    const items = within(menu).getAllByRole("menuitem");
-    for (const item of items) {
-      expect(item.className).not.toContain("min-w-[44px]");
-      expect(item.className).not.toContain("min-h-11");
-    }
-  });
-  // An item that opens another site should say so: without the marker the
-  // Telegram rows look identical to the internal routes, and the reader
-  // gets a new tab with no warning.
-  it("marks the items that leave the site with a trailing external icon", async () => {
-    render(<GetAIDRMenu />);
-    const trigger = screen.getByRole("button", { name: "Get AI;DR menu" });
-    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
-    fireEvent.click(trigger);
-    const menu = await screen.findByRole("menu");
-
-    const external = new Set([
-      "Telegram Channel (Vietnamese)",
-      "Telegram Channel (English)",
-      "Facebook Page",
-    ]);
-    for (const item of within(menu).getAllByRole("menuitem")) {
-      const label = item.textContent ?? "";
-      const icons = item.querySelectorAll("svg");
-      expect(icons.length).toBe(external.has(label) ? 2 : 1);
-      if (!external.has(label)) continue;
-      // Trailing and smaller than the leading icon, and hidden from
-      // assistive tech: `target="_blank"` plus the label already say it.
-      const marker = icons[1];
-      expect(marker.getAttribute("aria-hidden")).toBe("true");
-      expect(marker.getAttribute("class")).toContain("ml-auto");
-      expect(marker.getAttribute("class")).toContain("!size-3");
-    }
-  });
-});
-
-describe("channel click tracking", () => {
-  it("reports the Facebook Page item as an English channel click, not navigation", async () => {
-    render(<GetAIDRMenu />);
-    const trigger = screen.getByRole("button", { name: "Get AI;DR menu" });
-    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
-    fireEvent.click(trigger);
-    const menu = await screen.findByRole("menu");
-    fireEvent.click(within(menu).getByText("Facebook Page"));
-    expect(track).toHaveBeenCalledExactlyOnceWith("channel_click", {
-      channel: "facebook",
-      placement: "header_menu",
-      lang: "en",
-    });
-  });
-
-  it("reports the phone menu Telegram tile with the channel's language", async () => {
-    render(
-      <PhoneMenu
-        lang="en"
-        onLangChange={() => undefined}
-        langToggleDisabled={false}
-      />
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    const dialog = await screen.findByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("link", { name: "Telegram" }));
+  it("links Telegram to the channel in the reader's language", async () => {
+    render(<Harness lang="vi" />);
+    const { dialog } = await openFrom("header");
+    const telegram = within(dialog).getByRole("link", { name: /Telegram/ });
+    expect(telegram.getAttribute("href")).toBe("https://t.me/aihomnay");
+    expect(telegram.textContent).toContain("@aihomnay");
+    fireEvent.click(telegram);
     expect(track).toHaveBeenCalledExactlyOnceWith("channel_click", {
       channel: "telegram",
       placement: "phone_menu",
@@ -493,44 +198,80 @@ describe("channel click tracking", () => {
     });
   });
 
-  it("reports the phone menu sign-in as phone_menu, not header", async () => {
-    render(
-      <PhoneMenu
-        lang="en"
-        onLangChange={() => undefined}
-        langToggleDisabled={false}
-      />
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    const dialog = await screen.findByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("link", { name: "Sign in" }));
-    expect(track).toHaveBeenCalledExactlyOnceWith("nav_click", {
-      to: "/sign-in",
+  it("reports Facebook as an English channel click and closes the sheet", async () => {
+    render(<Harness lang="vi" />);
+    const { dialog } = await openFrom("header");
+    fireEvent.click(within(dialog).getByRole("link", { name: /Facebook/ }));
+    expect(track).toHaveBeenCalledExactlyOnceWith("channel_click", {
+      channel: "facebook",
       placement: "phone_menu",
+      lang: "en",
     });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
-});
 
-describe("nav click tracking", () => {
-  it("reports a link's route id, not its href", async () => {
-    render(
-      <PhoneMenu
-        lang="en"
-        onLangChange={() => undefined}
-        langToggleDisabled={false}
-      />
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    const dialog = await screen.findByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("link", { name: "duyet.net" }));
+  it("lists the site pages by English name and reports a page's route id, not its href", async () => {
+    render(<Harness lang="vi" />);
+    const { dialog } = await openFrom("header");
+    const pages = within(dialog).getByRole("navigation", { name: "Trang" });
+    expect(
+      within(pages)
+        .getAllByRole("link")
+        .map((a) => a.textContent)
+    ).toEqual([
+      "About",
+      "Release",
+      "Data",
+      "Privacy",
+      "Brand",
+      "Contribute",
+      "duyet.net",
+    ]);
+    const about = within(pages).getByRole("link", { name: "About" });
+    expect(about.getAttribute("href")).toBe("/about?lang=vi");
+    fireEvent.click(within(pages).getByRole("link", { name: "duyet.net" }));
     expect(track).toHaveBeenCalledExactlyOnceWith("nav_click", {
       to: "duyet.net",
       placement: "phone_menu",
     });
   });
+
+  it("holds the language switch, disabled on English-only pages", async () => {
+    const onLangChange = vi.fn();
+    const { unmount } = render(
+      <Harness lang="vi" onLangChange={onLangChange} />
+    );
+    let { dialog } = await openFrom("header");
+    fireEvent.click(within(dialog).getByRole("radio", { name: "EN" }));
+    expect(onLangChange).toHaveBeenCalledExactlyOnceWith("en");
+    unmount();
+
+    render(<Harness lang="en" langToggleDisabled />);
+    ({ dialog } = await openFrom("header"));
+    const group = within(dialog).getByRole("radiogroup", { name: "Language" });
+    expect(group.getAttribute("aria-disabled")).toBe("true");
+    expect(group.getAttribute("title")).toBe("English only");
+    fireEvent.click(within(group).getByRole("radio", { name: "VI" }));
+    expect(
+      within(group)
+        .getByRole("radio", { name: "EN" })
+        .getAttribute("aria-checked")
+    ).toBe("true");
+  });
+
+  it("reports sign-in as phone_menu and closes the sheet", async () => {
+    render(<Harness lang="en" />);
+    const { dialog } = await openFrom("header");
+    fireEvent.click(within(dialog).getByRole("link", { name: "Sign in" }));
+    expect(track).toHaveBeenCalledExactlyOnceWith("nav_click", {
+      to: "/sign-in",
+      placement: "phone_menu",
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
 });
 
-describe("intro video tile", () => {
+describe("intro video row", () => {
   // The test asserts the iframe's src; it must not fetch the embed.
   (
     window as unknown as {
@@ -538,46 +279,32 @@ describe("intro video tile", () => {
     }
   ).happyDOM.settings.disableIframePageLoading = true;
 
-  // The compact header row has no room for another 44px control, so phones
-  // reach the video from the menu, like every other secondary action.
-  async function openMenuNavigation() {
-    render(
-      <PhoneMenu
-        lang="vi"
-        onLangChange={() => undefined}
-        langToggleDisabled={false}
-      />
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    const dialog = await screen.findByRole("dialog");
-    return within(dialog).getByRole("navigation", {
-      name: "Mobile navigation",
-    });
-  }
-
-  it("adds no tile while the video id is unset", async () => {
-    const navigation = await openMenuNavigation();
-    expect(within(navigation).queryByRole("button")).toBeNull();
+  it("adds no row while the video id is unset", async () => {
+    render(<Harness lang="vi" />);
+    const { dialog } = await openFrom("header");
+    const pages = within(dialog).getByRole("navigation", { name: "Trang" });
+    expect(within(pages).queryByRole("button")).toBeNull();
   });
 
-  it("plays the video over the menu and keeps the menu open after closing it", async () => {
+  it("plays the video over the sheet and keeps the sheet open after closing it", async () => {
     introVideo.id = "abc123XYZ_-";
-    const navigation = await openMenuNavigation();
-    const tile = within(navigation).getByRole("button", {
-      name: "Video giới thiệu",
-    });
-    expect(tile.className).toContain("min-h-24");
-
-    fireEvent.click(tile);
+    render(<Harness lang="vi" />);
+    const { dialog } = await openFrom("header");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Video giới thiệu" })
+    );
     const player = await screen.findByRole("dialog", { name: "AI;DR là gì?" });
     expect(player.querySelector("iframe")?.getAttribute("src")).toBe(
       introVideoEmbedUrl("abc123XYZ_-")
     );
+    expect(track).toHaveBeenCalledExactlyOnceWith("intro_video_open", {
+      placement: "phone_menu",
+    });
 
-    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
     await waitFor(() => expect(document.querySelector("iframe")).toBeNull());
-    expect(screen.getByRole("navigation", { name: "Mobile navigation" })).toBe(
-      navigation
-    );
+    expect(screen.getByRole("dialog", { name: "AI;DR" })).toBe(dialog);
   });
 });

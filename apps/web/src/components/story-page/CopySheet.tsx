@@ -1,7 +1,17 @@
-import { Button } from "@aidr/ui";
+import { Button } from "@ui-sdk/react/button";
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+} from "@ui-sdk/react/dialog";
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+} from "@ui-sdk/react/segmented-control";
 import { Copy, Link2 } from "lucide-react";
-import { type ReactElement, useEffect, useId, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { type ReactElement, useRef, useState } from "react";
 import {
   STORY_POST_FORMATS,
   type StoryPostFormat,
@@ -10,7 +20,6 @@ import {
 } from "../../lib/share-text";
 import type { FeedItem, Lang } from "../../lib/types";
 import { storyOgThumbUrl } from "../StoryThumb";
-import { useDialogLifecycle } from "../story-dialog/use-dialog-lifecycle";
 
 const COPY = {
   en: {
@@ -53,8 +62,9 @@ function selectNode(node: Node | null): void {
 
 /**
  * "Copy for social": three post formats with a live preview and the share
- * card the link unfurls to. A modal on the shared dialog lifecycle, so focus
- * moves in, Tab stays inside, Esc closes and focus returns to the opener.
+ * card the link unfurls to. A ui-sdk Dialog: focus moves in, Tab stays
+ * inside, Esc closes and focus returns to the opener. `onClose` runs once it
+ * has closed.
  */
 export function CopySheet({
   item,
@@ -66,17 +76,11 @@ export function CopySheet({
   onClose: () => void;
 }): ReactElement {
   const copy = COPY[lang];
-  const titleId = useId();
-  const overlayRef = useRef<HTMLDivElement | null>(null);
-  const panelRef = useDialogLifecycle(onClose, overlayRef);
   const postRef = useRef<HTMLDivElement | null>(null);
   const linkRef = useRef<HTMLSpanElement | null>(null);
   const copyRef = useRef<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(true);
   const [format, setFormat] = useState<StoryPostFormat>("aidr");
-  // The lifecycle focuses the panel; the main action is the better start.
-  useEffect(() => {
-    copyRef.current?.focus();
-  }, []);
   const [status, setStatus] = useState("");
 
   const post = storyPostText(item, lang, format);
@@ -95,73 +99,64 @@ export function CopySheet({
     }
   };
 
-  const sheet = (
-    <div
-      ref={overlayRef}
-      className="fixed inset-0 z-[1000] grid place-items-end justify-items-center p-3 min-[700px]:place-items-center"
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
     >
-      <button
-        type="button"
-        tabIndex={-1}
-        aria-label={copy.close}
-        onClick={onClose}
-        className="absolute inset-0 cursor-default bg-black/60"
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        className="relative max-h-[calc(100dvh-24px)] w-full max-w-[520px] overflow-y-auto rounded-2xl border border-input bg-background p-4 text-foreground shadow-xl mb-[env(safe-area-inset-bottom)]"
+      <DialogBackdrop className="fixed inset-0 bg-black/60" />
+      <DialogContent
+        initialFocus={() => copyRef.current}
+        className="fixed bottom-[calc(12px+env(safe-area-inset-bottom))] left-1/2 max-h-[calc(100dvh-24px)] w-[min(520px,calc(100%-24px))] -translate-x-1/2 overflow-y-auto rounded-2xl bg-card p-4 text-card-foreground shadow-xl min-[700px]:top-1/2 min-[700px]:bottom-auto min-[700px]:-translate-y-1/2"
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 id={titleId} className="text-[17px] font-semibold">
+          <DialogTitle className="text-[17px] font-semibold">
             {copy.title}
-          </h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClose}
+          </DialogTitle>
+          <DialogClose
             aria-label={`Esc: ${copy.close}`}
-            className="font-mono text-[11px] uppercase"
+            className="btn-soft font-mono text-[11px] uppercase"
           >
             Esc
-          </Button>
+          </DialogClose>
         </div>
-        <fieldset
+        <SegmentedControl
           aria-label={copy.formats}
-          className="mt-3 mb-2.5 inline-flex min-w-0 flex-wrap gap-0.5 rounded-full border border-input p-0.5"
+          value={format}
+          onValueChange={(next) => {
+            if (!next) return;
+            setFormat(next as StoryPostFormat);
+            setStatus("");
+          }}
+          className="mt-3 mb-2.5 inline-flex min-w-0 flex-wrap gap-0.5 rounded-full bg-muted p-0.5"
         >
           {STORY_POST_FORMATS.map((f) => (
-            <button
+            <SegmentedControlItem
               key={f}
-              type="button"
-              aria-pressed={format === f}
-              onClick={() => {
-                setFormat(f);
-                setStatus("");
-              }}
-              className="min-h-9 rounded-full px-3 text-[13px] text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+              value={f}
+              className="min-h-9 cursor-pointer rounded-full px-3 text-[13px] text-muted-foreground data-checked:bg-primary data-checked:text-primary-foreground"
             >
               {copy.labels[f]}
-            </button>
+            </SegmentedControlItem>
           ))}
-        </fieldset>
+        </SegmentedControl>
         <div
           ref={postRef}
           // biome-ignore lint/a11y/noNoninteractiveTabindex: the preview is selectable text a keyboard reader may copy by hand
           tabIndex={0}
           data-testid="copy-sheet-post"
           lang={lang}
-          className="whitespace-pre-wrap rounded-[10px] border border-border bg-card p-3 text-sm leading-normal [overflow-wrap:anywhere]"
+          className="rounded-[10px] bg-muted p-3 text-sm leading-normal whitespace-pre-wrap [overflow-wrap:anywhere]"
         >
           {body}
           <span ref={linkRef} className="text-muted-foreground">
             {link}
           </span>
         </div>
-        <div className="mt-2.5 grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2.5 rounded-[10px] border border-border p-2 text-xs text-muted-foreground">
+        <div className="mt-2.5 grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2.5 rounded-[10px] bg-muted p-2 text-xs text-muted-foreground">
           <img
             src={card}
             alt=""
@@ -169,22 +164,21 @@ export function CopySheet({
             height={630}
             loading="lazy"
             decoding="async"
-            className="aspect-[1200/630] w-24 rounded-md bg-muted object-cover"
+            className="aspect-[1200/630] w-24 rounded-md bg-background object-cover"
           />
           <span>{copy.card}</span>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button
             ref={copyRef}
-            className="h-11 px-5 text-sm"
+            className="btn-primary"
             onClick={() => void write(post, copy.copied, postRef.current)}
           >
             <Copy aria-hidden />
             {copy.copyPost}
           </Button>
           <Button
-            variant="outline"
-            className="h-11 px-5 text-sm"
+            className="btn-soft"
             // On a refused clipboard the preview's own link is selected: the
             // same story link, tagged with the format's slot.
             onClick={() =>
@@ -206,8 +200,7 @@ export function CopySheet({
             {status}
           </span>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
-  return createPortal(sheet, document.body);
 }

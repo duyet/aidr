@@ -15,11 +15,28 @@ import type { CalendarDay, CalendarMonth } from "../../lib/calendar";
 import { calendarPath } from "../../lib/calendar";
 import { fetchCalendarMonth } from "../../lib/calendar-fn";
 import { dayArchivePath } from "../../lib/day-archive";
+import { LangContext } from "../../lib/lang-context";
+import type { Lang } from "../../lib/types";
 import { clearCalendarMonthCache } from "../calendar/useCalendarMonth";
 import { CalendarButton } from "./CalendarButton";
 
 vi.mock("../../lib/calendar-fn", () => ({ fetchCalendarMonth: vi.fn() }));
 vi.mock("../../lib/analytics/track", () => ({ track: vi.fn() }));
+vi.mock("@tanstack/react-router", () => ({
+  useRouterState: ({
+    select,
+  }: {
+    select: (state: { location: { pathname: string } }) => unknown;
+  }) => select({ location: { pathname: "/" } }),
+}));
+
+function renderButton(lang: Lang, surface: "popover" | "sheet") {
+  return render(
+    <LangContext.Provider value={lang}>
+      <CalendarButton lang={lang} surface={surface} className="nav-item" />
+    </LangContext.Provider>
+  );
+}
 
 const day = (date: string, count: number): CalendarDay => ({
   date,
@@ -46,7 +63,7 @@ const SEPTEMBER: CalendarMonth = {
 };
 
 const fetchMock = vi.mocked(fetchCalendarMonth);
-const OPEN_EN = { name: "Browse past editions" };
+const OPEN_EN = { name: "Calendar" };
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -68,7 +85,7 @@ afterEach(() => {
 
 describe("CalendarButton popover", () => {
   it("fetches nothing until the icon is opened", () => {
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     const trigger = screen.getByRole("link", OPEN_EN);
     expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
@@ -77,7 +94,7 @@ describe("CalendarButton popover", () => {
   });
 
   it("opens, tracks, and links edition days to their day archive", async () => {
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     fireEvent.click(screen.getByRole("link", OPEN_EN));
 
     const dialog = await screen.findByRole("dialog");
@@ -97,7 +114,7 @@ describe("CalendarButton popover", () => {
   });
 
   it("renders days without an edition as plain text, not links", async () => {
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     fireEvent.click(screen.getByRole("link", OPEN_EN));
     const dialog = await screen.findByRole("dialog");
     await within(dialog).findByText("October 2026");
@@ -116,7 +133,7 @@ describe("CalendarButton popover", () => {
   });
 
   it("shows the month's edition count and no day preview", async () => {
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     fireEvent.click(screen.getByRole("link", OPEN_EN));
     const dialog = await screen.findByRole("dialog");
     await within(dialog).findByText("3 editions");
@@ -124,7 +141,7 @@ describe("CalendarButton popover", () => {
   });
 
   it("marks today", async () => {
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     fireEvent.click(screen.getByRole("link", OPEN_EN));
     const dialog = await screen.findByRole("dialog");
     await within(dialog).findByText("October 2026");
@@ -134,8 +151,8 @@ describe("CalendarButton popover", () => {
   });
 
   it("links the footer to the full calendar in the reader's language", async () => {
-    render(<CalendarButton lang="vi" surface="popover" />);
-    fireEvent.click(screen.getByRole("link", { name: "Lịch các số báo" }));
+    renderButton("vi", "popover");
+    fireEvent.click(screen.getByRole("link", { name: "Calendar" }));
     const dialog = await screen.findByRole("dialog");
     const footer = within(dialog).getByRole("link", {
       name: "Xem tất cả số báo →",
@@ -144,7 +161,7 @@ describe("CalendarButton popover", () => {
   });
 
   it("fetches once, caches months, and bounds the month buttons", async () => {
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     const open = () => fireEvent.click(screen.getByRole("link", OPEN_EN));
     open();
     let dialog = await screen.findByRole("dialog");
@@ -178,7 +195,7 @@ describe("CalendarButton popover", () => {
   });
 
   it("returns focus to the icon when Escape closes it", async () => {
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     const trigger = screen.getByRole("link", OPEN_EN);
     fireEvent.click(trigger);
     await screen.findByRole("dialog");
@@ -191,7 +208,7 @@ describe("CalendarButton popover", () => {
 
   it("shows a one-line error and retries on the next open", async () => {
     fetchMock.mockResolvedValueOnce(null as never);
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     fireEvent.click(screen.getByRole("link", OPEN_EN));
     await screen.findByText("The calendar could not be loaded.");
     fireEvent.keyDown(document.activeElement ?? document.body, {
@@ -207,7 +224,7 @@ describe("CalendarButton popover", () => {
 
 describe("CalendarButton phone sheet", () => {
   it("previews the latest edition by default and selects a tapped day without navigating", async () => {
-    render(<CalendarButton lang="en" surface="sheet" />);
+    renderButton("en", "sheet");
     fireEvent.click(screen.getByRole("link", OPEN_EN));
     const dialog = await screen.findByRole("dialog");
     await within(dialog).findByText("October");
@@ -230,7 +247,7 @@ describe("CalendarButton phone sheet", () => {
   });
 
   it("opens a bottom sheet with the same grid and tracks the surface", async () => {
-    render(<CalendarButton lang="en" surface="sheet" />);
+    renderButton("en", "sheet");
     fireEvent.click(screen.getByRole("link", OPEN_EN));
     const dialog = await screen.findByRole("dialog", {
       name: "Browse past editions",
@@ -265,11 +282,26 @@ function deferred<T>() {
 }
 
 describe("CalendarButton trigger without JS", () => {
+  it("opens once on a real mouse press, not open-then-closed", async () => {
+    renderButton("en", "popover");
+    const trigger = screen.getByRole("link", OPEN_EN);
+    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+    fireEvent.mouseDown(trigger, { button: 0 });
+    fireEvent.pointerUp(trigger, { button: 0, pointerType: "mouse" });
+    fireEvent.mouseUp(trigger, { button: 0 });
+    expect(fireEvent.click(trigger)).toBe(false);
+    await screen.findByRole("dialog");
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(track).toHaveBeenCalledExactlyOnceWith("calendar_open", {
+      placement: "popover",
+    });
+  });
+
   it.each(["popover", "sheet"] as const)(
     "%s trigger is a link to /calendar that opens on a plain click only",
     async (surface) => {
-      render(<CalendarButton lang="vi" surface={surface} />);
-      const trigger = screen.getByRole("link", { name: "Lịch các số báo" });
+      renderButton("vi", surface);
+      const trigger = screen.getByRole("link", { name: "Calendar" });
       expect(trigger.getAttribute("href")).toBe(calendarPath(undefined, "vi"));
 
       const modified = [
@@ -292,26 +324,37 @@ describe("CalendarButton trigger without JS", () => {
     }
   );
 
-  it.each(["popover", "sheet"] as const)(
-    "%s trigger opens on Enter without navigating",
-    async (surface) => {
-      render(<CalendarButton lang="en" surface={surface} />);
-      const trigger = screen.getByRole("link", OPEN_EN);
-      trigger.focus();
-      expect(document.activeElement).toBe(trigger);
-      fireEvent.keyDown(trigger, { key: "Enter" });
-      // browsers turn Enter on a focused link into a click; happy-dom does not
-      const navigated = fireEvent.click(trigger, { detail: 0 });
-      await screen.findByRole("dialog");
-      expect(navigated).toBe(false);
-      expect(trigger.getAttribute("aria-expanded")).toBe("true");
-    }
-  );
+  it("popover trigger opens on Enter and keeps the browser from following the link", async () => {
+    renderButton("en", "popover");
+    const trigger = screen.getByRole("link", OPEN_EN);
+    trigger.focus();
+    // Preventing the keydown is what stops a browser from turning Enter on a
+    // focused link into a click that would navigate.
+    expect(fireEvent.keyDown(trigger, { key: "Enter" })).toBe(false);
+    await screen.findByRole("dialog");
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(track).toHaveBeenCalledExactlyOnceWith("calendar_open", {
+      placement: "popover",
+    });
+  });
+
+  it("sheet trigger opens on Enter without navigating", async () => {
+    renderButton("en", "sheet");
+    const trigger = screen.getByRole("link", OPEN_EN);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+    fireEvent.keyDown(trigger, { key: "Enter" });
+    // browsers turn Enter on a focused link into a click; happy-dom does not
+    const navigated = fireEvent.click(trigger, { detail: 0 });
+    await screen.findByRole("dialog");
+    expect(navigated).toBe(false);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  });
 });
 
 describe("CalendarButton month loading", () => {
   it("keeps the arrows and offers Retry when a non-current month fails", async () => {
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     fireEvent.click(screen.getByRole("link", OPEN_EN));
     const dialog = await screen.findByRole("dialog");
     await within(dialog).findByText("October 2026");
@@ -340,7 +383,7 @@ describe("CalendarButton month loading", () => {
   it("joins an in-flight request when reopened", async () => {
     const slow = deferred<CalendarMonth>();
     fetchMock.mockReturnValueOnce(slow.promise as never);
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     const trigger = screen.getByRole("link", OPEN_EN);
     fireEvent.click(trigger);
     await screen.findByRole("dialog");
@@ -357,7 +400,7 @@ describe("CalendarButton month loading", () => {
   });
 
   it("ignores a slow response that resolves after a newer month", async () => {
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     fireEvent.click(screen.getByRole("link", OPEN_EN));
     const dialog = await screen.findByRole("dialog");
     await within(dialog).findByText("October 2026");
@@ -381,7 +424,7 @@ describe("CalendarButton month loading", () => {
 describe("CalendarButton today marker", () => {
   it("rolls to the next audience day at 20:00 UTC (UTC+7)", async () => {
     vi.setSystemTime(new Date("2026-10-10T20:00:00Z"));
-    render(<CalendarButton lang="en" surface="popover" />);
+    renderButton("en", "popover");
     fireEvent.click(screen.getByRole("link", OPEN_EN));
     const dialog = await screen.findByRole("dialog");
     await within(dialog).findByText("October 2026");
@@ -391,7 +434,7 @@ describe("CalendarButton today marker", () => {
   });
 
   it("sheet rings the selection and marks today with a dot instead", async () => {
-    render(<CalendarButton lang="en" surface="sheet" />);
+    renderButton("en", "sheet");
     fireEvent.click(screen.getByRole("link", OPEN_EN));
     const dialog = await screen.findByRole("dialog");
     await within(dialog).findByText("October");
@@ -414,7 +457,7 @@ describe("CalendarButton today marker", () => {
 
 describe("CalendarButton sheet dismissal", () => {
   it("closes on Escape and returns focus to the trigger", async () => {
-    render(<CalendarButton lang="en" surface="sheet" />);
+    renderButton("en", "sheet");
     const trigger = screen.getByRole("link", OPEN_EN);
     fireEvent.click(trigger);
     await screen.findByRole("dialog");
@@ -424,8 +467,8 @@ describe("CalendarButton sheet dismissal", () => {
   });
 
   it("has a localized close button", async () => {
-    render(<CalendarButton lang="vi" surface="sheet" />);
-    fireEvent.click(screen.getByRole("link", { name: "Lịch các số báo" }));
+    renderButton("vi", "sheet");
+    fireEvent.click(screen.getByRole("link", { name: "Calendar" }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Đóng" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());

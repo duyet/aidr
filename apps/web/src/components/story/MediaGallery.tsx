@@ -7,12 +7,10 @@ import {
 } from "../../../worker/media.js";
 import { track } from "../../lib/analytics/track";
 import { publisherHost } from "../../lib/publisher-host";
+import { resizeCdnImageUrl } from "../../lib/tldr-images";
 import type { Lang } from "../../lib/types";
-import {
-  STORY_THUMB_PLACEHOLDER,
-  StoryThumb,
-  ThumbLightbox,
-} from "../StoryThumb";
+import { STORY_THUMB_PLACEHOLDER } from "../StoryThumb";
+import { ImageZoom } from "./ImageZoom";
 
 /** Bounded story media for the reader.
  *
@@ -104,8 +102,7 @@ export function visibleMediaAssets(
 
 const FRAME_WIDTH = 640;
 const FRAME_HEIGHT = 360;
-const FRAME_CLASS =
-  "aspect-[16/9] w-full rounded-xl border border-border bg-muted object-cover";
+const FRAME_CLASS = "aspect-[16/9] w-full rounded-xl bg-muted object-cover";
 
 export const MEDIA_COPY = {
   en: {
@@ -199,7 +196,7 @@ export function MediaImage({
       >
         {img}
       </button>
-      {open && <ThumbLightbox src={asset.url} onClose={() => setOpen(false)} />}
+      {open && <ImageZoom src={asset.url} onClose={() => setOpen(false)} />}
     </>
   );
 }
@@ -320,21 +317,25 @@ export function MediaGallery({
 }) {
   const headingId = useId();
   const assets = visibleMediaAssets(manifest);
+  const copy = MEDIA_COPY[lang];
+  const host = publisherHost(articleUrl);
 
   if (assets.length === 0) {
-    return fallbackImageUrl ? (
-      <StoryThumb
-        src={fallbackImageUrl}
+    // The zoom is a ui-sdk Dialog (ImageZoom), the only layer that opens
+    // above the StoryDialog drawer, so the legacy image uses it too.
+    const url = resizeCdnImageUrl(fallbackImageUrl, "card");
+    return url ? (
+      <MediaImage
+        asset={{ kind: "image", key: "legacy", url, index: 1 }}
+        alt={copy.imageAlt(1, 1, host)}
+        label={copy.zoom(1, 1)}
         itemId={itemId}
-        lang={lang}
-        variant="card"
+        solo
       />
     ) : null;
   }
 
-  const copy = MEDIA_COPY[lang];
   const total = assets.length;
-  const host = publisherHost(articleUrl);
 
   return (
     <section aria-labelledby={headingId} className="space-y-2">

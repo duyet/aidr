@@ -1,0 +1,881 @@
+
+<title>AI;DR Redesign</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap">
+<style>
+/* Layout concept: a morning briefing. One reading column plus a quiet rail; yellow is the brand mark only; serif for headlines, Inter for everything you operate. */
+:root{
+  --background:#FAF9F5;--card:#FFFFFF;--muted:#F0EEE6;--foreground:#1F1E1D;--body:#3D3D3A;--muted-foreground:#6B6A64;
+  --border:rgba(31,30,29,.10);--input:rgba(31,30,29,.20);--signal:#F5C518;--signal-ink:#121310;--accent:#8F4300;
+  --primary:#1F1E1D;--primary-foreground:#FFFFFF;--hl:rgba(245,197,24,.55);--ring:#B45309;--shadow:0 12px 32px rgba(18,19,16,.14);
+  --heat-1:#FBEFB8;--heat-2:#F7DC6A;--heat-3:#F0BE12;--heat-4:#C48A00;--heat-4-fg:#121310;
+  --c-reg:#B4452F;--c-mod:#3B6FD1;--c-chip:#7A56C9;--c-fund:#1E8E5A;--c-agent:#0F8F8F;--c-res:#A0498E;--c-prod:#B26B00;--c-ind:#6B6F67;--c-data:#0E7490;--ci-reg:#A53A25;--ci-mod:#2F5FC0;--ci-chip:#6745B8;--ci-fund:#14764A;--ci-agent:#0B7676;--ci-res:#8E3B7C;--ci-prod:#8F5500;--ci-ind:#5A5E57;--ci-data:#0A6279;
+  --sans:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --fs:1;--row-pad:13px;--read:var(--sans);--head:var(--sans);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --background:#1F1E1D;--card:#262624;--muted:#30302E;--foreground:#F5F4EE;--body:#D6D4CC;--muted-foreground:#A19F96;
+  --border:rgba(255,255,255,.10);--input:rgba(255,255,255,.20);--accent:#F5C518;--primary:#F5F4EE;--primary-foreground:#1F1E1D;
+  --hl:rgba(245,197,24,.30);--ring:#F5C518;--shadow:0 16px 40px rgba(0,0,0,.6);
+  --heat-1:#3A3213;--heat-2:#6B5A10;--heat-3:#A98A0B;--heat-4:#F5C518;--heat-4-fg:#121310;
+  --c-reg:#E8836D;--c-mod:#7FA6F0;--c-chip:#A98BEA;--c-fund:#4FC58B;--c-agent:#43C4C4;--c-res:#D184BF;--c-prod:#E5A83C;--c-ind:#9A9E96;--c-data:#6CC3DD;--ci-reg:#E8836D;--ci-mod:#7FA6F0;--ci-chip:#A98BEA;--ci-fund:#4FC58B;--ci-agent:#43C4C4;--ci-res:#D184BF;--ci-prod:#E5A83C;--ci-ind:#9A9E96;--ci-data:#6CC3DD;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --background:#1F1E1D;--card:#262624;--muted:#30302E;--foreground:#F5F4EE;--body:#D6D4CC;--muted-foreground:#A19F96;
+  --border:rgba(255,255,255,.10);--input:rgba(255,255,255,.20);--accent:#F5C518;--primary:#F5F4EE;--primary-foreground:#1F1E1D;
+  --hl:rgba(245,197,24,.30);--ring:#F5C518;--shadow:0 16px 40px rgba(0,0,0,.6);
+  --heat-1:#3A3213;--heat-2:#6B5A10;--heat-3:#A98A0B;--heat-4:#F5C518;--heat-4-fg:#121310;
+  --c-reg:#E8836D;--c-mod:#7FA6F0;--c-chip:#A98BEA;--c-fund:#4FC58B;--c-agent:#43C4C4;--c-res:#D184BF;--c-prod:#E5A83C;--c-ind:#9A9E96;--c-data:#6CC3DD;--ci-reg:#E8836D;--ci-mod:#7FA6F0;--ci-chip:#A98BEA;--ci-fund:#4FC58B;--ci-agent:#43C4C4;--ci-res:#D184BF;--ci-prod:#E5A83C;--ci-ind:#9A9E96;--ci-data:#6CC3DD;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--body);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:6px}
+.vi,.en{display:none}
+[data-lang=vi] .vi,[data-lang=en] .en{display:inline}
+[data-lang=vi] .vi.b,[data-lang=en] .en.b{display:block}
+/* toolbar */
+.tb{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--card);border-bottom:1px solid var(--border);padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--card)}
+.tb h1{font:600 12.5px var(--sans);margin:0;display:flex;gap:8px;align-items:center;color:var(--foreground)}
+.mk{width:20px;height:20px;border-radius:5px;background:var(--signal);color:var(--signal-ink);display:inline-grid;place-items:center;font:700 12.5px var(--sans)}
+.tabs{display:flex;gap:2px;overflow-x:auto;flex:1 1 360px;min-width:0;scrollbar-width:thin}
+.tabs button{border:0;background:none;padding:6px 10px;border-radius:999px;color:var(--muted-foreground);font-weight:500;white-space:nowrap}
+.tabs button[aria-current=true]{background:var(--primary);color:var(--primary-foreground)}
+.seg{display:inline-flex;background:var(--muted);border-radius:999px;padding:2px}
+.seg button{border:0;background:none;padding:4px 10px;border-radius:999px;font-size:12.5px;font-weight:500;color:var(--muted-foreground)}
+.seg button[aria-pressed=true]{background:var(--card);color:var(--foreground);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.ctl{display:flex;gap:8px;flex-wrap:wrap}
+/* stage */
+.wrap{padding:16px max(16px,env(safe-area-inset-right,0px)) 48px max(16px,env(safe-area-inset-left,0px))}
+.stage{container:stage/inline-size;margin:0 auto;max-width:1180px;font-size:calc(1rem * var(--fs))}
+.stage.phone{max-width:390px;border:1px solid var(--input);border-radius:28px;overflow:hidden;box-shadow:var(--shadow)}
+.site{background:var(--background);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.phone .site{border:0;border-radius:0}
+.page{display:none}.page.on{display:block}
+.doc{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+.doc h2{font:600 22.5px/1.2 var(--head);color:var(--foreground);margin:0 0 4px;letter-spacing:-.01em;text-wrap:balance}
+.doc h3{font:600 13px var(--sans);color:var(--foreground);margin:0 0 8px}
+.doc p{margin:0 0 8px;max-width:72ch;color:var(--body)}
+.lede{font:500 16.5px/1.55 var(--head);color:var(--foreground)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.kpi b{display:block;font:600 25.5px/1.1 var(--sans);color:var(--foreground);font-variant-numeric:tabular-nums}
+.kpi span{color:var(--muted-foreground);font-size:12.5px}
+.src{font-size:12px;color:var(--muted-foreground)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{text-align:left;font:600 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted-foreground);padding:8px 10px;border-bottom:1px solid var(--border)}
+td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.sx{overflow-x:auto}
+.warn{border-left:3px solid var(--accent)}
+.bars{display:flex;flex-direction:column;gap:6px}
+.bar{display:grid;grid-template-columns:96px 1fr 76px;gap:10px;align-items:center;font-size:12.5px}
+.bar i{display:block;height:10px;border-radius:0 4px 4px 0;background:var(--heat-3)}
+.bar b{font-variant-numeric:tabular-nums;color:var(--foreground);font-weight:600;text-align:right}
+.sw{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.sw div{border:1px solid var(--border);border-radius:10px;overflow:hidden;font-size:12px}
+.sw i{display:block;height:44px}
+.sw span{display:block;padding:6px 8px;background:var(--card);color:var(--body)}
+.sw code,code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@container stage (max-width:700px){.cmp{grid-template-columns:1fr}}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--muted);font-size:12px;color:var(--muted-foreground);font-weight:500}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+/* site chrome */
+.hdr{display:flex;align-items:center;gap:6px;height:56px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--background);position:relative}
+.logo{display:flex;align-items:center;gap:8px;font:700 13.5px var(--sans);color:var(--foreground);margin-right:12px}
+.logo .mk{width:22px;height:22px}
+.nav{display:flex;gap:2px}
+.nav a{padding:6px 12px;border-radius:999px;color:var(--muted-foreground);text-decoration:none;font-weight:500;font-size:12.5px}
+.nav a.on{color:var(--foreground);background:var(--muted)}
+.sp{flex:1}
+.ib{width:36px;height:36px;border-radius:50%;border:1px solid transparent;background:none;display:grid;place-items:center;color:var(--body)}
+.ib:hover{background:var(--muted)}
+.pill{height:36px;padding:0 16px;border-radius:999px;border:1px solid var(--input);background:none;font-weight:500;font-size:12.5px;color:var(--foreground)}
+.pill.p{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+.sbtn{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid var(--border);background:var(--card);border-radius:999px;color:var(--muted-foreground);min-width:180px}
+.sbtn kbd{margin-left:auto;font:500 11px var(--sans);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+.phonebar,.tabbar{display:none}
+@container stage (max-width:700px){
+  .hdr{padding:0 14px;height:52px}.nav,.sbtn,.hdr .pill.p,.hdr .langseg{display:none}
+  .phonebar{display:flex}.tabbar{display:grid}
+}
+.tabbar{grid-template-columns:repeat(4,1fr);position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--border);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+.tabbar a{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:500;color:var(--muted-foreground);text-decoration:none;padding:4px}
+.tabbar a.on{color:var(--foreground)}
+.foot{border-top:1px solid var(--border);padding:28px 20px;display:flex;flex-wrap:wrap;gap:24px 56px;color:var(--muted-foreground);font-size:12.5px}
+.foot b{display:block;font:600 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;color:var(--foreground)}
+.foot a{display:block;padding:2px 0;text-decoration:none}
+/* home */
+.body2{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:32px;padding:24px 20px 40px;max-width:1100px;margin:0 auto}
+@container stage (max-width:900px){.body2{grid-template-columns:1fr}.rail{order:2}}
+@container stage (max-width:700px){.body2{padding:16px 14px 24px;gap:24px}}
+.dayhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:20px 20px 0;max-width:1100px;margin:0 auto}
+.dayhead h1{font:600 29.5px/1.1 var(--head);letter-spacing:-.015em;color:var(--foreground);margin:0}
+.dayhead>span{color:var(--muted-foreground);font-size:12.5px}
+.dayhead .ib{border-color:var(--border)}
+@container stage (max-width:700px){.dayhead{padding:14px 14px 0}.dayhead h1{font-size:22.5px}}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:14px 20px 0;max-width:1100px;margin:0 auto;scrollbar-width:none}
+@container stage (max-width:700px){.chips{padding:12px 14px 0}}
+.chip{flex:none;height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--border);background:var(--card);font-weight:500;font-size:12.5px;color:var(--body);display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed=true]{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+.chip small{color:var(--muted-foreground);font-weight:500}.chip[aria-pressed=true] small{opacity:.7;color:inherit}
+.eyebrow{font:600 12px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted-foreground);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lead{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:20px;padding:20px;background:var(--card);border:1px solid var(--border);border-radius:14px}
+@container stage (max-width:700px){.lead{grid-template-columns:1fr}.lead .img{order:-1}}
+.lead h2{font:600 25.5px/1.14 var(--head);letter-spacing:-.015em;color:var(--foreground);margin:8px 0 10px;text-wrap:balance}
+@container stage (max-width:700px){.lead h2{font-size:20.5px}}
+.lead p{font:400 calc(14.5px*var(--fs))/1.6 var(--read);color:var(--body);margin:0 0 14px}
+.img{border-radius:10px;background:linear-gradient(135deg,#6b3fd4,#c13584 55%,#f5a623);min-height:150px;position:relative;overflow:hidden}
+.img.b2{background:linear-gradient(135deg,#1c3a5e,#3b6fd1 60%,#7fc7ff)}.img.b3{background:linear-gradient(135deg,#243b2f,#1e8e5a 60%,#c3f0d8)}
+.img.b4{background:linear-gradient(135deg,#5b2a22,#b4452f 60%,#ffd1b8)}.img.b5{background:linear-gradient(135deg,#2e2a4a,#7a56c9 60%,#dcd0ff)}
+.img.b6{background:linear-gradient(135deg,#3b2f10,#b26b00 60%,#ffe29a)}
+.img::after{content:attr(data-cap);position:absolute;left:8px;bottom:6px;font:500 10px var(--sans);color:rgba(255,255,255,.85)}
+.act{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.lnk{color:var(--accent);font-weight:600;text-decoration:none}
+.tldr{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px}
+.tldr h3{margin:0 0 10px;display:flex;align-items:center;gap:8px;font:700 12.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--foreground)}
+.tldr ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px;counter-reset:n}
+.tldr li{counter-increment:n;display:grid;grid-template-columns:22px 1fr;gap:10px;font:400 calc(13.5px*var(--fs))/1.55 var(--read);color:var(--body)}
+.tldr li::before{content:counter(n);font:600 12.5px/1.9 var(--sans);color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.tldr b,.lead b{font-weight:600;color:var(--foreground);background:linear-gradient(transparent 62%,var(--hl) 62%)}
+.feed{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.feed h3{padding:14px 20px 0;margin:0;font:700 12.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--foreground)}
+.row>div{min-width:0}
+.row{display:grid;grid-template-columns:28px minmax(0,1fr) 64px;gap:12px;padding:var(--row-pad) 20px;border-bottom:1px solid var(--border);align-items:center;position:relative}
+.row:last-child{border:0}
+.row:hover{background:var(--muted)}
+.row .n{font:500 12.5px var(--sans);color:var(--muted-foreground);font-variant-numeric:tabular-nums;text-align:right}
+.row .t{font:500 calc(13.5px*var(--fs))/1.4 var(--sans);color:var(--foreground);margin:0 0 3px;text-wrap:pretty}
+.row .m{font-size:12.5px;color:var(--muted-foreground);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.row .go{opacity:0;color:var(--accent);font-weight:600;font-size:12.5px}
+.row:hover .go,.row:focus-within .go{opacity:1}
+.th{width:64px;height:64px;min-height:0;border-radius:8px}
+@container stage (max-width:700px){.row{padding:12px 14px;grid-template-columns:minmax(0,1fr) 56px}.row .n{display:none}.th{width:56px;height:56px}.row .go{opacity:1}}
+.body2>*{min-width:0}
+.rail{display:flex;flex-direction:column;gap:16px;position:sticky;top:72px;align-self:start}
+@container stage (max-width:900px){.rail{position:static}}
+.rc{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.rc h3{margin:0 0 10px;font:700 12.5px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--foreground)}
+.tr{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.tr:last-child{border:0}.tr b{font-weight:600;color:var(--foreground)}.tr span{color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.field{display:flex;gap:6px;margin-top:10px}
+.field input{flex:1;min-width:0;height:40px;border-radius:999px;border:1px solid var(--input);background:var(--background);padding:0 14px}
+/* story */
+.sw2{max-width:1040px;margin:0 auto;padding:28px 20px 40px;display:grid;grid-template-columns:minmax(0,680px) 300px;column-gap:40px;row-gap:0;justify-content:center}
+@container stage (max-width:900px){.sw2{grid-template-columns:minmax(0,680px)}}
+@container stage (max-width:700px){.sw2{padding:18px 14px 28px}}
+.sw2 h1{font:600 34.5px/1.12 var(--head);letter-spacing:-.02em;color:var(--foreground);margin:10px 0 12px;text-wrap:balance}
+@container stage (max-width:700px){.sw2 h1{font-size:24px}}
+.by{color:var(--muted-foreground);font-size:12.5px;display:flex;gap:8px;flex-wrap:wrap}
+.sum{font:400 calc(16.5px*var(--fs))/1.7 var(--read);color:var(--body);margin:20px 0}
+.sum b{font-weight:600;color:var(--foreground);background:linear-gradient(transparent 62%,var(--hl) 62%)}
+.pts{margin:0 0 20px;padding-left:20px;display:flex;flex-direction:column;gap:6px;font:400 calc(13.5px*var(--fs))/1.6 var(--read)}
+.stick{position:sticky;top:60px;z-index:3;display:flex;gap:8px;flex-wrap:wrap;padding:10px 0;background:var(--background);border-block:1px solid var(--border);margin:16px 0}
+.src-l{display:flex;gap:8px;flex-wrap:wrap}
+details.why{border:1px solid var(--border);border-radius:10px;padding:10px 14px;background:var(--card);font-size:12.5px}
+details.why summary{cursor:pointer;font-weight:600;color:var(--foreground)}
+.end{margin-top:28px;border-radius:14px;padding:20px;background:var(--primary);color:var(--primary-foreground)}
+.end h3{font:600 18.5px/1.25 var(--head);margin:0 0 6px;color:inherit}
+.end p{color:inherit;opacity:.85;margin:0 0 12px}
+.end .field input{background:var(--card);color:var(--foreground);border-color:transparent}
+.end .pill.p{background:var(--signal);color:var(--signal-ink);border-color:var(--signal)}
+/* dialogs */
+.dg{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));align-items:start}.dg>.wide{grid-column:1/-1}.dg>.wide .modal{max-width:820px}
+.dg>div>.cap{font:600 12px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted-foreground);margin-bottom:8px}
+.scrim{background:rgba(10,11,10,.42);border-radius:14px;padding:16px;position:relative;overflow:hidden}
+[data-theme=dark] .scrim{background:rgba(0,0,0,.55)}
+.modal{background:var(--card);color:var(--body);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.mh{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);font-weight:600;color:var(--foreground)}
+.mb{padding:16px;display:flex;flex-direction:column;gap:14px}
+.fr{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
+.fr>span:first-child{color:var(--muted-foreground)}
+.swatch{width:28px;height:28px;border-radius:50%;border:1px solid var(--input);cursor:pointer;padding:0}
+.swatch[aria-pressed=true]{outline:2px solid var(--ring);outline-offset:2px}
+.menu a{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:10px;text-decoration:none;color:var(--foreground);font-weight:500}
+.menu a:hover{background:var(--muted)}.menu a small{display:block;color:var(--muted-foreground);font-weight:400}
+.k{font:500 11px var(--sans);border:1px solid var(--input);border-radius:5px;padding:1px 6px;color:var(--muted-foreground)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:12.5px;text-align:center}
+.cal b{font:600 11px var(--sans);color:var(--muted-foreground);padding:4px 0}
+.cal i{font-style:normal;aspect-ratio:1;border-radius:8px;display:grid;place-items:center;font-variant-numeric:tabular-nums;color:var(--muted-foreground);border:1px dashed var(--border)}
+.cal i.h1{background:var(--heat-1);color:var(--foreground);border:0}.cal i.h2{background:var(--heat-2);color:var(--foreground);border:0}
+.cal i.h3{background:var(--heat-3);color:var(--foreground);border:0}.cal i.h4{background:var(--heat-4);color:var(--heat-4-fg);border:0}
+.cal i.td{outline:2px solid var(--foreground);outline-offset:1px}
+.sheet{border-radius:20px 20px 0 0;max-width:390px;margin:0 auto;position:relative;margin-top:40px}
+.sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--input);margin:8px auto 0}
+/* misc pages */
+.pg{max-width:1000px;margin:0 auto;padding:28px 20px 44px}
+.pg h1{font:600 32.5px/1.12 var(--head);letter-spacing:-.02em;margin:0 0 8px;color:var(--foreground);text-wrap:balance}
+@container stage (max-width:700px){.pg{padding:20px 14px 32px}.pg h1{font-size:24px}}
+.pg>p{max-width:60ch;font:400 15.5px/1.6 var(--head)}
+.opt{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.opt .card{display:flex;flex-direction:column;gap:6px}
+.step{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.step div{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--card);font-size:12.5px}
+.step b{display:block;color:var(--foreground);font-size:12.5px}
+.rel{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:16px;padding:18px 0;border-bottom:1px solid var(--border)}
+@container stage (max-width:700px){.rel{grid-template-columns:1fr}}
+.rel h3{font:600 18.5px/1.25 var(--head);margin:6px 0;color:var(--foreground)}
+.ban{background:var(--muted);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--muted-foreground)}
+
+/* ---------- v2: layouts, accents, bilingual, drawer ---------- */
+.stage{--acc-l:#8F4300;--acc-d:#F5C518}
+.stage[data-accent=blue]{--acc-l:#1D4ED8;--acc-d:#8DB4FF;--signal:#4C8DFF;--signal-ink:#fff;--hl:rgba(76,141,255,.30);--ring:#2563EB}
+.stage[data-accent=green]{--acc-l:#117A4A;--acc-d:#5BD39A;--signal:#2BB673;--signal-ink:#04140c;--hl:rgba(43,182,115,.30);--ring:#117A4A}
+.stage[data-accent=rose]{--acc-l:#B0264A;--acc-d:#FF8DA8;--signal:#F0527A;--signal-ink:#fff;--hl:rgba(240,82,122,.28);--ring:#B0264A}
+.stage[data-accent=violet]{--acc-l:#6A3FD0;--acc-d:#BBA2FF;--signal:#8B5CF6;--signal-ink:#fff;--hl:rgba(139,92,246,.28);--ring:#6A3FD0}
+.stage{--accent:var(--acc-l)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .stage{--accent:var(--acc-d)}}
+:root[data-theme="dark"] .stage{--accent:var(--acc-d)}
+.stage[data-bg=gray]{--background:#E4E4DF;--card:#EFEFEB;--muted:#D9D9D3;--muted-foreground:#4A4E47;--border:rgba(18,19,16,.14)}
+.stage[data-bg=black]{--background:#000;--card:#0B0B0B;--muted:#151515;--border:rgba(255,255,255,.12)}
+.stage[data-bg=gray] .mk,.stage[data-bg=gray] .lnk{--accent:#8F4300}
+/* bilingual */
+[data-lang=both] .vi,[data-lang=both] .en{display:inline}
+[data-lang=both] .en::before{content:" / ";opacity:.5}
+[data-lang=both] :is(.t,.sm,.lead h2,.lead p,.tl-t,.sum,.pts li,.sw2 h1,.pg h1,.pg>p,.rel h3,.rel p,.end h3,.end p){display:flex;flex-direction:column}
+[data-lang=both] :is(.t,.sm,.lead h2,.lead p,.tl-t,.sum,.pts li,.sw2 h1,.pg h1,.pg>p,.rel h3,.rel p,.end h3,.end p) :is(.vi,.en){display:block}
+[data-lang=both] :is(.t,.sm,.lead h2,.lead p,.tl-t,.sum,.pts li,.sw2 h1,.pg h1,.pg>p,.rel h3,.rel p,.end h3,.end p) .en::before{content:none}
+[data-lang=both][data-first=en] :is(.t,.sm,.lead h2,.lead p,.tl-t,.sum,.pts li,.sw2 h1,.pg h1,.pg>p,.rel h3,.rel p,.end h3,.end p) .vi{order:2}
+[data-lang=both][data-first=vi] :is(.t,.sm,.lead h2,.lead p,.tl-t,.sum,.pts li,.sw2 h1,.pg h1,.pg>p,.rel h3,.rel p,.end h3,.end p) .en{order:2}
+[data-lang=both][data-first=vi] :is(.t,.sm,.lead p,.tl-t,.sum,.pts li,.rel p,.end p) .en,
+[data-lang=both][data-first=en] :is(.t,.sm,.lead p,.tl-t,.sum,.pts li,.rel p,.end p) .vi{color:var(--muted-foreground);font:400 .86em/1.45 var(--sans);margin-top:3px}
+[data-lang=both][data-first=vi] :is(.lead h2,.sw2 h1,.pg h1,.rel h3,.end h3) .en,
+[data-lang=both][data-first=en] :is(.lead h2,.sw2 h1,.pg h1,.rel h3,.end h3) .vi{color:var(--muted-foreground);font:500 .52em/1.35 var(--sans);letter-spacing:0;margin-top:6px}
+[data-lang=both] .chip small{margin-left:2px}
+/* section toggles */
+.stage[data-tldr=off] .aidrw,.stage[data-tldr=off] .tldr,.stage[data-trend=off] .rail .rc:first-child,.stage[data-cats=off] .chips{display:none}
+.stage[data-thumbs=off] .row{grid-template-columns:28px minmax(0,1fr)}.stage[data-thumbs=off] .th{display:none}
+.row .sm{display:none;font-size:12.5px;color:var(--muted-foreground);margin:0 0 3px;line-height:1.45}
+.stage[data-sum=on] .row .sm{display:block}
+.mast{display:none}
+/* compact (default) */
+.stage[data-layout=compact]{--row-pad:7px}
+.stage[data-layout=compact] .dayhead{padding-top:14px}.stage[data-layout=compact] .dayhead h1{font-size:23.5px}
+.stage[data-layout=compact] .chips{padding-top:10px}.stage[data-layout=compact] .chip{height:30px;font-size:12.5px;padding:0 12px}
+.stage[data-layout=compact] .body2{gap:22px;padding-top:14px}
+.stage[data-layout=compact] .body2>div{gap:12px!important}
+.stage[data-layout=compact] .lead{padding:0 0 14px;grid-template-columns:minmax(0,1fr) 190px;gap:16px}
+.stage[data-layout=compact] .lead h2{font-size:19.5px;margin:6px 0 6px}.stage[data-layout=compact] .lead p{font-size:calc(13px*var(--fs));margin-bottom:10px}
+.stage[data-layout=compact] .img{min-height:110px}
+.stage[data-layout=compact] .tldr{padding:12px 16px}.stage[data-layout=compact] .tldr ol{gap:7px}.stage[data-layout=compact] .tldr li{font-size:calc(13px*var(--fs))}
+.stage[data-layout=compact] .row{grid-template-columns:24px minmax(0,1fr) 44px;gap:10px;padding:var(--row-pad) 0}
+.stage[data-layout=compact] .row .t{font-size:calc(13px*var(--fs));margin-bottom:1px}
+.stage[data-layout=compact] .th{width:44px;height:44px;border-radius:6px}
+.stage[data-layout=compact][data-thumbs=off] .row{grid-template-columns:24px minmax(0,1fr)}
+.stage[data-layout=compact] .rc{padding:0 0 4px}.stage[data-layout=compact] .tr{padding:5px 0;font-size:12.5px}
+.stage[data-layout=compact] .pg{padding-top:18px}.stage[data-layout=compact] .pg h1{font-size:25.5px}
+.stage[data-layout=compact] .sw2{padding-top:18px}.stage[data-layout=compact] .sw2 h1{font-size:27.5px}.stage[data-layout=compact] .sum{font-size:calc(14.5px*var(--fs));margin:14px 0}
+.stage[data-layout=compact] .hdr{height:48px}
+/* newspaper */
+.stage[data-layout=news] .mast{display:block;max-width:1100px;margin:0 auto;padding:20px 20px 0;text-align:center}
+.mast b{display:block;font:700 clamp(40px,8cqi,72px)/1 var(--head);letter-spacing:-.025em;color:var(--foreground)}
+.mast small{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;padding:6px 0;border-block:1px solid var(--foreground);font:600 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--foreground)}
+.mast::after{content:"";display:block;height:3px;border-bottom:1px solid var(--foreground);margin-top:3px}
+.stage[data-layout=news] .dayhead{display:none}
+.stage[data-layout=news] .chips{justify-content:center;gap:2px;padding-top:10px}
+.stage[data-layout=news] .chip{border:0;background:none;border-radius:0;height:30px;padding:0 10px;font:600 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted-foreground)}
+.stage[data-layout=news] .chip[aria-pressed=true]{background:none;color:var(--foreground);box-shadow:inset 0 -2px var(--foreground)}
+.stage[data-layout=news] .body2{grid-template-columns:minmax(0,1fr) 270px;gap:28px}
+.stage[data-layout=news] .lead{border:0;background:none;border-radius:0;border-bottom:1px solid var(--foreground);padding:0 0 18px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.stage[data-layout=news] .lead h2{font-size:clamp(28px,5cqi,44px);line-height:1.08;letter-spacing:-.02em}
+.stage[data-layout=news] .lead p{text-align:justify;hyphens:auto}
+.stage[data-layout=news] .lead>div:first-child{display:flex;flex-direction:column}
+.stage[data-layout=news] .tldr{border:0;border-radius:0;background:var(--muted);padding:14px 18px;border-top:2px solid var(--foreground)}
+.stage[data-layout=news] .feed{border:0;background:none;border-radius:0}
+.stage[data-layout=news] .feed h3{padding:6px 0;border-top:2px solid var(--foreground);border-bottom:1px solid var(--border)}
+.stage[data-layout=news] #feed{columns:var(--cols);column-gap:26px;column-rule:1px solid var(--border);padding-top:6px}
+.stage[data-layout=news] .row{display:block;break-inside:avoid;padding:12px 0;border-bottom:1px solid var(--border)}
+.stage[data-layout=news] .row:hover{background:none}
+.stage[data-layout=news] .row .n,.stage[data-layout=news] .th{display:none}
+.stage[data-layout=news] .row .t{font:600 16.5px/1.25 var(--head);letter-spacing:-.01em}
+.stage[data-layout=news] .row .sm{display:block}
+.stage[data-layout=news] .rc{border:0;border-top:2px solid var(--foreground);border-radius:0;background:none;padding:10px 0}
+.stage[data-layout=news] .pg h1,.stage[data-layout=news] .sw2 h1{letter-spacing:-.025em}
+.stage[data-layout=news] .pg h1{padding-bottom:10px;border-bottom:3px double var(--foreground)}
+.stage[data-layout=news] .sum{text-align:justify;hyphens:auto}
+.stage[data-layout=news] .sum>span:first-child::first-letter,.stage[data-layout=news] .sum>.vi::first-letter,.stage[data-layout=news] .sum>.en::first-letter{float:left;font:700 3.6em/.78 var(--head);padding:5px 8px 0 0;color:var(--foreground)}
+.stage[data-layout=news] .card,.stage[data-layout=news] .site .modal{border-radius:2px}
+.stage[data-layout=news] .hdr{border-bottom:1px solid var(--foreground)}
+.stage[data-layout=news] .pill{border-radius:2px}
+@container stage (max-width:900px){.stage[data-layout=news] .body2{grid-template-columns:1fr}.stage[data-layout=news] .lead{grid-template-columns:1fr}.stage[data-layout=news] #feed{columns:1}}
+/* drawer */
+.drawer{position:fixed;top:0;right:0;bottom:0;width:360px;max-width:100%;z-index:50;background:var(--card);border-left:1px solid var(--border);box-shadow:var(--shadow);transform:translateX(105%);transition:transform .22s ease-out;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.drawer.open{transform:none}
+.drawer .scroll{overflow:auto;padding:16px;display:flex;flex-direction:column;gap:18px}
+.dgrp{display:flex;flex-direction:column;gap:8px}
+.dgrp>.eyebrow{margin:0}
+.drawer .seg{display:flex;width:100%}.drawer .seg button{flex:1;padding:6px 4px;text-align:center}
+.pre{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pre button{border:1px solid var(--border);background:var(--background);border-radius:12px;padding:10px;text-align:left;line-height:1.3;color:var(--foreground);font-weight:600;font-size:12.5px}
+.pre button small{display:block;font-weight:400;color:var(--muted-foreground);margin-top:2px}
+.pre button:hover{border-color:var(--input)}
+.swr{display:flex;gap:12px;flex-wrap:wrap}
+.swatch.l{width:34px;height:34px}
+.stage[data-layout] .th{min-height:0}
+@container stage (max-width:700px){.stage[data-layout] .row{grid-template-columns:minmax(0,1fr) 44px;padding:var(--row-pad) 0}.stage[data-layout=comfortable] .row{grid-template-columns:minmax(0,1fr) 56px}.stage[data-layout] .row .n{display:none}.stage[data-layout][data-thumbs=off] .row{grid-template-columns:minmax(0,1fr)}.stage[data-layout=news] .row{display:block;padding:12px 0}.stage[data-layout=compact] .lead{grid-template-columns:1fr}}
+.dscrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40;display:none}.dscrim.open{display:block}
+@media (prefers-reduced-motion:reduce){.drawer{transition:none}}
+.cust{border:1px solid var(--input);background:var(--card);border-radius:999px;padding:5px 12px;font-weight:600;font-size:12.5px;color:var(--foreground);display:inline-flex;gap:6px;align-items:center}
+
+/* ---------- v3: topic colors, TL;DR depth, Telegram, story actions ---------- */
+[data-c=reg]{--cat:var(--c-reg)}[data-c=mod]{--cat:var(--c-mod)}[data-c=chip]{--cat:var(--c-chip)}[data-c=fund]{--cat:var(--c-fund)}[data-c=agent]{--cat:var(--c-agent)}[data-c=res]{--cat:var(--c-res)}[data-c=prod]{--cat:var(--c-prod)}[data-c=ind]{--cat:var(--c-ind)}[data-c=data]{--cat:var(--c-data)}
+.tldr li b,.lead b,.sum b{background:linear-gradient(transparent 58%,color-mix(in srgb,var(--cat,var(--signal)) 34%,transparent) 58%)}
+.stage[data-hl=one] :is(.tldr li,.lead,.sum) b{background:linear-gradient(transparent 62%,var(--hl) 62%)}
+.stage[data-hl=none] :is(.tldr li,.lead,.sum) b{background:none}
+.tg{display:inline-flex;align-items:center;gap:5px;font:700 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted-foreground);margin-right:8px;vertical-align:1px;white-space:nowrap}
+.tg u{width:8px;height:8px;border-radius:50%;background:var(--cat,var(--c-ind));display:inline-block;text-decoration:none}
+.stage:not([data-hl=topic]) .tg{display:none}
+.tldr .tlf{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+.tldr .tlf .pill{height:30px;font-size:12.5px}
+.chip .dot{margin:0}
+@container stage (min-width:900px){.tldr[data-n="12"] ol,.tldr[data-n="16"] ol{display:block;columns:2;column-gap:32px}.tldr[data-n="12"] li,.tldr[data-n="16"] li{break-inside:avoid;margin-bottom:12px}}
+.stick{position:static}
+.tgl{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--input);color:var(--foreground);font-weight:600;font-size:12.5px;text-decoration:none;margin-top:10px}
+.tgl:hover{background:var(--muted)}
+.end .tgl{color:inherit;border-color:color-mix(in srgb,currentColor 45%,transparent)}
+.end .tgl:hover{background:color-mix(in srgb,currentColor 12%,transparent)}
+.whyl{font-size:12.5px;color:var(--muted-foreground);margin:12px 0 0}
+
+/* ---------- v4: simple, flat, warm ---------- */
+.stage .lead,.stage .rc,.stage .feed{background:transparent;border:0;border-radius:0}
+.stage .lead{padding:0 0 18px;border-bottom:1px solid var(--border)}
+.stage .rc{padding:0 0 4px}
+.stage .tldr{background:var(--muted);border:0;border-radius:14px}
+.stage .feed h3{padding:14px 0 6px}
+.stage .row{padding-left:0;padding-right:0}
+.stage .chip{background:var(--muted);border-color:transparent}
+.stage .chip[aria-pressed=true]{background:var(--foreground);color:var(--background)}
+.stage .hdr{border-bottom-color:transparent}
+.hdr .pill.p{display:inline-flex;align-items:center;gap:7px}
+.fr{flex-wrap:wrap}.fr .seg{max-width:100%;flex-wrap:wrap;border-radius:14px}
+.dg>.wide .mb{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 36px}
+.dg>.wide .mb>div:last-child{grid-column:1/-1}
+@container stage (max-width:760px){.dg>.wide .mb{grid-template-columns:1fr}}
+.modal{max-width:100%}
+.vsw{display:flex;justify-content:flex-end;max-width:1100px;margin:0 auto;padding:10px 20px 0}.vsw .seg button{padding:3px 12px;font-size:12.5px}
+@container stage (max-width:700px){.vsw{padding:10px 14px 0}}
+
+/* ---------- v5: text-only highlight, no divider lines ---------- */
+[data-c=reg]{--cat-ink:var(--ci-reg)}[data-c=mod]{--cat-ink:var(--ci-mod)}[data-c=chip]{--cat-ink:var(--ci-chip)}[data-c=fund]{--cat-ink:var(--ci-fund)}[data-c=agent]{--cat-ink:var(--ci-agent)}[data-c=res]{--cat-ink:var(--ci-res)}[data-c=prod]{--cat-ink:var(--ci-prod)}[data-c=ind]{--cat-ink:var(--ci-ind)}[data-c=data]{--cat-ink:var(--ci-data)}
+.tldr li b,.lead b,.sum b{background:none;color:var(--cat-ink,var(--foreground));font-weight:600}
+.stage[data-hl=one] :is(.tldr li,.lead,.sum) b{background:none;color:var(--accent)}
+.stage[data-hl=none] :is(.tldr li,.lead,.sum) b{background:none;color:var(--foreground)}
+.stage .row,.stage .tr,.stage .lead,.stage .rel,.stage .stick,.stage .foot,.stage .hdr,.stage .tldr .tlf,.stage .feed h3,.stage .mh{border:0}
+.stage .mh{border:0}
+.stage[data-layout=news] :is(.row,.rc,.tldr,.lead,.feed h3,.hdr,.pg h1,.mast small){border:0}
+.stage[data-layout=news] .mast::after{display:none}
+.stage[data-layout=news] #feed{column-rule:0}
+.stage[data-layout=news] .tldr{border-top:0}
+.stage .tr{padding:6px 0}
+.mh{border-bottom:0}
+.lsw button{display:grid;place-items:center;padding:5px 9px}.lsw svg{display:block}
+@container stage (max-width:700px){.hdr .lsw{display:none}}
+.stage[data-layout=news] .chip[aria-pressed=true]{box-shadow:none;background:none;color:var(--foreground);font-weight:800}
+.s-head{grid-column:1;grid-row:1;min-width:0}
+.s-body{grid-column:1;grid-row:2;min-width:0}
+.s-media{grid-column:2;grid-row:2;min-width:0;align-self:start;padding-top:2px}
+.s-media .img{aspect-ratio:16/10;min-height:0;border-radius:12px}
+.s-media .cap2{font-size:12.5px;color:var(--muted-foreground);margin-top:7px}
+.s-body .eyebrow{margin-top:2px}.s-body .sum{margin:8px 0 14px}
+.s-rest{grid-column:1;grid-row:3;min-width:0}
+.sw2>.rail{grid-column:2;grid-row:3;position:sticky;top:72px;align-self:start;margin-top:16px}
+@container stage (max-width:900px){.s-media{grid-column:1;grid-row:2;padding-top:0;margin:4px 0 14px}.s-body{grid-row:3}.s-rest{grid-row:4}.sw2>.rail{grid-column:1;grid-row:5;position:static}}
+
+/* ---------- v6: simple buttons (3 styles, no borders) ---------- */
+.pill{height:32px;padding:0 14px;border:0;background:var(--muted);color:var(--foreground);font-weight:500;font-size:13px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.pill:hover{background:color-mix(in srgb,var(--foreground) 10%,var(--muted))}
+.pill.p{background:var(--primary);color:var(--primary-foreground)}
+.pill.p:hover{background:var(--primary);opacity:.88}
+.tgl{border:0;background:var(--muted);height:32px;padding:0 14px;font-size:13px;font-weight:500}
+.tgl:hover{background:color-mix(in srgb,var(--foreground) 10%,var(--muted))}
+.end .tgl{background:color-mix(in srgb,currentColor 14%,transparent);border:0}
+.end .tgl:hover{background:color-mix(in srgb,currentColor 22%,transparent)}
+.field input{border:0;background:var(--muted);height:36px}
+.end .field input{background:var(--card)}
+.sbtn{border:0;background:var(--muted)}
+.ib,.stage .dayhead .ib{border:0}.stage .dayhead .ib{background:var(--muted)}
+.cust{border:0;background:var(--muted)}
+.pre button{border:0;background:var(--muted)}
+.pre button:hover{background:color-mix(in srgb,var(--foreground) 10%,var(--muted))}
+.mh .k,.k{border:0;background:var(--muted)}
+.lnk{font-weight:500}
+
+/* ---------- v7: links, icons, AI;DR item expand ---------- */
+i[data-i]{display:inline-grid;place-items:center;width:15px;height:15px;font-style:normal;flex:none;vertical-align:-3px}
+i[data-i] svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.lk{background:none;border:0;padding:0;height:auto;color:var(--accent);font:500 13px var(--sans);cursor:pointer;display:inline-flex;gap:6px;align-items:center;border-radius:6px;text-decoration:none}
+.lk:hover{opacity:.75}.end .lk{color:inherit}
+.tgl{background:none;padding:0;height:auto;border-radius:6px;color:var(--accent)}
+.tgl:hover{background:none;opacity:.75}.end .tgl,.end .tgl:hover{background:none;color:inherit}
+.nav a{display:inline-flex;align-items:center;gap:6px}
+.rc h3,.tldr h3,.feed h3{display:flex;align-items:center;gap:7px}
+.menu a{align-items:center}.menu a i[data-i]{color:var(--muted-foreground)}
+.tabbar i[data-i]{width:18px;height:18px}.tabbar i[data-i] svg{width:18px;height:18px}
+.mk-s{width:16px;height:16px;border-radius:4px;font-size:11px;flex:none}.tabbar .mk-s{width:20px;height:20px;font-size:13px}
+.icosheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.ico{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border-radius:10px;background:var(--muted);font-size:12px;color:var(--muted-foreground)}
+.ico i[data-i]{color:var(--foreground);width:18px;height:18px}.ico i[data-i] svg{width:18px;height:18px}
+.pill i[data-i]{vertical-align:0}
+.tl-b{all:unset;box-sizing:border-box;display:flex;gap:8px;align-items:flex-start;width:100%;cursor:pointer;font:inherit;color:inherit;text-align:left;border-radius:6px}
+.tl-b:hover .tl-t{color:var(--foreground)}
+.tl-b:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
+.tl-t{flex:1;min-width:0}
+.tl-c{color:var(--muted-foreground);margin-top:3px;transition:transform .15s}
+.tl-b[aria-expanded=true] .tl-c{transform:rotate(180deg)}
+.tl-x{grid-column:2;padding:0 0 2px}
+.tl-x[hidden]{display:none}
+.tl-p{margin:0 0 8px;font:400 13.5px/1.55 var(--sans);color:var(--body)}
+.tl-m{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.tl-a{display:flex;gap:16px;flex-wrap:wrap}
+[data-lang=both] .tl-p{display:flex;flex-direction:column;gap:2px}
+[data-lang=both] .tl-p :is(.vi,.en){display:block}[data-lang=both] .tl-p .en::before{content:none}[data-lang=both] .tl-p .en{color:var(--muted-foreground)}
+@media (prefers-reduced-motion:reduce){.tl-c{transition:none}}
+
+/* ---------- v8: relaxed spacing on Home ---------- */
+#p-home .dayhead{padding-top:32px;padding-bottom:4px;gap:6px 14px}
+#p-home .chips{padding-top:20px;gap:10px}
+#p-home .body2{padding-top:32px;padding-bottom:56px;gap:48px}
+#p-home .body2>div{gap:32px!important}
+#p-home .lead{padding-bottom:28px;gap:28px}
+#p-home .lead h2{margin:10px 0 12px}
+#p-home .lead p{line-height:1.7;margin-bottom:16px}
+#p-home .tldr{padding:22px 26px}
+#p-home .tldr ol{gap:16px}
+#p-home .tldr li{line-height:1.65}
+#p-home .tldr .tlf{margin-top:18px;padding-top:14px}
+#p-home .feed h3{padding:22px 0 10px}
+#p-home .row{padding-top:15px;padding-bottom:15px;gap:16px}
+#p-home .row .t{margin-bottom:4px;line-height:1.45}
+#p-home .th{width:52px;height:52px}
+#p-home .rail{gap:36px}
+#p-home .rc h3{margin-bottom:14px}
+#p-home .tr{padding:9px 0}
+#p-home .field{margin-top:14px}
+#p-home .tgl{margin-top:14px}
+#p-home .foot{padding-top:40px;padding-bottom:40px;gap:32px 72px}
+@container stage (max-width:700px){
+  #p-home .dayhead{padding-top:22px}#p-home .chips{padding-top:14px}
+  #p-home .body2{padding-top:22px;gap:32px}#p-home .body2>div{gap:24px!important}
+  #p-home .tldr{padding:18px 18px}#p-home .row{padding-top:13px;padding-bottom:13px}
+  #p-home .rail{gap:28px}
+}
+.stage[data-feed=off] .feed,.stage[data-feed=off] #moreDays{display:none}
+#moreDays{display:flex;flex-direction:column;gap:8px}
+#moreDays .feed h3{display:flex;align-items:baseline;gap:10px}
+.loader{display:flex;justify-content:center;align-items:center;gap:8px;padding:28px 0;color:var(--muted-foreground);font-size:13px}
+
+/* ---------- v9: production AI;DR card, full width, columns ---------- */
+:root{--mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.spanel{width:520px}
+#p-home .aidrw{max-width:1100px;margin:24px auto 0;padding:0 20px}
+@container stage (max-width:700px){#p-home .aidrw{padding:0 14px}}
+#p-home .aidr{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:0;overflow:hidden}
+.ah{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:18px 28px;border-bottom:1px solid var(--border)}
+.ad{display:flex;align-items:center;gap:14px}
+.dnum{font:500 38px/1 var(--sans);letter-spacing:-.02em;color:var(--foreground)}
+.ak{display:flex;align-items:center;gap:7px;font:600 12px var(--mono);letter-spacing:.08em;color:var(--accent)}
+.ak i{width:7px;height:7px;border-radius:50%;background:var(--signal)}
+.am{font:500 12px var(--mono);letter-spacing:.08em;color:var(--muted-foreground);text-transform:uppercase;margin-top:2px}
+.actl{display:flex;gap:10px;flex-wrap:wrap}
+.actl .seg{background:var(--card);border:1px solid var(--border)}
+.actl .seg button[aria-pressed=true]{background:var(--foreground);color:var(--background);box-shadow:none}
+.actl .seg.ic button{display:grid;place-items:center;padding:6px 12px}
+#p-home .aidr ol{display:grid!important;columns:auto!important;grid-template-columns:repeat(var(--tcols,2),minmax(0,1fr));column-gap:56px;row-gap:0;margin:0;padding:6px 28px 0;list-style:none}
+#p-home .aidr li{display:block;border-bottom:1px solid var(--border);margin:0!important;padding:0;break-inside:auto}
+#p-home .aidr li::before{content:none}
+.aidr .tl-b{all:unset;box-sizing:border-box;display:grid;grid-template-columns:28px minmax(0,1fr) 64px;gap:14px;align-items:center;width:100%;padding:14px 0;cursor:pointer;border-radius:8px}
+.aidr .tl-b:focus-visible{outline:2px solid var(--ring);outline-offset:-2px}
+.aidr .tl-b:hover .tl-t{color:var(--foreground)}
+.tl-n{font:500 12px var(--mono);color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.aidr li:first-child .tl-n{color:var(--accent);font-weight:600}
+.aidr .tl-t{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font:400 calc(15px*var(--fs))/1.5 var(--sans);color:var(--body)}
+.aidr .tg{font:500 11px var(--mono);letter-spacing:.05em;margin-right:8px}
+[data-lang=vi] .aidr .tg{font-family:var(--sans);font-weight:600}
+.aidr .th{width:64px;height:64px;border-radius:14px;min-height:0}
+.stage[data-tview=text] .aidr .th{display:none}
+.stage[data-tview=text] .aidr .tl-b{grid-template-columns:28px minmax(0,1fr)}
+.am2{padding:12px 28px 16px}
+.af{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px 28px;border-top:1px solid var(--border);font-size:13px;color:var(--muted-foreground)}
+@container stage (max-width:760px){#p-home .aidr ol{grid-template-columns:1fr!important;padding:4px 16px 0}.ah{padding:16px}.af,.am2{padding-left:16px;padding-right:16px}}
+.ptitle{font:600 calc(22px*var(--fs))/1.25 var(--head);letter-spacing:-.015em;color:var(--foreground);margin:6px 0 0}
+.aidr .dnum{background:none!important;font-weight:500;color:var(--foreground)}
+</style>
+
+<div class="tb">
+  <h1><span class="mk">;</span>AI;DR redesign</h1>
+  <nav class="tabs" id="tabs" aria-label="Pages"></nav>
+  <div class="ctl">
+    <span class="seg" data-k="lang"><button data-v="vi">VI</button><button data-v="en">EN</button><button data-v="both">VI+EN</button></span>
+    <span class="seg" data-k="theme"><button data-v="auto"><span class="vi">Tự động</span><span class="en">Auto</span></button><button data-v="light"><span class="vi">Sáng</span><span class="en">Light</span></button><button data-v="dark"><span class="vi">Tối</span><span class="en">Dark</span></button></span>
+    <span class="seg" data-k="dev"><button data-v="desk"><span class="vi">Máy tính</span><span class="en">Desktop</span></button><button data-v="phone"><span class="vi">Điện thoại</span><span class="en">Phone</span></button></span><button class="cust" id="openDrawer" aria-haspopup="dialog"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="vi">Tuỳ chỉnh</span><span class="en">Customize</span></button>
+  </div>
+</div>
+<div class="dscrim" id="dscrim"></div><aside class="drawer" id="drawer" role="dialog" aria-label="Customize" aria-hidden="true"><div class="mh"><span><span class="vi">Tuỳ chỉnh giao diện</span><span class="en">Customize</span></span><button class="ib" id="dClose" aria-label="Close">&#10005;</button></div><div class="scroll">
+<div class="dgrp"><div class="eyebrow"><span class="vi">Bộ nhanh</span><span class="en">Quick looks</span></div><div class="pre"><button data-preset="compact"><span class="vi">Gọn</span><span class="en">Compact</span><small><span class="vi">Dày, nhanh, sans</span><span class="en">Dense, fast, sans</span></small></button><button data-preset="news"><span class="vi">Báo giấy</span><span class="en">Newspaper</span><small><span class="vi">Báo giấy, serif</span><span class="en">Print feel, serif</span></small></button><button data-preset="night"><span class="vi">Chế độ đêm</span><span class="en">Night desk</span><small><span class="vi">Đen, nhấn xanh</span><span class="en">Black, blue accent</span></small></button><button data-preset="bi"><span class="vi">Song ngữ</span><span class="en">Bilingual</span><small><span class="vi">VI trên, EN dưới</span><span class="en">VI over EN</span></small></button></div></div>
+<div class="dgrp"><div class="eyebrow"><span class="vi">Bố cục</span><span class="en">Layout</span></div><div class="seg" data-k="layout"><button data-v="compact"><span class="vi">Gọn</span><span class="en">Compact</span></button><button data-v="comfortable"><span class="vi">Thường</span><span class="en">Normal</span></button><button data-v="news"><span class="vi">Báo giấy</span><span class="en">Newspaper</span></button></div></div>
+<div class="dgrp"><div class="eyebrow"><span class="vi">Ngôn ngữ</span><span class="en">Language</span></div><div class="seg" data-k="lang"><button data-v="vi">VI</button><button data-v="en">EN</button><button data-v="both">VI + EN</button></div><div class="src"><span class="vi">Ở chế độ song ngữ, chọn ngôn ngữ đứng trên</span><span class="en">In bilingual mode, pick which language leads</span></div><div class="seg" data-k="first"><button data-v="vi"><span class="vi">VI trước</span><span class="en">VI first</span></button><button data-v="en"><span class="vi">EN trước</span><span class="en">EN first</span></button></div></div>
+<div class="dgrp"><div class="eyebrow"><span class="vi">Chế độ</span><span class="en">Mode</span></div><div class="seg" data-k="theme"><button data-v="auto"><span class="vi">Tự động</span><span class="en">Auto</span></button><button data-v="light"><span class="vi">Sáng</span><span class="en">Light</span></button><button data-v="dark"><span class="vi">Tối</span><span class="en">Dark</span></button></div></div>
+<div class="dgrp"><div class="eyebrow"><span class="vi">Nền</span><span class="en">Background</span></div><div class="swr" data-k="bg"><button class="swatch l" data-v="paper" aria-label="paper" style="background:#FFFFFF"></button><button class="swatch l" data-v="gray" aria-label="gray" style="background:#E4E4DF"></button><button class="swatch l" data-v="black" aria-label="black" style="background:#000000"></button></div></div>
+<div class="dgrp"><div class="eyebrow"><span class="vi">Màu nhấn</span><span class="en">Accent</span></div><div class="swr" data-k="accent"><button class="swatch l" data-v="yellow" aria-label="yellow" style="background:#F5C518"></button><button class="swatch l" data-v="blue" aria-label="blue" style="background:#4C8DFF"></button><button class="swatch l" data-v="green" aria-label="green" style="background:#2BB673"></button><button class="swatch l" data-v="rose" aria-label="rose" style="background:#F0527A"></button><button class="swatch l" data-v="violet" aria-label="violet" style="background:#8B5CF6"></button></div></div>
+<div class="dgrp"><div class="eyebrow"><span class="vi">Làm nổi bật theo chủ đề</span><span class="en">Highlight by topic</span></div><div class="seg" data-k="hl"><button data-v="topic"><span class="vi">Theo chủ đề</span><span class="en">By topic</span></button><button data-v="one"><span class="vi">Một màu</span><span class="en">One color</span></button><button data-v="none"><span class="vi">Tắt</span><span class="en">Off</span></button></div></div>
+<div class="dgrp"><div class="eyebrow"><span class="vi">Phông tiêu đề</span><span class="en">Headlines</span></div><div class="seg" data-k="head"><button data-v="serif"><span class="vi">Có chân</span><span class="en">Serif</span></button><button data-v="sans"><span class="vi">Không chân</span><span class="en">Sans</span></button></div></div>
+<div class="dgrp"><div class="eyebrow"><span class="vi">Phông nội dung</span><span class="en">Body</span></div><div class="seg" data-k="font"><button data-v="serif"><span class="vi">Có chân</span><span class="en">Serif</span></button><button data-v="sans"><span class="vi">Không chân</span><span class="en">Sans</span></button></div></div>
+<div class="dgrp"><div class="eyebrow"><span class="vi">Cỡ chữ</span><span class="en">Text size</span></div><div class="seg" data-k="size"><button data-v="0.94">A−</button><button data-v="1">100%</button><button data-v="1.12">A+</button><button data-v="1.24">A++</button></div></div>
+<div class="dgrp"><div class="eyebrow"><span class="vi">Số cột báo giấy</span><span class="en">Newspaper columns</span></div><div class="seg" data-k="cols"><button data-v="2">2</button><button data-v="3">3</button></div></div>
+<div class="dgrp"><div class="eyebrow"><span class="vi">Hiển thị</span><span class="en">Show</span></div><div class="fr"><span>TL;DR</span><div class="seg" data-k="tldr"><button data-v="on"><span class="vi">Bật</span><span class="en">On</span></button><button data-v="off"><span class="vi">Tắt</span><span class="en">Off</span></button></div></div><div class="fr"><span><span class="vi">Số ý TL;DR</span><span class="en">TL;DR items</span></span><div class="seg" data-k="tldrN"><button data-v="8">8</button><button data-v="12">12</button><button data-v="16">16</button></div></div><div class="fr"><span><span class="vi">Đang nổi</span><span class="en">Trending</span></span><div class="seg" data-k="trend"><button data-v="on"><span class="vi">Bật</span><span class="en">On</span></button><button data-v="off"><span class="vi">Tắt</span><span class="en">Off</span></button></div></div><div class="fr"><span><span class="vi">Ảnh nhỏ</span><span class="en">Thumbnails</span></span><div class="seg" data-k="thumbs"><button data-v="on"><span class="vi">Bật</span><span class="en">On</span></button><button data-v="off"><span class="vi">Tắt</span><span class="en">Off</span></button></div></div><div class="fr"><span><span class="vi">Tóm tắt dưới tiêu đề</span><span class="en">Summaries</span></span><div class="seg" data-k="sum"><button data-v="on"><span class="vi">Bật</span><span class="en">On</span></button><button data-v="off"><span class="vi">Tắt</span><span class="en">Off</span></button></div></div><div class="fr"><span><span class="vi">Chủ đề</span><span class="en">Categories</span></span><div class="seg" data-k="cats"><button data-v="on"><span class="vi">Bật</span><span class="en">On</span></button><button data-v="off"><span class="vi">Tắt</span><span class="en">Off</span></button></div></div><div class="fr"><span><span class="vi">Danh sách tin xếp hạng</span><span class="en">Ranked list</span></span><div class="seg" data-k="feed"><button data-v="on"><span class="vi">Bật</span><span class="en">On</span></button><button data-v="off"><span class="vi">Tắt</span><span class="en">Off</span></button></div></div><div class="fr"><span><span class="vi">Số ngày hiển thị</span><span class="en">Days shown</span></span><div class="seg" data-k="days"><button data-v="1">1</button><button data-v="3">3</button><button data-v="7">7</button><button data-v="inf">∞</button></div></div><div class="fr"><span><span class="vi">Số cột AI;DR</span><span class="en">AI;DR columns</span></span><div class="seg" data-k="tcols"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button></div></div><div class="fr"><span><span class="vi">AI;DR dạng</span><span class="en">AI;DR as</span></span><div class="seg" data-k="tview"><button data-v="image"><span class="vi">Ảnh</span><span class="en">Image</span></button><button data-v="text"><span class="vi">Chữ</span><span class="en">Text</span></button></div></div></div>
+<button class="pill" id="dReset"><span class="vi">Đặt lại mặc định</span><span class="en">Reset to defaults</span></button><div class="src"><span class="vi">Lưu trong trình duyệt này.</span><span class="en">Saved in this browser.</span></div></div></aside><div class="dscrim" id="pscrim"></div><aside class="drawer spanel" id="spanel" role="dialog" aria-label="Story" aria-hidden="true"><div class="mh"><span class="src" style="font-weight:500"><span class="vi">Tin trong AI;DR</span><span class="en">AI;DR story</span></span><button class="ib pclose" aria-label="Close">&#10005;</button></div><div class="scroll pbody"></div></aside><div class="wrap"><div class="stage" id="stage">
+
+<!-- EVIDENCE -->
+<section class="page" id="p-evidence"><div class="doc">
+  <div><h2>What the data says, and what it cannot say</h2>
+  <p class="lede">The redesign makes the day's edition easier to read in one pass and moves the follow actions to where readers already arrive. The numbers below are aidr's own, from 28 days of reads.</p></div>
+  <div class="card warn"><h3>Source limits</h3>
+    <p>The connected PostHog project 392700 is AnyRouter (its only host is anyrouter.dev). Its pageviews, bounce, device and country splits are not aidr's and are left out.</p>
+    <p>Project 658099 (the aidr project) returned HTTP 403 for this session's PostHog login, so no aidr PostHog numbers are used. GA4 reports status "unconfigured" on /api/system/audience.</p>
+    <p>Used instead: /api/system/reads (28 days), /extension, /audience, /mail-stats, plus screenshots of the live site on 15 Nov 2026. There is no device, bounce, geography or time-on-page data for aidr here. Anything that needs those is marked "to verify".</p></div>
+  <div class="grid">
+    <div class="card kpi"><b>4,661</b><span>story reads, 28 days</span></div>
+    <div class="card kpi"><b id="kWeb">93.7%</b><span>of reads from the web (4,369)</span></div>
+    <div class="card kpi"><b>1.7%</b><span>reads that went to the source (77 of 4,661)</span></div>
+    <div class="card kpi"><b>2</b><span>confirmed email subscribers</span></div>
+    <div class="card kpi"><b>920</b><span>Chrome new-tab opens, 28 days</span></div>
+  </div>
+  <div class="cmp">
+    <div class="card"><h3>Reads by category, 28 days</h3><div class="bars" id="catBars"></div><p class="src" style="margin-top:10px">Source: aidr.today/api/system/reads. Reads per opened story is reads divided by distinct stories read.</p></div>
+    <div class="card"><h3>Reads by channel, 28 days</h3><div class="bars" id="chBars"></div><p class="src" style="margin-top:10px">Facebook is the second channel after the web. Telegram, email and the extension send almost no attributed reads.</p></div>
+  </div>
+  <div class="card"><h3>Findings, the change they drive, and how to verify</h3><div class="sx"><table>
+    <tr><th>Observed</th><th>Evidence</th><th>Change</th><th>Verify with</th></tr>
+    <tr><td>One story carries the day. The top web story got 117 opens; the next got 12.</td><td>reads, top_stories</td><td>A single lead story with image and full summary, then the list.</td><td>story_view by position</td></tr>
+    <tr><td>Readers rarely leave for the source (1.7%).</td><td>by_kind: 4,584 open, 77 outbound</td><td>The summary is the product. Keep "Read source" visible but secondary.</td><td>source_click by placement</td></tr>
+    <tr><td>Reads are spread across categories. The top five are 62% of reads.</td><td>by_category</td><td>Five chips plus "More". Trending moves to the rail.</td><td>topic_filter by "from"</td></tr>
+    <tr><td>Products (1.97) and Regulation (1.79) get the most reads per opened story.</td><td>reads / items</td><td>Order chips by reads, not by story count.</td><td>topic_filter</td></tr>
+    <tr><td>The vote column shows "0" on all 30 rows.</td><td>screenshot, home</td><td>Hide votes until a story has one.</td><td>none needed</td></tr>
+    <tr><td>Facebook sends 201 reads, 4.3%. Those readers land on story pages.</td><td>by_channel</td><td>Story page gets next reads and an email prompt at the end.</td><td>channel_landing by page_type</td></tr>
+    <tr><td>Telegram sends 34 attributed reads, 0.7%.</td><td>by_channel</td><td>The Telegram link sits next to the email form on Home, at the end of a story and on Subscribe.</td><td>channel_click by placement (to verify)</td></tr>
+    <tr><td>Two subscribers, 56 mails sent in 28 days.</td><td>/audience, /mail-stats</td><td>Subscribe page leads with email, the one channel aidr owns.</td><td>subscribe_submit, subscribe_success</td></tr>
+    <tr><td>The header has 9 controls; the "Get AI;DR" menu mixes follow channels with site pages.</td><td>screenshots</td><td>5 controls. One "AI;DR" button with an icon. Site pages move to the footer and a More menu.</td><td>nav_click, calendar_open, intro_video_open (to verify)</td></tr>
+    <tr><td>Two rows of colored pills sit above the first headline.</td><td>screenshot, home</td><td>One chip row. Category color becomes an 8px dot.</td><td>topic_filter (to verify)</td></tr>
+    <tr><td>Highlight colors on the live site follow the entity, so one color means different things. Titles cut off with an ellipsis.</td><td>screenshot, home</td><td>Highlights take the color of the story's topic, always shown with the topic label. Titles wrap to two lines.</td><td>story_view, topic_filter (to verify)</td></tr>
+    <tr><td>The Chrome preview on /subscribe shows a stale date (2026-09-30) and blank thumbnails.</td><td>screenshot, subscribe</td><td>Preview uses today's edition.</td><td>none needed</td></tr>
+    <tr><td>Typing "nvidia" in the header search showed no results in the page.</td><td>screenshot, search</td><td>Search opens a results panel as you type.</td><td>search count (to verify)</td></tr>
+  </table></div></div>
+  <div class="card"><h3>Queries to run once the PostHog login can reach project 658099</h3>
+    <p>These come from docs/analytics-events.md. They decide the open questions: tldr_toggle by view (keep the image/text switch?), prefs_change by pref and pref_value (default theme, density, serif), story_view and source_click by placement (dialog or page), topic_filter by from and search (one chip row enough?), nav_click by to and placement (which controls to cut), channel_landing by channel and page_type, and $pageview by device type on aidr.today.</p></div>
+</div></section>
+
+<!-- SYSTEM -->
+<section class="page" id="p-system"><div class="doc">
+  <div><h2>Design system</h2><p class="lede">Inter, hairlines and one yellow mark stay. Mono eyebrows, pure black and cut-off titles go. Highlight color now means topic.</p></div>
+  <div class="card"><h3>Type</h3>
+    <div class="cmp">
+      <div><div class="eyebrow">Headline, Inter 600</div><div style="font:600 29.5px/1.12 var(--sans);color:var(--foreground);letter-spacing:-.015em;margin:6px 0">Quốc hội thúc đẩy thông qua 4 dự luật siết xuất khẩu chip AI</div>
+      <div style="font:400 14.5px/1.65 var(--sans)">Summary text in Inter 400. ĐỀ NGHỊ, ỨNG DỤNG, VIỆT HOÁ: stacked capitals render correctly.</div></div>
+      <div><div class="eyebrow">Interface, Inter 400 to 700</div><div style="font:600 17px var(--sans);color:var(--foreground);margin:6px 0">Meituan ra mắt agent model 1,6 nghìn tỷ tham số</div>
+      <div style="font:500 13.5px/1.4 var(--sans);color:var(--foreground)">Row title 16/1.4, weight 500</div><div style="font-size:12.5px;color:var(--muted-foreground)">Regulation · marketbrief.now · 3 giờ (meta 13px)</div></div>
+    </div>
+    <div class="sx" style="margin-top:12px"><table><tr><th>Use</th><th>Desktop</th><th>Phone</th></tr>
+    <tr><td>Page and lead headline</td><td>Inter 600 34.5/26, -0.02em</td><td>24/20.5</td></tr>
+    <tr><td>Story summary</td><td>Inter 400 16.5/1.65</td><td>14.5/1.6</td></tr>
+    <tr><td>TL;DR bullet</td><td>Inter 400 13.5/1.55</td><td>13.5/1.55</td></tr>
+    <tr><td>Row title, body</td><td>Inter 500 13.5/1.4 (13 in compact), Inter 400 13/1.5</td><td>same</td></tr>
+    <tr><td>Section label</td><td>Inter 700 12.5, caps, +0.07em (no mono, because Vietnamese capitals break in system monos)</td><td>same</td></tr></table></div>
+    <p class="src" style="margin-top:8px">Inter is the default for headlines and body, and it already ships. Source Serif 4 is optional in Customize and loads only when picked, so the default build adds no font.</p></div>
+  <div class="card"><h3>Color tokens (same names as packages/ui/tokens.css)</h3><div class="sw" id="sw"></div>
+    <div class="sx" style="margin-top:12px"><table id="ct"></table></div>
+    <p class="src" style="margin-top:8px">Contrast is computed in this page from the hex values. Yellow stays a mark and a dark-mode accent. On light surfaces text uses the brown accent.</p></div>
+  <div class="card"><h3>Buttons</h3><p>Three styles. Primary is the one filled action on a screen. Secondary is a soft fill with no border. A link is colored text, and most secondary actions (copy, share, show more, source) are links, not buttons. Every button is 32px high, 13px text, fully rounded, with the same focus ring. The header AI;DR button and the AI;DR tab use the logo mark as their icon.</p><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="pill p">Primary</button><button class="pill">Secondary</button><a class="lnk" href="#system" onclick="return false">Link</a><button class="pill p"><span class="mk mk-s">;</span>AI;DR</button><button class="pill" disabled style="opacity:.5;cursor:not-allowed">Disabled</button></div><h3 style="margin:16px 0 8px">Icons</h3><div class="icosheet" id="iconSheet"></div><p class="src" style="margin-top:8px">One set, 15px, 2px stroke, round caps, always next to a label except the layout switch and the header Aa.</p>
+<p class="src" style="margin-top:8px">Chips, switches, the search box and inputs use the same soft fill, so the only borders left are focus rings and the selected color swatch.</p></div>
+  <div class="card"><h3>Topic colors</h3><p>One fixed color per category. It colors key names in the text, colors the dot on each row and chip, and always sits next to the category label, so color is never the only signal. Highlights can also be one color or off. Text uses a darker shade in light mode so it keeps 4.5:1 on every surface.</p><div class="sx"><table><tr><th>Topic</th><th>Light</th><th>Dark</th></tr><tr><td>Regulation</td><td><i class="dot" style="background:#B4452F"></i><code>#B4452F</code></td><td><i class="dot" style="background:#E8836D"></i><code>#E8836D</code></td></tr><tr><td>Models</td><td><i class="dot" style="background:#3B6FD1"></i><code>#3B6FD1</code></td><td><i class="dot" style="background:#7FA6F0"></i><code>#7FA6F0</code></td></tr><tr><td>Chips</td><td><i class="dot" style="background:#7A56C9"></i><code>#7A56C9</code></td><td><i class="dot" style="background:#A98BEA"></i><code>#A98BEA</code></td></tr><tr><td>Funding</td><td><i class="dot" style="background:#1E8E5A"></i><code>#1E8E5A</code></td><td><i class="dot" style="background:#4FC58B"></i><code>#4FC58B</code></td></tr><tr><td>Agents</td><td><i class="dot" style="background:#0F8F8F"></i><code>#0F8F8F</code></td><td><i class="dot" style="background:#43C4C4"></i><code>#43C4C4</code></td></tr><tr><td>Research</td><td><i class="dot" style="background:#A0498E"></i><code>#A0498E</code></td><td><i class="dot" style="background:#D184BF"></i><code>#D184BF</code></td></tr><tr><td>Products</td><td><i class="dot" style="background:#B26B00"></i><code>#B26B00</code></td><td><i class="dot" style="background:#E5A83C"></i><code>#E5A83C</code></td></tr><tr><td>Industry</td><td><i class="dot" style="background:#6B6F67"></i><code>#6B6F67</code></td><td><i class="dot" style="background:#9A9E96"></i><code>#9A9E96</code></td></tr><tr><td>Data</td><td><i class="dot" style="background:#0E7490"></i><code>#0E7490</code></td><td><i class="dot" style="background:#6CC3DD"></i><code>#6CC3DD</code></td></tr></table></div><p class="warn card" style="margin-top:8px">Validator result: nine hues fail the palette checks. Light mode: chroma floor (Agents, Industry, Data read gray-ish) and separation (Models vs Chips, ΔE 1.4 for deutan; Agents vs Funding, ΔE 7.8). Dark mode: separation and lightness band. Labels always sit beside the color, which the validator allows for the 6 to 8 CVD band but not for the normal-vision floor. Before shipping, cut to 7 topics or re-step teal against green and blue against violet.</p>
+  <p class="src" style="margin-top:8px">For production, define these as hex plus alpha tokens. DESIGN.md warns that color-mix can compile to invalid oklch with LightningCSS.</p></div>
+  <div class="card"><h3>Backgrounds and dark mode</h3>
+    <div class="grid">
+      <div class="card" style="background:#FFFFFF"><b style="color:#121310">Paper (default light)</b><div class="src">canvas #FAF9F5, panels #FFFFFF</div></div>
+      <div class="card" style="background:#E4E4DF"><b style="color:#121310">Gray</b><div class="src" style="color:#4A4E47">canvas #E4E4DF, panels #EFEFEB. Muted text steps darker to hold 4.5:1.</div></div>
+      <div class="card" style="background:#262624"><b style="color:#F5F4EE">Night (default dark)</b><div class="src" style="color:#A19F96">canvas #1F1E1D, panels #262624. Warm charcoal, no pure black.</div></div>
+      <div class="card" style="background:#000"><b style="color:#fff">OLED black</b><div class="src" style="color:#9A9E96">canvas #000, kept as an option for phones.</div></div>
+    </div>
+    <p style="margin-top:10px">The default follows the system. Dark is its own palette. Panels lift by lightness, not by shadow. The accent changes from brown to yellow. Heat cells shift to a dark amber ramp.</p></div>
+  <div class="card"><h3>Layouts, language and customization</h3><div class="opt"><div class="card"><b style="color:var(--foreground)">Compact (default)</b><span class="src">15px titles, 44px thumbs, 7px row padding. Titles wrap to two lines at about 59px a row. The live site shows 29px rows with titles cut off, so compact trades some density for full titles.</span></div><div class="card"><b style="color:var(--foreground)">Normal</b><span class="src">Roomier rows, 64px thumbs, one-line summaries available.</span></div><div class="card"><b style="color:var(--foreground)">Newspaper</b><span class="src">Masthead with double rule, serif headlines, justified text, drop cap, 2 or 3 ruled columns, square corners.</span></div><div class="card"><b style="color:var(--foreground)">VI + EN</b><span class="src">Both languages in one view. The leading language is full size; the other sits under it, smaller and muted. EN and VI keep separate text, never falling back.</span></div></div><p style="margin-top:10px">The customize drawer sets quick looks, layout, language and which language leads, mode, background, one of five accents, headline and body fonts, size, newspaper columns and five section toggles. It saves to this browser.</p></div>
+  <div class="card"><h3>Shape, spacing, motion, dialogs</h3>
+    <p>The base unit is 4px, with gaps of 8, 12, 16, 24 and 32. Content is 1100px wide, the reading column 680px and the rail 300px. Panels have a 14px radius, images 10, thumbs 8 and pills 999. One hairline, no shadows except on layers.</p>
+    <p>Motion is 150ms ease-out for hover and chips and 220ms for layers. It turns off under reduced motion.</p>
+    <p>A story opens as a 520px side panel on desktop and a bottom sheet on phone, with the page behind still scrollable. Preferences, search and menus are small popovers. Every layer closes with Esc and returns focus to its trigger.</p></div>
+</div></section>
+
+<!-- HOME -->
+<section class="page" id="p-home"><div class="site"><div data-hdr="home"></div>
+  <div class="mast"><b>AI;DR</b><small><span><span class="vi">Chủ nhật, 15 tháng 11, 2026</span><span class="en">Sunday, 15 November 2026</span></span><span>42 <span class="vi">tin</span><span class="en">stories</span></span><span><span class="vi">Số báo hằng ngày · cập nhật 16 phút trước</span><span class="en">Daily edition · updated 16 min ago</span></span></small></div>
+  <div class="dayhead"><h1><span class="vi">Chủ nhật, 15 tháng 11</span><span class="en">Sunday, 15 November</span></h1>
+    <span><span class="vi">42 tin · cập nhật 16 phút trước</span><span class="en">42 stories · updated 16 min ago</span></span><span class="sp" style="flex:1"></span>
+    <button class="ib" aria-label="Previous day">&#8249;</button><button class="ib" aria-label="Next day">&#8250;</button></div>
+  <div class="chips" id="chips" data-k="topic"></div>
+  <div class="aidrw"><section class="aidr tldr" aria-label="AI;DR"><header class="ah"><div class="ad"><b class="dnum">15</b><div><div class="ak"><i></i>AI;DR</div><div class="am"><span class="vi">Chủ nhật · Tháng 11 2026</span><span class="en">Sunday · November 2026</span></div></div></div><div class="actl"><span class="seg ic" data-k="tview"><button data-v="image" aria-label="Image"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 8"/></svg></button><button data-v="text" aria-label="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h14"/></svg></button></span><span class="seg" data-k="tldrN"><button data-v="8">8</button><button data-v="12">12</button><button data-v="16">16</button></span></div></header><ol id="tl"></ol><div class="am2"><button class="lk" id="tlMore"></button></div><footer class="af"><span id="tlc"></span><span><i class="dot" style="background:var(--signal);margin-right:6px"></i><span class="vi">Cập nhật 16 phút trước</span><span class="en">Updated 16m ago</span></span></footer></section></div>
+  <div class="body2"><div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+    <article class="lead" data-c="reg"><div><div class="eyebrow"><span class="dot" style="background:var(--c-reg)"></span><span class="vi">Chính sách</span><span class="en">Regulation</span> · <span class="vi">3 giờ trước</span><span class="en">3h ago</span></div>
+      <h2><span class="vi">Quốc hội thúc đẩy thông qua 4 dự luật siết xuất khẩu chip AI sang Trung Quốc</span><span class="en">Congress advances four bills tightening AI chip exports to China</span></h2>
+      <p><span class="vi">Bốn dự luật cùng nhắm vào việc <b>Nvidia</b> bán chip cho khách hàng Trung Quốc. Nếu được thông qua, mọi lô chip tăng tốc AI phải có giấy phép riêng.</span><span class="en">Four bills target how <b>Nvidia</b> sells chips to Chinese customers. If passed, every AI accelerator shipment would need its own license.</span></p>
+      <div class="act"><button class="pill p"><span class="vi">Đọc tiếp</span><span class="en">Read more</span><i data-i="arrow"></i></button><a class="lnk" href="#p-home" onclick="return false"><span class="vi">Đọc bài gốc <i data-i="ext"></i></span><span class="en">Read source <i data-i="ext"></i></span></a><span class="src">marketbrief.now</span></div></div>
+      <div class="img b4" data-cap="Ảnh minh hoạ"></div></article>
+    
+    <section class="feed"><h3><span class="vi">Tin xếp hạng hôm nay</span><span class="en">Ranked today</span></h3><div id="feed"></div>
+      <div style="padding:12px 0"><button class="lk" style="width:100%;justify-content:center"><span class="vi">Xem thêm 34 tin</span><span class="en">Show 34 more</span><i data-i="down"></i></button></div></section>
+    <div id="moreDays"></div>
+    </div>
+    <aside class="rail">
+      <div class="rc"><h3><i data-i="trend"></i><span class="vi">Đang nổi</span><span class="en">Trending</span></h3><div id="trend"></div></div>
+      <div class="rc"><h3><i data-i="mail"></i><span class="vi">Bản tin mỗi sáng</span><span class="en">Every morning</span></h3><div style="font-size:12.5px"><span class="vi">Bản tin xếp hạng lúc 07:00 theo giờ của bạn. Miễn phí.</span><span class="en">The ranked edition at 07:00 your time. Free.</span></div><div class="field"><input aria-label="Email" placeholder="email@domain.com"><button class="pill p"><span class="vi">Đăng ký</span><span class="en">Join</span></button></div><a class="tgl" href="#" onclick="return false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 4L3 11l6 2 2 6 3-4 5 4z"/></svg>Telegram <span class="vi">@aihomnay</span><span class="en">@aidr_today</span></a></div>
+      <div class="rc"><h3><i data-i="book"></i><span class="vi">Tuần này</span><span class="en">This week</span></h3><div class="tr"><b>Số 7 · 9-15/11</b><span>→</span></div><div class="tr"><b><span class="vi">Lịch số báo</span><span class="en">Edition calendar</span></b><span>→</span></div></div>
+    </aside></div>
+  <div data-ftr></div><div class="tabbar" data-tab="home"></div></div></section>
+
+<!-- STORY -->
+<section class="page" id="p-story"><div class="site"><div data-hdr="story"></div>
+  <div class="sw2"><article data-c="prod" style="display:contents"><div class="s-head">
+    <div class="eyebrow"><span class="dot" style="background:var(--c-prod)"></span><span class="vi">Sản phẩm</span><span class="en">Products</span> · 11.11.2026 · <span class="vi">8 nguồn</span><span class="en">8 sources</span></div>
+    <h1><span class="vi">Anthropic ra mắt bộ công cụ văn phòng gồm trợ lý gọi video, bảng điều khiển dữ liệu và Claude Sheets</span><span class="en">Anthropic unveils office tools, including a video-call assistant, a data dashboard and Claude Sheets</span></h1>
+    <div class="by"><span><span class="vi">Từ techmeme.com</span><span class="en">From techmeme.com</span></span><span>·</span><span>00:35</span><span>·</span><span><span class="vi">đọc 1 phút</span><span class="en">1 min read</span></span></div>
+    </div><div class="s-media"><div class="img"></div><div class="cap2"><span class="vi">Ảnh: techmeme.com</span><span class="en">Image: techmeme.com</span></div></div><div class="s-body"><div class="eyebrow">AI;DR</div><p class="sum"><span class="vi">Theo Bloomberg, <b>Anthropic</b> công bố các công cụ văn phòng gồm trợ lý gọi video, bảng điều khiển dữ liệu và dịch vụ bảng tính <b>Claude Sheets</b>, nhằm cạnh tranh với <b>Microsoft</b>. Bộ công cụ tích hợp khả năng AI vào công việc văn phòng hằng ngày.</span><span class="en">Per Bloomberg, <b>Anthropic</b> announced office tools including a video-call assistant, a data dashboard and a spreadsheet service, <b>Claude Sheets</b>, to compete with <b>Microsoft</b>. The suite brings AI into everyday office work.</span></p>
+    <ul class="pts"><li><span class="vi">Ba sản phẩm: Meetings, Sheets, Data.</span><span class="en">Three products: Meetings, Sheets, Data.</span></li><li><span class="vi">Đối thủ trực tiếp là bộ ứng dụng của Microsoft.</span><span class="en">The direct rival is Microsoft's office suite.</span></li></ul>
+    </div><div class="s-rest"><div class="stick"><button class="pill p"><span class="vi">Đọc bài gốc</span><span class="en">Read the source</span><i data-i="ext"></i></button><button class="lk"><i data-i="copy"></i><span class="vi">Chép bản tóm tắt</span><span class="en">Copy AI;DR</span></button><button class="lk"><i data-i="share"></i><span class="vi">Chia sẻ</span><span class="en">Share</span></button></div>
+    <div class="src-l"><span class="tag">techmeme.com</span><span class="tag">techcrunch.com</span><span class="tag">@claudeai</span><span class="tag">+4</span></div>
+    <p class="whyl"><span class="vi">Xếp cao vì 8 nguồn cùng đưa tin.</span><span class="en">Ranked high because 8 outlets covered it.</span></p>
+    <div class="end"><h3><span class="vi">Mỗi sáng một bản tin xếp hạng</span><span class="en">One ranked edition, every morning</span></h3><p><span class="vi">8 tin quan trọng nhất trong ngày. Miễn phí, hủy bất cứ lúc nào.</span><span class="en">The 8 stories that matter today. Free, cancel anytime.</span></p><div class="field"><input aria-label="Email" placeholder="email@domain.com"><button class="pill p"><span class="vi">Đăng ký</span><span class="en">Subscribe</span></button></div><a class="tgl" href="#" onclick="return false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 4L3 11l6 2 2 6 3-4 5 4z"/></svg>Telegram <span class="vi">@aihomnay</span><span class="en">@aidr_today</span></a></div>
+  </div></article>
+  <aside class="rail"><div class="rc"><h3><i data-i="arrow"></i><span class="vi">Đọc tiếp</span><span class="en">Read next</span></h3><div id="next"></div></div></aside></div>
+  <div data-ftr></div><div class="tabbar" data-tab="home"></div></div></section>
+
+<!-- DIALOGS -->
+<section class="page" id="p-dialogs"><div class="doc">
+  <div><h2><span class="vi">Hộp thoại, menu và lớp phủ</span><span class="en">Dialogs, menus and layers</span></h2><p>Customize can hide the ranked list or show more days (1, 3, 7, or infinite scroll). Clicking an item in the AI;DR list on Home expands it in place with a longer line, its sources and two links, and one item stays open at a time. The panel is live and shares one saved state with the Customize drawer: layout, language, mode, background, accent and font change Home and Story.</p></div>
+  <div class="dg">
+    <div class="wide"><div class="cap">1 · Aa reading preferences (live)</div><div class="scrim"><div class="modal">
+      <div class="mh"><span><span class="vi">Giao diện đọc</span><span class="en">Reading</span></span><span class="k">Esc</span></div>
+      <div class="mb">
+        <div class="fr"><span><span class="vi">Bố cục</span><span class="en">Layout</span></span><div class="seg" data-k="layout"><button data-v="compact"><span class="vi">Gọn</span><span class="en">Compact</span></button><button data-v="comfortable"><span class="vi">Thường</span><span class="en">Normal</span></button><button data-v="news"><span class="vi">Báo giấy</span><span class="en">Newspaper</span></button></div></div>
+        <div class="fr"><span><span class="vi">Ngôn ngữ</span><span class="en">Language</span></span><div class="seg" data-k="lang"><button data-v="vi">VI</button><button data-v="en">EN</button><button data-v="both">VI+EN</button></div></div>
+        <div class="fr"><span><span class="vi">Chế độ</span><span class="en">Mode</span></span><div class="seg" data-k="theme"><button data-v="auto"><span class="vi">Tự động</span><span class="en">Auto</span></button><button data-v="light"><span class="vi">Sáng</span><span class="en">Light</span></button><button data-v="dark"><span class="vi">Tối</span><span class="en">Dark</span></button></div></div>
+        <div class="fr"><span><span class="vi">Nền</span><span class="en">Background</span></span><div class="swr" data-k="bg"><button class="swatch l" data-v="paper" aria-label="paper" style="background:#FFFFFF"></button><button class="swatch l" data-v="gray" aria-label="gray" style="background:#E4E4DF"></button><button class="swatch l" data-v="black" aria-label="black" style="background:#000000"></button></div></div>
+        <div class="fr"><span><span class="vi">Màu nhấn</span><span class="en">Accent</span></span><div class="swr" data-k="accent"><button class="swatch l" data-v="yellow" aria-label="yellow" style="background:#F5C518"></button><button class="swatch l" data-v="blue" aria-label="blue" style="background:#4C8DFF"></button><button class="swatch l" data-v="green" aria-label="green" style="background:#2BB673"></button><button class="swatch l" data-v="rose" aria-label="rose" style="background:#F0527A"></button><button class="swatch l" data-v="violet" aria-label="violet" style="background:#8B5CF6"></button></div></div>
+        <div class="fr"><span><span class="vi">Phông chữ</span><span class="en">Font</span></span><div class="seg" data-k="font"><button data-v="serif"><span class="vi">Có chân</span><span class="en">Serif</span></button><button data-v="sans"><span class="vi">Không chân</span><span class="en">Sans</span></button></div></div>
+        <div class="fr"><span><span class="vi">Cỡ chữ</span><span class="en">Size</span></span><div class="seg" data-k="size"><button data-v="0.94">A−</button><button data-v="1">100%</button><button data-v="1.12">A+</button></div></div>
+        <div style="font:400 13.5px/1.55 var(--read);padding:10px 12px;background:var(--muted);border-radius:10px"><span class="vi">Xem trước: <b style="font-weight:600;color:var(--foreground)">Nvidia</b> bị siết xuất khẩu.</span><span class="en">Preview: <b style="font-weight:600;color:var(--foreground)">Nvidia</b> faces tighter exports.</span></div>
+      </div></div></div></div>
+    <div><div class="cap">2 · AI;DR (popover)</div><div class="scrim"><div class="modal"><div class="mb menu" style="gap:2px">
+      <div style="padding:4px 4px 8px"><b style="color:var(--foreground)"><span class="vi">Email mỗi sáng</span><span class="en">Email every morning</span></b><div class="field"><input aria-label="Email" placeholder="email@domain.com"><button class="pill p"><span class="vi">Đăng ký</span><span class="en">Join</span></button></div></div>
+      <a href="#p-dialogs" onclick="return false"><i data-i="chat"></i>Facebook<small><span class="vi">Trang tiếng Anh</span><span class="en">English Page</span></small></a><a href="#p-dialogs" onclick="return false"><i data-i="send"></i>Telegram<small><span class="vi">Kênh tiếng Việt và tiếng Anh</span><span class="en">Vietnamese and English channels</span></small></a><a href="#p-dialogs" onclick="return false"><i data-i="globe"></i>Chrome<small><span class="vi">Tab mới</span><span class="en">New tab</span></small></a><a href="#p-dialogs" onclick="return false"><i data-i="rss"></i>RSS · MCP<small><span class="vi">Cho trình đọc và AI</span><span class="en">For readers and AI</span></small></a>
+    </div></div></div></div>
+    <div><div class="cap">3 · <span class="vi">Tìm kiếm ⌘K</span><span class="en">Search ⌘K</span></div><div class="scrim"><div class="modal"><div class="mh"><span style="font-weight:500">nvidia</span><span class="k">Esc</span></div><div class="mb menu" style="gap:2px">
+      <div class="eyebrow" style="padding:0 12px"><span class="vi">Tin</span><span class="en">Stories</span></div>
+      <a href="#p-dialogs" onclick="return false"><span><span class="vi">Megaspeed sắp xếp gần 12 tỷ USD chip Nvidia gửi sang Trung Quốc</span><span class="en">Megaspeed lines up ~$12B of Nvidia chips for China</span><small><span class="vi">Chip</span><span class="en">Chips</span> · <span class="vi">13 giờ</span><span class="en">13h</span></small></span></a>
+      <a href="#p-dialogs" onclick="return false"><span><span class="vi">Nvidia cố tình giữ giá GPU cao qua các giao dịch tài chính vòng</span><span class="en">Nvidia props up GPU prices through circular financing</span><small><span class="vi">Ngành</span><span class="en">Industry</span> · <span class="vi">17 giờ</span><span class="en">17h</span></small></span></a>
+      <div class="eyebrow" style="padding:8px 12px 0"><span class="vi">Chủ đề</span><span class="en">Topics</span></div><a href="#p-dialogs" onclick="return false">Nvidia <small style="margin-left:auto">14</small></a>
+      <div class="src" style="padding:6px 12px"><span class="k">↑↓</span> <span class="vi">chọn</span><span class="en">move</span> · <span class="k">Enter</span> <span class="vi">mở</span><span class="en">open</span></div></div></div></div></div>
+    <div><div class="cap">4 · <span class="vi">Lịch số báo (popover)</span><span class="en">Edition calendar (popover)</span></div><div class="scrim"><div class="modal"><div class="mh"><span><span class="vi">Tháng 11, 2026</span><span class="en">November 2026</span></span><span class="src">‹ ›</span></div><div class="mb"><div class="cal" id="calMini"></div><div class="src"><span class="vi">Màu đậm là nhiều tin. Viền là hôm nay.</span><span class="en">Darker means more stories. The ring is today.</span></div></div></div></div></div>
+    <div><div class="cap">5 · <span class="vi">Tin, bảng bên (desktop)</span><span class="en">Story panel (desktop)</span></div><div class="scrim" style="padding:16px 16px 16px 60px"><div class="modal"><div class="mh"><span class="src" style="font-weight:500"><span class="k">J</span> <span class="k">K</span> <span class="vi">tin kế · tin trước</span><span class="en">next · previous</span></span><span class="k">Esc</span></div><div class="mb"><div class="eyebrow"><span class="dot" style="background:var(--c-mod)"></span><span class="vi">Model</span><span class="en">Models</span> · <span class="vi">5 giờ</span><span class="en">5h</span></div><div style="font:600 20.5px/1.2 var(--head);color:var(--foreground)"><span class="vi">Meituan ra mắt agent model 1,6 nghìn tỷ tham số, không dùng Nvidia GPU</span><span class="en">Meituan launches a 1.6T-parameter agent model trained without Nvidia GPUs</span></div><div style="font:400 14.5px/1.65 var(--read)"><span class="vi">LongCat-2.5 là model weights mở đầu tiên của Meituan ở quy mô này.</span><span class="en">LongCat-2.5 is Meituan's first open-weights model at this scale.</span></div><div class="act"><button class="pill p"><span class="vi">Mở trang tin</span><span class="en">Open page</span><i data-i="arrow"></i></button><button class="lk"><span class="vi">Đọc nguồn <i data-i="ext"></i></span><span class="en">Source <i data-i="ext"></i></span></button></div></div></div></div></div>
+    <div><div class="cap">6 · <span class="vi">Menu điện thoại (bottom sheet)</span><span class="en">Phone menu (bottom sheet)</span></div><div class="scrim" style="padding-bottom:0"><div class="modal sheet"><div class="mb menu" style="gap:2px;padding-bottom:20px">
+      <a href="#p-dialogs" onclick="return false"><i data-i="home"></i><span class="vi">Hôm nay</span><span class="en">Today</span></a><a href="#p-dialogs" onclick="return false"><i data-i="book"></i><span class="vi">Tuần</span><span class="en">Weeks</span></a><a href="#p-dialogs" onclick="return false"><i data-i="calendar"></i><span class="vi">Lịch</span><span class="en">Calendar</span></a><a href="#p-dialogs" onclick="return false"><i data-i="sun"></i><span class="vi">Giao diện đọc (Aa)</span><span class="en">Reading (Aa)</span></a>
+      <div class="src" style="padding:8px 12px"><span class="vi">Giới thiệu</span><span class="en">About</span> · MCP · <span class="vi">Dữ liệu</span><span class="en">Data</span> · <span class="vi">Phát hành</span><span class="en">Release</span> · <span class="vi">Quyền riêng tư</span><span class="en">Privacy</span></div><div class="seg" style="margin:0 12px"><button aria-pressed="true">VI</button><button aria-pressed="false">EN</button></div></div></div></div></div>
+  </div></div></section>
+
+<!-- WEEKS -->
+<section class="page" id="p-weeks"><div class="site"><div data-hdr="weeks"></div><div class="pg">
+  <div class="eyebrow"><span class="vi">Bản tin tuần</span><span class="en">Weekly edition</span></div>
+  <h1><span class="vi">Một số báo mỗi tuần, đủ để theo kịp</span><span class="en">One issue a week, enough to keep up</span></h1>
+  <article class="lead" style="margin:18px 0"><div><div class="eyebrow"><span class="vi">Số 7 · đang diễn ra · 9-15 tháng 11</span><span class="en">Issue 7 · in progress · 9-15 November</span></div>
+    <h2><span class="vi">10 tin dẫn đầu tuần, gồm chip, quy định và một model mới</span><span class="en">The week's 10 leading stories cover chips, rules and a new model</span></h2><p><span class="vi">Bảng xếp hạng cập nhật theo từng ngày. Số chính thức ra vào thứ Hai.</span><span class="en">The ranking updates daily. The final issue lands Monday.</span></p><div class="act"><button class="pill p"><span class="vi">Đọc số 7</span><span class="en">Read issue 7</span><i data-i="arrow"></i></button><button class="lk"><i data-i="share"></i><span class="vi">Chia sẻ</span><span class="en">Share</span></button></div></div><div class="img b5" data-cap="Gemini 4 Carbon"></div></article>
+  <div class="ban" style="margin-bottom:8px"><span class="vi">Số tuần gửi vào sáng thứ Hai · email miễn phí</span><span class="en">Get the weekly issue Monday morning · free email</span> <button class="pill p" style="margin-left:8px;height:30px"><span class="vi">Đăng ký</span><span class="en">Subscribe</span></button></div>
+  <div id="weekList"></div></div><div data-ftr></div><div class="tabbar" data-tab="weeks"></div></div></section>
+
+<!-- CALENDAR -->
+<section class="page" id="p-calendar"><div class="site"><div data-hdr="calendar"></div><div class="pg">
+  <h1><span class="vi">Lịch số báo</span><span class="en">Edition calendar</span></h1>
+  <div class="cmp" style="margin-top:14px;align-items:start"><div class="card"><div class="mh" style="padding:0 0 12px;border:0"><span><span class="vi">Tháng 11, 2026</span><span class="en">November 2026</span></span><span class="seg"><button aria-pressed="false">‹</button><button aria-pressed="false"><span class="vi">Hôm nay</span><span class="en">Today</span></button><button aria-pressed="false">›</button></span></div><div class="cal" id="calBig"></div>
+    <div class="src" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="vi">Ít</span><span class="en">Fewer</span><i class="dot" style="background:var(--heat-1)"></i><i class="dot" style="background:var(--heat-2)"></i><i class="dot" style="background:var(--heat-3)"></i><i class="dot" style="background:var(--heat-4)"></i><span class="vi">Nhiều tin (tối đa 170)</span><span class="en">More (max 170)</span></div></div>
+    <div class="card"><div class="eyebrow"><span class="vi">Chủ nhật, 15 tháng 11 · 42 tin</span><span class="en">Sunday, 15 November · 42 stories</span></div><div style="font:600 20.5px/1.2 var(--head);color:var(--foreground);margin:8px 0"><span class="vi">Quốc hội thúc đẩy thông qua 4 dự luật siết xuất khẩu chip AI</span><span class="en">Congress advances four bills tightening AI chip exports</span></div><ul class="pts" style="font-size:13px"><li><span class="vi">Meituan ra agent model 1,6 nghìn tỷ tham số</span><span class="en">Meituan ships a 1.6T-parameter agent model</span></li><li><span class="vi">Lutnick thúc đẩy nới lỏng quy định chip</span><span class="en">Lutnick pushes to loosen chip rules</span></li></ul><button class="pill p"><span class="vi">Mở số báo</span><span class="en">Open edition</span><i data-i="arrow"></i></button></div></div>
+  </div><div data-ftr></div><div class="tabbar" data-tab="calendar"></div></div></section>
+
+<!-- SUBSCRIBE -->
+<section class="page" id="p-subscribe"><div class="site"><div data-hdr="subscribe"></div><div class="pg">
+  <div class="eyebrow"><span class="vi">Theo dõi AI;DR</span><span class="en">Follow AI;DR</span></div>
+  <h1><span class="vi">Một bản tin xếp hạng, mỗi sáng</span><span class="en">One ranked edition, every morning</span></h1>
+  <p><span class="vi">Email là kênh duy nhất aidr sở hữu. Các kênh khác ở bên dưới.</span><span class="en">Email is the one channel aidr owns. The others are below.</span></p>
+  <div class="card" style="margin:18px 0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:center" id="subHero"><div><b style="font:600 17px var(--head);color:var(--foreground)"><span class="vi">Email lúc 07:00, theo giờ của bạn</span><span class="en">Email at 07:00, your time</span></b><div class="field"><input aria-label="Email" placeholder="email@domain.com"><button class="pill p"><span class="vi">Đăng ký</span><span class="en">Subscribe</span></button></div><div class="src" style="margin-top:12px"><span class="vi">Hoặc vào kênh Telegram</span><span class="en">Or join the Telegram channel</span></div><a class="tgl" href="#" onclick="return false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 4L3 11l6 2 2 6 3-4 5 4z"/></svg>Telegram <span class="vi">@aihomnay</span><span class="en">@aidr_today</span></a><div class="src" style="margin-top:12px"><span class="vi">5, 10 hoặc 16 tin. Hủy bất cứ lúc nào.</span><span class="en">5, 10 or 16 stories. Cancel anytime.</span></div></div>
+    <div class="modal" style="padding:14px"><div class="eyebrow">AI;DR · 15.11</div><div style="font:600 13.5px/1.3 var(--head);color:var(--foreground);margin:6px 0"><span class="vi">Quốc hội thúc đẩy thông qua 4 dự luật siết xuất khẩu chip AI</span><span class="en">Congress advances four bills tightening AI chip exports</span></div><div class="src">1 · <span class="vi">Chính sách</span><span class="en">Regulation</span>  2 · Model  3 · <span class="vi">Chính sách</span><span class="en">Regulation</span> …</div></div></div>
+  <div class="opt"><div class="card"><b style="color:var(--foreground);display:flex;gap:8px;align-items:center"><i data-i="chat"></i>Facebook</b><span class="src"><span class="vi">Trang tiếng Anh. Kênh mạng xã hội có nhiều lượt đọc nhất (4,3%).</span><span class="en">English Page. The biggest social channel now (4.3% of reads).</span></span><button class="lk"><span class="vi">Theo dõi</span><span class="en">Follow</span><i data-i="arrow"></i></button></div>
+    <div class="card"><b style="color:var(--foreground);display:flex;gap:8px;align-items:center"><i data-i="send"></i>Telegram</b><span class="src"><span class="vi">Kênh tiếng Việt và tiếng Anh, 08:00 giờ Việt Nam.</span><span class="en">Vietnamese and English channels, 08:00 Vietnam time.</span></span><button class="lk"><span class="vi">Tham gia</span><span class="en">Join</span><i data-i="arrow"></i></button></div>
+    <div class="card"><b style="color:var(--foreground);display:flex;gap:8px;align-items:center"><i data-i="globe"></i>Chrome</b><span class="src"><span class="vi">Tab mới là bản tin hôm nay. 920 lượt mở trong 28 ngày.</span><span class="en">Your new tab is today's edition. 920 opens in 28 days.</span></span><button class="lk"><span class="vi">Thêm vào Chrome</span><span class="en">Add to Chrome</span><i data-i="arrow"></i></button></div>
+    <div class="card"><b style="color:var(--foreground);display:flex;gap:8px;align-items:center"><i data-i="rss"></i>MCP · RSS</b><span class="src"><span class="vi">Cho trợ lý AI và trình đọc tin.</span><span class="en">For AI assistants and feed readers.</span></span><button class="lk"><i data-i="copy"></i><span class="vi">Chép</span><span class="en">Copy</span></button></div></div>
+  </div><div data-ftr></div><div class="tabbar" data-tab="home"></div></div></section>
+
+<!-- DATA -->
+<section class="page" id="p-data"><div class="site"><div data-hdr="data"></div><div class="pg">
+  <h1><span class="vi">Cách aidr vận hành</span><span class="en">How aidr runs</span></h1><p><span class="vi">Số liệu trực tiếp về thu thập tin, nội dung và token. Ngôn ngữ theo công tắc VI/EN như mọi trang.</span><span class="en">Live data on ingest, content and tokens. It follows the VI/EN switch like every page.</span></p>
+  <div class="grid" style="margin:16px 0"><div class="card kpi"><b>16,178</b><span><span class="vi">tin đã thu thập</span><span class="en">stories collected</span></span></div><div class="card kpi"><b>31.2M</b><span>tokens</span></div><div class="card kpi"><b>29</b><span><span class="vi">lượt chạy hôm nay</span><span class="en">runs today</span></span></div><div class="card kpi"><b style="color:var(--c-fund)"><span class="vi">Ổn định</span><span class="en">Healthy</span></b><span><span class="vi">68 tin lấy · 3 mới</span><span class="en">68 fetched · 3 new</span></span></div></div>
+  <div class="seg" style="margin-bottom:12px"><button aria-pressed="true"><span class="vi">Tổng quan</span><span class="en">Overview</span></button><button aria-pressed="false"><span class="vi">Độc giả</span><span class="en">Audience</span></button><button aria-pressed="false"><span class="vi">Nội dung</span><span class="en">Content</span></button><button aria-pressed="false"><span class="vi">Lượt chạy</span><span class="en">Runs</span></button><button aria-pressed="false"><span class="vi">Nguồn</span><span class="en">Sources</span></button><button aria-pressed="false">Model</button></div>
+  <div class="card"><h3><span class="vi">Tin mỗi ngày, 14 ngày (minh hoạ)</span><span class="en">Stories per day, 14 days (illustrative)</span></h3><svg id="dayChart" viewBox="0 0 600 170" width="100%" role="img" aria-label="Stories per day, illustrative"></svg><p class="src">Illustrative shape. Real values come from /api/system/trends.</p></div>
+  </div><div data-ftr></div><div class="tabbar" data-tab="home"></div></div></section>
+
+<!-- MCP -->
+<section class="page" id="p-mcp"><div class="site"><div data-hdr="mcp"></div><div class="pg">
+  <h1><span class="vi">MCP server</span><span class="en">MCP server</span></h1><p><span class="vi">Cho trợ lý AI đọc tin đã xếp hạng, không cần đăng nhập. Chọn công cụ của bạn.</span><span class="en">Let your AI assistant read the ranked news, no sign-in. Pick your client.</span></p>
+  <div class="opt" style="margin:16px 0"><button class="pill p">Cursor</button><button class="pill">VS Code</button><button class="pill">LM Studio</button><button class="pill">Claude.ai</button><button class="pill">Claude Code</button></div>
+  <div class="card"><code style="word-break:break-all">claude mcp add --transport http aidr https://aidr.today/api/mcp</code> <button class="lk" style="margin-left:10px"><i data-i="copy"></i><span class="vi">Chép</span><span class="en">Copy</span></button></div>
+  <h3 style="margin:20px 0 8px"><span class="vi">Công cụ</span><span class="en">Tools</span></h3><div class="sx"><table><tr><th><span class="vi">Công cụ</span><span class="en">Tool</span></th><th><span class="vi">Việc làm được</span><span class="en">What it does</span></th></tr><tr><td><code>latest_ai_news</code></td><td><span class="vi">Tối đa 8 tin xếp hạng cao kèm TL;DR</span><span class="en">Up to 8 top-ranked stories with the TL;DR</span></td></tr><tr><td><code>search_news</code></td><td><span class="vi">Tìm theo từ khoá</span><span class="en">Keyword search</span></td></tr><tr><td><code>get_story</code></td><td><span class="vi">Một tin đầy đủ</span><span class="en">One full story</span></td></tr></table></div>
+  <div class="ban" style="margin-top:16px"><span class="vi">Hình minh hoạ 3D chuyển xuống mục "Cách hoạt động", dưới phần cài đặt.</span><span class="en">The 3D figure moves below the install block under "How it works".</span></div>
+  </div><div data-ftr></div><div class="tabbar" data-tab="home"></div></div></section>
+
+<!-- RELEASE -->
+<section class="page" id="p-release"><div class="site"><div data-hdr="release"></div><div class="pg">
+  <h1><span class="vi">Ghi chú phát hành</span><span class="en">Release notes</span></h1><div class="seg" style="margin:12px 0"><button aria-pressed="true"><span class="vi">Tính năng</span><span class="en">Features</span></button><button aria-pressed="false"><span class="vi">Cách chọn tin</span><span class="en">How stories are picked</span></button></div>
+  <div class="rel"><div><div class="eyebrow">v0.1.18 · 27-28 <span class="vi">tháng 10</span><span class="en">Oct</span></div><h3><span class="vi">Tin trùng lặp được gom chung</span><span class="en">Duplicate stories are merged</span></h3><p><span class="vi">Cùng một tin từ nhiều nguồn giờ chỉ hiện một lần, kèm danh sách nguồn.</span><span class="en">One story from many outlets now shows once, with its source list.</span></p><a class="lnk" href="#p-release" onclick="return false"><span class="vi">Đọc ghi chú →</span><span class="en">Read notes →</span></a></div><div class="img b3" style="min-height:110px" data-cap="Release film"></div></div>
+  <div class="rel"><div><div class="eyebrow">v0.1.17 · 24-27 <span class="vi">tháng 10</span><span class="en">Oct</span></div><h3><span class="vi">Mở link tin là vào ngay</span><span class="en">Story links open in one tap</span></h3><p><span class="vi">Link Telegram mở thẳng trang tin, không qua bước đăng nhập.</span><span class="en">Telegram links open the story page directly, with no sign-in step.</span></p><a class="lnk" href="#p-release" onclick="return false"><span class="vi">Đọc ghi chú →</span><span class="en">Read notes →</span></a></div><div class="img b2" style="min-height:110px" data-cap="Release film"></div></div>
+  <div class="ban"><span class="vi">Nhật ký thuật toán dài chuyển sang tab riêng, mỗi mục gập lại, có ngày và nhãn model.</span><span class="en">The long algorithm log moves to its own tab. Each entry collapses, with a date and a model label.</span></div>
+  </div><div data-ftr></div><div class="tabbar" data-tab="home"></div></div></section>
+
+<!-- ABOUT -->
+<section class="page" id="p-about"><div class="site"><div data-hdr="about"></div><div class="pg">
+  <h1><span class="vi">AI;DR là gì</span><span class="en">What AI;DR is</span></h1><p><span class="vi">Mỗi 30 phút, aidr thu tin AI, chấm điểm và xếp hạng thành một số báo bằng tiếng Anh và tiếng Việt. Không ai chọn thứ tự bằng tay.</span><span class="en">Every 30 minutes aidr collects AI news, scores it and ranks it into one edition in English and Vietnamese. No person picks the order.</span></p>
+  <h3 style="margin:18px 0 8px"><span class="vi">Sáu bước, một vòng mỗi 30 phút</span><span class="en">Six steps, one run every 30 minutes</span></h3>
+  <div class="step"><div><b><span class="vi">1 Lịch chạy</span><span class="en">1 Schedule</span></b><span class="vi">mỗi 30 phút</span><span class="en">every 30 min</span></div><div><b><span class="vi">2 Thu thập</span><span class="en">2 Fetch</span></b><span class="vi">loại trùng theo URL</span><span class="en">dedupe by URL</span></div><div><b><span class="vi">3 Chấm điểm</span><span class="en">3 Score</span></b><span class="vi">JEV, rồi LLM</span><span class="en">JEV, then LLM</span></div><div><b><span class="vi">4 Xếp hạng</span><span class="en">4 Rank</span></b><span class="vi">72 giờ gần nhất</span><span class="en">last 72h</span></div><div><b>5 TL;DR</b>EN + VI</div><div><b><span class="vi">6 Gửi</span><span class="en">6 Send</span></b><span class="vi">email · Telegram · FB</span><span class="en">mail · Telegram · FB</span></div></div>
+  <div class="ban" style="margin-top:12px"><span class="vi">Sơ đồ 3D giữ nguyên. Khối ASCII trùng lặp bị bỏ. Đoạn "Dữ liệu thật" dài gập vào mục chi tiết.</span><span class="en">The 3D diagram stays. The duplicate ASCII block goes. The long "Real data" paragraph folds into a details section.</span></div>
+  <p style="margin-top:14px"><span class="vi">Máy chọn tin nên có thể sai. Gửi góp ý dưới mỗi tin, hoặc email submit@aidr.today.</span><span class="en">A machine picks the stories, so it can be wrong. Send a correction under any story, or email submit@aidr.today.</span></p>
+  </div><div data-ftr></div><div class="tabbar" data-tab="home"></div></div></section>
+</div></div>
+
+<script>
+(function(){
+var $=function(s,r){return (r||document).querySelector(s)},$$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+var PAGES=[["evidence","Evidence"],["system","System"],["home","Home"],["story","Story"],["dialogs","Dialogs"],["weeks","Weeks"],["calendar","Calendar"],["subscribe","Subscribe"],["data","Data"],["mcp","MCP"],["release","Release"],["about","About"]];
+var root=document.documentElement,stage=$("#stage");
+function two(vi,en){return "<span class='vi'>"+vi+"</span><span class='en'>"+en+"</span>"}
+// tabs
+$("#tabs").innerHTML=PAGES.map(function(p){return "<button data-p='"+p[0]+"'>"+p[1]+"</button>"}).join("");
+function show(id){if(!document.getElementById("p-"+id))id="evidence";
+  $$(".page").forEach(function(s){s.classList.toggle("on",s.id==="p-"+id)});
+  $$("#tabs button").forEach(function(b){b.setAttribute("aria-current",b.dataset.p===id)});
+  try{history.replaceState(null,"","#"+id)}catch(e){location.hash=id}}
+$("#tabs").addEventListener("click",function(e){var b=e.target.closest("button");if(b){show(b.dataset.p);window.scrollTo(0,0)}});
+window.addEventListener("hashchange",function(){show(location.hash.slice(1))});
+
+var DEF={lang:"vi",first:"vi",theme:"auto",bg:"paper",dev:"desk",layout:"compact",font:"sans",head:"sans",size:"1",accent:"yellow",tldr:"on",tldrN:"8",hl:"topic",topic:"all",feed:"on",days:"1",tview:"image",tcols:"2",trend:"on",thumbs:"on",sum:"off",cats:"on",cols:"2"};
+var S={};try{S=JSON.parse(localStorage.getItem("aidr-redesign-v2")||"{}")}catch(e){S={}}
+Object.keys(DEF).forEach(function(k){if(S[k]==null)S[k]=DEF[k]});
+var PRE={compact:{layout:"compact",head:"sans",font:"sans",thumbs:"on",sum:"off",bg:"paper",theme:"auto",accent:"yellow"},
+ news:{layout:"news",head:"serif",font:"serif",bg:"paper",theme:"light",sum:"on",thumbs:"on",accent:"yellow",cols:"2"},
+ night:{layout:"compact",theme:"dark",bg:"black",accent:"blue",head:"sans",font:"sans",thumbs:"on",sum:"off"},
+ bi:{lang:"both",first:"vi",layout:"comfortable",sum:"on",head:"serif",font:"serif"}};
+var TLX=[["Bốn dự luật cùng nhắm vào việc Nvidia bán chip cho khách hàng Trung Quốc. Bộ trưởng Commerce lại muốn nới các hạn chế.","Four bills target how Nvidia sells chips to Chinese customers, while the Commerce Secretary wants the limits eased."],["LongCat-2.5 là model weights mở đầu tiên của Meituan ở quy mô này.","LongCat-2.5 is Meituan's first open-weights model at this scale."],["Đợt bán tháo kéo cổ phiếu trung tâm dữ liệu giảm mạnh trong một tuần.","A one-week selloff hit data-center stocks hard."],["Nền tảng pretrain cho model lập trình với chi phí dưới 10 triệu USD.","A pretraining platform for coding models at under $10M."],["Model speech-to-speech full-duplex cho cuộc gọi ồn.","A full-duplex speech-to-speech model for noisy calls."],["Hai nước thiết lập kênh trao đổi quy trình kiểm thử và giảm rủi ro.","Both countries open a channel to share testing practice and cut risk."],["Lô chip bị hạn chế được xếp để gửi sang Trung Quốc qua trung gian.","Restricted chips lined up to ship to China through intermediaries."],["Mảng kinh doanh hỗ trợ khách Trung Quốc tiếp cận chip trị giá hàng tỷ USD.","A business helping Chinese customers reach billions of dollars in chips."],["Giao dịch tài chính vòng được nêu là yếu tố giữ giá GPU ở mức cao.","Circular financing deals are cited as a factor holding GPU prices high."],["Chi tiêu cho hạ tầng AI vượt doanh thu ở cả ba hãng.","AI infrastructure spending outruns revenue at all three firms."],["Đây là quý đầu tiên dòng tiền âm trong hai thập kỷ.","It is the first quarter of negative cash flow in two decades."],["Quỹ đầu tư vào startup chip và các đối tác thượng nguồn.","The fund backs chip startups and upstream partners."],["Tính năng lập kế hoạch chuyến đi sẽ nằm trong ChatGPT.","Trip planning will live inside ChatGPT."],["Khoản vốn Series A trị giá 21 triệu USD.","A $21M Series A round."],["Robot dùng trong sản xuất cho công nghiệp quốc phòng.","Robots for manufacturing in the defense industry."],["Vòng Series C định giá công ty 1,1 tỷ USD.","A Series C round valuing the company at $1.1B."]];
+var DOM=["marketbrief.now","techmeme.com","the-decoder.com","huggingnews.com","marktechpost.com"];
+function renderTL(){var n=+S.tldrN;var list=TL.filter(function(t){return S.topic==="all"||t[2]===S.topic});var shown=list.slice(0,n);
+  $("#tl").innerHTML=shown.map(function(t,i){var k=TL.indexOf(t);return "<li data-c='"+t[2]+"'><button class='tl-b' data-k0='"+k+"'><span class='tl-n'>"+("0"+(i+1)).slice(-2)+"</span><span class='tl-t'><i class='tg'><u></u>"+two(CATL[t[2]][0],CATL[t[2]][1])+"</i>"+two(t[0],t[1])+"</span><span class='th img b"+(2+k%5)+"'></span></button></li>"}).join("");
+  $("#tlc").innerHTML="232 "+two("tin","stories");
+  var more=$("#tlMore");more.hidden=false;more.innerHTML=(n<16?two("Xem thêm","Show more")+" <i data-i='down'></i>":two("Thu gọn","Show less")+" <i data-i='up'></i>");inject($(".aidr"))}
+function openPanel(k){var t=TL[k],x=TLX[k],c=3+(k*5)%7,p=$("#spanel");
+  p.querySelector(".pbody").innerHTML="<div class='eyebrow' data-c='"+t[2]+"'><span class='dot' style='background:var(--cat)'></span>"+two(CATL[t[2]][0],CATL[t[2]][1])+" · "+two("3 giờ","3h")+"</div><h2 class='ptitle'>"+two(t[0],t[1])+"</h2><p class='tl-p'>"+two(x[0],x[1])+"</p><div class='tl-m'><span class='tag'>"+DOM[k%5]+"</span><span class='tag'>"+DOM[(k+2)%5]+"</span><span class='src'>"+c+" "+two("nguồn","sources")+"</span></div><div class='tl-a'><button class='pill p'>"+two("Mở trang tin","Open page")+" <i data-i='arrow'></i></button><button class='lk'>"+two("Đọc bài gốc","Read source")+" <i data-i='ext'></i></button></div>";
+  p.classList.add("open");$("#pscrim").classList.add("open");p.setAttribute("aria-hidden","false");inject(p);p.querySelector(".pclose").focus()}
+function closePanel(){var p=$("#spanel");p.classList.remove("open");$("#pscrim").classList.remove("open");p.setAttribute("aria-hidden","true")}
+var DAYN=[["Thứ Bảy, 14 tháng 11","Saturday, 14 November"],["Thứ Sáu, 13 tháng 11","Friday, 13 November"],["Thứ Năm, 12 tháng 11","Thursday, 12 November"],["Thứ Tư, 11 tháng 11","Wednesday, 11 November"],["Thứ Ba, 10 tháng 11","Tuesday, 10 November"],["Thứ Hai, 9 tháng 11","Monday, 9 November"]];
+function renderDays(){var n=S.days==="inf"?6:(+S.days-1);var h="";
+  for(var i=0;i<n;i++){var a=i%4;h+="<section class='feed day'><h3>"+two(DAYN[i][0],DAYN[i][1])+" <span class='src'>"+(40+i*9)+" "+two("tin","stories")+"</span></h3><div>"+ST.slice(a,a+4).map(function(s,j){return row(s,a+j)}).join("")+"</div></section>"}
+  if(S.days==="inf")h+="<div class='loader'><i data-i='down'></i>"+two("Cuộn xuống để tải thêm ngày","Scroll to load more days")+"</div>";
+  $("#moreDays").innerHTML=h;inject($("#moreDays"))}
+function apply(){
+  root.setAttribute("data-lang",S.lang);root.setAttribute("data-first",S.first);
+  if(S.theme==="auto")root.removeAttribute("data-theme");else root.setAttribute("data-theme",S.theme);
+  root.style.setProperty("--read",S.font==="serif"?"var(--serif)":"var(--sans)");
+  root.style.setProperty("--head",S.head==="serif"?"var(--serif)":"var(--sans)");
+  stage.classList.toggle("phone",S.dev==="phone");
+  ["layout","bg","accent","tldr","trend","thumbs","sum","cats","hl","topic","feed","tview"].forEach(function(k){stage.setAttribute("data-"+k,S[k])});
+  stage.style.setProperty("--fs",S.size);stage.style.setProperty("--cols",S.cols);stage.style.setProperty("--tcols",S.tcols);
+  $$("[data-k]").forEach(function(gp){var k=gp.dataset.k;$$("button",gp).forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.v===S[k]))})});
+  renderDays();
+  $$(".row").forEach(function(r){r.hidden=S.topic!=="all"&&r.dataset.c!==S.topic});
+  renderTL();
+  try{localStorage.setItem("aidr-redesign-v2",JSON.stringify(S))}catch(e){}
+}
+function set(k,v){S[k]=v;if(k==="bg"){if(v==="gray")S.theme="light";if(v==="black")S.theme="dark"}if(k==="theme"&&S.bg!=="paper")S.bg="paper";apply()}
+document.addEventListener("click",function(e){
+  var b=e.target.closest("[data-k] button");if(b&&b.dataset.v!=null){set(b.closest("[data-k]").dataset.k,b.dataset.v);return}
+  var p=e.target.closest("[data-preset]");if(p){var o=PRE[p.dataset.preset];Object.keys(o).forEach(function(k){S[k]=o[k]});apply();return}
+  if(e.target.closest("#dReset")){Object.keys(DEF).forEach(function(k){S[k]=DEF[k]});apply();return}
+  var tb=e.target.closest(".tl-b");if(tb){openPanel(+tb.dataset.k0);return}
+  if(e.target.closest(".pclose")||e.target.id==="pscrim"){closePanel();return}
+  if(e.target.closest("#tlMore")){S.tldrN=+S.tldrN<16?"16":"8";apply();return}
+  if(e.target.closest("#openDrawer"))toggleDrawer(true);
+  if(e.target.closest("#dClose")||e.target.id==="dscrim")toggleDrawer(false);
+});
+function toggleDrawer(on){var d=$("#drawer");d.classList.toggle("open",on);$("#dscrim").classList.toggle("open",on);d.setAttribute("aria-hidden",String(!on));if(on)$("#dClose").focus();else $("#openDrawer").focus()}
+document.addEventListener("keydown",function(e){if(e.key==="Escape"){if($("#spanel").classList.contains("open"))closePanel();else if($("#drawer").classList.contains("open"))toggleDrawer(false)}});
+// chrome
+var SVG={"ext":"<path d=\"M7 17L17 7M8 7h9v9\"/>","copy":"<rect x=\"9\" y=\"9\" width=\"11\" height=\"11\" rx=\"2\"/><path d=\"M5 15V6a2 2 0 0 1 2-2h9\"/>","share":"<path d=\"M12 4v11M8 8l4-4 4 4M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4\"/>","arrow":"<path d=\"M5 12h14M13 6l6 6-6 6\"/>","down":"<path d=\"M6 9l6 6 6-6\"/>","up":"<path d=\"M6 15l6-6 6 6\"/>","calendar":"<rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M3 10h18M8 3v4M16 3v4\"/>","book":"<path d=\"M3 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H3zM21 5h-7a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h7z\"/>","home":"<path d=\"M4 11l8-7 8 7M6 10v10h12V10\"/>","mail":"<rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"3\"/><path d=\"M3 8l9 6 9-6\"/>","send":"<path d=\"M21 4L3 11l6 2 2 6 3-4 5 4z\"/>","chat":"<path d=\"M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.4A8 8 0 1 1 21 12z\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18\"/>","rss":"<path d=\"M5 5a14 14 0 0 1 14 14M5 11a8 8 0 0 1 8 8\"/><circle cx=\"6\" cy=\"18\" r=\"1.5\"/>","trend":"<path d=\"M3 17l6-6 4 4 7-8M15 7h5v5\"/>","search":"<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"M20 20l-4-4\"/>","bolt":"<path d=\"M13 3L5 14h6l-1 7 8-11h-6z\"/>","check":"<path d=\"M5 12l5 5 9-10\"/>","filter":"<path d=\"M4 6h16M7 12h10M10 18h4\"/>","sun":"<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4\"/>","moon":"<path d=\"M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z\"/>","link":"<path d=\"M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1\"/>","bell":"<path d=\"M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4\"/>","plug":"<path d=\"M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4\"/>","info":"<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 11v5M12 8h.01\"/>","tag":"<path d=\"M3 12V4h8l10 10-8 8z\"/><circle cx=\"7.5\" cy=\"8.5\" r=\"1\"/>","user":"<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>"};
+function inject(r){$$("[data-i]",r).forEach(function(e){if(!e.firstChild&&SVG[e.dataset.i])e.innerHTML="<svg viewBox='0 0 24 24' aria-hidden='true'>"+SVG[e.dataset.i]+"</svg>"})}
+var ICON={s:"<svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><circle cx='11' cy='11' r='7'/><path d='M20 20l-4-4'/></svg>",a:"<b style='font-size:13px'>Aa</b>"};
+function hdr(act){var nav=[["home","Hôm nay","Today"],["weeks","Tuần","Weeks"],["calendar","Lịch","Calendar"]].map(function(n){return "<a href='#' class='"+(act===n[0]?"on":"")+"' onclick='return false'><i data-i='"+({home:"home",weeks:"book",calendar:"calendar"})[n[0]]+"'></i>"+two(n[1],n[2])+"</a>"}).join("");
+  return "<header class='hdr'><span class='logo'><span class='mk'>;</span>AI;DR</span><nav class='nav'>"+nav+"</nav><span class='sp'></span><button class='sbtn'>"+ICON.s+two("Tìm tin","Search")+"<kbd>⌘K</kbd></button><button class='ib' aria-label='Reading preferences'>"+ICON.a+"</button><span class='seg lsw' data-k='layout' role='group' aria-label='Layout'><button data-v='compact' title='Compact' aria-label='Compact'><svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'><path d='M4 6h16M4 10h16M4 14h16M4 18h16'/></svg></button><button data-v='comfortable' title='Normal' aria-label='Normal'><svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'><path d='M4 6h16M4 12h16M4 18h16'/></svg></button><button data-v='news' title='Newspaper' aria-label='Newspaper'><svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'><rect x='4' y='4' width='16' height='16' rx='2'/><path d='M12 4v16M4 10h8'/></svg></button></span><span class='seg langseg'><button aria-pressed='true'>VI</button><button aria-pressed='false'>EN</button></span><button class='pill p'><span class='mk mk-s'>;</span>AI;DR</button><button class='ib phonebar' aria-label='Search'>"+ICON.s+"</button></header>"}
+function ftr(){return "<footer class='foot'><div><b>AI;DR</b>"+two("Tin AI, xếp hạng và tóm tắt","AI news, ranked and summarized")+"</div><div><b>"+two("Trang","Site")+"</b><a href='#' onclick='return false'>"+two("Giới thiệu","About")+"</a><a href='#' onclick='return false'>"+two("Phát hành","Release")+"</a><a href='#' onclick='return false'>"+two("Dữ liệu","Data")+"</a></div><div><b>"+two("Theo dõi","Follow")+"</b><a href='#' onclick='return false'>Telegram</a><a href='#' onclick='return false'>Facebook</a><a href='#' onclick='return false'>RSS · MCP</a></div><div><b>"+two("Thêm","More")+"</b><a href='#' onclick='return false'>duyet.net</a><a href='#' onclick='return false'>"+two("Quyền riêng tư","Privacy")+"</a></div></footer>"}
+function tab(act){var t=[["home","Hôm nay","Today"],["weeks","Tuần","Weeks"],["calendar","Lịch","Calendar"],["subscribe","AI;DR","AI;DR"]];return t.map(function(x){return "<a href='#' class='"+(act===x[0]?"on":"")+"' onclick='return false'>"+(x[0]==="subscribe"?"<span class='mk mk-s'>;</span>":"<i data-i='"+({home:"home",weeks:"book",calendar:"calendar"})[x[0]]+"'></i>")+""+two(x[1],x[2])+"</a>"}).join("")}
+$$("[data-hdr]").forEach(function(e){e.outerHTML=hdr(e.dataset.hdr==="story"?"home":e.dataset.hdr)});
+$$("[data-ftr]").forEach(function(e){e.outerHTML=ftr()});
+$$("[data-tab]").forEach(function(e){e.innerHTML=tab(e.dataset.tab)});
+// data
+var CATS=[["Industry",665,448],["Research",639,416],["Regulation",542,303],["Products",535,272],["Models",508,313],["Agents",336,233],["Funding",311,184],["Tools",262,172],["Infra",231,174],["Open Source",222,132],["Chips",151,96]];
+var maxc=665;
+$("#catBars").innerHTML=CATS.map(function(c){return "<div class='bar'><span>"+c[0]+"</span><i style='width:"+(c[1]/maxc*100)+"%'></i><b>"+c[1]+" <span class='src'>"+(c[1]/c[2]).toFixed(2)+"</span></b></div>"}).join("")+"<div class='src'>The first number is reads, the second is reads per opened story.</div>";
+var CH=[["web",4369],["facebook",201],["telegram",34],["other",25],["share",17],["extension",10],["email",5]];
+$("#chBars").innerHTML=CH.map(function(c){return "<div class='bar'><span>"+c[0]+"</span><i style='width:"+Math.max(1.5,c[1]/4369*100)+"%'></i><b>"+c[1]+"</b></div>"}).join("");
+var CATL={reg:["Chính sách","Regulation"],mod:["Model","Models"],chip:["Chip","Chips"],ind:["Ngành","Industry"],fund:["Gọi vốn","Funding"],agent:["Tác nhân","Agents"],prod:["Sản phẩm","Products"],res:["Nghiên cứu","Research"],data:["Dữ liệu","Data"]};
+var CK={"--c-reg":"reg","--c-mod":"mod","--c-chip":"chip","--c-ind":"ind","--c-fund":"fund","--c-agent":"agent","--c-prod":"prod","--c-res":"res","--c-data":"data"};
+function catl(v){var k=CK[v];return two(CATL[k][0],CATL[k][1])}
+var chips=[["reg",13],["prod",9],["mod",6],["ind",5],["res",4],["chip",3],["fund",3],["agent",3]];
+$("#chips").innerHTML="<button class='chip' data-v='all'>"+two("Tất cả","All")+" <small>42</small></button>"+chips.map(function(c){return "<button class='chip' data-v='"+c[0]+"'><i class='dot' style='background:var(--c-"+c[0]+")'></i>"+two(CATL[c[0]][0],CATL[c[0]][1])+" <small>"+c[1]+"</small></button>"}).join("")+"<button class='chip'>"+two("Thêm","More")+" <i data-i='down'></i>"+"</button>";
+var TL=[
+["<b>Nvidia</b> chịu áp lực từ hai phía. Quốc hội siết xuất khẩu chip, còn Bộ trưởng Commerce lại muốn nới lỏng.","<b>Nvidia</b> faces pressure from both sides. Congress tightens chip exports while the Commerce Secretary wants them loosened.","reg"],
+["<b>Meituan</b> ra model agent 1,6 nghìn tỷ tham số, huấn luyện không dùng GPU Nvidia.","<b>Meituan</b> ships a 1.6T-parameter agent model trained without Nvidia GPUs.","mod"],
+["Cổ phiếu trung tâm dữ liệu mất 4,2 nghìn tỷ USD vốn hoá trong đợt bán tháo AI.","Data-center stocks lost $4.2T in market value in the AI selloff.","ind"],
+["<b>Mirendil</b> ra mắt nền tảng pretrain cho model lập trình với chi phí dưới 10 triệu USD.","<b>Mirendil</b> launches a pretraining platform for coding models under $10M.","agent"],
+["<b>Bland</b> ra mắt Tofu-1, model speech-to-speech cho cuộc gọi.","<b>Bland</b> launches Tofu-1, a speech-to-speech model for phone calls.","mod"],
+["<b>Hoa Kỳ</b> và Trung Quốc lập kênh an toàn AI để trao đổi quy trình kiểm thử model.","The <b>US</b> and China open an AI safety channel to share model-testing practice.","reg"],
+["<b>Megaspeed</b> sắp xếp gần 12 tỷ USD chip Nvidia bị hạn chế gửi sang Trung Quốc.","<b>Megaspeed</b> lines up about $12B of restricted Nvidia chips for China.","chip"],
+["WSJ nêu <b>Jensen Huang</b> xây doanh nghiệp hàng tỷ USD giúp công ty Trung Quốc tiếp cận chip.","The WSJ reports <b>Jensen Huang</b> built a multibillion-dollar business helping Chinese firms reach chips.","chip"],
+["<b>Nvidia</b> bị nêu là giữ giá GPU cao qua các giao dịch tài chính vòng.","<b>Nvidia</b> is reported to prop up GPU prices through circular financing deals.","ind"],
+["<b>Amazon</b>, <b>Alphabet</b> và <b>Meta</b> ghi nhận dòng tiền âm vì chi cho AI vượt doanh thu.","<b>Amazon</b>, <b>Alphabet</b> and <b>Meta</b> report negative cash flow as AI spending outruns revenue.","ind"],
+["<b>Alphabet</b> báo dòng tiền hàng quý âm lần đầu trong 20 năm.","<b>Alphabet</b> reports its first negative quarterly cash flow in 20 years.","ind"],
+["<b>TSMC</b> lập quỹ 500 triệu USD đầu tư vào startup chip và đối tác thượng nguồn.","<b>TSMC</b> sets up a $500M fund for chip startups and upstream partners.","fund"],
+["<b>OpenAI</b> mua lại Odessia để đưa tính năng lập kế hoạch chuyến đi vào ChatGPT.","<b>OpenAI</b> buys travel startup Odessia to bring trip planning into ChatGPT.","prod"],
+["<b>Nebuly</b> huy động 21 triệu USD vòng Series A.","<b>Nebuly</b> raises a $21M Series A.","fund"],
+["<b>Nidus</b> gọi vốn 30 triệu USD cho robot sản xuất dùng trong công nghiệp quốc phòng.","<b>Nidus</b> raises $30M for manufacturing robots used in defense industry.","fund"],
+["<b>Databento</b> gọi vốn 100 triệu USD vòng Series C, định giá 1,1 tỷ USD.","<b>Databento</b> raises a $100M Series C at a $1.1B valuation.","data"]
+];
+var ST=[["Meituan ra mắt agent model 1,6 nghìn tỷ tham số, không dùng Nvidia GPU","Meituan launches a 1.6T-parameter agent model without Nvidia GPUs","Models","--c-mod","the-decoder.com","5 giờ","5h","b2"],["Bộ trưởng Commerce Lutnick thúc đẩy nới lỏng quy định chip liên quan đến công ty Trung Quốc","Commerce Secretary Lutnick pushes to loosen chip rules tied to Chinese firms","Regulation","--c-reg","marketbrief.now","3 giờ","3h","b4"],["WSJ: Jensen Huang xây dựng doanh nghiệp hàng tỷ USD giúp công ty Trung Quốc tiếp cận chip","WSJ: Jensen Huang built a multibillion-dollar business helping Chinese firms reach chips","Chips","--c-chip","techmeme.com","9 giờ","9h","b5"],["Megaspeed sắp xếp gần 12 tỷ USD chip Nvidia bị hạn chế gửi sang Trung Quốc","Megaspeed lines up about $12B of restricted Nvidia chips for China","Chips","--c-chip","marketbrief.now","13 giờ","13h","b5"],["AI trade collapse xóa 4,2 nghìn tỷ USD từ cổ phiếu trung tâm dữ liệu","AI trade collapse wipes $4.2T from data-center stocks","Industry","--c-ind","marketbrief.now","7 giờ","7h","b6"],["Mirendil ra mắt nền tảng Lor pretrain AI coding model dưới 10 triệu USD","Mirendil launches Lor, a coding-model pretraining platform under $10M","Agents","--c-agent","marketbrief.now","4 giờ","4h","b3"],["Bland ra mắt Tofu-1, mô hình speech-to-speech cho cuộc gọi","Bland launches Tofu-1, a speech-to-speech model for calls","Models","--c-mod","marktechpost.com","5 giờ","5h","b2"],["Hoa Kỳ và Trung Quốc lập kênh an toàn AI để trao đổi quy trình kiểm thử model","US and China set up an AI safety channel to share model-testing practice","Regulation","--c-reg","techmeme.com","14 giờ","14h","b4"]];
+var SM=[["LongCat-2.5 là model weights mở đầu tiên của Meituan ở quy mô này.","LongCat-2.5 is Meituan's first open-weights model at this scale."],["Lutnick muốn nới các hạn chế liên quan đến công ty Trung Quốc trước phiên điều trần.","Lutnick wants to ease limits tied to Chinese firms ahead of Senate testimony."],["Mảng kinh doanh hỗ trợ khách Trung Quốc tiếp cận chip trị giá hàng tỷ USD.","A business helping Chinese customers reach billions of dollars in chips."],["Lô chip bị hạn chế được xếp để gửi sang Trung Quốc qua trung gian.","Restricted chips lined up to ship to China through intermediaries."],["Đợt bán tháo kéo cổ phiếu trung tâm dữ liệu giảm mạnh trong một tuần.","A one-week selloff hit data-center stocks hard."],["Nền tảng pretrain cho model lập trình với chi phí dưới 10 triệu USD.","A pretraining platform for coding models at under $10M."],["Model speech-to-speech full-duplex cho cuộc gọi ồn.","A full-duplex speech-to-speech model for noisy phone calls."],["Hai nước thiết lập kênh trao đổi quy trình kiểm thử và giảm rủi ro.","Both countries open a channel to share testing practice and cut risk."]];
+function row(s,i){return "<div class='row' tabindex='0' data-c='"+CK[s[3]]+"'><span class='n'>"+(i+2)+"</span><div><p class='t'>"+two(s[0],s[1])+"</p><p class='sm'>"+two(SM[i][0],SM[i][1])+"</p><div class='m'><span class='dot' style='background:var("+s[3]+");margin:0'></span>"+catl(s[3])+"<span>·</span>"+s[4]+"<span>·</span>"+two(s[5],s[6]+" ago")+"<a class='go' href='#' onclick='return false'>"+two("Đọc nguồn <i data-i='ext'></i>","Source <i data-i='ext'></i>")+"</a></div></div><div class='th img "+s[7]+"'></div></div>"}
+$("#feed").innerHTML=ST.map(row).join("");
+$("#next").innerHTML=ST.slice(0,3).map(function(s){return "<div class='tr' style='display:block'><b style='font-weight:500;line-height:1.35;display:block'>"+two(s[0],s[1])+"</b><span class='src'>"+catl(s[3])+" · "+s[4]+"</span></div>"}).join("");
+var TR=[["Nvidia",14],["Anthropic",9],["Gemini 4",8],["Claude Opus 5.5",6],["Mirendil",4],["Tofu-1",3]];
+$("#trend").innerHTML=TR.map(function(t){return "<div class='tr'><b>"+t[0]+"</b><span>"+t[1]+"</span></div>"}).join("");
+var WK=[["Số 6","2-8/11","OpenAI ra mắt GPT-6 Cyber và mua lại Pierre Computer; Anthropic chịu sức ép về định giá IPO.","OpenAI launches GPT-6 Cyber and buys Pierre Computer; Anthropic faces IPO valuation pressure.","b2"],["Số 5","26/10-1/11","OpenAI ra mắt GPT-6.1 Terra và giảm 50% giá API chuẩn; đà lao dốc của cổ phiếu AI Trung Quốc.","OpenAI launches GPT-6.1 Terra and halves standard API prices; China AI stocks slide.","b3"],["Số 4","19-25/10","DeepSeek đối mặt hạn chế từ chính phủ Mỹ; Stripe đồng ý mua OpenRouter giá 7,5 tỷ USD.","DeepSeek faces US government limits; Stripe agrees to buy OpenRouter for $7.5B.","b5"]];
+$("#weekList").innerHTML=WK.map(function(w){return "<div class='rel'><div><div class='eyebrow'>"+w[0]+" · "+w[1]+"</div><h3>"+two(w[2],w[3])+"</h3><a class='lnk' href='#' onclick='return false'>"+two("Đọc số báo →","Read issue →")+"</a></div><div class='img "+w[4]+"' style='min-height:90px'></div></div>"}).join("");
+// calendars
+var HEAT={1:48,2:100,3:152,4:137,5:143,6:136,7:89,8:45,9:104,10:170,11:157,12:116,13:148,14:95,15:42};
+function lvl(n){return n>=140?"h4":n>=100?"h3":n>=60?"h2":"h1"}
+function cal(){var h="";["T2","T3","T4","T5","T6","T7","CN"].forEach(function(d){h+="<b>"+d+"</b>"});for(var d=1;d<=30;d++){var n=HEAT[d];h+="<i class='"+(n?lvl(n):"")+(d===15?" td":"")+"'"+(n?" title='"+n+"'":"")+">"+d+"</i>"}return h}
+$("#calMini").innerHTML=cal();$("#calBig").innerHTML=cal();
+$("#calBig").style.gap="6px";
+// chart
+var V=[18,135,150,142,130,120,60,52,140,170,140,145,140,45];var W=600,H=150,bw=W/V.length;
+$("#dayChart").innerHTML=V.map(function(v,i){var h=v/170*H;return "<rect x='"+(i*bw+6)+"' y='"+(H-h+8)+"' width='"+(bw-12)+"' height='"+h+"' rx='3' fill='var(--heat-3)'><title>"+v+"</title></rect>"}).join("")+"<line x1='0' x2='"+W+"' y1='"+(H+8)+"' y2='"+(H+8)+"' stroke='var(--border)'/>";
+// tokens
+var T=[["background","#FAF9F5","#1F1E1D"],["card","#FFFFFF","#262624"],["muted","#F0EEE6","#30302E"],["foreground","#1F1E1D","#F5F4EE"],["body","#3D3D3A","#D6D4CC"],["muted-foreground","#6B6A64","#A19F96"],["accent","#8F4300","#F5C518"],["signal","#F5C518","#F5C518"],["primary","#1F1E1D","#F5F4EE"]];
+$("#sw").innerHTML=T.map(function(t){return "<div><i style='background:var(--"+t[0]+")'></i><span><b>--"+t[0]+"</b><br><code>"+t[1]+" / "+t[2]+"</code></span></div>"}).join("");
+function lum(h){var c=[1,3,5].map(function(i){var v=parseInt(h.substr(i,2),16)/255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*c[0]+.7152*c[1]+.0722*c[2]}
+function cr(a,b){var x=lum(a),y=lum(b);return ((Math.max(x,y)+.05)/(Math.min(x,y)+.05))}
+var P=[["Body on panel","body","card"],["Foreground on canvas","foreground","background"],["Muted on canvas","muted-foreground","background"],["Muted on panel","muted-foreground","card"],["Muted on sunk","muted-foreground","muted"],["Accent text on canvas","accent","background"],["Accent text on panel","accent","card"]];
+function get(n,i){return T.filter(function(t){return t[0]===n})[0][i]}
+$("#ct").innerHTML="<tr><th>Pair (text needs 4.5)</th><th>Light</th><th>Dark</th></tr>"+P.map(function(p){var l=cr(get(p[1],1),get(p[2],1)),d=cr(get(p[1],2),get(p[2],2));return "<tr><td>"+p[0]+"</td><td>"+l.toFixed(2)+(l>=4.5?" pass":" FAIL")+"</td><td>"+d.toFixed(2)+(d>=4.5?" pass":" FAIL")+"</td></tr>"}).join("")+"<tr><td>Yellow #F5C518 as text on canvas</td><td>"+cr("#F5C518","#FAF9F5").toFixed(2)+" never used</td><td>"+cr("#F5C518","#1F1E1D").toFixed(2)+" pass</td></tr>";
+apply();inject();
+var sheet=$("#iconSheet");if(sheet){sheet.innerHTML=Object.keys(SVG).map(function(k){return "<div class='ico'><i data-i='"+k+"'></i><span>"+k+"</span></div>"}).join("");inject(sheet)}
+show((location.hash||"#evidence").slice(1));
+})();
+</script>

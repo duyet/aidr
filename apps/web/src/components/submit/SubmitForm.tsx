@@ -76,7 +76,7 @@ export function SubmitForm({
       {banner ? (
         <div
           role="status"
-          className="flex items-start justify-between gap-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm"
+          className="flex items-start justify-between gap-3 rounded-lg bg-muted px-3 py-2 text-sm"
         >
           <p>
             {lang === "vi"
@@ -85,7 +85,7 @@ export function SubmitForm({
           </p>
           <button
             type="button"
-            className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+            className="btn-link shrink-0"
             onClick={() => setBanner(false)}
           >
             {lang === "vi" ? "Đóng" : "Dismiss"}
@@ -102,7 +102,7 @@ export function SubmitForm({
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://..."
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          className="w-full rounded-lg border-0 bg-muted px-3 py-2 text-sm"
         />
       </label>
       <label className="block text-sm">
@@ -114,7 +114,7 @@ export function SubmitForm({
           maxLength={300}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          className="w-full rounded-lg border-0 bg-muted px-3 py-2 text-sm"
         />
       </label>
       <label className="block text-sm">
@@ -126,12 +126,12 @@ export function SubmitForm({
           onChange={(e) => setNote(e.target.value)}
           rows={2}
           maxLength={1000}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          className="w-full rounded-lg border-0 bg-muted px-3 py-2 text-sm"
         />
       </label>
       <p className="text-xs text-muted-foreground">
         {lang === "vi"
-          ? "Bài gửi sẽ được AI thẩm định và chấm điểm. Không phải bài nào cũng được đăng — chỉ những tin được đánh giá là liên quan và chất lượng mới xuất hiện trên trang."
+          ? "Bài gửi sẽ được AI thẩm định và chấm điểm. Không phải bài nào cũng được đăng, chỉ những tin được đánh giá là liên quan và chất lượng mới xuất hiện trên trang."
           : "Submissions are reviewed and rated by AI. Not all submissions will be published — only stories judged relevant and high-quality appear in the feed."}{" "}
         <Link
           to="/about"
@@ -146,9 +146,9 @@ export function SubmitForm({
       <button
         type="submit"
         disabled={status === "sending"}
-        className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+        className="btn-primary"
       >
-        <Send className="h-3.5 w-3.5" aria-hidden />
+        <Send aria-hidden />
         {lang === "vi" ? "Gửi bài" : "Submit"}
       </button>
       {error && <p className="text-sm text-red-600">{error}</p>}

@@ -32,34 +32,34 @@ type Surface = {
 };
 
 const LIGHT_SURFACES: Surface[] = [
-  { name: "default", background: "#f7f7f5", foreground: "#0a0a0a" },
-  { name: "card", background: "#ffffff", foreground: "#0a0a0a" },
-  { name: "muted", background: "#e5e5e3", foreground: "#0a0a0a" },
-  { name: "muted fallback", background: "#e5e5e3", foreground: "#0a0a0a" },
+  { name: "default", background: "#faf9f5", foreground: "#1f1e1d" },
+  { name: "card", background: "#ffffff", foreground: "#1f1e1d" },
+  { name: "muted", background: "#f0eee6", foreground: "#1f1e1d" },
   { name: "cream reader", background: "#faf6ec", foreground: "#2b2620" },
-  { name: "gray reader", background: "#dedede", foreground: "#1c1c1a" },
-  { name: "gray hover", background: "#e5e5e3", foreground: "#1c1c1a" },
+  { name: "gray reader", background: "#e4e4df", foreground: "#1f1e1d" },
+  { name: "gray hover", background: "#f0eee6", foreground: "#1f1e1d" },
   {
     name: "expanded row",
-    background: blend("#e5e5e3", "#f7f7f5", 0.6),
-    foreground: "#0a0a0a",
+    background: blend("#f0eee6", "#faf9f5", 0.6),
+    foreground: "#1f1e1d",
   },
   {
     name: "expanded gray row",
-    background: blend("#e5e5e3", "#dedede", 0.6),
-    foreground: "#1c1c1a",
+    background: blend("#f0eee6", "#e4e4df", 0.6),
+    foreground: "#1f1e1d",
   },
 ];
 
 const DARK_SURFACES: Surface[] = [
-  { name: "default", background: "#0c0c0c", foreground: "#fafafa" },
-  { name: "card", background: "#171717", foreground: "#fafafa" },
-  { name: "muted", background: "#2a2a2a", foreground: "#fafafa" },
-  { name: "black reader", background: "#000000", foreground: "#fafafa" },
+  { name: "default", background: "#1f1e1d", foreground: "#f5f4ee" },
+  { name: "card", background: "#262624", foreground: "#f5f4ee" },
+  { name: "muted", background: "#30302e", foreground: "#f5f4ee" },
+  { name: "black reader", background: "#000000", foreground: "#f5f4ee" },
+  { name: "black muted", background: "#151515", foreground: "#f5f4ee" },
   {
     name: "expanded row",
-    background: blend("#2a2a2a", "#0c0c0c", 0.6),
-    foreground: "#fafafa",
+    background: blend("#30302e", "#1f1e1d", 0.6),
+    foreground: "#f5f4ee",
   },
 ];
 
@@ -144,14 +144,14 @@ describe("category accent surfaces", () => {
     for (const name of categoryNamesWithUnknown()) {
       const color = categoryColor(name);
       const lightBases: Surface[] = [
-        { name: "default tint", background: "#f7f7f5", foreground: "#0a0a0a" },
+        { name: "default tint", background: "#faf9f5", foreground: "#1f1e1d" },
         { name: "cream tint", background: "#faf6ec", foreground: "#2b2620" },
-        { name: "gray tint", background: "#dedede", foreground: "#1c1c1a" },
+        { name: "gray tint", background: "#e4e4df", foreground: "#1f1e1d" },
       ];
       const darkBases: Surface[] = [
-        { name: "default tint", background: "#0c0c0c", foreground: "#fafafa" },
-        { name: "muted tint", background: "#2a2a2a", foreground: "#fafafa" },
-        { name: "black tint", background: "#000000", foreground: "#fafafa" },
+        { name: "default tint", background: "#1f1e1d", foreground: "#f5f4ee" },
+        { name: "muted tint", background: "#30302e", foreground: "#f5f4ee" },
+        { name: "black tint", background: "#000000", foreground: "#f5f4ee" },
       ];
 
       for (const base of lightBases) {
@@ -176,20 +176,20 @@ describe("category accent surfaces", () => {
   it("keeps selected category dots at graphical-object contrast", () => {
     for (const name of categoryNamesWithUnknown()) {
       const color = categoryColor(name);
-      const lightDot = categoryDotColor(color.light, "#fafafa");
-      const darkDot = categoryDotColor(color.dark, "#0a0a0a");
+      const lightDot = categoryDotColor(color.light, "#ffffff");
+      const darkDot = categoryDotColor(color.dark, "#1f1e1d");
       expect(
-        contrastRatio(lightDot, "#0a0a0a"),
+        contrastRatio(lightDot, "#1f1e1d"),
         `${String(name)} light selected dot`
       ).toBeGreaterThanOrEqual(3);
       expect(
-        contrastRatio(darkDot, "#fafafa"),
+        contrastRatio(darkDot, "#f5f4ee"),
         `${String(name)} dark selected dot`
       ).toBeGreaterThanOrEqual(3);
     }
 
-    expect(contrastRatio("#fafafa", "#0a0a0a")).toBeGreaterThanOrEqual(3);
-    expect(contrastRatio("#0a0a0a", "#fafafa")).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio("#ffffff", "#1f1e1d")).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio("#1f1e1d", "#f5f4ee")).toBeGreaterThanOrEqual(3);
   });
 
   it("retains a high-contrast fallback when color-mix is unavailable", () => {
@@ -220,18 +220,24 @@ describe("category accent surfaces", () => {
     expect(css).toContain("background-color: CanvasText;");
     expect(css).toContain("outline: 1px solid Canvas;");
     expect(css).toContain("outline: 1px solid var(--primary-foreground);");
-    expect(categoryNavSource).toContain("aria-pressed={isSelected}");
-    expect(categoryNavSource).toContain("hover:bg-muted");
-    expect(categoryNavSource).toContain("colored={!isSelected}");
+    expect(categoryNavSource).toContain("pressed={isSelected}");
+    expect(categoryNavSource).toContain("quiet={!isSelected}");
     expect(categoryNavSource).toContain("dot={isSelected}");
+    expect(css).toMatch(/\.chip:hover\s*\{[^}]*var\(--border\)/);
+    expect(css).toMatch(
+      /\.chip\[aria-pressed="true"\][^{]*\{[^}]*background-color:\s*var\(--primary\);/
+    );
     expect(storyRowSource).toContain("bg-muted/60");
     expect(storyRowSource).toContain("topic-hl-row");
   });
 
   it("renders the category count with a quiet token, never an opacity", () => {
-    expect(categoryNavSource).toContain("text-quiet-foreground text-xs");
-    expect(categoryNavSource).toContain(
-      "text-primary-foreground-quiet text-xs"
+    expect(categoryNavSource).toContain("chip-count");
+    expect(css).toMatch(
+      /\.chip-count\s*\{[^}]*color:\s*var\(--quiet-foreground\);/
+    );
+    expect(css).toMatch(
+      /\.chip-count\s*\{[^}]*color:\s*var\(--primary-foreground-quiet\);/
     );
     // Comments may still name the utility they replaced; className may not.
     const withoutComments = categoryNavSource

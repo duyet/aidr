@@ -5,10 +5,10 @@
 #
 #   home="/?lang=en"                       the page at the top
 #   rows="/?lang=en@700"                   scrolled 700 CSS px
-#   why="/90b333df?lang=en#Why this ranks" after clicking the element with that text
+#   story="/90b333df?lang=en#Shortcuts"   after clicking the element with that text
 #   card="/api/og/date/2026-10-08.png"     /api/ paths are downloaded as-is
 #   prefs="/?lang=en#button:Reader preferences"   click a button by its accessible name
-#   card="/?lang=en#button:Show day card>button:Show text"   several clicks, in order
+#   prefs="/?lang=en#button:Reader preferences>Shortcuts"   several clicks, in order
 #
 # Pages render at 1360x850 CSS px and 2x, so each still is 2720x1700.
 # Output holds third-party story photos, so it goes to the ignored capture/ folder.

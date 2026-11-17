@@ -11,6 +11,7 @@ export function TldrBulletRow({
   itemId,
   lang,
   fullText,
+  second,
   linked,
   numbered = false,
   priority,
@@ -24,6 +25,8 @@ export function TldrBulletRow({
   itemId?: string;
   lang?: Lang;
   fullText: string;
+  /** The other language's title, under the clamped one in bilingual mode. */
+  second?: { text: string; lang: Lang };
   linked?: boolean;
   /** Draw the mono rank before the text (layout A); the list is still an
    * <ol>, so the number is decorative for screen readers. */
@@ -32,13 +35,20 @@ export function TldrBulletRow({
   children: ReactNode;
 }): ReactElement {
   const copy = (
-    <span
-      className={`min-w-0 flex-1 line-clamp-2 break-words text-[15px] text-foreground ${
-        linked ? "underline-offset-2 group-hover:underline" : ""
-      }`}
-      title={fullText}
-    >
-      {children}
+    <span className="min-w-0 flex-1 text-[15px]">
+      <span
+        className={`line-clamp-2 break-words text-foreground ${
+          linked ? "underline-offset-2 group-hover:underline" : ""
+        }`}
+        title={fullText}
+      >
+        {children}
+      </span>
+      {second && (
+        <span lang={second.lang} className="bi-second block">
+          {second.text}
+        </span>
+      )}
     </span>
   );
   // Row padding follows the reader Density pref (--reader-pad).

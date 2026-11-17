@@ -74,11 +74,7 @@ function Chip({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
-        active
-          ? "border-foreground bg-foreground text-background"
-          : "border-border text-muted-foreground hover:text-foreground"
-      }`}
+      className="chip"
     >
       {children}
     </button>
@@ -152,7 +148,7 @@ function ContributionDetail({
         </div>
       )}
 
-      <dl className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+      <dl className="grid grid-cols-2 gap-2 pt-3 text-xs text-muted-foreground">
         <div>
           <dt>{vi ? "Gửi lúc" : "Sent"}</dt>
           <dd className="text-foreground">{fmtDate(c.created_at, lang)}</dd>
@@ -160,7 +156,7 @@ function ContributionDetail({
         <div>
           <dt>{vi ? "Duyệt lúc" : "Reviewed"}</dt>
           <dd className="text-foreground">
-            {c.reviewed_at ? fmtDate(c.reviewed_at, lang) : "—"}
+            {c.reviewed_at ? fmtDate(c.reviewed_at, lang) : "-"}
           </dd>
         </div>
       </dl>
@@ -287,13 +283,13 @@ export function ContributionsList({
               : "Nothing matches these filters."}
         </p>
       ) : (
-        <ul className="divide-y divide-border/60 overflow-hidden rounded-md border border-border">
+        <ul className="space-y-0.5">
           {shown.map((c) => (
             <li key={`${c.kind}-${c.id}`}>
               <button
                 type="button"
                 onClick={() => setOpen(c)}
-                className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-3 px-3 py-2 text-left text-sm hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <span
                   role="img"
@@ -303,7 +299,7 @@ export function ContributionsList({
                 />
                 <span className="min-w-0">
                   <span className="block truncate font-medium">
-                    {c.item_title ?? c.url ?? c.item_id?.slice(0, 8) ?? "—"}
+                    {c.item_title ?? c.url ?? c.item_id?.slice(0, 8) ?? "-"}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
                     {kindLabel(c, vi)}
@@ -334,7 +330,7 @@ export function ContributionsList({
           type="button"
           onClick={loadMore}
           disabled={loadingMore}
-          className="rounded-md border border-border px-3 py-1 text-xs hover:text-accent disabled:opacity-50"
+          className="btn-soft"
         >
           {loadingMore
             ? vi

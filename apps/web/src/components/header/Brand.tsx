@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { track } from "../../lib/analytics/track";
 import { useLang } from "../../lib/lang-context";
 import type { Lang } from "../../lib/types";
+import { LogoMark } from "./LogoMark";
 
 export function Brand({ lang }: { lang: Lang }) {
   const navigationLang = useLang();
@@ -12,15 +13,8 @@ export function Brand({ lang }: { lang: Lang }) {
       onClick={() => track("nav_click", { to: "/", placement: "header" })}
       className="flex min-w-0 shrink-0 items-center gap-2 rounded-md"
     >
-      {/* The yellow ";" mark (DESIGN.md "Logo"). Decorative: the link's
-          name stays "AI;DR". */}
-      <span
-        aria-hidden
-        className="grid size-5 shrink-0 place-items-center rounded-[4px] bg-signal text-[13px] font-bold leading-none text-signal-ink"
-      >
-        ;
-      </span>
-      <span className="font-heading text-base font-semibold tracking-[-0.01em] text-foreground">
+      <LogoMark />
+      <span className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
         AI;DR
       </span>
       {/* The tagline stays in the link's name for screen readers. On screen

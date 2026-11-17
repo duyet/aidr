@@ -43,6 +43,7 @@ import {
   type Prefs,
   PrefsContext,
   readerCssVars,
+  readerDataAttrs,
   savePrefs,
 } from "../lib/prefs";
 import { getRouteSearch, unavailableRouteSearch } from "../lib/route-search";
@@ -244,8 +245,8 @@ function RootComponent() {
             <ThemeProvider>
               <ClerkRootProvider>
                 <div
-                  className="app-shell relative flex min-h-screen flex-col justify-between overflow-x-hidden bg-background text-foreground selection:bg-foreground selection:text-background"
-                  data-reader-bg={prefs.bg}
+                  className="app-shell relative flex min-h-screen flex-col justify-between overflow-x-clip bg-background text-foreground selection:bg-foreground selection:text-background"
+                  {...readerDataAttrs(prefs)}
                   suppressHydrationWarning
                 >
                   {/* Amber brand accent + compact reader typography are scoped

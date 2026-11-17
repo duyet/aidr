@@ -99,8 +99,8 @@ export function SuggestForm({
     return (
       <span className="text-xs text-muted-foreground" aria-live="polite">
         {vi
-          ? "Đã gửi — AI đang duyệt góp ý…"
-          : "Submitted — the reviewer is checking it…"}
+          ? "Đã gửi, AI đang duyệt góp ý…"
+          : "Submitted, the reviewer is checking it…"}
       </span>
     );
   }
@@ -138,11 +138,7 @@ export function SuggestForm({
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="text-xs text-accent underline underline-offset-2 hover:no-underline"
-      >
+      <button type="button" onClick={() => setOpen(true)} className="btn-link">
         {vi ? "Góp ý chỉnh sửa" : "Suggest an edit"}
       </button>
     );
@@ -186,20 +182,20 @@ export function SuggestForm({
             ? "Tiêu đề, tóm tắt hay bản dịch cần sửa gì? Viết bằng ngôn ngữ nào cũng được."
             : "What should change in the title, summary or translation? Any language is fine."
         }
-        className="min-h-16 w-full max-w-full resize-y rounded-md border border-border bg-background p-2 text-sm"
+        className="min-h-16 w-full max-w-full resize-y rounded-lg border-0 bg-muted p-2 text-sm"
       />
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="submit"
           disabled={status === "sending" || !text.trim()}
-          className="rounded-md bg-accent px-2 py-1 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+          className="btn-primary"
         >
           {lang === "vi" ? "Gửi" : "Submit"}
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+          className="btn-soft"
         >
           {lang === "vi" ? "Huỷ" : "Cancel"}
         </button>

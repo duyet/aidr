@@ -5,12 +5,9 @@ export function CampaignList({ campaigns }: { campaigns: CampaignRow[] }) {
   return (
     <section>
       <h2 className="mb-2 text-sm font-medium">Campaigns</h2>
-      <ul className="border-t border-border text-sm">
+      <ul className="text-sm">
         {campaigns.map((row) => (
-          <li
-            key={row.id}
-            className="flex justify-between border-b border-border/60 py-2"
-          >
+          <li key={row.id} className="flex justify-between py-2">
             <span>{row.subject}</span>
             <span className="text-muted-foreground">
               {row.status}

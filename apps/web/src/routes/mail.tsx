@@ -15,7 +15,7 @@ function MailPage() {
   if (admin.loading) {
     return (
       <p className="news-content mx-auto max-w-3xl py-16 text-sm text-muted-foreground">
-        Checking admin…
+        Checking admin...
       </p>
     );
   }
@@ -27,12 +27,8 @@ function MailPage() {
         <p className="mt-2 text-sm text-muted-foreground">
           Sign in with an admin account to manage the list and send notes.
         </p>
-        <p className="mt-4 text-sm">
-          <Link
-            to="/subscribe"
-            search={{ lang }}
-            className="underline underline-offset-2"
-          >
+        <p className="mt-4">
+          <Link to="/subscribe" search={{ lang }} className="btn-link">
             Public subscribe page
           </Link>
         </p>

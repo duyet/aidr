@@ -33,8 +33,8 @@ export function EmailChannel({
         <div className="space-y-6">
           <p className="text-base leading-relaxed text-muted-foreground">
             {t(
-              "Daily digest or weekly recap by email. No account required — you can link one later.",
-              "Bản tin hằng ngày hoặc tổng hợp tuần qua email. Không cần tài khoản — có thể liên kết sau."
+              "Daily digest or weekly recap by email. No account required, you can link one later.",
+              "Bản tin hằng ngày hoặc tổng hợp tuần qua email. Không cần tài khoản, có thể liên kết sau."
             )}
           </p>
           <EmailSubscribeForm

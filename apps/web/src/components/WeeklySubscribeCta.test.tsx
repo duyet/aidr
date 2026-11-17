@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { LangContext } from "../lib/lang-context";
 import { WeeklySubscribeCta, weeklySubscribeHref } from "./WeeklySubscribeCta";
 
 describe("WeeklySubscribeCta", () => {
@@ -13,7 +14,11 @@ describe("WeeklySubscribeCta", () => {
   it("renders per-language copy", () => {
     const en = renderToStaticMarkup(<WeeklySubscribeCta lang="en" />);
     expect(en).toContain("Subscribe to the weekly email");
-    const vi = renderToStaticMarkup(<WeeklySubscribeCta lang="vi" />);
+    const vi = renderToStaticMarkup(
+      <LangContext.Provider value="vi">
+        <WeeklySubscribeCta lang="vi" />
+      </LangContext.Provider>
+    );
     expect(vi).toContain("Đăng ký email tuần");
     expect(vi).not.toContain("Subscribe to the weekly email");
   });
