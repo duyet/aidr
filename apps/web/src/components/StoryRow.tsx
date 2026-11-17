@@ -264,14 +264,14 @@ export function StoryRow({
         matchColor={matchColor}
         onToggle={toggleExpanded}
       >
-        <span className="story-rank flex w-7 shrink-0 items-baseline justify-end gap-0.5 text-right text-[12.5px] tabular-nums text-muted-foreground max-[699px]:hidden in-data-[layout=newspaper]:hidden">
+        <span className="story-rank flex w-7 shrink-0 items-baseline justify-end gap-0.5 self-start pt-[2px] text-right text-[12.5px] tabular-nums text-muted-foreground max-[699px]:hidden in-data-[layout=newspaper]:hidden">
           {hasDetails && (
             <ChevronDown
               data-testid="story-row-chevron"
               data-expanded={expanded ? "true" : "false"}
               aria-hidden="true"
-              className={`h-3.5 w-3.5 shrink-0 self-center text-quiet-foreground transition-transform motion-reduce:transition-none ${
-                expanded ? "rotate-180" : ""
+              className={`h-3.5 w-3.5 shrink-0 self-center text-quiet-foreground opacity-0 transition-[opacity,transform] group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none ${
+                expanded ? "rotate-180 opacity-100" : ""
               }`}
             />
           )}
