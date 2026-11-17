@@ -22,7 +22,7 @@ function modelChainIds(): string[] {
 
 describe("algorithm changelog", () => {
   it("finds the model chains in wrangler.toml", () => {
-    expect(modelChainIds()).toContain("poolside/laguna-s-2.1");
+    expect(modelChainIds()).toContain("google/gemma-latest");
   });
 
   it.each(modelChainIds())("names %s in English and Vietnamese", (id) => {

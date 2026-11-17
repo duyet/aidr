@@ -199,26 +199,22 @@ describe("live AnyRouter model chains", () => {
   // stayed behind Laguna. The VI→EN chain was not evaluated and is unchanged.
   // 2026-11-07 (user directive for better Vietnamese): Gemma first on both
   // translate chains, Laguna second as the proven fallback. Nemotron drops off.
-  it("orders the translate chains by measured success rate", () => {
-    expect(idsOf("ANYROUTER_TRANSLATE_MODEL")).toEqual([
-      "google/gemma-latest",
-      "poolside/laguna-s-2.1",
-    ]);
+  // 2026-11-17 (local model bench): Laguna is dead — 404 on every translate
+  // attempt, 0 valid. Gemma scored 0.918 with 3/3 valid, so it runs alone.
+  it("runs translation on Gemma alone after Laguna went dead", () => {
+    expect(idsOf("ANYROUTER_TRANSLATE_MODEL")).toEqual(["google/gemma-latest"]);
     expect(idsOf("ANYROUTER_ENGLISH_TRANSLATE_MODEL")).toEqual([
       "google/gemma-latest",
-      "poolside/laguna-s-2.1",
     ]);
   });
 
   // Over 7 days to 2026-10-14, gemini-3-flash served 1 of 6 TL;DR fallback
   // attempts after a luna hang, and none since. Laguna served 21 of 32
   // TL;DR attempts (p95 105s), which fits the 135s slice left after a 20s
-  // luna first-token hang (#663).
-  it("falls back from luna to Laguna on TL;DR", () => {
-    expect(idsOf("ANYROUTER_TLDR_MODEL")).toEqual([
-      "openai/gpt-5.6-luna",
-      "poolside/laguna-s-2.1",
-    ]);
+  // luna first-token hang (#663). 2026-11-17: Laguna failed 404/502 on every
+  // tldr attempt in the local bench; luna scored 1.0 on 2/2, so it runs alone.
+  it("runs TL;DR on luna alone after Laguna went dead", () => {
+    expect(idsOf("ANYROUTER_TLDR_MODEL")).toEqual(["openai/gpt-5.6-luna"]);
   });
 
   it("configures a separate explicit VI→EN generator", () => {

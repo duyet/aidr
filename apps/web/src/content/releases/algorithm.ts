@@ -11,6 +11,13 @@ import type { EarlierEntry } from "./earlier";
 
 export const ALGORITHM_ENTRIES: EarlierEntry[] = [
   {
+    date: "2026-11-17",
+    text: {
+      en: "poolside/laguna-s-2.1 is gone from the model chains. A bench on Nov 17 got an error on every attempt: 404 on translation, 404 and 502 on the daily TL;DR. Keeping it as a fallback only spent time before giving up. Vietnamese and English translation now use google/gemma-latest alone, and the daily TL;DR uses openai/gpt-5.6-luna alone. In the same bench gemma translated 3 of 3 cases and luna wrote 2 of 2 TL;DRs.",
+      vi: "poolside/laguna-s-2.1 đã bị bỏ khỏi các chuỗi model. Phép thử ngày 17/11 nhận lỗi ở mọi lần gọi: 404 khi dịch, 404 và 502 khi viết TL;DR hằng ngày. Giữ nó làm dự phòng chỉ tốn thời gian rồi mới bỏ cuộc. Dịch tiếng Việt và tiếng Anh giờ chỉ dùng google/gemma-latest; TL;DR hằng ngày chỉ dùng openai/gpt-5.6-luna. Trong cùng phép thử, gemma dịch được 3 trên 3 ca và luna viết được 2 trên 2 bản TL;DR.",
+    },
+  },
+  {
     date: "2026-11-07",
     text: {
       en: "Vietnamese translation now tries google/gemma-latest first, then poolside/laguna-s-2.1. English translation uses the same order. Laguna stays as the fallback when Gemma fails, so a Gemma outage never blocks publishing.",

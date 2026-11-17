@@ -3184,8 +3184,12 @@ nothing since 10-12, so both left every chain (#663). The rolling
 aliases follow new models without a deploy, so re-probe what they serve
 before reading a bench row as a fixed model.
 
-TL;DR and translate use the same chain without Jev. The VI→EN generator
-uses only concrete ids (`poolside/laguna-s-2.1`). The translation reviewer
+TL;DR and translate each run on one model without Jev: TL;DR on
+`openai/gpt-5.6-luna`, translate and the VI→EN generator on
+`google/gemma-latest` (all concrete ids). `poolside/laguna-s-2.1` left every
+generator chain on 2026-11-17: the local model bench got 404/502 on every
+attempt in translate, tldr and vi→en, while luna and gemma served their cases.
+The translation reviewer
 (`z-ai/glm-4.6`) shares no id with any generator chain and gets a 45s budget
 (`QA_REVIEW_TIMEOUT_MS`), 30s max for the first hop.
 
