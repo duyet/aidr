@@ -56,14 +56,14 @@ export function TrendingChips({
                   "--tc-dark": color.dark,
                 } as CSSProperties
               }
-              className="-mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-[9px] text-left text-[12.5px] hover:bg-muted data-pressed:bg-muted"
+              className="-mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-[9px] text-left text-[15px] leading-[calc(var(--reader-leading,1.55)_-_0.175)] hover:bg-muted data-pressed:bg-muted"
             >
               <span className="flex min-w-0 items-center gap-2">
                 <span
                   aria-hidden
                   className="topic-dot size-2 shrink-0 rounded-full"
                 />
-                <span className="topic-ink min-w-0 truncate font-semibold">
+                <span className="topic-ink min-w-0 truncate font-normal">
                   {t.tag}
                 </span>
               </span>
@@ -71,7 +71,9 @@ export function TrendingChips({
                   count toward whatever background is behind the row, so the same
                   class rendered a different (failing) ratio on every reader
                   background. The token keeps the hue and the AA floor. */}
-              <span className="topic-muted tabular-nums">{t.count}</span>
+              <span className="topic-muted text-[12.5px] tabular-nums">
+                {t.count}
+              </span>
             </Toggle>
           );
         })}

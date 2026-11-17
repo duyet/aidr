@@ -45,10 +45,14 @@ describe("row content", () => {
     expect(html).toMatch(/\d+(y|d|h|m)</);
   });
 
-  it("clamps the title to two lines and sizes it from the layout variable", () => {
+  it("clamps the title to two lines and matches the AI;DR card's title type", () => {
     const html = row();
     expect(html).toContain("line-clamp-2");
-    expect(html).toContain("text-[length:var(--list-title-size)]");
+    // Same family (inherited Inter), size, weight and leading as the
+    // numbered item titles in TldrBulletRow / TldrBulletList.
+    expect(html).toContain("story-title block min-w-0 text-[15px]");
+    expect(html).toContain("leading-[calc(var(--reader-leading,1.55)_-_0.175)]");
+    expect(html).toContain("font-normal text-foreground");
   });
 
   it("colors key names with the topic ink", () => {

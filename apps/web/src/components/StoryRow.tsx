@@ -279,10 +279,10 @@ export function StoryRow({
         </span>
         <span className="story-body min-w-0 flex-1">
           <span
-            className={`story-title block min-w-0 text-[length:var(--list-title-size)] leading-[1.4] in-data-[layout=newspaper]:font-heading in-data-[layout=newspaper]:leading-[1.25] ${
+            className={`story-title block min-w-0 text-[15px] leading-[calc(var(--reader-leading,1.55)_-_0.175)] in-data-[layout=newspaper]:font-heading in-data-[layout=newspaper]:leading-[1.25] ${
               matchColor
-                ? "topic-colored font-semibold"
-                : "font-semibold text-foreground"
+                ? "topic-colored font-normal"
+                : "font-normal text-foreground"
             }`}
           >
             <span className="line-clamp-2">

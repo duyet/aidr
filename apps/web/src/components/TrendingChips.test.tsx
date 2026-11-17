@@ -59,4 +59,16 @@ describe("TrendingChips", () => {
     list();
     expect(screen.getByRole("heading", { name: "Trending" })).toBeTruthy();
   });
+
+  it("sets trending item titles to the AI;DR card's title type", () => {
+    list();
+    const row = screen.getByRole("button", { name: "Tag1 20" });
+    expect(row.className).toContain("text-[15px]");
+    expect(row.className).toContain(
+      "leading-[calc(var(--reader-leading,1.55)_-_0.175)]"
+    );
+    const title = row.querySelector(".topic-ink");
+    expect(title?.className).toContain("font-normal");
+    expect(title?.className).not.toContain("font-semibold");
+  });
 });
