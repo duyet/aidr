@@ -1,5 +1,61 @@
 # Changelog
 
+## [0.1.19](https://github.com/duyet/aidr/compare/web-v0.1.18...web-v0.1.19) (2026-11-17)
+
+
+### ✨ Features
+
+* **ingest:** pause the scheduler with INGEST_SCHEDULER_PAUSED ([#1091](https://github.com/duyet/aidr/issues/1091)) ([0cfb8bd](https://github.com/duyet/aidr/commit/0cfb8bd5343bec851b24042210a438d18bf18a2c))
+* **og:** serve story cards as static files from og.aidr.today ([#1093](https://github.com/duyet/aidr/issues/1093)) ([51b2602](https://github.com/duyet/aidr/commit/51b2602e7e8d9834a380b7776ae99705c5c29db4))
+* **og:** upload story cards through an admin route, drop the R2 API keys ([#1107](https://github.com/duyet/aidr/issues/1107)) ([619e725](https://github.com/duyet/aidr/commit/619e725221274f54ca5e97001a0dcfa6b089810e))
+* **web:** ? lists the home feed shortcuts ([541675f](https://github.com/duyet/aidr/commit/541675f94a581ab8150e8bd4874f62525e049dfd))
+* **web:** 44px vote tap target on touch, Inter for Vietnamese eyebrows ([ad05cc7](https://github.com/duyet/aidr/commit/ad05cc78b6b2033f5ae6135c37b72ef73e9492c4))
+* **web:** AI;DR Tuần Này; compact /weeks + /calendar; leading week column ([#1132](https://github.com/duyet/aidr/issues/1132)) ([e0ea611](https://github.com/duyet/aidr/commit/e0ea611a08471e9914eb7d7d4a72881ae367ea67))
+* **web:** copy a story or a whole day as title + link for social posts ([#1104](https://github.com/duyet/aidr/issues/1104)) ([82ef02e](https://github.com/duyet/aidr/commit/82ef02ead4da9e5a56d5c44f72593f87ccd51faa))
+* **web:** design foundation: Inter, light and dark tokens, header ([#1111](https://github.com/duyet/aidr/issues/1111)) ([e340d14](https://github.com/duyet/aidr/commit/e340d145486bf2ded900f238bba25d5c18313eb3))
+* **web:** newspaper weekly, prefs dropdowns, /data restyle, extension design ([#1115](https://github.com/duyet/aidr/issues/1115)) ([00a653d](https://github.com/duyet/aidr/commit/00a653d99bd41e3ba5cdd7660ca93ff5af74b65f))
+* **web:** one entity color in feed and digest titles ([1da7a42](https://github.com/duyet/aidr/commit/1da7a422c67fc378c17e8c32844fd7332f9320b4))
+* **web:** redesign v2 — layouts, prefs, tokens and font parity ([cf51008](https://github.com/duyet/aidr/commit/cf51008237172c60fa20922c4384755a4a8ad322))
+* **web:** restyle release notes, long-form pages, footer and 404 ([306edb0](https://github.com/duyet/aidr/commit/306edb02dcb279fa35923b63f30c4c923fca29bd))
+* **web:** restyle the day archive and the calendar ([300b6fc](https://github.com/duyet/aidr/commit/300b6fc9ce41a5fb106b1468c23277caf5184170))
+* **web:** restyle the home feed to the new design ([#1113](https://github.com/duyet/aidr/issues/1113)) ([1b9b5ae](https://github.com/duyet/aidr/commit/1b9b5ae9023412b30b27480f9bb8cda8ee906cff))
+* **web:** restyle the weekly pages ([b9a17bf](https://github.com/duyet/aidr/commit/b9a17bf1be6d708668bedc21b4b2f9e44d1557a6))
+* **web:** show the edition calendar on /weeks ([#1129](https://github.com/duyet/aidr/issues/1129)) ([5811498](https://github.com/duyet/aidr/commit/5811498255b36882698bba518dee82f4a3dd000c))
+* **web:** story page redesign, AI;DR as the main text ([#1114](https://github.com/duyet/aidr/issues/1114)) ([84aed51](https://github.com/duyet/aidr/commit/84aed515f32999b0897c013f61e77f545a7c6cc6))
+* **web:** tag copied share links with utm_source=share ([#1109](https://github.com/duyet/aidr/issues/1109)) ([6093292](https://github.com/duyet/aidr/commit/6093292fb93e34761fd0e385c83f3c488ca402a0))
+* **web:** the in-progress week renders as a provisional edition, live ([#1136](https://github.com/duyet/aidr/issues/1136)) ([15875d0](https://github.com/duyet/aidr/commit/15875d0560d7007494c495a34adddc63d152714d))
+* **web:** week column on the calendar; merged /weeks masthead + subscribe ([#1130](https://github.com/duyet/aidr/issues/1130)) ([fb408de](https://github.com/duyet/aidr/commit/fb408de82e294dda5199305d73dd881de345e75f))
+
+
+### 🐛 Bug Fixes
+
+* **health:** daily summary skips legacy runs stored in epoch ms ([#1099](https://github.com/duyet/aidr/issues/1099)) ([2bf77be](https://github.com/duyet/aidr/commit/2bf77bea595ee1411690f678005731dd411d5670))
+* **health:** llm-failure-rate counts exhausted chains, not failed attempts ([#1097](https://github.com/duyet/aidr/issues/1097)) ([4be7144](https://github.com/duyet/aidr/commit/4be71440e1327d91741b4b8d3f046754c545f146))
+* **llm:** drop dead sonnet and preset from the cluster chain, glm first, luna last ([d64bcfb](https://github.com/duyet/aidr/commit/d64bcfb0a0f3ba8a8df92aabd9b54e55e1a6d041))
+* **llm:** replace dead sonnet and preset in the cluster chain ([#1098](https://github.com/duyet/aidr/issues/1098)) ([91e40a9](https://github.com/duyet/aidr/commit/91e40a95933ca6e9ac1b120766f4cf832911c128))
+* **og:** raise the card upload cap to 2 MiB and skip, not fail, an oversized card ([#1108](https://github.com/duyet/aidr/issues/1108)) ([adf8783](https://github.com/duyet/aidr/commit/adf8783eb1c44b14dbc716aa33661f7f1f16c4ca))
+* **translate:** write VI in third-person news voice (blocked on eval) ([#654](https://github.com/duyet/aidr/issues/654)) ([c647d15](https://github.com/duyet/aidr/commit/c647d15f07086285e185b7ac14766948db994b9f))
+* **verify-aidr:** doctor checks the current title and dead LLM chains ([7ae1077](https://github.com/duyet/aidr/commit/7ae107713596ad63a3164fd32bfe723c5cc5e430))
+* **verify-aidr:** doctor checks the current title and dead LLM chains ([#1101](https://github.com/duyet/aidr/issues/1101)) ([f5a066f](https://github.com/duyet/aidr/commit/f5a066ff022625eba4b71a550db2fbbff5e86056))
+* **web:** align integrated tokens, docs, lint and tests after master merge ([b2879d5](https://github.com/duyet/aidr/commit/b2879d5bc07a9f7a8cac9d9357c9ccc585889754))
+* **web:** remove Aa Settings tab, weekly back link, gemma-first translate chain ([c15344f](https://github.com/duyet/aidr/commit/c15344fb37164c8959b50a8085848350aa55fe18))
+* **web:** serve each font family as one file so Vietnamese words never mix faces ([#1087](https://github.com/duyet/aidr/issues/1087)) ([4bdf9c5](https://github.com/duyet/aidr/commit/4bdf9c5419a510e3ccc5ccbb78005da0213815e9))
+* **web:** serve the provisional week through the Markdown twin and JSON API ([#1138](https://github.com/duyet/aidr/issues/1138)) ([bf20352](https://github.com/duyet/aidr/commit/bf203521f21ef55275892eb579b8921b26f23b3d))
+* **web:** update CalendarButton ring test to ring-1 after calendar restyle ([29d0165](https://github.com/duyet/aidr/commit/29d0165f6c7c8ca0361e04fe950de2a3e73405e3))
+* **web:** week page og:image never points at a publisher URL ([#1135](https://github.com/duyet/aidr/issues/1135)) ([a0dd230](https://github.com/duyet/aidr/commit/a0dd2308804920eae105f58ccced4f1c4abefd36))
+* **web:** week page unfurls with the lead story's OG card when publisher images are dead ([#1134](https://github.com/duyet/aidr/issues/1134)) ([2d11565](https://github.com/duyet/aidr/commit/2d115653e9a69ef221a6147e43b474f6904aacc2))
+
+
+### ⚡ Performance
+
+* **d1:** cut feed, re-rank and workflow_runs rows read ([#1089](https://github.com/duyet/aidr/issues/1089)) ([65dc7fb](https://github.com/duyet/aidr/commit/65dc7fbd511a5ed649a8a8c248b6e36385e7ed0d))
+* **og:** key story cards by their inputs, apart from day cards ([#1092](https://github.com/duyet/aidr/issues/1092)) ([d5768a4](https://github.com/duyet/aidr/commit/d5768a4b70e6cdacc01f23483e03f8fdc2156063))
+* **og:** redirect archive stories without a stored card to the home card ([#1094](https://github.com/duyet/aidr/issues/1094)) ([5b81e91](https://github.com/duyet/aidr/commit/5b81e91c3b6711faa095e6cc5b44394aad0f9b59))
+* **og:** send bulk crawlers the home card on a story card miss ([#1103](https://github.com/duyet/aidr/issues/1103)) ([f8d53e8](https://github.com/duyet/aidr/commit/f8d53e854a2362b5fe8219955421955512f441dc))
+* **web:** keep SEO-audit crawlers off the site, narrow the Kakao card match ([#1106](https://github.com/duyet/aidr/issues/1106)) ([e69a511](https://github.com/duyet/aidr/commit/e69a5116aca56ac60e5abad4172f42eaae77b774))
+* **web:** pre-render day OG cards in the ingest workflow ([6bdb56e](https://github.com/duyet/aidr/commit/6bdb56e3eab1da0ba48e03da12497512a1dd8132))
+* **web:** sample Workers Logs at 5% ([#1095](https://github.com/duyet/aidr/issues/1095)) ([f6c552e](https://github.com/duyet/aidr/commit/f6c552e3eed53bd317986f877a54dadcbc0b54d9))
+
 ## [0.1.18](https://github.com/duyet/aidr/compare/web-v0.1.17...web-v0.1.18) (2026-10-28)
 
 
