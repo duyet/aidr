@@ -46,7 +46,7 @@ import {
 import { findSourceSpec } from "../worker/sources/catalog";
 import { cf, D1_DATABASE_ID, d1ResultRows, wranglerSelect } from "./cf-d1";
 
-const ACCOUNT_ID = "7df185a18b98382c3240fa7ac4a37075";
+const ACCOUNT_ID = "18bb51bef63a88086717388ed7f3008e";
 
 /** Points a story needed before its source fetched it at all (HN's
  *  `popularMinPoints`, 20 since migration 0069); 0 without a floor. The

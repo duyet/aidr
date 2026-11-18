@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { Env } from "../worker/types";
 
 /** Production D1 database `aidr`. `cf d1` takes this id, not the binding name. */
-export const D1_DATABASE_ID = "0c8f3efe-0427-4268-8d9f-bb1a4bcbe427";
+export const D1_DATABASE_ID = "7ec0478c-d9b0-4d55-8812-c0bd37409b32";
 
 const webRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
