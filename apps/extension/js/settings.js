@@ -20,6 +20,16 @@ export function safeHttpUrl(value, fallback = "") {
 
 const DEFAULT_SECTION_ORDER = ["categories", "trending", "tldr", "days"];
 
+/** Reader choice lists — kept in sync with apps/web/src/lib/prefs.ts. */
+export const LAYOUTS = ["compact", "comfortable", "newspaper"];
+export const ACCENTS = ["yellow", "blue", "green", "rose", "violet"];
+export const HIGHLIGHTS = ["topic", "one", "none"];
+export const BILINGUAL_FIRSTS = ["vi", "en"];
+export const TLDR_COLS = [1, 2, 3];
+export const TLDR_VIEWS = ["image", "text"];
+export const NEWS_COLS = [2, 3];
+export const FEED_DAYS = [1, 3, 7];
+
 export const DEFAULT_SETTINGS = {
   theme: "system",
   font: "sans",
@@ -29,12 +39,12 @@ export const DEFAULT_SETTINGS = {
   sections: {
     trending: true,
     tldr: true,
-    days: false,
+    days: true,
     categories: true,
   },
   sectionOrder: [...DEFAULT_SECTION_ORDER],
-  /** Near the airy end: the new tab is read at a glance, not scanned. */
-  density: "spacious",
+  /** Matches the web reader's medium rhythm. All seven steps still load. */
+  density: "medium",
   storyCount: 8,
   tldrCount: 8,
   /** Show EN|VI side-by-side in the story dialog (matches web bilingualDialog pref). */
@@ -42,6 +52,22 @@ export const DEFAULT_SETTINGS = {
   /** Footer is hidden by default on new tab for a cleaner digest-first layout. */
   showFooter: false,
   apiBase: DEFAULT_API_BASE,
+  // Reader prefs shared with the website's Customize panel.
+  /** Body font is `font` above; `headFont` sets headlines apart. */
+  headFont: "sans",
+  layout: "compact",
+  accent: "yellow",
+  highlight: "topic",
+  /** Show the other language under the leading one. */
+  bilingual: false,
+  bilingualFirst: "vi",
+  tldrCols: 2,
+  /** Image/text masthead choice; persisted from the renderer's toggle. */
+  tldrView: "text",
+  thumbs: true,
+  summaries: false,
+  feedDays: 3,
+  newsCols: 2,
 };
 
 const SYNC_KEY = "newsTabSettings";
@@ -92,6 +118,10 @@ function pick(list, value, fallback) {
   return list.includes(value) ? value : fallback;
 }
 
+function flag(value, fallback) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
 function normalizeFont(value) {
   if (FONTS.includes(value)) return value;
   if (LEGACY_FONTS.includes(value)) return "sans";
@@ -112,14 +142,19 @@ export function normalizeSettings(raw) {
   return {
     theme: pick(THEMES, input.theme, DEFAULT_SETTINGS.theme),
     font: normalizeFont(input.font),
+    headFont: normalizeFont(input.headFont),
     fontSize: clampFontSize(input.fontSize),
     language: pick(LANGUAGES, input.language, DEFAULT_SETTINGS.language),
     bg: pick(BGS, input.bg, DEFAULT_SETTINGS.bg),
     sections: {
-      tldr: sections.tldr !== false,
-      days: sections.days === true || sections.stories === true,
-      categories: sections.categories !== false,
-      trending: sections.trending !== false,
+      tldr: flag(sections.tldr, DEFAULT_SETTINGS.sections.tldr),
+      // `stories` was the old key for the ranked day list.
+      days: flag(
+        sections.days ?? sections.stories,
+        DEFAULT_SETTINGS.sections.days
+      ),
+      categories: flag(sections.categories, DEFAULT_SETTINGS.sections.categories),
+      trending: flag(sections.trending, DEFAULT_SETTINGS.sections.trending),
     },
     sectionOrder: normalizeSectionOrder(input.sectionOrder),
     density: pick(DENSITIES, input.density, DEFAULT_SETTINGS.density),
@@ -128,6 +163,21 @@ export function normalizeSettings(raw) {
     showFooter: input.showFooter === true,
     bilingualDialog: input.bilingualDialog === true,
     apiBase: normalizeApiBase(input.apiBase),
+    layout: pick(LAYOUTS, input.layout, DEFAULT_SETTINGS.layout),
+    accent: pick(ACCENTS, input.accent, DEFAULT_SETTINGS.accent),
+    highlight: pick(HIGHLIGHTS, input.highlight, DEFAULT_SETTINGS.highlight),
+    bilingual: flag(input.bilingual, DEFAULT_SETTINGS.bilingual),
+    bilingualFirst: pick(
+      BILINGUAL_FIRSTS,
+      input.bilingualFirst,
+      DEFAULT_SETTINGS.bilingualFirst
+    ),
+    tldrCols: pick(TLDR_COLS, input.tldrCols, DEFAULT_SETTINGS.tldrCols),
+    tldrView: pick(TLDR_VIEWS, input.tldrView, DEFAULT_SETTINGS.tldrView),
+    thumbs: flag(input.thumbs, DEFAULT_SETTINGS.thumbs),
+    summaries: flag(input.summaries, DEFAULT_SETTINGS.summaries),
+    feedDays: pick(FEED_DAYS, input.feedDays, DEFAULT_SETTINGS.feedDays),
+    newsCols: pick(NEWS_COLS, input.newsCols, DEFAULT_SETTINGS.newsCols),
   };
 }
 
@@ -187,7 +237,19 @@ export function applyAppearance(settings) {
 
   const shell = document.querySelector(".app-shell");
   if (shell instanceof HTMLElement) {
+    const onOff = (value) => (value ? "on" : "off");
+    // Exact hooks the website styles.css keys page-wide rules off. Other
+    // owners wire the new markup/CSS; this only publishes the resolved prefs.
     shell.dataset.readerBg = settings.bg;
+    shell.dataset.layout = settings.layout;
+    shell.dataset.accent = settings.accent;
+    shell.dataset.highlight = settings.highlight;
+    shell.dataset.headFont = settings.headFont;
+    shell.dataset.bilingual = onOff(settings.bilingual);
+    shell.dataset.tldrCols = String(settings.tldrCols);
+    shell.dataset.newsCols = String(settings.newsCols);
+    shell.dataset.thumbs = onOff(settings.thumbs);
+    shell.dataset.summaries = onOff(settings.summaries);
   }
 
   const feed = document.querySelector(".news-content");
@@ -233,6 +295,16 @@ export async function saveSettings(next) {
   await areaSet("local", SYNC_KEY, settings);
   applyAppearance(settings);
   return settings;
+}
+
+/**
+ * Persist a partial patch from the renderer (e.g. the day-card image/text
+ * toggle calling `updateSettings({ tldrView: "image" })`). Loads the current
+ * value first so callers don't need to hold the whole settings object.
+ */
+export async function updateSettings(patch) {
+  const current = await loadSettings();
+  return saveSettings({ ...current, ...patch });
 }
 
 export async function ensureHostPermission(apiBase) {

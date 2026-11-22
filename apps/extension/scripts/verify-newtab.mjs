@@ -163,6 +163,11 @@ function featureMapFromHtml(html, js = "") {
     twoColumn: lists === 2,
     numbered: /class="tldr-list"/.test(html),
     daySections: (html.match(/class="day-section"/g) || []).length,
+    redesignStructure:
+      /class="home-grid"/.test(html) &&
+      /id="day-header"/.test(html) &&
+      /class="home-rail"/.test(html) &&
+      /id="layout-switch"/.test(html),
     footer: /class="site-footer"/.test(html),
   };
 }
@@ -343,7 +348,7 @@ async function main() {
       colored: observed.colored >= 1,
       trendingPresent: observed.trendingCount === expected.trending.length,
       categoriesPresent: observed.categoryCount === expected.categories.length + 1,
-      dailyFeedHidden: observed.daySections === 0,
+      redesignStructure: observed.redesignStructure === true,
       footer: observed.footer === true,
       siteBrand: site.brand,
       siteSearch: site.search,

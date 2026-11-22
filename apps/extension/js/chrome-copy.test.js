@@ -10,7 +10,7 @@ const css = readFileSync(join(root, "css/newtab.css"), "utf8");
 const js = readFileSync(join(root, "js/newtab.js"), "utf8");
 
 test("new tab matches site chrome copy and typefaces", () => {
-  assert.match(html, /AI news ranked and summary/);
+  assert.match(html, /AI news, ranked and summarized/);
   assert.doesNotMatch(html, /translated hourly/);
   assert.doesNotMatch(html, />Blog</);
   assert.match(html, /https:\/\/duyet\.net/);
@@ -96,7 +96,7 @@ test("wide header uses the web Get AI;DR menu", () => {
   assert.match(css, /\.header-menu-content/);
   assert.match(
     html,
-    /<a data-channel="telegram" href="https:\/\/t\.me\/aihomnay"[^>]*>Telegram<\/a>/
+    /<a data-channel="telegram" href="https:\/\/t\.me\/aihomnay"[^>]*><span[^>]*>Telegram<\/span><\/a>/
   );
   assert.match(js, /bindHeaderMenu/);
   assert.match(js, /aria-expanded/);
@@ -147,7 +147,7 @@ test("new tab follows the live digest masthead, day links, and intro video", () 
   assert.match(html, /id="phone-intro-video"/);
   assert.match(js, /className = "tldr-day"/);
   // The day heading itself links to the archive; no separate "Full day" link.
-  assert.match(js, /link\.className = "day-link"/);
+  assert.match(js, /className: "day-link"/);
   assert.doesNotMatch(js, /Xem cả ngày|Full day/);
   assert.doesNotMatch(css, /\.day-full/);
   assert.match(js, /story-publisher/);
