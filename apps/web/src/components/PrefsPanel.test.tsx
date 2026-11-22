@@ -265,7 +265,7 @@ describe("PrefsPanel choices", () => {
     ["Newspaper columns", "3", { newsCols: 3 }, "newsCols", "3"],
     ["AI;DR items", "16", { tldrCount: 16 }, "tldrCount", "16"],
     ["AI;DR columns", "1", { tldrCols: 1 }, "tldrCols", "1"],
-    ["AI;DR as", "Text", { tldrView: "text" }, "tldrView", "text"],
+    ["AI;DR as", "Image", { tldrView: "image" }, "tldrView", "image"],
     ["Days shown", "1", { feedDays: 1 }, "feedDays", "1"],
   ] as const)(
     "%s → %s saves and tracks it",

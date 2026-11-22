@@ -73,7 +73,7 @@ Wave 0 landed the tokens, prefs, analytics registry, root attributes and global 
 
 Decisions made while reading Wave 0's report:
 1. Category names stay English in the UI for now (keep categoryLabel and the existing lang.test.ts regression that protects search and filter matching). The prototype showed Vietnamese names. The owner decides later; use topicLabel only if a task here says so.
-2. tldrView defaults to "image" (stored in prefs, replacing TldrSection's local state).
+2. tldrView defaults to "text" (stored in prefs, replacing TldrSection's local state).
 3. feedDays defaults to 3 (today's home behavior).
 4. Keep the old density pref and bilingualDialog for now. Do not delete them in this wave. Customize does not show density.
 5. Breakpoint for the phone layout is 700px for new work. The header may keep its current switch point until wave A decides.

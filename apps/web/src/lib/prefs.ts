@@ -129,7 +129,7 @@ export const DEFAULT_PREFS: Prefs = {
   bilingualFirst: "vi",
   bilingual: false,
   tldrCols: 2,
-  tldrView: "image",
+  tldrView: "text",
   newsCols: 2,
   thumbs: true,
   summaries: false,
