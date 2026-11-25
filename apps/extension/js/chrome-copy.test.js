@@ -271,7 +271,7 @@ test("density slider persists through onSaved so appearance re-applies live", ()
   const panel = readFileSync(join(root, "js/settings-panel.js"), "utf8");
   assert.match(
     panel,
-    /state\.density = [^;]*;\s*await persist\(\{ repaint: false \}\);/
+    /state\.density =\s*[^;]*;\s*await persist\(\{ repaint: false \}\);/
   );
   assert.match(panel, /onSaved\?\.\(saved\);\s*if \(repaint\) paint\(\);/);
   assert.match(js, /const refresh = async[\s\S]*?applyAppearance\(settings\);/);
