@@ -1,0 +1,42 @@
+name: YouTube token check
+
+# Asks the Worker's token broker for an access token once a day. That keeps the
+# refresh token in use and turns a dead one into one open issue the same day,
+# not a missing video days later. The Worker never hands out the refresh token.
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      YOUTUBE_BROKER_SECRET: ${{ secrets.YOUTUBE_BROKER_SECRET }}
+      YOUTUBE_BROKER_URL: ${{ vars.YOUTUBE_BROKER_URL }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Ask the broker for an access token
+        run: |
+          if [ -z "$YOUTUBE_BROKER_SECRET" ] || [ -z "$YOUTUBE_BROKER_URL" ]; then
+            echo "broker not configured; nothing to check"
+            exit 0
+          fi
+          code=$(curl -sS -o body.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $YOUTUBE_BROKER_SECRET" "$YOUTUBE_BROKER_URL" || echo 000)
+          # Only the status and Google's error code are printed, never the body.
+          reason=$(jq -r '.error // empty' body.json 2>/dev/null || true)
+          echo "broker answered $code ${reason:+($reason)}"
+          [ "$code" = 200 ] && exit 0
+          title="YouTube refresh token needs re-minting"
+          if [ -z "$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[0].number')" ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --label bug --body "The daily check got HTTP $code ${reason:+($reason)} from the YouTube token broker, so uploads to YouTube will fail.
+
+          Re-mint the token with \`node .agents/skills/aidr-youtube-upload/bin/yt-oauth.mjs\` (channel owner's account), then \`wrangler secret put YOUTUBE_REFRESH_TOKEN\`. A token that dies every 7 days means the OAuth consent screen is in Testing mode (see apps/web/ALGORITHM.md, YouTube credentials)."
+          fi
+          exit 1
