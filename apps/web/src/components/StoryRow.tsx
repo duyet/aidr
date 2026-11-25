@@ -20,6 +20,7 @@ import { CategoryLabel } from "./CategoryLabel";
 import { KeywordText } from "./KeywordText";
 import { storySummaries, storyTitles } from "./row-text";
 import { StoryDetail } from "./StoryDetail";
+import { StoryDialog } from "./StoryDialog";
 import { StoryThumb } from "./StoryThumb";
 import { StoryVotes } from "./story/StoryVotes";
 
@@ -133,6 +134,7 @@ export function StoryRow({
   const TitleTag = titleAs;
   const { prefs } = usePrefs();
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   // First expand loads /api/story when the row is a lean SSR item
   // (`lazyDetail`) or the feed omitted `content_log`. A permalink item
   // already came from getStory and keeps the log it arrived with.
@@ -229,9 +231,11 @@ export function StoryRow({
     }
   };
 
-  // Plain primary click on the title toggles the row in place; modified
-  // or non-primary clicks keep the permalink (new tab, etc.). Either way
-  // the row's own onClick must not run a second toggle.
+  // Plain primary click on a feed title opens the story drawer, the same
+  // panel a TL;DR bullet opens; on the story page itself (rendered open) it
+  // toggles the row. Modified or non-primary clicks keep the permalink (new
+  // tab, etc.). Either way the row's own onClick must not run a second
+  // toggle. The chevron and the row still expand in place.
   const onTitleClick = (e: MouseEvent<HTMLAnchorElement>) => {
     e.stopPropagation();
     if (
@@ -245,7 +249,17 @@ export function StoryRow({
       return;
     }
     e.preventDefault();
-    toggleExpanded();
+    if (defaultExpanded) {
+      toggleExpanded();
+      return;
+    }
+    setDialogOpen(true);
+    track("story_view", {
+      item_id: item.id,
+      via: "row",
+      page_type: pageType(window.location.pathname),
+    });
+    recordRead(item.id, "open");
   };
 
   const detailsOpen = expanded && hasDetails;
@@ -435,6 +449,13 @@ export function StoryRow({
             </p>
           )}
         </div>
+      )}
+      {dialogOpen && (
+        <StoryDialog
+          idPrefix={item.id}
+          lang={lang}
+          onClose={() => setDialogOpen(false)}
+        />
       )}
     </div>
   );
