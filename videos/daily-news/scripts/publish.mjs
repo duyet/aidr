@@ -69,9 +69,9 @@ import {
   makeThumbnail,
   sendVideo,
   telegramPost,
+  telegramYoutubeId,
   tgCopyPath,
   tgEncodeArgs,
-  youtubeIdFor,
 } from "./telegram-video.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -662,9 +662,11 @@ if (steps.includes("telegram")) {
       });
       continue;
     }
-    const youtubeId =
-      youtubeIdFor(target, rows) ??
-      (l === "visub" ? (await dayPageIds(date, "en"))["16x9"] : undefined);
+    const youtubeId = await telegramYoutubeId(
+      target,
+      rows,
+      async () => (await dayPageIds(date, "en"))["16x9"]
+    );
     const title = titleFor(l);
     const { caption, replyMarkup } = telegramPost({
       date,

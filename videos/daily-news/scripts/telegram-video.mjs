@@ -235,6 +235,20 @@ export const youtubeIdFor = (target, rows) =>
     ? rows.find((r) => r.lang === "en" && r.fmt === "16x9")?.youtube?.id
     : undefined);
 
+/** The id behind the "▶ YouTube" button. The button is optional, so a failed
+ *  day page lookup (site error, YouTube down) drops it instead of failing the
+ *  Telegram post: Telegram never waits on YouTube. */
+export async function telegramYoutubeId(target, rows, enPageId) {
+  const own = youtubeIdFor(target, rows);
+  if (own || target.lang !== "visub") return own;
+  try {
+    return await enPageId();
+  } catch (error) {
+    console.warn(`  no YouTube button for ${target.cut}: ${error.message}`);
+    return undefined;
+  }
+}
+
 /** Caption and buttons for a cut. visub reads as a Vietnamese post: its translated title and the Vietnamese buttons. */
 export function telegramPost({ date, lang, title, youtubeId }) {
   const l = lang === "visub" ? "vi" : lang;

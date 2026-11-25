@@ -25,7 +25,12 @@ import {
   uploadTodo,
   viPageCut,
 } from "./status.mjs";
-import { chatFor, telegramPost, youtubeIdFor } from "./telegram-video.mjs";
+import {
+  chatFor,
+  telegramPost,
+  telegramYoutubeId,
+  youtubeIdFor,
+} from "./telegram-video.mjs";
 import {
   buildSubs,
   enPost,
@@ -1084,4 +1089,16 @@ test("the edition folder name reaches the fallback title through buildSubs", asy
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("visub's Telegram post goes out without a YouTube button when the day page lookup fails", async () => {
+  const rows = rowsFor(["en", "visub"]);
+  const visub = rows.find((r) => r.lang === "visub");
+  const down = async () => {
+    throw new Error("day page 2026-10-13 (en): HTTP 503");
+  };
+  assert.equal(await telegramYoutubeId(visub, rows, down), undefined);
+  // The lookup is not made when the cut has an id of its own.
+  visub.youtube = { id: "VIsub16x9ab" };
+  assert.equal(await telegramYoutubeId(visub, rows, down), "VIsub16x9ab");
 });
