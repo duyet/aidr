@@ -10,8 +10,8 @@
 import { EDGE_CACHE_STALE_S } from "./edge-cache-window";
 
 /**
- * Least age a KV copy must reach before a render may replace it. Four keys
- * at one write per 10 minutes stay under the Free plan's 1,000 writes a day.
+ * Least age an R2 copy must reach before a render may replace it. Four keys
+ * at one write per 10 minutes keep the writes to a few hundred a day.
  */
 export const GLOBAL_WRITE_INTERVAL_S = 600;
 
@@ -30,7 +30,7 @@ const LOCALE_KEY_PARAMS = new Set(["lang", "__l"]);
 /**
  * Keys whose entries are shared across colos: the homepage in one language,
  * with no filter. `?q=` and other params would make the key count, and so
- * the KV writes, unbounded.
+ * the R2 writes, unbounded.
  */
 export function isGloballyCachedKey(key: Request): boolean {
   const url = new URL(key.url);

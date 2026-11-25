@@ -5,7 +5,7 @@ import { handleYoutubeAuthCallback } from "../../../worker/youtube-auth.js";
 async function resolveEnv(context: any): Promise<Env | undefined> {
   let env: any =
     context?.cloudflare?.env || context?.env || (globalThis as any).CF_ENV;
-  if (!env?.HTML_CACHE) {
+  if (!env?.DB) {
     try {
       env = (await import("cloudflare:workers")).env;
     } catch {

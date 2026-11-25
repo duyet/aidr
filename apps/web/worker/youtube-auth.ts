@@ -20,11 +20,12 @@ import {
   YT_REFRESH_KEY,
 } from "./youtube-keys.js";
 import { writeStatus } from "./youtube-token.js";
+import { ytDelete, ytGet, ytPut } from "./yt-state.js";
 
 /**
  * One-click YouTube sign-in: `start` (from the emailed link) sends the owner
  * to Google, `callback` swaps the code for a refresh token, checks it belongs
- * to the expected channel and stores it in KV. No token, code or Google body is
+ * to the expected channel and stores it in D1. No token, code or Google body is
  * ever logged, echoed or put in a page.
  */
 
@@ -80,9 +81,8 @@ export async function handleYoutubeAuthStart(
 ): Promise<Response> {
   const secret = env.YOUTUBE_BROKER_SECRET;
   if (!secret) return notFound();
-  const kv = env.HTML_CACHE;
   const client = youtubeAuthClient(env);
-  if (!kv || !client)
+  if (!client)
     return page(
       503,
       "Not set up",
@@ -91,10 +91,14 @@ export async function handleYoutubeAuthStart(
   const t = new URL(request.url).searchParams.get("t");
   const link = await verifyPayload(secret, t, "link", nowMs);
   if (!link) return badLink();
-  if (!(await kv.get(linkNonceKey(link.n)))) return usedLink();
-  await kv.put(stateNonceKey(link.n), "1", {
-    expirationTtl: Math.ceil(STATE_TTL_MS / 1000),
-  });
+  if (!(await ytGet(env.DB, linkNonceKey(link.n), nowMs))) return usedLink();
+  await ytPut(
+    env.DB,
+    stateNonceKey(link.n),
+    "1",
+    nowMs,
+    Math.ceil(STATE_TTL_MS / 1000)
+  );
   const state = await signPayload(
     secret,
     "state",
@@ -149,9 +153,8 @@ export async function handleYoutubeAuthCallback(
 ): Promise<Response> {
   const secret = env.YOUTUBE_BROKER_SECRET;
   if (!secret) return notFound();
-  const kv = env.HTML_CACHE;
   const client = youtubeAuthClient(env);
-  if (!kv || !client)
+  if (!client)
     return page(
       503,
       "Not set up",
@@ -165,8 +168,10 @@ export async function handleYoutubeAuthCallback(
     nowMs
   );
   if (!state) return badLink();
-  if (!(await kv.get(stateNonceKey(state.n)))) return usedLink();
-  await kv.delete(stateNonceKey(state.n));
+  // One DELETE both checks and burns the nonce, so two callbacks racing on
+  // the same state cannot both pass.
+  if (!(await ytDelete(env.DB, stateNonceKey(state.n), nowMs)))
+    return usedLink();
   const code = params.get("code");
   if (params.get("error") || !code)
     return page(
@@ -221,19 +226,23 @@ export async function handleYoutubeAuthCallback(
       "That account does not own the AI;DR YouTube channel. No token was stored. Ask for a new link and sign in with the channel owner."
     );
 
-  await kv.put(YT_REFRESH_KEY, refreshToken);
-  await kv.put(
+  const db = env.DB;
+  await ytPut(db, YT_REFRESH_KEY, refreshToken, nowMs);
+  await ytPut(
+    db,
     YT_REFRESH_BASE_KEY,
-    await sha256Hex(env.YOUTUBE_REFRESH_TOKEN ?? "")
+    await sha256Hex(env.YOUTUBE_REFRESH_TOKEN ?? ""),
+    nowMs
   );
-  await kv.put(YT_CLIENT_KEY, client.id);
-  await kv.put(YT_MINTED_KEY, String(nowMs));
-  await kv.delete(YT_ACCESS_KEY);
-  await kv.delete(linkNonceKey(state.n));
-  await writeStatus(kv, {
-    lastErrorCode: undefined,
-    lastErrorMs: undefined,
-  });
+  await ytPut(db, YT_CLIENT_KEY, client.id, nowMs);
+  await ytPut(db, YT_MINTED_KEY, String(nowMs), nowMs);
+  await ytDelete(db, YT_ACCESS_KEY, nowMs);
+  await ytDelete(db, linkNonceKey(state.n), nowMs);
+  await writeStatus(
+    db,
+    { lastErrorCode: undefined, lastErrorMs: undefined },
+    nowMs
+  );
   return page(
     200,
     "YouTube is signed in",

@@ -920,8 +920,10 @@ live in Cloudflare; Actions only holds a bearer for the broker.
 - `worker/youtube-token.ts` `getYoutubeAccessToken(env)` refreshes against the
   pinned `https://oauth2.googleapis.com/token` with the Worker secrets
   `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN`. The
-  access token is cached in `HTML_CACHE` (`yt:access`) until 5 minutes before it
-  expires.
+  access token is cached in D1 (`yt:access`) until 5 minutes before it
+  expires. All YouTube state is rows of the `yt_state` table (`worker/yt-state.ts`;
+  `key`, `value`, `expires_at` in ms): reads ignore an expired row and every write
+  deletes the expired ones. There is no KV namespace.
 - `POST /api/internal/youtube-token` (`Authorization: Bearer
   YOUTUBE_BROKER_SECRET`, constant-time compare) returns
   `{access_token, expires_in}`, `Cache-Control: no-store`. It is a 404 while the
@@ -933,7 +935,7 @@ live in Cloudflare; Actions only holds a bearer for the broker.
   (with `yt:refresh-base`, a hash of the Worker secret it replaced) and read
   first. Putting a new `YOUTUBE_REFRESH_TOKEN` on the Worker (a re-mint) wins
   over the stored one.
-- `invalid_grant` is a typed error. `yt:status` in KV keeps the last ok time and
+- `invalid_grant` is a typed error. `yt:status` keeps the last ok time and
   last error code. The `health-check` step (`keepYoutubeTokenAlive`) forces a
   refresh once a day so the token never idles; on `invalid_grant` it raises the
   `youtube-token-invalid` alert with the fix. Other failures only update
@@ -948,11 +950,11 @@ one dies, and a single click does it.
 - `keepYoutubeTokenAlive` emails `OWNER_NOTIFY_EMAIL` (from the notes From, through
   the `EMAIL` binding) when the token is rejected (`invalid_grant`) or when the
   one-click token is `YOUTUBE_TOKEN_MAX_AGE_DAYS` old (default 5). At most one
-  mail per 24 hours per reason (KV `yt:mail:<reason>`). It never throws and never
+  mail per 24 hours per reason (`yt:mail:<reason>`). It never throws and never
   blocks ingest.
 - The mail holds `/api/internal/youtube-auth/start?t=<token>`: an HMAC-SHA256
   (key derived from `YOUTUBE_BROKER_SECRET`, constant-time check) over
-  `{purpose, exp (24 h), nonce}`. The nonce is in KV and burned on first use, so
+  `{purpose, exp (24 h), nonce}`. The nonce is a `yt_state` row, burned on first use, so
   the link works once (a mail scanner that opens it uses it up; the next daily
   warning sends a fresh one). `start` redirects to Google's pinned authorize URL
   (`access_type=offline`, `prompt=consent`, `include_granted_scopes=false`, a signed

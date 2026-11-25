@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../types.js";
+
 import {
   GOOGLE_TOKEN_URL,
   getYoutubeAccessToken,
@@ -13,11 +14,15 @@ import {
   YT_STATUS_KEY,
 } from "../youtube-token.js";
 
+import { ytStore } from "./yt-state-fake.js";
+
+const kv = ytStore;
+
 const NOW = Date.UTC(2026, 10, 25, 12);
 const ACCESS = ["ya29", "access", "one"].join(".");
 const ACCESS2 = ["ya29", "access", "two"].join(".");
 const REFRESH_ENV = ["1", "env", "refresh"].join("//");
-const REFRESH_KV = ["1", "kv", "refresh"].join("//");
+const REFRESH_STORED = ["1", "stored", "refresh"].join("//");
 const REFRESH_NEW = ["1", "rotated", "refresh"].join("//");
 const CLIENT_SECRET = ["client", "secret", "value"].join("-");
 const BROKER = ["broker", "bearer", "value"].join("-");
@@ -32,22 +37,12 @@ async function sha256(text: string): Promise<string> {
     .join("");
 }
 
-function kv(initial: Record<string, string> = {}) {
-  const data = new Map(Object.entries(initial));
-  const puts: { key: string; ttl?: number }[] = [];
-  const ns = {
-    get: async (key: string) => data.get(key) ?? null,
-    put: async (key: string, value: string, o?: { expirationTtl?: number }) => {
-      data.set(key, value);
-      puts.push({ key, ttl: o?.expirationTtl });
-    },
-  };
-  return { ns: ns as unknown as KVNamespace, data, puts };
-}
-
-function makeEnv(store: ReturnType<typeof kv>, extra: Partial<Env> = {}): Env {
+function makeEnv(
+  store: ReturnType<typeof ytStore>,
+  extra: Partial<Env> = {}
+): Env {
   return {
-    HTML_CACHE: store.ns,
+    DB: store.db,
     YOUTUBE_CLIENT_ID: "client-id",
     YOUTUBE_CLIENT_SECRET: CLIENT_SECRET,
     YOUTUBE_REFRESH_TOKEN: REFRESH_ENV,
@@ -77,7 +72,7 @@ describe("getYoutubeAccessToken", () => {
     expect(sent(f).get("refresh_token")).toBe(REFRESH_ENV);
     expect(sent(f).get("grant_type")).toBe("refresh_token");
     expect(out).toEqual({ accessToken: ACCESS, expiresInSec: 3600 });
-    expect(store.puts.find((p) => p.key === YT_ACCESS_KEY)?.ttl).toBe(3600);
+    expect(store.data.expiresAt(YT_ACCESS_KEY)).toBe(NOW + 3600_000);
     expect(JSON.parse(store.data.get(YT_STATUS_KEY) ?? "{}").lastOkMs).toBe(
       NOW
     );
@@ -99,9 +94,9 @@ describe("getYoutubeAccessToken", () => {
     expect(f).toHaveBeenCalledTimes(2);
   });
 
-  it("reads the KV refresh token before the env one and stores a rotated one", async () => {
+  it("reads the stored refresh token before the env one and stores a rotated one", async () => {
     const store = kv({
-      [YT_REFRESH_KEY]: REFRESH_KV,
+      [YT_REFRESH_KEY]: REFRESH_STORED,
       [YT_REFRESH_BASE_KEY]: await sha256(REFRESH_ENV),
     });
     const f = google(200, {
@@ -110,14 +105,14 @@ describe("getYoutubeAccessToken", () => {
       refresh_token: REFRESH_NEW,
     });
     await getYoutubeAccessToken(makeEnv(store), { nowMs: NOW });
-    expect(sent(f).get("refresh_token")).toBe(REFRESH_KV);
+    expect(sent(f).get("refresh_token")).toBe(REFRESH_STORED);
     expect(store.data.get(YT_REFRESH_KEY)).toBe(REFRESH_NEW);
     expect(store.data.get(YT_REFRESH_BASE_KEY)).toBe(await sha256(REFRESH_ENV));
   });
 
-  it("prefers a re-minted Worker secret over a stale rotated token in KV", async () => {
+  it("prefers a re-minted Worker secret over a stale rotated token in the store", async () => {
     const store = kv({
-      [YT_REFRESH_KEY]: REFRESH_KV,
+      [YT_REFRESH_KEY]: REFRESH_STORED,
       [YT_REFRESH_BASE_KEY]: await sha256("an-older-env-token"),
     });
     const f = google(200, { access_token: ACCESS, expires_in: 3600 });
@@ -179,9 +174,7 @@ describe("keepYoutubeTokenAlive", () => {
 
   it("does nothing when YouTube is not configured on the Worker", async () => {
     const f = google(200, {});
-    expect(
-      await keepYoutubeTokenAlive({ HTML_CACHE: kv().ns } as Env, NOW)
-    ).toBeNull();
+    expect(await keepYoutubeTokenAlive({ DB: kv().db } as Env, NOW)).toBeNull();
     expect(f).not.toHaveBeenCalled();
   });
 });

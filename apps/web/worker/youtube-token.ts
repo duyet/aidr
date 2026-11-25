@@ -20,6 +20,7 @@ import {
   YT_REFRESH_KEY,
   YT_STATUS_KEY,
 } from "./youtube-keys.js";
+import { ytGet, ytPut } from "./yt-state.js";
 
 export {
   GOOGLE_TOKEN_URL,
@@ -34,7 +35,7 @@ export {
  * The YouTube OAuth credentials live in Cloudflare. GitHub Actions asks the
  * broker route (`/api/internal/youtube-token`) for a short-lived access token
  * instead of holding the refresh token. Google can rotate a refresh token, so
- * the newest one is kept in KV (`yt:refresh`) and read before the Worker secret.
+ * the newest one is kept in D1 (`yt_state`, key `yt:refresh`) and read before the Worker secret.
  * Nothing here logs or returns a token, a client secret or a Google body:
  * errors carry a code only.
  */
@@ -73,8 +74,12 @@ interface CachedAccess {
   expiresAtMs: number;
 }
 
-async function readJson<T>(kv: KVNamespace, key: string): Promise<T | null> {
-  const raw = await kv.get(key);
+async function readJson<T>(
+  db: D1Database,
+  key: string,
+  nowMs: number
+): Promise<T | null> {
+  const raw = await ytGet(db, key, nowMs);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as T;
@@ -84,21 +89,28 @@ async function readJson<T>(kv: KVNamespace, key: string): Promise<T | null> {
 }
 
 export async function readYoutubeTokenStatus(
-  env: Pick<Env, "HTML_CACHE">
+  env: Pick<Env, "DB">,
+  nowMs: number
 ): Promise<YoutubeTokenStatus> {
-  if (!env.HTML_CACHE) return {};
   return (
-    (await readJson<YoutubeTokenStatus>(env.HTML_CACHE, YT_STATUS_KEY)) ?? {}
+    (await readJson<YoutubeTokenStatus>(env.DB, YT_STATUS_KEY, nowMs)) ?? {}
   );
 }
 
 export async function writeStatus(
-  kv: KVNamespace,
-  patch: YoutubeTokenStatus
+  db: D1Database,
+  patch: YoutubeTokenStatus,
+  nowMs: number
 ): Promise<void> {
   try {
-    const prev = (await readJson<YoutubeTokenStatus>(kv, YT_STATUS_KEY)) ?? {};
-    await kv.put(YT_STATUS_KEY, JSON.stringify({ ...prev, ...patch }));
+    const prev =
+      (await readJson<YoutubeTokenStatus>(db, YT_STATUS_KEY, nowMs)) ?? {};
+    await ytPut(
+      db,
+      YT_STATUS_KEY,
+      JSON.stringify({ ...prev, ...patch }),
+      nowMs
+    );
   } catch {
     // The status record is a diagnostic; losing a write must not fail a refresh.
   }
@@ -110,32 +122,29 @@ function googleErrorCode(body: unknown): string | null {
   return typeof code === "string" ? code : null;
 }
 
-/** The rotated token in KV, unless the owner has since put a different
+/** The rotated token in D1, unless the owner has since put a different
  *  `YOUTUBE_REFRESH_TOKEN` on the Worker (a re-mint): then that one wins. */
 async function currentRefreshToken(
   env: Env,
-  kv: KVNamespace
-): Promise<{ token: string | undefined; viaKv: boolean }> {
-  const stored = await kv.get(YT_REFRESH_KEY);
+  nowMs: number
+): Promise<{ token: string | undefined; viaStore: boolean }> {
+  const stored = await ytGet(env.DB, YT_REFRESH_KEY, nowMs);
   const fromEnv = env.YOUTUBE_REFRESH_TOKEN;
-  if (!stored) return { token: fromEnv, viaKv: false };
-  if (!fromEnv) return { token: stored, viaKv: true };
-  return (await kv.get(YT_REFRESH_BASE_KEY)) === (await sha256Hex(fromEnv))
-    ? { token: stored, viaKv: true }
-    : { token: fromEnv, viaKv: false };
+  if (!stored) return { token: fromEnv, viaStore: false };
+  if (!fromEnv) return { token: stored, viaStore: true };
+  return (await ytGet(env.DB, YT_REFRESH_BASE_KEY, nowMs)) ===
+    (await sha256Hex(fromEnv))
+    ? { token: stored, viaStore: true }
+    : { token: fromEnv, viaStore: false };
 }
 
-async function refresh(
-  env: Env,
-  kv: KVNamespace,
-  nowMs: number
-): Promise<CachedAccess> {
-  const current = await currentRefreshToken(env, kv);
+async function refresh(env: Env, nowMs: number): Promise<CachedAccess> {
+  const current = await currentRefreshToken(env, nowMs);
   const refreshToken = current.token;
   // A refresh token only works with the client that minted it.
   const client = youtubeClientFor(
     env,
-    current.viaKv ? await kv.get(YT_CLIENT_KEY) : null
+    current.viaStore ? await ytGet(env.DB, YT_CLIENT_KEY, nowMs) : null
   );
   if (!client || !refreshToken) throw new YoutubeTokenError("not_configured");
   const { id: clientId, secret: clientSecret } = client;
@@ -172,10 +181,12 @@ async function refresh(
     throw new YoutubeTokenError("refresh_failed");
   const expiresInSec = Number(ok.expires_in) > 0 ? Number(ok.expires_in) : 3600;
   if (typeof ok.refresh_token === "string" && ok.refresh_token) {
-    await kv.put(YT_REFRESH_KEY, ok.refresh_token);
-    await kv.put(
+    await ytPut(env.DB, YT_REFRESH_KEY, ok.refresh_token, nowMs);
+    await ytPut(
+      env.DB,
       YT_REFRESH_BASE_KEY,
-      await sha256Hex(env.YOUTUBE_REFRESH_TOKEN ?? "")
+      await sha256Hex(env.YOUTUBE_REFRESH_TOKEN ?? ""),
+      nowMs
     );
   }
   return { token: ok.access_token, expiresAtMs: nowMs + expiresInSec * 1000 };
@@ -191,10 +202,9 @@ export async function getYoutubeAccessToken(
   opts: { nowMs?: number; force?: boolean } = {}
 ): Promise<YoutubeAccessToken> {
   const nowMs = opts.nowMs ?? Date.now();
-  const kv = env.HTML_CACHE;
-  if (!kv) throw new YoutubeTokenError("not_configured");
+  const db = env.DB;
   if (!opts.force) {
-    const cached = await readJson<CachedAccess>(kv, YT_ACCESS_KEY);
+    const cached = await readJson<CachedAccess>(db, YT_ACCESS_KEY, nowMs);
     if (cached && cached.expiresAtMs - nowMs > EXPIRY_MARGIN_MS)
       return {
         accessToken: cached.token,
@@ -202,14 +212,14 @@ export async function getYoutubeAccessToken(
       };
   }
   try {
-    const fresh = await refresh(env, kv, nowMs);
+    const fresh = await refresh(env, nowMs);
     const ttl = Math.max(60, Math.floor((fresh.expiresAtMs - nowMs) / 1000));
-    await kv.put(YT_ACCESS_KEY, JSON.stringify(fresh), { expirationTtl: ttl });
-    await writeStatus(kv, {
-      lastOkMs: nowMs,
-      lastErrorCode: undefined,
-      lastErrorMs: undefined,
-    });
+    await ytPut(db, YT_ACCESS_KEY, JSON.stringify(fresh), nowMs, ttl);
+    await writeStatus(
+      db,
+      { lastOkMs: nowMs, lastErrorCode: undefined, lastErrorMs: undefined },
+      nowMs
+    );
     return {
       accessToken: fresh.token,
       expiresInSec: Math.floor((fresh.expiresAtMs - nowMs) / 1000),
@@ -218,7 +228,7 @@ export async function getYoutubeAccessToken(
     const code =
       error instanceof YoutubeTokenError ? error.code : "refresh_failed";
     if (code !== "not_configured")
-      await writeStatus(kv, { lastErrorCode: code, lastErrorMs: nowMs });
+      await writeStatus(db, { lastErrorCode: code, lastErrorMs: nowMs }, nowMs);
     throw error instanceof YoutubeTokenError
       ? error
       : new YoutubeTokenError(code);
@@ -228,18 +238,17 @@ export async function getYoutubeAccessToken(
 /** Emails the owner a re-auth link once the one-click token is old enough to die
  *  (Testing-mode tokens last 7 days). No `yt:minted` record: age unknown, no warning. */
 async function warnIfExpiring(env: Env, nowMs: number): Promise<void> {
-  const kv = env.HTML_CACHE;
   const maxAgeMs = maxTokenAgeMs(env);
-  if (!kv || maxAgeMs === 0) return;
-  const minted = Number(await kv.get(YT_MINTED_KEY));
+  if (maxAgeMs === 0) return;
+  const minted = Number(await ytGet(env.DB, YT_MINTED_KEY, nowMs));
   if (!Number.isFinite(minted) || minted <= 0) return;
-  if (!(await currentRefreshToken(env, kv)).viaKv) return;
+  if (!(await currentRefreshToken(env, nowMs)).viaStore) return;
   if (nowMs - minted >= maxAgeMs)
     await sendYoutubeOwnerMail(env, "expiring", nowMs);
 }
 
 /**
- * Once a day (ingest runs every 30 minutes, this is a KV read in between) so
+ * Once a day (ingest runs every 30 minutes, this is a D1 read in between) so
  * the refresh token never idles, and an `invalid_grant` becomes an alert with
  * the fix. Never throws; other failures only land in the status record.
  */
@@ -248,8 +257,8 @@ export async function keepYoutubeTokenAlive(
   nowMs: number
 ): Promise<HealthIssue | null> {
   try {
-    if (!env.HTML_CACHE || !env.YOUTUBE_CLIENT_ID) return null;
-    const { lastOkMs } = await readYoutubeTokenStatus(env);
+    if (!env.YOUTUBE_CLIENT_ID) return null;
+    const { lastOkMs } = await readYoutubeTokenStatus(env, nowMs);
     if (lastOkMs !== undefined && nowMs - lastOkMs < DAILY_REFRESH_MS)
       return null;
     await getYoutubeAccessToken(env, { nowMs, force: true });
@@ -266,7 +275,7 @@ export async function keepYoutubeTokenAlive(
       detail: "Google answered invalid_grant: uploads to YouTube will fail",
       evidence: [
         "Re-mint the token: node .agents/skills/aidr-youtube-upload/bin/yt-oauth.mjs (channel owner's account).",
-        "Store it on the Worker: wrangler secret put YOUTUBE_REFRESH_TOKEN (it replaces the rotated copy in KV).",
+        "Store it on the Worker: wrangler secret put YOUTUBE_REFRESH_TOKEN (it replaces the rotated copy in D1).",
         "A token that dies every 7 days means the OAuth consent screen is still in Testing: publish it to In production (apps/web/ALGORITHM.md, YouTube credentials).",
       ],
     };

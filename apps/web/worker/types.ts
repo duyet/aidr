@@ -5,8 +5,6 @@ export interface Env {
   /** Rendered OG PNGs, the shared tier behind the edge cache; also the
    *  homepage HTML shared across colos under `html/` (`global-html-cache.ts`). */
   OG_CACHE?: R2Bucket;
-  /** YouTube credential state only; moves to D1. */
-  HTML_CACHE?: KVNamespace;
   /** This deployment's version (`[version_metadata]`); checked by `global-html-cache.ts` on each stored page. */
   CF_VERSION_METADATA?: { id: string; tag: string; timestamp: string };
   /** Cloudflare Images: WebP → JPEG for OG photos the renderer cannot draw. */
@@ -128,7 +126,7 @@ export interface Env {
    *  Worker secret. Never logged. */
   FACEBOOK_PAGE_ACCESS_TOKEN?: string;
   /** YouTube OAuth client and refresh token (Worker secrets). The newest
-   *  refresh token is kept in KV `yt:refresh` and read first
+   *  refresh token is kept in D1 `yt_state` (`yt:refresh`) and read first
    *  (`worker/youtube-token.ts`). */
   YOUTUBE_CLIENT_ID?: string;
   YOUTUBE_CLIENT_SECRET?: string;

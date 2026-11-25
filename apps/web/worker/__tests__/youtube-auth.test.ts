@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../types.js";
+
 import {
   handleYoutubeAuthCallback,
   handleYoutubeAuthStart,
@@ -27,6 +28,10 @@ import {
   keepYoutubeTokenAlive,
 } from "../youtube-token.js";
 
+import { ytStore } from "./yt-state-fake.js";
+
+const kv = ytStore;
+
 const NOW = Date.UTC(2026, 10, 25, 12);
 const DAY = 24 * 3600 * 1000;
 const BROKER = ["broker", "secret", "value"].join("-");
@@ -38,20 +43,10 @@ const ACCESS = ["ya29", "access", "one"].join(".");
 const CODE = ["4", "auth", "code"].join("/");
 const CHANNEL = "UCGDB5uD8znydgMg2XLOj04w";
 
-function kv(initial: Record<string, string> = {}) {
-  const data = new Map(Object.entries(initial));
-  const ns = {
-    get: async (key: string) => data.get(key) ?? null,
-    put: async (key: string, value: string) => void data.set(key, value),
-    delete: async (key: string) => void data.delete(key),
-  };
-  return { ns: ns as unknown as KVNamespace, data };
-}
-
-function makeEnv(store: ReturnType<typeof kv>, extra: Partial<Env> = {}) {
+function makeEnv(store: ReturnType<typeof ytStore>, extra: Partial<Env> = {}) {
   const send = vi.fn(async (_m: unknown) => ({}));
   const env = {
-    HTML_CACHE: store.ns,
+    DB: store.db,
     EMAIL: { send },
     OWNER_NOTIFY_EMAIL: "owner@example.com",
     YOUTUBE_BROKER_SECRET: BROKER,
@@ -203,7 +198,7 @@ describe("start", () => {
   it("404s while the broker secret is unset", async () => {
     const res = await handleYoutubeAuthStart(
       new Request("https://aidr.today/api/internal/youtube-auth/start"),
-      { HTML_CACHE: kv().ns } as Env
+      { DB: kv().db } as Env
     );
     expect(res.status).toBe(404);
   });
@@ -447,7 +442,7 @@ describe("callback", () => {
   it("404s while the broker secret is unset", async () => {
     const res = await handleYoutubeAuthCallback(
       new Request("https://aidr.today/api/internal/youtube-auth/callback"),
-      { HTML_CACHE: kv().ns } as Env
+      { DB: kv().db } as Env
     );
     expect(res.status).toBe(404);
   });

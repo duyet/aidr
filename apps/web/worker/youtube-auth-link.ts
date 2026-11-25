@@ -2,6 +2,7 @@ import { timingSafeEqualStrings } from "@aidr/libs/workers-auth";
 import { SITE_URL } from "../src/lib/site.js";
 import { notesFrom } from "./mail/send.js";
 import type { Env } from "./types.js";
+import { ytGet, ytPut } from "./yt-state.js";
 
 /**
  * The one-click YouTube re-auth link: an HMAC-signed, single-use token emailed
@@ -142,9 +143,13 @@ async function mintLink(
   nowMs: number
 ): Promise<string> {
   const n = newNonce();
-  await env.HTML_CACHE?.put(linkNonceKey(n), "1", {
-    expirationTtl: Math.ceil(LINK_TTL_MS / 1000) + 3600,
-  });
+  await ytPut(
+    env.DB,
+    linkNonceKey(n),
+    "1",
+    nowMs,
+    Math.ceil(LINK_TTL_MS / 1000) + 3600
+  );
   const t = await signPayload(secret, "link", n, nowMs + LINK_TTL_MS);
   return `${SITE_URL}${YOUTUBE_AUTH_PATH}/start?t=${t}`;
 }
@@ -173,13 +178,11 @@ export async function sendYoutubeOwnerMail(
   nowMs: number
 ): Promise<boolean> {
   try {
-    const kv = env.HTML_CACHE;
     const to = env.OWNER_NOTIFY_EMAIL?.trim();
     const secret = env.YOUTUBE_BROKER_SECRET;
-    if (!kv || !to || !secret || !env.EMAIL || !youtubeAuthClient(env))
-      return false;
+    if (!to || !secret || !env.EMAIL || !youtubeAuthClient(env)) return false;
     const dedupeKey = `yt:mail:${reason}`;
-    if (await kv.get(dedupeKey)) return false;
+    if (await ytGet(env.DB, dedupeKey, nowMs)) return false;
     const link = await mintLink(env, secret, nowMs);
     const { subject, lead } = COPY[reason];
     const steps =
@@ -191,7 +194,7 @@ export async function sendYoutubeOwnerMail(
       text: `${lead}\n\n${steps}\n\n${link}\n`,
       html: `<p>${lead}</p><p>${steps}</p><p><a href="${link}">Sign in to YouTube</a></p>`,
     });
-    await kv.put(dedupeKey, String(nowMs), { expirationTtl: MAIL_DEDUPE_SEC });
+    await ytPut(env.DB, dedupeKey, String(nowMs), nowMs, MAIL_DEDUPE_SEC);
     return true;
   } catch (error) {
     console.error(

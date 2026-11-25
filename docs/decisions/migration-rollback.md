@@ -774,6 +774,13 @@ manual `DELETE` or `UPDATE`):
 - Rollback: `DROP TABLE IF EXISTS story_og_cards;`. Pages fall back to the
   Worker card route; the R2 objects stay and are re-acked on the next run.
 
+## 0079_yt_state.sql
+
+- Rollback: `DROP TABLE IF EXISTS yt_state;`. The table holds the YouTube
+  refresh token the one-click sign-in stored, the cached access token and the
+  sign-in nonces. Dropping it falls back to the `YOUTUBE_REFRESH_TOKEN` Worker
+  secret; if Google rotated that token, sign in again from the emailed link.
+
 ## Human steps
 
 These notes are untested against production. Confirming a Time Travel
