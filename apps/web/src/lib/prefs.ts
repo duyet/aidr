@@ -55,7 +55,9 @@ export type BilingualFirst = (typeof BILINGUAL_FIRSTS)[number];
 export const TLDR_COLS = [1, 2, 3] as const;
 export type TldrCols = (typeof TLDR_COLS)[number];
 
-export const TLDR_VIEWS = ["image", "text"] as const;
+/** The AI;DR card: the day-card image, or the text list clamped to 2 or 3
+ *  lines a title. */
+export const TLDR_VIEWS = ["image", "rows2", "rows3"] as const;
 export type TldrView = (typeof TLDR_VIEWS)[number];
 
 /** Columns of the ranked list in the newspaper layout. */
@@ -129,7 +131,7 @@ export const DEFAULT_PREFS: Prefs = {
   bilingualFirst: "vi",
   bilingual: false,
   tldrCols: 2,
-  tldrView: "text",
+  tldrView: "rows2",
   newsCols: 2,
   thumbs: true,
   summaries: false,

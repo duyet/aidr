@@ -174,7 +174,11 @@ const HIGHLIGHTS = [
   "none",
 ] as const satisfies readonly Highlight[];
 const TLDR_COLS = ["1", "2", "3"] as const satisfies readonly `${TldrCols}`[];
-const TLDR_VIEWS = ["image", "text"] as const satisfies readonly TldrView[];
+const TLDR_VIEWS = [
+  "image",
+  "rows2",
+  "rows3",
+] as const satisfies readonly TldrView[];
 const NEWS_COLS = ["2", "3"] as const satisfies readonly `${NewsCols}`[];
 const FEED_DAYS = ["1", "3", "7"] as const satisfies readonly `${FeedDays}`[];
 /** Quick looks in Customize: one event per look, then its prefs apply. */
@@ -287,8 +291,8 @@ export const EVENTS = {
   },
   tldr_toggle: {
     sender: "browser",
-    question: "Do readers prefer the image or the text TL;DR?",
-    params: { view: dim(oneOf(["image", "text"])) },
+    question: "Do readers prefer the image, 2-row or 3-row TL;DR?",
+    params: { view: dim(oneOf(["image", "rows2", "rows3"])) },
   },
   calendar_open: {
     sender: "browser",

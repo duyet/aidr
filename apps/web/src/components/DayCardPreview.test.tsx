@@ -28,7 +28,7 @@ vi.mock("../lib/vote-fn", () => ({
 
 const CARD_ALT = "AI;DR card for 2026-10-09";
 
-function renderSection(tldrView: "image" | "text" = "text") {
+function renderSection(tldrView: "image" | "rows2" = "rows2") {
   return render(
     <PrefsHarness initial={{ tldrView }}>
       <ConnectedTldrSection
@@ -78,15 +78,13 @@ describe("day card image view", () => {
   it("brings the list back on text view", () => {
     renderSection();
     fireEvent.click(screen.getByRole("radio", { name: "Show day card" }));
-    fireEvent.click(screen.getByRole("radio", { name: "Show text" }));
+    fireEvent.click(screen.getByRole("radio", { name: "2 rows" }));
 
     expect(screen.getByText("Bullet 1").closest("[hidden]")).toBeNull();
     const card = screen.getByAltText(CARD_ALT);
     expect((card.parentElement as HTMLElement).hidden).toBe(true);
     expect(
-      screen
-        .getByRole("radio", { name: "Show text" })
-        .getAttribute("aria-checked")
+      screen.getByRole("radio", { name: "2 rows" }).getAttribute("aria-checked")
     ).toBe("true");
   });
 
@@ -101,10 +99,10 @@ describe("day card image view", () => {
   it("reports each switch as tldr_toggle with the view chosen", () => {
     renderSection();
     fireEvent.click(screen.getByRole("radio", { name: "Show day card" }));
-    fireEvent.click(screen.getByRole("radio", { name: "Show text" }));
+    fireEvent.click(screen.getByRole("radio", { name: "2 rows" }));
     expect(vi.mocked(track).mock.calls).toEqual([
       ["tldr_toggle", { view: "image" }],
-      ["tldr_toggle", { view: "text" }],
+      ["tldr_toggle", { view: "rows2" }],
     ]);
   });
 });
@@ -132,7 +130,7 @@ describe("day card fetch", () => {
 
   it("warms the card when keyboard focus reaches the switch", () => {
     renderSection();
-    fireEvent.focus(screen.getByRole("radio", { name: "Show text" }));
+    fireEvent.focus(screen.getByRole("radio", { name: "2 rows" }));
     expect(screen.getByAltText(CARD_ALT)).toBeTruthy();
   });
 });

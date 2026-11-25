@@ -83,7 +83,8 @@ const TEXT_SIZES: Option<number>[] = [
 ];
 const TLDR_VIEWS: Option<TldrView>[] = [
   { value: "image", vi: "Ảnh", en: "Image" },
-  { value: "text", vi: "Chữ", en: "Text" },
+  { value: "rows2", vi: "2 dòng", en: "2 rows" },
+  { value: "rows3", vi: "3 dòng", en: "3 rows" },
 ];
 const LANGS: Option<Lang | "both">[] = [
   { value: "vi", vi: "VI", en: "VI" },

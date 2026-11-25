@@ -14,6 +14,7 @@ export function TldrBulletRow({
   second,
   linked,
   numbered = false,
+  rows = 2,
   priority,
   children,
 }: {
@@ -31,13 +32,15 @@ export function TldrBulletRow({
   /** Draw the mono rank before the text (layout A); the list is still an
    * <ol>, so the number is decorative for screen readers. */
   numbered?: boolean;
+  /** Lines the title may take before it is clipped. */
+  rows?: 2 | 3;
   priority?: boolean;
   children: ReactNode;
 }): ReactElement {
   const copy = (
     <span className="min-w-0 flex-1 text-[15px]">
       <span
-        className={`line-clamp-2 break-words text-foreground ${
+        className={`${rows === 3 ? "line-clamp-3" : "line-clamp-2"} break-words text-foreground ${
           linked ? "underline-offset-2 group-hover:underline" : ""
         }`}
         title={fullText}

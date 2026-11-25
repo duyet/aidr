@@ -2,8 +2,8 @@ import {
   SegmentedControl,
   SegmentedControlItem,
 } from "@ui-sdk/react/segmented-control";
-import { AlignLeft, ImageIcon } from "lucide-react";
-import type { TldrCount } from "../lib/prefs";
+import { ImageIcon, Rows2, Rows3 } from "lucide-react";
+import type { TldrCount, TldrView } from "../lib/prefs";
 import type { Lang } from "../lib/types";
 
 const GROUP_CLASS = "flex gap-0.5 rounded-full bg-muted p-0.5 text-[13px]";
@@ -12,33 +12,39 @@ const ITEM_CLASS =
 
 export function TldrViewSwitch({
   lang,
-  showImage,
+  view,
   onChange,
   onIntent,
 }: {
   lang: Lang;
-  showImage: boolean;
-  onChange: (showImage: boolean) => void;
+  view: TldrView;
+  onChange: (view: TldrView) => void;
   onIntent?: () => void;
 }) {
-  const views = [
+  const views: { value: TldrView; Icon: typeof ImageIcon; label: string }[] = [
     {
       value: "image",
       Icon: ImageIcon,
       label: lang === "vi" ? "Xem ảnh tóm tắt" : "Show day card",
     },
     {
-      value: "text",
-      Icon: AlignLeft,
-      label: lang === "vi" ? "Xem dạng chữ" : "Show text",
+      value: "rows2",
+      Icon: Rows2,
+      label: lang === "vi" ? "Chữ, 2 dòng mỗi tin" : "2 rows",
+    },
+    {
+      value: "rows3",
+      Icon: Rows3,
+      label: lang === "vi" ? "Chữ, 3 dòng mỗi tin" : "3 rows",
     },
   ];
   return (
     <SegmentedControl
       aria-label={lang === "vi" ? "Kiểu hiển thị" : "View"}
-      value={showImage ? "image" : "text"}
+      value={view}
       onValueChange={(next) => {
-        if (next) onChange(next === "image");
+        const picked = views.find((v) => v.value === next);
+        if (picked) onChange(picked.value);
       }}
       onPointerEnter={onIntent}
       onFocus={onIntent}

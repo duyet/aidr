@@ -10,6 +10,7 @@ import { TldrBulletRow } from "./TldrBulletRow";
 
 export function TldrBulletList({
   shown,
+  rows = 2,
   layout,
   numbered,
   lang,
@@ -22,6 +23,8 @@ export function TldrBulletList({
   secondTextByItemId,
 }: {
   shown: TldrBullet[];
+  /** Lines a title may take before it is clipped. */
+  rows?: 2 | 3;
   layout: AidrLayout;
   numbered: boolean;
   lang: Lang;
@@ -100,6 +103,7 @@ export function TldrBulletList({
               }
               linked={Boolean(primaryId)}
               numbered={numbered}
+              rows={rows}
               priority={n <= 6}
             >
               {tag && (

@@ -173,9 +173,8 @@ export function TldrSection({
           {hasCard ? (
             <TldrViewSwitch
               lang={lang}
-              showImage={showImage}
-              onChange={(image) => {
-                const view = image ? "image" : "text";
+              view={prefs.tldrView}
+              onChange={(view) => {
                 track("tldr_toggle", { view });
                 setPrefs({ tldrView: view });
               }}
@@ -205,6 +204,7 @@ export function TldrSection({
         <div hidden={showImage}>
           <TldrBulletList
             shown={shown}
+            rows={prefs.tldrView === "rows3" ? 3 : 2}
             layout={layout}
             numbered={numbered}
             lang={lang}
