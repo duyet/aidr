@@ -2,6 +2,7 @@ import { dayArchivePath } from "../../src/lib/day-archive.js";
 import { youtubeThumbnailUrl } from "../../src/lib/day-video.js";
 import { DEFAULT_LANG } from "../../src/lib/lang.js";
 import { absoluteSiteUrl, withSiteLang } from "../../src/lib/locale-url.js";
+import { dayOgPublicUrl, dayOgStaticKey } from "../../src/lib/og-cache.js";
 import { SITE_URL } from "../../src/lib/site.js";
 import { storyPath } from "../../src/lib/slug.js";
 import type { Lang } from "../../src/lib/types.js";
@@ -136,16 +137,30 @@ export function digestDayUrl(
  */
 export function digestLinkPreview(
   digest: Pick<DailyDigest, "date" | "lang">,
-  version?: string
+  version?: string,
+  staticCardUrl?: string
 ): LinkPreviewOptions & { url: string } {
   return {
     url: version
-      ? digestCardUrl(digest, version)
+      ? (staticCardUrl ?? digestCardUrl(digest, version))
       : digestDayUrl(digest, "preview"),
     prefer_large_media: true,
     show_above_text: true,
   };
 }
+/** The og.aidr.today copy of the versioned card, only once the ingest step has
+ *  stored it; otherwise undefined and the Worker URL stays the preview. */
+async function staticDigestCardUrl(
+  env: Pick<Env, "OG_CACHE">,
+  digest: Pick<DailyDigest, "date" | "lang">,
+  version?: string
+): Promise<string | undefined> {
+  if (!version || !env.OG_CACHE) return undefined;
+  const key = dayOgStaticKey(digest.date, digest.lang, version);
+  const found = await env.OG_CACHE.head(key).catch(() => null);
+  return found ? dayOgPublicUrl(digest.date, digest.lang, version) : undefined;
+}
+
 /** A story with no usable image goes out as text whose preview is the
  *  publisher page: Telegram fetches that page's own og:image. A publisher URL
  *  the guard refuses turns the preview off rather than losing the post; the
@@ -975,7 +990,11 @@ function telegramChannel(options: {
           text: buildDigestMessage(fitHighlightDigest(shown)),
           parse_mode: "HTML",
           reply_markup: buildDigestReplyMarkup(digest, page.youtubeId),
-          link_preview_options: digestLinkPreview(digest, page.version),
+          link_preview_options: digestLinkPreview(
+            digest,
+            page.version,
+            await staticDigestCardUrl(env, digest, page.version)
+          ),
         },
         TELEGRAM_MEDIA_TIMEOUT_MS
       );

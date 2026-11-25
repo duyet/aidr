@@ -2,7 +2,7 @@ import type { WorkflowStep } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { pngFromPixels } from "../../src/lib/__fixtures__/raster.js";
 import { DAY_OG_HEIGHT, DAY_OG_WIDTH } from "../../src/lib/day-og.js";
-import { dayOgObjectKey } from "../../src/lib/og-cache.js";
+import { dayOgObjectKey, dayOgStaticKey } from "../../src/lib/og-cache.js";
 import type { Lang } from "../../src/lib/types.js";
 import { loadDayCard } from "../notify/day-card.js";
 import { digestCardUrl } from "../notify/telegram.js";
@@ -168,6 +168,8 @@ const LIVE: IngestMode = { dryRun: false, steps: null };
 
 const baseKey = (lang: Lang) =>
   dayOgObjectKey(new URL(digestCardUrl({ date: DATE, lang })));
+const staticKey = (lang: Lang, ids: string[]) =>
+  dayOgStaticKey(DATE, lang, dayCardVersion(ids));
 const versionKey = (lang: Lang, ids: string[]) =>
   dayOgObjectKey(
     new URL(digestCardUrl({ date: DATE, lang }, dayCardVersion(ids)))
@@ -235,11 +237,13 @@ describe("prerenderDayCards", () => {
       versionKey("en", ids),
       baseKey("vi"),
       versionKey("vi", ids),
+      staticKey("en", ids),
+      staticKey("vi", ids),
     ];
-    expect(put).toHaveBeenCalledTimes(4);
+    expect(put).toHaveBeenCalledTimes(6);
     expect([...objects.keys()].sort()).toEqual([...expected].sort());
     expect(stats.en).toEqual({
-      rendered: 2,
+      rendered: 3,
       skippedFresh: 0,
       skippedEmpty: 0,
       skippedNoSend: 0,
@@ -285,15 +289,15 @@ describe("prerenderDayCards", () => {
     await prerenderDayCards(makeCtx(LIVE, bucket));
     // One render per language, put under both stale keys.
     expect(renderDayCard).toHaveBeenCalledTimes(2);
-    expect(put).toHaveBeenCalledTimes(4);
+    expect(put).toHaveBeenCalledTimes(6);
     const ctx = makeCtx(LIVE, bucket);
     const stats = await prerenderDayCards(ctx);
     // No new renders on the second invocation: the count stays at 2.
     expect(renderDayCard).toHaveBeenCalledTimes(2);
-    expect(put).toHaveBeenCalledTimes(4);
+    expect(put).toHaveBeenCalledTimes(6);
     expect(stats.en).toEqual({
       rendered: 0,
-      skippedFresh: 2,
+      skippedFresh: 3,
       skippedEmpty: 0,
       skippedNoSend: 0,
       readFailed: 0,
@@ -311,7 +315,7 @@ describe("prerenderDayCards", () => {
     });
     const stats = await prerenderDayCards(makeCtx(LIVE, bucket));
     expect(stats.en.skippedFresh).toBe(1);
-    expect(put).toHaveBeenCalledTimes(3);
+    expect(put).toHaveBeenCalledTimes(5);
   });
 
   it("re-renders an expired object", async () => {
@@ -321,8 +325,8 @@ describe("prerenderDayCards", () => {
       customMetadata: { expiresAt: String(NOW.getTime() - 1000) },
     });
     const stats = await prerenderDayCards(makeCtx(LIVE, bucket));
-    expect(stats.en.rendered).toBe(2);
-    expect(put).toHaveBeenCalledTimes(4);
+    expect(stats.en.rendered).toBe(3);
+    expect(put).toHaveBeenCalledTimes(6);
   });
 
   it("retries after a failed put: re-renders and writes the same deterministic keys", async () => {
@@ -330,19 +334,19 @@ describe("prerenderDayCards", () => {
     put.mockRejectedValue(new Error("r2 unavailable"));
     const first = makeCtx(LIVE, bucket);
     const failed = await prerenderDayCards(first);
-    expect(failed.en.failed).toBe(2);
-    expect(failed.vi.failed).toBe(2);
+    expect(failed.en.failed).toBe(3);
+    expect(failed.vi.failed).toBe(3);
     expect(warn).toHaveBeenCalled();
     // R2 answers again; the objects are absent, so the step re-renders.
     put.mockResolvedValue(undefined);
     const keysBefore = put.mock.calls.map((call) => call[0]);
     const second = makeCtx(LIVE, bucket);
     const retried = await prerenderDayCards(second);
-    expect(retried.en.rendered).toBe(2);
-    expect(retried.vi.rendered).toBe(2);
+    expect(retried.en.rendered).toBe(3);
+    expect(retried.vi.rendered).toBe(3);
     // One render per language per run, put under both stale keys.
     expect(renderDayCard).toHaveBeenCalledTimes(4);
-    const keysAfter = put.mock.calls.slice(4).map((call) => call[0]);
+    const keysAfter = put.mock.calls.slice(6).map((call) => call[0]);
     expect(keysAfter.sort()).toEqual(keysBefore.sort());
   });
 
@@ -358,8 +362,8 @@ describe("prerenderDayCards", () => {
         : { response: cardResponse(lang), store: true, maxAgeSec: 3600 }
     );
     const stats = await prerenderDayCards(makeCtx(LIVE, bucket));
-    expect(stats.en.failed).toBe(2);
-    expect(stats.vi.rendered).toBe(2);
+    expect(stats.en.failed).toBe(3);
+    expect(stats.vi.rendered).toBe(3);
     // No put for either English key; the Vietnamese keys are stored.
     expect(objects.has(baseKey("en"))).toBe(false);
     expect(
@@ -371,7 +375,7 @@ describe("prerenderDayCards", () => {
       )
     ).toBe(false);
     expect(objects.has(baseKey("vi"))).toBe(true);
-    expect(put).toHaveBeenCalledTimes(2);
+    expect(put).toHaveBeenCalledTimes(3);
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining(`${DATE} en ${baseKey("en")}`)
     );
@@ -390,8 +394,8 @@ describe("prerenderDayCards", () => {
       return { response: cardResponse(lang), store: true, maxAgeSec: 3600 };
     });
     const stats = await prerenderDayCards(makeCtx(LIVE, bucket));
-    expect(stats.en.failed).toBe(2);
-    expect(stats.vi.rendered).toBe(2);
+    expect(stats.en.failed).toBe(3);
+    expect(stats.vi.rendered).toBe(3);
     expect(objects.has(baseKey("en"))).toBe(false);
     expect(objects.has(baseKey("vi"))).toBe(true);
     expect(warn).toHaveBeenCalledWith(
@@ -408,17 +412,17 @@ describe("prerenderDayCards", () => {
     }));
     const stats = await prerenderDayCards(makeCtx(LIVE, bucket));
     expect(put).not.toHaveBeenCalled();
-    expect(stats.en.skippedEmpty).toBe(2);
-    expect(stats.vi.skippedEmpty).toBe(2);
+    expect(stats.en.skippedEmpty).toBe(3);
+    expect(stats.vi.skippedEmpty).toBe(3);
   });
 
   it("treats a failed R2 read as a miss and still renders", async () => {
     const { bucket, get, put } = memoryBucket();
     get.mockRejectedValue(new Error("r2 read failed"));
     const stats = await prerenderDayCards(makeCtx(LIVE, bucket));
-    expect(stats.en.rendered).toBe(2);
-    expect(stats.vi.rendered).toBe(2);
-    expect(put).toHaveBeenCalledTimes(4);
+    expect(stats.en.rendered).toBe(3);
+    expect(stats.vi.rendered).toBe(3);
+    expect(put).toHaveBeenCalledTimes(6);
   });
 
   it("records per-language counts on the run's day-card step line", async () => {
@@ -427,8 +431,8 @@ describe("prerenderDayCards", () => {
     const stats = await prerenderDayCards(ctx);
     const line = ctx.steps.find((s: RunStepInfo) => s.name === "day-card");
     expect(line?.action).toBe(summarizeDayCardStats(stats));
-    expect(line?.action).toContain("en: 2 rendered");
-    expect(line?.action).toContain("vi: 2 rendered");
+    expect(line?.action).toContain("en: 3 rendered");
+    expect(line?.action).toContain("vi: 3 rendered");
   });
 });
 
@@ -594,8 +598,8 @@ describe("digest eligibility gate", () => {
     // keys are absent, so they still render (a digest send is pending).
     expect(stats.en.skippedUnchanged).toBe(1);
     expect(stats.vi.skippedUnchanged).toBe(1);
-    expect(stats.en.rendered).toBe(1);
-    expect(put).toHaveBeenCalledTimes(2);
+    expect(stats.en.rendered).toBe(2);
+    expect(put).toHaveBeenCalledTimes(4);
     expect(objects.has(baseKey("en"))).toBe(true);
   });
 
@@ -612,8 +616,8 @@ describe("digest eligibility gate", () => {
     }
     const stats = await prerenderDayCards(makeCtx(LIVE, bucket));
     expect(stats.en.skippedUnchanged).toBe(0);
-    expect(stats.en.rendered).toBe(2);
-    expect(put).toHaveBeenCalledTimes(4);
+    expect(stats.en.rendered).toBe(3);
+    expect(put).toHaveBeenCalledTimes(6);
   });
 
   it("a fresh base card with a different stamp warms the new content", async () => {
@@ -628,8 +632,8 @@ describe("digest eligibility gate", () => {
       });
     }
     const stats = await prerenderDayCards(makeCtx(LIVE, bucket));
-    expect(stats.en.rendered).toBe(2);
-    expect(put).toHaveBeenCalledTimes(4);
+    expect(stats.en.rendered).toBe(3);
+    expect(put).toHaveBeenCalledTimes(6);
     const meta = objects.get(baseKey("en"))?.customMetadata;
     expect(meta?.contentVersion).toBe(dayCardVersion(ITEMS.map((i) => i.id)));
   });
@@ -644,8 +648,8 @@ describe("digest eligibility gate", () => {
     }
     const stats = await prerenderDayCards(makeCtx(LIVE, bucket));
     expect(stats.en.skippedFresh).toBe(1);
-    expect(stats.en.rendered).toBe(1);
-    expect(put).toHaveBeenCalledTimes(2);
+    expect(stats.en.rendered).toBe(2);
+    expect(put).toHaveBeenCalledTimes(4);
   });
 
   it("an engine interruption records its own line, not a success-looking summary", async () => {

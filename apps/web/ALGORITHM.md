@@ -2406,6 +2406,14 @@ per language supplies every stale key (base and versioned together), so a
 run draws each card at most once per language; an engine interruption
 records only its `interrupted` line, never a partial-success summary.
 
+The same gate also stores an immutable copy of the versioned card at
+`og-day-static/<date>/<lang>/<v>.png` (`dayOgStaticKey`, served at
+og.aidr.today with `Cache-Control: immutable`). The Telegram send does a
+`head` on that key and, when it exists, uses the og.aidr.today URL as the
+digest preview, so Telegram's fetch never reaches the Worker. A missing
+copy falls back to the Worker URL. The day page's og:image (the base key)
+is mutable and stays on the Worker route.
+
 The base key's background refresh is demand- and content-aligned: the step
 stamps its puts with the tile-id hash (`contentVersion`), and skips an
 expired base object whose stamp matches the current tile set

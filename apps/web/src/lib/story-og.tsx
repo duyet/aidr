@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { localizedTitle } from "./display-title";
+import { OG_PUBLIC_ORIGIN } from "./og-cache";
 import { publisherHost } from "./publisher-host";
 import { readRasterContainer, type StoryOgMime } from "./story-og-image";
 import { sanitizeImageUrl } from "./tldr-images";
@@ -822,7 +823,7 @@ export const STORY_OG_RENDER_VERSION = "2";
 
 /** Public host of the `aidr-og` R2 bucket. A card URL on it never reaches
  *  the Worker. */
-export const STORY_OG_PUBLIC_ORIGIN = "https://og.aidr.today";
+export const STORY_OG_PUBLIC_ORIGIN = OG_PUBLIC_ORIGIN;
 
 /** R2 key the Worker route caches its on-demand render under:
  *  `og-story/<sha256>/<lang>`, a hash of
