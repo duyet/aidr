@@ -55,7 +55,7 @@ export function PrefsPanel({
       >
         Aa
       </DrawerTrigger>
-      <DrawerBackdrop className="fixed inset-0 m-0 size-full max-h-none max-w-none border-0 bg-black/35 p-0" />
+      <DrawerBackdrop className="fixed inset-0 m-0 size-full max-h-none max-w-none border-0 bg-black/35 p-0 backdrop-blur-sm" />
       <DrawerContent className="flex flex-col bg-card text-card-foreground shadow-xl data-[side=bottom]:max-h-[85dvh] data-[side=bottom]:w-full data-[side=bottom]:rounded-t-2xl data-[side=right]:h-full data-[side=right]:w-[360px] data-[side=right]:max-w-full">
         {phone && (
           <div

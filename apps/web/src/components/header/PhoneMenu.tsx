@@ -41,7 +41,7 @@ export function PhoneMenu({
   const close = () => controller.close();
   return (
     <Drawer controller={controller} side="bottom">
-      <DrawerBackdrop className="fixed inset-0 m-0 size-full max-h-none max-w-none border-0 bg-black/35 p-0" />
+      <DrawerBackdrop className="fixed inset-0 m-0 size-full max-h-none max-w-none border-0 bg-black/35 p-0 backdrop-blur-sm" />
       <DrawerContent className="flex max-h-[88dvh] w-full flex-col rounded-t-3xl bg-card text-card-foreground shadow-2xl outline-none">
         <div className="flex items-center justify-between px-5 pt-3 pb-1">
           <DrawerTitle className="flex items-center gap-2 text-base font-semibold tracking-[-0.01em]">
