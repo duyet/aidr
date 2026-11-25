@@ -46,6 +46,7 @@ import {
   NOT_DRY_RUN_SQL,
   WORKFLOW_RUN_STARTED_AT_ORDER_SQL,
 } from "./workflow-run.js";
+import { keepYoutubeTokenAlive } from "./youtube-token.js";
 
 /**
  * In-pipeline health check, run once at close-run. Each hourly run looks at
@@ -647,6 +648,8 @@ export async function runHealthCheck(
       ...evaluateImageCoverage(imageCoverage, window.alerted),
       ...evaluateTraffic(traffic, window.alerted)
     );
+    const youtubeToken = await keepYoutubeTokenAlive(env, nowMs);
+    if (youtubeToken) issues.push(youtubeToken);
     const markers: string[] = [];
     if (shouldCheckDayVideo(local.hour, local.date, history, nowMs)) {
       const dayVideo = await checkDayVideo(env, local.date, nowMs);

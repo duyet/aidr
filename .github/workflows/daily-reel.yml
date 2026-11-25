@@ -49,6 +49,8 @@ jobs:
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      YOUTUBE_BROKER_SECRET: ${{ secrets.YOUTUBE_BROKER_SECRET }}
+      YOUTUBE_BROKER_URL: ${{ vars.YOUTUBE_BROKER_URL }}
       FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
       FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -161,8 +163,8 @@ jobs:
         if: ${{ !cancelled() && env.LIVE == 'true' && steps.gate.outcome == 'success' }}
         continue-on-error: true
         run: |
-          if [ -z "$YOUTUBE_REFRESH_TOKEN" ] || [ -z "$YOUTUBE_CLIENT_ID" ] || [ -z "$YOUTUBE_CLIENT_SECRET" ]; then
-            echo "YouTube: no YOUTUBE_CLIENT_ID/SECRET/REFRESH_TOKEN secrets; skipping upload and attach"
+          if { [ -z "$YOUTUBE_BROKER_URL" ] || [ -z "$YOUTUBE_BROKER_SECRET" ]; } && { [ -z "$YOUTUBE_REFRESH_TOKEN" ] || [ -z "$YOUTUBE_CLIENT_ID" ] || [ -z "$YOUTUBE_CLIENT_SECRET" ]; }; then
+            echo "YouTube: no YOUTUBE_BROKER_URL/SECRET and no YOUTUBE_CLIENT_ID/SECRET/REFRESH_TOKEN; skipping upload and attach"
             exit 0
           fi
           node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang en --steps upload,attach --uploader api
@@ -204,8 +206,8 @@ jobs:
         if: ${{ !cancelled() && env.LIVE == 'true' && steps.visub.outcome == 'success' }}
         continue-on-error: true
         run: |
-          if [ -z "$YOUTUBE_REFRESH_TOKEN" ] || [ -z "$YOUTUBE_CLIENT_ID" ] || [ -z "$YOUTUBE_CLIENT_SECRET" ]; then
-            echo "YouTube: no YOUTUBE_CLIENT_ID/SECRET/REFRESH_TOKEN secrets; skipping the Vietnamese subtitles upload and attach"
+          if { [ -z "$YOUTUBE_BROKER_URL" ] || [ -z "$YOUTUBE_BROKER_SECRET" ]; } && { [ -z "$YOUTUBE_REFRESH_TOKEN" ] || [ -z "$YOUTUBE_CLIENT_ID" ] || [ -z "$YOUTUBE_CLIENT_SECRET" ]; }; then
+            echo "YouTube: no YOUTUBE_BROKER_URL/SECRET and no YOUTUBE_CLIENT_ID/SECRET/REFRESH_TOKEN; skipping the Vietnamese subtitles upload and attach"
             exit 0
           fi
           node scripts/publish.mjs "${{ steps.date.outputs.date }}" --lang visub --steps upload,attach --uploader api

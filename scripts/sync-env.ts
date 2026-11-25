@@ -83,6 +83,12 @@ const WORKER_OPTIONAL = [
   "SITE_URL",
   // Postal address in the mail footer (CAN-SPAM). Unset: no address line.
   "MAIL_POSTAL_ADDRESS",
+  // YouTube credentials live in the Worker; GitHub Actions gets access tokens
+  // from POST /api/internal/youtube-token (apps/web/ALGORITHM.md).
+  "YOUTUBE_CLIENT_ID",
+  "YOUTUBE_CLIENT_SECRET",
+  "YOUTUBE_REFRESH_TOKEN",
+  "YOUTUBE_BROKER_SECRET",
 ] as const;
 
 /** Secrets GitHub Actions workflows read (`secrets.*`). */
@@ -114,6 +120,9 @@ const GITHUB_OPTIONAL = [
   "YOUTUBE_CLIENT_ID",
   "YOUTUBE_CLIENT_SECRET",
   "YOUTUBE_REFRESH_TOKEN",
+  // The bearer for the Worker's YouTube token broker. YOUTUBE_BROKER_URL is a
+  // plain GitHub Actions variable (gh variable set), not a secret.
+  "YOUTUBE_BROKER_SECRET",
 ] as const;
 
 const args = new Set(process.argv.slice(2));

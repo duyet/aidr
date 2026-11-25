@@ -45,6 +45,7 @@ import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as WeekWeekRouteImport } from './routes/week.$week'
 import { Route as ApiAdminSplatRouteImport } from './routes/api/admin.$'
 import { Route as ApiFeedFreshnessRouteImport } from './routes/api/feed.freshness'
+import { Route as ApiInternalYoutubeTokenRouteImport } from './routes/api/internal.youtube-token'
 import { Route as ApiOgIdRouteImport } from './routes/api/og.$id'
 import { Route as ApiStoryIdRouteImport } from './routes/api/story.$id'
 import { Route as ApiSubscribeConfirmRouteImport } from './routes/api/subscribe.confirm'
@@ -248,6 +249,11 @@ const ApiFeedFreshnessRoute = ApiFeedFreshnessRouteImport.update({
   path: '/freshness',
   getParentRoute: () => ApiFeedRoute,
 } as any)
+const ApiInternalYoutubeTokenRoute = ApiInternalYoutubeTokenRouteImport.update({
+  id: '/api/internal/youtube-token',
+  path: '/api/internal/youtube-token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOgIdRoute = ApiOgIdRouteImport.update({
   id: '/api/og/$id',
   path: '/api/og/$id',
@@ -396,6 +402,7 @@ export interface FileRoutesByFullPath {
   '/release/': typeof ReleaseIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
+  '/api/internal/youtube-token': typeof ApiInternalYoutubeTokenRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/subscribe/confirm': typeof ApiSubscribeConfirmRoute
@@ -456,6 +463,7 @@ export interface FileRoutesByTo {
   '/release': typeof ReleaseIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
+  '/api/internal/youtube-token': typeof ApiInternalYoutubeTokenRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/subscribe/confirm': typeof ApiSubscribeConfirmRoute
@@ -517,6 +525,7 @@ export interface FileRoutesById {
   '/release/': typeof ReleaseIndexRoute
   '/api/admin/$': typeof ApiAdminSplatRoute
   '/api/feed/freshness': typeof ApiFeedFreshnessRoute
+  '/api/internal/youtube-token': typeof ApiInternalYoutubeTokenRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/story/$id': typeof ApiStoryIdRoute
   '/api/subscribe/confirm': typeof ApiSubscribeConfirmRoute
@@ -579,6 +588,7 @@ export interface FileRouteTypes {
     | '/release/'
     | '/api/admin/$'
     | '/api/feed/freshness'
+    | '/api/internal/youtube-token'
     | '/api/og/$id'
     | '/api/story/$id'
     | '/api/subscribe/confirm'
@@ -639,6 +649,7 @@ export interface FileRouteTypes {
     | '/release'
     | '/api/admin/$'
     | '/api/feed/freshness'
+    | '/api/internal/youtube-token'
     | '/api/og/$id'
     | '/api/story/$id'
     | '/api/subscribe/confirm'
@@ -699,6 +710,7 @@ export interface FileRouteTypes {
     | '/release/'
     | '/api/admin/$'
     | '/api/feed/freshness'
+    | '/api/internal/youtube-token'
     | '/api/og/$id'
     | '/api/story/$id'
     | '/api/subscribe/confirm'
@@ -759,6 +771,7 @@ export interface RootRouteChildren {
   ContributeIndexRoute: typeof ContributeIndexRoute
   ReleaseIndexRoute: typeof ReleaseIndexRoute
   ApiAdminSplatRoute: typeof ApiAdminSplatRoute
+  ApiInternalYoutubeTokenRoute: typeof ApiInternalYoutubeTokenRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
   ApiStoryIdRoute: typeof ApiStoryIdRoute
   ApiThumbIdRoute: typeof ApiThumbIdRoute
@@ -1021,6 +1034,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFeedFreshnessRouteImport
       parentRoute: typeof ApiFeedRoute
     }
+    '/api/internal/youtube-token': {
+      id: '/api/internal/youtube-token'
+      path: '/api/internal/youtube-token'
+      fullPath: '/api/internal/youtube-token'
+      preLoaderRoute: typeof ApiInternalYoutubeTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/og/$id': {
       id: '/api/og/$id'
       path: '/api/og/$id'
@@ -1277,6 +1297,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContributeIndexRoute: ContributeIndexRoute,
   ReleaseIndexRoute: ReleaseIndexRoute,
   ApiAdminSplatRoute: ApiAdminSplatRoute,
+  ApiInternalYoutubeTokenRoute: ApiInternalYoutubeTokenRoute,
   ApiOgIdRoute: ApiOgIdRoute,
   ApiStoryIdRoute: ApiStoryIdRoute,
   ApiThumbIdRoute: ApiThumbIdRoute,
@@ -1287,13 +1308,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

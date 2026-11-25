@@ -19,7 +19,7 @@
 //        [--no-voice] [--chat <telegram chat id>] [--prod] [--telegram-fmt 16x9|9x16] [--telegram-mode video|card]
 //        [--dry-run] [--uploader chrome|api] [--privacy private|unlisted|public]
 // Weekly editions (week-YYYY-Www): only `--steps render` (and --dry-run); the other steps are planned, not wired.
-// --uploader api (YouTube Data API, headless) is the default when YOUTUBE_REFRESH_TOKEN is set, else chrome (owner's Chrome).
+// --uploader api (YouTube Data API, headless) is the default when YOUTUBE_BROKER_SECRET or YOUTUBE_REFRESH_TOKEN is set, else chrome (owner's Chrome).
 // --privacy applies to the api uploader only (default public).
 // Telegram uploads the video file itself (sendVideo, a <50 MB copy next to the render; needs only the render, the YouTube button
 // appears when the cut has an id). It goes to $TELEGRAM_STAGING_CHAT_ID (from .env.local) unless --chat is given; --prod posts to
@@ -93,7 +93,9 @@ const langs = list("--lang", ["en", "vi"]).sort(
 );
 const steps = list("--steps", DEFAULT_STEPS);
 const uploader =
-  flag("--uploader") ?? (process.env.YOUTUBE_REFRESH_TOKEN ? "api" : "chrome");
+  flag("--uploader") ?? (process.env.YOUTUBE_REFRESH_TOKEN || process.env.YOUTUBE_BROKER_SECRET
+    ? "api"
+    : "chrome");
 const privacy = flag("--privacy") ?? "public";
 const dry = argv.includes("--dry-run");
 const prod = argv.includes("--prod");

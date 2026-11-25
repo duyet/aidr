@@ -31,6 +31,8 @@ Shortcut: `node agents/aidr-daily-video/vault-sync.mjs` copies all six from the 
 | `YOUTUBE_CLIENT_SECRET` | `oauth2.googleapis.com` | upload | body |
 | `YOUTUBE_REFRESH_TOKEN` | `oauth2.googleapis.com` | upload | body |
 
+**Broker.** The long-lived YouTube credentials can live in Cloudflare instead: set `YOUTUBE_BROKER_URL` and `YOUTUBE_BROKER_SECRET` and the upload step gets a short-lived access token from `POST /api/internal/youtube-token`, so only the broker bearer needs vaulting (host `aidr.today`, header `Authorization: Bearer`). Owner steps, including publishing the OAuth consent screen to "In production" (a Testing-mode refresh token dies after 7 days): `apps/web/ALGORITHM.md`, "YouTube credentials".
+
 The access token the refresh returns is a real value inside the sandbox; it is short-lived and scoped to the YouTube upload scope of the OAuth client.
 
 ```sh
