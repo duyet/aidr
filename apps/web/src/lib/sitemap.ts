@@ -134,6 +134,16 @@ export const ROBOTS_BLOCKED_CRAWLERS = [
   "DotBot",
 ] as const;
 
+/** True when the User-Agent names a crawler robots.txt bans site-wide. Some
+ *  keep fetching anyway, so the Worker answers them before any render. */
+export function isRobotsBlockedCrawler(userAgent: string | null): boolean {
+  if (!userAgent) return false;
+  const ua = userAgent.toLowerCase();
+  return ROBOTS_BLOCKED_CRAWLERS.some((name) =>
+    ua.includes(name.toLowerCase())
+  );
+}
+
 export function robotsTxt(): string {
   const blocked = ROBOTS_BLOCKED_CRAWLERS.map(
     (name) => `User-agent: ${name}\nDisallow: /\n\n`
