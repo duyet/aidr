@@ -25,7 +25,7 @@ test("normalizeSettings clamps size, count, and unknown enums", () => {
     sections: { tldr: false },
   });
 
-  assert.equal(settings.theme, "system");
+  assert.equal(settings.theme, "light");
   assert.equal(settings.font, "sans");
   assert.equal(settings.fontSize, 1.25);
   assert.equal(settings.bg, "default");
@@ -109,7 +109,8 @@ test("DEFAULT_SETTINGS matches website PrefsPanel shape", () => {
   assert.equal(DEFAULT_SETTINGS.layout, "compact");
   assert.equal(DEFAULT_SETTINGS.accent, "yellow");
   assert.equal(DEFAULT_SETTINGS.highlight, "topic");
-  assert.equal(DEFAULT_SETTINGS.tldrView, "text");
+  assert.equal(DEFAULT_SETTINGS.theme, "light");
+  assert.equal(DEFAULT_SETTINGS.tldrView, "rows2");
   assert.equal(DEFAULT_SETTINGS.tldrCols, 2);
   assert.equal(DEFAULT_SETTINGS.thumbs, true);
   assert.equal(DEFAULT_SETTINGS.summaries, false);
@@ -155,4 +156,10 @@ test("tldrCount keeps a saved 12 or 16 so each new tab shows that many rows", ()
   assert.equal(normalizeSettings({ tldrCount: 16 }).tldrCount, 16);
   assert.equal(normalizeSettings({ tldrCount: 5 }).tldrCount, 8);
   assert.equal(DEFAULT_SETTINGS.tldrCount, 8);
+});
+
+test("an old saved tldrView of text opens on 2 rows; rows3 and image survive", () => {
+  assert.equal(normalizeSettings({ tldrView: "text" }).tldrView, "rows2");
+  assert.equal(normalizeSettings({ tldrView: "rows3" }).tldrView, "rows3");
+  assert.equal(normalizeSettings({ tldrView: "image" }).tldrView, "image");
 });

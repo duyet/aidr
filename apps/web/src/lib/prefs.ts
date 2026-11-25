@@ -1,3 +1,8 @@
+import {
+  DEFAULT_TLDR_VIEW,
+  TLDR_VIEWS,
+  type TldrView,
+} from "@aidr/libs/reader-view";
 import { createContext, useContext } from "react";
 
 export type ReaderFont = "sans" | "serif";
@@ -55,10 +60,9 @@ export type BilingualFirst = (typeof BILINGUAL_FIRSTS)[number];
 export const TLDR_COLS = [1, 2, 3] as const;
 export type TldrCols = (typeof TLDR_COLS)[number];
 
-/** The AI;DR card: the day-card image, or the text list clamped to 2 or 3
- *  lines a title. */
-export const TLDR_VIEWS = ["image", "rows2", "rows3"] as const;
-export type TldrView = (typeof TLDR_VIEWS)[number];
+/** The AI;DR card views live in @aidr/libs/reader-view, shared with the
+ *  Chrome extension. */
+export { TLDR_VIEWS, type TldrView };
 
 /** Columns of the ranked list in the newspaper layout. */
 export const NEWS_COLS = [2, 3] as const;
@@ -131,7 +135,7 @@ export const DEFAULT_PREFS: Prefs = {
   bilingualFirst: "vi",
   bilingual: false,
   tldrCols: 2,
-  tldrView: "rows2",
+  tldrView: DEFAULT_TLDR_VIEW,
   newsCols: 2,
   thumbs: true,
   summaries: false,

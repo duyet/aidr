@@ -107,8 +107,11 @@
   "tldrView": {
     "message": "AI;DR as"
   },
-  "tldrViewText": {
-    "message": "Text"
+  "tldrViewRows2": {
+    "message": "2 rows"
+  },
+  "tldrViewRows3": {
+    "message": "3 rows"
   },
   "tldrViewImage": {
     "message": "Image"

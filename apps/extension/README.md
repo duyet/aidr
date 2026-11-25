@@ -38,6 +38,23 @@ To point at a local API (`http://localhost:3014`), set **API base URL** in the
 extension settings and grant the optional host permission when Chrome asks.
 Production default is `https://aidr.today`.
 
+## Shared code
+
+The extension has no bundler and the Chrome Web Store zip only contains files
+under this folder, so shared code is copied in, not imported across packages.
+
+- **CSS tokens:** `packages/ui/tokens.css` is the source; `css/tokens.css` is a
+  byte-identical copy (`pnpm --filter @aidr/ui sync-tokens`).
+- **Pure logic:** `packages/libs/reader-view.js` is a plain ES module (default
+  theme `light`, the AI;DR views `image` / `rows2` / `rows3`, the line-clamp
+  rule `tldrRows()`, and the lucide Equal / Menu / Image glyphs as SVG data).
+  The web app imports it as `@aidr/libs/reader-view`; the extension loads the
+  copy at `js/shared/reader-view.js` (`pnpm --filter @aidr/libs sync-extension`).
+  `js/shared/` ships in the zip because the pack step zips this whole folder.
+
+Edit the source in `packages`, then run the sync script. `pnpm --filter
+@aidr/libs test` and `@aidr/ui test` fail when a copy drifts.
+
 ## Public API
 
 - **URL:** `GET https://aidr.today/api/public`

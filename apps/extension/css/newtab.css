@@ -1666,6 +1666,17 @@ html[data-theme="dark"]
   word-break: break-word;
 }
 
+/* 3 rows view: the clamp and the row height follow tldrRows() in
+   packages/libs/reader-view.js. */
+.tldr-cols[data-rows="3"] .bullet {
+  min-height: 3lh;
+}
+
+.tldr-cols[data-rows="3"] .bullet-copy {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
 .bullet-copy a {
   color: inherit;
   text-decoration: underline;
@@ -2247,6 +2258,8 @@ html[data-theme="dark"]
   inset: 0;
   border: 0;
   background: rgb(0 0 0 / 30%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   cursor: pointer;
 }
 
@@ -2504,6 +2517,8 @@ html[data-theme="dark"]
   justify-content: center;
   padding: 1rem;
   background: rgb(0 0 0 / 50%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .story-dialog {
@@ -2940,6 +2955,8 @@ html[data-theme="dark"] .story-topic-colored {
   inset: 0;
   border: 0;
   background: rgb(0 0 0 / 70%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   cursor: pointer;
 }
 

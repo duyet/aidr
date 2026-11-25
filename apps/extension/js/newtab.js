@@ -1,4 +1,5 @@
 import { digestPaintKey, fetchDigest, hydrateDigest } from "./api.js";
+import { bindAidrDialogLink, openStoryDialogLazy } from "./dialog-link.js";
 import { highlightTitle, tagsForHighlight } from "./highlight.js";
 import { t, uiLang } from "./i18n.js";
 import { tagSiteLinks, withExtRef } from "./ref.js";
@@ -10,8 +11,8 @@ import {
   updateSettings,
 } from "./settings.js";
 import { bindPrefsPopover } from "./settings-panel.js";
+import { TLDR_VIEW_ICONS, tldrRows } from "./shared/reader-view.js";
 import { NEWS_SITE, storyPermalink } from "./site-url.js";
-import { bindAidrDialogLink, openStoryDialogLazy } from "./dialog-link.js";
 import { categoryColor, topicColor } from "./topic-color.js";
 import { track, trackChannelClick } from "./track.js";
 import {
@@ -616,14 +617,46 @@ function renderTldrMasthead(settings, date) {
   syncDayCard(settings, date);
 }
 
-/** Image | text masthead switch (web DayCardViewSwitch). Text is default. */
+/** Image | 2 rows | 3 rows masthead switch (web TldrViewSwitch). 2 rows is default. */
 let dayCardImageOn = false;
+/** The rows view behind (or instead of) the day card: "rows2" or "rows3". */
+let tldrView = "rows2";
+
+const DAY_CARD_BUTTONS = {
+  image: "day-card-image",
+  rows2: "day-card-rows2",
+  rows3: "day-card-rows3",
+};
+
+/** Lucide glyph as inline SVG from the shared icon data. */
+function viewIcon(view) {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  for (const [key, value] of Object.entries({
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": "2",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    "aria-hidden": "true",
+  })) {
+    svg.setAttribute(key, value);
+  }
+  for (const [tag, attrs] of TLDR_VIEW_ICONS[view]) {
+    const shape = document.createElementNS(ns, tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      shape.setAttribute(key, value);
+    }
+    svg.append(shape);
+  }
+  return svg;
+}
 
 function syncDayCard(settings, date) {
   const view = $("day-card-switch");
-  const imageBtn = $("day-card-image");
-  const textBtn = $("day-card-text");
-  if (!view || !imageBtn || !textBtn) return;
+  const buttons = Object.entries(DAY_CARD_BUTTONS).map(([v, id]) => [v, $(id)]);
+  if (!view || buttons.some(([, btn]) => !btn)) return;
   const lang = uiLang(settings);
   const parts = dayOgDateParts(date, lang);
   if (!parts) {
@@ -636,12 +669,16 @@ function syncDayCard(settings, date) {
   view.hidden = false;
   view.dataset.og = dayCardImageUrl(date, lang);
   view.setAttribute("aria-label", lang === "vi" ? "Kiểu hiển thị" : "View");
-  const imageLabel = lang === "vi" ? "Xem ảnh tóm tắt" : "Show day card";
-  const textLabel = lang === "vi" ? "Xem dạng chữ" : "Show text";
-  imageBtn.setAttribute("aria-label", imageLabel);
-  imageBtn.title = imageLabel;
-  textBtn.setAttribute("aria-label", textLabel);
-  textBtn.title = textLabel;
+  const labels = {
+    image: lang === "vi" ? "Xem ảnh tóm tắt" : "Show day card",
+    rows2: lang === "vi" ? "Chữ, 2 dòng mỗi tin" : "2 rows",
+    rows3: lang === "vi" ? "Chữ, 3 dòng mỗi tin" : "3 rows",
+  };
+  for (const [v, btn] of buttons) {
+    btn.setAttribute("aria-label", labels[v]);
+    btn.title = labels[v];
+    if (!btn.firstElementChild) btn.append(viewIcon(v));
+  }
   const img = $("day-card-img");
   if (img) {
     img.alt =
@@ -669,8 +706,12 @@ function applyDayCardView() {
   if (open) armDayCardImage();
   $("day-card-overlay")?.classList.toggle("is-open", open);
   $("day-card-overlay")?.setAttribute("aria-hidden", open ? "false" : "true");
-  $("day-card-image")?.setAttribute("aria-pressed", open ? "true" : "false");
-  $("day-card-text")?.setAttribute("aria-pressed", open ? "false" : "true");
+  const current = open ? "image" : tldrView;
+  for (const [v, id] of Object.entries(DAY_CARD_BUTTONS)) {
+    $(id)?.setAttribute("aria-pressed", v === current ? "true" : "false");
+  }
+  const list = $("tldr-cols");
+  if (list) list.dataset.rows = String(tldrRows(tldrView));
   // The overlay lets pointer events through; keep clicks and tab focus off
   // the covered bullets, more/less button and footer while the card shows.
   for (const covered of [
@@ -688,16 +729,16 @@ function applyDayCardView() {
 let dayCardArmed = false;
 
 function bindDayCard(onViewChange) {
-  const imageBtn = $("day-card-image");
-  const textBtn = $("day-card-text");
-  if (!imageBtn || !textBtn) return;
-  const choose = (image) => {
-    dayCardImageOn = image;
-    applyDayCardView();
-    onViewChange?.(image ? "image" : "text");
-  };
-  imageBtn.addEventListener("click", () => choose(true));
-  textBtn.addEventListener("click", () => choose(false));
+  const buttons = Object.entries(DAY_CARD_BUTTONS).map(([v, id]) => [v, $(id)]);
+  if (buttons.some(([, btn]) => !btn)) return;
+  for (const [view, btn] of buttons) {
+    btn.addEventListener("click", () => {
+      dayCardImageOn = view === "image";
+      if (view !== "image") tldrView = view;
+      applyDayCardView();
+      onViewChange?.(view);
+    });
+  }
   if (!dayCardArmed) {
     dayCardArmed = true;
     setTimeout(armDayCardImage, 2000);
@@ -765,10 +806,10 @@ function renderTldr(settings, digest) {
     return;
   }
   section.hidden = false;
-  // The persisted tldrView pref decides the opening view (text by default);
+  // The persisted tldrView pref decides the opening view (2 rows by default);
   // the buttons below only change that pref.
-  dayCardImageOn =
-    settings.tldrView === "image" && Boolean(digest.tldr?.date);
+  if (settings.tldrView !== "image") tldrView = settings.tldrView;
+  dayCardImageOn = settings.tldrView === "image" && Boolean(digest.tldr?.date);
   renderTldrMasthead(settings, digest.tldr?.date || "");
 
   const options = [];
@@ -1929,7 +1970,7 @@ async function main() {
   bindPhoneMenu();
   bindHeaderMenu();
   bindIntroVideo();
-  // Seed and persist the image/text toggle from the `tldrView` pref.
+  // Seed and persist the image / 2 rows / 3 rows toggle from the `tldrView` pref.
   bindDayCard(async (view) => {
     settings = await updateSettings({ tldrView: view });
     applyAppearance(settings);

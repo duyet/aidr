@@ -1,3 +1,4 @@
+import { tldrRows } from "@aidr/libs/reader-view";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { type ReactElement, type ReactNode, useState } from "react";
@@ -204,7 +205,7 @@ export function TldrSection({
         <div hidden={showImage}>
           <TldrBulletList
             shown={shown}
-            rows={prefs.tldrView === "rows3" ? 3 : 2}
+            rows={tldrRows(prefs.tldrView)}
             layout={layout}
             numbered={numbered}
             lang={lang}
