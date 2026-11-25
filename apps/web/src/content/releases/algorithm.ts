@@ -11,6 +11,13 @@ import type { EarlierEntry } from "./earlier";
 
 export const ALGORITHM_ENTRIES: EarlierEntry[] = [
   {
+    date: "2026-11-25",
+    text: {
+      en: "Translation has a fallback again. Vietnamese and English translation try google/gemma-latest, then z-ai/glm-latest. With Gemma alone, one run of 502 errors from Gemma left stories untranslated and fired the translate chain alert (8 of 8 attempts failed). The daily TL;DR still uses openai/gpt-5.6-luna alone, but it now waits 35 seconds for the first word instead of 20, because its slow starts were being cut off.",
+      vi: "Bản dịch lại có model dự phòng. Dịch sang tiếng Việt và tiếng Anh thử google/gemma-latest trước, rồi tới z-ai/glm-latest. Khi chỉ có Gemma, một đợt lỗi 502 từ Gemma khiến tin không được dịch và kích hoạt cảnh báo chuỗi dịch (8 trên 8 lần gọi thất bại). TL;DR hằng ngày vẫn chỉ dùng openai/gpt-5.6-luna, nhưng giờ chờ 35 giây cho từ đầu tiên thay vì 20 giây, vì các lần khởi động chậm bị cắt ngang.",
+    },
+  },
+  {
     date: "2026-11-17",
     text: {
       en: "poolside/laguna-s-2.1 is gone from the model chains. A bench on Nov 17 got an error on every attempt: 404 on translation, 404 and 502 on the daily TL;DR. Keeping it as a fallback only spent time before giving up. Vietnamese and English translation now use google/gemma-latest alone, and the daily TL;DR uses openai/gpt-5.6-luna alone. In the same bench gemma translated 3 of 3 cases and luna wrote 2 of 2 TL;DRs.",

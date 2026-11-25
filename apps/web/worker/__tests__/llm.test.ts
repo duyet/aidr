@@ -32,6 +32,7 @@ import {
   TLDR_RETRY_RESERVE_MS,
   TLDR_SLICE_MAX_MS,
   TLDR_TIMEOUT_MS,
+  TLDR_FIRST_TOKEN_MS,
   TRANSLATE_FIRST_TOKEN_MS,
   tldrAttemptTimeoutMs,
   translateItems,
@@ -2712,6 +2713,23 @@ function tokenThenHang(_url: string, init?: RequestInit) {
   return new Response(stream, { status: 200 });
 }
 
+describe("translate chains", () => {
+  // #1118: "gemma-latest: 502×8" exhausted a one-id chain.
+  it.each([
+    "ANYROUTER_TRANSLATE_MODEL",
+    "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
+  ])("%s has a fallback id", (name) => {
+    const toml = readFileSync(
+      fileURLToPath(new URL("../../wrangler.toml", import.meta.url)),
+      "utf8"
+    );
+    const chain = new RegExp(`^${name} = "([^"]+)"`, "m")
+      .exec(toml)?.[1]
+      ?.split(",");
+    expect(chain?.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
 describe("tldr chain budget", () => {
   // What the first hop really gets, not the cap: modelAttemptTimeoutMs holds
   // back a slice per fallback, which is how a 135s cap became ~100s and
@@ -2756,6 +2774,25 @@ describe("tldr chain budget", () => {
     expect(tldrAttemptTimeoutMs(TLDR_TIMEOUT_MS - first, 1)).toBe(
       TLDR_RETRY_RESERVE_MS
     );
+  });
+
+  // #679: every luna hang died at the 20s first-token cap.
+  it("waits TLDR_FIRST_TOKEN_MS for a first token, not the 20s score cap", async () => {
+    vi.useFakeTimers();
+    const entries: LlmCallLogEntry[] = [];
+    setLlmCallLogger((entry) => {
+      entries.push(entry);
+    });
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(abortingHang));
+    const pending = generateTldr(
+      { ...env, ANYROUTER_TLDR_MODEL: "tldr/model" },
+      [{ id: "1", title: "Story" }]
+    );
+    await vi.advanceTimersByTimeAsync(300_000);
+    await pending;
+    const hops = entries.filter((e) => e.task === "tldr");
+    expect(hops[0]?.durationMs).toBe(TLDR_FIRST_TOKEN_MS);
+    expect(TLDR_FIRST_TOKEN_MS).toBeGreaterThan(20_000);
   });
 
   it("returns 0 once the shared deadline has passed", () => {

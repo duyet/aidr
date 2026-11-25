@@ -766,6 +766,9 @@ export const TRANSLATE_SLICE_MAX_MS = 60_000;
  *  translate calls died at the 20s first-token cap with zero tokens.
  *  The attempt slice is still the hang cap; this only stops the early abort. */
 export const TRANSLATE_FIRST_TOKEN_MS = 35_000;
+/** TL;DR hangs on luna died at the 20s first-token cap (#679); with one id
+ *  there is no fallback slice to protect, so wait as long as translate. */
+export const TLDR_FIRST_TOKEN_MS = 35_000;
 const FALLBACK_FLOOR_MS = 20_000;
 
 /**
@@ -2416,6 +2419,7 @@ export async function generateTldr(
           task: "tldr",
           timeoutMs,
           maxSliceMs: TLDR_SLICE_MAX_MS,
+          firstTokenMs: TLDR_FIRST_TOKEN_MS,
           // Bilingual attempt: EN-only JSON is a miss so the next model
           // can still produce bullets_vi. EN-only is accepted on retry.
           accept: (content) => {
