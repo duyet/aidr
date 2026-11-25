@@ -132,8 +132,18 @@ export interface Env {
   YOUTUBE_CLIENT_ID?: string;
   YOUTUBE_CLIENT_SECRET?: string;
   YOUTUBE_REFRESH_TOKEN?: string;
-  /** Bearer secret for `POST /api/internal/youtube-token`; unset → that route is a 404. */
+  /** Bearer secret for `POST /api/internal/youtube-token`; unset → that route is a 404.
+   *  Also keys the HMAC of the one-click re-auth link (`worker/youtube-auth-link.ts`). */
   YOUTUBE_BROKER_SECRET?: string;
+  /** "Web application" OAuth client for the one-click sign-in (a hosted redirect
+   *  cannot use the Desktop client). Unset: falls back to YOUTUBE_CLIENT_ID/SECRET. */
+  YOUTUBE_WEB_CLIENT_ID?: string;
+  YOUTUBE_WEB_CLIENT_SECRET?: string;
+  /** Days after which the owner is emailed a re-auth link. Unset: 5. 0: off
+   *  (the OAuth app is in production, its tokens do not expire). */
+  YOUTUBE_TOKEN_MAX_AGE_DAYS?: string;
+  /** Channel the signed-in account must own. Unset: the AI;DR channel. */
+  YOUTUBE_CHANNEL_ID?: string;
   /** Public Meta app id. Used locally with FACEBOOK_APP_SECRET (never
    *  synced to the Worker) to mint a new Page token. An app token cannot publish by itself. */
   FACEBOOK_APP_ID?: string;

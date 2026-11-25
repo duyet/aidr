@@ -89,6 +89,12 @@ const WORKER_OPTIONAL = [
   "YOUTUBE_CLIENT_SECRET",
   "YOUTUBE_REFRESH_TOKEN",
   "YOUTUBE_BROKER_SECRET",
+  // One-click re-auth: a Web-application OAuth client, the age that triggers the
+  // email (0 = off) and the channel the account must own.
+  "YOUTUBE_WEB_CLIENT_ID",
+  "YOUTUBE_WEB_CLIENT_SECRET",
+  "YOUTUBE_TOKEN_MAX_AGE_DAYS",
+  "YOUTUBE_CHANNEL_ID",
 ] as const;
 
 /** Secrets GitHub Actions workflows read (`secrets.*`). */
