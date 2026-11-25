@@ -15,8 +15,7 @@ import { StoryThumb } from "./StoryThumb";
 /**
  * The day's top story, above the ranked list: topic and time, headline, two
  * lines of summary, "Read more" (the story page) and the original article.
- * Compact and comfortable put the image beside the text, newspaper splits the
- * block in half, and a phone puts the image first.
+ * The image sits beside the text; a phone puts it first.
  */
 export function LeadStory({ item, lang }: { item: FeedItem; lang: Lang }) {
   const { prefs } = usePrefs();
@@ -31,7 +30,7 @@ export function LeadStory({ item, lang }: { item: FeedItem; lang: Lang }) {
   return (
     <article
       aria-label={lang === "vi" ? "Tin hàng đầu" : "Top story"}
-      className="grid gap-5 min-[700px]:grid-cols-[minmax(0,1fr)_190px] min-[700px]:in-data-[layout=comfortable]:grid-cols-[minmax(0,1fr)_260px] min-[700px]:in-data-[layout=newspaper]:grid-cols-2 min-[700px]:in-data-[layout=newspaper]:gap-7"
+      className="grid items-start gap-5 min-[700px]:grid-cols-[minmax(0,1fr)_260px] min-[700px]:gap-8"
     >
       <div className="flex min-w-0 flex-col">
         <p className="flex flex-wrap items-center gap-x-1.5 text-[12px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
@@ -45,7 +44,7 @@ export function LeadStory({ item, lang }: { item: FeedItem; lang: Lang }) {
             </>
           )}
         </p>
-        <h3 className="mt-2.5 text-balance text-[length:var(--lead-title-size)] font-semibold leading-[1.14] tracking-[-0.015em] text-foreground in-data-[layout=newspaper]:font-heading in-data-[layout=newspaper]:leading-[1.08]">
+        <h3 className="mt-2.5 line-clamp-3 break-words text-balance text-[length:var(--lead-title-size)] font-semibold leading-[1.14] tracking-[-0.015em] text-foreground in-data-[layout=newspaper]:font-heading in-data-[layout=newspaper]:leading-[1.08]">
           <a
             href={href}
             lang={

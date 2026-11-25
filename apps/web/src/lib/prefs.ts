@@ -105,6 +105,10 @@ export interface Prefs {
   tldrView: TldrView;
   newsCols: NewsCols;
   thumbs: boolean;
+  /** Vote counts in ranked-list rows (an open story always shows them). */
+  votes: boolean;
+  /** The home page's right column: trending, newsletter, Telegram, this week. */
+  sidebar: boolean;
   /** Summary lines under ranked-list titles. */
   summaries: boolean;
   feedDays: FeedDays;
@@ -137,7 +141,9 @@ export const DEFAULT_PREFS: Prefs = {
   tldrCols: 2,
   tldrView: DEFAULT_TLDR_VIEW,
   newsCols: 2,
-  thumbs: true,
+  thumbs: false,
+  votes: false,
+  sidebar: true,
   summaries: false,
   feedDays: 3,
   infiniteDays: false,
@@ -241,6 +247,8 @@ export function parsePrefs(raw: string | null): Prefs {
     tldrView: choice(s, "tldrView"),
     newsCols: choice(s, "newsCols"),
     thumbs: flag(s, "thumbs"),
+    votes: flag(s, "votes"),
+    sidebar: flag(s, "sidebar"),
     summaries: flag(s, "summaries"),
     feedDays: choice(s, "feedDays"),
     infiniteDays: flag(s, "infiniteDays"),

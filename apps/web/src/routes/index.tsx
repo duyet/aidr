@@ -335,7 +335,11 @@ function IndexPage() {
       <div
         className={
           browseChrome
-            ? "grid items-start gap-x-(--home-col-gap) gap-y-(--home-section-gap) min-[900px]:grid-cols-[minmax(0,1fr)_var(--rail-width)] min-[900px]:in-data-[layout=newspaper]:grid-cols-[minmax(0,1fr)_270px]"
+            ? `grid items-start gap-x-(--home-col-gap) gap-y-(--home-section-gap) ${
+              prefs.sidebar
+                ? "min-[900px]:grid-cols-[minmax(0,1fr)_var(--rail-width)]"
+                : ""
+            }`
             : undefined
         }
       >
@@ -351,7 +355,7 @@ function IndexPage() {
             onLoadDay={replaceDay}
           />
         </div>
-        {browseChrome && (
+        {browseChrome && prefs.sidebar && (
           <HomeRail
             feed={feed}
             lang={lang}

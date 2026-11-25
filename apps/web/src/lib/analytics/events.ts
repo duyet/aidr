@@ -212,6 +212,8 @@ export const PREF_VALUES = {
   tldrView: TLDR_VIEWS,
   newsCols: NEWS_COLS,
   thumbs: ON_OFF,
+  votes: ON_OFF,
+  sidebar: ON_OFF,
   summaries: ON_OFF,
   feedDays: FEED_DAYS,
   infiniteDays: ON_OFF,

@@ -42,7 +42,7 @@ type EnumPref =
   | "tldrCols"
   | "tldrView"
   | "feedDays";
-type FlagPref = "thumbs" | "summaries" | "infiniteDays";
+type FlagPref = "thumbs" | "votes" | "sidebar" | "summaries" | "infiniteDays";
 
 const LAYOUTS: Option<Layout>[] = [
   { value: "compact", vi: "Gọn", en: "Compact" },
@@ -387,6 +387,11 @@ export function Customize({
           options={TLDR_VIEWS}
         />
         <Toggle
+          label={<Bi vi="Cột bên phải" en="Right column" inline />}
+          checked={prefs.sidebar}
+          onChange={(on) => setFlag("sidebar", on)}
+        />
+        <Toggle
           label={<Bi vi="Trending" en="Trending" inline />}
           checked={prefs.sections.trending}
           onChange={(on) => setSection("trending", on)}
@@ -395,6 +400,11 @@ export function Customize({
           label={<Bi vi="Ảnh nhỏ" en="Thumbnails" inline />}
           checked={prefs.thumbs}
           onChange={(on) => setFlag("thumbs", on)}
+        />
+        <Toggle
+          label={<Bi vi="Số bình chọn" en="Votes" inline />}
+          checked={prefs.votes}
+          onChange={(on) => setFlag("votes", on)}
         />
         <Toggle
           label={<Bi vi="Tóm tắt dưới tiêu đề" en="Summaries" inline />}

@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { LangContext } from "../lib/lang-context";
+import { DEFAULT_PREFS, PrefsContext } from "../lib/prefs";
 import type { DayGroup, FeedItem } from "../lib/types";
 import { DaySection } from "./DaySection";
 import { anyVotes } from "./StoryRow";
@@ -24,6 +25,14 @@ const item: FeedItem = {
   llm_tokens: 0,
   image_url: null,
 };
+
+const votesOn = (el: ReactElement) => (
+  <PrefsContext.Provider
+    value={{ prefs: { ...DEFAULT_PREFS, votes: true }, setPrefs: () => {} }}
+  >
+    {el}
+  </PrefsContext.Provider>
+);
 
 const day: DayGroup = {
   date: "2026-10-04",
@@ -146,7 +155,9 @@ describe("ranked list rows", () => {
   it("shows the vote column once any story has a vote", () => {
     const voted = rows(3);
     voted.items[1] = { ...voted.items[1], vote_net: 4 };
-    const html = renderToStaticMarkup(<DaySection day={voted} lang="en" />);
+    const html = renderToStaticMarkup(
+      votesOn(<DaySection day={voted} lang="en" />)
+    );
     expect(html.match(/story-score/g)).toHaveLength(3);
     expect(html.match(/aria-label="Upvote"/g)).toHaveLength(3);
   });
@@ -155,12 +166,12 @@ describe("ranked list rows", () => {
     const voted = rows(2);
     voted.items[0] = { ...voted.items[0], vote_net: 2 };
     const html = renderToStaticMarkup(
-      <DaySection day={rows(2)} lang="en" showVotes />
+      votesOn(<DaySection day={rows(2)} lang="en" showVotes />)
     );
     expect(html.match(/story-score/g)).toHaveLength(2);
     expect(
       renderToStaticMarkup(
-        <DaySection day={voted} lang="en" showVotes={false} />
+        votesOn(<DaySection day={voted} lang="en" showVotes={false} />)
       )
     ).not.toContain("story-score");
   });

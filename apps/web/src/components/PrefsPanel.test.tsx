@@ -311,7 +311,9 @@ describe("PrefsPanel show switches", () => {
   it.each([
     ["AI;DR card", "sections.tldr", (p: Prefs) => p.sections.tldr],
     ["Trending", "sections.trending", (p: Prefs) => p.sections.trending],
+    ["Right column", "sidebar", (p: Prefs) => p.sidebar],
     ["Thumbnails", "thumbs", (p: Prefs) => p.thumbs],
+    ["Votes", "votes", (p: Prefs) => p.votes],
     ["Summaries", "summaries", (p: Prefs) => p.summaries],
     ["Categories", "sections.categories", (p: Prefs) => p.sections.categories],
     ["Ranked list", "sections.days", (p: Prefs) => p.sections.days],

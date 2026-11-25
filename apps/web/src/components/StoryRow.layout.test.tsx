@@ -61,12 +61,9 @@ describe("row content", () => {
     expect(row()).toMatch(/class="topic-ink font-semibold"[^>]*>OpenAI</);
   });
 
-  it("keeps the source link reachable without hover", () => {
+  it("keeps the meta line to topic, source and time", () => {
     const html = row();
-    expect(html).toContain("group-hover:opacity-100");
-    expect(html).toContain("group-focus-within:opacity-100");
-    expect(html).toContain("[@media(hover:none)]:opacity-100");
-    expect(html).not.toMatch(/story-go[^"]*\bhidden\b/);
+    expect(html).not.toContain("story-go");
   });
 });
 
@@ -77,8 +74,8 @@ describe("thumbnails", () => {
     expect(html).toContain("size-(--thumb-size)");
   });
 
-  it("renders none when the pref is off, so nothing is fetched", () => {
-    const html = row({ thumbs: false });
+  it("renders none by default, so nothing is fetched", () => {
+    const html = row();
     expect(html).not.toContain("row-thumb");
     expect(html).not.toContain("<img");
   });
@@ -144,14 +141,19 @@ describe("rank and votes", () => {
     expect(html).toMatch(/story-rank[^"]*in-data-\[layout=newspaper\]:hidden/);
   });
 
+  it("shows the vote cell only when the reader turns votes on", () => {
+    expect(row()).not.toContain("story-score");
+    expect(row({ votes: true })).toContain("story-score");
+  });
+
   it("drops the vote cell when the page has no votes", () => {
-    const withVotes = renderToStaticMarkup(
-      <StoryRow item={item} index={1} lang="en" />
-    );
     const without = renderToStaticMarkup(
-      <StoryRow item={item} index={1} lang="en" showVotes={false} />
+      <PrefsContext.Provider
+        value={{ prefs: { ...DEFAULT_PREFS, votes: true }, setPrefs: () => {} }}
+      >
+        <StoryRow item={item} index={1} lang="en" showVotes={false} />
+      </PrefsContext.Provider>
     );
-    expect(withVotes).toContain("story-score");
     expect(without).not.toContain("story-score");
   });
 });

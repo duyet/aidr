@@ -870,7 +870,7 @@
 .app-shell[data-layout="newspaper"] {
   --row-pad: 12px;
   --list-title-size: 16.5px;
-  --lead-title-size: clamp(28px, 4vw, 44px);
+  --lead-title-size: clamp(24px, calc(2.4vw + 14px), 30px);
   --chip-h: 30px;
   /* Square corners: every rounded-sm..4xl utility reads --radius. Pills stay
      round (rounded-full). */

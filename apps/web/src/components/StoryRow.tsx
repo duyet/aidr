@@ -1,4 +1,4 @@
-import { ArrowUpRight, ChevronDown, TrendingUp } from "lucide-react";
+import { ChevronDown, TrendingUp } from "lucide-react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { pageType } from "../lib/analytics/landing";
@@ -15,7 +15,6 @@ import { publisherHost } from "../lib/publisher-host";
 import { storyPath } from "../lib/slug";
 import { type TopicColor, topicColor } from "../lib/topic-color";
 import type { FeedItem, Lang } from "../lib/types";
-import { Bi } from "./Bi";
 import { CategoryLabel } from "./CategoryLabel";
 import { KeywordText } from "./KeywordText";
 import { storySummaries, storyTitles } from "./row-text";
@@ -402,17 +401,6 @@ export function StoryRow({
                 </span>
               </>
             )}
-            <a
-              href={storyPath(item, lang)}
-              onClick={(e) => e.stopPropagation()}
-              className="story-go ml-1 inline-flex items-center gap-1 whitespace-nowrap rounded-[6px] font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100"
-            >
-              <Bi vi="Trang tin" en="Story page" inline />
-              <ArrowUpRight
-                className="inline h-3 w-3 align-[-1px]"
-                aria-hidden
-              />
-            </a>
           </span>
         </span>
         {prefs.thumbs && !newspaper && (
@@ -427,7 +415,7 @@ export function StoryRow({
         )}
         {/* An open row moves its votes to the top of the details' media
             column; the empty cell keeps the columns aligned. */}
-        {showVotes && (
+        {showVotes && prefs.votes && (
           <span className="story-score flex w-11 shrink-0 items-center justify-end">
             {!detailsOpen && (
               <StoryVotes

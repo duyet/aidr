@@ -13,6 +13,7 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_PREFS, PrefsContext } from "../lib/prefs";
 import { storyPath } from "../lib/slug";
 import type { FeedItem, Lang } from "../lib/types";
 import { StoryRow } from "./StoryRow";
@@ -196,7 +197,11 @@ describe("StoryRow vote placement", () => {
 
   it("keeps votes in the header while the row is closed", () => {
     const view = render(
-      <StoryRow item={story("Body", "Thân")} index={1} lang="en" />
+      <PrefsContext.Provider
+        value={{ prefs: { ...DEFAULT_PREFS, votes: true }, setPrefs: () => {} }}
+      >
+        <StoryRow item={story("Body", "Thân")} index={1} lang="en" />
+      </PrefsContext.Provider>
     );
     const header = view.container.querySelector('[role="button"]');
     expect(header).toBeTruthy();
