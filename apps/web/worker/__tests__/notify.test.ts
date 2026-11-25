@@ -1110,7 +1110,7 @@ describe("telegramNotifier gating", () => {
     );
     expect(result).toMatchObject({ ok: true, messageId: "32" });
     expect(result.error).toBe(
-      "fallback ok: gallery:image:first_party_card; photo:no_usable_image"
+      "fallback ok: gallery:image:first_party_card@aidr.today; photo:no_usable_image"
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/sendMessage");

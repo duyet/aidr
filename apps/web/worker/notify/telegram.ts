@@ -691,11 +691,24 @@ function galleryImageUrls(story: StoryPayload, cap = TELEGRAM_ALBUM_CAP) {
   return urls;
 }
 
+/** Host only, for failure reasons: enough to see whether one host is behind
+ *  repeated rejections, with no path or query. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "invalid";
+  }
+}
+
 export function resolveStoryMedia(story: StoryPayload): StoryMedia {
   const media: StoryMedia = { gallery: [], dropped: [] };
-  for (const url of galleryImageUrls(story, Number.POSITIVE_INFINITY)) {
+  for (const found of galleryImageUrls(story, Number.POSITIVE_INFINITY)) {
+    // Sources still publish plain-http images; Telegram takes https only, and
+    // most such hosts serve the same file over https.
+    const url = found.replace(/^http:/i, "https:");
     const verdict = imageVerdict("story", url);
-    if (!verdict.ok) media.dropped.push(verdict.reason);
+    if (!verdict.ok) media.dropped.push(`${verdict.reason}@${hostOf(url)}`);
     else if (media.gallery.length < TELEGRAM_ALBUM_CAP) media.gallery.push(url);
   }
   return media;
@@ -1083,7 +1096,7 @@ function telegramChannel(options: {
         async function uploadOne(photoUrl: string): Promise<SendResult | null> {
           const image = await downloadPhoto(photoUrl);
           if (!image.ok) {
-            fallback.push(image.reason);
+            fallback.push(`${image.reason}@${hostOf(photoUrl)}`);
             return image.budgetExhausted
               ? { ok: false, budgetExhausted: true, error: image.reason }
               : null;

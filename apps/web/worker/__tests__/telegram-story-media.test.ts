@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { reportDeliveryFailure } from "../bugsink.js";
 import { MAX_MEDIA_URL_LENGTH } from "../media.js";
 import { hydrateStory, type StoryRow } from "../notify/index.js";
-import { telegramNotifier } from "../notify/telegram.js";
+import { resolveStoryMedia, telegramNotifier } from "../notify/telegram.js";
 import type { Env } from "../types.js";
 
 vi.mock("../bugsink.js", async (importOriginal) => ({
@@ -55,6 +55,32 @@ const calls = (fetchMock: ReturnType<typeof stubTelegram>) =>
 
 beforeEach(() => vi.mocked(reportDeliveryFailure).mockClear());
 afterEach(() => vi.unstubAllGlobals());
+
+describe("a plain-http story image", () => {
+  it("is sent over https instead of dropped as unsafe_url", async () => {
+    const fetchMock = stubTelegram();
+    const story = hydrateStory(
+      row({ image_url: "http://img.example/pics/lead.jpg" })
+    );
+
+    const result = await telegramNotifier.sendStory(ENV, story);
+
+    expect(result).toMatchObject({ ok: true, messageId: "7" });
+    const [photo] = calls(fetchMock);
+    expect(photo?.method).toBe("sendPhoto");
+    expect(photo?.body.photo).toBe("https://img.example/pics/lead.jpg");
+    expect(reportDeliveryFailure).not.toHaveBeenCalled();
+  });
+
+  it("names the host of an image the guard still refuses", () => {
+    const story = hydrateStory(
+      row({ image_url: "https://img.example/pics/anim.gif" })
+    );
+    expect(resolveStoryMedia(story).dropped).toEqual([
+      "image:unsupported_type:gif@img.example",
+    ]);
+  });
+});
 
 describe("an imageless story is never lost", () => {
   it("posts an http publisher page as the preview", async () => {
@@ -169,7 +195,7 @@ describe("an album drops only the items Telegram cannot take", () => {
     ).toEqual(["https://img.example/one.jpg", "https://img.example/two.png"]);
     expect(sent[0]?.body.media[0].caption).toBeTruthy();
     expect(result.error).toBe(
-      "fallback ok: gallery:image:unsupported_type:gif"
+      "fallback ok: gallery:image:unsupported_type:gif@img.example"
     );
   });
 
