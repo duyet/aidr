@@ -45,7 +45,7 @@ function renderSection({
   withCard?: boolean;
 } = {}) {
   return render(
-    <PrefsHarness lang={lang} initial={{ tldrView: "text", ...initial }}>
+    <PrefsHarness lang={lang} initial={{ tldrView: "rows2", ...initial }}>
       <ConnectedTldrSection
         bullets={bullets}
         secondBullets={secondBullets}
@@ -65,17 +65,28 @@ const prefsNow = () =>
 const listItems = () => document.querySelectorAll("ol > li");
 
 describe("image or text view", () => {
+  it("clamps titles to two lines by default and three on the 3 rows view", () => {
+    renderSection();
+    expect(document.querySelector(".line-clamp-3")).toBeNull();
+    expect(document.querySelector(".line-clamp-2")).not.toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "3 rows" }));
+    expect(document.querySelector(".line-clamp-3")).not.toBeNull();
+    expect(document.querySelector(".line-clamp-2")).toBeNull();
+  });
+
   it("saves the reader's choice as the tldrView pref", () => {
     renderSection();
     fireEvent.click(screen.getByRole("radio", { name: "Show day card" }));
     expect(prefsNow().tldrView).toBe("image");
-    fireEvent.click(screen.getByRole("radio", { name: "Show text" }));
-    expect(prefsNow().tldrView).toBe("text");
+    fireEvent.click(screen.getByRole("radio", { name: "3 rows" }));
+    expect(prefsNow().tldrView).toBe("rows3");
+    fireEvent.click(screen.getByRole("radio", { name: "2 rows" }));
+    expect(prefsNow().tldrView).toBe("rows2");
   });
 
   it("switches with the arrow keys and reports it", () => {
     renderSection();
-    fireEvent.keyDown(screen.getByRole("radio", { name: "Show text" }), {
+    fireEvent.keyDown(screen.getByRole("radio", { name: "2 rows" }), {
       key: "ArrowLeft",
     });
     expect(prefsNow().tldrView).toBe("image");
@@ -86,7 +97,7 @@ describe("image or text view", () => {
 
   it("does not report a press on the view that is already showing", () => {
     renderSection();
-    fireEvent.click(screen.getByRole("radio", { name: "Show text" }));
+    fireEvent.click(screen.getByRole("radio", { name: "2 rows" }));
     expect(vi.mocked(track)).not.toHaveBeenCalled();
   });
 

@@ -40,5 +40,89 @@
   },
   "showFooter": {
     "message": "Hiển thị chân trang"
+  },
+  "bodyFont": {
+    "message": "Phông nội dung"
+  },
+  "headlineFont": {
+    "message": "Phông tiêu đề"
+  },
+  "layout": {
+    "message": "Bố cục"
+  },
+  "layoutCompact": {
+    "message": "Gọn"
+  },
+  "layoutComfortable": {
+    "message": "Thường"
+  },
+  "layoutNewspaper": {
+    "message": "Báo giấy"
+  },
+  "accent": {
+    "message": "Màu nhấn"
+  },
+  "accentYellow": {
+    "message": "Vàng"
+  },
+  "accentBlue": {
+    "message": "Xanh dương"
+  },
+  "accentGreen": {
+    "message": "Xanh lá"
+  },
+  "accentRose": {
+    "message": "Hồng"
+  },
+  "accentViolet": {
+    "message": "Tím"
+  },
+  "highlight": {
+    "message": "Làm nổi bật theo chủ đề"
+  },
+  "highlightTopic": {
+    "message": "Theo chủ đề"
+  },
+  "highlightOne": {
+    "message": "Một màu"
+  },
+  "highlightNone": {
+    "message": "Tắt"
+  },
+  "bilingual": {
+    "message": "Hiện cả hai ngôn ngữ"
+  },
+  "bilingualLead": {
+    "message": "Ngôn ngữ đứng đầu"
+  },
+  "leadVi": {
+    "message": "VI trước"
+  },
+  "leadEn": {
+    "message": "EN trước"
+  },
+  "tldrCols": {
+    "message": "Số cột AI;DR"
+  },
+  "tldrView": {
+    "message": "AI;DR dạng"
+  },
+  "tldrViewText": {
+    "message": "Chữ"
+  },
+  "tldrViewImage": {
+    "message": "Ảnh"
+  },
+  "thumbs": {
+    "message": "Ảnh nhỏ"
+  },
+  "summaries": {
+    "message": "Tóm tắt dưới tiêu đề"
+  },
+  "feedDays": {
+    "message": "Số ngày hiển thị"
+  },
+  "newsCols": {
+    "message": "Số cột báo giấy"
   }
 }

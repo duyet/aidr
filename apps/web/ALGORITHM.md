@@ -2406,6 +2406,14 @@ per language supplies every stale key (base and versioned together), so a
 run draws each card at most once per language; an engine interruption
 records only its `interrupted` line, never a partial-success summary.
 
+The same gate also stores an immutable copy of the versioned card at
+`og-day-static/<date>/<lang>/<v>.png` (`dayOgStaticKey`, served at
+og.aidr.today with `Cache-Control: immutable`). The Telegram send does a
+`head` on that key and, when it exists, uses the og.aidr.today URL as the
+digest preview, so Telegram's fetch never reaches the Worker. A missing
+copy falls back to the Worker URL. The day page's og:image (the base key)
+is mutable and stays on the Worker route.
+
 The base key's background refresh is demand- and content-aligned: the step
 stamps its puts with the tile-id hash (`contentVersion`), and skips an
 expired base object whose stamp matches the current tile set
@@ -3184,8 +3192,12 @@ nothing since 10-12, so both left every chain (#663). The rolling
 aliases follow new models without a deploy, so re-probe what they serve
 before reading a bench row as a fixed model.
 
-TL;DR and translate use the same chain without Jev. The VI→EN generator
-uses only concrete ids (`poolside/laguna-s-2.1`). The translation reviewer
+TL;DR and translate each run on one model without Jev: TL;DR on
+`openai/gpt-5.6-luna`, translate and the VI→EN generator on
+`google/gemma-latest` (all concrete ids). `poolside/laguna-s-2.1` left every
+generator chain on 2026-11-17: the local model bench got 404/502 on every
+attempt in translate, tldr and vi→en, while luna and gemma served their cases.
+The translation reviewer
 (`z-ai/glm-4.6`) shares no id with any generator chain and gets a 45s budget
 (`QA_REVIEW_TIMEOUT_MS`), 30s max for the first hop.
 

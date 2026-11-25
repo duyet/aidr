@@ -5,7 +5,10 @@ import {
   cachedOgResponse,
   DAY_OG_RENDER_VERSION,
   dayOgObjectKey,
+  dayOgPublicUrl,
+  dayOgStaticKey,
   putDayCardObject,
+  putDayCardStatic,
   validateDayCardPng,
 } from "./og-cache";
 import { storyOgObjectKey, storyOgStaticKey } from "./story-og";
@@ -275,5 +278,30 @@ describe("validateDayCardPng", () => {
     const bytes = cardPng();
     bytes[0] = 0;
     expect(validateDayCardPng(bytes, DAY_OG_WIDTH, DAY_OG_HEIGHT)).toBe(false);
+  });
+});
+
+describe("static day card", () => {
+  it("is keyed by date, language and tile version, outside the route's keys", () => {
+    const key = dayOgStaticKey("2026-11-25", "vi", "k3f0a");
+    expect(key).toBe("og-day-static/2026-11-25/vi/k3f0a.png");
+    expect(key.startsWith("og-day/")).toBe(false);
+    expect(dayOgPublicUrl("2026-11-25", "vi", "k3f0a")).toBe(
+      "https://og.aidr.today/" + key
+    );
+    expect(dayOgStaticKey("2026-11-25", "vi", "k3f0b")).not.toBe(key);
+  });
+
+  it("is stored as an immutable PNG so the CDN keeps it", async () => {
+    const put = vi.fn().mockResolvedValue(undefined);
+    await putDayCardStatic(
+      { put } as unknown as R2Bucket,
+      "k",
+      new Uint8Array(2)
+    );
+    expect(put.mock.calls[0][2].httpMetadata).toEqual({
+      contentType: "image/png",
+      cacheControl: "public, max-age=31536000, immutable",
+    });
   });
 });

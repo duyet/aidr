@@ -1,11 +1,19 @@
 import { t } from "./i18n.js";
 import {
+  ACCENTS,
   allowCustomApiBase,
+  BILINGUAL_FIRSTS,
   DEFAULT_SETTINGS,
   DENSITIES,
   ensureHostPermission,
+  FEED_DAYS,
+  HIGHLIGHTS,
   isDarkAppearance,
+  LAYOUTS,
+  NEWS_COLS,
   saveSettings,
+  TLDR_COLS,
+  TLDR_VIEWS,
 } from "./settings.js";
 import { track } from "./track.js";
 
@@ -18,6 +26,32 @@ const BG_SWATCHES = [
   { key: "dark", color: "#2a2a28" },
   { key: "black", color: "#000000" },
 ];
+// Accent ink matches the website's Customize swatches.
+const ACCENT_COLORS = {
+  yellow: "#F5C518",
+  blue: "#4C8DFF",
+  green: "#2BB673",
+  rose: "#F0527A",
+  violet: "#8B5CF6",
+};
+const cap = (value) => value[0].toUpperCase() + value.slice(1);
+const FONT_OPTIONS = FONTS.map((value) => ({ value, labelKey: value }));
+const LAYOUT_OPTIONS = LAYOUTS.map((value) => ({
+  value,
+  labelKey: `layout${cap(value)}`,
+}));
+const HIGHLIGHT_OPTIONS = HIGHLIGHTS.map((value) => ({
+  value,
+  labelKey: `highlight${cap(value)}`,
+}));
+const LEAD_OPTIONS = BILINGUAL_FIRSTS.map((value) => ({
+  value,
+  labelKey: value === "vi" ? "leadVi" : "leadEn",
+}));
+const TLDR_VIEW_OPTIONS = TLDR_VIEWS.map((value) => ({
+  value,
+  labelKey: `tldrView${cap(value)}`,
+}));
 
 function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
@@ -92,6 +126,37 @@ export function mountSettingsPanel(root, settings, onSaved) {
   const paint = () => {
     root.replaceChildren(buildShell());
   };
+
+  /** Choice pills; numbers pass through, string options carry a COPY key. */
+  const choiceRow = (options, current, onPick, className = "prefs-grid-3") => {
+    const row = el("div", { className });
+    for (const option of options) {
+      const value = typeof option === "object" ? option.value : option;
+      const label =
+        typeof option === "object"
+          ? t(state, option.labelKey)
+          : String(option);
+      row.append(
+        choiceButton(label, current === value, async () => onPick(value))
+      );
+    }
+    return row;
+  };
+
+  const toggleRow = (labelKey, key, { repaint = false } = {}) =>
+    el("div", { className: "prefs-field" }, [
+      el("span", { className: "prefs-label prefs-label-row" }, [
+        el("span", {}, [t(state, labelKey)]),
+        el("input", {
+          type: "checkbox",
+          checked: state[key],
+          onChange: async (event) => {
+            state[key] = event.target.checked;
+            await persist({ repaint });
+          },
+        }),
+      ]),
+    ]);
 
   const setDarkMode = async (dark) => {
     if (dark) {
@@ -203,12 +268,39 @@ export function mountSettingsPanel(root, settings, onSaved) {
       );
     }
 
+    const accentSwatches = el("div", { className: "prefs-swatches" });
+    for (const accent of ACCENTS) {
+      accentSwatches.append(
+        el("button", {
+          type: "button",
+          className: `prefs-swatch${state.accent === accent ? " is-active" : ""}`,
+          style: `background:${ACCENT_COLORS[accent]}`,
+          "aria-label": t(state, `accent${cap(accent)}`),
+          "aria-pressed": state.accent === accent ? "true" : "false",
+          onClick: async () => {
+            state.accent = accent;
+            await persist();
+          },
+        })
+      );
+    }
+
     return el("div", { className: "prefs-tab-body" }, [
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label" }, [t(state, "appearance")]),
         appearanceRow,
       ]),
-      el("div", { className: "prefs-field" }, [fontRow]),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label" }, [t(state, "bodyFont")]),
+        fontRow,
+      ]),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label" }, [t(state, "headlineFont")]),
+        choiceRow(FONT_OPTIONS, state.headFont, async (value) => {
+          state.headFont = value;
+          await persist();
+        }, "prefs-grid-2"),
+      ]),
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label prefs-label-row" }, [
           el("span", {}, [t(state, "size")]),
@@ -223,6 +315,31 @@ export function mountSettingsPanel(root, settings, onSaved) {
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label" }, [t(state, "background")]),
         swatches,
+      ]),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label" }, [t(state, "layout")]),
+        choiceRow(LAYOUT_OPTIONS, state.layout, async (value) => {
+          state.layout = value;
+          await persist();
+        }),
+      ]),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label" }, [t(state, "newsCols")]),
+        choiceRow(NEWS_COLS, state.newsCols, async (value) => {
+          state.newsCols = value;
+          await persist();
+        }),
+      ]),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label" }, [t(state, "accent")]),
+        accentSwatches,
+      ]),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label" }, [t(state, "highlight")]),
+        choiceRow(HIGHLIGHT_OPTIONS, state.highlight, async (value) => {
+          state.highlight = value;
+          await persist();
+        }),
       ]),
     ]);
   };
@@ -309,6 +426,37 @@ export function mountSettingsPanel(root, settings, onSaved) {
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label" }, [t(state, "language")]),
         langRow,
+      ]),
+      toggleRow("bilingual", "bilingual"),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label" }, [t(state, "bilingualLead")]),
+        choiceRow(LEAD_OPTIONS, state.bilingualFirst, async (value) => {
+          state.bilingualFirst = value;
+          await persist();
+        }, "prefs-grid-2"),
+      ]),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label" }, [t(state, "tldrCols")]),
+        choiceRow(TLDR_COLS, state.tldrCols, async (value) => {
+          state.tldrCols = value;
+          await persist();
+        }),
+      ]),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label" }, [t(state, "tldrView")]),
+        choiceRow(TLDR_VIEW_OPTIONS, state.tldrView, async (value) => {
+          state.tldrView = value;
+          await persist();
+        }, "prefs-grid-2"),
+      ]),
+      toggleRow("thumbs", "thumbs"),
+      toggleRow("summaries", "summaries"),
+      el("div", { className: "prefs-field" }, [
+        el("span", { className: "prefs-label" }, [t(state, "feedDays")]),
+        choiceRow(FEED_DAYS, state.feedDays, async (value) => {
+          state.feedDays = value;
+          await persist();
+        }),
       ]),
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label prefs-label-row" }, [

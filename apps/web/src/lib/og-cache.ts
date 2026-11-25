@@ -46,6 +46,43 @@ export function dayOgObjectKey(
   return `og-day/v${version}${url.pathname}/${lang}${suffix}`;
 }
 
+/** Public host of the `aidr-og` R2 bucket. A URL on it never reaches the Worker. */
+export const OG_PUBLIC_ORIGIN = "https://og.aidr.today";
+
+/** Static, immutable copy of one versioned day card, served at og.aidr.today.
+ *  `version` is the tile-id token, so the key names the card's inputs. It
+ *  lives outside `og-day/v<n>/` so the Worker route's own writes never touch it. */
+export function dayOgStaticKey(
+  date: string,
+  lang: "en" | "vi",
+  version: string
+): string {
+  return `og-day-static/${date}/${lang}/${version}.png`;
+}
+
+export function dayOgPublicUrl(
+  date: string,
+  lang: "en" | "vi",
+  version: string
+): string {
+  return `${OG_PUBLIC_ORIGIN}/${dayOgStaticKey(date, lang, version)}`;
+}
+
+const STATIC_CARD_CACHE_CONTROL = "public, max-age=31536000, immutable";
+
+export async function putDayCardStatic(
+  bucket: R2Bucket,
+  key: string,
+  bytes: Uint8Array
+): Promise<void> {
+  await bucket.put(key, bytes, {
+    httpMetadata: {
+      contentType: "image/png",
+      cacheControl: STATIC_CARD_CACHE_CONTROL,
+    },
+  });
+}
+
 function background(ctx: WaitUntil, work: Promise<unknown>): Promise<void> {
   const safe = work.then(
     () => undefined,

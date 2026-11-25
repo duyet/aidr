@@ -35,6 +35,34 @@ const COPY = {
     sections: "Mục hiển thị",
     showFooter: "Hiển thị chân trang",
     bilingualDialog: "Hiển thị song ngữ trong hộp thoại",
+    bodyFont: "Phông nội dung",
+    headlineFont: "Phông tiêu đề",
+    layout: "Bố cục",
+    layoutCompact: "Gọn",
+    layoutComfortable: "Thường",
+    layoutNewspaper: "Báo giấy",
+    accent: "Màu nhấn",
+    accentYellow: "Vàng",
+    accentBlue: "Xanh dương",
+    accentGreen: "Xanh lá",
+    accentRose: "Hồng",
+    accentViolet: "Tím",
+    highlight: "Làm nổi bật theo chủ đề",
+    highlightTopic: "Theo chủ đề",
+    highlightOne: "Một màu",
+    highlightNone: "Tắt",
+    bilingual: "Hiện cả hai ngôn ngữ",
+    bilingualLead: "Ngôn ngữ đứng đầu",
+    leadVi: "VI trước",
+    leadEn: "EN trước",
+    tldrCols: "Số cột AI;DR",
+    tldrView: "AI;DR dạng",
+    tldrViewText: "Chữ",
+    tldrViewImage: "Ảnh",
+    thumbs: "Ảnh nhỏ",
+    summaries: "Tóm tắt dưới tiêu đề",
+    feedDays: "Số ngày hiển thị",
+    newsCols: "Số cột báo giấy",
     tldr: "AI;DR",
     dailyFeed: "Bảng tin theo ngày",
     hide: "Ẩn",
@@ -102,6 +130,34 @@ const COPY = {
     sections: "Sections",
     showFooter: "Show footer",
     bilingualDialog: "Show dual language in story dialog",
+    bodyFont: "Body",
+    headlineFont: "Headlines",
+    layout: "Layout",
+    layoutCompact: "Compact",
+    layoutComfortable: "Normal",
+    layoutNewspaper: "Newspaper",
+    accent: "Accent",
+    accentYellow: "Yellow",
+    accentBlue: "Blue",
+    accentGreen: "Green",
+    accentRose: "Rose",
+    accentViolet: "Violet",
+    highlight: "Highlight by topic",
+    highlightTopic: "By topic",
+    highlightOne: "One color",
+    highlightNone: "Off",
+    bilingual: "Show both languages",
+    bilingualLead: "Shown first",
+    leadVi: "VI first",
+    leadEn: "EN first",
+    tldrCols: "AI;DR columns",
+    tldrView: "AI;DR as",
+    tldrViewText: "Text",
+    tldrViewImage: "Image",
+    thumbs: "Thumbnails",
+    summaries: "Summaries",
+    feedDays: "Days shown",
+    newsCols: "Newspaper columns",
     tldr: "AI;DR",
     dailyFeed: "Daily feed",
     hide: "Hide",
@@ -141,13 +197,16 @@ export function uiLang(settings) {
 }
 
 export function t(settings, key) {
-  const chromeApi = globalThis.chrome;
+  // The reader's chosen content language drives in-page copy. chrome.i18n
+  // follows the browser locale, which often differs (VI reader, EN browser).
+  const pack = COPY[uiLang(settings)];
+  const fromCopy = pack?.[key] ?? COPY.vi[key];
+  if (fromCopy) return fromCopy;
   try {
-    const fromChrome = chromeApi?.i18n?.getMessage?.(key);
+    const fromChrome = globalThis.chrome?.i18n?.getMessage?.(key);
     if (fromChrome) return fromChrome;
   } catch {
     // ignore
   }
-  const pack = COPY[uiLang(settings)];
-  return pack[key] ?? COPY.vi[key] ?? key;
+  return key;
 }

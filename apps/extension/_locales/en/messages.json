@@ -40,5 +40,89 @@
   },
   "showFooter": {
     "message": "Show footer"
+  },
+  "bodyFont": {
+    "message": "Body"
+  },
+  "headlineFont": {
+    "message": "Headlines"
+  },
+  "layout": {
+    "message": "Layout"
+  },
+  "layoutCompact": {
+    "message": "Compact"
+  },
+  "layoutComfortable": {
+    "message": "Normal"
+  },
+  "layoutNewspaper": {
+    "message": "Newspaper"
+  },
+  "accent": {
+    "message": "Accent"
+  },
+  "accentYellow": {
+    "message": "Yellow"
+  },
+  "accentBlue": {
+    "message": "Blue"
+  },
+  "accentGreen": {
+    "message": "Green"
+  },
+  "accentRose": {
+    "message": "Rose"
+  },
+  "accentViolet": {
+    "message": "Violet"
+  },
+  "highlight": {
+    "message": "Highlight by topic"
+  },
+  "highlightTopic": {
+    "message": "By topic"
+  },
+  "highlightOne": {
+    "message": "One color"
+  },
+  "highlightNone": {
+    "message": "Off"
+  },
+  "bilingual": {
+    "message": "Show both languages"
+  },
+  "bilingualLead": {
+    "message": "Shown first"
+  },
+  "leadVi": {
+    "message": "VI first"
+  },
+  "leadEn": {
+    "message": "EN first"
+  },
+  "tldrCols": {
+    "message": "AI;DR columns"
+  },
+  "tldrView": {
+    "message": "AI;DR as"
+  },
+  "tldrViewText": {
+    "message": "Text"
+  },
+  "tldrViewImage": {
+    "message": "Image"
+  },
+  "thumbs": {
+    "message": "Thumbnails"
+  },
+  "summaries": {
+    "message": "Summaries"
+  },
+  "feedDays": {
+    "message": "Days shown"
+  },
+  "newsCols": {
+    "message": "Newspaper columns"
   }
 }

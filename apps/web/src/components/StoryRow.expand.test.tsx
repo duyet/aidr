@@ -19,6 +19,11 @@ vi.mock("./SuggestTranslation", () => ({
   SuggestTranslation: () => null,
   SuggestionBadge: () => null,
 }));
+vi.mock("./StoryDialog", () => ({
+  StoryDialog: ({ idPrefix }: { idPrefix: string }) => (
+    <div data-testid="story-dialog">{idPrefix}</div>
+  ),
+}));
 vi.mock("../lib/analytics/track", () => ({ track: vi.fn() }));
 vi.mock("../lib/analytics/reads", () => ({ recordRead: vi.fn() }));
 vi.mock("../lib/vote-fn", () => ({
@@ -67,14 +72,17 @@ const chevron = () =>
   document.querySelector('[data-testid="story-row-chevron"]');
 
 describe("title click expands the row", () => {
-  it("plain click toggles the row instead of navigating", () => {
+  it("plain click opens the story drawer, like a TL;DR bullet, instead of navigating", () => {
     render(<StoryRow item={item} index={1} lang="en" />);
     expect(title().getAttribute("href")).toBe("/abcdef12?lang=en");
+    expect(screen.queryByTestId("story-dialog")).toBeNull();
     // fireEvent returns false when the default (navigation) was prevented.
     expect(fireEvent.click(title())).toBe(false);
-    expect(row().getAttribute("aria-expanded")).toBe("true");
-    fireEvent.click(title());
+    expect(screen.getByTestId("story-dialog").textContent).toBe(item.id);
+    // The row itself stays collapsed; the chevron still expands in place.
     expect(row().getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(row());
+    expect(row().getAttribute("aria-expanded")).toBe("true");
   });
 
   it.each(["ctrlKey", "metaKey", "shiftKey"])(

@@ -8,7 +8,9 @@
  */
 import {
   dayOgObjectKey,
+  dayOgStaticKey,
   putDayCardObject,
+  putDayCardStatic,
   validateDayCardPng,
 } from "../../src/lib/og-cache.js";
 import type { Lang } from "../../src/lib/types.js";
@@ -175,6 +177,7 @@ async function prerenderLang(
   // channel cannot send either, and its missing row would otherwise keep the
   // gate open forever; enabled() is not checked because a half-configured
   // Telegram throws in assertNotifyConfig before any send.
+  let staticKey: string | undefined;
   if (version) {
     const telegram = notifiers.find(
       (n) => n.lang === lang && n.id.startsWith("telegram")
@@ -188,6 +191,10 @@ async function prerenderLang(
       keys.push(
         dayOgObjectKey(new URL(digestCardUrl({ date, lang }, version)))
       );
+      // The same card, immutable under og.aidr.today: the Telegram send links
+      // it once it exists, so the preview fetch never reaches the Worker.
+      staticKey = dayOgStaticKey(date, lang, version);
+      keys.push(staticKey);
     } else {
       stats.skippedNoSend++;
     }
@@ -268,13 +275,17 @@ async function prerenderLang(
   // Bounded by the hour TTL and self-healing on the next key change.
   for (const key of stale) {
     try {
-      await putDayCardObject(
-        bucket,
-        key,
-        new Response(bytes, headers),
-        maxAgeSec,
-        version ?? baseStamp
-      );
+      if (key === staticKey) {
+        await putDayCardStatic(bucket, key, bytes);
+      } else {
+        await putDayCardObject(
+          bucket,
+          key,
+          new Response(bytes, headers),
+          maxAgeSec,
+          version ?? baseStamp
+        );
+      }
       stats.rendered++;
     } catch (error) {
       stats.failed++;

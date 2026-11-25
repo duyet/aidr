@@ -7,6 +7,7 @@ import {
   loadSettings,
   safeHttpUrl,
   saveSettings,
+  updateSettings,
 } from "./settings.js";
 import { bindPrefsPopover } from "./settings-panel.js";
 import { NEWS_SITE, storyPermalink } from "./site-url.js";
@@ -39,6 +40,97 @@ const CATEGORY_VI = {
   "Open Source": "Mã nguồn mở",
 };
 
+/** Web-home copy the extension's i18n pack does not carry yet. Kept local so
+ *  i18n.js stays owned by its own agent; the values mirror apps/web. */
+const HOME_COPY = {
+  vi: {
+    today: "Hôm nay",
+    weeks: "Tuần",
+    calendar: "Lịch",
+    previousDay: "Ngày trước",
+    nextDay: "Ngày sau",
+    everyMorning: "Bản tin mỗi sáng",
+    subscribe: "Đăng ký",
+    thisWeek: "Tuần này",
+    weeklyEdition: "Bản tin tuần",
+    editionCalendar: "Lịch số báo",
+    rankedToday: "Tin xếp hạng hôm nay",
+    readMore: "Đọc tiếp",
+    readSource: "Đọc bài gốc",
+    topStory: "Tin hàng đầu",
+    storyPage: "Trang tin",
+    email: "Email",
+  },
+  en: {
+    today: "Today",
+    weeks: "Weeks",
+    calendar: "Calendar",
+    previousDay: "Previous day",
+    nextDay: "Next day",
+    everyMorning: "Every morning",
+    subscribe: "Subscribe",
+    thisWeek: "This week",
+    weeklyEdition: "Weekly edition",
+    editionCalendar: "Edition calendar",
+    rankedToday: "Ranked today",
+    readMore: "Read more",
+    readSource: "Read source",
+    topStory: "Top story",
+    storyPage: "Story page",
+    email: "Email",
+  },
+};
+
+function homeCopy(settings, key) {
+  const pack = HOME_COPY[uiLang(settings)] || HOME_COPY.vi;
+  return pack[key] ?? HOME_COPY.vi[key] ?? key;
+}
+
+/** Bilingual is either the dedicated pref or the legacy "both" language. */
+function isBilingual(settings) {
+  return settings.bilingual === true || settings.language === "both";
+}
+
+function primaryLang(settings) {
+  if (!isBilingual(settings)) return uiLang(settings);
+  return settings.bilingualFirst === "en" ? "en" : "vi";
+}
+
+function secondaryLang(settings) {
+  return primaryLang(settings) === "vi" ? "en" : "vi";
+}
+
+/** Leading language full size, the other in .bi-second — never a fallback. */
+function setBiText(node, viText, enText, settings) {
+  if (!node) return;
+  const leading = primaryLang(settings);
+  const first = leading === "vi" ? viText : enText;
+  const second = leading === "vi" ? enText : viText;
+  node.replaceChildren();
+  if (first) node.append(document.createTextNode(first));
+  if (isBilingual(settings) && second && second !== first) {
+    const other = document.createElement("span");
+    other.className = "bi-second";
+    other.lang = leading === "vi" ? "en" : "vi";
+    other.textContent = second;
+    node.append(other);
+  }
+}
+
+function localize(root, settings) {
+  if (!root) return;
+  for (const node of root.querySelectorAll("[data-vi][data-en]")) {
+    setBiText(node, node.dataset.vi, node.dataset.en, settings);
+  }
+}
+
+/** The calendar day before `date` (YYYY-MM-DD). */
+function dayBefore(date) {
+  if (!SNAPSHOT_DATE.test(date)) return "";
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+}
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -67,22 +159,70 @@ function timeAgo(epoch, lang) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+/** One language's bullets from its own column. No cross-language fallback:
+ *  a missing language renders nothing in bilingual mode. */
 function bulletsFor(tldr, language) {
   if (!tldr) return [];
-  const vi = (tldr.bullets_vi || []).filter((b) => b.text);
-  const en = (tldr.bullets_en || []).filter((b) => b.text);
-  if (language === "en") return en.length ? en : vi;
-  if (language === "both") {
-    const rows = [];
-    const n = Math.max(vi.length, en.length);
-    for (let i = 0; i < n; i++) {
-      if (vi[i]) rows.push(vi[i]);
-      if (en[i] && en[i].text !== vi[i]?.text) rows.push(en[i]);
-    }
-    return rows;
+  const key = language === "en" ? "bullets_en" : "bullets_vi";
+  return (tldr[key] || []).filter((b) => b?.text);
+}
+
+/** The other language's text per leading bullet, matched by first story id. */
+function secondBulletTexts(digest, settings) {
+  if (!isBilingual(settings)) return null;
+  const map = new Map();
+  for (const bullet of bulletsFor(digest.tldr, secondaryLang(settings))) {
+    const id = bullet.item_ids?.[0];
+    if (id && !map.has(id)) map.set(id, bullet.text);
   }
-  const viUseful = vi.length >= 2 && vi.some((b) => looksVietnamese(b.text));
-  return viUseful ? vi : en.length ? en : vi;
+  return map;
+}
+
+/** Title rows for a story, from each language's own column. In single-language
+ *  VI the labelled English fallback is kept (the EN badge in the row). */
+function ownTitles(story) {
+  const viRaw = story.title_vi?.trim() || "";
+  const vi = viRaw || (looksVietnamese(story.title) ? story.title : "") || null;
+  const en = vi && story.title === vi ? null : story.title || null;
+  return { vi, en };
+}
+
+function titleRows(story, settings) {
+  const own = ownTitles(story);
+  const leading = primaryLang(settings);
+  if (!isBilingual(settings)) {
+    if (leading === "vi" && !own.vi) {
+      return [{ lang: "en", text: own.en || story.title, fallback: true }];
+    }
+    return [
+      {
+        lang: leading,
+        text: leading === "vi" ? own.vi || story.title : own.en || story.title,
+        fallback: false,
+      },
+    ];
+  }
+  const other = secondaryLang(settings);
+  return [leading, other]
+    .map((lang) => ({
+      lang,
+      text: lang === "vi" ? own.vi : own.en,
+      fallback: false,
+    }))
+    .filter((row) => row.text);
+}
+
+function summaryRows(story, settings) {
+  const own = {
+    vi: story.summary_vi?.trim() || null,
+    en: story.summary?.trim() || null,
+  };
+  const langs = isBilingual(settings)
+    ? [primaryLang(settings), secondaryLang(settings)]
+    : [primaryLang(settings)];
+  return langs
+    .map((lang) => ({ lang, text: own[lang] }))
+    .filter((row) => row.text);
 }
 
 function paintTopic(el, tag) {
@@ -127,7 +267,7 @@ function appendHighlighted(parent, text, tags) {
     const span = document.createElement("span");
     span.textContent = segment.text;
     if (segment.highlighted && segment.tag) {
-      span.className = "hl";
+      span.className = "hl topic-ink";
       paintTopic(span, segment.tag);
     } else if (segment.highlighted) {
       span.className = "hl";
@@ -137,9 +277,9 @@ function appendHighlighted(parent, text, tags) {
   return segments;
 }
 
-function thumbNode(src) {
+function thumbNode(src, extraClass = "") {
   const img = document.createElement("img");
-  img.className = "thumb";
+  img.className = extraClass ? `thumb ${extraClass}` : "thumb";
   img.width = 48;
   img.height = 48;
   img.alt = "";
@@ -170,10 +310,31 @@ function bulletHref(digest, bullet, lang) {
   );
 }
 
-function renderThumbRow(settings, digest, bullet, n) {
+function renderThumbRow(settings, digest, bullet, n, secondText) {
   const row = document.createElement("li");
+  // Rank and copy share the first line; the second language, when present,
+  // stays a full-width line under them.
+  row.style.display = "flex";
+  row.style.alignItems = "flex-start";
+  row.style.gap = "0.5rem";
+  row.style.flexWrap = "wrap";
+  if (secondText) row.dataset.bilingual = "true";
+
+  const rank = document.createElement("span");
+  rank.className = "bullet-rank";
+  rank.setAttribute("aria-hidden", "true");
+  rank.style.flex = "none";
+  rank.style.fontFamily = "var(--mono)";
+  rank.style.fontSize = "11px";
+  rank.style.fontVariantNumeric = "tabular-nums";
+  rank.style.fontWeight = n === 1 ? "600" : "400";
+  rank.style.color = "var(--muted-foreground)";
+  rank.textContent = String(n).padStart(2, "0");
+
   const inner = document.createElement("span");
   inner.className = "bullet";
+  inner.style.flex = "1 1 auto";
+  inner.style.minWidth = "0";
 
   const copy = document.createElement("span");
   copy.className = "bullet-copy";
@@ -185,15 +346,18 @@ function renderThumbRow(settings, digest, bullet, n) {
   if (topic) {
     const tagEl = document.createElement("span");
     tagEl.className = "topic-tag";
-    tagEl.textContent = topic;
     paintTopic(tagEl, topic);
+    const dot = document.createElement("span");
+    dot.className = "topic-dot";
+    dot.setAttribute("aria-hidden", "true");
+    tagEl.append(dot, document.createTextNode(topic));
     copy.append(tagEl);
   }
 
   const link = document.createElement("a");
   link.href = safeHttpUrl(
-    bulletHref(digest, bullet, uiLang(settings)),
-    storyPermalink("", uiLang(settings))
+    bulletHref(digest, bullet, primaryLang(settings)),
+    storyPermalink("", primaryLang(settings))
   );
   link.rel = "noreferrer";
   appendHighlighted(link, bullet.text, tags);
@@ -202,7 +366,7 @@ function renderThumbRow(settings, digest, bullet, n) {
     bindAidrDialogLink(link, () =>
       openStoryDialogLazy({
         apiBase: settings.apiBase,
-        language: uiLang(settings),
+        language: primaryLang(settings),
         itemId: primaryId,
         relatedIds: (bullet.item_ids || []).slice(1),
         digest,
@@ -222,14 +386,27 @@ function renderThumbRow(settings, digest, bullet, n) {
   }
 
   inner.append(copy, thumbNode(bullet.image_url));
-  row.append(inner);
+  row.append(rank, inner);
+  if (secondText) {
+    const other = document.createElement("span");
+    other.className = "bi-second";
+    other.lang = secondaryLang(settings);
+    other.style.flexBasis = "100%";
+    other.textContent = secondText;
+    row.append(other);
+  }
   row.dataset.n = String(n);
   return row;
 }
 
-function splitColumns(items) {
-  const mid = Math.ceil(items.length / 2) || 1;
-  return [items.slice(0, mid), items.slice(mid)];
+function splitColumns(items, count = 2) {
+  const cols = Math.max(1, Math.min(3, Number(count) || 2));
+  const per = Math.ceil(items.length / cols) || 1;
+  const result = [];
+  for (let i = 0; i < cols; i++) {
+    result.push(items.slice(i * per, (i + 1) * per));
+  }
+  return result;
 }
 
 let filterTag = null;
@@ -293,6 +470,19 @@ function applyChrome(settings) {
       btn.setAttribute(
         "aria-pressed",
         btn.dataset.lang === lang ? "true" : "false"
+      );
+    }
+  }
+  // New web-home chrome: section nav, rail and footer carry both languages.
+  localize($("header-nav"), settings);
+  localize(document.querySelector(".home-rail"), settings);
+  localize(document.querySelector(".site-footer"), settings);
+  const layoutSwitch = $("layout-switch");
+  if (layoutSwitch) {
+    for (const btn of layoutSwitch.querySelectorAll("button[data-layout]")) {
+      btn.setAttribute(
+        "aria-pressed",
+        btn.dataset.layout === (settings.layout || "compact") ? "true" : "false"
       );
     }
   }
@@ -412,6 +602,16 @@ function renderTldrMasthead(settings, date) {
   const monthYear = document.createElement("span");
   monthYear.textContent = parts.monthYear;
   link.append(weekday, monthYear);
+  if (isBilingual(settings)) {
+    const other = dayOgDateParts(date, secondaryLang(settings));
+    if (other) {
+      const second = document.createElement("span");
+      second.className = "bi-second";
+      second.lang = secondaryLang(settings);
+      second.textContent = `${other.weekday} · ${other.monthYear}`;
+      link.append(second);
+    }
+  }
   title.append(day, link);
   syncDayCard(settings, date);
 }
@@ -487,13 +687,14 @@ function applyDayCardView() {
 
 let dayCardArmed = false;
 
-function bindDayCard() {
+function bindDayCard(onViewChange) {
   const imageBtn = $("day-card-image");
   const textBtn = $("day-card-text");
   if (!imageBtn || !textBtn) return;
   const choose = (image) => {
     dayCardImageOn = image;
     applyDayCardView();
+    onViewChange?.(image ? "image" : "text");
   };
   imageBtn.addEventListener("click", () => choose(true));
   textBtn.addEventListener("click", () => choose(false));
@@ -557,12 +758,17 @@ function renderTldr(settings, digest) {
     section.hidden = true;
     return;
   }
-  const bullets = bulletsFor(digest.tldr, settings.language);
+  const bullets = bulletsFor(digest.tldr, primaryLang(settings));
+  const secondTexts = secondBulletTexts(digest, settings);
   if (!bullets.length) {
     section.hidden = true;
     return;
   }
   section.hidden = false;
+  // The persisted tldrView pref decides the opening view (text by default);
+  // the buttons below only change that pref.
+  dayCardImageOn =
+    settings.tldrView === "image" && Boolean(digest.tldr?.date);
   renderTldrMasthead(settings, digest.tldr?.date || "");
 
   const options = [];
@@ -592,19 +798,24 @@ function renderTldr(settings, digest) {
 
   const shown = tldrShown(bullets, settings);
   const expanded = shown.length > 8;
-  const columns = splitColumns(shown);
+  const columns = splitColumns(shown, settings.tldrCols ?? 2);
   columns.forEach((col, ci) => {
     if (!col.length) return;
     const list = document.createElement("ol");
     list.className = "tldr-list";
+    // Ranks are drawn in the rows (mono 11px), not by ::marker.
+    list.style.listStyle = "none";
+    list.style.paddingLeft = "0";
     list.start = ci === 0 ? 1 : columns[0].length + 1;
     col.forEach((bullet, i) => {
+      const primaryId = bullet.item_ids?.[0];
       list.append(
         renderThumbRow(
           settings,
           digest,
           bullet,
-          (ci === 0 ? 1 : columns[0].length + 1) + i
+          (ci === 0 ? 1 : columns[0].length + 1) + i,
+          secondTexts && primaryId ? secondTexts.get(primaryId) : null
         )
       );
     });
@@ -653,11 +864,10 @@ function renderChips(settings, digest) {
   if (!showCats) filterCategories = new Set();
   catSection.hidden = !showCats;
   if (showCats) {
-    const lang = uiLang(settings);
     const all = document.createElement("button");
     all.type = "button";
     all.className = "chip";
-    all.textContent = t(settings, "all");
+    setBiText(all, "Tất cả", "All", settings);
     all.setAttribute(
       "aria-pressed",
       filterCategories.size === 0 ? "true" : "false"
@@ -682,17 +892,18 @@ function renderChips(settings, digest) {
           })
         );
       }
-      btn.append(
-        Object.assign(document.createElement("span"), {
-          className: selected ? "" : "category-colored",
-          textContent: categoryLabel(row.name, lang),
-        }),
-        " ",
-        Object.assign(document.createElement("span"), {
-          className: "n",
-          textContent: String(row.count),
-        })
+      const label = document.createElement("span");
+      label.className = selected ? "" : "category-colored";
+      setBiText(
+        label,
+        categoryLabel(row.name, "vi"),
+        categoryLabel(row.name, "en"),
+        settings
       );
+      const count = document.createElement("span");
+      count.className = "n chip-count";
+      count.textContent = String(row.count);
+      btn.append(label, " ", count);
       btn.addEventListener("click", () => {
         const next = new Set(filterCategories);
         if (next.has(row.name)) next.delete(row.name);
@@ -717,13 +928,16 @@ function renderChips(settings, digest) {
         "aria-pressed",
         filterTag === row.tag ? "true" : "false"
       );
-      btn.append(
-        row.tag,
-        Object.assign(document.createElement("span"), {
-          className: "n",
-          textContent: String(row.count),
-        })
-      );
+      const name = document.createElement("span");
+      name.className = "topic-ink";
+      const dot = document.createElement("span");
+      dot.className = "topic-dot";
+      dot.setAttribute("aria-hidden", "true");
+      name.append(dot, document.createTextNode(row.tag));
+      const count = document.createElement("span");
+      count.className = "n chip-count topic-muted";
+      count.textContent = String(row.count);
+      btn.append(name, count);
       btn.addEventListener("click", () => {
         filterTag = filterTag === row.tag ? null : row.tag;
         render(settings, digest);
@@ -805,38 +1019,53 @@ function hotIcon() {
 }
 
 function renderStoryRow(settings, story, index, hot) {
-  const lang = uiLang(settings);
-  const { text: title, fallbackFromEnglish } = (() => {
-    const vi = story.title_vi?.trim();
-    if (settings.language === "en") {
-      return { text: story.title, fallbackFromEnglish: false };
-    }
-    if (vi && (settings.language === "vi" || looksVietnamese(vi))) {
-      return { text: vi, fallbackFromEnglish: false };
-    }
-    return {
-      text: story.title,
-      fallbackFromEnglish: settings.language !== "en" && Boolean(story.title),
-    };
-  })();
-
-  const summary =
-    lang === "vi" && story.summary_vi ? story.summary_vi : story.summary;
+  const lang = primaryLang(settings);
+  const titles = titleRows(story, settings);
+  const mainTitle = titles[0] || {
+    text: story.title,
+    lang: "en",
+    fallback: false,
+  };
+  const secondTitle = titles[1] || null;
+  const { text: title, fallbackFromEnglish } = mainTitle;
+  const summaries = summaryRows(story, settings);
+  const mainSummary = summaries[0] || null;
+  const secondSummary = summaries[1] || null;
   const hasDetails =
-    Boolean(summary) ||
+    Boolean(mainSummary) ||
     (story.tags || []).length > 0 ||
     (story.sources || []).length > 0;
 
   const row = document.createElement("div");
-  row.className = "story-row";
+  row.className = index <= 3 ? "story-row story-row-top" : "story-row";
   row.id = story.id ? `item-${story.id}` : undefined;
 
   const head = document.createElement("div");
   head.className = `story-head${hasDetails ? " story-head-expandable" : ""}`;
 
+  // Rank sits on the first title line; the expand chevron shares its column
+  // and is revealed on hover/focus or while expanded (see the toggle below).
   const n = document.createElement("span");
-  n.className = "story-n";
-  n.textContent = String(index);
+  n.className = "story-n story-rank";
+  n.style.display = "flex";
+  n.style.alignItems = "flex-start";
+  n.style.justifyContent = "flex-end";
+  n.style.width = "1.75rem";
+  n.style.gap = "2px";
+  n.style.alignSelf = "flex-start";
+  n.style.paddingTop = "2px";
+  let chevron = null;
+  if (hasDetails) {
+    chevron = document.createElement("span");
+    chevron.className = "story-rank-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    chevron.setAttribute("data-testid", "story-row-chevron");
+    chevron.setAttribute("data-expanded", "false");
+    chevron.hidden = true;
+    chevron.append(voteChevron("down"));
+    n.append(chevron);
+  }
+  n.append(document.createTextNode(String(index)));
 
   const titleWrap = document.createElement("span");
   titleWrap.className = "story-title";
@@ -865,6 +1094,15 @@ function renderStoryRow(settings, story, index, hot) {
     );
   }
   titleWrap.append(article);
+
+  if (secondTitle) {
+    const other = document.createElement("span");
+    other.className = "bi-second";
+    other.lang = secondTitle.lang;
+    other.style.display = "block";
+    other.textContent = secondTitle.text;
+    titleWrap.append(other);
+  }
 
   if (fallbackFromEnglish) {
     const badge = document.createElement("span");
@@ -922,17 +1160,47 @@ function renderStoryRow(settings, story, index, hot) {
   meta.className = "story-meta";
   meta.append(renderVotes(settings, story), cat, when);
 
-  head.append(n, titleWrap, meta);
+  // One column holds the title, the optional summary line and the metadata,
+  // so the rank shares only the first title line (web StoryRow.story-body).
+  const body = document.createElement("span");
+  body.className = "story-body";
+  body.style.display = "flex";
+  body.style.flexDirection = "column";
+  body.style.flex = "1 1 auto";
+  body.style.minWidth = "0";
+  body.append(titleWrap);
+  if (mainSummary) {
+    const summaryEl = document.createElement("span");
+    summaryEl.className = "row-summary np-justify";
+    summaryEl.lang = mainSummary.lang;
+    summaryEl.textContent = mainSummary.text;
+    body.append(summaryEl);
+  }
+  if (secondSummary) {
+    const other = document.createElement("span");
+    other.className = "bi-second row-summary np-justify";
+    other.lang = secondSummary.lang;
+    other.textContent = secondSummary.text;
+    body.append(other);
+  }
+  body.append(meta);
+  head.append(n, body);
+
+  const rowThumb = document.createElement("span");
+  rowThumb.className = "row-thumb";
+  rowThumb.style.flex = "none";
+  rowThumb.append(thumbNode(story.image_url, "row-thumb-img"));
+  head.append(rowThumb);
 
   let detail = null;
   if (hasDetails) {
     detail = document.createElement("div");
     detail.className = "story-detail";
     detail.hidden = true;
-    if (summary) {
+    if (mainSummary) {
       const p = document.createElement("p");
-      p.className = "story-summary";
-      p.textContent = summary;
+      p.className = "story-summary np-justify";
+      p.textContent = mainSummary.text;
       detail.append(p);
     }
     if ((story.tags || []).length) {
@@ -985,7 +1253,26 @@ function renderStoryRow(settings, story, index, hot) {
       if (event.target.closest("a")) return;
       detail.hidden = !detail.hidden;
       head.classList.toggle("is-expanded", !detail.hidden);
+      if (chevron) {
+        chevron.hidden = detail.hidden;
+        chevron.setAttribute("data-expanded", detail.hidden ? "false" : "true");
+      }
     });
+    if (chevron) {
+      const reveal = () => {
+        if (!detail.hidden) return;
+        chevron.hidden = false;
+      };
+      const conceal = () => {
+        if (detail.hidden) chevron.hidden = true;
+      };
+      head.addEventListener("mouseenter", reveal);
+      head.addEventListener("mouseleave", conceal);
+      head.addEventListener("focusin", reveal);
+      head.addEventListener("focusout", (event) => {
+        if (!head.contains(event.relatedTarget)) conceal();
+      });
+    }
   }
 
   row.append(head);
@@ -1047,6 +1334,130 @@ function renderVotes(settings, story) {
   return wrap;
 }
 
+function arrowIcon(path) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("aria-hidden", "true");
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute("d", path);
+  svg.append(p);
+  return svg;
+}
+
+/** Web LeadStory: the day's top story above the ranked list. */
+function renderLeadStory(settings, story) {
+  const lang = primaryLang(settings);
+  const article = document.createElement("article");
+  article.className = "lead-story";
+  article.setAttribute("aria-label", homeCopy(settings, "topStory"));
+
+  const body = document.createElement("div");
+  body.className = "lead-story-body";
+
+  const kicker = document.createElement("p");
+  kicker.className = "lead-story-kicker";
+  if (story.category) {
+    const cat = document.createElement("span");
+    cat.className = "category-colored";
+    paintCategory(cat, story.category);
+    cat.textContent = categoryLabel(story.category, lang);
+    kicker.append(cat);
+  }
+  if (story.published_at) {
+    if (story.category) kicker.append(document.createTextNode(" · "));
+    kicker.append(
+      document.createTextNode(timeAgo(story.published_at, lang))
+    );
+  }
+  body.append(kicker);
+
+  const titles = titleRows(story, settings);
+  const main = titles[0] || {
+    text: story.title,
+    lang: "en",
+    fallback: false,
+  };
+  const heading = document.createElement("h3");
+  heading.className = "lead-story-title lead-title";
+  const link = document.createElement("a");
+  link.href = storyHref(story, lang);
+  if (main.fallback) link.lang = "en";
+  appendHighlighted(link, main.text, story.tags || []);
+  if (story.id) {
+    bindAidrDialogLink(link, () =>
+      openStoryDialogLazy({
+        apiBase: settings.apiBase,
+        language: lang,
+        itemId: story.id,
+        digest: { items: { [story.id]: story } },
+        permalink: link.href,
+        bilingual: settings.bilingualDialog,
+      })
+    );
+  }
+  heading.append(link);
+  body.append(heading);
+  if (titles[1]) {
+    const second = document.createElement("p");
+    second.className = "bi-second";
+    second.lang = titles[1].lang;
+    second.textContent = titles[1].text;
+    body.append(second);
+  }
+
+  const summaries = summaryRows(story, settings);
+  if (summaries[0]) {
+    const summary = document.createElement("p");
+    summary.className = "lead-story-summary np-justify";
+    summary.lang = summaries[0].lang;
+    summary.textContent = summaries[0].text;
+    body.append(summary);
+  }
+  if (summaries[1]) {
+    const second = document.createElement("p");
+    second.className = "bi-second np-justify";
+    second.lang = summaries[1].lang;
+    second.textContent = summaries[1].text;
+    body.append(second);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "lead-story-actions";
+  const more = document.createElement("a");
+  more.className = "btn-primary";
+  more.href = storyHref(story, lang);
+  more.append(document.createTextNode(homeCopy(settings, "readMore")));
+  more.append(arrowIcon("M5 12h14M13 6l6 6-6 6"));
+  actions.append(more);
+  if (story.url) {
+    const source = document.createElement("a");
+    source.className = "btn-link";
+    source.href = safeHttpUrl(story.url, NEWS_SITE) || NEWS_SITE;
+    source.target = "_blank";
+    source.rel = "noopener noreferrer";
+    source.append(document.createTextNode(homeCopy(settings, "readSource")));
+    source.append(externalLinkIcon());
+    actions.append(source);
+    const host = publisherHost(source.href);
+    if (host) {
+      const hostEl = document.createElement("span");
+      hostEl.className = "lead-story-source";
+      hostEl.textContent = host;
+      actions.append(hostEl);
+    }
+  }
+  body.append(actions);
+
+  const media = document.createElement("div");
+  media.className = "lead-story-media";
+  media.append(thumbNode(story.image_url, "lead-thumb"));
+  article.append(body, media);
+  return article;
+}
+
 function renderStories(settings, digest) {
   const root = $("section-days");
   clearSectionContent(root);
@@ -1055,15 +1466,24 @@ function renderStories(settings, digest) {
     return;
   }
 
-  const days = filteredDays(digest);
+  const dayLimit = Math.max(1, Number(settings.feedDays) || 3);
+  const days = filteredDays(digest).slice(0, dayLimit);
   if (!days.length) {
     root.hidden = true;
     return;
   }
   root.hidden = false;
-  const lang = uiLang(settings);
+  const lang = primaryLang(settings);
 
-  for (const day of days) {
+  // The first story of the newest day is the lead; the list below starts at 2.
+  const lead = days[0]?.items?.[0];
+  if (lead) root.append(renderLeadStory(settings, lead));
+
+  days.forEach((day, dayIndex) => {
+    const fromLead = dayIndex === 0 && Boolean(lead);
+    const items = fromLead ? day.items.slice(1) : day.items;
+    if (!items.length) return;
+
     const section = document.createElement("section");
     section.className = "day-section";
 
@@ -1071,29 +1491,37 @@ function renderStories(settings, digest) {
     head.className = "day-head";
 
     const title = document.createElement("h2");
-    const heading = day.date
-      ? formatDayHeading(day.date, lang)
-      : t(settings, "stories");
-    const archiveHref = SNAPSHOT_DATE.test(day.date || "")
-      ? dayPageUrl(day.date, lang)
-      : "";
-    if (archiveHref) {
-      const link = document.createElement("a");
-      link.className = "day-link";
-      link.href = archiveHref;
-      link.textContent = heading;
-      title.append(link);
+    title.className = "section-label";
+    if (fromLead) {
+      setBiText(
+        title,
+        homeCopy({ ...settings, language: "vi" }, "rankedToday"),
+        homeCopy({ ...settings, language: "en" }, "rankedToday"),
+        settings
+      );
     } else {
-      title.textContent = heading;
+      const archiveHref = SNAPSHOT_DATE.test(day.date || "")
+        ? dayPageUrl(day.date, lang)
+        : "";
+      const heading = archiveHref
+        ? Object.assign(document.createElement("a"), {
+            className: "day-link",
+            href: archiveHref,
+          })
+        : title;
+      setBiText(
+        heading,
+        day.date ? formatDayHeading(day.date, "vi") : t(settings, "stories"),
+        day.date ? formatDayHeading(day.date, "en") : t(settings, "stories"),
+        settings
+      );
+      if (heading !== title) title.append(heading);
     }
 
     const count = document.createElement("span");
     count.className = "day-count";
-    const n = day.items.length;
-    count.textContent =
-      lang === "vi"
-        ? `${n} ${t(settings, "tin")}`
-        : `${n} ${n === 1 ? t(settings, "storyWordOne") : t(settings, "storyWord")}`;
+    const n = items.length + (fromLead ? 1 : 0);
+    setBiText(count, `${n} tin`, `${n} ${n === 1 ? "story" : "stories"}`, settings);
 
     const cats = document.createElement("span");
     cats.className = "day-cats";
@@ -1124,37 +1552,48 @@ function renderStories(settings, digest) {
     section.append(head);
 
     const list = document.createElement("div");
-    list.className = "day-list";
-    day.items.forEach((story, i) => {
-      const hot = i === 0 && story.rank_score > 0 && day.items.length > 1;
-      list.append(renderStoryRow(settings, story, i + 1, hot));
+    list.className = "day-list np-columns";
+    const firstRank = fromLead ? 2 : 1;
+    items.forEach((story, i) => {
+      const hot =
+        !fromLead &&
+        i === 0 &&
+        story.rank_score > 0 &&
+        items.length > 1;
+      list.append(renderStoryRow(settings, story, firstRank + i, hot));
     });
     section.append(list);
     root.append(section);
-  }
+  });
 }
 
 const SECTION_ORDER_KEYS = ["categories", "trending", "tldr", "days"];
 
-/** Reorder DOM sections to match settings.sectionOrder. The extension HTML
- * has a fixed DOM order; after content is rendered, we move wrappers so the
- * visual order matches the user's preference. */
+/** Reorder DOM sections to match settings.sectionOrder. Categories, AI;DR
+ * and the feed live in the main column; Trending belongs at the top of the
+ * rail. Moving into the right host keeps the redesigned grid intact. */
 function applySectionOrder(settings) {
+  const page = $("page-content");
+  const grid = document.querySelector(".home-grid");
+  const main = $("home-main");
+  const rail = $("home-rail");
+  if (!page || !main || !rail) return;
   const wrappers = [
-    { key: "categories", id: "section-categories" },
-    { key: "trending", id: "section-trending" },
-    { key: "tldr", id: "section-tldr" },
-    { key: "days", id: "section-days" },
+    { key: "categories", id: "section-categories", host: page },
+    { key: "trending", id: "section-trending", host: rail },
+    { key: "tldr", id: "section-tldr", host: page },
+    { key: "days", id: "section-days", host: main },
   ];
-  const container = $("page-content") || document.querySelector(".page");
-  if (!container) return;
   const order = settings.sectionOrder || SECTION_ORDER_KEYS;
+  const railAnchor = rail.querySelector(".rail-subscribe");
   for (const key of order) {
     const w = wrappers.find((w) => w.key === key);
-    if (w) {
-      const node = $(w.id);
-      if (node) container.append(node);
-    }
+    if (!w) continue;
+    const node = $(w.id);
+    if (!node) continue;
+    if (w.host === page && grid) page.insertBefore(node, grid);
+    else if (w.host === rail && railAnchor) rail.insertBefore(node, railAnchor);
+    else w.host.append(node);
   }
 }
 
@@ -1171,12 +1610,82 @@ function applyBriefLayout() {
   page.classList.toggle("is-brief", brief);
 }
 
+/** Web DayHeader: the big date, a story count and prev/next arrows. */
+function renderDayHeader(settings, digest) {
+  const root = $("day-header");
+  if (!root) return;
+  const days = filteredDays(digest);
+  const date = days[0]?.date || digest.tldr?.date || "";
+  if (!SNAPSHOT_DATE.test(date)) {
+    root.hidden = true;
+    return;
+  }
+  root.hidden = false;
+
+  setBiText(
+    $("day-header-title"),
+    formatDayHeading(date, "vi"),
+    formatDayHeading(date, "en"),
+    settings
+  );
+  const total = days[0]?.items?.length || digest.totalStories || digest.stories.length;
+  const stamp = digest.lastFetchedAt || digest.updatedAt;
+  const ago = stamp ? ` · ${timeAgo(stamp, "vi")}` : "";
+  const agoEn = stamp ? ` · ${timeAgo(stamp, "en")}` : "";
+  setBiText(
+    $("day-header-count"),
+    `${total} tin${ago}`,
+    `${total} ${total === 1 ? "story" : "stories"}${agoEn}`,
+    settings
+  );
+  setBiText(
+    $("day-masthead-date"),
+    `${formatDayHeading(date, "vi")} · ${total} tin`,
+    `${formatDayHeading(date, "en")} · ${total} stories`,
+    settings
+  );
+
+  const prevDate = days[1]?.date || dayBefore(date);
+  const prev = $("day-prev");
+  if (prevDate) {
+    prev.href = dayPageUrl(prevDate, primaryLang(settings));
+    prev.removeAttribute("disabled");
+    prev.setAttribute("aria-label", homeCopy(settings, "previousDay"));
+  } else {
+    prev.removeAttribute("href");
+  }
+  const next = $("day-next");
+  if (next) next.setAttribute("aria-label", homeCopy(settings, "nextDay"));
+}
+
+/** Web HomeRail's subscribe + this-week blocks (Trending is rendered by
+ *  renderChips into #trending inside the same rail). */
+function renderRail(settings) {
+  const vi = primaryLang(settings) === "vi";
+  const telegram = $("rail-telegram");
+  if (telegram) {
+    telegram.href = vi ? "https://t.me/aihomnay" : "https://t.me/aidr_today";
+    const label = $("rail-telegram-label");
+    if (label) label.textContent = `Telegram ${vi ? "@aihomnay" : "@aidr_today"}`;
+  }
+  const weekLink = $("rail-week-link");
+  if (weekLink) weekLink.href = withExtRef("https://aidr.today/weeks", "week", primaryLang(settings));
+  const calendar = $("rail-calendar-link");
+  if (calendar) calendar.href = withExtRef("https://aidr.today/calendar", "calendar", primaryLang(settings));
+  const emailForm = $("rail-email-form");
+  if (emailForm) emailForm.action = withExtRef("https://aidr.today/subscribe", "email", primaryLang(settings));
+  const emailLabel = $("rail-email-label");
+  if (emailLabel) emailLabel.textContent = homeCopy(settings, "email");
+}
+
 function render(settings, digest) {
   applyChrome(settings);
   tagSiteLinks(document, {}, uiLang(settings));
+  renderDayHeader(settings, digest);
   renderChips(settings, digest);
   renderTldr(settings, digest);
   renderStories(settings, digest);
+  renderRail(settings);
   applySectionOrder(settings);
   renderFooter(settings, digest);
   applyBriefLayout();
@@ -1200,7 +1709,7 @@ function bindChannelTracking(getSettings) {
   document.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
-    const link = target.closest("a[data-channel]");
+    const link = target.closest("a[data-channel], button[data-channel]");
     if (!link) return;
     const channel = link.dataset.channel;
     if (!channel) return;
@@ -1295,10 +1804,27 @@ function bindLangToggle(getSettings, onChange) {
   const handler = (event) => {
     const btn = event.target.closest("button[data-lang]");
     if (!btn) return;
-    onChange({ ...getSettings(), language: btn.dataset.lang });
+    const language = btn.dataset.lang;
+    // VI / EN turn bilingual off; VI+EN turns it on (web LangToggle).
+    onChange({
+      ...getSettings(),
+      language,
+      bilingual: language === "both",
+    });
   };
   $("lang-toggle")?.addEventListener("click", handler);
   $("lang-toggle-phone")?.addEventListener("click", handler);
+}
+
+/** The three-icon layout switch in the header (Customize mirrors it offline). */
+function bindLayoutSwitch(setLayout) {
+  const root = $("layout-switch");
+  if (!root) return;
+  root.addEventListener("click", (event) => {
+    const btn = event.target.closest("button[data-layout]");
+    if (!btn) return;
+    setLayout(btn.dataset.layout);
+  });
 }
 
 async function main() {
@@ -1403,7 +1929,17 @@ async function main() {
   bindPhoneMenu();
   bindHeaderMenu();
   bindIntroVideo();
-  bindDayCard();
+  // Seed and persist the image/text toggle from the `tldrView` pref.
+  bindDayCard(async (view) => {
+    settings = await updateSettings({ tldrView: view });
+    applyAppearance(settings);
+    render(settings, digest);
+  });
+  bindLayoutSwitch(async (layout) => {
+    settings = await updateSettings({ layout });
+    applyAppearance(settings);
+    render(settings, digest);
+  });
   pushSettings = async (next) => {
     settings = await saveSettings(next);
     applyAppearance(settings);
