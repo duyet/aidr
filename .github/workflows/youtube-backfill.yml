@@ -1,0 +1,100 @@
+name: YouTube Backfill
+run-name: YouTube Backfill${{ inputs.date && format(' {0}', inputs.date) || '' }}${{ inputs.dry_run && ' (dry run)' || '' }}
+
+# Uploads the daily videos the daily run never posted to YouTube, oldest day first, and records the ids on the day
+# pages. YouTube only: no Facebook, no Telegram (no secrets for them here). Dry run is the default and prints the
+# plan; untick it for a live, public upload. No schedule. See videos/daily-news/README.md "Backfill YouTube".
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Print the plan only; render and upload nothing"
+        type: boolean
+        default: true
+      limit:
+        description: "Uploads this run (max 5; the YouTube quota is 10,000 units a day, 1,700 per upload)"
+        type: string
+        default: "4"
+      date:
+        description: "Only this past date YYYY-MM-DD (default: the oldest missing days)"
+        type: string
+        default: ""
+      reserve:
+        description: "Uploads kept free for the daily run on the same quota (it makes 3)"
+        type: string
+        default: "3"
+
+# Its own group: sharing the daily run's would let a queued backfill replace a queued daily run.
+concurrency:
+  group: youtube-backfill
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    environment: production
+    env:
+      CI: "true"
+      AIDR_NO_HEYGEN: "1"
+      ANYROUTER_API_KEY: ${{ secrets.ANYROUTER_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      NEWS_ADMIN_TOKEN: ${{ secrets.NEWS_ADMIN_TOKEN }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      YOUTUBE_BROKER_SECRET: ${{ secrets.YOUTUBE_BROKER_SECRET }}
+      YOUTUBE_BROKER_URL: ${{ vars.YOUTUBE_BROKER_URL }}
+    defaults:
+      run:
+        working-directory: videos/daily-news
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - uses: pnpm/action-setup@v6
+
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Install ffmpeg and fonts
+        if: ${{ !inputs.dry_run }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-noto-core fonts-noto-color-emoji
+          ffmpeg -version | head -1
+
+      - name: Renderer browser
+        if: ${{ !inputs.dry_run }}
+        run: npx --yes hyperframes@0.8.96 browser ensure
+
+      - name: Backfill
+        env:
+          LIMIT: ${{ inputs.limit }}
+          ONLY_DATE: ${{ inputs.date }}
+          RESERVE: ${{ inputs.reserve }}
+          LIVE: ${{ inputs.dry_run == false }}
+        run: |
+          args=(--limit "$LIMIT" --reserve "$RESERVE")
+          [ -n "$ONLY_DATE" ] && args+=(--date "$ONLY_DATE")
+          [ "$LIVE" = "true" ] && args+=(--live)
+          node scripts/backfill-youtube.mjs "${args[@]}"
+
+      - name: Upload artifact
+        if: ${{ always() && !inputs.dry_run }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: youtube-backfill
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            videos/daily-news/editions/*/STATUS.json
+            videos/daily-news/editions/*/script.json
+            videos/daily-news/editions/*/posts.md

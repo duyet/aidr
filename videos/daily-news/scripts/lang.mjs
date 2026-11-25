@@ -76,9 +76,13 @@ function subsCut() {
   };
 }
 
-/** The formats a cut renders: its own list, else every format in config.json. */
-export const formatsOf = (cut, config) =>
-  cut.formats ?? Object.keys(config.formats);
+/** The formats a cut renders: its own list, else every format in config.json. AIDR_FORMATS (e.g. "9x16") narrows
+ *  that to the listed formats, for a run that needs one cut only (backfill-youtube.mjs); unset, nothing changes. */
+export const formatsOf = (cut, config, env = process.env) => {
+  const all = cut.formats ?? Object.keys(config.formats);
+  const only = env.AIDR_FORMATS?.split(",").filter(Boolean);
+  return only ? all.filter((fmt) => only.includes(fmt)) : all;
+};
 
 // A weekly edition's directory (and "date" argument) is `week-<YYYY-Www>`, e.g. week-2026-W41.
 export const isWeekly = (date) => /^week-\d{4}-W\d{2}$/.test(date);
