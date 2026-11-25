@@ -336,10 +336,10 @@ function IndexPage() {
         className={
           browseChrome
             ? `grid items-start gap-x-(--home-col-gap) gap-y-(--home-section-gap) ${
-              prefs.sidebar
-                ? "min-[900px]:grid-cols-[minmax(0,1fr)_var(--rail-width)]"
-                : ""
-            }`
+                prefs.sidebar
+                  ? "min-[900px]:grid-cols-[minmax(0,1fr)_var(--rail-width)]"
+                  : ""
+              }`
             : undefined
         }
       >

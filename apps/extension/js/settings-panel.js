@@ -80,7 +80,8 @@ function sectionIcon(name) {
   const paths = {
     grid: "M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z",
     trending: "M3 17l6-6 4 4 8-8M14 7h7v7",
-    sparkles: "M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3zM19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z",
+    sparkles:
+      "M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3zM19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z",
     calendar:
       "M8 2v4M16 2v4M3 10h18M5 6h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z",
   };
@@ -133,9 +134,7 @@ export function mountSettingsPanel(root, settings, onSaved) {
     for (const option of options) {
       const value = typeof option === "object" ? option.value : option;
       const label =
-        typeof option === "object"
-          ? t(state, option.labelKey)
-          : String(option);
+        typeof option === "object" ? t(state, option.labelKey) : String(option);
       row.append(
         choiceButton(label, current === value, async () => onPick(value))
       );
@@ -241,7 +240,8 @@ export function mountSettingsPanel(root, settings, onSaved) {
       value: String(densityIdx),
       "aria-label": t(state, "density"),
       onInput: async (event) => {
-        state.density = DENSITIES[Number(event.target.value)] || DEFAULT_SETTINGS.density;
+        state.density =
+          DENSITIES[Number(event.target.value)] || DEFAULT_SETTINGS.density;
         await persist({ repaint: false });
       },
     });
@@ -296,10 +296,15 @@ export function mountSettingsPanel(root, settings, onSaved) {
       ]),
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label" }, [t(state, "headlineFont")]),
-        choiceRow(FONT_OPTIONS, state.headFont, async (value) => {
-          state.headFont = value;
-          await persist();
-        }, "prefs-grid-2"),
+        choiceRow(
+          FONT_OPTIONS,
+          state.headFont,
+          async (value) => {
+            state.headFont = value;
+            await persist();
+          },
+          "prefs-grid-2"
+        ),
       ]),
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label prefs-label-row" }, [
@@ -430,10 +435,15 @@ export function mountSettingsPanel(root, settings, onSaved) {
       toggleRow("bilingual", "bilingual"),
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label" }, [t(state, "bilingualLead")]),
-        choiceRow(LEAD_OPTIONS, state.bilingualFirst, async (value) => {
-          state.bilingualFirst = value;
-          await persist();
-        }, "prefs-grid-2"),
+        choiceRow(
+          LEAD_OPTIONS,
+          state.bilingualFirst,
+          async (value) => {
+            state.bilingualFirst = value;
+            await persist();
+          },
+          "prefs-grid-2"
+        ),
       ]),
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label" }, [t(state, "tldrCols")]),
@@ -444,10 +454,15 @@ export function mountSettingsPanel(root, settings, onSaved) {
       ]),
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label" }, [t(state, "tldrView")]),
-        choiceRow(TLDR_VIEW_OPTIONS, state.tldrView, async (value) => {
-          state.tldrView = value;
-          await persist();
-        }, "prefs-grid-2"),
+        choiceRow(
+          TLDR_VIEW_OPTIONS,
+          state.tldrView,
+          async (value) => {
+            state.tldrView = value;
+            await persist();
+          },
+          "prefs-grid-2"
+        ),
       ]),
       toggleRow("thumbs", "thumbs"),
       toggleRow("summaries", "summaries"),
