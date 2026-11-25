@@ -66,6 +66,17 @@ async function transcode(bytes: Uint8Array): Promise<Uint8Array | null> {
   }
 }
 
+/** Cards are kept forever, so they are stored as 8-bit palette PNGs: the same
+ *  1200x630 image at a quarter of the bytes, and still image/png. */
+async function shrinkPng(bytes: Uint8Array): Promise<Uint8Array> {
+  const small = new Uint8Array(
+    await sharp(bytes)
+      .png({ palette: true, quality: 85, effort: 10, compressionLevel: 9 })
+      .toBuffer()
+  );
+  return small.byteLength < bytes.byteLength ? small : bytes;
+}
+
 async function firstPhoto(
   item: PendingStory["item"]
 ): Promise<StoryOgImage | null> {
@@ -121,7 +132,7 @@ for (const { item, cards } of stories) {
           storyOgCard(item, image, lang),
           storyOgRenderOptions(fonts)
         );
-        const body = new Uint8Array(await png.arrayBuffer());
+        const body = await shrinkPng(new Uint8Array(await png.arrayBuffer()));
         // Left unacked, so the page keeps the Worker route for this card.
         if (body.byteLength > MAX_CARD_UPLOAD_BYTES) {
           skipped++;
