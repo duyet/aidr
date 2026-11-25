@@ -2,7 +2,7 @@ import {
   SegmentedControl,
   SegmentedControlItem,
 } from "@ui-sdk/react/segmented-control";
-import { ImageIcon, Rows2, Rows3 } from "lucide-react";
+import { Equal, ImageIcon, Menu } from "lucide-react";
 import type { TldrCount, TldrView } from "../lib/prefs";
 import type { Lang } from "../lib/types";
 
@@ -29,12 +29,12 @@ export function TldrViewSwitch({
     },
     {
       value: "rows2",
-      Icon: Rows2,
+      Icon: Equal,
       label: lang === "vi" ? "Chữ, 2 dòng mỗi tin" : "2 rows",
     },
     {
       value: "rows3",
-      Icon: Rows3,
+      Icon: Menu,
       label: lang === "vi" ? "Chữ, 3 dòng mỗi tin" : "3 rows",
     },
   ];
