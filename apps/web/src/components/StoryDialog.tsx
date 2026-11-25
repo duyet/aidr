@@ -96,7 +96,7 @@ export function StoryDialog({
         if (!isOpen) onClose();
       }}
     >
-      <DrawerBackdrop className="bg-black/40" />
+      <DrawerBackdrop className="bg-black/40 backdrop-blur-sm" />
       <DrawerContent
         ref={panelRef}
         aria-label={title ?? "Story"}
