@@ -98,6 +98,18 @@ Post any 9:16 mp4 (a release film too): `node scripts/facebook-reel.mjs --file <
 
 **Manual override:** write (or fix) `editions/<date>/script.json` the usual way and commit it before 02:30 UTC; the scheduled run renders that script instead of generating one. To stop a day, cancel the run or disable the workflow. To redo a day by hand, run `publish.mjs` locally as in "Daily run" and add `--steps facebook --prod`.
 
+## Backfill YouTube (days the daily run missed)
+
+`.github/workflows/youtube-backfill.yml` (manual only, no schedule) and `scripts/backfill-youtube.mjs` upload the YouTube cuts a day never got (issues #962, #635): en 16:9, en Short and the Vietnamese-subtitle cut. It posts nothing else: no Facebook, no Telegram. It reads the live day pages (`/date/<date>.md`, what the watchdog checks), takes the oldest missing cuts, rebuilds each day's `edition.json` from the day page (the public API only serves today; a bullet with no story link is dropped, under 3 linked bullets the date is skipped), writes the script, renders only the missing formats (`AIDR_FORMATS`), then `publish.mjs --steps render,gate,upload,attach --uploader api`, the daily run's own upload and day page record. A cut that already has an id is never planned, and `publish.mjs` checks the live page again before each upload.
+
+**Dry run (default):** `gh workflow run youtube-backfill.yml -R duyet/aidr`, or locally `node scripts/backfill-youtube.mjs [--limit 4] [--date YYYY-MM-DD] [--days 30]`. It prints the missing cuts, the budget and the commands, and renders and uploads nothing.
+
+**Live (public, irreversible):** `gh workflow run youtube-backfill.yml -R duyet/aidr -f dry_run=false` (add `-f date=<date>` for one day, `-f limit=<n>`), or locally `--live` (also `--privacy private` to check one in Studio first). Each date renders for a while, about as long as a daily run; the job allows 4 hours. A failed date does not stop the others; the job fails at the end and lists them.
+
+**Quota.** The Data API gives 10,000 units a day (reset at midnight Pacific). An upload costs 1,600 plus the thumbnail and playlist calls: 1,700 here, so 5 uploads a day at most (`--limit`, hard cap 5). The daily run makes 3 uploads on the same quota, so `--reserve` (default 3) keeps their 5,100 units free and the default budget is 2 uploads. Run live right after the reset, or pass `reserve=0` when the daily run has already posted that day. Hitting `quotaExceeded` stops the run; rerun after the reset. Each run picks the oldest still-missing cuts, so repeat days until the table is empty.
+
+**Token rejected** (`invalid_grant`, 401, or the broker answering 401/403): the run stops at once and uploads nothing more. Do not rerun. Get a new refresh token with `.agents/skills/aidr-youtube-upload/bin/yt-oauth.mjs` (the consent screen must be "In production", else the token lasts 7 days) or fix the token broker (`YOUTUBE_BROKER_URL`/`YOUTUBE_BROKER_SECRET`), update the secrets, then dry run and go live again.
+
 ## Weekly edition
 
 The same template makes a weekly cut ("AI;DR Weekly") from `GET https://aidr.today/api/week/<YYYY-Www>`. The week is the ISO week (Monday..Sunday) of Asia/Ho_Chi_Minh dates, which is how the Worker keys its snapshots (`scripts/week.mjs`, tested by `node --test scripts/week.test.mjs`). The "date" argument of every script is `week-<week>`, e.g. `week-2026-W41`.
