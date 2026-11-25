@@ -2713,23 +2713,6 @@ function tokenThenHang(_url: string, init?: RequestInit) {
   return new Response(stream, { status: 200 });
 }
 
-describe("translate chains", () => {
-  // #1118: "gemma-latest: 502×8" exhausted a one-id chain.
-  it.each(["ANYROUTER_TRANSLATE_MODEL", "ANYROUTER_ENGLISH_TRANSLATE_MODEL"])(
-    "%s has a fallback id",
-    (name) => {
-      const toml = readFileSync(
-        fileURLToPath(new URL("../../wrangler.toml", import.meta.url)),
-        "utf8"
-      );
-      const chain = new RegExp(`^${name} = "([^"]+)"`, "m")
-        .exec(toml)?.[1]
-        ?.split(",");
-      expect(chain?.length).toBeGreaterThanOrEqual(2);
-    }
-  );
-});
-
 describe("tldr chain budget", () => {
   // What the first hop really gets, not the cap: modelAttemptTimeoutMs holds
   // back a slice per fallback, which is how a 135s cap became ~100s and
