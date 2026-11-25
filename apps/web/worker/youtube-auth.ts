@@ -70,7 +70,9 @@ const badLink = () =>
 const usedLink = () =>
   page(410, "Link already used", "This link was used once. Ask for a new one.");
 
-/** `GET /api/internal/youtube-auth/start?t=...`: burns the link, goes to Google. */
+/** `GET /api/internal/youtube-auth/start?t=...`: goes to Google. The link is
+ *  burned only after a successful sign-in (callback), so a mail scanner that
+ *  opens it first cannot use it up. */
 export async function handleYoutubeAuthStart(
   request: Request,
   env: Env,
@@ -90,7 +92,6 @@ export async function handleYoutubeAuthStart(
   const link = await verifyPayload(secret, t, "link", nowMs);
   if (!link) return badLink();
   if (!(await kv.get(linkNonceKey(link.n)))) return usedLink();
-  await kv.delete(linkNonceKey(link.n));
   await kv.put(stateNonceKey(link.n), "1", {
     expirationTtl: Math.ceil(STATE_TTL_MS / 1000),
   });
@@ -228,6 +229,7 @@ export async function handleYoutubeAuthCallback(
   await kv.put(YT_CLIENT_KEY, client.id);
   await kv.put(YT_MINTED_KEY, String(nowMs));
   await kv.delete(YT_ACCESS_KEY);
+  await kv.delete(linkNonceKey(state.n));
   await writeStatus(kv, {
     lastErrorCode: undefined,
     lastErrorMs: undefined,

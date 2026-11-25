@@ -208,7 +208,7 @@ describe("start", () => {
     expect(res.status).toBe(404);
   });
 
-  it("redirects to the pinned Google URL once, then 410", async () => {
+  it("redirects to the pinned Google URL, and a second open (a mail scanner) still works", async () => {
     const { env, link } = await started();
     const res = await handleYoutubeAuthStart(new Request(link), env, NOW);
     expect(res.status).toBe(302);
@@ -226,7 +226,7 @@ describe("start", () => {
       "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube"
     );
     const again = await handleYoutubeAuthStart(new Request(link), env, NOW);
-    expect(again.status).toBe(410);
+    expect(again.status).toBe(302);
   });
 
   it("falls back to the Desktop client when no web client is set", async () => {
@@ -301,7 +301,7 @@ describe("callback", () => {
   }
 
   it("stores the token for the right channel and clears the cache and status", async () => {
-    const { env, store, state, cb } = await ready(
+    const { env, store, state, cb, send } = await ready(
       {},
       {
         [YT_ACCESS_KEY]: "cached",
@@ -318,6 +318,11 @@ describe("callback", () => {
       NOW + 1000
     );
     expect(res.status).toBe(200);
+    // The link is used up by a completed sign-in, not by opening it.
+    expect(
+      (await handleYoutubeAuthStart(new Request(linkFrom(send)), env, NOW))
+        .status
+    ).toBe(410);
     expect(res.headers.get("cache-control")).toBe("no-store");
     const body = await res.text();
     expect(body).not.toContain(REFRESH_NEW);
