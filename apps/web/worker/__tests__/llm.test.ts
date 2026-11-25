@@ -29,10 +29,10 @@ import {
   scoreBatchPrompt,
   scoreItems,
   setLlmCallLogger,
+  TLDR_FIRST_TOKEN_MS,
   TLDR_RETRY_RESERVE_MS,
   TLDR_SLICE_MAX_MS,
   TLDR_TIMEOUT_MS,
-  TLDR_FIRST_TOKEN_MS,
   TRANSLATE_FIRST_TOKEN_MS,
   tldrAttemptTimeoutMs,
   translateItems,
@@ -2715,19 +2715,19 @@ function tokenThenHang(_url: string, init?: RequestInit) {
 
 describe("translate chains", () => {
   // #1118: "gemma-latest: 502×8" exhausted a one-id chain.
-  it.each([
-    "ANYROUTER_TRANSLATE_MODEL",
-    "ANYROUTER_ENGLISH_TRANSLATE_MODEL",
-  ])("%s has a fallback id", (name) => {
-    const toml = readFileSync(
-      fileURLToPath(new URL("../../wrangler.toml", import.meta.url)),
-      "utf8"
-    );
-    const chain = new RegExp(`^${name} = "([^"]+)"`, "m")
-      .exec(toml)?.[1]
-      ?.split(",");
-    expect(chain?.length).toBeGreaterThanOrEqual(2);
-  });
+  it.each(["ANYROUTER_TRANSLATE_MODEL", "ANYROUTER_ENGLISH_TRANSLATE_MODEL"])(
+    "%s has a fallback id",
+    (name) => {
+      const toml = readFileSync(
+        fileURLToPath(new URL("../../wrangler.toml", import.meta.url)),
+        "utf8"
+      );
+      const chain = new RegExp(`^${name} = "([^"]+)"`, "m")
+        .exec(toml)?.[1]
+        ?.split(",");
+      expect(chain?.length).toBeGreaterThanOrEqual(2);
+    }
+  );
 });
 
 describe("tldr chain budget", () => {
