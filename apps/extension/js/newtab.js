@@ -1171,7 +1171,6 @@ function renderStoryRow(settings, story, index, hot) {
     publisher.textContent = host;
     ext.append(publisher);
   }
-  titleWrap.append(document.createTextNode(" "), ext);
 
   const cat = document.createElement("span");
   cat.className = "story-cat";
@@ -1195,11 +1194,11 @@ function renderStoryRow(settings, story, index, hot) {
     ? timeAgo(story.published_at, lang)
     : "";
 
-  // Votes, category and time share one first-line-high cluster so every
-  // row's columns line up, even when the title wraps.
+  // Small source line: category, time, publisher; votes only when enabled.
   const meta = document.createElement("span");
   meta.className = "story-meta";
-  meta.append(renderVotes(settings, story), cat, when);
+  if (settings.votes) meta.append(renderVotes(settings, story));
+  meta.append(cat, when, ext);
 
   // One column holds the title, the optional summary line and the metadata,
   // so the rank shares only the first title line (web StoryRow.story-body).
@@ -1409,9 +1408,7 @@ function renderLeadStory(settings, story) {
   }
   if (story.published_at) {
     if (story.category) kicker.append(document.createTextNode(" · "));
-    kicker.append(
-      document.createTextNode(timeAgo(story.published_at, lang))
-    );
+    kicker.append(document.createTextNode(timeAgo(story.published_at, lang)));
   }
   body.append(kicker);
 
@@ -1492,10 +1489,15 @@ function renderLeadStory(settings, story) {
   }
   body.append(actions);
 
-  const media = document.createElement("div");
-  media.className = "lead-story-media";
-  media.append(thumbNode(story.image_url, "lead-thumb"));
-  article.append(body, media);
+  article.append(body);
+  if (story.image_url) {
+    const media = document.createElement("div");
+    media.className = "lead-story-media";
+    media.append(thumbNode(story.image_url, "lead-thumb"));
+    article.append(media);
+  } else {
+    article.classList.add("lead-story-text");
+  }
   return article;
 }
 
@@ -1562,7 +1564,12 @@ function renderStories(settings, digest) {
     const count = document.createElement("span");
     count.className = "day-count";
     const n = items.length + (fromLead ? 1 : 0);
-    setBiText(count, `${n} tin`, `${n} ${n === 1 ? "story" : "stories"}`, settings);
+    setBiText(
+      count,
+      `${n} tin`,
+      `${n} ${n === 1 ? "story" : "stories"}`,
+      settings
+    );
 
     const cats = document.createElement("span");
     cats.className = "day-cats";
@@ -1597,10 +1604,7 @@ function renderStories(settings, digest) {
     const firstRank = fromLead ? 2 : 1;
     items.forEach((story, i) => {
       const hot =
-        !fromLead &&
-        i === 0 &&
-        story.rank_score > 0 &&
-        items.length > 1;
+        !fromLead && i === 0 && story.rank_score > 0 && items.length > 1;
       list.append(renderStoryRow(settings, story, firstRank + i, hot));
     });
     section.append(list);
@@ -1669,7 +1673,8 @@ function renderDayHeader(settings, digest) {
     formatDayHeading(date, "en"),
     settings
   );
-  const total = days[0]?.items?.length || digest.totalStories || digest.stories.length;
+  const total =
+    days[0]?.items?.length || digest.totalStories || digest.stories.length;
   const stamp = digest.lastFetchedAt || digest.updatedAt;
   const ago = stamp ? ` · ${timeAgo(stamp, "vi")}` : "";
   const agoEn = stamp ? ` · ${timeAgo(stamp, "en")}` : "";
@@ -1707,14 +1712,30 @@ function renderRail(settings) {
   if (telegram) {
     telegram.href = vi ? "https://t.me/aihomnay" : "https://t.me/aidr_today";
     const label = $("rail-telegram-label");
-    if (label) label.textContent = `Telegram ${vi ? "@aihomnay" : "@aidr_today"}`;
+    if (label)
+      label.textContent = `Telegram ${vi ? "@aihomnay" : "@aidr_today"}`;
   }
   const weekLink = $("rail-week-link");
-  if (weekLink) weekLink.href = withExtRef("https://aidr.today/weeks", "week", primaryLang(settings));
+  if (weekLink)
+    weekLink.href = withExtRef(
+      "https://aidr.today/weeks",
+      "week",
+      primaryLang(settings)
+    );
   const calendar = $("rail-calendar-link");
-  if (calendar) calendar.href = withExtRef("https://aidr.today/calendar", "calendar", primaryLang(settings));
+  if (calendar)
+    calendar.href = withExtRef(
+      "https://aidr.today/calendar",
+      "calendar",
+      primaryLang(settings)
+    );
   const emailForm = $("rail-email-form");
-  if (emailForm) emailForm.action = withExtRef("https://aidr.today/subscribe", "email", primaryLang(settings));
+  if (emailForm)
+    emailForm.action = withExtRef(
+      "https://aidr.today/subscribe",
+      "email",
+      primaryLang(settings)
+    );
   const emailLabel = $("rail-email-label");
   if (emailLabel) emailLabel.textContent = homeCopy(settings, "email");
 }

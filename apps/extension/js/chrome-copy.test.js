@@ -36,10 +36,7 @@ test("section tiles persist with a prefs-panel repaint so aria-pressed updates",
 
 test("header Chrome mark is RiChromeLine, not the pie-chart path", () => {
   assert.match(html, /M10\.3645 19\.8327L12\.2941 16\.4905/);
-  assert.doesNotMatch(
-    html,
-    /M12 2a10 10 0 1 0 10 10A10 10 0 1 0 12 2/
-  );
+  assert.doesNotMatch(html, /M12 2a10 10 0 1 0 10 10A10 10 0 1 0 12 2/);
 });
 
 test("digest footer has a muted reload control next to the updated stamp", () => {
@@ -155,30 +152,22 @@ test("new tab follows the live digest masthead, day links, and intro video", () 
   assert.match(css, /\.story-vote \{[^}]*width:\s*0\.875rem/);
   assert.match(js, /tynoWx03zDc/);
   assert.match(js, /youtube-nocookie\.com/);
-  assert.match(css, /\.tldr-head \.tldr-counts button\[aria-pressed="true"\][\s\S]*?var\(--primary-foreground\)/);
+  assert.match(
+    css,
+    /\.tldr-head \.tldr-counts button\[aria-pressed="true"\][\s\S]*?var\(--primary-foreground\)/
+  );
   assert.doesNotMatch(js, /story-host/);
 });
 
-test("story row meta columns line up on the title's first line", () => {
-  // Wrapped titles must not drag votes/category/time to the row middle.
-  assert.match(js, /meta\.append\(renderVotes\(settings, story\), cat, when\)/);
+test("story row meta is one small wrapping line; votes only when enabled", () => {
+  assert.match(
+    js,
+    /if \(settings\.votes\) meta\.append\(renderVotes\(settings, story\)\)/
+  );
+  assert.match(js, /meta\.append\(cat, when, ext\)/);
   assert.match(css, /\.story-head \{[^}]*align-items:\s*flex-start/);
-  assert.match(
-    css,
-    // Baseline, not center: votes, category and time share the title's
-    // text baseline instead of floating at different heights.
-    /\.story-meta \{[^}]*align-items:\s*baseline;[^}]*height:\s*1lh/
-  );
-  assert.match(css, /\.story-votes \{[^}]*width:\s*3rem/);
-  // Fixed width so "21 giờ trước" fits and every row's columns share an x.
-  assert.match(
-    css,
-    /\.story-cat,\n\.story-when \{[^}]*width:\s*6\.5rem;[^}]*text-align:\s*right;[^}]*white-space:\s*nowrap/
-  );
-  assert.match(
-    css,
-    /\.story-cat \{\s*width:\s*6rem;\s*text-overflow:\s*ellipsis/
-  );
+  assert.match(css, /\.story-meta \{[^}]*flex-wrap:\s*wrap/);
+  assert.doesNotMatch(css, /\.story-meta \{[^}]*height:\s*1lh/);
 });
 
 test("masthead image | 2 rows | 3 rows switch replaces the day card chip", () => {
@@ -240,9 +229,9 @@ test("brief layout centers AI;DR when the daily feed is off", () => {
 
 test("section tiles follow Cat > Trending > AI;DR > Daily feed", () => {
   const panel = readFileSync(join(root, "js/settings-panel.js"), "utf8");
-  const keys = [...panel.matchAll(/key: "(categories|trending|tldr|days)"/g)].map(
-    (m) => m[1]
-  );
+  const keys = [
+    ...panel.matchAll(/key: "(categories|trending|tldr|days)"/g),
+  ].map((m) => m[1]);
   assert.deepEqual(keys, ["categories", "trending", "tldr", "days"]);
   assert.match(panel, /prefs-section-tile/);
   assert.match(panel, /sectionIcon/);

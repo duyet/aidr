@@ -203,7 +203,7 @@ body {
 .app-shell[data-layout="newspaper"] {
   --row-pad: 12px;
   --list-title-size: 16.5px;
-  --lead-title-size: clamp(28px, 4vw, 44px);
+  --lead-title-size: clamp(24px, 2.2vw, 28px);
   --chip-h: 30px;
   /* Square corners: every rounded panel reads --radius; the extension's
      --radius-card alias is reset too so panels go square with the web. */
@@ -2002,22 +2002,24 @@ html[data-theme="dark"]
   margin-left: 0.25rem;
 }
 
-/* One title line tall: votes, category and time center on the first line. */
+/* Small source line under the title: category, time, publisher (and votes
+   when the reader turns them on). */
 .story-meta {
   display: flex;
-  flex-shrink: 0;
-  align-items: baseline;
-  gap: 0.75rem;
-  height: 1lh;
-  font-size: 12.5px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 0.75rem;
+  margin-top: 2px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
   font-variant-numeric: tabular-nums;
 }
 
 .story-votes {
   display: inline-flex;
-  width: 3rem;
   flex-shrink: 0;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
 }
 
@@ -2053,35 +2055,18 @@ html[data-theme="dark"]
 
 .story-cat,
 .story-when {
-  display: none;
-  width: 6.5rem;
-  flex-shrink: 0;
   overflow: hidden;
   color: var(--muted-foreground);
-  font-size: 12.5px;
-  text-align: right;
   white-space: nowrap;
 }
 
 .story-cat {
-  width: 6rem;
+  max-width: 10rem;
   text-overflow: ellipsis;
 }
 
-@media (min-width: 640px) {
-  .story-cat {
-    display: block;
-  }
-
-  .story-publisher {
-    display: inline;
-  }
-}
-
-@media (min-width: 768px) {
-  .story-when {
-    display: block;
-  }
+.story-publisher {
+  display: inline;
 }
 
 .story-detail {
@@ -3380,6 +3365,7 @@ html[data-theme="dark"] .story-topic-colored {
   display: grid;
   align-items: start;
   gap: var(--home-section-gap) var(--home-col-gap);
+  margin-top: var(--home-section-gap);
 }
 
 @media (min-width: 900px) {
@@ -3396,6 +3382,15 @@ html[data-theme="dark"] .story-topic-colored {
     top: 72px;
     align-self: start;
   }
+}
+
+/* "Hide the right column" pref: the feed takes the full width. */
+.app-shell[data-rail="off"] .home-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-shell[data-rail="off"] .home-rail {
+  display: none;
 }
 
 .home-main {
@@ -3650,17 +3645,16 @@ html[data-theme="dark"] .story-topic-colored {
 }
 
 @media (min-width: 700px) {
-  .lead-story {
+  .lead-story:not(.lead-story-text) {
     grid-template-columns: minmax(0, 1fr) 190px;
   }
 
-  .app-shell[data-layout="comfortable"] .lead-story {
+  .app-shell[data-layout="comfortable"] .lead-story:not(.lead-story-text) {
     grid-template-columns: minmax(0, 1fr) 260px;
   }
 
-  .app-shell[data-layout="newspaper"] .lead-story {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 28px;
+  .app-shell[data-layout="newspaper"] .lead-story:not(.lead-story-text) {
+    grid-template-columns: minmax(0, 1fr) 240px;
   }
 }
 
@@ -3741,8 +3735,12 @@ html[data-theme="dark"] .story-topic-colored {
   min-width: 0;
 }
 
-.lead-story-media img {
+.lead-story-media img,
+.lead-story-media .thumb {
   width: 100%;
+  height: auto;
+  max-width: none;
+  max-height: none;
   border: 0;
   border-radius: 10px;
   aspect-ratio: 16 / 9;

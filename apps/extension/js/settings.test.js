@@ -112,8 +112,10 @@ test("DEFAULT_SETTINGS matches website PrefsPanel shape", () => {
   assert.equal(DEFAULT_SETTINGS.theme, "light");
   assert.equal(DEFAULT_SETTINGS.tldrView, "rows2");
   assert.equal(DEFAULT_SETTINGS.tldrCols, 2);
-  assert.equal(DEFAULT_SETTINGS.thumbs, true);
+  assert.equal(DEFAULT_SETTINGS.thumbs, false);
   assert.equal(DEFAULT_SETTINGS.summaries, false);
+  assert.equal(DEFAULT_SETTINGS.votes, false);
+  assert.equal(DEFAULT_SETTINGS.rail, true);
   assert.equal(DEFAULT_SETTINGS.feedDays, 3);
 });
 

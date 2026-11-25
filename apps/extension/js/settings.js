@@ -70,8 +70,12 @@ export const DEFAULT_SETTINGS = {
   tldrCols: 2,
   /** Image / 2 rows / 3 rows masthead choice; persisted from the toggle. */
   tldrView: DEFAULT_TLDR_VIEW,
-  thumbs: true,
+  thumbs: false,
   summaries: false,
+  /** Vote arrows and counts in ranked rows. */
+  votes: false,
+  /** The right column: trending, newsletter, Telegram, this week. */
+  rail: true,
   feedDays: 3,
   newsCols: 2,
 };
@@ -159,7 +163,10 @@ export function normalizeSettings(raw) {
         sections.days ?? sections.stories,
         DEFAULT_SETTINGS.sections.days
       ),
-      categories: flag(sections.categories, DEFAULT_SETTINGS.sections.categories),
+      categories: flag(
+        sections.categories,
+        DEFAULT_SETTINGS.sections.categories
+      ),
       trending: flag(sections.trending, DEFAULT_SETTINGS.sections.trending),
     },
     sectionOrder: normalizeSectionOrder(input.sectionOrder),
@@ -182,6 +189,8 @@ export function normalizeSettings(raw) {
     tldrView: normalizeTldrView(input.tldrView),
     thumbs: flag(input.thumbs, DEFAULT_SETTINGS.thumbs),
     summaries: flag(input.summaries, DEFAULT_SETTINGS.summaries),
+    votes: flag(input.votes, DEFAULT_SETTINGS.votes),
+    rail: flag(input.rail, DEFAULT_SETTINGS.rail),
     feedDays: pick(FEED_DAYS, input.feedDays, DEFAULT_SETTINGS.feedDays),
     newsCols: pick(NEWS_COLS, input.newsCols, DEFAULT_SETTINGS.newsCols),
   };
@@ -256,6 +265,7 @@ export function applyAppearance(settings) {
     shell.dataset.newsCols = String(settings.newsCols);
     shell.dataset.thumbs = onOff(settings.thumbs);
     shell.dataset.summaries = onOff(settings.summaries);
+    shell.dataset.rail = onOff(settings.rail);
   }
 
   const feed = document.querySelector(".news-content");

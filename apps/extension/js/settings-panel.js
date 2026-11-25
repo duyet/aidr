@@ -451,6 +451,8 @@ export function mountSettingsPanel(root, settings, onSaved) {
       ]),
       toggleRow("thumbs", "thumbs"),
       toggleRow("summaries", "summaries"),
+      toggleRow("votes", "votes"),
+      toggleRow("rail", "rail"),
       el("div", { className: "prefs-field" }, [
         el("span", { className: "prefs-label" }, [t(state, "feedDays")]),
         choiceRow(FEED_DAYS, state.feedDays, async (value) => {
