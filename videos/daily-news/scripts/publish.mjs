@@ -93,7 +93,8 @@ const langs = list("--lang", ["en", "vi"]).sort(
 );
 const steps = list("--steps", DEFAULT_STEPS);
 const uploader =
-  flag("--uploader") ?? (process.env.YOUTUBE_REFRESH_TOKEN || process.env.YOUTUBE_BROKER_SECRET
+  flag("--uploader") ??
+  (process.env.YOUTUBE_REFRESH_TOKEN || process.env.YOUTUBE_BROKER_SECRET
     ? "api"
     : "chrome");
 const privacy = flag("--privacy") ?? "public";
