@@ -10,7 +10,8 @@
 // --finish <id> skips the upload and runs only the listed steps (default all) on that video: the rerun of an
 // upload that failed after ID=.
 // --lang is the metadata language (defaultLanguage), --audio-lang the audio (defaultAudioLanguage, default --lang).
-// Env: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN
+// Env: YOUTUBE_BROKER_URL + YOUTUBE_BROKER_SECRET (access token from the Worker), or, during the
+// transition, YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN
 // (mint the token once with bin/yt-oauth.mjs). Metadata comes from bin/yt-meta.py.
 // Steps: refresh token -> resumable upload -> thumbnail (long only) -> playlist
 // "AI;DR" -> oEmbed (public only). Any error prints `FAIL: <step>` and exits 1.
@@ -81,8 +82,11 @@ if (kind === "short" && !/#shorts/i.test(`${title}\n${desc}`)) title = `${title}
 if ([...title].length > 100) fail("metadata", `title is ${[...title].length} chars, max 100`);
 if (Buffer.byteLength(desc) > 5000) fail("metadata", "description over 5000 bytes");
 
-const missing = ["YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN"].filter((k) => !process.env[k]);
-if (missing.length) fail("env", `missing ${missing.join(", ")}`);
+// The broker (POST /api/internal/youtube-token on the Worker) holds the credentials. The direct
+// refresh below is only for the transition: delete it once the broker vars are set everywhere.
+const broker = process.env.YOUTUBE_BROKER_URL && process.env.YOUTUBE_BROKER_SECRET;
+const missing = broker ? [] : ["YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN"].filter((k) => !process.env[k]);
+if (missing.length) fail("env", `missing ${missing.join(", ")} (or YOUTUBE_BROKER_URL and YOUTUBE_BROKER_SECRET)`);
 
 async function jsonOrText(res) {
   const t = await res.text();
@@ -102,8 +106,17 @@ async function call(step, url, init = {}) {
   return body;
 }
 
-log("refresh token");
-{
+log(broker ? "access token (broker)" : "refresh token");
+if (broker) {
+  const res = await fetch(process.env.YOUTUBE_BROKER_URL, {
+    method: "POST",
+    headers: { authorization: `Bearer ${process.env.YOUTUBE_BROKER_SECRET}` },
+  });
+  const body = await jsonOrText(res);
+  // Only the code: a broker body must never reach the log.
+  if (!res.ok || !body.access_token) fail("token", `broker HTTP ${res.status}: ${typeof body?.error === "string" ? body.error.slice(0, 40) : "no access_token"}`);
+  token = body.access_token;
+} else {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     body: new URLSearchParams({

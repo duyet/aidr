@@ -126,6 +126,14 @@ export interface Env {
    *  pages_manage_posts, pages_read_engagement, and pages_show_list.
    *  Worker secret. Never logged. */
   FACEBOOK_PAGE_ACCESS_TOKEN?: string;
+  /** YouTube OAuth client and refresh token (Worker secrets). The newest
+   *  refresh token is kept in KV `yt:refresh` and read first
+   *  (`worker/youtube-token.ts`). */
+  YOUTUBE_CLIENT_ID?: string;
+  YOUTUBE_CLIENT_SECRET?: string;
+  YOUTUBE_REFRESH_TOKEN?: string;
+  /** Bearer secret for `POST /api/internal/youtube-token`; unset → that route is a 404. */
+  YOUTUBE_BROKER_SECRET?: string;
   /** Public Meta app id. Used locally with FACEBOOK_APP_SECRET (never
    *  synced to the Worker) to mint a new Page token. An app token cannot publish by itself. */
   FACEBOOK_APP_ID?: string;

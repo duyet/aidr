@@ -911,6 +911,45 @@ ORDER BY week DESC, hits DESC
   (or at least is no longer the previous id) and `runsToday > 0`.
 - Do not invent a `:05/:20/:35/:50` schedule fire.
 
+## YouTube credentials (token broker)
+
+The daily video uploads to YouTube from GitHub Actions. The OAuth credentials
+live in Cloudflare; Actions only holds a bearer for the broker.
+
+- `worker/youtube-token.ts` `getYoutubeAccessToken(env)` refreshes against the
+  pinned `https://oauth2.googleapis.com/token` with the Worker secrets
+  `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN`. The
+  access token is cached in `HTML_CACHE` (`yt:access`) until 5 minutes before it
+  expires.
+- `POST /api/internal/youtube-token` (`Authorization: Bearer
+  YOUTUBE_BROKER_SECRET`, constant-time compare) returns
+  `{access_token, expires_in}`, `Cache-Control: no-store`. It is a 404 while the
+  secret is unset and never returns the refresh token or client secret.
+  `yt-upload-api.mjs` calls it when `YOUTUBE_BROKER_URL` and
+  `YOUTUBE_BROKER_SECRET` are set; the direct refresh with the old trio is a
+  fallback for the transition only.
+- Rotation: if Google returns a new refresh token it is stored in `yt:refresh`
+  (with `yt:refresh-base`, a hash of the Worker secret it replaced) and read
+  first. Putting a new `YOUTUBE_REFRESH_TOKEN` on the Worker (a re-mint) wins
+  over the stored one.
+- `invalid_grant` is a typed error. `yt:status` in KV keeps the last ok time and
+  last error code. The `health-check` step (`keepYoutubeTokenAlive`) forces a
+  refresh once a day so the token never idles; on `invalid_grant` it raises the
+  `youtube-token-invalid` alert with the fix. Other failures only update
+  `yt:status`. No token or Google response body is logged or returned.
+
+**Owner steps, once.** The refresh token keeps dying (#962, #635), most likely
+because the Google OAuth consent screen is in Testing mode, where refresh
+tokens expire after 7 days.
+
+1. Google Cloud console, OAuth consent screen: publish the app to "In production".
+2. Re-mint the token as the channel owner: `node .agents/skills/aidr-youtube-upload/bin/yt-oauth.mjs`.
+3. `wrangler secret put YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REFRESH_TOKEN`
+   (and `YOUTUBE_BROKER_SECRET`, any long random string).
+4. GitHub: secret `YOUTUBE_BROKER_SECRET` (same value), variable
+   `YOUTUBE_BROKER_URL` = `https://aidr.today/api/internal/youtube-token`.
+5. After a green run, delete the old three secrets from GitHub Actions.
+
 ## Pipeline (per ingest run)
 
 ### 1. Fetch
