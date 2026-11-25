@@ -80,6 +80,7 @@ const required = [
   "js/background.js",
   "js/dialog-link.js",
   "js/story-dialog.js",
+  "js/shared/reader-view.js",
   "icons/icon16.png",
   "icons/icon32.png",
   "icons/icon48.png",

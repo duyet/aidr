@@ -181,17 +181,21 @@ test("story row meta columns line up on the title's first line", () => {
   );
 });
 
-test("masthead image | text switch replaces the day card chip", () => {
-  // Same control as web DayCardViewSwitch: text by default, image stays
+test("masthead image | 2 rows | 3 rows switch replaces the day card chip", () => {
+  // Same control as web TldrViewSwitch: 2 rows by default, image stays
   // open until the reader switches back (no hover preview).
   assert.match(html, /id="day-card-switch"/);
   assert.match(html, /id="day-card-image" aria-pressed="false"/);
-  assert.match(html, /id="day-card-text" aria-pressed="true"/);
+  assert.match(html, /id="day-card-rows2" aria-pressed="true"/);
+  assert.match(html, /id="day-card-rows3" aria-pressed="false"/);
+  assert.doesNotMatch(html, /day-card-text/);
   assert.doesNotMatch(html, /day-card-chip/);
   assert.match(js, /Xem ảnh tóm tắt/);
   assert.match(js, /Show day card/);
-  assert.match(js, /Xem dạng chữ/);
-  assert.match(js, /Show text/);
+  assert.match(js, /Chữ, 3 dòng mỗi tin/);
+  assert.match(js, /"3 rows"/);
+  // Glyphs come from the shared module, not from inline copies in the page.
+  assert.match(js, /TLDR_VIEW_ICONS/);
   assert.doesNotMatch(js, /pointerenter/);
   // Styled like the 8 | 12 count pills: 32x24 buttons, 14px icons.
   assert.match(
@@ -289,4 +293,19 @@ test("preferences panel has no About tab", () => {
   assert.equal(panel.match(/role: "tab",/g).length, 2);
   assert.doesNotMatch(panel, /about/i);
   assert.doesNotMatch(css, /\.prefs-about/);
+});
+
+test("3 rows clamps titles to 3 lines and overlays behind panels blur", () => {
+  assert.match(
+    css,
+    /\.tldr-cols\[data-rows="3"\] \.bullet-copy \{[^}]*line-clamp:\s*3/
+  );
+  for (const selector of [
+    "phone-menu-backdrop",
+    "story-dialog-overlay",
+    "intro-dialog-backdrop",
+  ]) {
+    const rule = css.match(new RegExp("\\." + selector + " \\{[^}]*\\}"))[0];
+    assert.match(rule, /backdrop-filter:\s*blur\(4px\)/, selector);
+  }
 });

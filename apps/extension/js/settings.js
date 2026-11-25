@@ -1,4 +1,10 @@
 import "./preview-shim.js";
+import {
+  DEFAULT_THEME,
+  DEFAULT_TLDR_VIEW,
+  normalizeTldrView,
+  TLDR_VIEWS,
+} from "./shared/reader-view.js";
 
 export const DEFAULT_API_BASE = "https://aidr.today";
 
@@ -26,12 +32,12 @@ export const ACCENTS = ["yellow", "blue", "green", "rose", "violet"];
 export const HIGHLIGHTS = ["topic", "one", "none"];
 export const BILINGUAL_FIRSTS = ["vi", "en"];
 export const TLDR_COLS = [1, 2, 3];
-export const TLDR_VIEWS = ["image", "text"];
+export { TLDR_VIEWS };
 export const NEWS_COLS = [2, 3];
 export const FEED_DAYS = [1, 3, 7];
 
 export const DEFAULT_SETTINGS = {
-  theme: "system",
+  theme: DEFAULT_THEME,
   font: "sans",
   fontSize: 1,
   language: "vi",
@@ -62,8 +68,8 @@ export const DEFAULT_SETTINGS = {
   bilingual: false,
   bilingualFirst: "vi",
   tldrCols: 2,
-  /** Image/text masthead choice; persisted from the renderer's toggle. */
-  tldrView: "text",
+  /** Image / 2 rows / 3 rows masthead choice; persisted from the toggle. */
+  tldrView: DEFAULT_TLDR_VIEW,
   thumbs: true,
   summaries: false,
   feedDays: 3,
@@ -173,7 +179,7 @@ export function normalizeSettings(raw) {
       DEFAULT_SETTINGS.bilingualFirst
     ),
     tldrCols: pick(TLDR_COLS, input.tldrCols, DEFAULT_SETTINGS.tldrCols),
-    tldrView: pick(TLDR_VIEWS, input.tldrView, DEFAULT_SETTINGS.tldrView),
+    tldrView: normalizeTldrView(input.tldrView),
     thumbs: flag(input.thumbs, DEFAULT_SETTINGS.thumbs),
     summaries: flag(input.summaries, DEFAULT_SETTINGS.summaries),
     feedDays: pick(FEED_DAYS, input.feedDays, DEFAULT_SETTINGS.feedDays),

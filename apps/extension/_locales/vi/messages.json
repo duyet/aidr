@@ -107,8 +107,11 @@
   "tldrView": {
     "message": "AI;DR dạng"
   },
-  "tldrViewText": {
-    "message": "Chữ"
+  "tldrViewRows2": {
+    "message": "2 dòng"
+  },
+  "tldrViewRows3": {
+    "message": "3 dòng"
   },
   "tldrViewImage": {
     "message": "Ảnh"

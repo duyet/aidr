@@ -8,10 +8,16 @@
   "types": "./utils.ts",
   "exports": {
     "./utils": "./utils.ts",
+    "./reader-view": {
+      "types": "./reader-view.d.ts",
+      "default": "./reader-view.js"
+    },
     "./workers-auth": "./workers-auth.ts"
   },
   "scripts": {
-    "lint": "biome check ."
+    "lint": "biome check .",
+    "test": "node --test reader-view.test.mjs",
+    "sync-extension": "node scripts/sync-extension.mjs"
   },
   "dependencies": {
     "cn": "^0.5.0"
