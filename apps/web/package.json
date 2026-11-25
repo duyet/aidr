@@ -27,7 +27,7 @@
     "format": "biome format .",
     "format:fix": "biome format --write .",
     "lint:fix": "biome check --write .",
-    "d1:migrate": "pnpm run check:migration-ledger && pnpm exec cf d1 migrations apply 0c8f3efe-0427-4268-8d9f-bb1a4bcbe427 --dir migrations",
+    "d1:migrate": "pnpm run check:migration-ledger && pnpm exec cf d1 migrations apply 7ec0478c-d9b0-4d55-8812-c0bd37409b32 --dir migrations",
     "verify:translation-schema": "tsx scripts/verify-translation-schema.ts",
     "check:live-budget": "tsx scripts/check-live-budget.ts",
     "check:font-budget": "tsx scripts/check-font-budget.ts",

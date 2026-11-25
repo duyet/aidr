@@ -34,7 +34,7 @@ import { benchEnv, readApiKey, repoRoot, stubDb } from "./bench-env";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_FIXTURE = path.join(here, "fixtures/caption-eval.json");
 const DEFAULT_JUDGE = "anthropic/claude-opus-5-5";
-const D1_ID = "0c8f3efe-0427-4268-8d9f-bb1a4bcbe427";
+const D1_ID = "7ec0478c-d9b0-4d55-8812-c0bd37409b32";
 const CAPTION_LIMIT = 1024;
 
 const CHANNELS: Array<{ channel: string; lang: Lang }> = [
