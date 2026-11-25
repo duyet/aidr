@@ -120,7 +120,7 @@ describe("story photo upload after a URL fetch rejection", () => {
     expect(result).toMatchObject({ ok: true, messageId: "56" });
     expect(methods(calls)).toEqual(["sendPhoto", "image", "sendMessage"]);
     expect(result.error).toBe(
-      "fallback ok: sendPhoto:Bad Request: failed to get HTTP URL content; upload:download_http_403; photo:none_sent"
+      "fallback ok: sendPhoto:Bad Request: failed to get HTTP URL content; upload:download_http_403@img.example; photo:none_sent"
     );
   });
 
