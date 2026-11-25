@@ -63,9 +63,8 @@ binding = "IMAGES"
 binding = "OG_CACHE"
 bucket_name = "aidr-og"
 
-# Homepage HTML shared across colos (src/lib/global-html-cache.ts). Keyed by
-# the deployed version id, so a copy never names another build's chunks.
-# Create the namespace, then paste its id here before deploying.
+# YouTube credential state only (to move to D1). The homepage HTML shared
+# across colos now lives in R2 under html/ (src/lib/global-html-cache.ts).
 [[kv_namespaces]]
 binding = "HTML_CACHE"
 id = "e6c453cdbe0a4badb19bca4af69f2293"

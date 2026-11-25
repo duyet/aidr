@@ -1,9 +1,11 @@
 /**
- * KV copy of the Worker cache's homepage entry (`edge-cache.ts`), so a colo
+ * R2 copy of the Worker cache's homepage entry (`edge-cache.ts`), so a colo
  * with an empty cache serves another colo's render instead of rendering.
- * The value is the stored entry itself: one line of JSON headers, then the
- * HTML. Keys carry the deployed version id, so a copy never names another
- * build's chunks.
+ * The object body is the stored entry itself: one line of JSON headers, then
+ * the HTML. There is one object per cache key under `html/`, overwritten in
+ * place, so nothing accumulates. Its custom metadata carries the deployed
+ * version id and an expiry; a copy is read only when both still hold, so it
+ * never names another build's chunks.
  */
 import { EDGE_CACHE_STALE_S } from "./edge-cache-window";
 
@@ -19,7 +21,7 @@ export interface GlobalHtmlCache {
 }
 
 interface GlobalHtmlCacheEnv {
-  HTML_CACHE?: KVNamespace;
+  OG_CACHE?: R2Bucket;
   CF_VERSION_METADATA?: { id: string };
 }
 
@@ -41,19 +43,30 @@ export function isGloballyCachedKey(key: Request): boolean {
   );
 }
 
+/** Prefix of every object this tier writes to the shared bucket. */
+const KEY_PREFIX = "html/";
+
 export function globalHtmlCache(
   env: GlobalHtmlCacheEnv
 ): GlobalHtmlCache | null {
-  const kv = env.HTML_CACHE;
+  const bucket = env.OG_CACHE;
   const version = env.CF_VERSION_METADATA?.id;
-  if (!(kv && version)) return null;
-  const kvKey = (key: Request) => `${version}:${key.url}`;
+  if (!(bucket && version)) return null;
+  const objectKey = (key: Request) =>
+    `${KEY_PREFIX}${encodeURIComponent(key.url)}`;
+  const nowS = () => Math.floor(Date.now() / 1000);
   return {
     async get(key) {
       try {
-        const value = await kv.get(kvKey(key), "text");
-        const split = value?.indexOf("\n") ?? -1;
-        if (!value || split === -1) return null;
+        const object = await bucket.get(objectKey(key));
+        const meta = object?.customMetadata;
+        if (!(object && meta)) return null;
+        if (meta.version !== version || Number(meta.expiresAt) <= nowS()) {
+          return null;
+        }
+        const value = await object.text();
+        const split = value.indexOf("\n");
+        if (split === -1) return null;
         const { headers } = JSON.parse(value.slice(0, split)) as {
           headers: [string, string][];
         };
@@ -65,8 +78,11 @@ export function globalHtmlCache(
     async put(key, stored, fresh) {
       try {
         const head = JSON.stringify({ headers: [...stored.headers] });
-        await kv.put(kvKey(key), `${head}\n${await stored.text()}`, {
-          expirationTtl: fresh + EDGE_CACHE_STALE_S,
+        await bucket.put(objectKey(key), `${head}\n${await stored.text()}`, {
+          customMetadata: {
+            version,
+            expiresAt: String(nowS() + fresh + EDGE_CACHE_STALE_S),
+          },
         });
       } catch {}
     },

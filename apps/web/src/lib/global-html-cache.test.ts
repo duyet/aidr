@@ -1,26 +1,32 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EDGE_CACHE_STALE_S } from "./edge-cache-window";
 import { globalHtmlCache, isGloballyCachedKey } from "./global-html-cache";
 
 const HOME = "https://aidr.today/?lang=en&__v=2";
 
-function fakeKv() {
-  const values = new Map<string, string>();
-  const ttls: number[] = [];
-  const kv = {
-    get: vi.fn(async (key: string, _type: "text") => values.get(key) ?? null),
+function fakeR2() {
+  const objects = new Map<
+    string,
+    { body: string; customMetadata: Record<string, string> }
+  >();
+  const r2 = {
+    get: vi.fn(async (key: string) => {
+      const o = objects.get(key);
+      return o
+        ? { customMetadata: o.customMetadata, text: async () => o.body }
+        : null;
+    }),
     put: vi.fn(
       async (
         key: string,
-        value: string,
-        options: { expirationTtl: number }
+        body: string,
+        options: { customMetadata: Record<string, string> }
       ) => {
-        values.set(key, value);
-        ttls.push(options.expirationTtl);
+        objects.set(key, { body, customMetadata: options.customMetadata });
       }
     ),
   };
-  return { kv, values, ttls, binding: kv as unknown as KVNamespace };
+  return { r2, objects, binding: r2 as unknown as R2Bucket };
 }
 
 function entry(body = "<html>a</html>"): Response {
@@ -36,12 +42,18 @@ function entry(body = "<html>a</html>"): Response {
 }
 
 describe("globalHtmlCache", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-01T00:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
   // Defect: the tier switching on in tests, dev, or a deploy without the
-  // version binding, where a key could not name the build.
-  it("is off without the KV binding or the version id", () => {
-    const { binding } = fakeKv();
+  // version binding, where a copy could not name the build.
+  it("is off without the R2 binding or the version id", () => {
+    const { binding } = fakeR2();
     expect(globalHtmlCache({})).toBeNull();
-    expect(globalHtmlCache({ HTML_CACHE: binding })).toBeNull();
+    expect(globalHtmlCache({ OG_CACHE: binding })).toBeNull();
     expect(
       globalHtmlCache({ CF_VERSION_METADATA: { id: "build-a" } })
     ).toBeNull();
@@ -50,13 +62,13 @@ describe("globalHtmlCache", () => {
   // Defect: a copy rendered by another build served after a deploy, naming
   // /assets/* chunks this build does not carry.
   it("never returns a copy written by another build", async () => {
-    const { binding } = fakeKv();
+    const { binding } = fakeR2();
     const a = globalHtmlCache({
-      HTML_CACHE: binding,
+      OG_CACHE: binding,
       CF_VERSION_METADATA: { id: "build-a" },
     });
     const b = globalHtmlCache({
-      HTML_CACHE: binding,
+      OG_CACHE: binding,
       CF_VERSION_METADATA: { id: "build-b" },
     });
     await a?.put(new Request(HOME), entry(), 300);
@@ -66,12 +78,53 @@ describe("globalHtmlCache", () => {
     );
   });
 
+  // Defect: objects accumulating per deploy, or leaving the html/ prefix
+  // the bucket's other users (og-story/, og-day/) stay clear of.
+  it("keeps one object per key under html/, overwritten by the next build", async () => {
+    const { binding, objects } = fakeR2();
+    const a = globalHtmlCache({
+      OG_CACHE: binding,
+      CF_VERSION_METADATA: { id: "build-a" },
+    });
+    const b = globalHtmlCache({
+      OG_CACHE: binding,
+      CF_VERSION_METADATA: { id: "build-b" },
+    });
+    await a?.put(new Request(HOME), entry("<html>a</html>"), 300);
+    await b?.put(new Request(HOME), entry("<html>b</html>"), 300);
+    expect([...objects.keys()]).toEqual([`html/${encodeURIComponent(HOME)}`]);
+    expect(await (await b?.get(new Request(HOME)))?.text()).toBe(
+      "<html>b</html>"
+    );
+  });
+
+  // Defect: a dormant copy served past the Worker's stale window.
+  it("stamps version and expiry, and reads a copy past its expiry as absent", async () => {
+    const { binding, objects } = fakeR2();
+    const cache = globalHtmlCache({
+      OG_CACHE: binding,
+      CF_VERSION_METADATA: { id: "build-a" },
+    });
+    await cache?.put(new Request(HOME), entry(), 300);
+    const [object] = [...objects.values()];
+    expect(object?.customMetadata).toEqual({
+      version: "build-a",
+      expiresAt: String(
+        Math.floor(Date.now() / 1000) + 300 + EDGE_CACHE_STALE_S
+      ),
+    });
+    vi.advanceTimersByTime((300 + EDGE_CACHE_STALE_S - 1) * 1000);
+    expect(await cache?.get(new Request(HOME))).not.toBeNull();
+    vi.advanceTimersByTime(1000);
+    expect(await cache?.get(new Request(HOME))).toBeNull();
+  });
+
   // Defect: a round trip that drops a header the Worker cache reads
   // (stored-at, fresh, client Cache-Control) or the content type.
   it("round-trips the stored entry's headers and body", async () => {
-    const { binding, ttls } = fakeKv();
+    const { binding } = fakeR2();
     const cache = globalHtmlCache({
-      HTML_CACHE: binding,
+      OG_CACHE: binding,
       CF_VERSION_METADATA: { id: "build-a" },
     });
     const body = "<html>line one\nline two</html>";
@@ -81,24 +134,31 @@ describe("globalHtmlCache", () => {
       Object.fromEntries(entry().headers)
     );
     expect(await copy?.text()).toBe(body);
-    expect(ttls).toEqual([300 + EDGE_CACHE_STALE_S]);
   });
 
-  // Defect: a KV outage or a corrupt value failing the page instead of
+  // Defect: an R2 outage or a corrupt object failing the page instead of
   // falling through to a render.
-  it("reads a failure or a malformed value as absent and never throws on put", async () => {
-    const { binding, kv, values } = fakeKv();
+  it("reads a failure or a malformed object as absent and never throws on put", async () => {
+    const { binding, r2, objects } = fakeR2();
     const cache = globalHtmlCache({
-      HTML_CACHE: binding,
+      OG_CACHE: binding,
       CF_VERSION_METADATA: { id: "build-a" },
     });
-    values.set(`build-a:${HOME}`, "no header line");
+    const k = `html/${encodeURIComponent(HOME)}`;
+    const meta = {
+      version: "build-a",
+      expiresAt: String(Math.floor(Date.now() / 1000) + 100),
+    };
+    objects.set(k, { body: "no header line", customMetadata: meta });
     expect(await cache?.get(new Request(HOME))).toBeNull();
-    values.set(`build-a:${HOME}`, "{not json\n<html></html>");
+    objects.set(k, {
+      body: "{not json\n<html></html>",
+      customMetadata: meta,
+    });
     expect(await cache?.get(new Request(HOME))).toBeNull();
-    kv.get.mockRejectedValueOnce(new Error("KV unavailable"));
+    r2.get.mockRejectedValueOnce(new Error("R2 unavailable"));
     expect(await cache?.get(new Request(HOME))).toBeNull();
-    kv.put.mockRejectedValueOnce(new Error("429 too many writes"));
+    r2.put.mockRejectedValueOnce(new Error("R2 write failed"));
     await expect(
       cache?.put(new Request(HOME), entry(), 300)
     ).resolves.toBeUndefined();
@@ -106,8 +166,8 @@ describe("globalHtmlCache", () => {
 });
 
 describe("isGloballyCachedKey", () => {
-  // Defect: unbounded keys (story pages, `?q=` searches) each writing KV,
-  // past the 1,000 writes a day the Free plan allows.
+  // Defect: unbounded keys (story pages, `?q=` searches) each writing R2,
+  // so no write interval could bound the objects or the writes.
   it("admits only the unfiltered homepage in one language", () => {
     for (const url of [
       HOME,

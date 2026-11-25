@@ -1,5 +1,5 @@
 /**
- * Lifetimes shared by the Worker cache (`edge-cache.ts`) and its KV tier
+ * Lifetimes shared by the Worker cache (`edge-cache.ts`) and its R2 tier
  * (`global-html-cache.ts`), so a copy expires at the same age in both.
  */
 

@@ -29,7 +29,7 @@ To add an event, add a row with the product question it answers, call `track()`,
 | `subscribe_submit` | browser | ga4, posthog | `source`: `news`, `extension` | `apps/web/src/lib/subscribe-post.ts` | Who starts an email signup, from which form? |
 | `subscribe_success` | browser | ga4, posthog | `source`: `news`, `extension` | `apps/web/src/lib/subscribe-post.ts` | Which forms turn into a signup request? |
 | `subscribe_error` | browser | ga4, posthog | `source`: `news`, `extension`<br>`reason`: `invalid`, `rate_limited`, `network`, `server` | `apps/web/src/lib/subscribe-post.ts` | Why do signups fail? |
-| `web_vitals` | browser | ga4, posthog | `metric_name`: `LCP`, `CLS`, `INP`, `FCP`, `TTFB`<br>`value`: integer ≥ 0<br>`metric_value`: number<br>`metric_rating`: `good`, `needs-improvement`, `poor`<br>`metric_id?`: code slug<br>`navigation_type`: `navigate`, `reload`, `back-forward`, `back-forward-cache`, `prerender`, `restore`, `soft-navigation`<br>`edge_cache`: `HIT`, `STALE`, `KV`, `MISS`, `none`<br>`page_path`: pathname | `apps/web/src/lib/analytics/web-vitals.ts` | Are Core Web Vitals healthy, by edge cache state? |
+| `web_vitals` | browser | ga4, posthog | `metric_name`: `LCP`, `CLS`, `INP`, `FCP`, `TTFB`<br>`value`: integer ≥ 0<br>`metric_value`: number<br>`metric_rating`: `good`, `needs-improvement`, `poor`<br>`metric_id?`: code slug<br>`navigation_type`: `navigate`, `reload`, `back-forward`, `back-forward-cache`, `prerender`, `restore`, `soft-navigation`<br>`edge_cache`: `HIT`, `STALE`, `R2`, `MISS`, `none`<br>`page_path`: pathname | `apps/web/src/lib/analytics/web-vitals.ts` | Are Core Web Vitals healthy, by edge cache state? |
 
 ## Extension events
 
@@ -65,7 +65,7 @@ GA4 reports a param only after it is registered as a custom dimension, and regis
 | Parameter | Scope | Values | Events |
 | --- | --- | --- | --- |
 | `channel` | Event | `extension`, `telegram`, `email`, `facebook`, `youtube`, `rss`, `share`, `other` | `channel_landing`, `channel_click` |
-| `edge_cache` | Event | `HIT`, `STALE`, `KV`, `MISS`, `none` | `web_vitals` |
+| `edge_cache` | Event | `HIT`, `STALE`, `R2`, `MISS`, `none` | `web_vitals` |
 | `from` | Event | `nav`, `trending`, `search` | `topic_filter` |
 | `lang` | Event | `vi`, `en` | `channel_click`, `rss_subscribe`, `lang_change` |
 | `media` | Event | `thumb`, `image`, `video` | `media_open` |

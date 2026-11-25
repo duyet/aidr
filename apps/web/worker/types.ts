@@ -2,11 +2,12 @@ export interface Env {
   /** Static files from dist/client (`[assets] binding = "ASSETS"`). */
   ASSETS?: Fetcher;
   DB: D1Database;
-  /** Rendered OG PNGs, the shared tier behind the edge cache. */
+  /** Rendered OG PNGs, the shared tier behind the edge cache; also the
+   *  homepage HTML shared across colos under `html/` (`global-html-cache.ts`). */
   OG_CACHE?: R2Bucket;
-  /** Homepage HTML shared across colos (`global-html-cache.ts`). */
+  /** YouTube credential state only; moves to D1. */
   HTML_CACHE?: KVNamespace;
-  /** This deployment's version (`[version_metadata]`); keys `HTML_CACHE`. */
+  /** This deployment's version (`[version_metadata]`); checked by `global-html-cache.ts` on each stored page. */
   CF_VERSION_METADATA?: { id: string; tag: string; timestamp: string };
   /** Cloudflare Images: WebP → JPEG for OG photos the renderer cannot draw. */
   IMAGES?: ImagesBinding;

@@ -39,9 +39,9 @@ const metric = (
   }) as Metric;
 
 describe("documentCacheStatus", () => {
-  // Defect: STALE and KV loads folded into "none", hiding how the Worker
-  // and KV tiers change load times.
-  it.each(["STALE", "KV"])(
+  // Defect: STALE and R2 loads folded into "none", hiding how the Worker
+  // and R2 tiers change load times.
+  it.each(["STALE", "R2"])(
     "passes %s through instead of folding it into none",
     (desc) => {
       const spy = vi

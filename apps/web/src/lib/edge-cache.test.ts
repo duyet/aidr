@@ -610,7 +610,7 @@ describe("bareLocalizedCacheLang", () => {
   });
 });
 
-describe("global KV tier", () => {
+describe("global R2 tier", () => {
   const HOME = "https://aidr.today/?lang=en";
   const v1 = async () => page({ vary: "Cookie, Accept-Language" });
   const v2 = async () =>
@@ -619,29 +619,37 @@ describe("global KV tier", () => {
     });
 
   function kvTier() {
-    const values = new Map<string, string>();
-    const ttls: number[] = [];
+    const objects = new Map<
+      string,
+      { body: string; customMetadata: Record<string, string> }
+    >();
+    const metadata: Record<string, string>[] = [];
     const kv = {
-      get: vi.fn(async (key: string, _type: "text") => values.get(key) ?? null),
+      get: vi.fn(async (key: string) => {
+        const o = objects.get(key);
+        return o
+          ? { customMetadata: o.customMetadata, text: async () => o.body }
+          : null;
+      }),
       put: vi.fn(
         async (
           key: string,
-          value: string,
-          options: { expirationTtl: number }
+          body: string,
+          options: { customMetadata: Record<string, string> }
         ) => {
-          values.set(key, value);
-          ttls.push(options.expirationTtl);
+          objects.set(key, { body, customMetadata: options.customMetadata });
+          metadata.push(options.customMetadata);
         }
       ),
     };
     const tier = globalHtmlCache({
-      HTML_CACHE: kv as unknown as KVNamespace,
+      OG_CACHE: kv as unknown as R2Bucket,
       CF_VERSION_METADATA: { id: "build-a" },
     }) as GlobalHtmlCache;
-    return { kv, ttls, tier };
+    return { kv, metadata, objects, tier };
   }
 
-  /** Render once on "another colo": KV and the local cache both hold it. */
+  /** Render once on "another colo": R2 and the local cache both hold it. */
   async function renderElsewhere(
     tier: GlobalHtmlCache,
     ctx: { waitUntil: (p: Promise<unknown>) => void },
@@ -660,8 +668,8 @@ describe("global KV tier", () => {
   }
 
   // Defect: a cold colo rendering (1.2 s) while another colo's copy sits in
-  // KV, or the copy reaching the client with the Worker's internal headers.
-  it("serves a cold colo from KV without rendering and keeps it locally", async () => {
+  // R2, or the copy reaching the client with the Worker's internal headers.
+  it("serves a cold colo from R2 without rendering and keeps it locally", async () => {
     const { ctx, pending } = setup();
     const { tier } = kvTier();
     await renderElsewhere(tier, ctx, pending);
@@ -670,8 +678,8 @@ describe("global KV tier", () => {
     const render = vi.fn(v2);
     const out = await cachedSsrResponse(get(HOME), ctx, render, tier);
     await Promise.all(pending);
-    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("KV");
-    expect(out.headers.get("server-timing")).toBe("aidr-cache;desc=KV");
+    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("R2");
+    expect(out.headers.get("server-timing")).toBe("aidr-cache;desc=R2");
     expect(render).not.toHaveBeenCalled();
     expect(await out.text()).toBe("<html></html>");
     expect(out.headers.get("cache-control")).toBe(PUBLIC);
@@ -682,7 +690,7 @@ describe("global KV tier", () => {
     ).toEqual([EDGE_CACHE_HEADER]);
     expect(console.log).toHaveBeenLastCalledWith({
       event: "html-cache",
-      state: "KV",
+      state: "R2",
       path: "/",
       lang: "en",
       age: 120,
@@ -694,7 +702,7 @@ describe("global KV tier", () => {
     expect(render).not.toHaveBeenCalled();
   });
 
-  // Defect: restamping a KV copy on arrival, so each colo it reaches restarts
+  // Defect: restamping a R2 copy on arrival, so each colo it reaches restarts
   // its fresh and stale windows and the HTML outlives its build's chunks.
   it("keeps the copy's original stored-at in the local cache", async () => {
     const { ctx, pending } = setup();
@@ -713,13 +721,20 @@ describe("global KV tier", () => {
     await Promise.all(pending);
   });
 
-  // Defect: a dormant KV copy served past the Worker's stale window, or one
-  // KV keeps longer than the local cache would.
-  it("renders over a KV copy past the stale window and sets KV's TTL to fresh + stale", async () => {
+  // Defect: a dormant R2 copy served past the Worker's stale window, or one
+  // R2 keeps longer than the local cache would.
+  it("renders over a R2 copy past the stale window and stamps an expiry of fresh + stale", async () => {
     const { ctx, pending } = setup();
-    const { tier, ttls } = kvTier();
+    const { tier, metadata } = kvTier();
     await renderElsewhere(tier, ctx, pending);
-    expect(ttls).toEqual([300 + EDGE_CACHE_STALE_S]);
+    expect(metadata).toEqual([
+      {
+        version: "build-a",
+        expiresAt: String(
+          Math.floor(Date.now() / 1000) + 300 + EDGE_CACHE_STALE_S
+        ),
+      },
+    ]);
     advance(300 + EDGE_CACHE_STALE_S + 1);
 
     const render = vi.fn(v2);
@@ -731,8 +746,8 @@ describe("global KV tier", () => {
   });
 
   // Defect: a stale colo rendering although another colo already refreshed
-  // KV, so every colo renders once per window anyway.
-  it("refreshes a stale local entry from a fresh KV copy without rendering", async () => {
+  // R2, so every colo renders once per window anyway.
+  it("refreshes a stale local entry from a fresh R2 copy without rendering", async () => {
     const { ctx, pending } = setup();
     const { tier } = kvTier();
     await cachedSsrResponse(get(HOME), ctx, v1, tier);
@@ -757,8 +772,8 @@ describe("global KV tier", () => {
     expect(await hit.text()).toBe("<html>v2</html>");
   });
 
-  // Defect: unbounded KV writes against the Free plan's 1,000 a day.
-  it("writes KV at most once per write interval per key", async () => {
+  // Defect: unbounded R2 writes, one per colo render instead of one per window.
+  it("writes R2 at most once per write interval per key", async () => {
     const { ctx, pending } = setup();
     const { tier, kv } = kvTier();
     const render = vi.fn(v2);
@@ -780,8 +795,8 @@ describe("global KV tier", () => {
   });
 
   // Defect: a response the local cache refuses (private, Set-Cookie, an
-  // error, a signed-in view) still reaching every colo through KV.
-  it("never sends a response the local cache would refuse to KV", async () => {
+  // error, a signed-in view) still reaching every colo through R2.
+  it("never sends a response the local cache would refuse to R2", async () => {
     const { ctx, pending } = setup();
     const { tier, kv } = kvTier();
     for (const res of [
@@ -802,9 +817,9 @@ describe("global KV tier", () => {
     expect(fake.put).not.toHaveBeenCalled();
   });
 
-  // Defect: story pages, searches and the feed reading or writing KV, whose
+  // Defect: story pages, searches and the feed reading or writing R2, whose
   // key counts no write interval can bound.
-  it("leaves every key but the unfiltered homepage out of KV", async () => {
+  it("leaves every key but the unfiltered homepage out of R2", async () => {
     const { ctx, pending } = setup();
     const { tier, kv } = kvTier();
     for (const url of [
@@ -829,7 +844,7 @@ describe("global KV tier", () => {
   });
 
   // Defect: bare / (private to clients, keyed by resolved language) left off
-  // KV, so most cold-colo readers still render.
+  // R2, so most cold-colo readers still render.
   it("shares bare / per resolved language", async () => {
     const { ctx, pending } = setup();
     const { tier, kv } = kvTier();
@@ -857,16 +872,16 @@ describe("global KV tier", () => {
     const render = vi.fn(bare);
     const out = await serve(render);
     await Promise.all(pending);
-    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("KV");
+    expect(out.headers.get(EDGE_CACHE_HEADER)).toBe("R2");
     expect(out.headers.get("cache-control")).toBe("private, no-store");
     expect(render).not.toHaveBeenCalled();
   });
 
-  // Defect: a KV outage failing or slowing the page into an error.
-  it("renders through a failed KV read and keeps the local copy on a failed write", async () => {
+  // Defect: a R2 outage failing or slowing the page into an error.
+  it("renders through a failed R2 read and keeps the local copy on a failed write", async () => {
     const { ctx, pending } = setup();
     const { tier, kv } = kvTier();
-    kv.get.mockRejectedValueOnce(new Error("KV unavailable"));
+    kv.get.mockRejectedValueOnce(new Error("R2 unavailable"));
     kv.put.mockRejectedValueOnce(new Error("429 too many writes"));
     const out = await cachedSsrResponse(get(HOME), ctx, v1, tier);
     await Promise.all(pending);

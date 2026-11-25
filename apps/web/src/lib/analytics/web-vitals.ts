@@ -6,11 +6,11 @@ import { track } from "./track";
 type VitalsParams = EventParams<"web_vitals">;
 type EdgeCache = VitalsParams["edge_cache"];
 
-const CACHE_STATES = ["HIT", "STALE", "KV", "MISS"] as const;
+const CACHE_STATES = ["HIT", "STALE", "R2", "MISS"] as const;
 
 /**
  * Edge-cache outcome of the document request, read from the Worker's
- * `Server-Timing: aidr-cache;desc=HIT|STALE|KV|MISS`. "none" when the response was
+ * `Server-Timing: aidr-cache;desc=HIT|STALE|R2|MISS`. "none" when the response was
  * not cache-eligible (or the browser hides server timing).
  */
 export function documentCacheStatus(): EdgeCache {

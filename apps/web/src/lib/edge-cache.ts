@@ -14,7 +14,7 @@
  * Cache API keeps it through the stale window; the client always receives
  * the render's own Cache-Control and Vary.
  *
- * The homepage has a second tier in KV (`global-html-cache.ts`): a colo with
+ * The homepage has a second tier in R2 (`global-html-cache.ts`): a colo with
  * no usable copy serves another colo's stored render instead of rendering.
  */
 import {
@@ -145,7 +145,7 @@ function edgeCache(): Cache | null {
   return c?.default ?? null;
 }
 
-type CacheState = "HIT" | "STALE" | "KV" | "MISS";
+type CacheState = "HIT" | "STALE" | "R2" | "MISS";
 
 function stamp(response: Response, state: CacheState): Response {
   // Cached and freshly built responses may have immutable headers.
@@ -243,7 +243,7 @@ function logServed(
 /**
  * Match policy shared by both entry points. `declaredFresh` returns the
  * seconds a render counts as fresh, or 0 when it must not be stored. A
- * `globalCache` serves keys `isGloballyCachedKey` admits from KV when this
+ * `globalCache` serves keys `isGloballyCachedKey` admits from R2 when this
  * colo holds no usable copy.
  */
 async function serveThroughCache(
@@ -266,7 +266,7 @@ async function serveThroughCache(
     if (ctx?.waitUntil) ctx.waitUntil(safe);
     else await safe;
   };
-  // KV is written only once its copy is GLOBAL_WRITE_INTERVAL_S old, which
+  // R2 is written only once its copy is GLOBAL_WRITE_INTERVAL_S old, which
   // bounds writes per key whatever the number of colos rendering.
   const store = (response: Response, fresh: number, copy: Response | null) => {
     const stored = toStored(response, fresh);
@@ -279,7 +279,7 @@ async function serveThroughCache(
       forGlobal && shared?.put(key, forGlobal, fresh),
     ]);
   };
-  // `copy` undefined: KV not read yet. Null: read, nothing usable.
+  // `copy` undefined: R2 not read yet. Null: read, nothing usable.
   const revalidate = (copy?: Response | null) => {
     if (!ctx?.waitUntil || revalidating.has(key.url)) return;
     revalidating.add(key.url);
@@ -327,7 +327,7 @@ async function serveThroughCache(
   if (copy && remote !== "EXPIRED") {
     await settle(cache.put(key, copy.clone()));
     if (remote === "STALE") revalidate(copy);
-    return served(copy, "KV");
+    return served(copy, "R2");
   }
 
   const response = await render();
