@@ -79,6 +79,7 @@ import {
 import {
   buildSitemapIndexXml,
   buildSitemapXml,
+  isRobotsBlockedCrawler,
   loadDaySitemapUrls,
   loadSitemapMonthCounts,
   loadSitemapShardUrls,
@@ -391,6 +392,15 @@ const worker = {
         withLang(dest.toString(), resolution.lang),
         resolution.lang
       );
+    }
+
+    // Crawlers that robots.txt bans site-wide and that fetch pages anyway get
+    // a cheap 403 before any cache lookup or render (issue #1140).
+    if (!isApi && isRobotsBlockedCrawler(request.headers.get("user-agent"))) {
+      return new Response("Disallowed by robots.txt\n", {
+        status: 403,
+        headers: { "Cache-Control": "no-store", "Content-Type": "text/plain" },
+      });
     }
 
     const renderSsr = async () =>
