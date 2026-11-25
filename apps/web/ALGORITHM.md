@@ -938,6 +938,43 @@ live in Cloudflare; Actions only holds a bearer for the broker.
   `youtube-token-invalid` alert with the fix. Other failures only update
   `yt:status`. No token or Google response body is logged or returned.
 
+### One-click re-auth
+
+A Testing-mode OAuth app expires refresh tokens 7 days after they are minted, and
+no API mints one without a person. So the Worker asks for a new one before the old
+one dies, and a single click does it.
+
+- `keepYoutubeTokenAlive` emails `OWNER_NOTIFY_EMAIL` (from the notes From, through
+  the `EMAIL` binding) when the token is rejected (`invalid_grant`) or when the
+  one-click token is `YOUTUBE_TOKEN_MAX_AGE_DAYS` old (default 5). At most one
+  mail per 24 hours per reason (KV `yt:mail:<reason>`). It never throws and never
+  blocks ingest.
+- The mail holds `/api/internal/youtube-auth/start?t=<token>`: an HMAC-SHA256
+  (key derived from `YOUTUBE_BROKER_SECRET`, constant-time check) over
+  `{purpose, exp (24 h), nonce}`. The nonce is in KV and burned on first use, so
+  the link works once (a mail scanner that opens it uses it up; the next daily
+  warning sends a fresh one). `start` redirects to Google's pinned authorize URL
+  (`access_type=offline`, `prompt=consent`, `include_granted_scopes=false`, a signed
+  single-use `state`).
+- `/api/internal/youtube-auth/callback` verifies the state, exchanges the code at
+  the pinned token URL with `YOUTUBE_WEB_CLIENT_ID`/`SECRET` (fallback:
+  `YOUTUBE_CLIENT_ID`/`SECRET`), calls `channels.list?part=id&mine=true` and
+  requires `YOUTUBE_CHANNEL_ID` (default `UCGDB5uD8znydgMg2XLOj04w`). Only then it
+  stores `yt:refresh`, `yt:refresh-base` (so it wins over the env token),
+  `yt:client` (the client that minted it; a refresh must use the same one) and
+  `yt:minted`, and clears `yt:access` and the error status. Both routes are 404 while
+  `YOUTUBE_BROKER_SECRET` is unset. No token or code is logged or shown.
+- No `yt:minted` record (the token came from `wrangler secret put`): age is
+  unknown and nothing warns until the first one-click sign-in.
+- `YOUTUBE_TOKEN_MAX_AGE_DAYS=0` turns the warnings off once the app is in production.
+
+**Owner steps for one-click, once.** In Google Cloud, create an OAuth client of type
+"Web application"; add the redirect URI
+`https://aidr.today/api/internal/youtube-auth/callback`; add the channel owner as a
+test user. Then `wrangler secret put` `YOUTUBE_WEB_CLIENT_ID`,
+`YOUTUBE_WEB_CLIENT_SECRET` and `OWNER_NOTIFY_EMAIL` (and `YOUTUBE_BROKER_SECRET` if
+not set). The first sign-in is the first email, or sign the link yourself by hand.
+
 **Owner steps, once.** The refresh token keeps dying (#962, #635), most likely
 because the Google OAuth consent screen is in Testing mode, where refresh
 tokens expire after 7 days.

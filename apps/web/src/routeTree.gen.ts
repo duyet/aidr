@@ -67,6 +67,8 @@ import { Route as ApiSystemTrendsRouteImport } from './routes/api/system.trends'
 import { Route as ApiThumbIdRouteImport } from './routes/api/thumb.$id'
 import { Route as ApiWebhooksClerkRouteImport } from './routes/api/webhooks.clerk'
 import { Route as ApiWeekWeekRouteImport } from './routes/api/week.$week'
+import { Route as ApiInternalYoutubeAuthCallbackRouteImport } from './routes/api/internal.youtube-auth.callback'
+import { Route as ApiInternalYoutubeAuthStartRouteImport } from './routes/api/internal.youtube-auth.start'
 import { Route as ApiOgDateDateRouteImport } from './routes/api/og.date.$date'
 
 const IndexRoute = IndexRouteImport.update({
@@ -359,6 +361,18 @@ const ApiWeekWeekRoute = ApiWeekWeekRouteImport.update({
   path: '/api/week/$week',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInternalYoutubeAuthCallbackRoute =
+  ApiInternalYoutubeAuthCallbackRouteImport.update({
+    id: '/api/internal/youtube-auth/callback',
+    path: '/api/internal/youtube-auth/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiInternalYoutubeAuthStartRoute =
+  ApiInternalYoutubeAuthStartRouteImport.update({
+    id: '/api/internal/youtube-auth/start',
+    path: '/api/internal/youtube-auth/start',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiOgDateDateRoute = ApiOgDateDateRouteImport.update({
   id: '/api/og/date/$date',
   path: '/api/og/date/$date',
@@ -424,6 +438,8 @@ export interface FileRoutesByFullPath {
   '/api/thumb/$id': typeof ApiThumbIdRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
   '/api/week/$week': typeof ApiWeekWeekRoute
+  '/api/internal/youtube-auth/callback': typeof ApiInternalYoutubeAuthCallbackRoute
+  '/api/internal/youtube-auth/start': typeof ApiInternalYoutubeAuthStartRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
 }
 export interface FileRoutesByTo {
@@ -485,6 +501,8 @@ export interface FileRoutesByTo {
   '/api/thumb/$id': typeof ApiThumbIdRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
   '/api/week/$week': typeof ApiWeekWeekRoute
+  '/api/internal/youtube-auth/callback': typeof ApiInternalYoutubeAuthCallbackRoute
+  '/api/internal/youtube-auth/start': typeof ApiInternalYoutubeAuthStartRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
 }
 export interface FileRoutesById {
@@ -547,6 +565,8 @@ export interface FileRoutesById {
   '/api/thumb/$id': typeof ApiThumbIdRoute
   '/api/webhooks/clerk': typeof ApiWebhooksClerkRoute
   '/api/week/$week': typeof ApiWeekWeekRoute
+  '/api/internal/youtube-auth/callback': typeof ApiInternalYoutubeAuthCallbackRoute
+  '/api/internal/youtube-auth/start': typeof ApiInternalYoutubeAuthStartRoute
   '/api/og/date/$date': typeof ApiOgDateDateRoute
 }
 export interface FileRouteTypes {
@@ -610,6 +630,8 @@ export interface FileRouteTypes {
     | '/api/thumb/$id'
     | '/api/webhooks/clerk'
     | '/api/week/$week'
+    | '/api/internal/youtube-auth/callback'
+    | '/api/internal/youtube-auth/start'
     | '/api/og/date/$date'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -671,6 +693,8 @@ export interface FileRouteTypes {
     | '/api/thumb/$id'
     | '/api/webhooks/clerk'
     | '/api/week/$week'
+    | '/api/internal/youtube-auth/callback'
+    | '/api/internal/youtube-auth/start'
     | '/api/og/date/$date'
   id:
     | '__root__'
@@ -732,6 +756,8 @@ export interface FileRouteTypes {
     | '/api/thumb/$id'
     | '/api/webhooks/clerk'
     | '/api/week/$week'
+    | '/api/internal/youtube-auth/callback'
+    | '/api/internal/youtube-auth/start'
     | '/api/og/date/$date'
   fileRoutesById: FileRoutesById
 }
@@ -777,6 +803,8 @@ export interface RootRouteChildren {
   ApiThumbIdRoute: typeof ApiThumbIdRoute
   ApiWebhooksClerkRoute: typeof ApiWebhooksClerkRoute
   ApiWeekWeekRoute: typeof ApiWeekWeekRoute
+  ApiInternalYoutubeAuthCallbackRoute: typeof ApiInternalYoutubeAuthCallbackRoute
+  ApiInternalYoutubeAuthStartRoute: typeof ApiInternalYoutubeAuthStartRoute
   ApiOgDateDateRoute: typeof ApiOgDateDateRoute
 }
 
@@ -1188,6 +1216,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWeekWeekRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/internal/youtube-auth/callback': {
+      id: '/api/internal/youtube-auth/callback'
+      path: '/api/internal/youtube-auth/callback'
+      fullPath: '/api/internal/youtube-auth/callback'
+      preLoaderRoute: typeof ApiInternalYoutubeAuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/youtube-auth/start': {
+      id: '/api/internal/youtube-auth/start'
+      path: '/api/internal/youtube-auth/start'
+      fullPath: '/api/internal/youtube-auth/start'
+      preLoaderRoute: typeof ApiInternalYoutubeAuthStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/og/date/$date': {
       id: '/api/og/date/$date'
       path: '/api/og/date/$date'
@@ -1303,6 +1345,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiThumbIdRoute: ApiThumbIdRoute,
   ApiWebhooksClerkRoute: ApiWebhooksClerkRoute,
   ApiWeekWeekRoute: ApiWeekWeekRoute,
+  ApiInternalYoutubeAuthCallbackRoute: ApiInternalYoutubeAuthCallbackRoute,
+  ApiInternalYoutubeAuthStartRoute: ApiInternalYoutubeAuthStartRoute,
   ApiOgDateDateRoute: ApiOgDateDateRoute,
 }
 export const routeTree = rootRouteImport
