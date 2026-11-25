@@ -37,6 +37,7 @@ pnpm dev                                # http://localhost:3014
 
 ## Rules that bite
 
+- Ship in batches, not one PR per change: lanes commit to a branch with no PR, then `pnpm ship <branch>...` merges them, checks the combined diff once and pushes master once. Master pushes deploy through CI (`deploy-web.yml`), so a local deploy is only for a hotfix.
 - Do not deploy, write to remote D1, or sync secrets unless the task says so. The `aidr-ops` and `aidr-validate` skills give the safe order.
 - Never merge release-please PRs (`chore(main): release X.Y.Z`). A human does.
 - After user-visible changes ship, run the aidr-release flow: release page plus release film (Opus); never merge release-please PRs yourself.
