@@ -73,7 +73,8 @@ function expectedMap(digest) {
     langSelected: "vi",
     allChip: "Tất cả",
     categories: digest.categories.map((c) => `${c.name}:${c.count}`),
-    trending: digest.trending.map((t) => `${t.tag}:${t.count}`),
+    // The rail lists the top 8 tags (web TrendingChips).
+    trending: digest.trending.slice(0, 8).map((t) => `${t.tag}:${t.count}`),
     aidrHeading: "AI;DR",
     aidrDate: digest.tldr?.date || "",
     layout: "a",
@@ -111,16 +112,19 @@ function expectedMap(digest) {
 
 function featureMapFromHtml(html, js = "") {
   const pick = (re) => html.match(re)?.[1]?.trim() || "";
-  const chips = [...html.matchAll(/class="chip[\s"][^>]*>([\s\S]*?)<\/button>/g)].map(
-    (m) => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
-  );
+  // Topic chips only: the "Show on home" chips below the feed share the class.
+  const topicNav = html.match(/<nav[^>]*id="section-categories"[\s\S]*?<\/nav>/)?.[0] || "";
+  const chips = [
+    ...topicNav.matchAll(/class="chip[\s"][^>]*>([\s\S]*?)<\/button>/g),
+  ].map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
   const trends = [
     ...html.matchAll(/class="trend-chip[\s"][^>]*>([\s\S]*?)<\/button>/g),
   ].map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
   const thumbs = (html.match(/class="thumb"/g) || []).length;
   const topicTags = (html.match(/class="topic-tag/g) || []).length;
   const colored = (html.match(/topic-colored/g) || []).length;
-  const lists = (html.match(/class="tldr-list"/g) || []).length;
+  // The digest is one row-major <ol class="tldr-grid"> (web TldrBulletList).
+  const lists = (html.match(/<ol class="[^"]*\btldr-list\b[^"]*"/g) || []).length;
   return {
     brandMark: pick(/class="brand-mark"[^>]*>([\s\S]*?)<\/span>/),
     brandTagline: pick(/id="brand-tagline"[^>]*>([\s\S]*?)<\/span>/),
@@ -160,8 +164,8 @@ function featureMapFromHtml(html, js = "") {
     thumbs,
     topicTags,
     colored,
-    twoColumn: lists === 2,
-    numbered: /class="tldr-list"/.test(html),
+    twoColumn: lists === 1 && /data-tldr-cols="2"/.test(html),
+    numbered: lists === 1 && /class="tldr-rank/.test(html),
     daySections: (html.match(/class="day-section"/g) || []).length,
     redesignStructure:
       /class="home-grid"/.test(html) &&
@@ -184,7 +188,7 @@ function siteMapFromHtml(html) {
   };
 }
 
-function runChrome(args) {
+export function runChrome(args, windowSize = "1280,900") {
   const bin = chromeBin();
   if (!bin) throw new Error("google-chrome not found");
   return new Promise((resolve, reject) => {
@@ -195,7 +199,7 @@ function runChrome(args) {
         "--disable-gpu",
         "--no-sandbox",
         "--hide-scrollbars",
-        "--window-size=1280,900",
+        `--window-size=${windowSize}`,
         "--virtual-time-budget=12000",
         ...args,
       ],
@@ -219,11 +223,18 @@ function runChrome(args) {
   });
 }
 
-function startServer(digest) {
-  const html = readFileSync(join(root, "newtab.html"), "utf8").replace(
-    '<script type="module" src="js/boot.js"></script>',
-    `<script>window.__NEWS_TAB_DIGEST__=${JSON.stringify(digest)};</script>\n    <script type="module" src="js/boot.js"></script>`
-  );
+/** Serves the unpacked new tab with `digest` inlined. `?lang=en|vi` seeds the preview-shim settings. */
+export function startServer(digest) {
+  const page = readFileSync(join(root, "newtab.html"), "utf8");
+  const htmlFor = (lang) =>
+    page.replace(
+      '<script type="module" src="js/boot.js"></script>',
+      `<script>${
+        lang
+          ? `localStorage.setItem("news-tab-sync",${JSON.stringify(JSON.stringify({ newsTabSettings: { language: lang } }))});`
+          : ""
+      }window.__NEWS_TAB_DIGEST__=${JSON.stringify(digest)};</script>\n    <script type="module" src="js/boot.js"></script>`
+    );
   return new Promise((resolve) => {
     const server = createServer((req, res) => {
       const url = new URL(req.url, "http://127.0.0.1");
@@ -234,7 +245,7 @@ function startServer(digest) {
       }
       if (url.pathname === "/" || url.pathname === "/newtab.html") {
         res.writeHead(200, { "content-type": MIME[".html"] });
-        res.end(html);
+        res.end(htmlFor(url.searchParams.get("lang")));
         return;
       }
       const rel = url.pathname.replace(/^\/+/, "");
@@ -289,15 +300,20 @@ function dumpDom(url) {
   });
 }
 
-async function main() {
-  const outDir = argValue("--out", "/tmp/verify-aidr-extension");
-  mkdirSync(outDir, { recursive: true });
-
+/** The digest the new tab paints: live /api/public enriched with /api/feed. */
+export async function loadDigest() {
   const [publicRaw, feedRaw] = await Promise.all([
     fetchJson(`${SITE}/api/public`),
     fetchJson(`${SITE}/api/feed?days=3`),
   ]);
-  const digest = enrichDigest(normalizeDigest(publicRaw), feedRaw);
+  return enrichDigest(normalizeDigest(publicRaw), feedRaw);
+}
+
+async function main() {
+  const outDir = argValue("--out", "/tmp/verify-aidr-extension");
+  mkdirSync(outDir, { recursive: true });
+
+  const digest = await loadDigest();
   const expected = expectedMap(digest);
   writeFileSync(join(outDir, "digest.json"), JSON.stringify(digest, null, 2));
   writeFileSync(join(outDir, "expected.json"), JSON.stringify(expected, null, 2));
@@ -378,7 +394,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

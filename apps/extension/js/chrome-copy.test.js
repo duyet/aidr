@@ -10,7 +10,7 @@ const css = readFileSync(join(root, "css/newtab.css"), "utf8");
 const js = readFileSync(join(root, "js/newtab.js"), "utf8");
 
 test("new tab matches site chrome copy and typefaces", () => {
-  assert.match(html, /AI news, ranked and summarized/);
+  assert.match(html, /AI news ranked and summary/);
   assert.doesNotMatch(html, /translated hourly/);
   assert.doesNotMatch(html, />Blog</);
   assert.match(html, /https:\/\/duyet\.net/);
@@ -55,11 +55,11 @@ test("new tab does not show Add section restore chip", () => {
   assert.doesNotMatch(css, /\.add-section-btn/);
 });
 
-test("header action row shares one vertical center and 1rem glyphs", () => {
+test("header action row shares one vertical center and 15px glyphs", () => {
   assert.match(css, /\.actions\s*\{[^}]*align-items:\s*center/);
   assert.match(css, /\.actions\s*\{[^}]*height:\s*2rem/);
-  assert.match(css, /\.icon-btn svg[\s\S]*width:\s*1rem/);
-  assert.match(css, /\.icon-btn svg[\s\S]*display:\s*block/);
+  assert.match(css, /\.icon-btn svg \{[^}]*width:\s*15px/);
+  assert.match(css, /\.icon-btn svg \{[^}]*display:\s*block/);
 });
 
 test("wide header uses the web Get AI;DR menu", () => {
@@ -93,7 +93,7 @@ test("wide header uses the web Get AI;DR menu", () => {
   assert.match(css, /\.header-menu-content/);
   assert.match(
     html,
-    /<a data-channel="telegram" href="https:\/\/t\.me\/aihomnay"[^>]*><span[^>]*>Telegram<\/span><\/a>/
+    /<a class="footer-link" id="footer-telegram" data-channel="telegram" href="https:\/\/t\.me\/aihomnay"[^>]*>[\s\S]*?<span>Telegram<\/span><\/a>/
   );
   assert.match(js, /bindHeaderMenu/);
   assert.match(js, /aria-expanded/);
@@ -142,7 +142,7 @@ test("Contribute replaces Submit in the Get AI;DR menu", () => {
 test("new tab follows the live digest masthead, day links, and intro video", () => {
   assert.match(html, /id="intro-video-btn"/);
   assert.match(html, /id="phone-intro-video"/);
-  assert.match(js, /className = "tldr-day"/);
+  assert.match(js, /"tldr-day"/);
   // The day heading itself links to the archive; no separate "Full day" link.
   assert.match(js, /className: "day-link"/);
   assert.doesNotMatch(js, /Xem cả ngày|Full day/);
@@ -154,7 +154,7 @@ test("new tab follows the live digest masthead, day links, and intro video", () 
   assert.match(js, /youtube-nocookie\.com/);
   assert.match(
     css,
-    /\.tldr-head \.tldr-counts button\[aria-pressed="true"\][\s\S]*?var\(--primary-foreground\)/
+    /\.tldr-counts button\[aria-pressed="true"\][\s\S]*?var\(--primary-foreground\)/
   );
   assert.doesNotMatch(js, /story-host/);
 });
@@ -162,10 +162,14 @@ test("new tab follows the live digest masthead, day links, and intro video", () 
 test("story row meta is one small wrapping line; votes only when enabled", () => {
   assert.match(
     js,
-    /if \(settings\.votes\) meta\.append\(renderVotes\(settings, story\)\)/
+    /if \(showVotes && settings\.votes\) meta\.append\(renderVotes\(settings, story\)\)/
   );
-  assert.match(js, /meta\.append\(cat, when, ext\)/);
-  assert.match(css, /\.story-head \{[^}]*align-items:\s*flex-start/);
+  // Category dot and name, then the publisher, then the time (web StoryRow).
+  assert.match(
+    js,
+    /categoryLabelNode\(story\.category\)[\s\S]*?"story-publisher"[\s\S]*?"story-when"/
+  );
+  assert.match(css, /\.story-head \{[^}]*align-items:\s*center/);
   assert.match(css, /\.story-meta \{[^}]*flex-wrap:\s*wrap/);
   assert.doesNotMatch(css, /\.story-meta \{[^}]*height:\s*1lh/);
 });
@@ -186,14 +190,19 @@ test("masthead image | 2 rows | 3 rows switch replaces the day card chip", () =>
   // Glyphs come from the shared module, not from inline copies in the page.
   assert.match(js, /TLDR_VIEW_ICONS/);
   assert.doesNotMatch(js, /pointerenter/);
-  // Styled like the 8 | 12 count pills: 32x24 buttons, 14px icons.
+  // Styled like the 8 | 12 count pills: 44px buttons on phones, 36x32 from
+  // 640px, 14px icons (web TldrControls).
   assert.match(
     css,
     /\.day-card-switch \{[^}]*padding:\s*2px;[^}]*border-radius:\s*999px/
   );
   assert.match(
     css,
-    /\.day-card-switch button \{[^}]*width:\s*2rem;\s*height:\s*1\.5rem/
+    /\.day-card-switch button \{[^}]*width:\s*2\.75rem/
+  );
+  assert.match(
+    css,
+    /\.day-card-switch button \{\s*width:\s*2\.25rem;/
   );
   assert.match(
     css,
@@ -256,14 +265,10 @@ test("density drives AI;DR and day story row spacing", () => {
     );
   }
   assert.match(css, /\.tldr-list \{[^}]*line-height:\s*calc\(var\(--leading\)/);
-  for (const selector of [
-    "\\.tldr",
-    "\\.tldr-cols",
-    "\\.tldr-list > li",
-    "\\.story-head",
-  ]) {
-    assert.match(css, new RegExp(`\\n${selector} \\{[^}]*var\\(--pad\\)`));
-  }
+  // The digest rows follow density; the ranked rows use the home row pad
+  // (--home-row-pad through --row-pad), as on the site.
+  assert.match(css, /\n\.tldr-row \{[^}]*var\(--pad\)/);
+  assert.match(css, /\n\.story-head \{[^}]*var\(--row-pad\)/);
   assert.match(css, /\.page\.is-brief \.tldr \{[^}]*var\(--pad\)/);
 });
 

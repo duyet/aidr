@@ -3,7 +3,7 @@
 Chrome Manifest V3 new-tab page for [aidr.today](https://aidr.today).
 It paints today's AI;DR + day-grouped stories to match the live
 [aidr.today](https://aidr.today) homepage (layout A: numbered
-two-column digest, keyword highlights, category chips, trending pills,
+two-column digest, keyword highlights, category chips, trending list,
 story rows with points/comments, footer). No account. Not a Cloudflare Worker or Pages
 app — do not add `wrangler.toml`.
 
@@ -60,7 +60,7 @@ Edit the source in `packages`, then run the sync script. `pnpm --filter
 - **URL:** `GET https://aidr.today/api/public`
 - **Auth:** none
 - **Chrome data:** unpacked MV3 `host_permissions` also read
-  `GET /api/feed?days=3` for category counts, trending pills, and item tags
+  `GET /api/feed?days=3` for category counts, the trending list, and item tags
   (the slim public digest does not include those). Previewing `newtab.html`
   as a web page cannot call `/api/feed` (no CORS); Load unpacked can.
 - **Fallback:** `GET /api/feed` if `/api/public` fails, then last-good cache in

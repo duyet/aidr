@@ -73,6 +73,8 @@ const required = [
   "js/settings-panel.js",
   "js/preview-shim.js",
   "js/highlight.js",
+  "js/icons.js",
+  "js/week.js",
   "js/topic-color.js",
   "js/ref.js",
   "js/site-url.js",

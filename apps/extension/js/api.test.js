@@ -145,6 +145,20 @@ test("normalizeDigest keeps /api/feed days and flattens stories", () => {
   assert.equal(digest.trending[0].tag, "gpu");
 });
 
+test("learned keywords ride along from /api/feed and survive enrichDigest", () => {
+  const digest = normalizeDigest({ tldr: null, stories: [] });
+  assert.deepEqual(digest.learnedKeywords, []);
+  const enriched = enrichDigest(digest, {
+    days: [],
+    learnedKeywords: ["Zorblax", 7, ""],
+  });
+  assert.deepEqual(enriched.learnedKeywords, ["Zorblax"]);
+  // A feed without the field keeps what the digest already had.
+  assert.deepEqual(enrichDigest(enriched, { days: [] }).learnedKeywords, [
+    "Zorblax",
+  ]);
+});
+
 test("fetchDigest prefers /api/public then caches", async () => {
   const calls = [];
   const opts = [];

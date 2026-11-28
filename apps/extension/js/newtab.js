@@ -1,6 +1,11 @@
 import { digestPaintKey, fetchDigest, hydrateDigest } from "./api.js";
 import { bindAidrDialogLink, openStoryDialogLazy } from "./dialog-link.js";
-import { highlightTitle, tagsForHighlight } from "./highlight.js";
+import {
+  highlightKeywords,
+  setLearnedKeywords,
+  tagsForHighlight,
+} from "./highlight.js";
+import { icon } from "./icons.js";
 import { t, uiLang } from "./i18n.js";
 import { tagSiteLinks, withExtRef } from "./ref.js";
 import {
@@ -21,25 +26,7 @@ import {
   isChromeWebStoreInstall,
   isNewerVersion,
 } from "./update.js";
-
-const THUMB_MARK = new URL("../icons/thumb-mark.svg", import.meta.url).href;
-
-const CATEGORY_VI = {
-  Regulation: "Chính sách",
-  Research: "Nghiên cứu",
-  Releases: "Phát hành",
-  Funding: "Gọi vốn",
-  Legal: "Pháp lý",
-  Industry: "Doanh nghiệp",
-  Products: "Sản phẩm",
-  Infra: "Hạ tầng",
-  Agents: "Tác nhân",
-  Chips: "Chip",
-  Tools: "Công cụ",
-  Frameworks: "Frameworks",
-  Data: "Dữ liệu",
-  "Open Source": "Mã nguồn mở",
-};
+import { lastClosedEdition } from "./week.js";
 
 /** Web-home copy the extension's i18n pack does not carry yet. Kept local so
  *  i18n.js stays owned by its own agent; the values mirror apps/web. */
@@ -53,7 +40,6 @@ const HOME_COPY = {
     everyMorning: "Bản tin mỗi sáng",
     subscribe: "Đăng ký",
     thisWeek: "Tuần này",
-    weeklyEdition: "Bản tin tuần",
     editionCalendar: "Lịch số báo",
     rankedToday: "Tin xếp hạng hôm nay",
     readMore: "Đọc tiếp",
@@ -61,6 +47,10 @@ const HOME_COPY = {
     topStory: "Tin hàng đầu",
     storyPage: "Trang tin",
     email: "Email",
+    showMore: "Xem thêm",
+    showLess: "Thu gọn",
+    emailBlurb: "Bản tin xếp hạng lúc 07:00 theo giờ của bạn. Miễn phí.",
+    issue: "Số",
   },
   en: {
     today: "Today",
@@ -71,7 +61,6 @@ const HOME_COPY = {
     everyMorning: "Every morning",
     subscribe: "Subscribe",
     thisWeek: "This week",
-    weeklyEdition: "Weekly edition",
     editionCalendar: "Edition calendar",
     rankedToday: "Ranked today",
     readMore: "Read more",
@@ -79,6 +68,10 @@ const HOME_COPY = {
     topStory: "Top story",
     storyPage: "Story page",
     email: "Email",
+    showMore: "Show more",
+    showLess: "Show less",
+    emailBlurb: "The ranked edition at 07:00 your time. Free.",
+    issue: "Issue",
   },
 };
 
@@ -142,9 +135,9 @@ function looksVietnamese(text) {
   );
 }
 
-function categoryLabel(name, lang) {
-  if (lang !== "vi") return name;
-  return CATEGORY_VI[name] ?? name;
+/** Categories are the site's own taxonomy and stay in English on both locales. */
+function categoryLabel(name) {
+  return name;
 }
 
 function timeAgo(epoch, lang) {
@@ -226,17 +219,63 @@ function summaryRows(story, settings) {
     .filter((row) => row.text);
 }
 
-function paintTopic(el, tag) {
+/** Sets the topic's color pair; `topic-colored` also colors the text. */
+function paintTopic(node, tag, colored = true) {
   const color = topicColor(tag);
-  el.classList.add("topic-colored");
-  el.style.setProperty("--tc-light", color.light);
-  el.style.setProperty("--tc-dark", color.dark);
+  if (colored) node.classList.add("topic-colored");
+  node.style.setProperty("--tc-light", color.light);
+  node.style.setProperty("--tc-dark", color.dark);
 }
 
 function paintCategory(el, name) {
   const color = categoryColor(name);
   el.style.setProperty("--tc-light", color.light);
   el.style.setProperty("--tc-dark", color.dark);
+}
+
+/** A node with a class and children; strings become text. */
+function el(tag, className, ...children) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  node.append(...children.filter((child) => child != null && child !== false));
+  return node;
+}
+
+/** The feed's "7 giờ" / "7h": the relative time without its "ago". */
+function shortTimeAgo(epoch, lang) {
+  return timeAgo(epoch, lang).replace(/ (trước|ago)$/, "");
+}
+
+/** A category with its color on a dot and the name in the surrounding text
+ *  (web CategoryLabel `quiet`); `selected` is the chip's high-contrast dot. */
+function categoryLabelNode(name, selected = false) {
+  const node = el(
+    "span",
+    "cat-label",
+    el("span", `${selected ? "category-filter-dot" : "topic-dot"} cat-dot`),
+    el("span", "", categoryLabel(name))
+  );
+  node.firstChild.setAttribute("aria-hidden", "true");
+  paintCategory(node, name);
+  return node;
+}
+
+/** Key words in a title: `kw-num` / `kw-entity` spans (the digest), or with
+ *  `ink` every key word in the story's category color (rows and the lead). */
+function appendKeywords(parent, text, tags, { ink = false, category = null } = {}) {
+  for (const segment of highlightKeywords(text, tagsForHighlight(tags))) {
+    if (!segment.kind) {
+      parent.append(document.createTextNode(segment.text));
+      continue;
+    }
+    const span = el(
+      "span",
+      ink ? "topic-ink kw-ink" : segment.kind === "num" ? "kw-num" : "kw-entity",
+      segment.text
+    );
+    if (ink && category) paintCategory(span, category);
+    parent.append(span);
+  }
 }
 
 function itemMeta(digest, itemId) {
@@ -253,32 +292,17 @@ function bulletTags(digest, bullet) {
   return tags;
 }
 
-function bulletTopic(digest, bullet, segments) {
-  const primaryId = bullet.item_ids?.[0];
-  const meta = primaryId ? itemMeta(digest, primaryId) : null;
-  if (meta?.tags?.[0]) return meta.tags[0];
-  if (meta?.category) return meta.category;
-  const highlighted = segments.find((s) => s.highlighted && s.tag);
-  return highlighted?.tag || null;
-}
-
-function appendHighlighted(parent, text, tags) {
-  const segments = highlightTitle(text, tagsForHighlight(tags));
-  for (const segment of segments) {
-    const span = document.createElement("span");
-    span.textContent = segment.text;
-    if (segment.highlighted && segment.tag) {
-      span.className = "hl topic-ink";
-      paintTopic(span, segment.tag);
-    } else if (segment.highlighted) {
-      span.className = "hl";
-    }
-    parent.append(span);
-  }
-  return segments;
+/** The brand semicolon on the soft yellow ground, for a story with no usable
+ *  picture (web StoryThumbTile). */
+function thumbTile(extraClass = "") {
+  const tile = el("span", extraClass ? `thumb-tile ${extraClass}` : "thumb-tile", ";");
+  tile.setAttribute("aria-hidden", "true");
+  return tile;
 }
 
 function thumbNode(src, extraClass = "") {
+  const url = safeHttpUrl(src, "");
+  if (!url) return thumbTile(extraClass);
   const img = document.createElement("img");
   img.className = extraClass ? `thumb ${extraClass}` : "thumb";
   img.width = 48;
@@ -286,10 +310,9 @@ function thumbNode(src, extraClass = "") {
   img.alt = "";
   img.loading = "lazy";
   img.decoding = "async";
-  img.src = safeHttpUrl(src, THUMB_MARK) || THUMB_MARK;
-  img.addEventListener("error", () => {
-    if (img.src !== THUMB_MARK) img.src = THUMB_MARK;
-  });
+  img.referrerPolicy = "no-referrer";
+  img.src = url;
+  img.addEventListener("error", () => img.replaceWith(thumbTile(extraClass)));
   return img;
 }
 
@@ -311,103 +334,82 @@ function bulletHref(digest, bullet, lang) {
   );
 }
 
+/** One AI;DR bullet: a row-major list item, rank | text | thumb (web
+ *  TldrBulletList + TldrBulletRow, layout A). */
 function renderThumbRow(settings, digest, bullet, n, secondText) {
-  const row = document.createElement("li");
-  // Rank and copy share the first line; the second language, when present,
-  // stays a full-width line under them.
-  row.style.display = "flex";
-  row.style.alignItems = "flex-start";
-  row.style.gap = "0.5rem";
-  row.style.flexWrap = "wrap";
-  if (secondText) row.dataset.bilingual = "true";
-
-  const rank = document.createElement("span");
-  rank.className = "bullet-rank";
-  rank.setAttribute("aria-hidden", "true");
-  rank.style.flex = "none";
-  rank.style.fontFamily = "var(--mono)";
-  rank.style.fontSize = "11px";
-  rank.style.fontVariantNumeric = "tabular-nums";
-  rank.style.fontWeight = n === 1 ? "600" : "400";
-  rank.style.color = "var(--muted-foreground)";
-  rank.textContent = String(n).padStart(2, "0");
-
-  const inner = document.createElement("span");
-  inner.className = "bullet";
-  inner.style.flex = "1 1 auto";
-  inner.style.minWidth = "0";
-
-  const copy = document.createElement("span");
-  copy.className = "bullet-copy";
-  copy.title = bullet.text;
-
+  const lang = primaryLang(settings);
+  const primaryId = bullet.item_ids?.[0];
+  const meta = primaryId ? itemMeta(digest, primaryId) : null;
+  const topic = meta?.tags?.[0] ?? meta?.category ?? null;
+  const color = topic
+    ? meta?.tags?.length
+      ? topicColor(topic)
+      : categoryColor(topic)
+    : null;
   const tags = bulletTags(digest, bullet);
-  const segments = highlightTitle(bullet.text, tagsForHighlight(tags));
-  const topic = bulletTopic(digest, bullet, segments);
-  if (topic) {
-    const tagEl = document.createElement("span");
-    tagEl.className = "topic-tag";
-    paintTopic(tagEl, topic);
-    const dot = document.createElement("span");
-    dot.className = "topic-dot";
-    dot.setAttribute("aria-hidden", "true");
-    tagEl.append(dot, document.createTextNode(topic));
-    copy.append(tagEl);
+
+  const row = el("li", "tldr-item");
+  row.dataset.n = String(n);
+  if (secondText) row.dataset.bilingual = "true";
+  if (color) {
+    row.style.setProperty("--tc-light", color.light);
+    row.style.setProperty("--tc-dark", color.dark);
   }
 
-  const link = document.createElement("a");
+  const text = el("span", "bullet-copy");
+  text.title = bullet.text;
+  if (topic) {
+    const tag = el("span", "topic-tag", el("span", "topic-dot"), topic);
+    tag.firstChild.setAttribute("aria-hidden", "true");
+    text.append(tag);
+  }
+  appendKeywords(text, bullet.text, tags);
+  const extra = (bullet.item_ids || []).length - 1;
+  if (extra > 0) text.append(el("span", "related", `+${extra}`));
+
+  const rank = el(
+    "span",
+    n === 1 ? "tldr-rank is-first" : "tldr-rank",
+    String(n).padStart(2, "0")
+  );
+  const copy = el("span", "bullet", text);
+  if (secondText) {
+    const other = el("span", "bi-second", secondText);
+    other.lang = secondaryLang(settings);
+    copy.append(other);
+  }
+  const inner = el(
+    "span",
+    "tldr-row",
+    el("span", "tldr-rank-cell", rank),
+    copy,
+    thumbNode(bullet.image_url)
+  );
+  rank.parentElement.setAttribute("aria-hidden", "true");
+
+  if (!primaryId) {
+    row.append(inner);
+    return row;
+  }
+  const link = el("a", "tldr-link", inner);
   link.href = safeHttpUrl(
-    bulletHref(digest, bullet, primaryLang(settings)),
-    storyPermalink("", primaryLang(settings))
+    bulletHref(digest, bullet, lang),
+    storyPermalink("", lang)
   );
   link.rel = "noreferrer";
-  appendHighlighted(link, bullet.text, tags);
-  const primaryId = bullet.item_ids?.[0];
-  if (primaryId) {
-    bindAidrDialogLink(link, () =>
-      openStoryDialogLazy({
-        apiBase: settings.apiBase,
-        language: primaryLang(settings),
-        itemId: primaryId,
-        relatedIds: (bullet.item_ids || []).slice(1),
-        digest,
-        permalink: link.href,
-        bilingual: settings.bilingualDialog,
-      })
-    );
-  }
-  copy.append(link);
-
-  const extra = (bullet.item_ids || []).length - 1;
-  if (extra > 0) {
-    const more = document.createElement("span");
-    more.className = "related";
-    more.textContent = `+${extra}`;
-    copy.append(more);
-  }
-
-  inner.append(copy, thumbNode(bullet.image_url));
-  row.append(rank, inner);
-  if (secondText) {
-    const other = document.createElement("span");
-    other.className = "bi-second";
-    other.lang = secondaryLang(settings);
-    other.style.flexBasis = "100%";
-    other.textContent = secondText;
-    row.append(other);
-  }
-  row.dataset.n = String(n);
+  bindAidrDialogLink(link, () =>
+    openStoryDialogLazy({
+      apiBase: settings.apiBase,
+      language: lang,
+      itemId: primaryId,
+      relatedIds: (bullet.item_ids || []).slice(1),
+      digest,
+      permalink: link.href,
+      bilingual: settings.bilingualDialog,
+    })
+  );
+  row.append(link);
   return row;
-}
-
-function splitColumns(items, count = 2) {
-  const cols = Math.max(1, Math.min(3, Number(count) || 2));
-  const per = Math.ceil(items.length / cols) || 1;
-  const result = [];
-  for (let i = 0; i < cols; i++) {
-    result.push(items.slice(i * per, (i + 1) * per));
-  }
-  return result;
 }
 
 let filterTag = null;
@@ -449,7 +451,6 @@ function applyChrome(settings) {
   if (introHeading) introHeading.textContent = introTitle;
   const introFrame = $("intro-dialog-frame");
   if (introFrame) introFrame.title = introTitle;
-  $("trending-label").textContent = t(settings, "trending");
   for (const id of ["open-settings", "open-settings-compact"]) {
     const node = $(id);
     if (node) node.setAttribute("aria-label", t(settings, "prefsTitle"));
@@ -475,8 +476,8 @@ function applyChrome(settings) {
     }
   }
   // New web-home chrome: section nav, rail and footer carry both languages.
-  localize($("header-nav"), settings);
   localize(document.querySelector(".home-rail"), settings);
+  localize($("home-sections"), settings);
   localize(document.querySelector(".site-footer"), settings);
   const layoutSwitch = $("layout-switch");
   if (layoutSwitch) {
@@ -493,12 +494,28 @@ function renderFooter(settings, digest) {
   const footer = document.querySelector(".site-footer");
   if (!footer) return;
   footer.hidden = !settings.showFooter;
+  const telegram = $("footer-telegram");
+  if (telegram) {
+    telegram.href =
+      primaryLang(settings) === "vi"
+        ? "https://t.me/aihomnay"
+        : "https://t.me/aidr_today";
+  }
   const node = $("footer-copy");
   if (!node) return;
-  const year = new Date().getFullYear();
+  node.replaceChildren(`© ${new Date().getFullYear()} AI;DR`);
   const stamp = digest.lastFetchedAt || digest.updatedAt;
-  const updated = stamp ? ` · Updated ${timeAgo(stamp, "en")}` : "";
-  node.textContent = `© ${year} AI;DR${updated}`;
+  if (!stamp) return;
+  const label = el("span", "");
+  setBiText(
+    label,
+    `Cập nhật ${timeAgo(stamp, "vi")}`,
+    `Updated ${timeAgo(stamp, "en")}`,
+    settings
+  );
+  const link = el("a", "", label);
+  link.href = withExtRef("https://aidr.today/data?tab=runs", "footer", primaryLang(settings));
+  node.append(" · ", link);
 }
 
 function setStatus(message, show) {
@@ -534,10 +551,6 @@ async function maybeOfferUnpackedUpdate(settings) {
   } catch {
     // ignore — digest still works without the version endpoint
   }
-}
-
-function tldrShown(bullets, settings) {
-  return bullets.slice(0, settings.tldrCount || 8);
 }
 
 const SNAPSHOT_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -592,28 +605,23 @@ function renderTldrMasthead(settings, date) {
     return;
   }
   section.dataset.snapshotDate = date;
-  const day = document.createElement("span");
-  day.className = "tldr-day";
-  day.textContent = parts.day;
-  const link = document.createElement("a");
-  link.className = "tldr-date";
+  const link = el("a", "tldr-date");
   link.href = dayPageUrl(date, lang);
-  const weekday = document.createElement("span");
-  weekday.textContent = parts.weekday;
-  const monthYear = document.createElement("span");
-  monthYear.textContent = parts.monthYear;
-  link.append(weekday, monthYear);
+  link.append(`${parts.weekday} · ${parts.monthYear}`);
   if (isBilingual(settings)) {
     const other = dayOgDateParts(date, secondaryLang(settings));
     if (other) {
-      const second = document.createElement("span");
-      second.className = "bi-second";
+      const second = el("span", "bi-second", `${other.weekday} · ${other.monthYear}`);
       second.lang = secondaryLang(settings);
-      second.textContent = `${other.weekday} · ${other.monthYear}`;
       link.append(second);
     }
   }
-  title.append(day, link);
+  const brand = el("span", "tldr-brand", el("span", "signal-dot"), "AI;DR");
+  brand.firstChild.setAttribute("aria-hidden", "true");
+  title.append(
+    el("span", "tldr-day", parts.day),
+    el("span", "tldr-date-block", brand, link)
+  );
   syncDayCard(settings, date);
 }
 
@@ -788,6 +796,21 @@ function bindIntroVideo() {
   });
 }
 
+/** The 8 | 12 | 16 picker, as in apps/web/src/lib/tldr-links. */
+function tldrCountOptions(bulletCount) {
+  const options = [];
+  if (bulletCount > 8) {
+    options.push({ effective: 8, nominal: 8 });
+    const cap12 = Math.min(bulletCount, 12);
+    options.push({ effective: cap12, nominal: 12 });
+    if (bulletCount > 12) {
+      const cap16 = Math.min(bulletCount, 16);
+      if (cap16 !== cap12) options.push({ effective: cap16, nominal: 16 });
+    }
+  }
+  return options;
+}
+
 function renderTldr(settings, digest) {
   const section = $("section-tldr");
   const cols = $("tldr-cols");
@@ -812,70 +835,55 @@ function renderTldr(settings, digest) {
   dayCardImageOn = settings.tldrView === "image" && Boolean(digest.tldr?.date);
   renderTldrMasthead(settings, digest.tldr?.date || "");
 
-  const options = [];
-  if (bullets.length > 8) {
-    options.push(8);
-    options.push(Math.min(bullets.length, 12));
-    if (bullets.length > 12) options.push(Math.min(bullets.length, 16));
-  }
+  const options = tldrCountOptions(bullets.length);
+  const wanted = settings.tldrCount || 8;
+  let selectedIndex = options.findIndex((o) => o.nominal === wanted);
+  if (selectedIndex < 0) selectedIndex = options.length - 1;
+  const selected = options[selectedIndex];
   counts.hidden = options.length === 0;
-  for (const n of options) {
-    const btn = document.createElement("button");
+  for (const option of options) {
+    const btn = el("button", "", String(option.effective));
     btn.type = "button";
-    btn.textContent = String(n);
     btn.setAttribute(
       "aria-pressed",
-      (settings.tldrCount || 8) === n ||
-        (n === bullets.length && (settings.tldrCount || 8) > n)
-        ? "true"
-        : "false"
+      option === selected ? "true" : "false"
     );
     btn.addEventListener("click", async () => {
-      const nominal = n <= 8 ? 8 : n <= 12 ? 12 : 16;
-      await pushSettings({ ...settings, tldrCount: nominal });
+      await pushSettings({ ...settings, tldrCount: option.nominal });
     });
     counts.append(btn);
   }
 
-  const shown = tldrShown(bullets, settings);
-  const expanded = shown.length > 8;
-  const columns = splitColumns(shown, settings.tldrCols ?? 2);
-  columns.forEach((col, ci) => {
-    if (!col.length) return;
-    const list = document.createElement("ol");
-    list.className = "tldr-list";
-    // Ranks are drawn in the rows (mono 11px), not by ::marker.
-    list.style.listStyle = "none";
-    list.style.paddingLeft = "0";
-    list.start = ci === 0 ? 1 : columns[0].length + 1;
-    col.forEach((bullet, i) => {
-      const primaryId = bullet.item_ids?.[0];
-      list.append(
-        renderThumbRow(
-          settings,
-          digest,
-          bullet,
-          (ci === 0 ? 1 : columns[0].length + 1) + i,
-          secondTexts && primaryId ? secondTexts.get(primaryId) : null
-        )
-      );
-    });
-    cols.append(list);
+  const shown = bullets.slice(0, selected ? selected.effective : bullets.length);
+  shown.forEach((bullet, i) => {
+    const primaryId = bullet.item_ids?.[0];
+    cols.append(
+      renderThumbRow(
+        settings,
+        digest,
+        bullet,
+        i + 1,
+        secondTexts && primaryId ? secondTexts.get(primaryId) : null
+      )
+    );
   });
 
-  if (bullets.length > 8 && !expanded) {
+  const next = options[selectedIndex + 1];
+  const showAll = (nominal) => async () => {
+    await pushSettings({ ...settings, tldrCount: nominal });
+  };
+  if (next || selectedIndex > 0) {
+    const label = next ? "showMore" : "showLess";
+    const text = el("span", "");
+    setBiText(
+      text,
+      homeCopy({ ...settings, language: "vi", bilingual: false }, label),
+      homeCopy({ ...settings, language: "en", bilingual: false }, label),
+      settings
+    );
     more.hidden = false;
-    more.textContent = t(settings, "showMore");
-    more.onclick = async () => {
-      const next = bullets.length > 12 ? 16 : 12;
-      await pushSettings({ ...settings, tldrCount: next });
-    };
-  } else if (expanded) {
-    more.hidden = false;
-    more.textContent = t(settings, "showLess");
-    more.onclick = async () => {
-      await pushSettings({ ...settings, tldrCount: 8 });
-    };
+    more.replaceChildren(text, icon(next ? "chevron-down" : "chevron-up"));
+    more.onclick = showAll(next ? next.nominal : options[0].nominal);
   } else {
     more.hidden = true;
   }
@@ -885,13 +893,51 @@ function renderTldr(settings, digest) {
     ? `${total} ${t(settings, "storiesCount")}`
     : "";
   const stamp = digest.lastFetchedAt || digest.updatedAt;
-  $("tldr-updated").textContent = stamp
-    ? `${t(settings, "updated")} ${timeAgo(stamp, uiLang(settings))}`
-    : "";
+  const updated = $("tldr-updated");
+  const dot = el("span", "signal-dot");
+  dot.setAttribute("aria-hidden", "true");
+  updated.replaceChildren(
+    ...(stamp
+      ? [dot, `${t(settings, "updated")} ${timeAgo(stamp, uiLang(settings))}`]
+      : [])
+  );
 }
 
 function clearSectionContent(sectionEl) {
   sectionEl.replaceChildren();
+}
+
+const TRENDING_LIMIT = 8;
+
+/** Wheel-to-sideways scroll and the edge fades on a chip row (web
+ *  useHorizontalScroll): 24px on the side that still has content to scroll to. */
+function bindEdgeFade(row) {
+  if (!row || row.dataset.fadeBound) return;
+  row.dataset.fadeBound = "true";
+  let frame = 0;
+  const update = () => {
+    frame = 0;
+    const right = row.scrollLeft + row.clientWidth < row.scrollWidth - 1;
+    row.style.setProperty("--fade-l", row.scrollLeft > 0 ? "24px" : "0px");
+    row.style.setProperty("--fade-r", right ? "24px" : "0px");
+  };
+  const schedule = () => {
+    if (!frame) frame = requestAnimationFrame(update);
+  };
+  row.addEventListener(
+    "wheel",
+    (event) => {
+      if (event.deltaY && !event.deltaX) {
+        row.scrollLeft += event.deltaY;
+        event.preventDefault();
+        schedule();
+      }
+    },
+    { passive: false }
+  );
+  row.addEventListener("scroll", schedule, { passive: true });
+  new ResizeObserver(update).observe(row);
+  update();
 }
 
 function renderChips(settings, digest) {
@@ -905,10 +951,18 @@ function renderChips(settings, digest) {
   if (!showCats) filterCategories = new Set();
   catSection.hidden = !showCats;
   if (showCats) {
-    const all = document.createElement("button");
+    const all = el("button", "chip");
     all.type = "button";
-    all.className = "chip";
-    setBiText(all, "Tất cả", "All", settings);
+    const allLabel = el("span", "");
+    setBiText(allLabel, "Tất cả", "All", settings);
+    all.append(
+      allLabel,
+      el(
+        "span",
+        "chip-count",
+        String(digest.categories.reduce((sum, row) => sum + row.count, 0))
+      )
+    );
     all.setAttribute(
       "aria-pressed",
       filterCategories.size === 0 ? "true" : "false"
@@ -919,32 +973,15 @@ function renderChips(settings, digest) {
     });
     catSection.append(all);
     for (const row of digest.categories) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "chip";
       const selected = filterCategories.has(row.name);
-      btn.setAttribute("aria-pressed", selected ? "true" : "false");
-      paintCategory(btn, row.name);
-      if (selected) {
-        btn.append(
-          Object.assign(document.createElement("span"), {
-            className: "category-filter-dot",
-            ariaHidden: "true",
-          })
-        );
-      }
-      const label = document.createElement("span");
-      label.className = selected ? "" : "category-colored";
-      setBiText(
-        label,
-        categoryLabel(row.name, "vi"),
-        categoryLabel(row.name, "en"),
-        settings
+      const btn = el(
+        "button",
+        "chip",
+        categoryLabelNode(row.name, selected),
+        el("span", "chip-count", String(row.count))
       );
-      const count = document.createElement("span");
-      count.className = "n chip-count";
-      count.textContent = String(row.count);
-      btn.append(label, " ", count);
+      btn.type = "button";
+      btn.setAttribute("aria-pressed", selected ? "true" : "false");
       btn.addEventListener("click", () => {
         const next = new Set(filterCategories);
         if (next.has(row.name)) next.delete(row.name);
@@ -954,31 +991,32 @@ function renderChips(settings, digest) {
       });
       catSection.append(btn);
     }
+    bindEdgeFade(catSection);
   }
 
   const showTrending = settings.sections.trending && digest.trending.length > 0;
   if (!showTrending) filterTag = null;
   trendSection.hidden = !showTrending;
   if (showTrending) {
-    for (const row of digest.trending) {
-      const btn = document.createElement("button");
+    // A selected tag past the cut stays listed, so it can be cleared.
+    const rows = digest.trending.filter(
+      (row, i) => i < TRENDING_LIMIT || row.tag === filterTag
+    );
+    for (const row of rows) {
+      const dot = el("span", "topic-dot trend-dot");
+      dot.setAttribute("aria-hidden", "true");
+      const btn = el(
+        "button",
+        "trend-chip",
+        el("span", "trend-main", dot, el("span", "topic-ink", row.tag)),
+        el("span", "topic-muted", String(row.count))
+      );
       btn.type = "button";
-      btn.className = "trend-chip";
-      paintTopic(btn, row.tag);
+      paintTopic(btn, row.tag, false);
       btn.setAttribute(
         "aria-pressed",
         filterTag === row.tag ? "true" : "false"
       );
-      const name = document.createElement("span");
-      name.className = "topic-ink";
-      const dot = document.createElement("span");
-      dot.className = "topic-dot";
-      dot.setAttribute("aria-hidden", "true");
-      name.append(dot, document.createTextNode(row.tag));
-      const count = document.createElement("span");
-      count.className = "n chip-count topic-muted";
-      count.textContent = String(row.count);
-      btn.append(name, count);
       btn.addEventListener("click", () => {
         filterTag = filterTag === row.tag ? null : row.tag;
         render(settings, digest);
@@ -992,11 +1030,19 @@ function storyMatchesFilters(story) {
   if (filterCategories.size > 0) {
     if (!story.category || !filterCategories.has(story.category)) return false;
   }
-  if (filterTag) {
-    const blob = `${story.title} ${story.title_vi || ""} ${(story.tags || []).join(" ")}`;
-    if (!blob.toLowerCase().includes(filterTag.toLowerCase())) return false;
-  }
   return true;
+}
+
+/** Whether a story carries the selected trending tag (web StoryRow isMatch):
+ *  the tag picks rows out with a tint, it does not filter the feed. */
+function matchesSelectedTag(story) {
+  if (!filterTag) return false;
+  const tag = filterTag.toLowerCase();
+  return (
+    (story.tags || []).some((t) => t.toLowerCase() === tag) ||
+    story.title.toLowerCase().includes(tag) ||
+    (story.title_vi?.toLowerCase().includes(tag) ?? false)
+  );
 }
 
 function filteredDays(digest) {
@@ -1026,40 +1072,7 @@ function filteredDays(digest) {
     .filter((day) => day.items.length > 0);
 }
 
-function externalLinkIcon() {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
-  svg.setAttribute("class", "ext-icon");
-  svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute(
-    "d",
-    "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"
-  );
-  svg.append(path);
-  return svg;
-}
-
-function hotIcon() {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
-  svg.setAttribute("class", "hot-icon");
-  svg.setAttribute("aria-hidden", "true");
-  const p1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  p1.setAttribute("d", "M3 17 9 11l4 4 8-8");
-  const p2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  p2.setAttribute("d", "M14 7h7v7");
-  svg.append(p1, p2);
-  return svg;
-}
-
-function renderStoryRow(settings, story, index, hot) {
+function renderStoryRow(settings, story, index, hot, showVotes) {
   const lang = primaryLang(settings);
   const titles = titleRows(story, settings);
   const mainTitle = titles[0] || {
@@ -1068,7 +1081,7 @@ function renderStoryRow(settings, story, index, hot) {
     fallback: false,
   };
   const secondTitle = titles[1] || null;
-  const { text: title, fallbackFromEnglish } = mainTitle;
+  const { text: title, fallback: fallbackFromEnglish } = mainTitle;
   const summaries = summaryRows(story, settings);
   const mainSummary = summaries[0] || null;
   const secondSummary = summaries[1] || null;
@@ -1086,32 +1099,29 @@ function renderStoryRow(settings, story, index, hot) {
 
   // Rank sits on the first title line; the expand chevron shares its column
   // and is revealed on hover/focus or while expanded (see the toggle below).
-  const n = document.createElement("span");
-  n.className = "story-n story-rank";
-  n.style.display = "flex";
-  n.style.alignItems = "flex-start";
-  n.style.justifyContent = "flex-end";
-  n.style.width = "1.75rem";
-  n.style.gap = "2px";
-  n.style.alignSelf = "flex-start";
-  n.style.paddingTop = "2px";
+  const n = el("span", "story-n story-rank");
   let chevron = null;
   if (hasDetails) {
-    chevron = document.createElement("span");
-    chevron.className = "story-rank-chevron";
+    chevron = el("span", "story-rank-chevron", icon("chevron-down"));
     chevron.setAttribute("aria-hidden", "true");
     chevron.setAttribute("data-testid", "story-row-chevron");
     chevron.setAttribute("data-expanded", "false");
     chevron.hidden = true;
-    chevron.append(voteChevron("down"));
     n.append(chevron);
   }
   n.append(document.createTextNode(String(index)));
 
-  const titleWrap = document.createElement("span");
-  titleWrap.className = "story-title";
-  if (hot) titleWrap.append(hotIcon());
-
+  const titleLine = el("span", "story-title-line");
+  if (hot) {
+    const hotMark = icon("trending-up", "hot-icon");
+    hotMark.setAttribute("role", "img");
+    hotMark.setAttribute(
+      "aria-label",
+      lang === "vi" ? "Tin hàng đầu hôm nay" : "Top story today"
+    );
+    hotMark.removeAttribute("aria-hidden");
+    titleLine.append(hotMark);
+  }
   const article = document.createElement("a");
   article.className = "story-article";
   article.href =
@@ -1121,7 +1131,10 @@ function renderStoryRow(settings, story, index, hot) {
     ) || withExtRef(NEWS_SITE, "story", lang);
   article.rel = "noreferrer";
   if (fallbackFromEnglish) article.lang = "en";
-  appendHighlighted(article, title, story.tags || []);
+  appendKeywords(article, title, story.tags || [], {
+    ink: true,
+    category: story.category,
+  });
   if (story.id) {
     bindAidrDialogLink(article, () =>
       openStoryDialogLazy({
@@ -1134,104 +1147,70 @@ function renderStoryRow(settings, story, index, hot) {
       })
     );
   }
-  titleWrap.append(article);
-
-  if (secondTitle) {
-    const other = document.createElement("span");
-    other.className = "bi-second";
-    other.lang = secondTitle.lang;
-    other.style.display = "block";
-    other.textContent = secondTitle.text;
-    titleWrap.append(other);
-  }
-
+  titleLine.append(article);
   if (fallbackFromEnglish) {
-    const badge = document.createElement("span");
-    badge.className = "en-badge";
-    badge.textContent = "EN";
+    const badge = el("span", "en-badge", "EN");
     badge.title =
       lang === "vi"
         ? "Tiêu đề gốc tiếng Anh — chưa có bản dịch"
         : "Original English title — no Vietnamese translation yet";
-    titleWrap.append(badge);
+    titleLine.append(badge);
+  }
+  const titleWrap = el("span", "story-title", titleLine);
+  if (matchesSelectedTag(story)) {
+    const color = topicColor(filterTag);
+    head.classList.add("topic-hl-row");
+    head.style.setProperty("--tc-light", color.light);
+    head.style.setProperty("--tc-dark", color.dark);
+    titleWrap.classList.add("topic-colored");
+  }
+  if (secondTitle) {
+    const other = el("span", "bi-second", secondTitle.text);
+    other.lang = secondTitle.lang;
+    titleWrap.append(other);
   }
 
-  const ext = document.createElement("a");
-  ext.className = "story-ext";
-  // External publishers: do not stamp aidr utm onto third-party hosts.
-  ext.href = safeHttpUrl(story.url, NEWS_SITE) || NEWS_SITE;
-  ext.target = "_blank";
-  ext.rel = "noopener noreferrer";
-  ext.setAttribute("aria-label", "Open story link");
-  ext.append(externalLinkIcon());
-  const host = publisherHost(ext.href);
+  // Small source line: category dot and name, publisher, then the time.
+  const meta = el("span", "story-meta");
+  if (showVotes && settings.votes) meta.append(renderVotes(settings, story));
+  if (story.category) meta.append(categoryLabelNode(story.category));
+  const host = story.url ? publisherHost(story.url) : null;
   if (host) {
-    const publisher = document.createElement("span");
-    publisher.className = "story-publisher";
-    publisher.textContent = host;
-    ext.append(publisher);
+    const publisher = el("a", "story-publisher", host);
+    publisher.href = safeHttpUrl(story.url, NEWS_SITE) || NEWS_SITE;
+    publisher.target = "_blank";
+    publisher.rel = "noopener noreferrer";
+    meta.append(el("span", "story-sep", "·"), publisher);
   }
-
-  const cat = document.createElement("span");
-  cat.className = "story-cat";
-  if (story.category) {
-    paintCategory(cat, story.category);
-    cat.append(
-      Object.assign(document.createElement("span"), {
-        className: "category-filter-dot",
-        ariaHidden: "true",
-      }),
-      Object.assign(document.createElement("span"), {
-        className: "category-colored",
-        textContent: categoryLabel(story.category, lang),
-      })
+  if (story.published_at) {
+    meta.append(
+      el("span", "story-sep", "·"),
+      el("span", "story-when", shortTimeAgo(story.published_at, lang))
     );
   }
-
-  const when = document.createElement("span");
-  when.className = "story-when";
-  when.textContent = story.published_at
-    ? timeAgo(story.published_at, lang)
-    : "";
-
-  // Small source line: category, time, publisher; votes only when enabled.
-  const meta = document.createElement("span");
-  meta.className = "story-meta";
-  if (settings.votes) meta.append(renderVotes(settings, story));
-  meta.append(cat, when, ext);
+  for (const sep of meta.querySelectorAll(".story-sep")) {
+    sep.setAttribute("aria-hidden", "true");
+  }
 
   // One column holds the title, the optional summary line and the metadata,
   // so the rank shares only the first title line (web StoryRow.story-body).
-  const body = document.createElement("span");
-  body.className = "story-body";
-  body.style.display = "flex";
-  body.style.flexDirection = "column";
-  body.style.flex = "1 1 auto";
-  body.style.minWidth = "0";
-  body.append(titleWrap);
+  const body = el("span", "story-body", titleWrap);
   if (mainSummary) {
-    const summaryEl = document.createElement("span");
-    summaryEl.className = "row-summary np-justify";
+    const summaryEl = el("span", "row-summary np-justify", mainSummary.text);
     summaryEl.lang = mainSummary.lang;
-    summaryEl.textContent = mainSummary.text;
     body.append(summaryEl);
   }
   if (secondSummary) {
-    const other = document.createElement("span");
-    other.className = "bi-second row-summary np-justify";
+    const other = el("span", "bi-second row-summary np-justify", secondSummary.text);
     other.lang = secondSummary.lang;
-    other.textContent = secondSummary.text;
     body.append(other);
   }
   body.append(meta);
-  head.append(n, body);
-
-  const rowThumb = document.createElement("span");
-  rowThumb.className = "row-thumb";
-  rowThumb.style.flex = "none";
-  rowThumb.append(thumbNode(story.image_url, "row-thumb-img"));
-  head.append(rowThumb);
-
+  head.append(
+    n,
+    body,
+    el("span", "row-thumb", thumbNode(story.image_url, "row-thumb-img"))
+  );
   let detail = null;
   if (hasDetails) {
     detail = document.createElement("div");
@@ -1329,22 +1308,6 @@ function publisherHost(url) {
   }
 }
 
-function voteChevron(direction) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
-  svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute(
-    "d",
-    direction === "up" ? "m18 15-6-6-6 6" : "m6 9 6 6 6-6"
-  );
-  svg.append(path);
-  return svg;
-}
-
 function renderVotes(settings, story) {
   const lang = uiLang(settings);
   const net = typeof story.vote_net === "number" ? story.vote_net : 0;
@@ -1361,9 +1324,9 @@ function renderVotes(settings, story) {
     return anchor;
   };
   const up = link();
-  up.append(voteChevron("up"));
+  up.append(icon("chevron-up"));
   const down = link();
-  down.append(voteChevron("down"));
+  down.append(icon("chevron-down"));
   const count = document.createElement("span");
   count.className = "story-vote-net";
   const sr = document.createElement("span");
@@ -1374,41 +1337,23 @@ function renderVotes(settings, story) {
   return wrap;
 }
 
-function arrowIcon(path) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
-  svg.setAttribute("aria-hidden", "true");
-  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  p.setAttribute("d", path);
-  svg.append(p);
-  return svg;
-}
-
+/** Web LeadStory: the day's top story above the ranked list. */
 /** Web LeadStory: the day's top story above the ranked list. */
 function renderLeadStory(settings, story) {
   const lang = primaryLang(settings);
-  const article = document.createElement("article");
-  article.className = "lead-story";
+  const article = el("article", "lead-story");
   article.setAttribute("aria-label", homeCopy(settings, "topStory"));
 
-  const body = document.createElement("div");
-  body.className = "lead-story-body";
+  const body = el("div", "lead-story-body");
 
-  const kicker = document.createElement("p");
-  kicker.className = "lead-story-kicker";
-  if (story.category) {
-    const cat = document.createElement("span");
-    cat.className = "category-colored";
-    paintCategory(cat, story.category);
-    cat.textContent = categoryLabel(story.category, lang);
-    kicker.append(cat);
-  }
+  const kicker = el("p", "lead-story-kicker");
+  if (story.category) kicker.append(categoryLabelNode(story.category));
   if (story.published_at) {
-    if (story.category) kicker.append(document.createTextNode(" · "));
-    kicker.append(document.createTextNode(timeAgo(story.published_at, lang)));
+    kicker.append(
+      el("span", "", "·"),
+      el("span", "", timeAgo(story.published_at, lang))
+    );
+    kicker.children[kicker.children.length - 2].setAttribute("aria-hidden", "true");
   }
   body.append(kicker);
 
@@ -1418,12 +1363,13 @@ function renderLeadStory(settings, story) {
     lang: "en",
     fallback: false,
   };
-  const heading = document.createElement("h3");
-  heading.className = "lead-story-title lead-title";
-  const link = document.createElement("a");
+  const link = el("a");
   link.href = storyHref(story, lang);
   if (main.fallback) link.lang = "en";
-  appendHighlighted(link, main.text, story.tags || []);
+  appendKeywords(link, main.text, story.tags || [], {
+    ink: true,
+    category: story.category,
+  });
   if (story.id) {
     bindAidrDialogLink(link, () =>
       openStoryDialogLazy({
@@ -1436,69 +1382,155 @@ function renderLeadStory(settings, story) {
       })
     );
   }
-  heading.append(link);
-  body.append(heading);
+  body.append(el("h3", "lead-title lead-story-title", link));
   if (titles[1]) {
-    const second = document.createElement("p");
-    second.className = "bi-second";
+    const second = el("p", "bi-second", titles[1].text);
     second.lang = titles[1].lang;
-    second.textContent = titles[1].text;
     body.append(second);
   }
 
-  const summaries = summaryRows(story, settings);
-  if (summaries[0]) {
-    const summary = document.createElement("p");
-    summary.className = "lead-story-summary np-justify";
-    summary.lang = summaries[0].lang;
-    summary.textContent = summaries[0].text;
-    body.append(summary);
-  }
-  if (summaries[1]) {
-    const second = document.createElement("p");
-    second.className = "bi-second np-justify";
-    second.lang = summaries[1].lang;
-    second.textContent = summaries[1].text;
-    body.append(second);
+  // The site's payload carries no summary on first paint; it shows one when
+  // the reader asked for summaries (or the newspaper layout, which prints them).
+  if (settings.summaries || settings.layout === "newspaper") {
+    const summaries = summaryRows(story, settings);
+    if (summaries[0]) {
+      const summary = el("p", "lead-story-summary np-justify", summaries[0].text);
+      summary.lang = summaries[0].lang;
+      body.append(summary);
+    }
+    if (summaries[1]) {
+      const second = el("p", "bi-second lead-story-summary np-justify", summaries[1].text);
+      second.lang = summaries[1].lang;
+      body.append(second);
+    }
   }
 
-  const actions = document.createElement("div");
-  actions.className = "lead-story-actions";
-  const more = document.createElement("a");
-  more.className = "btn-primary";
+  const actions = el("div", "lead-story-actions");
+  const more = el(
+    "a",
+    "btn-primary",
+    homeCopy(settings, "readMore"),
+    icon("arrow-right")
+  );
   more.href = storyHref(story, lang);
-  more.append(document.createTextNode(homeCopy(settings, "readMore")));
-  more.append(arrowIcon("M5 12h14M13 6l6 6-6 6"));
   actions.append(more);
   if (story.url) {
-    const source = document.createElement("a");
-    source.className = "btn-link";
+    const source = el(
+      "a",
+      "btn-link",
+      homeCopy(settings, "readSource"),
+      icon("external-link")
+    );
     source.href = safeHttpUrl(story.url, NEWS_SITE) || NEWS_SITE;
     source.target = "_blank";
     source.rel = "noopener noreferrer";
-    source.append(document.createTextNode(homeCopy(settings, "readSource")));
-    source.append(externalLinkIcon());
     actions.append(source);
     const host = publisherHost(source.href);
-    if (host) {
-      const hostEl = document.createElement("span");
-      hostEl.className = "lead-story-source";
-      hostEl.textContent = host;
-      actions.append(hostEl);
-    }
+    if (host) actions.append(el("span", "lead-story-source", host));
   }
   body.append(actions);
 
-  article.append(body);
-  if (story.image_url) {
-    const media = document.createElement("div");
-    media.className = "lead-story-media";
-    media.append(thumbNode(story.image_url, "lead-thumb"));
-    article.append(media);
-  } else {
-    article.classList.add("lead-story-text");
-  }
+  // No publisher picture: the story's own card, as the site does.
+  const picture =
+    story.image_url ||
+    (story.id
+      ? `${NEWS_SITE}/api/og/${story.id}.png?lang=${lang === "en" ? "en" : "vi"}`
+      : "");
+  article.append(body, el("div", "lead-story-media", thumbNode(picture, "lead-thumb")));
   return article;
+}
+
+/** Stories a day section lists before its "Load more" button. */
+const DAY_STORY_LIMIT = 30;
+
+/** Whether any story carries a vote; a column of zeros says nothing. */
+function anyVotes(items) {
+  return items.some((story) => (story.vote_net ?? 0) > 0);
+}
+
+function renderDaySection(settings, day, { fromLead, showVotes }) {
+  const lang = primaryLang(settings);
+  const items = fromLead ? day.items.slice(1) : day.items;
+  const section = el("section", "day-section");
+  const head = el("div", "day-head");
+  const title = el("h2", "section-label");
+  if (fromLead) {
+    setBiText(
+      title,
+      homeCopy({ ...settings, language: "vi" }, "rankedToday"),
+      homeCopy({ ...settings, language: "en" }, "rankedToday"),
+      settings
+    );
+    head.append(title);
+  } else {
+    const archiveHref = SNAPSHOT_DATE.test(day.date || "")
+      ? dayPageUrl(day.date, lang)
+      : "";
+    const heading = archiveHref
+      ? Object.assign(document.createElement("a"), {
+          className: "day-link",
+          href: archiveHref,
+        })
+      : title;
+    setBiText(
+      heading,
+      day.date ? formatDayHeading(day.date, "vi") : t(settings, "stories"),
+      day.date ? formatDayHeading(day.date, "en") : t(settings, "stories"),
+      settings
+    );
+    if (heading !== title) title.append(heading);
+
+    const count = el("span", "day-count");
+    const n = items.length;
+    setBiText(count, `${n} tin`, `${n} ${n === 1 ? "story" : "stories"}`, settings);
+
+    const cats = el("span", "day-cats");
+    const entries = Object.entries(day.categoryCounts || {}).sort(
+      (a, b) => b[1] - a[1]
+    );
+    const shownCats = entries.slice(0, 7);
+    const moreCats = entries.length - shownCats.length;
+    for (const [name, c] of shownCats) {
+      cats.append(
+        el("span", "", categoryLabelNode(name), " ", el("strong", "", String(c)))
+      );
+    }
+    if (moreCats > 0) {
+      cats.append(el("span", "", lang === "vi" ? `+${moreCats} nữa` : `+${moreCats} more`));
+    }
+    head.append(title, count, cats);
+  }
+  section.append(head);
+
+  const list = el("div", "day-list np-columns");
+  section.append(list);
+  const firstRank = fromLead ? 2 : 1;
+  let expanded = false;
+  const paint = () => {
+    list.replaceChildren();
+    const visible = expanded ? items : items.slice(0, DAY_STORY_LIMIT);
+    visible.forEach((story, i) => {
+      const hot =
+        !fromLead && i === 0 && story.rank_score > 0 && items.length > 1;
+      list.append(renderStoryRow(settings, story, firstRank + i, hot, showVotes));
+    });
+    section.querySelector(".day-more")?.remove();
+    const hidden = items.length - visible.length;
+    if (hidden > 0) {
+      const button = el("button", "btn-link");
+      button.type = "button";
+      const label = el("span", "");
+      setBiText(label, `Xem thêm (${hidden})`, `Load more (${hidden})`, settings);
+      button.replaceChildren(icon("chevron-down"), label);
+      button.addEventListener("click", () => {
+        expanded = true;
+        paint();
+      });
+      section.append(el("div", "day-more day-more-row", button));
+    }
+  };
+  paint();
+  return section;
 }
 
 function renderStories(settings, digest) {
@@ -1516,7 +1548,7 @@ function renderStories(settings, digest) {
     return;
   }
   root.hidden = false;
-  const lang = primaryLang(settings);
+  const showVotes = anyVotes(days.flatMap((day) => day.items));
 
   // The first story of the newest day is the lead; the list below starts at 2.
   const lead = days[0]?.items?.[0];
@@ -1524,112 +1556,70 @@ function renderStories(settings, digest) {
 
   days.forEach((day, dayIndex) => {
     const fromLead = dayIndex === 0 && Boolean(lead);
-    const items = fromLead ? day.items.slice(1) : day.items;
-    if (!items.length) return;
-
-    const section = document.createElement("section");
-    section.className = "day-section";
-
-    const head = document.createElement("div");
-    head.className = "day-head";
-
-    const title = document.createElement("h2");
-    title.className = "section-label";
-    if (fromLead) {
-      setBiText(
-        title,
-        homeCopy({ ...settings, language: "vi" }, "rankedToday"),
-        homeCopy({ ...settings, language: "en" }, "rankedToday"),
-        settings
-      );
-    } else {
-      const archiveHref = SNAPSHOT_DATE.test(day.date || "")
-        ? dayPageUrl(day.date, lang)
-        : "";
-      const heading = archiveHref
-        ? Object.assign(document.createElement("a"), {
-            className: "day-link",
-            href: archiveHref,
-          })
-        : title;
-      setBiText(
-        heading,
-        day.date ? formatDayHeading(day.date, "vi") : t(settings, "stories"),
-        day.date ? formatDayHeading(day.date, "en") : t(settings, "stories"),
-        settings
-      );
-      if (heading !== title) title.append(heading);
-    }
-
-    const count = document.createElement("span");
-    count.className = "day-count";
-    const n = items.length + (fromLead ? 1 : 0);
-    setBiText(
-      count,
-      `${n} tin`,
-      `${n} ${n === 1 ? "story" : "stories"}`,
-      settings
-    );
-
-    const cats = document.createElement("span");
-    cats.className = "day-cats";
-    const entries = Object.entries(day.categoryCounts || {}).sort(
-      (a, b) => b[1] - a[1]
-    );
-    const shown = entries.slice(0, 7);
-    const more = entries.length - shown.length;
-    for (const [name, c] of shown) {
-      const bit = document.createElement("span");
-      bit.className = "category-colored";
-      paintCategory(bit, name);
-      bit.append(
-        document.createTextNode(`${categoryLabel(name, lang)} `),
-        Object.assign(document.createElement("strong"), {
-          textContent: String(c),
-        })
-      );
-      cats.append(bit);
-    }
-    if (more > 0) {
-      const bit = document.createElement("span");
-      bit.textContent = lang === "vi" ? `+${more} nữa` : `+${more} more`;
-      cats.append(bit);
-    }
-
-    head.append(title, count, cats);
-    section.append(head);
-
-    const list = document.createElement("div");
-    list.className = "day-list np-columns";
-    const firstRank = fromLead ? 2 : 1;
-    items.forEach((story, i) => {
-      const hot =
-        !fromLead && i === 0 && story.rank_score > 0 && items.length > 1;
-      list.append(renderStoryRow(settings, story, firstRank + i, hot));
-    });
-    section.append(list);
-    root.append(section);
+    if ((fromLead ? day.items.slice(1) : day.items).length === 0) return;
+    root.append(renderDaySection(settings, day, { fromLead, showVotes }));
   });
 }
 
 const SECTION_ORDER_KEYS = ["categories", "trending", "tldr", "days"];
 
+const SECTION_TILES = [
+  { key: "categories", icon: "layout-grid", vi: "Danh mục", en: "Category nav" },
+  { key: "trending", icon: "trending-up", vi: "Xu hướng", en: "Trending" },
+  { key: "tldr", icon: "sparkles", vi: "AI;DR", en: "AI;DR" },
+  { key: "days", icon: "calendar-days", vi: "Bảng tin theo ngày", en: "Daily feed" },
+];
+
+/** Web HomeSections: one chip per home section, pressed while it shows. */
+function renderHomeSections(settings) {
+  const root = $("home-sections-chips");
+  if (!root) return;
+  root.replaceChildren();
+  for (const { key, icon: name, vi, en } of SECTION_TILES) {
+    const on = settings.sections[key];
+    const label = el("span", "");
+    setBiText(label, vi, en, settings);
+    const chip = el("button", "chip", icon(name), label);
+    chip.type = "button";
+    chip.setAttribute("aria-pressed", on ? "true" : "false");
+    chip.addEventListener("click", async () => {
+      await pushSettings({
+        ...settings,
+        sections: { ...settings.sections, [key]: !on },
+      });
+    });
+    root.append(chip);
+  }
+}
+
 /** Reorder DOM sections to match settings.sectionOrder. Categories, AI;DR
  * and the feed live in the main column; Trending belongs at the top of the
  * rail. Moving into the right host keeps the redesigned grid intact. */
+/** Reorder DOM sections to match settings.sectionOrder. Categories, AI;DR
+ * and the feed live in the main column; Trending belongs at the top of the
+ * rail. Categories sit with the day header (the web's fixed order) until the
+ * reader moves them below the AI;DR card. */
 function applySectionOrder(settings) {
   const page = $("page-content");
   const grid = document.querySelector(".home-grid");
+  const top = $("home-top");
   const main = $("home-main");
   const rail = $("home-rail");
-  if (!page || !main || !rail) return;
+  if (!page || !main || !rail || !top) return;
+  const order = settings.sectionOrder || SECTION_ORDER_KEYS;
+  const categoriesFirst =
+    order.indexOf("categories") < order.indexOf("tldr") ||
+    order.indexOf("tldr") < 0;
   const wrappers = [
-    { key: "categories", id: "section-categories", host: page },
+    {
+      key: "categories",
+      id: "section-categories",
+      host: categoriesFirst ? top : page,
+    },
     { key: "trending", id: "section-trending", host: rail },
     { key: "tldr", id: "section-tldr", host: page },
     { key: "days", id: "section-days", host: main },
   ];
-  const order = settings.sectionOrder || SECTION_ORDER_KEYS;
   const railAnchor = rail.querySelector(".rail-subscribe");
   for (const key of order) {
     const w = wrappers.find((w) => w.key === key);
@@ -1656,6 +1646,7 @@ function applyBriefLayout() {
 }
 
 /** Web DayHeader: the big date, a story count and prev/next arrows. */
+/** Web DayHeader: the big date, a story count and prev/next arrows. */
 function renderDayHeader(settings, digest) {
   const root = $("day-header");
   if (!root) return;
@@ -1667,29 +1658,29 @@ function renderDayHeader(settings, digest) {
   }
   root.hidden = false;
 
+  const total =
+    days[0]?.items?.length || digest.totalStories || digest.stories.length;
+  const stamp = digest.lastFetchedAt || digest.updatedAt;
+  const summary = (language) => {
+    const count = language === "vi" ? `${total} tin` : `${total} stories`;
+    if (!stamp) return count;
+    const ago = timeAgo(stamp, language);
+    return language === "vi" ? `${count} · cập nhật ${ago}` : `${count} · updated ${ago}`;
+  };
   setBiText(
     $("day-header-title"),
     formatDayHeading(date, "vi"),
     formatDayHeading(date, "en"),
     settings
   );
-  const total =
-    days[0]?.items?.length || digest.totalStories || digest.stories.length;
-  const stamp = digest.lastFetchedAt || digest.updatedAt;
-  const ago = stamp ? ` · ${timeAgo(stamp, "vi")}` : "";
-  const agoEn = stamp ? ` · ${timeAgo(stamp, "en")}` : "";
-  setBiText(
-    $("day-header-count"),
-    `${total} tin${ago}`,
-    `${total} ${total === 1 ? "story" : "stories"}${agoEn}`,
-    settings
-  );
+  setBiText($("day-header-count"), summary("vi"), summary("en"), settings);
   setBiText(
     $("day-masthead-date"),
-    `${formatDayHeading(date, "vi")} · ${total} tin`,
-    `${formatDayHeading(date, "en")} · ${total} stories`,
+    formatDayHeading(date, "vi"),
+    formatDayHeading(date, "en"),
     settings
   );
+  setBiText($("day-masthead-count"), summary("vi"), summary("en"), settings);
 
   const prevDate = days[1]?.date || dayBefore(date);
   const prev = $("day-prev");
@@ -1706,8 +1697,11 @@ function renderDayHeader(settings, digest) {
 
 /** Web HomeRail's subscribe + this-week blocks (Trending is rendered by
  *  renderChips into #trending inside the same rail). */
+/** Web HomeRail's subscribe + this-week blocks (Trending is rendered by
+ *  renderChips into #trending inside the same rail). */
 function renderRail(settings) {
-  const vi = primaryLang(settings) === "vi";
+  const lang = primaryLang(settings);
+  const vi = lang === "vi";
   const telegram = $("rail-telegram");
   if (telegram) {
     telegram.href = vi ? "https://t.me/aihomnay" : "https://t.me/aidr_today";
@@ -1715,32 +1709,34 @@ function renderRail(settings) {
     if (label)
       label.textContent = `Telegram ${vi ? "@aihomnay" : "@aidr_today"}`;
   }
+  const edition = lastClosedEdition(Date.now(), lang);
   const weekLink = $("rail-week-link");
-  if (weekLink)
+  if (weekLink) {
+    weekLink.hidden = !edition;
     weekLink.href = withExtRef(
-      "https://aidr.today/weeks",
+      edition ? `https://aidr.today/week/${edition.week}` : "https://aidr.today/weeks",
       "week",
-      primaryLang(settings)
+      lang
     );
+    const label = $("rail-week-label");
+    if (label && edition) {
+      label.textContent = `${homeCopy(settings, "issue")} ${edition.issue} · ${edition.range}`;
+    }
+  }
   const calendar = $("rail-calendar-link");
   if (calendar)
-    calendar.href = withExtRef(
-      "https://aidr.today/calendar",
-      "calendar",
-      primaryLang(settings)
-    );
+    calendar.href = withExtRef("https://aidr.today/calendar", "calendar", lang);
   const emailForm = $("rail-email-form");
   if (emailForm)
-    emailForm.action = withExtRef(
-      "https://aidr.today/subscribe",
-      "email",
-      primaryLang(settings)
-    );
+    emailForm.action = withExtRef("https://aidr.today/subscribe", "email", lang);
   const emailLabel = $("rail-email-label");
   if (emailLabel) emailLabel.textContent = homeCopy(settings, "email");
+  const blurb = $("rail-email-blurb");
+  if (blurb) blurb.textContent = homeCopy(settings, "emailBlurb");
 }
 
 function render(settings, digest) {
+  setLearnedKeywords(digest.learnedKeywords);
   applyChrome(settings);
   tagSiteLinks(document, {}, uiLang(settings));
   renderDayHeader(settings, digest);
@@ -1748,6 +1744,7 @@ function render(settings, digest) {
   renderTldr(settings, digest);
   renderStories(settings, digest);
   renderRail(settings);
+  renderHomeSections(settings);
   applySectionOrder(settings);
   renderFooter(settings, digest);
   applyBriefLayout();
@@ -1835,26 +1832,32 @@ function bindHeaderMenu() {
   });
 }
 
+const PHONE_MENU_TRIGGERS = ["open-menu", "tab-menu"];
+
 function closePhoneMenu() {
   const menu = $("phone-menu");
-  const btn = $("open-menu");
   if (!menu) return;
   menu.hidden = true;
-  if (btn) btn.setAttribute("aria-expanded", "false");
+  for (const id of PHONE_MENU_TRIGGERS) {
+    $(id)?.setAttribute("aria-expanded", "false");
+  }
   document.body.style.overflow = "";
 }
 
 function openPhoneMenu() {
   const menu = $("phone-menu");
-  const btn = $("open-menu");
   if (!menu) return;
   menu.hidden = false;
-  if (btn) btn.setAttribute("aria-expanded", "true");
+  for (const id of PHONE_MENU_TRIGGERS) {
+    $(id)?.setAttribute("aria-expanded", "true");
+  }
   document.body.style.overflow = "hidden";
 }
 
 function bindPhoneMenu() {
-  $("open-menu")?.addEventListener("click", openPhoneMenu);
+  for (const id of PHONE_MENU_TRIGGERS) {
+    $(id)?.addEventListener("click", openPhoneMenu);
+  }
   $("close-menu")?.addEventListener("click", closePhoneMenu);
   $("close-menu-backdrop")?.addEventListener("click", closePhoneMenu);
   $("phone-menu-nav")?.addEventListener("click", (event) => {

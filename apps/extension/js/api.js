@@ -52,6 +52,13 @@ function clipText(value) {
   return typeof value === "string" ? value : "";
 }
 
+/** Names the site learned from topic frequency; the highlighter reads them. */
+function learnedKeywordsFrom(raw) {
+  return Array.isArray(raw?.learnedKeywords)
+    ? raw.learnedKeywords.map(clipText).filter(Boolean)
+    : [];
+}
+
 function normalizeBullet(raw) {
   if (!raw || typeof raw !== "object") {
     return { text: "", item_ids: [], image_url: null };
@@ -244,6 +251,9 @@ export function enrichDigest(digest, feedRaw) {
     items: { ...digest.items, ...itemIndexFromFeed(feedRaw) },
     totalStories: Number(feedRaw.totalStories) || digest.totalStories,
     lastFetchedAt: Number(feedRaw.lastFetchedAt) || digest.lastFetchedAt,
+    learnedKeywords: learnedKeywordsFrom(feedRaw).length
+      ? learnedKeywordsFrom(feedRaw)
+      : digest.learnedKeywords,
   };
 }
 
@@ -295,6 +305,7 @@ export function normalizeDigest(raw) {
     totalStories: Number(raw?.totalStories) || stories.length,
     lastFetchedAt: Number(raw?.lastFetchedAt) || 0,
     updatedAt: Number(raw?.updatedAt) || Date.now(),
+    learnedKeywords: learnedKeywordsFrom(raw),
   };
   if (raw?.items && typeof raw.items === "object") {
     digest.items = { ...digest.items, ...raw.items };
