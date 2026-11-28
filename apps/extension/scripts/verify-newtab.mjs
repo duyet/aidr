@@ -9,8 +9,8 @@
  *   node apps/extension/scripts/verify-newtab.mjs --out /tmp/verify-aidr-extension
  */
 import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { enrichDigest, normalizeDigest } from "../js/api.js";
@@ -113,18 +113,30 @@ function expectedMap(digest) {
 function featureMapFromHtml(html, js = "") {
   const pick = (re) => html.match(re)?.[1]?.trim() || "";
   // Topic chips only: the "Show on home" chips below the feed share the class.
-  const topicNav = html.match(/<nav[^>]*id="section-categories"[\s\S]*?<\/nav>/)?.[0] || "";
+  const topicNav =
+    html.match(/<nav[^>]*id="section-categories"[\s\S]*?<\/nav>/)?.[0] || "";
   const chips = [
     ...topicNav.matchAll(/class="chip[\s"][^>]*>([\s\S]*?)<\/button>/g),
-  ].map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+  ].map((m) =>
+    m[1]
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
   const trends = [
     ...html.matchAll(/class="trend-chip[\s"][^>]*>([\s\S]*?)<\/button>/g),
-  ].map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+  ].map((m) =>
+    m[1]
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
   const thumbs = (html.match(/class="thumb"/g) || []).length;
   const topicTags = (html.match(/class="topic-tag/g) || []).length;
   const colored = (html.match(/topic-colored/g) || []).length;
   // The digest is one row-major <ol class="tldr-grid"> (web TldrBulletList).
-  const lists = (html.match(/<ol class="[^"]*\btldr-list\b[^"]*"/g) || []).length;
+  const lists = (html.match(/<ol class="[^"]*\btldr-list\b[^"]*"/g) || [])
+    .length;
   return {
     brandMark: pick(/class="brand-mark"[^>]*>([\s\S]*?)<\/span>/),
     brandTagline: pick(/id="brand-tagline"[^>]*>([\s\S]*?)<\/span>/),
@@ -316,7 +328,10 @@ async function main() {
   const digest = await loadDigest();
   const expected = expectedMap(digest);
   writeFileSync(join(outDir, "digest.json"), JSON.stringify(digest, null, 2));
-  writeFileSync(join(outDir, "expected.json"), JSON.stringify(expected, null, 2));
+  writeFileSync(
+    join(outDir, "expected.json"),
+    JSON.stringify(expected, null, 2)
+  );
 
   const { server, port } = await startServer(digest);
   const newtabUrl = `http://127.0.0.1:${port}/newtab.html`;
@@ -340,7 +355,8 @@ async function main() {
     const checks = {
       brandMark: observed.brandMark === expected.brandMark,
       brandTagline: observed.brandTagline === expected.brandTagline,
-      searchPlaceholder: observed.searchPlaceholder === expected.searchPlaceholder,
+      searchPlaceholder:
+        observed.searchPlaceholder === expected.searchPlaceholder,
       telegramPresent: observed.telegramPresent === true,
       headerMenuPresent: observed.headerMenuPresent === true,
       headerMenuItems:
@@ -363,7 +379,8 @@ async function main() {
       topicTags: observed.topicTags >= 1,
       colored: observed.colored >= 1,
       trendingPresent: observed.trendingCount === expected.trending.length,
-      categoriesPresent: observed.categoryCount === expected.categories.length + 1,
+      categoriesPresent:
+        observed.categoryCount === expected.categories.length + 1,
       redesignStructure: observed.redesignStructure === true,
       footer: observed.footer === true,
       siteBrand: site.brand,

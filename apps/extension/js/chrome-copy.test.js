@@ -196,14 +196,8 @@ test("masthead image | 2 rows | 3 rows switch replaces the day card chip", () =>
     css,
     /\.day-card-switch \{[^}]*padding:\s*2px;[^}]*border-radius:\s*999px/
   );
-  assert.match(
-    css,
-    /\.day-card-switch button \{[^}]*width:\s*2\.75rem/
-  );
-  assert.match(
-    css,
-    /\.day-card-switch button \{\s*width:\s*2\.25rem;/
-  );
+  assert.match(css, /\.day-card-switch button \{[^}]*width:\s*2\.75rem/);
+  assert.match(css, /\.day-card-switch button \{\s*width:\s*2\.25rem;/);
   assert.match(
     css,
     /\.day-card-switch button\[aria-pressed="true"\] \{\s*background:\s*var\(--primary\);\s*color:\s*var\(--primary-foreground\)/

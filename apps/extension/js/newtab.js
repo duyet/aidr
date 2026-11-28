@@ -5,8 +5,8 @@ import {
   setLearnedKeywords,
   tagsForHighlight,
 } from "./highlight.js";
-import { icon } from "./icons.js";
 import { t, uiLang } from "./i18n.js";
+import { icon } from "./icons.js";
 import { tagSiteLinks, withExtRef } from "./ref.js";
 import {
   applyAppearance,
@@ -262,7 +262,12 @@ function categoryLabelNode(name, selected = false) {
 
 /** Key words in a title: `kw-num` / `kw-entity` spans (the digest), or with
  *  `ink` every key word in the story's category color (rows and the lead). */
-function appendKeywords(parent, text, tags, { ink = false, category = null } = {}) {
+function appendKeywords(
+  parent,
+  text,
+  tags,
+  { ink = false, category = null } = {}
+) {
   for (const segment of highlightKeywords(text, tagsForHighlight(tags))) {
     if (!segment.kind) {
       parent.append(document.createTextNode(segment.text));
@@ -270,7 +275,11 @@ function appendKeywords(parent, text, tags, { ink = false, category = null } = {
     }
     const span = el(
       "span",
-      ink ? "topic-ink kw-ink" : segment.kind === "num" ? "kw-num" : "kw-entity",
+      ink
+        ? "topic-ink kw-ink"
+        : segment.kind === "num"
+          ? "kw-num"
+          : "kw-entity",
       segment.text
     );
     if (ink && category) paintCategory(span, category);
@@ -295,7 +304,11 @@ function bulletTags(digest, bullet) {
 /** The brand semicolon on the soft yellow ground, for a story with no usable
  *  picture (web StoryThumbTile). */
 function thumbTile(extraClass = "") {
-  const tile = el("span", extraClass ? `thumb-tile ${extraClass}` : "thumb-tile", ";");
+  const tile = el(
+    "span",
+    extraClass ? `thumb-tile ${extraClass}` : "thumb-tile",
+    ";"
+  );
   tile.setAttribute("aria-hidden", "true");
   return tile;
 }
@@ -514,7 +527,11 @@ function renderFooter(settings, digest) {
     settings
   );
   const link = el("a", "", label);
-  link.href = withExtRef("https://aidr.today/data?tab=runs", "footer", primaryLang(settings));
+  link.href = withExtRef(
+    "https://aidr.today/data?tab=runs",
+    "footer",
+    primaryLang(settings)
+  );
   node.append(" · ", link);
 }
 
@@ -611,7 +628,11 @@ function renderTldrMasthead(settings, date) {
   if (isBilingual(settings)) {
     const other = dayOgDateParts(date, secondaryLang(settings));
     if (other) {
-      const second = el("span", "bi-second", `${other.weekday} · ${other.monthYear}`);
+      const second = el(
+        "span",
+        "bi-second",
+        `${other.weekday} · ${other.monthYear}`
+      );
       second.lang = secondaryLang(settings);
       link.append(second);
     }
@@ -844,17 +865,17 @@ function renderTldr(settings, digest) {
   for (const option of options) {
     const btn = el("button", "", String(option.effective));
     btn.type = "button";
-    btn.setAttribute(
-      "aria-pressed",
-      option === selected ? "true" : "false"
-    );
+    btn.setAttribute("aria-pressed", option === selected ? "true" : "false");
     btn.addEventListener("click", async () => {
       await pushSettings({ ...settings, tldrCount: option.nominal });
     });
     counts.append(btn);
   }
 
-  const shown = bullets.slice(0, selected ? selected.effective : bullets.length);
+  const shown = bullets.slice(
+    0,
+    selected ? selected.effective : bullets.length
+  );
   shown.forEach((bullet, i) => {
     const primaryId = bullet.item_ids?.[0];
     cols.append(
@@ -1201,7 +1222,11 @@ function renderStoryRow(settings, story, index, hot, showVotes) {
     body.append(summaryEl);
   }
   if (secondSummary) {
-    const other = el("span", "bi-second row-summary np-justify", secondSummary.text);
+    const other = el(
+      "span",
+      "bi-second row-summary np-justify",
+      secondSummary.text
+    );
     other.lang = secondSummary.lang;
     body.append(other);
   }
@@ -1353,7 +1378,10 @@ function renderLeadStory(settings, story) {
       el("span", "", "·"),
       el("span", "", timeAgo(story.published_at, lang))
     );
-    kicker.children[kicker.children.length - 2].setAttribute("aria-hidden", "true");
+    kicker.children[kicker.children.length - 2].setAttribute(
+      "aria-hidden",
+      "true"
+    );
   }
   body.append(kicker);
 
@@ -1394,12 +1422,20 @@ function renderLeadStory(settings, story) {
   if (settings.summaries || settings.layout === "newspaper") {
     const summaries = summaryRows(story, settings);
     if (summaries[0]) {
-      const summary = el("p", "lead-story-summary np-justify", summaries[0].text);
+      const summary = el(
+        "p",
+        "lead-story-summary np-justify",
+        summaries[0].text
+      );
       summary.lang = summaries[0].lang;
       body.append(summary);
     }
     if (summaries[1]) {
-      const second = el("p", "bi-second lead-story-summary np-justify", summaries[1].text);
+      const second = el(
+        "p",
+        "bi-second lead-story-summary np-justify",
+        summaries[1].text
+      );
       second.lang = summaries[1].lang;
       body.append(second);
     }
@@ -1436,7 +1472,10 @@ function renderLeadStory(settings, story) {
     (story.id
       ? `${NEWS_SITE}/api/og/${story.id}.png?lang=${lang === "en" ? "en" : "vi"}`
       : "");
-  article.append(body, el("div", "lead-story-media", thumbNode(picture, "lead-thumb")));
+  article.append(
+    body,
+    el("div", "lead-story-media", thumbNode(picture, "lead-thumb"))
+  );
   return article;
 }
 
@@ -1482,7 +1521,12 @@ function renderDaySection(settings, day, { fromLead, showVotes }) {
 
     const count = el("span", "day-count");
     const n = items.length;
-    setBiText(count, `${n} tin`, `${n} ${n === 1 ? "story" : "stories"}`, settings);
+    setBiText(
+      count,
+      `${n} tin`,
+      `${n} ${n === 1 ? "story" : "stories"}`,
+      settings
+    );
 
     const cats = el("span", "day-cats");
     const entries = Object.entries(day.categoryCounts || {}).sort(
@@ -1492,11 +1536,19 @@ function renderDaySection(settings, day, { fromLead, showVotes }) {
     const moreCats = entries.length - shownCats.length;
     for (const [name, c] of shownCats) {
       cats.append(
-        el("span", "", categoryLabelNode(name), " ", el("strong", "", String(c)))
+        el(
+          "span",
+          "",
+          categoryLabelNode(name),
+          " ",
+          el("strong", "", String(c))
+        )
       );
     }
     if (moreCats > 0) {
-      cats.append(el("span", "", lang === "vi" ? `+${moreCats} nữa` : `+${moreCats} more`));
+      cats.append(
+        el("span", "", lang === "vi" ? `+${moreCats} nữa` : `+${moreCats} more`)
+      );
     }
     head.append(title, count, cats);
   }
@@ -1512,7 +1564,9 @@ function renderDaySection(settings, day, { fromLead, showVotes }) {
     visible.forEach((story, i) => {
       const hot =
         !fromLead && i === 0 && story.rank_score > 0 && items.length > 1;
-      list.append(renderStoryRow(settings, story, firstRank + i, hot, showVotes));
+      list.append(
+        renderStoryRow(settings, story, firstRank + i, hot, showVotes)
+      );
     });
     section.querySelector(".day-more")?.remove();
     const hidden = items.length - visible.length;
@@ -1520,7 +1574,12 @@ function renderDaySection(settings, day, { fromLead, showVotes }) {
       const button = el("button", "btn-link");
       button.type = "button";
       const label = el("span", "");
-      setBiText(label, `Xem thêm (${hidden})`, `Load more (${hidden})`, settings);
+      setBiText(
+        label,
+        `Xem thêm (${hidden})`,
+        `Load more (${hidden})`,
+        settings
+      );
       button.replaceChildren(icon("chevron-down"), label);
       button.addEventListener("click", () => {
         expanded = true;
@@ -1564,10 +1623,20 @@ function renderStories(settings, digest) {
 const SECTION_ORDER_KEYS = ["categories", "trending", "tldr", "days"];
 
 const SECTION_TILES = [
-  { key: "categories", icon: "layout-grid", vi: "Danh mục", en: "Category nav" },
+  {
+    key: "categories",
+    icon: "layout-grid",
+    vi: "Danh mục",
+    en: "Category nav",
+  },
   { key: "trending", icon: "trending-up", vi: "Xu hướng", en: "Trending" },
   { key: "tldr", icon: "sparkles", vi: "AI;DR", en: "AI;DR" },
-  { key: "days", icon: "calendar-days", vi: "Bảng tin theo ngày", en: "Daily feed" },
+  {
+    key: "days",
+    icon: "calendar-days",
+    vi: "Bảng tin theo ngày",
+    en: "Daily feed",
+  },
 ];
 
 /** Web HomeSections: one chip per home section, pressed while it shows. */
@@ -1665,7 +1734,9 @@ function renderDayHeader(settings, digest) {
     const count = language === "vi" ? `${total} tin` : `${total} stories`;
     if (!stamp) return count;
     const ago = timeAgo(stamp, language);
-    return language === "vi" ? `${count} · cập nhật ${ago}` : `${count} · updated ${ago}`;
+    return language === "vi"
+      ? `${count} · cập nhật ${ago}`
+      : `${count} · updated ${ago}`;
   };
   setBiText(
     $("day-header-title"),
@@ -1714,7 +1785,9 @@ function renderRail(settings) {
   if (weekLink) {
     weekLink.hidden = !edition;
     weekLink.href = withExtRef(
-      edition ? `https://aidr.today/week/${edition.week}` : "https://aidr.today/weeks",
+      edition
+        ? `https://aidr.today/week/${edition.week}`
+        : "https://aidr.today/weeks",
       "week",
       lang
     );
@@ -1728,7 +1801,11 @@ function renderRail(settings) {
     calendar.href = withExtRef("https://aidr.today/calendar", "calendar", lang);
   const emailForm = $("rail-email-form");
   if (emailForm)
-    emailForm.action = withExtRef("https://aidr.today/subscribe", "email", lang);
+    emailForm.action = withExtRef(
+      "https://aidr.today/subscribe",
+      "email",
+      lang
+    );
   const emailLabel = $("rail-email-label");
   if (emailLabel) emailLabel.textContent = homeCopy(settings, "email");
   const blurb = $("rail-email-blurb");

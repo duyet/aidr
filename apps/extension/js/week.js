@@ -53,7 +53,9 @@ export function weekDates(week) {
   const num = Number(match[2]);
   if (num < 1 || num > 53) return null;
   const monday = isoYearStartMs(year) + (num - 1) * 7 * DAY_MS;
-  const dates = Array.from({ length: 7 }, (_, i) => isoDate(monday + i * DAY_MS));
+  const dates = Array.from({ length: 7 }, (_, i) =>
+    isoDate(monday + i * DAY_MS)
+  );
   return isoWeekOfDate(dates[0]) === week ? dates : null;
 }
 

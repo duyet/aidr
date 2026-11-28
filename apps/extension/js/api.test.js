@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import {
+  CACHE_FRESH_MS,
   digestPaintKey,
   enrichDigest,
   feedUrl,
   fetchDigest,
   fetchStory,
-  CACHE_FRESH_MS,
   hydrateDigest,
   isCacheFresh,
   normalizeDigest,
@@ -441,7 +441,10 @@ test("fetchDigest force bypasses the HTTP cache for the reload button", async ()
   const opts = [];
   globalThis.fetch = async (_url, init) => {
     opts.push(init);
-    return jsonResponse({ tldr: null, stories: [{ id: "1", url: "https://x" }] });
+    return jsonResponse({
+      tldr: null,
+      stories: [{ id: "1", url: "https://x" }],
+    });
   };
   await fetchDigest("https://aidr.today", { campaign: "refresh", force: true });
   assert.ok(opts.length > 0);
@@ -452,13 +455,13 @@ test("prefetchDigest only fetches when the cache is stale", async () => {
   const calls = [];
   globalThis.fetch = async (url) => {
     calls.push(String(url));
-    return jsonResponse({ tldr: null, stories: [{ id: "p", url: "https://p" }] });
+    return jsonResponse({
+      tldr: null,
+      stories: [{ id: "p", url: "https://p" }],
+    });
   };
   assert.equal(await prefetchDigest("https://aidr.today", "en"), true);
-  assert.equal(
-    new URL(calls[0]).searchParams.get("utm_content"),
-    "prefetch"
-  );
+  assert.equal(new URL(calls[0]).searchParams.get("utm_content"), "prefetch");
   const fetched = calls.length;
   // The alarm fires again right away: the saved copy is fresh, no traffic.
   assert.equal(await prefetchDigest("https://aidr.today", "en"), false);

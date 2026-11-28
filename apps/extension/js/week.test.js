@@ -26,6 +26,13 @@ test("issue numbers count from 2026-W40 and the rail line reads like the site", 
   assert.equal(weekIssue("2026-W40"), 1);
   assert.equal(weekIssue("2026-W39"), null);
   const edition = lastClosedEdition(Date.parse("2026-11-28T09:00:00Z"), "vi");
-  assert.deepEqual(edition, { week: "2026-W47", issue: 8, range: "16 – 22 tháng 11, 2026" });
-  assert.equal(formatWeekRange("2026-11-16", "2026-11-22", "en"), "Nov 16 – 22, 2026");
+  assert.deepEqual(edition, {
+    week: "2026-W47",
+    issue: 8,
+    range: "16 – 22 tháng 11, 2026",
+  });
+  assert.equal(
+    formatWeekRange("2026-11-16", "2026-11-22", "en"),
+    "Nov 16 – 22, 2026"
+  );
 });

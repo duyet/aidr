@@ -77,7 +77,8 @@ test("item tags stay ahead of fallback keywords", () => {
   assert.ok(TITLE_KEYWORDS.includes("OpenAI"));
 });
 
-const nums = (text) => numberRanges(text).map((r) => text.slice(r.start, r.end));
+const nums = (text) =>
+  numberRanges(text).map((r) => text.slice(r.start, r.end));
 const marked = (text, tags = []) =>
   highlightKeywords(text, tags)
     .filter((s) => s.kind)
@@ -85,7 +86,9 @@ const marked = (text, tags = []) =>
 
 test("numbers take Vietnamese money with its scale and currency words", () => {
   assert.deepEqual(
-    nums("OpenAI gom được ~11 tỷ USD, định giá 1,25 nghìn tỷ USD, mục tiêu 30 tỷ USD."),
+    nums(
+      "OpenAI gom được ~11 tỷ USD, định giá 1,25 nghìn tỷ USD, mục tiêu 30 tỷ USD."
+    ),
     ["~11 tỷ USD", "1,25 nghìn tỷ USD", "30 tỷ USD"]
   );
 });

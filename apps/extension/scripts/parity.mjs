@@ -38,7 +38,10 @@ try {
       const size = `${width},${height}`;
       const name = `${lang}-${width}`;
       await runChrome(
-        [`--screenshot=${join(outDir, `${name}-site.png`)}`, `${SITE}/?lang=${lang}`],
+        [
+          `--screenshot=${join(outDir, `${name}-site.png`)}`,
+          `${SITE}/?lang=${lang}`,
+        ],
         size
       );
       await runChrome(

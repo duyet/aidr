@@ -752,7 +752,9 @@ html[data-theme="dark"] .news-content {
   font-weight: 400;
   line-height: 1;
   text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .aa-btn:hover {
@@ -1113,7 +1115,9 @@ html[data-theme="dark"] .news-content {
 .lang-toggle button[aria-pressed="true"] {
   background: var(--card);
   color: var(--foreground);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 10%), 0 1px 2px -1px rgb(0 0 0 / 10%);
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 10%),
+    0 1px 2px -1px rgb(0 0 0 / 10%);
 }
 
 .lang-toggle button:hover:not([aria-pressed="true"]) {
@@ -3635,7 +3639,9 @@ html[data-theme="dark"] .story-topic-colored {
 .layout-switch button[aria-pressed="true"] {
   background: var(--card);
   color: var(--foreground);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 10%), 0 1px 2px -1px rgb(0 0 0 / 10%);
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 10%),
+    0 1px 2px -1px rgb(0 0 0 / 10%);
 }
 
 .layout-switch button:hover:not([aria-pressed="true"]) {
