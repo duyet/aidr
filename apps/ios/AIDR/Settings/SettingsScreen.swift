@@ -103,6 +103,11 @@ struct SettingsScreen: View {
         .accessibilityIdentifier("settings-test-button")
       }
 
+      LabeledContent(t("Bản tin đã lưu", "Saved edition")) {
+        savedEditionAge
+      }
+      .accessibilityIdentifier("settings-edition-age")
+
       if model.authorization == .denied {
         Button(t("Mở Cài đặt của iPhone", "Open iPhone Settings")) {
           if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
@@ -181,6 +186,24 @@ struct SettingsScreen: View {
       ProgressView()
     case .idle:
       EmptyView()
+    }
+  }
+
+  /// How old the edition a notification would carry is, counted afresh every minute.
+  private var savedEditionAge: some View {
+    TimelineView(.everyMinute) { context in
+      Group {
+        if let updated = model.editionUpdated {
+          let formatter = RelativeDateTimeFormatter()
+          let _ = formatter.locale = shown.locale
+          let _ = formatter.unitsStyle = .short
+          Text(t("Cập nhật ", "Updated ") + formatter.localizedString(for: updated, relativeTo: context.date))
+        } else {
+          Text(t("Chưa có", "None yet"))
+        }
+      }
+      .font(.inter(14, relativeTo: .callout))
+      .foregroundStyle(Palette.mutedForeground)
     }
   }
 

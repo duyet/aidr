@@ -18,6 +18,9 @@ final class SettingsJourneyTests: XCTestCase {
     capture(app, "settings-main-vi")
     scroll(app, to: "settings-layout")
     capture(app, "settings-layout-vi")
+    scroll(app, to: "settings-notify-time")
+    XCTAssertTrue(element(app, "settings-test-button").exists, "test notification button")
+    capture(app, "settings-notify-vi")
     scroll(app, to: "settings-version")
     capture(app, "settings-links-vi")
   }
@@ -132,9 +135,9 @@ final class SettingsJourneyTests: XCTestCase {
       XCTFail("the Settings sheet never appeared")
       return
     }
-    for id in ["settings-done", "settings-text-size", "settings-accent-yellow", "settings-highlight", "settings-text-preview"] {
-      XCTAssertTrue(element(app, id).exists, id)
-    }
+    // Only what fits above the fold: the form builds the rest as it scrolls.
+    XCTAssertTrue(element(app, "settings-done").exists, "Done button")
+    XCTAssertTrue(element(app, "settings-appearance-cream").exists, "appearance swatches")
     // Let the screen behind the sheet settle, then the sheet's own animation.
     Thread.sleep(forTimeInterval: 2)
   }

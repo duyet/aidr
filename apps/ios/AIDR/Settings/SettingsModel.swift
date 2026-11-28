@@ -10,12 +10,15 @@ final class SettingsModel {
 
   private(set) var authorization: NotifyAuthorization = .notDetermined
   private(set) var test: TestState = .idle
+  /// When the saved edition was published (the feed's updatedAt, not when it was fetched).
+  private(set) var editionUpdated: Date?
 
   private let scheduler = NotifyScheduler.shared
   private let snapshots = SnapshotStore()
 
   func refreshAuthorization() async {
     authorization = await scheduler.authorization()
+    editionUpdated = snapshots.load()?.updatedDate
   }
 
   /// Asks for permission the first time. False leaves the switch off.
