@@ -1,0 +1,84 @@
+name: AIDR
+options:
+  bundleIdPrefix: oneni.aidr
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+    SWIFT_STRICT_CONCURRENCY: complete
+packages:
+  AIDRKit:
+    path: AIDRKit
+targets:
+  AIDR:
+    type: application
+    platform: iOS
+    sources:
+      - path: AIDR
+        excludes:
+          - Resources/Fonts/Inter-LICENSE.txt
+    dependencies:
+      - package: AIDRKit
+    info:
+      path: AIDR/Info.plist
+      properties:
+        CFBundleDisplayName: "AI;DR"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, vi]
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIAppFonts:
+          - Inter-Regular.ttf
+          - Inter-Medium.ttf
+          - Inter-SemiBold.ttf
+          - Inter-Bold.ttf
+        ITSAppUsesNonExemptEncryption: false
+        BGTaskSchedulerPermittedIdentifiers: [oneni.aidr.app.refresh]
+        UIBackgroundModes: [fetch]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: oneni.aidr.app
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+  AIDRKitTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AIDRKitTests
+    dependencies:
+      - target: AIDR
+      - package: AIDRKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: oneni.aidr.app.kittests
+        GENERATE_INFOPLIST_FILE: YES
+  AIDRUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: AIDRUITests
+    dependencies:
+      - target: AIDR
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: oneni.aidr.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: AIDR
+schemes:
+  AIDR:
+    build:
+      targets:
+        AIDR: all
+    test:
+      config: Debug
+      targets:
+        - AIDRKitTests
+        - AIDRUITests

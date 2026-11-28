@@ -1,0 +1,116 @@
+name: ios
+
+on:
+  push:
+    branches: [feat/ios-app, master]
+    paths:
+      - "apps/ios/**"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # macos-26 is the arm64 image. Its Xcode 26.6 carries the iOS 26.5 SDK and
+    # simulators (actions/runner-images, images/macos/macos-26-arm64-Readme.md).
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Pick simulator
+        id: sim
+        run: |
+          udid=$(xcrun simctl list devices available -j | python3 scripts/pick-simulator.py)
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$udid" || true
+
+      - name: Unit tests
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild test -project AIDR.xcodeproj -scheme AIDR \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -only-testing:AIDRKitTests \
+            -resultBundlePath build/unit.xcresult -quiet 2>&1 | tee build/unit.log
+
+      - name: UI tests (screenshot journey)
+        run: |
+          set -o pipefail
+          xcodebuild test -project AIDR.xcodeproj -scheme AIDR \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -only-testing:AIDRUITests \
+            -resultBundlePath build/ui.xcresult -quiet 2>&1 | tee build/ui.log
+
+      - name: Export screenshots
+        if: always()
+        run: |
+          test -d build/ui.xcresult || exit 0
+          xcrun xcresulttool export attachments --path build/ui.xcresult --output-path build/attachments
+          python3 scripts/export-screenshots.py build/attachments build/screenshots
+
+      - name: Test summary
+        if: always()
+        run: |
+          mkdir -p build/summary
+          for r in unit ui; do
+            test -d "build/$r.xcresult" || continue
+            xcrun xcresulttool get test-results summary --path "build/$r.xcresult" --compact > "build/summary/$r.json"
+            python3 -c 'import json,sys; s=json.load(open(sys.argv[1])); print("| %s | %s | %s passed | %s failed | %s skipped |" % (sys.argv[2], s.get("result"), s.get("passedTests"), s.get("failedTests"), s.get("skippedTests")))' "build/summary/$r.json" "$r" | tee -a build/summary/summary.md >> "$GITHUB_STEP_SUMMARY"
+          done
+          cp build/*.log build/summary/ 2>/dev/null || true
+
+      - name: Archive unsigned IPA
+        run: |
+          set -o pipefail
+          xcodebuild archive -project AIDR.xcodeproj -scheme AIDR \
+            -configuration Release -destination "generic/platform=iOS" \
+            -archivePath build/AIDR.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -quiet 2>&1 | tee build/archive.log
+          mkdir -p build/ipa/Payload
+          cp -R build/AIDR.xcarchive/Products/Applications/AIDR.app build/ipa/Payload/
+          (cd build/ipa && zip -qry ../AIDR-unsigned.ipa Payload)
+          unzip -l build/AIDR-unsigned.ipa | grep -E "Payload/AIDR.app/(AIDR|Info.plist)$"
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ios-screenshots
+          path: apps/ios/build/screenshots
+          if-no-files-found: warn
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: AIDR-unsigned-ipa
+          path: apps/ios/build/AIDR-unsigned.ipa
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-summary
+          path: apps/ios/build/summary
+          if-no-files-found: warn

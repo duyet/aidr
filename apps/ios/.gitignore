@@ -1,0 +1,7 @@
+*.xcodeproj
+build/
+DerivedData/
+.swiftpm/
+.build/
+# xcodegen writes it from project.yml
+AIDR/Info.plist
