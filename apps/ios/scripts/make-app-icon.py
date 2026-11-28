@@ -1,86 +1,84 @@
-"""Draw the AI;DR app icons: the ";" mark in light, dark and tinted looks.
+"""Draw the AI;DR app icons and launch logo from the site's vector wordmark.
 
-    python3 apps/ios/scripts/make-app-icon.py
+    CHROME_BIN=/path/to/chrome python3 apps/ios/scripts/make-app-icon.py
 
-Writes AppIcon.png, AppIcon-Dark.png and AppIcon-Tinted.png (1024x1024 RGB,
-no alpha, as App Store Connect requires) into
-AIDR/Resources/Assets.xcassets/AppIcon.appiconset. iOS applies the corner
-mask and the Liquid Glass treatment itself.
+The wordmark is the outlined path in apps/web/public/favicon.svg (the same
+mark as the site's apple-touch-icon), so the app and the site never drift.
+Headless Chrome rasterizes it. Writes:
+
+- AppIcon.appiconset: AppIcon.png (yellow), AppIcon-Dark.png, AppIcon-Tinted.png,
+  1024x1024 RGB with no alpha, as App Store Connect requires. iOS masks the
+  corners itself, so the tiles are full bleed.
+- LaunchLogo.imageset: the rounded yellow tile at 1x, 2x and 3x.
 """
 
+import os
+import re
+import subprocess
+import tempfile
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
-
-SIZE = 1024
-SCALE = 4  # draw large, then downsample for clean edges
-BIG = SIZE * SCALE
+from PIL import Image
 
 ios = Path(__file__).resolve().parent.parent
-FONT = ios / "AIDR/Resources/Fonts/Inter-Bold.ttf"
-OUT = ios / "AIDR/Resources/Assets.xcassets/AppIcon.appiconset"
+repo = ios.parent.parent
+favicon = (repo / "apps/web/public/favicon.svg").read_text()
+PATH_D = re.search(r' d="([^"]+)"', favicon).group(1)
+# The path's own box in favicon units (cap height 22.2..91, comma to 106.5).
+X0, X1, CAP0, CAP1 = 2.5, 257.9, 22.2, 91.0
+ASSETS = ios / "AIDR/Resources/Assets.xcassets"
+CHROME = os.environ.get("CHROME_BIN") or "google-chrome"
+
+BRAND = "#f5c518"  # --brand
+INK = "#1c1917"  # favicon wordmark ink
 
 
-def hex_rgb(value):
-    value = value.lstrip("#")
-    return tuple(int(value[i : i + 2], 16) for i in (0, 2, 4))
-
-
-def gradient(top, bottom):
-    """Vertical gradient from top to bottom color."""
-    a, b = hex_rgb(top), hex_rgb(bottom)
-    column = Image.new("RGB", (1, BIG))
-    for y in range(BIG):
-        t = y / (BIG - 1)
-        column.putpixel((0, y), tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3)))
-    return column.resize((BIG, BIG))
-
-
-def glow(color, strength):
-    """Soft light from the top left, as if lit from above."""
-    light = Image.new("L", (BIG, BIG), 0)
-    ImageDraw.Draw(light).ellipse(
-        (-BIG * 0.35, -BIG * 0.45, BIG * 0.85, BIG * 0.55), fill=int(255 * strength)
+def svg(width, height, bg, ink, word_width, radius=0):
+    """A tile with the wordmark centered: word_width is a share of width."""
+    scale = width * word_width / (X1 - X0)
+    tx = (width - (X1 - X0) * scale) / 2 - X0 * scale
+    ty = height / 2 - (CAP0 + CAP1) / 2 * scale
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+        f'viewBox="0 0 {width} {height}">'
+        f'<rect width="{width}" height="{height}" rx="{radius}" fill="{bg}"/>'
+        f'<path fill="{ink}" transform="translate({tx:.3f} {ty:.3f}) scale({scale:.5f})" d="{PATH_D}"/>'
+        "</svg>"
     )
-    light = light.filter(ImageFilter.GaussianBlur(BIG * 0.12))
-    return Image.new("RGB", (BIG, BIG), color), light
 
 
-def mark_mask():
-    """The ";" glyph, optically centered, as an L mask."""
-    font = ImageFont.truetype(str(FONT), int(BIG * 0.72))
-    mask = Image.new("L", (BIG, BIG), 0)
-    draw = ImageDraw.Draw(mask)
-    left, top, right, bottom = draw.textbbox((0, 0), ";", font=font)
-    x = (BIG - (right - left)) / 2 - left + BIG * 0.012  # the tail leans left
-    y = (BIG - (bottom - top)) / 2 - top + BIG * 0.02
-    draw.text((x, y), ";", font=font, fill=255)
-    return mask
+def render(markup, width, height, out, alpha):
+    with tempfile.TemporaryDirectory() as tmp:
+        page = Path(tmp) / "icon.html"
+        page.write_text(
+            "<html><body style='margin:0;background:transparent'>" + markup + "</body></html>"
+        )
+        shot = Path(tmp) / "shot.png"
+        subprocess.run(
+            [CHROME, "--headless=new", "--disable-gpu", "--no-sandbox", "--hide-scrollbars",
+             "--default-background-color=00000000", # Headless Chrome's viewport is shorter than its window; pad and crop.
+             f"--window-size={width},{height + 400}",
+             f"--screenshot={shot}", page.as_uri()],
+            check=True, capture_output=True,
+        )
+        image = Image.open(shot).crop((0, 0, width, height))
+        image = image.convert("RGBA" if alpha else "RGB")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        image.save(out)
+        print(out, image.size, image.mode)
 
 
-def icon(top, bottom, ink, shadow_alpha, light_strength):
-    base = gradient(top, bottom)
-    light, light_mask = glow("#ffffff", light_strength)
-    base = Image.composite(light, base, light_mask)
-    mask = mark_mask()
-    shadow = mask.filter(ImageFilter.GaussianBlur(BIG * 0.018))
-    shadow = ImageChops.offset(shadow, 0, int(BIG * 0.014)).point(
-        lambda v: int(v * shadow_alpha)
-    )
-    base = Image.composite(Image.new("RGB", (BIG, BIG), "#000000"), base, shadow)
-    base = Image.composite(Image.new("RGB", (BIG, BIG), ink), base, mask)
-    return base.resize((SIZE, SIZE), Image.LANCZOS)
+icons = ASSETS / "AppIcon.appiconset"
+# The wordmark spans 68% of the tile, like the site's apple-touch-icon.
+render(svg(1024, 1024, BRAND, INK, 0.68), 1024, 1024, icons / "AppIcon.png", alpha=False)
+render(svg(1024, 1024, "#141310", BRAND, 0.68), 1024, 1024, icons / "AppIcon-Dark.png", alpha=False)
+tinted = icons / "AppIcon-Tinted.png"
+render(svg(1024, 1024, "#1a1a1a", "#f2f2f2", 0.68), 1024, 1024, tinted, alpha=False)
+Image.open(tinted).convert("L").convert("RGB").save(tinted)
 
-
-OUT.mkdir(parents=True, exist_ok=True)
-looks = {
-    # Brand yellow (--brand #f5c518) warming to amber at the bottom.
-    "AppIcon.png": icon("#ffd84d", "#efb400", "#0a0a0a", 0.22, 0.28),
-    # Night: the yellow mark on warm black.
-    "AppIcon-Dark.png": icon("#24211a", "#0a0a0a", "#f5c518", 0.5, 0.06),
-    # Tinted: iOS recolors a grayscale image, so keep it light on dark.
-    "AppIcon-Tinted.png": icon("#3a3a3a", "#141414", "#f2f2f2", 0.5, 0.05).convert("L").convert("RGB"),
-}
-for name, image in looks.items():
-    image.save(OUT / name)
-    print(OUT / name)
+# Launch logo: the site's 160x48 rounded tile (apps/extension/icons/logo.svg).
+launch = ASSETS / "LaunchLogo.imageset"
+for factor in (1, 2, 3):
+    w, h = 160 * factor, 48 * factor
+    suffix = "" if factor == 1 else f"@{factor}x"
+    render(svg(w, h, BRAND, INK, 0.66, radius=10 * factor), w, h, launch / f"LaunchLogo{suffix}.png", alpha=True)
