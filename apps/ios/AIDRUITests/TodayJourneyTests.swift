@@ -43,6 +43,26 @@ final class TodayJourneyTests: XCTestCase {
     capture(app, "today-dark-ranked-en")
   }
 
+  /// Reader prefs reach the list: newspaper layout (lead card, serif headline,
+  /// summaries) with both languages, and comfortable with one highlight color.
+  @MainActor
+  func testTodayLayoutsFollowReaderPrefs() {
+    let newspaper = launch(language: "vi", locale: "vi_VN", prefs: "<7b226c61796f7574223a226e6577737061706572222c2273756d6d6172696573223a747275652c2262696c696e6775616c223a747275652c2264696765737456696577223a22696d616765227d>")
+    assertDigest(newspaper)
+    scroll(newspaper, until: "ranked-header")
+    XCTAssertTrue(element(newspaper, "ranked-row-1").waitForExistence(timeout: 5))
+    Thread.sleep(forTimeInterval: 3)
+    capture(newspaper, "today-newspaper-vi")
+    newspaper.terminate()
+
+    let comfortable = launch(language: "en", locale: "en_US", prefs: "<7b226c61796f7574223a22636f6d666f727461626c65222c2273756d6d6172696573223a747275652c227468756d626e61696c73223a747275652c22686967686c69676874223a226f6e65222c22616363656e74223a22626c7565227d>")
+    assertDigest(comfortable)
+    scroll(comfortable, until: "ranked-header")
+    XCTAssertTrue(element(comfortable, "ranked-row-1").waitForExistence(timeout: 5))
+    Thread.sleep(forTimeInterval: 3)
+    capture(comfortable, "today-comfortable-en")
+  }
+
   /// Online launch writes the snapshot; a relaunch against an unreachable API
   /// still paints the edition from disk and says it is offline.
   @MainActor
