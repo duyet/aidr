@@ -41,6 +41,7 @@ targets:
           - Inter-SemiBold.ttf
           - Inter-Bold.ttf
         ITSAppUsesNonExemptEncryption: false
+        NSPhotoLibraryAddUsageDescription: "Save AI;DR story cards to your photo library."
         BGTaskSchedulerPermittedIdentifiers: [oneni.aidr.app.refresh]
         UIBackgroundModes: [fetch]
     settings:
