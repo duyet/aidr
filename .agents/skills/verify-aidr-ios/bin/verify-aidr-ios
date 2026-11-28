@@ -87,7 +87,7 @@ drive() {
   say "watching run $run ($(gh run view "$run" -R "$REPO" --json url --jq .url))"
   local status=0
   gh run watch "$run" -R "$REPO" --exit-status --interval 30 >/dev/null || status=$?
-  evidence "$run" || true
+  ( evidence "$run" ) || true
   [[ $status == 0 ]] || fail "run $run did not succeed; read: gh run view $run -R $REPO --log-failed"
 }
 
