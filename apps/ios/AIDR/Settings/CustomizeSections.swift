@@ -109,12 +109,12 @@ struct CustomizeSections: View {
             .foregroundStyle(Palette.mutedForeground)
         }
         HStack(spacing: Spacing.md) {
-          Text("A").font(.system(size: 13, weight: .semibold)).foregroundStyle(Palette.mutedForeground)
+          Text("A").font(.inter(13, .semibold, relativeTo: .caption)).foregroundStyle(Palette.mutedForeground)
           Slider(value: sizeIndex, in: 0...Double(ReaderTextSize.allCases.count - 1), step: 1)
             .tint(Palette.accent)
             .accessibilityLabel(t("Cỡ chữ", "Text size"))
             .accessibilityIdentifier("settings-text-size")
-          Text("A").font(.system(size: 24, weight: .semibold)).foregroundStyle(Palette.mutedForeground)
+          Text("A").font(.inter(24, .semibold, relativeTo: .title2)).foregroundStyle(Palette.mutedForeground)
         }
       }
       fontPicker(t("Chữ nội dung", "Body font"), selection: $store.prefs.bodyFont, id: "settings-body-font")

@@ -91,6 +91,7 @@ final class SettingsJourneyTests: XCTestCase {
     element(app, "settings-appearance-cream").tap()
     XCTAssertTrue(element(app, "settings-appearance-cream").isSelected)
     XCTAssertFalse(element(app, "settings-appearance-system").isSelected)
+    scroll(app, to: "settings-accent-violet")
     element(app, "settings-accent-violet").tap()
     XCTAssertTrue(element(app, "settings-accent-violet").isSelected)
     scroll(app, to: "settings-reset")

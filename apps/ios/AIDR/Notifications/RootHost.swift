@@ -19,10 +19,12 @@ struct RootHost: View {
       .sheet(item: storyTarget) { target in
         StorySheet(id: target.id, lang: lang)
           .background(Palette.background)
+          .dynamicTypeSize(prefs.textSize.dynamicTypeRange)
       }
       .sheet(isPresented: $showSettings) {
         SettingsScreen(lang: lang)
           .environment(prefsStore)
+          .dynamicTypeSize(prefs.textSize.dynamicTypeRange)
       }
       .task { await BackgroundRefresh.foreground() }
       .onChange(of: scenePhase) { _, phase in
