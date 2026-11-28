@@ -624,12 +624,14 @@ no fill-in from the other language.
 `src/server.ts` records RSS (`/feed.xml`, `/rss.xml`, `/feed.json`),
 `llms.txt`, `llms-full.txt`, the Markdown twins (including `Accept:
 text/markdown` negotiation) and the public `/api/public`, `/api/feed`,
-`/api/story/{id}`, `/api/week/{week}` routes. `worker/admin/mcp.ts` records one
+`/api/story/{id}`, `/api/week/{week}`, `/api/thumb/{id}` routes. `worker/admin/mcp.ts` records one
 point per MCP `tools/call`. Routes outside that allowlist are not counted, so
 scanners cannot grow the dataset. Layout: `blob1` surface, `blob2` route
 template (ids, dates and weeks replaced, no query), `blob3` MCP tool (or empty),
-`blob4` client bucket (`mcp-client`, `feed-reader`, `browser`, `bot`, `other`),
-`double1` 1, `double2` HTTP status, `index1` surface. No IP, user agent or
+`blob4` client bucket (`ios-app`, `chrome-extension`, `web`, `mcp-client`,
+`feed-reader`, `browser`, `bot`, `other`), `blob5` app version (only for
+`ios-app` and `chrome-extension`, else empty; rows from before it existed read
+it as empty), `double1` 1, `double2` HTTP status, `index1` surface. No IP, user agent or
 query string is stored. Without the binding the code is a no-op, and a
 `writeDataPoint` error is swallowed. A negotiated Markdown response counts only
 for the negotiable pages (`/`, a story id, `/date/:date`, `/week/:week`); any
@@ -677,8 +679,28 @@ through the Worker cache logs one
 `{ event: "html-cache", state, path, lang, age, global }` line to Workers
 Logs (no cookie, URL or user agent).
 
-There is no read endpoint yet: querying needs an account API token secret that
-the Worker does not hold. Weekly totals, run against the Analytics Engine SQL
+Which client pulls the news (`classifyClient` in `usage.ts`) is decided in this
+order: the `X-AIDR-Client: <app>/<version>` header our own apps send
+(`ios/0.1.0+12` from `apps/ios/.../APIClient.swift`, `extension/<manifest
+version>` from `apps/extension/js/client-header.js`; the app name is a closed
+set and the version a short semver-like value, anything else is ignored), then an
+`Origin` of `chrome-extension://`, then a same-origin browser request from the
+site (`Sec-Fetch-Site: same-origin` or `Origin: https://aidr.today`, bucket
+`web`), then the User-Agent buckets. Every signal but the User-Agent is
+client-supplied, so the buckets are telemetry, not proof, and a spoofed header
+only moves one request between buckets. Only the bucket and the validated
+version are stored, never the header, the User-Agent or an identifier. The
+extension sends the header only from a real extension (a web preview would need
+a CORS preflight). The iOS app's list thumbnails load through `AsyncImage`,
+which cannot add a header, so `/api/thumb` hits from the app count under
+`other`; use the feed routes to read app usage.
+
+`GET /api/admin/clients` (`worker/client-usage.ts`, `agent clients`, the
+"API clients" section of the admin panel) reads the last 7 days from the SQL API
+with `CF_ANALYTICS_API_TOKEN`: hits per client per UTC day and the app versions
+seen with their hits and last time. Without the token it answers
+`{ "status": "unconfigured", … }`, never zeros. Other totals can be read
+directly, for example weekly totals against the Analytics Engine SQL
 API (`POST /client/v4/accounts/{id}/analytics_engine/sql`):
 
 ```sql

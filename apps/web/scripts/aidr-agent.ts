@@ -8,6 +8,8 @@
  *   pnpm --filter @aidr/web agent diagnose
  *     (GET /api/admin/diagnostics: verdicts on ingest, the last run,
  *     traffic against its 7-day baseline, stuck rows and open alerts)
+ *   pnpm --filter @aidr/web agent clients
+ *     (GET /api/admin/clients: requests per client bucket, last 7 days)
  *   pnpm --filter @aidr/web agent ranking [--limit N]
  *   pnpm --filter @aidr/web agent freshness [--limit N]
  *     (shadow freshness verdicts from story_freshness; read-only SELECT)
@@ -71,6 +73,7 @@ import type {
   UndoUnmergeResult,
   UnmergeResult,
 } from "../worker/admin/handlers";
+import type { ClientUsageReport } from "../worker/client-usage";
 import { clusterPrompt } from "../worker/dedupe";
 import type { DiagnosticsReport } from "../worker/diagnostics";
 import {
@@ -348,6 +351,26 @@ async function diagnose(): Promise<void> {
     report,
     `diagnose: ingest ${verdicts.ingest}${ingest.stuckRun ? ` (${ingest.stuckRun.id} open ${ingest.stuckRun.ageMin}m)` : ingest.newestFinishedAgeMin === null ? "" : ` (last finished ${ingest.newestFinishedAgeMin}m ago)`}, last run ${verdicts.lastRun}, traffic ${trafficNote}, ${verdicts.stuckRows} stuck rows, open alerts: ${verdicts.openAlerts.join(", ") || "none"}`
   );
+}
+
+/** Who pulls the news: requests per client bucket, last 7 days. */
+async function clients(): Promise<void> {
+  const report = await api<ClientUsageReport>("/api/admin/clients", {
+    admin: true,
+  });
+  if (report.status !== "ok") {
+    print(report, `clients: ${report.status} (${report.reason})`);
+    return;
+  }
+  const totals = new Map<string, number>();
+  for (const { client, hits } of report.daily) {
+    totals.set(client, (totals.get(client) ?? 0) + hits);
+  }
+  const line = [...totals]
+    .sort((a, b) => b[1] - a[1])
+    .map(([client, hits]) => `${client} ${hits}`)
+    .join(", ");
+  print(report, `clients (${report.windowDays}d): ${line || "no requests"}`);
 }
 
 async function ranking(args: Args): Promise<void> {
@@ -874,6 +897,8 @@ async function main(): Promise<void> {
       return audit(args);
     case "diagnose":
       return diagnose();
+    case "clients":
+      return clients();
     case "ranking":
       return ranking(args);
     case "freshness":
@@ -901,7 +926,7 @@ async function main(): Promise<void> {
       return storyCaption(args);
     default:
       fail(
-        "usage: aidr-agent audit [--run <id>] [--runs N] | diagnose | ranking [--limit N] | freshness [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --dangling [decisions.json] --model-check [--confirm-llm] [--max-calls N] | unmerge --undo <batchId> [--canonical <id,...>] [--apply] | backfill-tags [--apply] | story-caption <item-id> --channel telegram|telegram-en [--apply]"
+        "usage: aidr-agent audit [--run <id>] [--runs N] | diagnose | clients | ranking [--limit N] | freshness [--limit N] | tldr-preview | tldr-regenerate [--date YYYY-MM-DD] [--dry-run] | run [--steps a,b] [--force] [--wait] [--live] | rerun <step> [--force] [--wait] [--live] | day-video <YYYY-MM-DD> [--video <url|id>] [--short <url|id>] [--title <text>] [--lang en|vi] [--clear-video] [--clear-short] [--delete] | day-video-telegram <YYYY-MM-DD> --lang en|vi [--chat <id>] | day-video-posted <YYYY-MM-DD> --channel telegram-en|telegram-vi --ref <chat_id>/<message_id> | unmerge <pairs.json> [--apply] | unmerge --dangling [decisions.json] [--apply] | unmerge --dangling [decisions.json] --model-check [--confirm-llm] [--max-calls N] | unmerge --undo <batchId> [--canonical <id,...>] [--apply] | backfill-tags [--apply] | story-caption <item-id> --channel telegram|telegram-en [--apply]"
       );
   }
 }

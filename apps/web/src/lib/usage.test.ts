@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  classifyClient,
   classifyRequest,
   clientBucket,
+  parseClientHeader,
   recordRequestUsage,
   recordUsage,
   templateRoute,
@@ -36,6 +38,14 @@ describe("templateRoute", () => {
     expect(classifyRequest("/api/admin/ingest")).toBeNull();
     expect(classifyRequest("/api/story/zzzz")).toBeNull();
   });
+
+  it("tracks the iOS thumbnail route under one template", () => {
+    const id = "a".repeat(64);
+    expect(classifyRequest(`/api/thumb/${id}`)).toEqual({
+      surface: "api",
+      route: "/api/thumb/:id",
+    });
+  });
 });
 
 describe("clientBucket", () => {
@@ -50,6 +60,137 @@ describe("clientBucket", () => {
     [null, "other"],
   ])("%s -> %s", (ua, bucket) => {
     expect(clientBucket(ua)).toBe(bucket);
+  });
+});
+
+describe("parseClientHeader", () => {
+  it.each([
+    ["ios/0.1.0+12", "ios-app", "0.1.0+12"],
+    ["ios/0.0.0-verify", "ios-app", "0.0.0-verify"],
+    ["extension/1.4.2", "chrome-extension", "1.4.2"],
+    ["extension/0.1", "chrome-extension", "0.1"],
+    ["extension/1.2.3.4", "chrome-extension", "1.2.3.4"],
+  ])("%s -> %s %s", (value, client, appVersion) => {
+    expect(parseClientHeader(value)).toEqual({ client, appVersion });
+  });
+
+  // The version becomes a dataset blob: only a short semver-like value may
+  // reach it, and an app name outside the closed set counts as nothing.
+  it.each([
+    null,
+    "",
+    "ios",
+    "ios/",
+    "/1.0.0",
+    "android/1.0.0",
+    "IOS/1.0.0",
+    "toString/1.0.0",
+    "__proto__/1.0.0",
+    "ios/1",
+    "ios/1.0.0.0.0",
+    "ios/123456.0.0",
+    "ios/v1.0.0",
+    "ios/1.0.0+",
+    "ios/1.0.0+12345678",
+    `ios/1.0.0-${"a".repeat(13)}`,
+    "ios/1.0.0 (build 1)",
+    "ios/1.0.0\n",
+    "ios/<script>",
+    "ios/".padEnd(500, "9"),
+  ])("rejects %j", (value) => {
+    expect(parseClientHeader(value)).toBeNull();
+  });
+});
+
+describe("classifyClient", () => {
+  const classify = (init: Record<string, string>) =>
+    classifyClient(new Headers(init));
+
+  it("counts our iOS app by its header, whatever the User-Agent says", () => {
+    expect(
+      classify({
+        "X-AIDR-Client": "ios/0.1.0+12",
+        "User-Agent": "AIDR-iOS/0.1.0 (build 12; iOS 26.5)",
+      })
+    ).toEqual({ client: "ios-app", appVersion: "0.1.0+12" });
+    expect(
+      classify({ "x-aidr-client": "ios/0.1.0+12", "User-Agent": "curl/8" })
+    ).toEqual({ client: "ios-app", appVersion: "0.1.0+12" });
+  });
+
+  it("counts the Chrome extension by its header, with its version", () => {
+    expect(classify({ "X-AIDR-Client": "extension/2.0.1" })).toEqual({
+      client: "chrome-extension",
+      appVersion: "2.0.1",
+    });
+  });
+
+  it("counts a chrome-extension:// origin without a header, with no version", () => {
+    expect(classify({ Origin: "chrome-extension://abcdefghijklmnop" })).toEqual(
+      { client: "chrome-extension", appVersion: "" }
+    );
+  });
+
+  it("lets the header outrank the origin and the fetch site", () => {
+    expect(
+      classify({
+        "X-AIDR-Client": "ios/1.0.0",
+        Origin: "chrome-extension://abc",
+        "Sec-Fetch-Site": "same-origin",
+      }).client
+    ).toBe("ios-app");
+  });
+
+  it("counts same-origin pages of aidr.today as web", () => {
+    const web = { client: "web", appVersion: "" };
+    expect(classify({ "Sec-Fetch-Site": "same-origin" })).toEqual(web);
+    expect(classify({ Origin: "https://aidr.today" })).toEqual(web);
+    expect(
+      classify({
+        "Sec-Fetch-Site": "same-origin",
+        "User-Agent": "Mozilla/5.0 (Macintosh) Safari/605",
+      })
+    ).toEqual(web);
+  });
+
+  it("does not count another site's browser as web", () => {
+    expect(
+      classify({
+        Origin: "https://evil.example",
+        "Sec-Fetch-Site": "cross-site",
+        "User-Agent": "Mozilla/5.0 (Macintosh) Safari/605",
+      })
+    ).toEqual({ client: "browser", appVersion: "" });
+    expect(classify({ Origin: "https://aidr.today.evil.example" }).client).toBe(
+      "other"
+    );
+  });
+
+  it("falls through to the User-Agent buckets without an identity", () => {
+    expect(classify({ "User-Agent": "Feedly/1.0" }).client).toBe("feed-reader");
+    expect(classify({ "User-Agent": "Claude-User/1.0" }).client).toBe(
+      "mcp-client"
+    );
+    expect(classify({}).client).toBe("other");
+  });
+
+  it("ignores spoofed or garbage header values and keeps no version", () => {
+    for (const value of [
+      "android/9.9.9",
+      "ios/not-a-version",
+      "ios/1.0.0; DROP TABLE",
+      `ios/${"1".repeat(300)}`,
+    ]) {
+      expect(
+        classify({ "X-AIDR-Client": value, "User-Agent": "curl/8.5.0" })
+      ).toEqual({ client: "other", appVersion: "" });
+    }
+    expect(
+      classify({
+        "X-AIDR-Client": "ios/garbage",
+        Origin: "chrome-extension://abc",
+      })
+    ).toEqual({ client: "chrome-extension", appVersion: "" });
   });
 });
 
@@ -73,7 +214,7 @@ describe("recordUsage", () => {
     const USAGE = { writeDataPoint: vi.fn() };
     recordUsage({ USAGE }, { ...event, surface: "mcp", tool: "search_news" });
     expect(USAGE.writeDataPoint).toHaveBeenCalledWith({
-      blobs: ["mcp", "/api/public", "search_news", "other"],
+      blobs: ["mcp", "/api/public", "search_news", "other", ""],
       doubles: [1, 200],
       indexes: ["mcp"],
     });
@@ -97,7 +238,36 @@ describe("recordRequestUsage", () => {
       "/feed.xml",
       "",
       "feed-reader",
+      "",
     ]);
+  });
+
+  it("writes the app version as the trailing blob for our apps only", () => {
+    const USAGE = { writeDataPoint: vi.fn() };
+    const get = (headers: Record<string, string>) =>
+      new Request("https://aidr.today/api/feed?days=1", { headers });
+    recordRequestUsage(
+      { USAGE },
+      get({ "X-AIDR-Client": "ios/0.1.0+12", "User-Agent": "AIDR-iOS/0.1.0" }),
+      new Response("{}")
+    );
+    recordRequestUsage(
+      { USAGE },
+      get({ "X-AIDR-Client": "extension/1.2.3" }),
+      new Response("{}")
+    );
+    recordRequestUsage(
+      { USAGE },
+      get({ "User-Agent": "curl/8" }),
+      new Response("{}")
+    );
+    const blobs = USAGE.writeDataPoint.mock.calls.map((c) => c[0].blobs);
+    expect(blobs).toEqual([
+      ["api", "/api/feed", "", "ios-app", "0.1.0+12"],
+      ["api", "/api/feed", "", "chrome-extension", "1.2.3"],
+      ["api", "/api/feed", "", "other", ""],
+    ]);
+    expect(JSON.stringify(blobs)).not.toContain("AIDR-iOS");
   });
 
   // Production answers text/markdown on a 404 for any `.md` path, so the

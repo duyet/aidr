@@ -1,5 +1,6 @@
 import type { Env } from "../../worker/types";
 import { negotiableMarkdownPath } from "./markdown-negotiation";
+import { SITE_URL } from "./site";
 
 export type UsageSurface = "rss" | "api" | "mcp" | "llms" | "markdown";
 
@@ -8,7 +9,10 @@ export type ClientBucket =
   | "feed-reader"
   | "browser"
   | "bot"
-  | "other";
+  | "other"
+  | "ios-app"
+  | "chrome-extension"
+  | "web";
 
 export interface UsageEvent {
   surface: UsageSurface;
@@ -16,6 +20,42 @@ export interface UsageEvent {
   tool?: string;
   status: number;
   client: ClientBucket;
+  /** Set only for `ios-app` and `chrome-extension`; otherwise empty. */
+  appVersion?: string;
+}
+
+/** The request header our own apps send: `<app>/<version>`. */
+export const CLIENT_HEADER = "X-AIDR-Client";
+
+/** The closed set of app names, and the bucket each counts under. */
+const APP_BUCKETS = {
+  ios: "ios-app",
+  extension: "chrome-extension",
+} as const satisfies Record<string, ClientBucket>;
+
+/** `1.2.3` (2 to 4 dot-separated integers, as Chrome allows), with an optional
+ *  `-label` and `+build`, e.g. `0.1.0+12`. Short on purpose: the version is a
+ *  dataset blob, so a spoofed value must stay bounded. */
+const APP_VERSION_RE =
+  /^\d{1,5}(?:\.\d{1,5}){1,3}(?:-[0-9A-Za-z]{1,12})?(?:\+\d{1,6})?$/;
+
+export interface ClientIdentity {
+  client: ClientBucket;
+  appVersion: string;
+}
+
+/** Parses `X-AIDR-Client`. Anything but `ios/<version>` or
+ *  `extension/<version>` is null, so an unknown app or a garbage version
+ *  falls through to the other signals. */
+export function parseClientHeader(value: string | null): ClientIdentity | null {
+  const slash = value?.indexOf("/") ?? -1;
+  if (!value || slash < 0) return null;
+  const app = value.slice(0, slash);
+  const appVersion = value.slice(slash + 1);
+  if (!Object.hasOwn(APP_BUCKETS, app) || !APP_VERSION_RE.test(appVersion)) {
+    return null;
+  }
+  return { client: APP_BUCKETS[app as keyof typeof APP_BUCKETS], appVersion };
 }
 
 const MCP_CLIENT_RE =
@@ -35,6 +75,26 @@ export function clientBucket(userAgent: string | null): ClientBucket {
   return "other";
 }
 
+/** Who is asking, in this order: our own apps' header, an extension page's
+ *  origin, a same-origin page of the site, then the User-Agent buckets. Every
+ *  signal but the UA is client-supplied, so the buckets are telemetry, not
+ *  proof. The raw header is never stored, only the bucket and a validated
+ *  version. */
+export function classifyClient(headers: Headers): ClientIdentity {
+  const app = parseClientHeader(headers.get(CLIENT_HEADER));
+  if (app) return app;
+  if (headers.get("Origin")?.startsWith("chrome-extension://")) {
+    return { client: "chrome-extension", appVersion: "" };
+  }
+  if (
+    headers.get("Sec-Fetch-Site") === "same-origin" ||
+    headers.get("Origin") === SITE_URL
+  ) {
+    return { client: "web", appVersion: "" };
+  }
+  return { client: clientBucket(headers.get("User-Agent")), appVersion: "" };
+}
+
 const FEED_PATHS = new Set(["/feed.xml", "/rss.xml", "/feed.json"]);
 const LLMS_PATHS = new Set(["/llms.txt", "/llms-full.txt"]);
 const API_ROUTES = new Set([
@@ -43,6 +103,7 @@ const API_ROUTES = new Set([
   "/api/feed.freshness",
   "/api/story/:id",
   "/api/week/:week",
+  "/api/thumb/:id",
 ]);
 const MARKDOWN_ROUTES = new Set([
   "/api/story/:id.md",
@@ -83,7 +144,13 @@ export function recordUsage(
 ): void {
   try {
     env?.USAGE?.writeDataPoint({
-      blobs: [event.surface, event.route, event.tool ?? "", event.client],
+      blobs: [
+        event.surface,
+        event.route,
+        event.tool ?? "",
+        event.client,
+        event.appVersion ?? "",
+      ],
       doubles: [1, event.status],
       indexes: [event.surface],
     });
@@ -114,6 +181,6 @@ export function recordRequestUsage(
   recordUsage(env, {
     ...hit,
     status: response.status,
-    client: clientBucket(request.headers.get("User-Agent")),
+    ...classifyClient(request.headers),
   });
 }

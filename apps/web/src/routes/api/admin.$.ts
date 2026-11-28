@@ -42,6 +42,7 @@ import {
   upsertSource,
 } from "../../../worker/admin/handlers.js";
 import { backfillClerkUsers } from "../../../worker/clerk-users.js";
+import { fetchClientUsage } from "../../../worker/client-usage.js";
 import { syncGa4Insights } from "../../../worker/ga4/insights.js";
 import {
   listJevPanelVerdicts,
@@ -462,6 +463,10 @@ async function handle(
     segments[0] === "diagnostics"
   ) {
     return Response.json(await getDiagnostics(env));
+  }
+
+  if (method === "GET" && segments.length === 1 && segments[0] === "clients") {
+    return Response.json(await fetchClientUsage(env));
   }
 
   // One-shot Clerk account backfill into D1 so the /data signup total is real

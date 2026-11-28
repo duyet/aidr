@@ -29,7 +29,7 @@ describe("usage counters", () => {
     expect(response.status).toBe(200);
     expect(USAGE.writeDataPoint).toHaveBeenCalledOnce();
     expect(USAGE.writeDataPoint).toHaveBeenCalledWith({
-      blobs: ["api", "/api/public", "", "browser"],
+      blobs: ["api", "/api/public", "", "browser", ""],
       doubles: [1, 200],
       indexes: ["api"],
     });
@@ -63,7 +63,7 @@ describe("usage counters", () => {
     await call("not_a_tool_xyz");
     expect(USAGE.writeDataPoint).toHaveBeenCalledOnce();
     expect(USAGE.writeDataPoint).toHaveBeenCalledWith({
-      blobs: ["mcp", "/api/mcp", "unknown", "mcp-client"],
+      blobs: ["mcp", "/api/mcp", "unknown", "mcp-client", ""],
       doubles: [1, 200],
       indexes: ["mcp"],
     });

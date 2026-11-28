@@ -1,4 +1,5 @@
 import "./preview-shim.js";
+import { clientHeaders } from "./client-header.js";
 import { withExtRef } from "./ref.js";
 import { normalizeApiBase } from "./settings.js";
 import { apiUrl, normalizeLang } from "./site-url.js";
@@ -331,6 +332,7 @@ async function readJson(url, cache = "default") {
     const response = await fetch(url, {
       credentials: "omit",
       cache,
+      headers: clientHeaders(),
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`http ${response.status}`);

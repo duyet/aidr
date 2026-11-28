@@ -1,4 +1,5 @@
 import "./preview-shim.js";
+import { clientHeaders } from "./client-header.js";
 import { withExtRef } from "./ref.js";
 import { normalizeApiBase } from "./settings.js";
 import { apiUrl } from "./site-url.js";
@@ -55,6 +56,7 @@ export async function fetchExtensionMeta(apiBase, lang = "vi") {
       withExtRef(extensionMetaUrl(apiBase, lang), "update_check", lang),
       {
         credentials: "omit",
+        headers: clientHeaders(),
         signal: controller.signal,
       }
     );

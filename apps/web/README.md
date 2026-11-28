@@ -303,6 +303,13 @@ curl -X POST https://aidr.today/api/admin/ingest \
 Other routes: `GET /api/admin/sources`, `PUT /api/admin/sources/:id`,
 `DELETE /api/admin/sources/:id`, `GET /api/admin/status`.
 
+`GET /api/admin/clients` shows which client pulls the news (`ios-app`,
+`chrome-extension`, `web`, feed readers, MCP clients, browsers, bots, other):
+hits per client per day for 7 days and the iOS and extension versions seen,
+from the `aidr_usage` dataset (ALGORITHM.md, "Usage counters"). It needs the
+`CF_ANALYTICS_API_TOKEN` secret and answers `unconfigured` without it.
+`pnpm --filter @aidr/web agent clients` prints it.
+
 `GET /api/admin/diagnostics` answers "why is the site slow or quiet" in one
 read. `verdicts` gives ingest freshness (`fresh`, `late`, `stuck`, `none`),
 the newest finished run (`ok`, `degraded`, `failed`, `none`), traffic

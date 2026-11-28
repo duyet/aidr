@@ -7,7 +7,7 @@ Guideline anchors: 5.1.1(i) privacy policy link in the metadata and in the app; 
 
 Declare **Usage Data > Other Usage Data**, not linked to the user, not used for tracking, purpose Analytics. Declare nothing else.
 
-Why not "Data Not Collected": the worker counts every call to `/api/public`, `/api/feed`, `/api/story/:id` and `/api/week/:week` in an Analytics Engine dataset (route, status, coarse client type, no identifier; `apps/web/src/lib/usage.ts`). The privacy policy says so. The app calls those routes, so a label of "Not Collected" would contradict the policy. Apple defines "collect" as sending data off the device in a way that lets you keep it longer than needed to serve the request (source 14). A request counter kept in a dataset meets that wording. An extra, harmless disclosure never gets an app rejected. A label that contradicts the published policy can.
+Why not "Data Not Collected": the worker counts every call to `/api/public`, `/api/feed`, `/api/story/:id` and `/api/week/:week` in an Analytics Engine dataset (route, status, coarse client type, no identifier; `apps/web/src/lib/usage.ts`). The app sends an `X-AIDR-Client: ios/<version>+<build>` header and an `AIDR-iOS/<version>` User-Agent on every request (`APIClient.swift`), so the server can count requests per client; it stores the client type and the app version, never the header text or an identifier. The privacy policy says so. The app calls those routes, so a label of "Not Collected" would contradict the policy. Apple defines "collect" as sending data off the device in a way that lets you keep it longer than needed to serve the request (source 14). A request counter kept in a dataset meets that wording. An extra, harmless disclosure never gets an app rejected. A label that contradicts the published policy can.
 
 If the operator later stops counting app requests in the worker, change the answer to "No, we do not collect data from this app" and delete the `NSPrivacyCollectedDataTypes` entry below. Change both in the same release.
 
@@ -54,7 +54,7 @@ For Other Usage Data:
 
 | Follow-up | Answer |
 |---|---|
-| Is this data linked to the user's identity? | No. It holds a route, a status and a coarse client type. No identifier, no IP address. |
+| Is this data linked to the user's identity? | No. It holds a route, a status, a coarse client type and the app version. No identifier, no IP address. |
 | Do you or your partners use this data to track the user? | No |
 | Why is it collected? | **Analytics** only |
 

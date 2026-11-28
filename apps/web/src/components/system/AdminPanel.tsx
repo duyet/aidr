@@ -1,9 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import type { ClientUsageReport } from "../../../worker/client-usage.js";
 import type { JevVerdictRow } from "../../../worker/jev-panel/audit.js";
 import { type AdminState, authedFetch } from "../../lib/admin";
 import { AdminAction } from "./admin/AdminAction";
 import { AdminAudit } from "./admin/AdminAudit";
+import { AdminClients } from "./admin/AdminClients";
 import { AdminItems } from "./admin/AdminItems";
 import {
   AdminJevVerdicts,
@@ -59,6 +61,7 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [status, setStatus] = useState<unknown>(null);
   const [statusBusy, setStatusBusy] = useState(false);
+  const [clients, setClients] = useState<ClientUsageReport | null>(null);
   const [calls, setCalls] = useState<LlmCall[]>([]);
   const [callsBusy, setCallsBusy] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
@@ -91,6 +94,15 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
       // leave previous status in place
     } finally {
       setStatusBusy(false);
+    }
+  }
+
+  async function loadClients() {
+    try {
+      const res = await authedFetch(admin, "/api/admin/clients");
+      if (res.ok) setClients(await res.json());
+    } catch {
+      // leave previous clients in place
     }
   }
 
@@ -226,6 +238,7 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
     try {
       await Promise.all([
         loadStatus(),
+        loadClients(),
         loadCalls(),
         loadItems(),
         loadAudit(),
@@ -474,6 +487,7 @@ export function AdminPanel({ admin }: { admin: AdminState }) {
       <AdminAudit audit={audit} />
       <AdminLastRunSteps status={status} />
       <AdminStatusJson status={status} />
+      <AdminClients usage={clients} />
       <AdminLlmCalls calls={calls} />
       <AdminQueue
         suggestions={queueSuggestions}

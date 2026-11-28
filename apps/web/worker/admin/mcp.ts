@@ -16,7 +16,7 @@ import {
   validateLatestAiNews,
   validateSearchNews,
 } from "../../src/lib/public-read-tools.js";
-import { clientBucket, recordUsage } from "../../src/lib/usage.js";
+import { classifyClient, recordUsage } from "../../src/lib/usage.js";
 import {
   ADMIN_MCP_TOOLS,
   type AdminMcpToolName,
@@ -309,7 +309,7 @@ export async function handleMcpRequest(
             ? name
             : "unknown",
         status: response.status,
-        client: clientBucket(request.headers.get("User-Agent")),
+        ...classifyClient(request.headers),
       });
     }
     return response;
