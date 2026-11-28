@@ -12,7 +12,7 @@ Rule from the forums: a note that names a button the build does not have is a re
 | Contact first name, last name | <<operator: first and last name of the person who answers App Review>> |
 | Contact phone | <<operator: international format with +, for example +84...>> |
 | Contact email | <<operator: monitored inbox>> |
-| Attachments | Two screen recordings, 30 to 60 seconds each, captured on a real iPhone with Apple Intelligence on. File names: `aidr-review-1-offline-notification-share.mov`, `aidr-review-2-explain-on-device.mov`. |
+| Attachments | One screen recording, 30 to 60 seconds, on a real iPhone: offline relaunch, Send a test now, Share as image. File name: `aidr-review-offline-notification-share.mov`. |
 | Version release | Manual release. Press release only after the first approval email and a smoke check. |
 
 The repo is public. Keep the real phone number and name out of git. Put them in App Store Connect only.
@@ -22,28 +22,28 @@ The repo is public. Keep the real phone number and name out of git. Put them in 
 Paste the whole block. Update the tap paths if the build changes.
 
 ```text
-AI;DR is a native SwiftUI app for iPhone (iOS 26 and later). It is not a web view. There is no account, no sign-in and no demo account. Everything works on first launch. The app starts in the device language (English or Vietnamese). The two languages never fall back to each other. Change it in Settings > Language.
+AI;DR is a native SwiftUI app for iPhone (iOS 26 and later). It is not a web view. There is no account, no sign-in, no purchase and no demo account. Everything works on first launch. The app opens in the device language (English or Vietnamese); change it with the Aa button > Language.
 
-WHAT THE APP DOES THAT A WEBSITE CANNOT (guideline 4.2)
-1. Offline edition. Open the app once with a network. Turn on Airplane Mode and relaunch. Today shows the saved edition with an Offline banner. Screen recording 1.
-2. Daily notification with a picture. Settings > Daily reminder > on > allow notifications > Send test now. The notification shows the top headline and its thumbnail. The real reminder is a local notification at the time the reader picks (default 07:00). It uses no push server. Screen recording 1.
-3. Share as image. Open any story > Share > Share as image. Pick a background, padding and corner radius. The card is drawn on the device with ImageRenderer. Screen recording 1.
-4. On-device AI. Open a story > Explain simply, or Why it matters. This uses Apple's Foundation Models framework and runs on the device. The story text is not sent anywhere. The two buttons show only on a device where Apple Intelligence is available (iPhone 15 Pro or later, Apple Intelligence turned on in Settings > Apple Intelligence and Siri, a supported language). On other devices they are absent by design and everything else works. Screen recording 2 shows it.
-5. Today, Digest, Calendar and Weeks tabs. Today is the ranked list with topic chips and search. Digest is the day in 8, 12 or 16 lines. Calendar is a heat map of past editions. Weeks lists weekly editions.
+TABS
+Today: the ranked AI news of the day with topic filters and search.
+Weeks: weekly editions. Calendar: past daily editions as a heat map.
+AI;DR: a swipeable daily brief, one story per page.
+
+WHAT THE APP DOES ON THE DEVICE (guideline 4.2)
+1. Offline reading. Open the app once with a network, turn on Airplane Mode and relaunch. Today shows the saved edition with "Offline · saved HH:mm".
+2. Daily notification with a picture. Aa > Daily reminder > on > Allow > Send a test now. It is a local notification at the time the reader picks (default 07:00). No push server.
+3. Share as image. Open a story > Share as image. Pick a background, padding, corner radius and size. The card is drawn on the device.
+4. Reading preferences. Aa > look (light, cream, gray, dark, black), text size, font (SF Pro, New York, SF Pro Rounded) and accent color.
 
 CONTENT AND RIGHTS (5.2)
-AI;DR reads public RSS feeds and pages of AI news sources. For each story it shows the headline, a short summary written by a language model, and a picture linked from the source page or post. It does not copy article text. Every story has a Read source button that opens the original page in SFSafariViewController. The source list is public: https://aidr.today/data . We remove a source or a picture on request: me@duyet.net. We can provide documentation for any source on request.
-Summaries can contain errors. The app says so in Settings > About and links to the original.
+AI;DR reads public RSS feeds and pages of AI news sources. For each story it shows the headline, a short AI-written summary and a picture from the source. It does not copy article text. Read source opens the original page in Safari View Controller. Summaries can contain errors; the app says so under Aa > About. The source list is public at https://aidr.today/data. We remove a source or picture on request: me@duyet.net.
+Suggest a story opens https://aidr.today/submit in Safari View Controller.
 
 PRIVACY (5.1.1, 5.1.2)
-No tracking, no ads, no third-party SDK. The app collects only anonymous request counts (route, status, coarse client type, no identifier), declared as Other Usage Data, not linked. It sends plain GET requests to https://aidr.today. Privacy policy: https://aidr.today/privacy (also Settings > Privacy Policy). Support: https://aidr.today/support . Notification permission is asked only when the reader turns the reminder on, and the app works without it.
+No tracking, no ads, no third-party SDK. The server counts API requests by route, status and app version, with no identifier, declared as Other Usage Data, not linked. Privacy policy: https://aidr.today/privacy (also Aa > Privacy). Support: https://aidr.today/support (also Aa > Support). Notification permission is asked only when the reader turns the reminder on.
 
 OTHER
-- Suggest a story opens the system mail composer addressed to submit@aidr.today. The app sends nothing itself.
-- Encryption: HTTPS only through the system. ITSAppUsesNonExemptEncryption is NO.
-- iPhone only. Portrait only.
-- Age rating is 13+ because headlines can mention violence, abuse or lawsuits around AI. The app has no user-generated content and no social features.
-- The server (aidr.today) is live all day. The edition refreshes every 30 minutes.
+Encryption: HTTPS through the system only; ITSAppUsesNonExemptEncryption is NO. iPhone only, portrait only. No user-generated content is shown to other readers.
 ```
 
 ## Age rating answers

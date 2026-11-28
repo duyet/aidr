@@ -10,7 +10,7 @@ AI;DR: Tin AI mỗi ngày
 Xếp hạng, tóm tắt, dẫn nguồn
 
 ## Promotional text
-Mỗi ngày một bản tin AI đã xếp hạng, bằng tiếng Việt và tiếng Anh. Đọc được cả khi mất mạng. Trên iPhone được hỗ trợ, app giải thích tin bằng lời đơn giản, ngay trên máy.
+Mỗi ngày một bản tin AI đã xếp hạng, bằng tiếng Việt và tiếng Anh. Đọc được khi mất mạng, nhắc mỗi ngày kèm ảnh, và biến tin thành thẻ ảnh để chia sẻ.
 
 ## Description
 AI;DR đọc tin AI trong ngày và gom thành một bản tin đã xếp hạng, bằng tiếng Việt và tiếng Anh.
@@ -24,7 +24,7 @@ Trong app
 • Đọc offline: bản tin gần nhất được lưu trên iPhone, nên app mở nhanh và vẫn đọc được khi không có mạng.
 • Nhắc mỗi ngày: chọn giờ, app gửi một thông báo kèm tiêu đề nổi bật nhất và ảnh của tin.
 • Chia sẻ: gửi đường dẫn tin, hoặc tạo thẻ ảnh từ tin với nền, lề và góc bo do bạn chọn.
-• Giải thích đơn giản, Vì sao đáng chú ý: trên iPhone có Apple Intelligence, app giải thích tin bằng lời dễ hiểu. Việc này chạy ngay trên máy. Nội dung tin không được gửi đi đâu cả.
+• Đọc theo cách của bạn: nền sáng, kem, xám, tối hoặc đen, cỡ chữ, và kiểu chữ SF Pro, New York hoặc Rounded.
 
 Quyền riêng tư
 Không tài khoản. Không quảng cáo. App không theo dõi bạn qua các app và website khác. Ngôn ngữ, cỡ chữ và giờ nhắc chỉ nằm trên iPhone của bạn.

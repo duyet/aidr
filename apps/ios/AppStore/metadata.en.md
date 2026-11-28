@@ -10,7 +10,7 @@ AI;DR: Daily AI News
 Ranked, summarized, sourced
 
 ## Promotional text
-One ranked edition of AI news a day, in English and Vietnamese. It works offline. On supported iPhones, explain any story in plain words, on the device.
+One ranked edition of AI news a day, in English and Vietnamese. It works offline, sends one daily reminder with a picture, and turns any story into a shareable card.
 
 ## Description
 AI;DR reads the day's AI news and gives you one ranked edition. It comes in English and Vietnamese.
@@ -24,7 +24,7 @@ What is in the app
 • Offline: the last edition is saved on your iPhone, so the app opens fast and still reads without a connection.
 • Daily reminder: pick a time and get one notification with the top headline and its picture.
 • Share: send a story link, or turn a story into an image card with your own background, padding and rounded corners.
-• Explain simply and Why it matters: on an iPhone with Apple Intelligence, the app explains a story in plain words. This runs on your device. The story text is not sent anywhere.
+• Your way to read: light, cream, gray, dark or black, text size, and SF Pro, New York or Rounded type.
 
 Your privacy
 No account. No ads. The app does not track you across other apps and websites. Your language, text size and reminder time stay on your iPhone.

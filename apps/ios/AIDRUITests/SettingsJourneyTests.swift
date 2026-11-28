@@ -93,6 +93,9 @@ final class SettingsJourneyTests: XCTestCase {
     XCTAssertFalse(element(app, "settings-appearance-system").isSelected)
     scroll(app, to: "settings-accent-violet")
     element(app, "settings-accent-violet").tap()
+    // A new accent re-renders the sheet and its list can return to the top,
+    // so find the swatch again before reading its state.
+    scroll(app, to: "settings-accent-violet")
     XCTAssertTrue(element(app, "settings-accent-violet").isSelected)
     scroll(app, to: "settings-reset")
     element(app, "settings-reset").tap()

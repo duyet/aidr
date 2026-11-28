@@ -131,9 +131,14 @@ struct SettingsScreen: View {
       linkRow(t("Giới thiệu aidr.today", "About aidr.today"), "https://aidr.today/about?lang=\(shown.rawValue)")
       linkRow(t("Quyền riêng tư", "Privacy"), "https://aidr.today/privacy?lang=\(shown.rawValue)")
       linkRow(t("Đóng góp một tin", "Suggest a story"), "https://aidr.today/submit?lang=\(shown.rawValue)")
+      linkRow(t("Hỗ trợ", "Support"), "https://aidr.today/support")
       linkRow("Telegram", shown == .vi ? "https://t.me/aihomnay" : "https://t.me/aidr_today")
     } header: {
       SettingsHeader(text: t("Về AI;DR", "About"), lang: shown)
+    } footer: {
+      SettingsFootnote(text: t(
+        "Tóm tắt và bản dịch do AI viết từ nguồn công khai và có thể sai. Mỗi tin đều có liên kết tới bài gốc.",
+        "Summaries and translations are written by AI from public sources and can be wrong. Every story links to the original."))
     }
     .listRowBackground(Palette.muted)
   }

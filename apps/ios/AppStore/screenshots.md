@@ -50,13 +50,12 @@ Order matters. App Store search shows the first one to three images (source 5). 
 | # | Slug | Screen and steps | Caption EN | Caption VI | Automated |
 |---|---|---|---|---|---|
 | 01 | `today` | Today tab at the top of the list: masthead, topic chips, 4 to 5 ranked rows with pictures | Today's AI news, ranked | Tin AI hôm nay, đã xếp hạng | Yes |
-| 02 | `digest` | Digest tab with the 12 line digest | The whole day in 12 lines | Cả ngày gói trong 12 dòng | Yes |
+| 02 | `brief` | AI;DR tab, a story page of the swipeable brief | The whole day, one swipe at a time | Cả ngày, mỗi lần vuốt một tin | Yes |
 | 03 | `story` | Tap row 1. Story screen with highlighted title, picture, summary, sources. **Dark mode** (`-AppleInterfaceStyle Dark`), as Apple suggests one dark shot | Short summary. Link to the source. | Tóm tắt ngắn. Có link nguồn. | Yes |
 | 04 | `share` | Story > Share > Share as image sheet. Gradient background chosen, card preview with padding and rounded corners | Turn a story into an image | Biến tin thành ảnh để chia sẻ | Yes, if the sheet is reachable by accessibility ids |
-| 05 | `explain` | Story > Explain simply, answer streamed in. Needs Apple Intelligence | Explained in plain words, on your iPhone | Giải thích đơn giản, ngay trên iPhone | **No. Manual** |
+| 05 | `customize` | Aa sheet with cream look, New York font and violet accent | Read it your way | Đọc theo cách của bạn | Yes |
 | 06 | `calendar` | Calendar tab with the heat map and the weeks list below | Every past edition, one tap away | Mọi bản tin cũ, chỉ một chạm | Yes |
 
-Shot 05 cannot come from CI. The hosted macOS runner has no Apple Intelligence, so the explain buttons are hidden there on purpose. Capture 05 by hand, in both languages, on a Mac with Apple Intelligence turned on in the iOS Simulator, or on a real iPhone 15 Pro or later (inferred: Foundation Models in the Simulator uses the host Mac's model). Use the fixture story and name the file `en-05-explain.png` and `vi-05-explain.png`. A real device gives 1206 x 2622 on a 6.3 inch iPhone. If you cannot capture 6.9 inch for 05, upload five shots in the 6.9 set. Sets do not have to match across sizes.
 
 Captions are optional. Raw screenshots are valid. If you add captions in a design tool, keep the screenshot visible and unchanged inside the frame.
 

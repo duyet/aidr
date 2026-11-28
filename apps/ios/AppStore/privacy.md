@@ -87,9 +87,9 @@ The app asks aidr.today for the public edition. Like any server, aidr.today rece
 The last edition, a picture cache, your language, text size and reminder time are saved on your iPhone only. Deleting the app deletes them.
 List thumbnails come through aidr.today. Larger pictures, and the picture in the daily notification, load from the publisher's server, which receives your IP address like any web server. When you tap Read source, the page opens in an in-app Safari view. The publisher's own policy applies there.
 The daily reminder is a local notification scheduled on your iPhone. It uses no push token and no server. You can turn it off in iOS Settings > Notifications.
-Explain simply and Why it matters run on your iPhone with Apple's on-device model. The story text is not sent to us or to anyone else.
 Share as image builds the picture on your iPhone. Nothing is uploaded.
-Suggest a story opens your mail app. What you send reaches us as a normal email, covered by "Email contributions" above.
+Suggest a story opens aidr.today/submit in an in-app Safari view. Sending a story there needs a website account, covered by the website sections above.
+The app sends its name and version (for example ios/0.1.0+12) with each request so we can count requests per app. It is not an identifier.
 Your choices and deletion: the app keeps nothing about you on our servers. Delete the app to remove its local data. Turn off notifications in iOS Settings. To delete an email you sent to submit@aidr.today, write to me@duyet.net.
 ```
 
@@ -103,9 +103,9 @@ Your choices and deletion: the app keeps nothing about you on our servers. Delet
 Bản tin gần nhất, bộ nhớ đệm ảnh, ngôn ngữ, cỡ chữ và giờ nhắc chỉ được lưu trên iPhone của bạn. Xóa ứng dụng là xóa hết các dữ liệu này.
 Ảnh thu nhỏ trong danh sách đi qua aidr.today. Ảnh lớn hơn, và ảnh trong thông báo hằng ngày, được tải từ máy chủ của nhà xuất bản, nơi nhận địa chỉ IP của bạn như mọi máy chủ web. Khi bạn chạm Đọc nguồn, trang mở trong khung Safari ngay trong ứng dụng. Chính sách riêng của nhà xuất bản áp dụng ở đó.
 Nhắc mỗi ngày là thông báo cục bộ, được hẹn giờ ngay trên iPhone. Không dùng mã push và không qua máy chủ. Bạn tắt được trong Cài đặt iOS > Thông báo.
-Giải thích đơn giản và Vì sao đáng chú ý chạy trên iPhone, bằng mô hình trên máy của Apple. Nội dung tin không được gửi cho chúng tôi hay bất kỳ ai khác.
 Chia sẻ dạng ảnh tạo ảnh ngay trên iPhone. Không có gì được tải lên.
-Gợi ý tin mở ứng dụng thư của bạn. Nội dung bạn gửi đến chúng tôi như một email bình thường, theo mục "Email contributions" ở trên.
+Gợi ý tin mở trang aidr.today/submit trong khung Safari ngay trong ứng dụng. Gửi tin ở đó cần tài khoản trên website, theo các mục về website ở trên.
+Ứng dụng gửi tên và phiên bản của nó (ví dụ ios/0.1.0+12) trong mỗi yêu cầu để chúng tôi đếm số yêu cầu theo ứng dụng. Đây không phải mã định danh.
 Lựa chọn và xóa dữ liệu của bạn: ứng dụng không giữ gì về bạn trên máy chủ của chúng tôi. Xóa ứng dụng để xóa dữ liệu cục bộ. Tắt thông báo trong Cài đặt iOS. Muốn xóa một email đã gửi tới submit@aidr.today, hãy viết tới me@duyet.net.
 ```
 
