@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.28](https://github.com/duyet/aidr/compare/aidr-v0.1.27...aidr-v0.1.28) (2026-11-28)
+
+
+### ✨ Features
+
+* **extension:** match the new tab to the aidr.today homepage ([7d152a6](https://github.com/duyet/aidr/commit/7d152a638666210a9736b504242453ad34af0567))
+* **extension:** share reader view code with the web and match the new web UI ([#1150](https://github.com/duyet/aidr/issues/1150)) ([1709408](https://github.com/duyet/aidr/commit/1709408a7bbe5eb79e30a092d565a24dda2e8902))
+* **usage:** count which client pulls the API: ios-app, chrome-extension, web ([7a08557](https://github.com/duyet/aidr/commit/7a08557892e5769183b4be9dab615389a957cd34))
+
+
+### 🐛 Bug Fixes
+
+* **extension:** simple story rows, bounded newspaper lead, hide-right-column pref ([fb45a63](https://github.com/duyet/aidr/commit/fb45a635f4b8dccf797920118527533cc44dbadc))
+
 ## [0.1.27](https://github.com/duyet/aidr/compare/aidr-v0.1.26...aidr-v0.1.27) (2026-11-25)
 
 
