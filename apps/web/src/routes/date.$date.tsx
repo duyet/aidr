@@ -272,7 +272,9 @@ function DayContent({ archive, lang }: { archive: DayArchive; lang: Lang }) {
         tldr
       )}
       {archive.day ? (
-        <DaySection day={archive.day} lang={lang} />
+        <div className="mt-8">
+          <DaySection day={archive.day} lang={lang} />
+        </div>
       ) : (
         <p className="py-16 text-center text-muted-foreground">
           {lang === "vi"
