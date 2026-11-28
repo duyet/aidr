@@ -29,7 +29,7 @@ struct BriefVideoPage: View {
         .padding(.vertical, Spacing.lg)
       if let title = video.title {
         Text(title)
-          .font(.inter(20, .semibold, relativeTo: .title3))
+          .font(.headline(20, .semibold, relativeTo: .title3))
           .lineLimit(3)
           .minimumScaleFactor(0.8)
           .foregroundStyle(BriefInk.text)

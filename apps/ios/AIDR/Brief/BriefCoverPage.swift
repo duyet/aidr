@@ -24,9 +24,10 @@ struct BriefCoverPage: View {
             .foregroundStyle(Palette.mutedForeground)
         }
       }
+      .padding(.trailing, BriefCustomizeButton.reserved)
       Spacer(minLength: Spacing.xl)
       Text(cover.day)
-        .font(.inter(140, .semibold, relativeTo: .largeTitle))
+        .font(.headline(140, .semibold, relativeTo: .largeTitle))
         .tracking(-6)
         .monospacedDigit()
         .lineLimit(1)
@@ -53,7 +54,7 @@ struct BriefCoverPage: View {
         .foregroundStyle(Palette.mutedForeground)
       if let teaser = cover.teaser {
         Text(teaser)
-          .font(.inter(22, .medium, relativeTo: .title3))
+          .font(.headline(22, .medium, relativeTo: .title3))
           .lineSpacing(3)
           .lineLimit(3)
           .minimumScaleFactor(0.8)
@@ -77,9 +78,9 @@ struct BriefCoverPage: View {
       Palette.background
         .overlay(alignment: .topTrailing) {
           Text(";")
-            .font(.inter(420, .bold))
+            .font(.inter(300, .bold))
             .foregroundStyle(Palette.signal.opacity(0.16))
-            .offset(x: 56, y: 70)
+            .offset(x: 24, y: 40)
             .accessibilityHidden(true)
         }
         .clipped()

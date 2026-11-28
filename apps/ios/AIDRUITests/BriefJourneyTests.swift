@@ -6,6 +6,11 @@ import XCTest
 final class BriefJourneyTests: XCTestCase {
   override func setUp() { continueAfterFailure = false }
 
+  /// The simulator is shared with the other journeys: leave it light.
+  override func tearDown() async throws {
+    await MainActor.run { XCUIDevice.shared.appearance = .light }
+  }
+
   @MainActor
   func testBriefVietnamese() {
     // 2026-10-15 is a day whose VI archive has a video.
@@ -25,6 +30,7 @@ final class BriefJourneyTests: XCTestCase {
   @MainActor
   func testBriefEnglish() {
     let app = launch(language: "en", locale: "en_US")
+    XCTAssertTrue(element(app, "brief-customize").exists, "Aa button missing")
     capture(app, "brief-cover-en")
     XCTAssertTrue(swipe(to: "story-1", in: app))
     Thread.sleep(forTimeInterval: 4)
@@ -72,7 +78,7 @@ final class BriefJourneyTests: XCTestCase {
     let app = XCUIApplication()
     var args = ["-AppleLanguages", "(\(language))", "-AppleLocale", locale]
     args += ["-brief.finishedDays", "(\"\(day(offset: -2))\",\"\(day(offset: -1))\")"]
-    if dark { args += ["-AppleInterfaceStyle", "Dark"] }
+    XCUIDevice.shared.appearance = dark ? .dark : .light
     app.launchArguments = args
     app.launchEnvironment = env
     app.launch()
@@ -88,6 +94,11 @@ final class BriefJourneyTests: XCTestCase {
       XCTFail("brief cover never appeared")
     }
     Thread.sleep(forTimeInterval: 1)
+    let frames = XCTAttachment(
+      string: "app \(app.frame)\ncover \(element(app, "brief-cover").frame)\nprogress \(element(app, "brief-progress-cover").frame)")
+    frames.name = "brief-frames"
+    frames.lifetime = .keepAlways
+    add(frames)
     return app
   }
 

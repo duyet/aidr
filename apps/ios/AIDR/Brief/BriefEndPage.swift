@@ -19,14 +19,14 @@ struct BriefEndPage: View {
         .frame(width: 72, height: 72)
         .background(Palette.signal, in: Circle())
         .accessibilityHidden(true)
-      Text(lang == .vi ? "Hết rồi!" : "You're all caught up")
-        .font(.inter(40, .semibold, relativeTo: .largeTitle))
+      Text(lang == .vi ? "Hết rồi!" : "You’re all caught up")
+        .font(.headline(40, .semibold, relativeTo: .largeTitle))
         .tracking(-1)
         .lineLimit(2)
         .minimumScaleFactor(0.7)
         .foregroundStyle(Palette.foreground)
         .padding(.top, Spacing.xl)
-      Text(lang == .vi ? "Bạn đã đọc hết AI;DR hôm nay." : "That was today's AI;DR.")
+      Text(lang == .vi ? "Bạn đã đọc hết AI;DR hôm nay." : "That was today’s AI;DR.")
         .font(.inter(16, relativeTo: .body))
         .foregroundStyle(Palette.mutedForeground)
         .padding(.top, Spacing.sm)
@@ -36,7 +36,7 @@ struct BriefEndPage: View {
       HStack(spacing: Spacing.md) {
         if let date, let url = BriefDeck.shareURL(date: date, lang: lang) {
           ShareLink(item: url) {
-            Label(lang == .vi ? "Chia sẻ bản tin" : "Share this edition", systemImage: "square.and.arrow.up")
+            Label(lang == .vi ? "Chia sẻ bản tin" : "Share edition", systemImage: "square.and.arrow.up")
               .font(.inter(16, .semibold, relativeTo: .body))
               .foregroundStyle(Palette.signalInk)
               .padding(.horizontal, Spacing.xs)

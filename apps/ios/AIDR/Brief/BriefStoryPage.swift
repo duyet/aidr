@@ -1,12 +1,11 @@
 import AIDRKit
 import SwiftUI
 
-/// Ink on the artwork. The pages are always dark, so these do not follow the
-/// appearance: white text, the dark-mode amber for figures and blue for names.
+/// Text on the artwork is always white: the pages are dark in every appearance.
+/// Keyword colors come from Palette, so the reader's highlight choice applies;
+/// the pages force the dark scheme, which is the one they are designed for.
 enum BriefInk {
   static let text = Color.white
-  static let number = Color(hex: "#f5c518")
-  static let entity = Color(hex: "#a0c3ec")
 }
 
 /// One digest bullet over its story image, or over a topic-colored gradient.
@@ -30,6 +29,7 @@ struct BriefStoryPage: View {
               ? "Tin \(story.position) trên \(story.total)" : "Story \(story.position) of \(story.total)")
       }
       .padding(.top, insets.top + 28)
+      .padding(.trailing, BriefCustomizeButton.reserved)
       Spacer(minLength: Spacing.lg)
       Text(attributed)
         .lineSpacing(4)
@@ -65,7 +65,7 @@ struct BriefStoryPage: View {
     if let topic = story.row.topic {
       HStack(spacing: 7) {
         Circle()
-          .fill(story.row.topicColor.map { Color(hex: $0.dark) } ?? BriefInk.text.opacity(0.6))
+          .fill(story.row.topicColor.map { Palette.topic($0) } ?? BriefInk.text.opacity(0.6))
           .frame(width: 8, height: 8)
         Text(topic.uppercased())
           .font(.mono(11, weight: .semibold))
@@ -94,13 +94,13 @@ struct BriefStoryPage: View {
       var piece = AttributedString(segment.text)
       switch segment.kind {
       case .num:
-        piece.swiftUI.font = .inter(size, .bold, relativeTo: .title)
-        piece.swiftUI.foregroundColor = BriefInk.number
+        piece.swiftUI.font = .headline(size, .bold, relativeTo: .title)
+        piece.swiftUI.foregroundColor = Palette.keywordNumber
       case .entity:
-        piece.swiftUI.font = .inter(size, .bold, relativeTo: .title)
-        piece.swiftUI.foregroundColor = BriefInk.entity
+        piece.swiftUI.font = .headline(size, .bold, relativeTo: .title)
+        piece.swiftUI.foregroundColor = Palette.keywordEntity
       case nil:
-        piece.swiftUI.font = .inter(size, .medium, relativeTo: .title)
+        piece.swiftUI.font = .headline(size, .medium, relativeTo: .title)
         piece.swiftUI.foregroundColor = BriefInk.text
       }
       out += piece
@@ -119,36 +119,49 @@ struct BriefTrailingIconLabelStyle: LabelStyle {
   }
 }
 
-/// The story image full-bleed under a scrim, or a gradient in the topic's color.
+/// The story image across the top, fading into a blurred, darkened copy of
+/// itself, or a gradient in the topic's color when there is no image.
 struct BriefBackdrop: View {
   let url: URL?
   let tint: TopicColor?
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
-    ZStack {
-      gradient
-      if let url {
-        Color.clear
-          .overlay {
-            AsyncImage(url: url, transaction: Transaction(animation: reduceMotion ? nil : .easeIn(duration: 0.3))) {
-              phase in
-              if let image = phase.image {
+    GeometryReader { geo in
+      ZStack(alignment: .top) {
+        gradient
+        if let url {
+          AsyncImage(url: url, transaction: Transaction(animation: reduceMotion ? nil : .easeIn(duration: 0.3))) {
+            phase in
+            if let image = phase.image {
+              ZStack(alignment: .top) {
                 image.resizable().scaledToFill()
-              } else {
-                Color.clear
+                  .frame(width: geo.size.width, height: geo.size.height)
+                  .clipped()
+                  .blur(radius: 36, opaque: true)
+                  .opacity(0.6)
+                image.resizable().scaledToFill()
+                  .frame(width: geo.size.width, height: geo.size.height * 0.46)
+                  .clipped()
+                  .mask(
+                    LinearGradient(
+                      stops: [.init(color: .black, location: 0.7), .init(color: .clear, location: 1)],
+                      startPoint: .top, endPoint: .bottom))
               }
+            } else {
+              Color.clear
             }
           }
-          .clipped()
+        }
+        LinearGradient(
+          stops: [
+            .init(color: .black.opacity(0.45), location: 0),
+            .init(color: .black.opacity(0.0), location: 0.2),
+            .init(color: .black.opacity(0.45), location: 0.5),
+            .init(color: .black.opacity(0.9), location: 1),
+          ], startPoint: .top, endPoint: .bottom)
       }
-      LinearGradient(
-        stops: [
-          .init(color: .black.opacity(0.5), location: 0),
-          .init(color: .black.opacity(0.08), location: 0.25),
-          .init(color: .black.opacity(0.4), location: 0.5),
-          .init(color: .black.opacity(0.9), location: 1),
-        ], startPoint: .top, endPoint: .bottom)
+      .frame(width: geo.size.width, height: geo.size.height)
     }
     .ignoresSafeArea()
     .accessibilityHidden(true)
