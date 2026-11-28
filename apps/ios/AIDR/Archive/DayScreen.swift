@@ -85,6 +85,8 @@ private struct DayDigest: View {
           DigestBulletRow(bullet: bullet, stories: stories, lang: lang)
         }
       }
+      // .contain keeps each row's own identifier instead of overwriting it.
+      .accessibilityElement(children: .contain)
       .accessibilityIdentifier("day-digest")
     }
   }
@@ -173,6 +175,7 @@ private struct DayRanked: View {
           .accessibilityIdentifier("day-more")
         }
       }
+      .accessibilityElement(children: .contain)
       .accessibilityIdentifier("day-ranked")
     }
   }

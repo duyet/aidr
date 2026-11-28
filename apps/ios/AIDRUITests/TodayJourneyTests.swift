@@ -175,10 +175,14 @@ final class TodayJourneyTests: XCTestCase {
     for _ in 0..<30 {
       // Clear of the navigation bar and search field above 150pt.
       if target.exists, target.frame.minY > 150, up || target.frame.minY < height * fraction { return }
-      let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.4 : 0.75))
-      let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.75 : 0.4))
+      // Overshot: the target sits under the bars, so step back down the page.
+      let back = up || (target.exists && target.frame.minY <= 150)
+      // Drag from the left margin, where no row's tap target starts a navigation.
+      let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.04, dy: back ? 0.45 : 0.75))
+      let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.04, dy: back ? 0.7 : 0.45))
       start.press(forDuration: 0.05, thenDragTo: end)
     }
+    capture(app, "failure-today-scroll-\(id)")
     XCTFail("never scrolled to \(id)")
   }
 
