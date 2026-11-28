@@ -8,6 +8,7 @@ Each folder here is one skill with a `SKILL.md`. `.claude/skills`, `.cursor/skil
 |---|---|
 | `aidr-validate` | Pick the proof level for a change (code checks, deploy check, live smoke, pipeline health) before you say "done". |
 | `verify-aidr` | Drive and check the live site, the extension package, and analytics. Entry: `bin/verify-aidr doctor`, then `drive <feature>`. |
+| `verify-aidr-ios` | Build and prove the iPhone app (`apps/ios`) on GitHub macOS runners and download screenshots and the unsigned IPA. Entry: `bin/verify-aidr-ios doctor`, then `drive`. |
 | `aidr-ops` | Validate and sync secrets and Worker config, and deploy. Run it before `pnpm sync-env` or any deploy. |
 | `bugsink-triage` | Triage new production errors from Bugsink and file or fix them. |
 
