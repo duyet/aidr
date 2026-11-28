@@ -7,6 +7,7 @@ struct DayScreen: View {
   let date: String
   let lang: Lang
   @State private var model: ArchiveDayModel
+  @Environment(\.scenePhase) private var scenePhase
 
   init(date: String, lang: Lang) {
     self.date = date
@@ -18,6 +19,8 @@ struct DayScreen: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
         ArchiveDayBlock(date: model.date, lang: lang, count: model.day?.total)
+          .padding(.top, Spacing.sm)
+        ArchiveFreshness(updatedAt: model.updatedAt, offline: model.refreshFailed && model.day != nil, lang: lang)
           .padding(.top, Spacing.sm)
         ArchiveStepper(
           previousTitle: lang == .vi ? "Ngày trước" : "Previous day",
@@ -47,6 +50,9 @@ struct DayScreen: View {
     .task(id: model.date) { await model.load() }
     .refreshable { await model.load() }
     .accessibilityIdentifier("day-screen")
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { Task { await model.load() } }
+    }
   }
 
   @ViewBuilder private var content: some View {

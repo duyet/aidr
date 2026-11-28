@@ -23,9 +23,19 @@ public struct ArchiveDiskCache: Sendable {
     do {
       try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
       try data.write(to: directory.appending(path: name), options: .atomic)
+      try Data(String(Date().timeIntervalSince1970).utf8).write(
+        to: directory.appending(path: name + ".at"), options: .atomic)
     } catch {
       return
     }
+  }
+
+  /// When `name` was last written, kept beside the file so no file-date API is read.
+  public func fetchedAt(_ name: String) -> Date? {
+    guard let data = read(name + ".at"), let text = String(data: data, encoding: .utf8),
+      let seconds = Double(text)
+    else { return nil }
+    return Date(timeIntervalSince1970: seconds)
   }
 }
 
@@ -35,6 +45,8 @@ public struct ArchiveDayResult: Sendable {
   /// The edition, or nil when the day has none or the load failed.
   public var day: ArchiveDay?
   public var failed: Bool
+  /// Why the load failed, for diagnostics.
+  public var error: String?
 }
 
 /// Reads the archive from the public API and keeps what it reads on disk.
@@ -59,6 +71,11 @@ public struct ArchiveClient: Sendable {
 
   static func dayFile(_ date: String, _ lang: Lang) -> String { "day-\(lang.rawValue)-\(date).md" }
 
+  /// When the cached day was fetched. The day twin carries no server timestamp.
+  public func dayFetchedAt(_ date: String, lang: Lang) -> Date? {
+    cache.fetchedAt(Self.dayFile(date, lang))
+  }
+
   public func cachedDay(_ date: String, lang: Lang) -> ArchiveDay? {
     guard let data = cache.read(Self.dayFile(date, lang)), let text = String(data: data, encoding: .utf8)
     else { return nil }
@@ -79,15 +96,19 @@ public struct ArchiveClient: Sendable {
 
   public func loadDay(_ date: String, lang: Lang) async -> ArchiveDayResult {
     do {
-      return ArchiveDayResult(date: date, day: try await fetchDay(date, lang: lang), failed: false)
+      return ArchiveDayResult(date: date, day: try await fetchDay(date, lang: lang), failed: false, error: nil)
     } catch {
-      return ArchiveDayResult(date: date, day: nil, failed: true)
+      return ArchiveDayResult(date: date, day: nil, failed: true, error: String(describing: error))
     }
   }
 
   // MARK: Weeks
 
   static func weekFile(_ week: String) -> String { "week-\(week).json" }
+
+  public func weekFetchedAt(_ week: String) -> Date? {
+    cache.fetchedAt(Self.weekFile(week))
+  }
 
   public func cachedWeek(_ week: String) -> ArchiveWeekEdition? {
     guard let data = cache.read(Self.weekFile(week)) else { return nil }

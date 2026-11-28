@@ -17,6 +17,7 @@ struct ArchiveWeekTests {
     #expect(edition.week == "2026-W46")
     #expect(edition.issue == 7)
     #expect(edition.startDate == "2026-11-09")
+    #expect(edition.updatedDate == Date(timeIntervalSince1970: 1794763853.204))
     #expect(!edition.isProvisional)
     #expect(edition.stories.count == 2)
     #expect(edition.stories.first { $0.rank == 1 }?.imageUrl == "https://img.example/a.jpg")
@@ -63,6 +64,11 @@ struct ArchiveWeekTests {
     cache.write(Data(ArchiveDayTests.vi.utf8), name: "day-vi-2026-11-20.md")
     let day = try #require(client.cachedDay("2026-11-20", lang: .vi))
     #expect(day.total == 70)
+    // The write time is kept beside the file, for the "Updated Xm ago" line.
+    let savedAt = try #require(cache.fetchedAt("day-vi-2026-11-20.md"))
+    #expect(abs(savedAt.timeIntervalSinceNow) < 60)
+    #expect(client.dayFetchedAt("2026-11-20", lang: .vi) == savedAt)
+    #expect(client.dayFetchedAt("2026-11-20", lang: .en) == nil)
     // The other language has its own file; nothing falls back.
     #expect(client.cachedDay("2026-11-20", lang: .en) == nil)
   }

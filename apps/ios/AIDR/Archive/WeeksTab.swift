@@ -5,6 +5,7 @@ import SwiftUI
 struct WeeksTab: View {
   let lang: Lang
   @State private var model: ArchiveWeeksModel
+  @Environment(\.scenePhase) private var scenePhase
 
   init(lang: Lang) {
     self.lang = lang
@@ -28,6 +29,7 @@ struct WeeksTab: View {
             )
             .font(.inter(14, relativeTo: .subheadline))
             .foregroundStyle(Palette.mutedForeground)
+            ArchiveFreshness(updatedAt: model.updatedAt, offline: model.refreshFailed && !model.editions.isEmpty, lang: lang)
           }
           .padding(.top, Spacing.md)
           .padding(.bottom, Spacing.lg)
@@ -50,6 +52,9 @@ struct WeeksTab: View {
       .routeDestinations(lang: lang)
     }
     .accessibilityIdentifier("weeks-list")
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { Task { await model.refresh() } }
+    }
   }
 }
 

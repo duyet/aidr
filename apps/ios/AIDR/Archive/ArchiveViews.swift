@@ -130,6 +130,48 @@ struct ArchiveSectionLabel: View {
   }
 }
 
+/// "Cập nhật 5 phút trước" / "Updated 5 min. ago", refreshed every minute. While
+/// the screen shows saved content because a refresh failed: "Ngoại tuyến · bản
+/// lưu lúc 07:12" / "Offline · saved 07:12".
+struct ArchiveFreshness: View {
+  let updatedAt: Date?
+  let offline: Bool
+  let lang: Lang
+  /// Extra diagnostics for the accessibility tree, e.g. the last error.
+  var detail: String?
+
+  var body: some View {
+    TimelineView(.everyMinute) { context in
+      let text = label(now: context.date)
+      if !text.isEmpty {
+        Text(text)
+          .font(.mono(11))
+          .foregroundStyle(Palette.mutedForeground)
+          .accessibilityValue(detail ?? "")
+          .accessibilityIdentifier("archive-freshness")
+      }
+    }
+  }
+
+  private func label(now: Date) -> String {
+    let locale = Locale(identifier: lang == .vi ? "vi_VN" : "en_US")
+    if offline {
+      guard let updatedAt else { return lang == .vi ? "Ngoại tuyến" : "Offline" }
+      let time = updatedAt.formatted(Date.FormatStyle().hour().minute().locale(locale))
+      return lang == .vi ? "Ngoại tuyến · bản lưu lúc \(time)" : "Offline · saved \(time)"
+    }
+    guard let updatedAt else { return "" }
+    if now.timeIntervalSince(updatedAt) < 60 {
+      return lang == .vi ? "Vừa cập nhật" : "Updated just now"
+    }
+    let formatter = RelativeDateTimeFormatter()
+    formatter.locale = locale
+    formatter.unitsStyle = .short
+    let relative = formatter.localizedString(for: updatedAt, relativeTo: now)
+    return (lang == .vi ? "Cập nhật " : "Updated ") + relative
+  }
+}
+
 struct ArchiveHairline: View {
   var body: some View {
     Rectangle().fill(Palette.border).frame(height: 0.5)

@@ -40,6 +40,13 @@ public struct ArchiveWeekEdition: Decodable, Sendable, Equatable {
   public var stories: [ArchiveWeekStory]
   /// True for the week still in progress: a live ranking, not an issue yet.
   public var provisional: Bool?
+  /// Milliseconds since the epoch: when the edition was written or last re-ranked.
+  public var createdAt: Int64?
+
+  /// When the server last wrote this edition.
+  public var updatedDate: Date? {
+    createdAt.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) }
+  }
 
   public var isProvisional: Bool { provisional == true }
 

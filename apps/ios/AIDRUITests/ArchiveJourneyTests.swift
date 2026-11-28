@@ -16,9 +16,7 @@ final class ArchiveJourneyTests: XCTestCase {
 
   @MainActor
   func testCalendarDark() {
-    XCUIDevice.shared.appearance = .dark
-    defer { XCUIDevice.shared.appearance = .unspecified }
-    let app = launch(language: "vi", locale: "vi_VN")
+    let app = launch(language: "vi", locale: "vi_VN", dark: true)
     openTab(app, "Lịch")
     waitForCalendar(app)
     capture(app, "archive-calendar-dark")
@@ -70,9 +68,11 @@ final class ArchiveJourneyTests: XCTestCase {
   // MARK: Helpers
 
   @MainActor
-  private func launch(language: String, locale: String) -> XCUIApplication {
+  private func launch(language: String, locale: String, dark: Bool = false) -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments = ["-AppleLanguages", "(\(language))", "-AppleLocale", locale]
+    // A launch argument, not XCUIDevice.appearance, so no other test inherits dark mode.
+    if dark { app.launchArguments += ["-AppleInterfaceStyle", "Dark"] }
     app.launch()
     return app
   }
@@ -100,7 +100,7 @@ final class ArchiveJourneyTests: XCTestCase {
     while Date() < deadline && elements(app, prefix: "calendar-day-").count < 2 {
       Thread.sleep(forTimeInterval: 1)
     }
-    XCTAssertGreaterThan(elements(app, prefix: "calendar-day-").count, 1, "calendar days never loaded")
+    if elements(app, prefix: "calendar-day-").count <= 1 { failWithTree(app, "calendar") }
     // Thumbnails of the agenda rows.
     Thread.sleep(forTimeInterval: 5)
   }

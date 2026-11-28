@@ -7,6 +7,7 @@ struct CalendarTab: View {
   let lang: Lang
   @State private var model: ArchiveMonthModel
   @State private var stories: ArchiveStories
+  @Environment(\.scenePhase) private var scenePhase
 
   init(lang: Lang) {
     self.lang = lang
@@ -20,6 +21,8 @@ struct CalendarTab: View {
       ScrollView {
         VStack(alignment: .leading, spacing: 0) {
           MonthHeader(model: model, lang: lang)
+          freshness
+            .padding(.top, Spacing.xs)
           MonthGrid(model: model, lang: lang)
             .padding(.top, Spacing.md)
           MonthLegend(maxCount: model.maxCount, lang: lang)
@@ -36,6 +39,21 @@ struct CalendarTab: View {
       .routeDestinations(lang: lang)
     }
     .task(id: model.month) { await model.load() }
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { Task { await model.load() } }
+    }
+  }
+
+  @ViewBuilder private var freshness: some View {
+    if model.failed && !model.isOffline {
+      Text(lang == .vi ? "\(model.failedCount) ngày chưa tải được · kéo để thử lại" : "\(model.failedCount) days didn't load · pull to retry")
+        .font(.mono(11))
+        .foregroundStyle(Palette.mutedForeground)
+        .accessibilityValue(model.lastError ?? "")
+        .accessibilityIdentifier("archive-freshness")
+    } else {
+      ArchiveFreshness(updatedAt: model.updatedAt, offline: model.isOffline, lang: lang, detail: model.lastError)
+    }
   }
 }
 
@@ -152,6 +170,8 @@ private struct WeekCell: View {
           .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
         .accessibilityLabel(
           lang == .vi
             ? "Bản tin tuần: \(ArchiveCalendar.issueLabel(issue, lang: lang)), \(ArchiveCalendar.weekRange(week, lang: lang) ?? week)"
@@ -202,6 +222,8 @@ private struct DayCell: View {
         face(number: number, foreground: ArchiveHeat.foreground(level), background: ArchiveHeat.background(level), isToday: isToday, dashed: false)
       }
       .buttonStyle(.plain)
+      .accessibilityElement(children: .ignore)
+      .accessibilityAddTraits(.isButton)
       .accessibilityLabel(label(date, summary))
       .accessibilityIdentifier("calendar-day-\(date)")
     } else {

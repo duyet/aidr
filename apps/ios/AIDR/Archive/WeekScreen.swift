@@ -7,6 +7,7 @@ struct WeekScreen: View {
   let week: String
   let lang: Lang
   @State private var model: ArchiveWeekModel
+  @Environment(\.scenePhase) private var scenePhase
 
   init(week: String, lang: Lang) {
     self.week = week
@@ -46,6 +47,9 @@ struct WeekScreen: View {
     .task(id: model.week) { await model.load() }
     .refreshable { await model.load() }
     .accessibilityIdentifier("week-screen")
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { Task { await model.load() } }
+    }
   }
 
   private var stories: [ArchiveWeekStory] { model.edition?.stories(in: lang) ?? [] }
@@ -96,6 +100,7 @@ struct WeekScreen: View {
         .font(.inter(14, relativeTo: .subheadline))
         .foregroundStyle(Palette.mutedForeground)
       }
+      ArchiveFreshness(updatedAt: model.updatedAt, offline: model.refreshFailed && model.edition != nil, lang: lang)
     }
     .padding(Spacing.lg)
     .frame(maxWidth: .infinity, alignment: .leading)
