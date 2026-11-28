@@ -21,6 +21,7 @@ targets:
       - path: AIDR
         excludes:
           - Resources/Fonts/Inter-LICENSE.txt
+          - Resources/Fonts/Newsreader-OFL.txt
     dependencies:
       - package: AIDRKit
     info:
@@ -40,6 +41,10 @@ targets:
           - Inter-Medium.ttf
           - Inter-SemiBold.ttf
           - Inter-Bold.ttf
+          - Newsreader-Regular.ttf
+          - Newsreader-Medium.ttf
+          - Newsreader-SemiBold.ttf
+          - Newsreader-Bold.ttf
         ITSAppUsesNonExemptEncryption: false
         NSPhotoLibraryAddUsageDescription: "Save AI;DR story cards to your photo library."
         BGTaskSchedulerPermittedIdentifiers: [oneni.aidr.app.refresh]
