@@ -105,17 +105,20 @@ public struct ShareCardView: View {
   }
 
   private func hero(_ image: UIImage, maxHeight: CGFloat) -> some View {
-    Image(uiImage: image)
-      .resizable()
-      .scaledToFill()
+    // The image sits in an overlay: scaledToFill would otherwise widen the
+    // card to the image's filled width when the height budget is tall.
+    Color.clear
       .frame(maxWidth: .infinity, minHeight: 56, maxHeight: maxHeight)
+      .overlay {
+        Image(uiImage: image).resizable().scaledToFill()
+      }
       .clipShape(RoundedRectangle(cornerRadius: min(12, style.cornerRadius), style: .continuous))
   }
 
   private func summaryBlock(lines: Int) -> some View {
     VStack(alignment: .leading, spacing: 5) {
       HStack(spacing: 5) {
-        Circle().fill(Palette.signal).frame(width: 6, height: 6)
+        Circle().fill(Color(hex: "#f5c518")).frame(width: 6, height: 6)
         Text("AI;DR")
           .font(.system(size: 10.5, weight: .bold, design: .monospaced))
           .tracking(1)
@@ -132,9 +135,9 @@ public struct ShareCardView: View {
     HStack(spacing: 7) {
       Text(";")
         .font(Self.inter(13, .bold))
-        .foregroundStyle(Palette.signalInk)
+        .foregroundStyle(Color(hex: "#0a0a0a"))
         .frame(width: 20, height: 20)
-        .background(Palette.signal, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+        .background(Color(hex: "#f5c518"), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
       Text("AI;DR")
         .font(Self.inter(14, .semibold))
         .foregroundStyle(Ink.foreground)

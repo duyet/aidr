@@ -52,7 +52,7 @@ public enum ShareCardAspect: String, CaseIterable, Identifiable, Sendable {
 
   var summaryLines: Int {
     switch self {
-    case .portrait: 5
+    case .portrait: 4
     case .square: 3
     case .story: 11
     }
@@ -148,7 +148,7 @@ public struct ShareCardStyle: Equatable, Sendable {
   public var aspect: ShareCardAspect = .portrait
   public var background: ShareCardBackground = .gradient(0)
   /// The canvas margin around the card, in points.
-  public var padding: Double = 26
+  public var padding: Double = 22
   /// The card's corner radius, in points.
   public var cornerRadius: Double = 22
   /// 0 is flat, 1 is the deepest shadow.

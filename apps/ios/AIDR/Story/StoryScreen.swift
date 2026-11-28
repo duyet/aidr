@@ -9,6 +9,7 @@ struct StoryScreen: View {
   let lang: Lang
 
   @State private var store: StoryStore
+  @Environment(AppState.self) private var appState
 
   init(id: String, lang: Lang) {
     self.id = id
@@ -20,6 +21,17 @@ struct StoryScreen: View {
     content
       .background(Palette.background)
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .primaryAction) {
+          Button {
+            appState.showSettings = true
+          } label: {
+            Text("Aa").font(.inter(16, .semibold, relativeTo: .body))
+          }
+          .accessibilityLabel(lang == .vi ? "Cỡ chữ và giao diện" : "Text size and look")
+          .accessibilityIdentifier("story-aa")
+        }
+      }
       .task { await store.load() }
   }
 
@@ -88,7 +100,7 @@ private struct StoryContent: View {
     if let topic = meta.topic {
       var dot = AttributedString("● ")
       dot.swiftUI.font = .system(size: 8)
-      dot.swiftUI.foregroundColor = meta.topicColor.color
+      dot.swiftUI.foregroundColor = Palette.topic(meta.topicColor)
       dot.swiftUI.baselineOffset = 1.5
       var name = AttributedString(topic)
       name.swiftUI.font = .inter(11.5, .bold, relativeTo: .caption)
@@ -112,7 +124,8 @@ private struct StoryContent: View {
     if let headline {
       Text(
         StoryKeywordText.attributed(
-          headline.text, tags: item.tags, size: 29, base: .semibold, ink: Palette.foreground, style: .title)
+          headline.text, tags: item.tags, size: 29, base: .semibold, ink: Palette.foreground, style: .title,
+          headline: true)
       )
       .tracking(-0.6)
       .lineSpacing(2)

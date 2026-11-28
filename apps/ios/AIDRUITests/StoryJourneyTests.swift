@@ -20,6 +20,19 @@ final class StoryJourneyTests: XCTestCase {
     try journey(language: "en", locale: "en_US", dark: true)
   }
 
+  /// "Aa" in the nav bar opens the shared Customize sheet without leaving the story.
+  @MainActor func testAaOpensSettings() throws {
+    XCUIDevice.shared.appearance = .light
+    let app = launch(language: "en", locale: "en_US")
+    try openFirstStory(app)
+    let aa = app.buttons["story-aa"]
+    XCTAssertTrue(aa.waitForExistence(timeout: 10), "Aa button missing from the story nav bar")
+    Thread.sleep(forTimeInterval: 3)
+    aa.tap()
+    Thread.sleep(forTimeInterval: 2)
+    capture(app, "story-aa-settings-en")
+  }
+
   /// Online open caches the story; a relaunch against an unreachable API still reads it.
   @MainActor func testStoryOpensOffline() throws {
     XCUIDevice.shared.appearance = .light
@@ -60,12 +73,10 @@ final class StoryJourneyTests: XCTestCase {
 
     app.swipeUp()
     Thread.sleep(forTimeInterval: 1)
-    capture(app, "story-summary-\(tag)")
-
     let shareImage = app.buttons["story-share-image"]
     scroll(app, until: shareImage)
     XCTAssertTrue(shareImage.exists, "Share as image button not found")
-    capture(app, "story-actions-\(tag)")
+    capture(app, "story-summary-\(tag)")
     scroll(app, until: app.descendants(matching: .any)["story-tags"], swipes: 4)
     capture(app, "story-sources-\(tag)")
 
@@ -82,8 +93,8 @@ final class StoryJourneyTests: XCTestCase {
     capture(app, "story-share-composer-2-\(tag)")
     attachPNG(dump, "story-share-card-\(tag)")
 
-    app.buttons["9:16"].tap()
     try? FileManager.default.removeItem(atPath: dump)
+    app.buttons["9:16"].tap()
     Thread.sleep(forTimeInterval: 2.5)
     capture(app, "story-share-composer-story-\(tag)")
     attachPNG(dump, "story-share-card-9x16-\(tag)")
