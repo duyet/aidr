@@ -7,6 +7,8 @@ import WebKit
 /// and a web view never sits in the paging scroll until the reader asks.
 struct BriefVideoPage: View {
   let video: BriefVideo
+  /// The brief's date. A video from another day says so on its eyebrow.
+  let briefDate: String?
   let lang: Lang
   let insets: EdgeInsets
   @State private var playing = false
@@ -14,7 +16,7 @@ struct BriefVideoPage: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack {
-        Text(lang == .vi ? "BẢN TIN VIDEO" : "VIDEO BRIEFING")
+        Text(eyebrow)
           .font(.mono(11, weight: .semibold))
           .tracking(1)
           .foregroundStyle(BriefInk.text)
@@ -72,6 +74,12 @@ struct BriefVideoPage: View {
     .onDisappear { playing = false }
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("brief-video")
+  }
+
+  private var eyebrow: String {
+    let base = lang == .vi ? "BẢN TIN VIDEO" : "VIDEO BRIEFING"
+    guard !video.date.isEmpty, video.date != briefDate else { return base }
+    return "\(base) · \(video.date)"
   }
 
   private var player: some View {

@@ -31,6 +31,7 @@ final class BriefJourneyTests: XCTestCase {
   func testBriefEnglish() {
     let app = launch(language: "en", locale: "en_US")
     XCTAssertTrue(element(app, "brief-customize").exists, "Aa button missing")
+    XCTAssertTrue(element(app, "brief-freshness").exists, "freshness line missing")
     capture(app, "brief-cover-en")
     XCTAssertTrue(swipe(to: "story-1", in: app))
     Thread.sleep(forTimeInterval: 4)
@@ -78,10 +79,12 @@ final class BriefJourneyTests: XCTestCase {
     let app = XCUIApplication()
     var args = ["-AppleLanguages", "(\(language))", "-AppleLocale", locale]
     args += ["-brief.finishedDays", "(\"\(day(offset: -2))\",\"\(day(offset: -1))\")"]
-    XCUIDevice.shared.appearance = dark ? .dark : .light
     app.launchArguments = args
     app.launchEnvironment = env
     app.launch()
+    // Set after launch: the system appearance applies live to the running app.
+    XCUIDevice.shared.appearance = dark ? .dark : .light
+    Thread.sleep(forTimeInterval: 1.5)
     let tab = app.tabBars.buttons["AI;DR"]
     XCTAssertTrue(tab.waitForExistence(timeout: 15), "AI;DR tab missing")
     tab.tap()

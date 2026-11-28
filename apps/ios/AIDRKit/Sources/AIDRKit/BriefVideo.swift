@@ -8,11 +8,15 @@ public struct BriefVideo: Equatable, Sendable {
   /// A 9:16 Short rather than the 16:9 briefing.
   public var isShort: Bool
   public var title: String?
+  /// The day whose archive it came from, yyyy-MM-dd. Empty when parsed
+  /// from text alone.
+  public var date: String
 
-  public init(id: String, isShort: Bool, title: String? = nil) {
+  public init(id: String, isShort: Bool, title: String? = nil, date: String = "") {
     self.id = id
     self.isShort = isShort
     self.title = title
+    self.date = date
   }
 
   public var watchURL: URL {
@@ -85,6 +89,8 @@ extension APIClient {
     guard date.count == 10, date.allSatisfy({ $0.isASCII && ($0.isNumber || $0 == "-") }) else { return nil }
     let data = try await get("date/\(date).md", query: [URLQueryItem(name: "lang", value: lang.rawValue)])
     guard let text = String(data: data, encoding: .utf8) else { return nil }
-    return BriefVideo.parse(markdown: text)
+    guard var video = BriefVideo.parse(markdown: text) else { return nil }
+    video.date = date
+    return video
   }
 }

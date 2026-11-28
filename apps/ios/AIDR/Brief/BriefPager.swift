@@ -9,6 +9,7 @@ struct BriefPager: View {
   let deck: BriefDeck
   let lang: Lang
   let offline: Bool
+  let updatedAt: Date?
   let streak: BriefStreak
   let onFinished: () -> Void
 
@@ -66,9 +67,9 @@ struct BriefPager: View {
   @ViewBuilder private func pageView(_ item: BriefPage, insets: EdgeInsets) -> some View {
     switch item {
     case .cover(let cover):
-      BriefCoverPage(cover: cover, lang: lang, offline: offline, insets: insets)
+      BriefCoverPage(cover: cover, lang: lang, offline: offline, updatedAt: updatedAt, insets: insets)
     case .video(let video):
-      BriefVideoPage(video: video, lang: lang, insets: insets)
+      BriefVideoPage(video: video, briefDate: deck.date, lang: lang, insets: insets)
     case .story(let story):
       BriefStoryPage(story: story, learned: deck.learned, lang: lang, insets: insets)
     case .end:

@@ -6,6 +6,8 @@ struct BriefCoverPage: View {
   let cover: BriefCover
   let lang: Lang
   let offline: Bool
+  /// The feed's own update time, for the freshness line.
+  let updatedAt: Date?
   let insets: EdgeInsets
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -18,11 +20,6 @@ struct BriefCoverPage: View {
           .tracking(-0.3)
           .foregroundStyle(Palette.foreground)
         Spacer()
-        if offline {
-          Label(lang == .vi ? "Ngoại tuyến" : "Offline", systemImage: "wifi.slash")
-            .font(.inter(12.5, .medium, relativeTo: .caption))
-            .foregroundStyle(Palette.mutedForeground)
-        }
       }
       .padding(.trailing, BriefCustomizeButton.reserved)
       Spacer(minLength: Spacing.xl)
@@ -52,6 +49,7 @@ struct BriefCoverPage: View {
         .font(.mono(13, weight: .medium))
         .tracking(0.6)
         .foregroundStyle(Palette.mutedForeground)
+      freshness
       if let teaser = cover.teaser {
         Text(teaser)
           .font(.headline(22, .medium, relativeTo: .title3))
@@ -87,6 +85,21 @@ struct BriefCoverPage: View {
     }
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("brief-cover")
+  }
+
+  /// Refreshes every minute; offline it names when the saved copy is from.
+  private var freshness: some View {
+    TimelineView(.everyMinute) { context in
+      if let text = BriefFreshness.label(
+        updatedAt: updatedAt, offline: offline, lang: lang, now: context.date)
+      {
+        Label(text, systemImage: offline ? "wifi.slash" : "clock")
+          .font(.inter(12.5, .medium, relativeTo: .caption))
+          .foregroundStyle(Palette.mutedForeground)
+          .padding(.top, 6)
+          .accessibilityIdentifier("brief-freshness")
+      }
+    }
   }
 
   private var meta: String {

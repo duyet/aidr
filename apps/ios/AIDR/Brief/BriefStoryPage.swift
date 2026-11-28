@@ -30,6 +30,9 @@ struct BriefStoryPage: View {
       }
       .padding(.top, insets.top + 28)
       .padding(.trailing, BriefCustomizeButton.reserved)
+      if let url = story.imageURL {
+        BriefImageCard(url: url).padding(.top, Spacing.lg)
+      }
       Spacer(minLength: Spacing.lg)
       Text(attributed)
         .lineSpacing(4)
@@ -119,8 +122,30 @@ struct BriefTrailingIconLabelStyle: LabelStyle {
   }
 }
 
-/// The story image across the top, fading into a blurred, darkened copy of
-/// itself, or a gradient in the topic's color when there is no image.
+/// The story image as a framed card in its own proportions. Many sources
+/// are text screenshots, so it is never cropped into giant letters.
+struct BriefImageCard: View {
+  let url: URL
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  var body: some View {
+    AsyncImage(url: url, transaction: Transaction(animation: reduceMotion ? nil : .easeIn(duration: 0.3))) { phase in
+      if let image = phase.image {
+        image.resizable().scaledToFit()
+      } else {
+        Color.white.opacity(0.08).aspectRatio(16.0 / 9.0, contentMode: .fit)
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: 220)
+    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .overlay { RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(.white.opacity(0.14), lineWidth: 0.5) }
+    .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
+    .accessibilityHidden(true)
+  }
+}
+
+/// A heavily blurred, darkened copy of the story image (no letter stays
+/// legible), or a gradient in the topic's color when there is no image.
 struct BriefBackdrop: View {
   let url: URL?
   let tint: TopicColor?
@@ -134,20 +159,11 @@ struct BriefBackdrop: View {
           AsyncImage(url: url, transaction: Transaction(animation: reduceMotion ? nil : .easeIn(duration: 0.3))) {
             phase in
             if let image = phase.image {
-              ZStack(alignment: .top) {
-                image.resizable().scaledToFill()
-                  .frame(width: geo.size.width, height: geo.size.height)
-                  .clipped()
-                  .blur(radius: 36, opaque: true)
-                  .opacity(0.6)
-                image.resizable().scaledToFill()
-                  .frame(width: geo.size.width, height: geo.size.height * 0.46)
-                  .clipped()
-                  .mask(
-                    LinearGradient(
-                      stops: [.init(color: .black, location: 0.7), .init(color: .clear, location: 1)],
-                      startPoint: .top, endPoint: .bottom))
-              }
+              image.resizable().scaledToFill()
+                .frame(width: geo.size.width, height: geo.size.height)
+                .clipped()
+                .blur(radius: 70, opaque: true)
+                .opacity(0.5)
             } else {
               Color.clear
             }
@@ -155,10 +171,9 @@ struct BriefBackdrop: View {
         }
         LinearGradient(
           stops: [
-            .init(color: .black.opacity(0.45), location: 0),
-            .init(color: .black.opacity(0.0), location: 0.2),
-            .init(color: .black.opacity(0.45), location: 0.5),
-            .init(color: .black.opacity(0.9), location: 1),
+            .init(color: .black.opacity(0.35), location: 0),
+            .init(color: .black.opacity(0.3), location: 0.4),
+            .init(color: .black.opacity(0.88), location: 1),
           ], startPoint: .top, endPoint: .bottom)
       }
       .frame(width: geo.size.width, height: geo.size.height)

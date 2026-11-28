@@ -43,7 +43,8 @@ final class BriefStore {
   }
 
   /// Test hooks, like AIDR_API_BASE: AIDR_BRIEF_NO_IMAGES draws every page
-  /// with the gradient, AIDR_BRIEF_VIDEO_DATE reads that day's video.
+  /// with the gradient, AIDR_BRIEF_VIDEO_DATE reads that day's video (the UI
+  /// test needs a day that has one; the page then names that day).
   var deck: BriefDeck {
     guard let feed else { return BriefDeck(pages: [], date: nil, learned: []) }
     return BriefDeck.build(
@@ -67,11 +68,17 @@ final class BriefStore {
     await refreshVideo()
   }
 
-  /// A day with no video, or a failed read, leaves the brief without the
-  /// page. The feed failure above is what tells the reader they are offline.
+  /// The brief's own day and language only. A day with no video leaves the
+  /// brief without the page; a failed read keeps a video already found for
+  /// this same day, and never one from another day. The feed failure above
+  /// is what tells the reader they are offline.
   private func refreshVideo() async {
     guard let date = environment["AIDR_BRIEF_VIDEO_DATE"] ?? feed?.tldr?.date else { return }
-    if let found = try? await api.dayVideo(date: date, lang: lang) { video = found }
+    do {
+      video = try await api.dayVideo(date: date, lang: lang)
+    } catch {
+      if video?.date != date { video = nil }
+    }
   }
 
   /// The end page appeared: today counts as read.

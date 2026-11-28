@@ -29,7 +29,8 @@ struct BriefTab: View {
     let deck = store.deck
     if !deck.isEmpty {
       BriefPager(
-        deck: deck, lang: lang, offline: store.refreshFailed, streak: store.streak,
+        deck: deck, lang: lang, offline: store.refreshFailed, updatedAt: store.feed?.updatedDate,
+        streak: store.streak,
         onFinished: { store.finish() })
     } else if store.feed != nil {
       ContentUnavailableView(

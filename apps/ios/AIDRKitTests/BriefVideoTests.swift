@@ -49,6 +49,10 @@ struct BriefVideoTests {
     #expect(video.watchURL.absoluteString == "https://www.youtube.com/watch?v=awZlqVfdbuc")
   }
 
+  @Test func aParsedVideoCarriesNoDayUntilTheClientSetsIt() throws {
+    #expect(try #require(BriefVideo.parse(markdown: Self.english)).date == "")
+  }
+
   @Test func aDayWithoutTheSectionHasNoVideo() {
     #expect(BriefVideo.parse(markdown: "# AI news\n\n## AI;DR\n\n- one\n") == nil)
     #expect(BriefVideo.parse(markdown: "") == nil)
