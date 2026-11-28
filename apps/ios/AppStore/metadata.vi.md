@@ -35,7 +35,7 @@ AI;DR chọn và tóm tắt tin bằng phần mềm nên có thể sai. Với vi
 Các tính năng Apple Intelligence cần iPhone được hỗ trợ, đã bật Apple Intelligence, iOS 26 trở lên và một ngôn ngữ được hỗ trợ. Nếu máy không đáp ứng, phần còn lại của app vẫn dùng như bình thường.
 
 ## Keywords
-aidr,tldr,tuc,cong,nghe,tri,tue,nhan,tao,hoc,may,ban,LLM,ngon,ngu,hinh,mien,phi,nhanh
+aidr,tldr,tuc,cong,nghe,tri,tue,nhan,tao,hoc,may,ban,LLM,ngon,ngu,hinh,nhanh
 
 ## What's New
 Bản đầu tiên của AI;DR cho iPhone. Tin xếp hạng hôm nay, tóm tắt nhanh, kho lưu trữ, đọc offline, nhắc mỗi ngày và thẻ ảnh chia sẻ.

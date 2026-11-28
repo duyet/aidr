@@ -32,11 +32,11 @@ WHAT THE APP DOES THAT A WEBSITE CANNOT (guideline 4.2)
 5. Today, Digest, Calendar and Weeks tabs. Today is the ranked list with topic chips and search. Digest is the day in 8, 12 or 16 lines. Calendar is a heat map of past editions. Weeks lists weekly editions.
 
 CONTENT AND RIGHTS (5.2)
-AI;DR reads public RSS feeds and pages of AI news sources. For each story it shows the headline, a short summary written by a language model, and a thumbnail taken from the publisher's own page metadata. It does not copy article text. Every story has a Read source button that opens the original page in SFSafariViewController. The source list is public: https://aidr.today/data . We remove a source or a picture on request: me@duyet.net. We can provide documentation for any source on request.
+AI;DR reads public RSS feeds and pages of AI news sources. For each story it shows the headline, a short summary written by a language model, and a picture linked from the source page or post. It does not copy article text. Every story has a Read source button that opens the original page in SFSafariViewController. The source list is public: https://aidr.today/data . We remove a source or a picture on request: me@duyet.net. We can provide documentation for any source on request.
 Summaries can contain errors. The app says so in Settings > About and links to the original.
 
 PRIVACY (5.1.1, 5.1.2)
-No tracking, no ads, no third-party SDK. The app collects no personal data. It sends plain GET requests to https://aidr.today. Privacy policy: https://aidr.today/privacy (also Settings > Privacy Policy). Support: https://aidr.today/support . Notification permission is asked only when the reader turns the reminder on, and the app works without it.
+No tracking, no ads, no third-party SDK. The app collects only anonymous request counts (route, status, coarse client type, no identifier), declared as Other Usage Data, not linked. It sends plain GET requests to https://aidr.today. Privacy policy: https://aidr.today/privacy (also Settings > Privacy Policy). Support: https://aidr.today/support . Notification permission is asked only when the reader turns the reminder on, and the app works without it.
 
 OTHER
 - Suggest a story opens the system mail composer addressed to submit@aidr.today. The app sends nothing itself.
@@ -95,7 +95,7 @@ AI output and the rating (source 7: "consider how AI assistants and chatbot func
 Forum cases show reviewers ask for "documentary evidence" and the threads do not say what satisfied them (sources 26: threads 105345, 115490, 837349). Do not invent permissions. Reply with facts:
 
 ```text
-AI;DR does not host, copy or resell article content. For each story it shows the headline, a short summary written by a language model, and a thumbnail taken from the publisher's own page metadata or feed. Every story links to the original page. The sources are public RSS feeds and pages listed at https://aidr.today/data . Article text is never stored or shown. Summaries and headlines are shown to inform and point readers to the publisher. If a publisher asks us to remove its feed, headlines or pictures, we remove them promptly: me@duyet.net. Tell us which source you want documentation for and we will send what we have for it.
+AI;DR does not host, copy or resell article content. For each story it shows the headline, a short summary written by a language model, and a picture linked from the source page or post. Every story links to the original page. The sources are public RSS feeds and pages listed at https://aidr.today/data . Article text is never stored or shown. Summaries and headlines are shown to inform and point readers to the publisher. If a publisher asks us to remove its feed, headlines or pictures, we remove them promptly: me@duyet.net. Tell us which source you want documentation for and we will send what we have for it.
 ```
 
 Before submit, the operator should confirm two facts in this text against the code: the app shows no article body, and `/data` lists every source. If either is false, change the text. Never send the template unchanged on a guess.
