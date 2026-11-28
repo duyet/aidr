@@ -11,6 +11,10 @@ public enum RefreshJob {
 
   private static let log = Logger(subsystem: "oneni.aidr.app", category: "refresh")
 
+  /// The language the reader chose in Settings, else the phone's.
+  @MainActor
+  public static func readerLang() -> Lang { ReaderPrefsStore.shared.prefs.language.resolve() }
+
   /// AIDR_API_BASE points the app at another origin, as TodayStore does.
   public static func defaultClient() -> APIClient {
     if let raw = ProcessInfo.processInfo.environment["AIDR_API_BASE"], let base = URL(string: raw) {
@@ -34,7 +38,7 @@ public enum RefreshJob {
     api: APIClient = RefreshJob.defaultClient(),
     snapshots: SnapshotStore = SnapshotStore(),
     notifier: NotifyScheduler = .shared,
-    lang: Lang = .preferred(),
+    lang: Lang = RefreshJob.readerLang(),
     session: URLSession = .shared
   ) async -> Bool {
     let feed: Feed
@@ -55,7 +59,7 @@ public enum RefreshJob {
   /// Reschedules from the saved edition, fetching one when there is none.
   @MainActor
   public static func reschedule(
-    snapshots: SnapshotStore = SnapshotStore(), notifier: NotifyScheduler = .shared, lang: Lang = .preferred()
+    snapshots: SnapshotStore = SnapshotStore(), notifier: NotifyScheduler = .shared, lang: Lang = RefreshJob.readerLang()
   ) async {
     if let feed = snapshots.load() {
       await notifier.rescheduleIfEnabled(feed: feed, lang: lang)

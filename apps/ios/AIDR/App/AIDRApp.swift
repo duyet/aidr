@@ -12,6 +12,7 @@ struct AIDRApp: App {
     URLCache.shared = URLCache(memoryCapacity: 50 * 1024 * 1024, diskCapacity: 200 * 1024 * 1024)
     // Set before launch finishes so a tap that cold-starts the app is delivered.
     UNUserNotificationCenter.current().delegate = notifyDelegate
+    SettingsHooks.applyPrefs()
   }
 
   var body: some Scene {

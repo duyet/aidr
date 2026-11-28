@@ -1,44 +1,13 @@
 import Foundation
-import SwiftUI
 
-/// UserDefaults keys the Settings sheet writes and the rest of the app reads.
+/// UserDefaults keys for what Settings owns beyond ReaderPrefs (those are one
+/// JSON value under "aidr.prefs").
 public enum SettingsKey {
-  /// "system", "vi" or "en".
-  public static let language = "aidr.lang"
-  /// A `TextSizeChoice` raw value.
-  public static let textSize = "aidr.textSize"
   public static let notifyEnabled = "aidr.notify.enabled"
   /// Minutes after midnight, local time.
   public static let notifyMinutes = "aidr.notify.minutes"
   /// Seconds since the epoch of the last foreground refresh attempt.
   public static let lastRefresh = "aidr.refresh.last"
-}
-
-public enum LanguageChoice: String, CaseIterable, Identifiable, Sendable {
-  case system, vi, en
-
-  public var id: String { rawValue }
-}
-
-/// "Theo máy" leaves Dynamic Type to the system. The others pin the app to one step.
-public enum TextSizeChoice: String, CaseIterable, Identifiable, Sendable {
-  case system, small, medium, large, extraLarge
-
-  public var id: String { rawValue }
-
-  public init(stored: String?) {
-    self = stored.flatMap(Self.init(rawValue:)) ?? .system
-  }
-
-  public var dynamicTypeSize: DynamicTypeSize? {
-    switch self {
-    case .system: nil
-    case .small: .small
-    case .medium: .large
-    case .large: .xxLarge
-    case .extraLarge: .xxxLarge
-    }
-  }
 }
 
 extension Lang {

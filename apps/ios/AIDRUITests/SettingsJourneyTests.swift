@@ -1,57 +1,116 @@
 import XCTest
 
-/// The Settings sheet in both languages, in dark mode and at the largest text
-/// size. `-aidr.ui.settings YES` opens the sheet at launch (Today's "Aa" button
-/// is another lane's). `-aidr.lang system` and the other `-aidr.*` arguments are
-/// per launch, so nothing a test picks outlives it. The notification permission
-/// alert is never raised: the switch is seeded on and no test taps it.
+/// The Settings sheet in both languages, in dark and black, in cream with the
+/// serif font and a violet accent, and at the largest text size, plus Today in
+/// the same looks behind it. `-aidr.ui.settings YES` opens the sheet at launch
+/// (the "Aa" button is Today's). `-aidr.ui.prefs <json>` sets the reader
+/// preferences for that launch only: the app puts the saved ones back after
+/// applying them, so no later test inherits a look. Only the test that taps a
+/// swatch saves, and it ends with Reset. The notification permission alert is
+/// never raised: the switch is seeded on and no test taps it.
 final class SettingsJourneyTests: XCTestCase {
   override func setUp() { continueAfterFailure = false }
 
   @MainActor
   func testSettingsVietnamese() {
     let app = launch(language: "vi", locale: "vi_VN")
-    assertSettings(app, title: "Cài đặt")
+    assertSettings(app)
     capture(app, "settings-main-vi")
-    scrollToBottom(app)
+    scroll(app, to: "settings-layout")
+    capture(app, "settings-layout-vi")
+    scroll(app, to: "settings-version")
     capture(app, "settings-links-vi")
   }
 
   @MainActor
   func testSettingsEnglish() {
     let app = launch(language: "en", locale: "en_US")
-    assertSettings(app, title: "Settings")
+    assertSettings(app)
     capture(app, "settings-main-en")
-    scrollToBottom(app)
+    scroll(app, to: "settings-layout")
+    capture(app, "settings-layout-en")
+    scroll(app, to: "settings-version")
     capture(app, "settings-links-en")
   }
 
   @MainActor
-  func testSettingsDarkVietnamese() {
-    let app = launch(language: "vi", locale: "vi_VN", extra: ["-aidr.ui.dark", "YES"])
-    assertSettings(app, title: "Cài đặt")
-    capture(app, "settings-dark-vi")
+  func testCreamSerifViolet() {
+    let prefs = #"{"appearance":"cream","bodyFont":"serif","headFont":"serif","accent":"violet"}"#
+    let sheet = launch(language: "en", locale: "en_US", prefs: prefs)
+    assertSettings(sheet)
+    capture(sheet, "settings-cream-en")
+    sheet.terminate()
+
+    let today = launch(language: "en", locale: "en_US", prefs: prefs, settings: false)
+    settleToday(today)
+    capture(today, "today-cream-serif-violet-en")
   }
 
   @MainActor
-  func testSettingsLargeTextEnglish() {
-    let app = launch(language: "en", locale: "en_US", extra: ["-aidr.textSize", "extraLarge"])
-    assertSettings(app, title: "Settings")
+  func testDarkVietnamese() {
+    let prefs = #"{"appearance":"dark"}"#
+    let sheet = launch(language: "vi", locale: "vi_VN", prefs: prefs)
+    assertSettings(sheet)
+    capture(sheet, "settings-dark-vi")
+    sheet.terminate()
+
+    let today = launch(language: "vi", locale: "vi_VN", prefs: prefs, settings: false)
+    settleToday(today)
+    capture(today, "today-dark-vi")
+  }
+
+  @MainActor
+  func testBlackBlueVietnamese() {
+    let prefs = #"{"appearance":"black","accent":"blue"}"#
+    let sheet = launch(language: "vi", locale: "vi_VN", prefs: prefs)
+    assertSettings(sheet)
+    capture(sheet, "settings-black-vi")
+    sheet.terminate()
+
+    let today = launch(language: "vi", locale: "vi_VN", prefs: prefs, settings: false)
+    settleToday(today)
+    capture(today, "today-black-vi")
+  }
+
+  @MainActor
+  func testLargestTextEnglish() {
+    let app = launch(language: "en", locale: "en_US", prefs: #"{"textSize":"xxxLarge"}"#)
+    assertSettings(app)
     capture(app, "settings-large-en")
+  }
+
+  /// A swatch selects, and Reset puts the default back.
+  @MainActor
+  func testPickingALookAndResetting() {
+    let app = launch(language: "en", locale: "en_US")
+    assertSettings(app)
+    XCTAssertTrue(element(app, "settings-appearance-system").isSelected, "System is the default look")
+    element(app, "settings-appearance-cream").tap()
+    XCTAssertTrue(element(app, "settings-appearance-cream").isSelected)
+    XCTAssertFalse(element(app, "settings-appearance-system").isSelected)
+    element(app, "settings-accent-violet").tap()
+    XCTAssertTrue(element(app, "settings-accent-violet").isSelected)
+    scroll(app, to: "settings-reset")
+    element(app, "settings-reset").tap()
+    scroll(app, to: "settings-appearance-system", up: false)
+    XCTAssertTrue(element(app, "settings-appearance-system").isSelected, "Reset restores the default look")
+    XCTAssertFalse(element(app, "settings-accent-violet").isSelected)
   }
 
   // MARK: Helpers
 
   @MainActor
-  private func launch(language: String, locale: String, extra: [String] = []) -> XCUIApplication {
+  @discardableResult
+  private func launch(
+    language: String, locale: String, prefs: String = "{}", settings: Bool = true
+  ) -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments =
-      [
-        "-AppleLanguages", "(\(language))", "-AppleLocale", locale,
-        "-aidr.lang", "system",
-        "-aidr.ui.settings", "YES",
-        "-aidr.notify.enabled", "YES",
-      ] + extra
+    app.launchArguments = [
+      "-AppleLanguages", "(\(language))", "-AppleLocale", locale,
+      "-aidr.ui.prefs", prefs,
+      "-aidr.notify.enabled", "YES",
+    ]
+    if settings { app.launchArguments += ["-aidr.ui.settings", "YES"] }
     app.launch()
     return app
   }
@@ -63,8 +122,8 @@ final class SettingsJourneyTests: XCTestCase {
 
   /// The sheet's structure, not its words: the rows a reader needs are all there.
   @MainActor
-  private func assertSettings(_ app: XCUIApplication, title: String) {
-    guard element(app, "settings-notify-toggle").waitForExistence(timeout: 45) else {
+  private func assertSettings(_ app: XCUIApplication) {
+    guard element(app, "settings-appearance-system").waitForExistence(timeout: 45) else {
       capture(app, "failure-settings")
       let tree = XCTAttachment(string: app.debugDescription)
       tree.name = "failure-tree-settings"
@@ -73,22 +132,30 @@ final class SettingsJourneyTests: XCTestCase {
       XCTFail("the Settings sheet never appeared")
       return
     }
-    XCTAssertTrue(element(app, "settings-done").exists, "Done button")
-    XCTAssertTrue(element(app, "settings-language").exists, "language picker")
-    XCTAssertTrue(element(app, "settings-text-size").exists, "text size picker")
-    XCTAssertTrue(element(app, "settings-notify-time").exists, "time picker shows when the switch is on")
-    XCTAssertTrue(element(app, "settings-test-button").exists, "test notification button")
-    XCTAssertTrue(app.navigationBars[title].exists || app.staticTexts[title].exists, "title \(title)")
+    for id in ["settings-done", "settings-text-size", "settings-accent-yellow", "settings-highlight", "settings-text-preview"] {
+      XCTAssertTrue(element(app, id).exists, id)
+    }
     // Let the screen behind the sheet settle, then the sheet's own animation.
     Thread.sleep(forTimeInterval: 2)
   }
 
+  /// Swipes until the row is on screen. The form builds rows lazily, so a row
+  /// off screen may not exist yet.
   @MainActor
-  private func scrollToBottom(_ app: XCUIApplication) {
-    let version = element(app, "settings-version")
-    for _ in 0..<4 where !version.isHittable { app.swipeUp() }
-    XCTAssertTrue(version.exists, "version row")
+  private func scroll(_ app: XCUIApplication, to id: String, up: Bool = true) {
+    let row = element(app, id)
+    for _ in 0..<10 where !(row.exists && row.isHittable) {
+      if up { app.swipeUp() } else { app.swipeDown() }
+    }
+    XCTAssertTrue(row.exists, "\(id) never scrolled into view")
     Thread.sleep(forTimeInterval: 1)
+  }
+
+  @MainActor
+  private func settleToday(_ app: XCUIApplication) {
+    _ = element(app, "digest-row-1").waitForExistence(timeout: 45)
+    _ = app.images.firstMatch.waitForExistence(timeout: 5)
+    Thread.sleep(forTimeInterval: 4)
   }
 
   @MainActor

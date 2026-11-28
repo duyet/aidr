@@ -1,27 +1,28 @@
 import AIDRKit
 import SwiftUI
 
-/// Wraps RootView with what every screen shares: the reader's language and text
-/// size, the refresh on open and return, and the story a notification opens.
+/// Wraps RootView with the work that outlives a screen: the refresh on open and
+/// return, and the story a tapped notification opens.
 struct RootHost: View {
   @Environment(\.scenePhase) private var scenePhase
-  @AppStorage(SettingsKey.language) private var languagePref = LanguageChoice.system.rawValue
+  @State private var prefsStore = ReaderPrefsStore.shared
   @State private var inbox = NotifyInbox.shared
   @State private var showSettings = SettingsHooks.showSettings
 
   var body: some View {
-    // Reading the choice here rebuilds RootView when it changes, and RootView
-    // reads Lang.preferred() once per build. A sheet in a tab keeps its state.
-    let lang = Lang.preferred(stored: languagePref)
+    let prefs = prefsStore.prefs
+    let lang = prefs.language.resolve()
     RootView()
-      .environment(\.locale, lang.locale)
-      .modifier(TextSizeModifier())
-      .preferredColorScheme(SettingsHooks.dark ? .dark : nil)
+      // The sheets below hang outside RootView, so they take the look from here.
+      .preferredColorScheme(prefs.appearance.colorScheme)
+      .dynamicTypeSize(prefs.textSize.dynamicTypeRange)
       .sheet(item: storyTarget) { target in
         StorySheet(id: target.id, lang: lang)
+          .background(Palette.background)
       }
       .sheet(isPresented: $showSettings) {
         SettingsScreen(lang: lang)
+          .environment(prefsStore)
       }
       .task { await BackgroundRefresh.foreground() }
       .onChange(of: scenePhase) { _, phase in
