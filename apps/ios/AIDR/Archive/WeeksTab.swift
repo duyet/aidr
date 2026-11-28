@@ -98,7 +98,11 @@ private struct WeekRow: View {
       .overlay(alignment: .bottom) { ArchiveHairline() }
     }
     .buttonStyle(.plain)
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .ignore)
+    .accessibilityAddTraits(.isButton)
+    .accessibilityLabel(
+      [ArchiveCalendar.issue(week).map { ArchiveCalendar.issueLabel($0, lang: lang) }, range, lead?.title(in: lang)].compactMap { $0 }.joined(separator: ", ")
+    )
     .accessibilityIdentifier("weeks-row-\(week)")
     .task { await model.ensure(week) }
   }

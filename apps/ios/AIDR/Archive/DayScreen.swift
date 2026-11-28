@@ -104,9 +104,14 @@ private struct DigestBulletRow: View {
     if let id = bullet.storyId {
       NavigationLink(value: Route.story(id: id)) { row(item, topic, color) }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(bullet.text)
         .accessibilityIdentifier("day-digest-\(bullet.rank)")
     } else {
       row(item, topic, color)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(bullet.text)
         .accessibilityIdentifier("day-digest-\(bullet.rank)")
     }
   }
@@ -130,7 +135,6 @@ private struct DigestBulletRow: View {
     .padding(.vertical, 13)
     .contentShape(Rectangle())
     .overlay(alignment: .bottom) { ArchiveHairline() }
-    .accessibilityElement(children: .combine)
   }
 }
 
@@ -212,7 +216,11 @@ private struct RankedRow: View {
       .overlay(alignment: .bottom) { ArchiveHairline() }
     }
     .buttonStyle(.plain)
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .ignore)
+    .accessibilityAddTraits(.isButton)
+    .accessibilityLabel(
+      [story.title, story.category.map { Topic.label($0, lang: lang) }, story.host].compactMap { $0 }.joined(separator: ", ")
+    )
     .accessibilityIdentifier("day-story-\(story.rank)")
     .task(id: story.storyId) {
       // The top of the list gets its tags and thumbnail while the reader looks.

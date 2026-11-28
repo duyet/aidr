@@ -187,7 +187,11 @@ private struct WeekStoryRow: View {
       .overlay(alignment: .bottom) { ArchiveHairline() }
     }
     .buttonStyle(.plain)
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .ignore)
+    .accessibilityAddTraits(.isButton)
+    .accessibilityLabel(
+      [story.title(in: lang), story.category.map { Topic.label($0, lang: lang) }, story.source].compactMap { $0 }.joined(separator: ", ")
+    )
     .accessibilityIdentifier("week-story-\(story.rank)")
   }
 }

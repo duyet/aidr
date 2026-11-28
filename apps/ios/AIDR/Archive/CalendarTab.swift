@@ -382,7 +382,12 @@ private struct AgendaRow: View {
       .overlay(alignment: .bottom) { ArchiveHairline() }
     }
     .buttonStyle(.plain)
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .ignore)
+    .accessibilityAddTraits(.isButton)
+    .accessibilityLabel(
+      [ArchiveCalendar.dayLong(summary.date, lang: lang), summary.leadTitle, ArchiveCalendar.storiesLabel(summary.count, lang: lang)]
+        .compactMap { $0 }.joined(separator: ", ")
+    )
     .accessibilityIdentifier("agenda-row-\(summary.date)")
     .task(id: summary.leadId) {
       if let id = summary.leadId { await stories.ensure([id]) }

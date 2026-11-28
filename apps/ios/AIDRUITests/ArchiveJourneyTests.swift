@@ -39,9 +39,8 @@ final class ArchiveJourneyTests: XCTestCase {
     let dayCount = days.count
     XCTAssertGreaterThan(dayCount, 1, "no edition days in the month grid")
     days.element(boundBy: dayCount / 2).tap()
-    XCTAssertTrue(app.descendants(matching: .any)["day-screen"].waitForExistence(timeout: 20), "day screen")
-    let firstStory = app.descendants(matching: .any)["day-story-1"]
-    if !firstStory.waitForExistence(timeout: 45) { failWithTree(app, "day") }
+    if !waitFor(app, "day-screen", timeout: 20) { failWithTree(app, "day-screen") }
+    if !waitFor(app, "day-story-", timeout: 45) { failWithTree(app, "day") }
     Thread.sleep(forTimeInterval: 5)
     capture(app, "archive-day-\(suffix)")
     app.navigationBars.buttons.firstMatch.tap()
@@ -51,15 +50,15 @@ final class ArchiveJourneyTests: XCTestCase {
     let weekCells = elements(app, prefix: "calendar-week-")
     XCTAssertGreaterThan(weekCells.count, 0, "no linked weeks in the month grid")
     weekCells.element(boundBy: 0).tap()
-    XCTAssertTrue(app.descendants(matching: .any)["week-screen"].waitForExistence(timeout: 20), "week screen")
-    if !app.descendants(matching: .any)["week-story-1"].waitForExistence(timeout: 45) { failWithTree(app, "week") }
+    if !waitFor(app, "week-screen", timeout: 20) { failWithTree(app, "week-screen") }
+    if !waitFor(app, "week-story-", timeout: 45) { failWithTree(app, "week") }
     Thread.sleep(forTimeInterval: 5)
     capture(app, "archive-week-\(suffix)")
     app.navigationBars.buttons.firstMatch.tap()
 
     // Weeks list
     openTab(app, weeksTab)
-    if !elements(app, prefix: "weeks-row-").firstMatch.waitForExistence(timeout: 20) { failWithTree(app, "weeks") }
+    if !waitFor(app, "weeks-row-", timeout: 20) { failWithTree(app, "weeks") }
     // Let the rows fetch their editions and thumbnails.
     Thread.sleep(forTimeInterval: 8)
     capture(app, "archive-weeks-\(suffix)")
@@ -95,7 +94,7 @@ final class ArchiveJourneyTests: XCTestCase {
   /// The grid is up and at least two edition days have loaded.
   @MainActor
   private func waitForCalendar(_ app: XCUIApplication) {
-    XCTAssertTrue(app.descendants(matching: .any)["calendar-grid"].waitForExistence(timeout: 30), "calendar grid")
+    if !waitFor(app, "calendar-grid", timeout: 30) { failWithTree(app, "calendar-grid") }
     let deadline = Date().addingTimeInterval(60)
     while Date() < deadline && elements(app, prefix: "calendar-day-").count < 2 {
       Thread.sleep(forTimeInterval: 1)
@@ -103,6 +102,18 @@ final class ArchiveJourneyTests: XCTestCase {
     if elements(app, prefix: "calendar-day-").count <= 1 { failWithTree(app, "calendar") }
     // Thumbnails of the agenda rows.
     Thread.sleep(forTimeInterval: 5)
+  }
+
+  /// Polls for an element whose identifier starts with `prefix`. A plain poll, so a
+  /// miss leaves no per-poll debug attachments (their names break the CI upload).
+  @MainActor
+  private func waitFor(_ app: XCUIApplication, _ prefix: String, timeout: TimeInterval) -> Bool {
+    let deadline = Date().addingTimeInterval(timeout)
+    while Date() < deadline {
+      if elements(app, prefix: prefix).count > 0 { return true }
+      Thread.sleep(forTimeInterval: 1)
+    }
+    return false
   }
 
   @MainActor
