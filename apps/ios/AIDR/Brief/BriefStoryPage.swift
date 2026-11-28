@@ -132,14 +132,19 @@ struct BriefImageCard: View {
     AsyncImage(url: url, transaction: Transaction(animation: reduceMotion ? nil : .easeIn(duration: 0.3))) { phase in
       if let image = phase.image {
         image.resizable().scaledToFit()
+          .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+          .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+              .strokeBorder(.white.opacity(0.14), lineWidth: 0.5)
+          }
+          .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
       } else {
-        Color.white.opacity(0.08).aspectRatio(16.0 / 9.0, contentMode: .fit)
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+          .fill(.white.opacity(0.08))
+          .aspectRatio(16.0 / 9.0, contentMode: .fit)
       }
     }
     .frame(maxWidth: .infinity, maxHeight: 220)
-    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    .overlay { RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(.white.opacity(0.14), lineWidth: 0.5) }
-    .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
     .accessibilityHidden(true)
   }
 }

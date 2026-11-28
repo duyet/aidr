@@ -6,11 +6,6 @@ import XCTest
 final class BriefJourneyTests: XCTestCase {
   override func setUp() { continueAfterFailure = false }
 
-  /// The simulator is shared with the other journeys: leave it light.
-  override func tearDown() async throws {
-    await MainActor.run { XCUIDevice.shared.appearance = .light }
-  }
-
   @MainActor
   func testBriefVietnamese() {
     // 2026-10-15 is a day whose VI archive has a video.
@@ -79,12 +74,13 @@ final class BriefJourneyTests: XCTestCase {
     let app = XCUIApplication()
     var args = ["-AppleLanguages", "(\(language))", "-AppleLocale", locale]
     args += ["-brief.finishedDays", "(\"\(day(offset: -2))\",\"\(day(offset: -1))\")"]
+    // Dark mode through the reader prefs (JSON in UserDefaults "aidr.prefs",
+    // given as plist data): the simulator's own appearance is shared with
+    // the other journeys and did not reach the app.
+    if dark { args += ["-aidr.prefs", "<7b22617070656172616e6365223a226461726b227d>"] }  // {"appearance":"dark"}
     app.launchArguments = args
     app.launchEnvironment = env
     app.launch()
-    // Set after launch: the system appearance applies live to the running app.
-    XCUIDevice.shared.appearance = dark ? .dark : .light
-    Thread.sleep(forTimeInterval: 1.5)
     let tab = app.tabBars.buttons["AI;DR"]
     XCTAssertTrue(tab.waitForExistence(timeout: 15), "AI;DR tab missing")
     tab.tap()
