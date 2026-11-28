@@ -41,6 +41,8 @@ TRADEMARKS = [
     "openai", "chatgpt", "gpt", "claude", "anthropic", "gemini", "google", "apple", "iphone",
     "microsoft", "copilot", "meta", "llama", "mistral", "deepseek", "nvidia", "grok", "perplexity",
 ]
+# Pricing words must not sit in the name, subtitle or keywords (guideline 2.3.7: no pricing information).
+PRICING = ["free", "gratis", "sale", "discount", "cheap", "price", "mien", "phi", "mienphi", "giam", "gia"]
 # Apple's own product names are fine in the description, never in keywords.
 ALLOWED_IN_TEXT = {"apple", "iphone"}
 
@@ -124,6 +126,10 @@ def check_metadata(fname):
             for t in TRADEMARKS:
                 if t not in ALLOWED_IN_TEXT and re.search(r"\b" + t + r"\b", low):
                     err(f"{fname} {h}: names a third-party brand '{t}'")
+    for h in ("Name", "Subtitle"):
+        for w in re.findall(r"\w+", fold(sec.get(h, ""))):
+            if w in PRICING:
+                err(f"{fname}: {h} contains pricing word '{w}' (2.3.7)")
     for h, limit in LIMITS.items():
         if h in sec:
             n = len(sec[h])
@@ -152,6 +158,8 @@ def check_metadata(fname):
                 err(f"{fname}: keyword '{w}' repeats a word of the name or subtitle")
             if f == "app" or f in TRADEMARKS:
                 err(f"{fname}: keyword '{w}' is not allowed (generic or a third-party brand)")
+            if f in PRICING:
+                err(f"{fname}: keyword '{w}' is pricing information (2.3.7)")
     if "Primary category" in sec and sec["Primary category"] != "News":
         err(f"{fname}: primary category must be News")
     if "Secondary category" in sec and sec["Secondary category"] not in CATEGORIES:

@@ -19,7 +19,7 @@ The app lane must keep these true. Each one is checkable.
 |---|---|---|
 | C1 | The app sends no open or click beacon. It never calls `POST /api/read`. That route feeds the per-story counters that move ranking. | `rg -n "api/read" apps/ios` returns nothing |
 | C2 | The app has no third-party SDK and no analytics, crash or ad code. | `apps/ios/project.yml` has no `packages:` entry except `AIDRKit` |
-| C3 | The app loads story pictures through `/api/thumb/:id` only, and refuses the 302 that route returns on a miss. Otherwise the publisher sees the reader's IP address. | UI or unit test on the redirect delegate; `rg -n "image_url" apps/ios` shows no direct load |
+| C3 | List thumbnails load through `/api/thumb/:id`, which serves a 144 px square (`THUMB_SIDE` in `apps/web/src/routes/api/thumb.$id.ts`), so the publisher does not see the reader's IP for them. Larger pictures (story hero, share-card background, notification attachment) load from the publisher's server, which does receive the IP, like any web server. The policy says exactly this. | `rg -n "image_url\|api/thumb" apps/ios` shows which views use which. The policy sentence must match the result. |
 | C4 | The app stores nothing about the reader on any server. Language, text size and reminder time stay in `UserDefaults`. | code review of every non-GET request: there are none |
 | C5 | "Suggest a story" opens the system mail composer or `mailto:`. The app itself sends no mail text. | the app has no HTTP POST to a contribution endpoint |
 | C6 | The Foundation Models prompt and output never leave the device. No logging of them off device. | `rg -n "LanguageModelSession" apps/ios` shows no network call nearby |
@@ -85,7 +85,7 @@ The app has no account and no sign-in.
 It loads no analytics, advertising or tracking code, and it does not ask to track you.
 The app asks aidr.today for the public edition. Like any server, aidr.today receives your IP address with each request. We never store it. A Cloudflare rate limiter keeps a one-minute counter for your IP address. We also count each API request by route, status and a coarse client type, with no identifier, to see how much each surface is read.
 The last edition, a picture cache, your language, text size and reminder time are saved on your iPhone only. Deleting the app deletes them.
-Story pictures are requested through aidr.today, so the publisher does not see your IP address. When you tap Read source, the page opens in an in-app Safari view. The publisher's own policy applies there.
+List thumbnails come through aidr.today. Larger pictures, and the picture in the daily notification, load from the publisher's server, which receives your IP address like any web server. When you tap Read source, the page opens in an in-app Safari view. The publisher's own policy applies there.
 The daily reminder is a local notification scheduled on your iPhone. It uses no push token and no server. You can turn it off in iOS Settings > Notifications.
 Explain simply and Why it matters run on your iPhone with Apple's on-device model. The story text is not sent to us or to anyone else.
 Share as image builds the picture on your iPhone. Nothing is uploaded.
@@ -101,7 +101,7 @@ Your choices and deletion: the app keeps nothing about you on our servers. Delet
 Ứng dụng không tải mã phân tích, quảng cáo hay theo dõi, và không xin quyền theo dõi bạn.
 Ứng dụng lấy bản tin công khai từ aidr.today. Như mọi máy chủ, aidr.today nhận địa chỉ IP của bạn trong mỗi yêu cầu. Chúng tôi không lưu địa chỉ này. Bộ giới hạn tốc độ của Cloudflare giữ một bộ đếm một phút cho địa chỉ IP của bạn. Chúng tôi cũng đếm mỗi yêu cầu API theo đường dẫn, mã trạng thái và loại ứng dụng khách ở mức đại khái, không kèm mã định danh, để biết mỗi kênh được đọc nhiều hay ít.
 Bản tin gần nhất, bộ nhớ đệm ảnh, ngôn ngữ, cỡ chữ và giờ nhắc chỉ được lưu trên iPhone của bạn. Xóa ứng dụng là xóa hết các dữ liệu này.
-Ảnh của tin được lấy qua aidr.today, nên nhà xuất bản không thấy địa chỉ IP của bạn. Khi bạn chạm Đọc nguồn, trang mở trong khung Safari ngay trong ứng dụng. Chính sách riêng của nhà xuất bản áp dụng ở đó.
+Ảnh thu nhỏ trong danh sách đi qua aidr.today. Ảnh lớn hơn, và ảnh trong thông báo hằng ngày, được tải từ máy chủ của nhà xuất bản, nơi nhận địa chỉ IP của bạn như mọi máy chủ web. Khi bạn chạm Đọc nguồn, trang mở trong khung Safari ngay trong ứng dụng. Chính sách riêng của nhà xuất bản áp dụng ở đó.
 Nhắc mỗi ngày là thông báo cục bộ, được hẹn giờ ngay trên iPhone. Không dùng mã push và không qua máy chủ. Bạn tắt được trong Cài đặt iOS > Thông báo.
 Giải thích đơn giản và Vì sao đáng chú ý chạy trên iPhone, bằng mô hình trên máy của Apple. Nội dung tin không được gửi cho chúng tôi hay bất kỳ ai khác.
 Chia sẻ dạng ảnh tạo ảnh ngay trên iPhone. Không có gì được tải lên.
