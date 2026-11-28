@@ -102,4 +102,29 @@ struct TodayModelTests {
       #expect(all.first { $0.rank == row.rank }?.text == row.text)
     }
   }
+
+  @Test func summaryAndSecondTitleComeFromTheirOwnColumns() throws {
+    let item = try Self.item("a", title: "Hello", titleVi: "Xin chào", summary: "English summary", summaryVi: "Tóm tắt")
+    let vi = try #require(TodayStories.visible([item], lang: .vi, bilingual: true).first)
+    #expect(vi.summary == "Tóm tắt")
+    #expect(vi.secondTitle == "Hello")
+    let en = try #require(TodayStories.visible([item], lang: .en).first)
+    #expect(en.summary == "English summary")
+    #expect(en.secondTitle == nil)
+    let same = try Self.item("b", title: "Same", titleVi: "Same")
+    #expect(TodayStories.visible([same], lang: .vi, bilingual: true).first?.secondTitle == nil)
+  }
+
+  @Test func tagFilterMatchesTagsAndTitlesAndCombinesWithCategory() throws {
+    let a = try Self.item("a", title: "Nvidia earnings", category: "Chips", tags: ["nvidia"])
+    let b = try Self.item("b", title: "Nvidia sues", titleVi: "Nvidia kiện", category: "Legal")
+    let c = try Self.item("c", title: "Other", category: "Chips", tags: ["amd"])
+    let stories = TodayStories.visible([a, b, c], lang: .en)
+    #expect(TodayStories.filter(stories, category: nil, tag: "NVIDIA").map(\.id) == ["a", "b"])
+    #expect(TodayStories.filter(stories, category: "chips", tag: "nvidia").map(\.id) == ["a"])
+    #expect(TodayStories.filter(stories, category: "chips").map(\.id) == ["a", "c"])
+    let json = #"[{"tag":"nvidia","count":40},{"tag":"Nvidia","count":3},{"tag":"zzz","count":9}]"#
+    let trending = try APIClient.decode([TrendingTag].self, from: Data(json.utf8))
+    #expect(TodayStories.tagChips(trending, stories: stories) == [TodayChip(name: "nvidia", count: 2)])
+  }
 }

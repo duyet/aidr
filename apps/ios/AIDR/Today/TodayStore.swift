@@ -13,6 +13,16 @@ final class TodayStore {
   /// Set when the last refresh failed; the screen keeps the cached feed.
   private(set) var refreshFailed = false
 
+  // Screen state lives here, not in the views: a preference change rebuilds
+  // the tab tree (RootView `.id(prefs)`) and the reader keeps their place.
+  var query = ""
+  var category: String?
+  var tag: String?
+  /// Digest rows on screen; nil follows the reader's digest count preference.
+  var digestLimit: Int?
+  /// Set by the digest switch so the rebuilt page scrolls back to the digest.
+  var scrollToDigest = false
+
   private let api: APIClient
   private let snapshots: SnapshotStore
 

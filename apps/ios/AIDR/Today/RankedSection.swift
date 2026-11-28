@@ -4,7 +4,8 @@ import SwiftUI
 /// "TIN XẾP HẠNG HÔM NAY": the day's stories in rank order.
 struct RankedSection: View {
   let stories: [TodayStory]
-  let category: String?
+  /// A chip filters the list.
+  let filtered: Bool
   let learned: [String]
   let lang: Lang
 
@@ -20,7 +21,7 @@ struct RankedSection: View {
         .accessibilityIdentifier("ranked-header")
       if stories.isEmpty {
         Text(
-          category == nil
+          !filtered
             ? (lang == .vi ? "Chưa có tin nào hôm nay." : "No stories yet today.")
             : (lang == .vi ? "Chưa có tin nào trong chủ đề này hôm nay." : "No stories in this topic today.")
         )
@@ -31,7 +32,8 @@ struct RankedSection: View {
         LazyVStack(alignment: .leading, spacing: 0) {
           ForEach(Array(stories.enumerated()), id: \.element.id) { index, story in
             StoryRow(
-              story: story, learned: learned, lang: lang, identifier: "ranked-row-\(index + 1)")
+              story: story, learned: learned, lang: lang, identifier: "ranked-row-\(index + 1)",
+              isLead: index == 0)
           }
         }
       }

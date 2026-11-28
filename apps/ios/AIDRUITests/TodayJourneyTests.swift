@@ -92,6 +92,24 @@ final class TodayJourneyTests: XCTestCase {
     capture(app, "today-chip-\(lang)")
     chip.tap()
 
+    // A trending tag filters too (when today's stories match one).
+    let tagChip = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tag-'")).firstMatch
+    if tagChip.waitForExistence(timeout: 3) {
+      tagChip.tap()
+      Thread.sleep(forTimeInterval: 1)
+      capture(app, "today-tag-\(lang)")
+      tagChip.tap()
+    }
+
+    // The digest switch writes the preference, rebuilds the tree and lands
+    // back on the digest, now with thumbnails.
+    let imageView = element(app, "digest-view-image")
+    XCTAssertTrue(imageView.waitForExistence(timeout: 5), "digest view switch")
+    imageView.tap()
+    XCTAssertTrue(row(app, 1).waitForExistence(timeout: 10), "digest after the switch")
+    Thread.sleep(forTimeInterval: 3)
+    capture(app, "today-digest-image-\(lang)")
+
     // Search over every loaded story.
     let field = app.searchFields.firstMatch
     XCTAssertTrue(field.waitForExistence(timeout: 5), "search field")

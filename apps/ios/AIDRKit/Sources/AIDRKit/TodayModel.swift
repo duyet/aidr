@@ -55,10 +55,17 @@ public enum TodayFormat {
 public struct TodayStory: Identifiable, Equatable, Sendable {
   public let item: Item
   public let title: String
+  /// The summary from the reader's language column, never the other one.
+  public let summary: String?
+  /// The other language's title, for the bilingual view; nil when it is
+  /// missing or the same as `title`.
+  public let secondTitle: String?
 
-  public init(item: Item, title: String) {
+  public init(item: Item, title: String, summary: String? = nil, secondTitle: String? = nil) {
     self.item = item
     self.title = title
+    self.summary = summary
+    self.secondTitle = secondTitle
   }
 
   public var id: String { item.id }
@@ -81,14 +88,45 @@ public struct TodayChip: Identifiable, Equatable, Sendable {
 public enum TodayStories {
   /// Today's stories in feed rank order. A story with no title in `lang` is
   /// left out: VI and EN never stand in for each other.
-  public static func visible(_ items: [Item], lang: Lang) -> [TodayStory] {
-    items.compactMap { item in item.title(in: lang).map { TodayStory(item: item, title: $0) } }
+  public static func visible(_ items: [Item], lang: Lang, bilingual: Bool = false) -> [TodayStory] {
+    items.compactMap { item in
+      guard let title = item.title(in: lang) else { return nil }
+      let summary = (lang == .vi ? item.summaryVi : item.summary)?.trimmingCharacters(in: .whitespacesAndNewlines)
+      let other = bilingual ? item.title(in: lang == .vi ? .en : .vi) : nil
+      return TodayStory(
+        item: item, title: title,
+        summary: summary?.isEmpty == false ? summary : nil,
+        secondTitle: other == title ? nil : other)
+    }
   }
 
   /// The newest day the feed holds: its date and its stories.
-  public static func today(_ feed: Feed, lang: Lang) -> (date: String?, stories: [TodayStory]) {
+  public static func today(_ feed: Feed, lang: Lang, bilingual: Bool = false) -> (date: String?, stories: [TodayStory]) {
     let day = feed.days.first
-    return (day?.date ?? feed.tldr?.date, visible(day?.items ?? [], lang: lang))
+    return (day?.date ?? feed.tldr?.date, visible(day?.items ?? [], lang: lang, bilingual: bilingual))
+  }
+
+  /// The web's tag filter: the story is tagged with it, or its title says it.
+  public static func hasTag(_ item: Item, _ tag: String) -> Bool {
+    let needle = tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    guard !needle.isEmpty else { return false }
+    return item.tags.contains { $0.lowercased() == needle }
+      || item.title.lowercased().contains(needle)
+      || (item.titleVi?.lowercased().contains(needle) ?? false)
+  }
+
+  /// Trending tags that match at least one of today's stories, with how many.
+  public static func tagChips(_ trending: [TrendingTag], stories: [TodayStory], limit: Int = 12) -> [TodayChip] {
+    var seen = Set<String>()
+    var out: [TodayChip] = []
+    for entry in trending {
+      let key = entry.tag.lowercased()
+      guard seen.insert(key).inserted else { continue }
+      let count = stories.filter { hasTag($0.item, entry.tag) }.count
+      if count > 0 { out.append(TodayChip(name: entry.tag, count: count)) }
+      if out.count == limit { break }
+    }
+    return out
   }
 
   /// One chip per category in `stories`, the busiest first.
@@ -109,9 +147,15 @@ public enum TodayStories {
     return a == b
   }
 
-  public static func filter(_ stories: [TodayStory], category: String?) -> [TodayStory] {
-    guard let key = Topic.canonical(category) else { return stories }
-    return stories.filter { Topic.canonical($0.item.category) == key }
+  public static func filter(_ stories: [TodayStory], category: String?, tag: String? = nil) -> [TodayStory] {
+    stories.filter { matches($0.item, category: category, tag: tag) }
+  }
+
+  /// Both the category and the tag, when given, must match.
+  public static func matches(_ item: Item, category: String?, tag: String?) -> Bool {
+    if let key = Topic.canonical(category), Topic.canonical(item.category) != key { return false }
+    if let tag, !hasTag(item, tag) { return false }
+    return true
   }
 }
 
@@ -125,12 +169,13 @@ public enum TodayDigest {
 
   /// Up to 16 digest rows; with a category, only the rows whose first cited
   /// story is in it. Rows keep the rank they have in the whole digest.
-  public static func rows(_ feed: Feed, lang: Lang, category: String?) -> [DigestRow] {
+  public static func rows(_ feed: Feed, lang: Lang, category: String?, tag: String? = nil) -> [DigestRow] {
     let all = Digest.rows(feed, lang: lang, limit: steps.last ?? 16)
-    guard let key = Topic.canonical(category) else { return all }
+    if Topic.canonical(category) == nil && tag == nil { return all }
     let items = feed.itemsById
     return all.filter { row in
-      row.itemId.flatMap { items[$0] }.flatMap { Topic.canonical($0.category) } == key
+      guard let id = row.itemId, let item = items[id] else { return false }
+      return TodayStories.matches(item, category: category, tag: tag)
     }
   }
 }
