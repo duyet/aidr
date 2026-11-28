@@ -58,6 +58,7 @@ jobs:
             -resultBundlePath build/unit.xcresult -quiet 2>&1 | tee build/unit.log
 
       - name: UI tests (screenshot journey)
+        if: ${{ !cancelled() && steps.sim.outcome == 'success' }}
         run: |
           set -o pipefail
           xcodebuild test -project AIDR.xcodeproj -scheme AIDR \
@@ -79,11 +80,12 @@ jobs:
           for r in unit ui; do
             test -d "build/$r.xcresult" || continue
             xcrun xcresulttool get test-results summary --path "build/$r.xcresult" --compact > "build/summary/$r.json"
-            python3 -c 'import json,sys; s=json.load(open(sys.argv[1])); print("| %s | %s | %s passed | %s failed | %s skipped |" % (sys.argv[2], s.get("result"), s.get("passedTests"), s.get("failedTests"), s.get("skippedTests")))' "build/summary/$r.json" "$r" | tee -a build/summary/summary.md >> "$GITHUB_STEP_SUMMARY"
+            python3 scripts/test-summary.py "build/summary/$r.json" "$r" | tee -a build/summary/summary.md >> "$GITHUB_STEP_SUMMARY"
           done
           cp build/*.log build/summary/ 2>/dev/null || true
 
       - name: Archive unsigned IPA
+        if: ${{ !cancelled() && steps.sim.outcome == 'success' }}
         run: |
           set -o pipefail
           xcodebuild archive -project AIDR.xcodeproj -scheme AIDR \
