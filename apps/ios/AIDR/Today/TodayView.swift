@@ -10,6 +10,7 @@ struct TodayView: View {
       content
         .background(Palette.background)
         .toolbar(.hidden, for: .navigationBar)
+        .routeDestinations(lang: lang)
     }
     .task { await store.refresh() }
   }
