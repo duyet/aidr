@@ -71,7 +71,9 @@ One-time setup:
    `.p8` file (only once) and note the Key ID and the Issuer ID on that page.
 5. **Find the Team ID** under Membership details at
    [developer.apple.com/account](https://developer.apple.com/account).
-6. **Add the secrets:**
+6. **Add the secrets.** Either fill the four `ASC_*` / `APPLE_TEAM_ID` lines in
+   the root `.env.local` (see `.env.example`) and run `pnpm sync-env --github`,
+   or set them by hand:
 
    ```bash
    gh secret set ASC_KEY_ID --body <key id>

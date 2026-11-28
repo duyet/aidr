@@ -129,6 +129,12 @@ const GITHUB_OPTIONAL = [
   // The bearer for the Worker's YouTube token broker. YOUTUBE_BROKER_URL is a
   // plain GitHub Actions variable (gh variable set), not a secret.
   "YOUTUBE_BROKER_SECRET",
+  // .github/workflows/ios.yml testflight job. ASC_KEY_P8 comes from the file
+  // at ASC_KEY_P8_PATH (loadEnvFiles); the job skips until all four exist.
+  "ASC_KEY_ID",
+  "ASC_ISSUER_ID",
+  "ASC_KEY_P8",
+  "APPLE_TEAM_ID",
 ] as const;
 
 const args = new Set(process.argv.slice(2));
@@ -177,6 +183,19 @@ function promoteLegacyTelegramChat(env: Record<string, string>): void {
   delete env.TELEGRAM_CHAT_ID;
 }
 
+/** The App Store Connect key is a multi-line .p8 file, so .env.local names
+ *  its path and the secret carries the file's text. */
+function loadAppStoreKey(env: Record<string, string>): void {
+  const path = env.ASC_KEY_P8_PATH?.replace(/^~(?=\/)/, os.homedir());
+  delete env.ASC_KEY_P8_PATH;
+  if (!path || env.ASC_KEY_P8) return;
+  if (!existsSync(path)) {
+    console.warn(`  [warn] ASC_KEY_P8_PATH not found: ${path}`);
+    return;
+  }
+  env.ASC_KEY_P8 = readFileSync(path, "utf-8").trim();
+}
+
 function loadEnvFiles(): { env: Record<string, string>; sources: string[] } {
   const env: Record<string, string> = {};
   const sources: string[] = [];
@@ -206,6 +225,7 @@ function loadEnvFiles(): { env: Record<string, string>; sources: string[] } {
     env.VITE_CLERK_PUBLISHABLE_KEY = env.CLERK_PUBLISHABLE_KEY;
   }
   promoteLegacyTelegramChat(env);
+  loadAppStoreKey(env);
   // Local-only AnyRouter key (videos/daily-news/scripts/local-llm-key.mjs, #656): it must never
   // reach the Worker or GitHub, even if an allowlist above grows.
   delete env.ANYROUTER_LOCAL_API_KEY;
