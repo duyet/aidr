@@ -22,7 +22,7 @@ public enum Digest {
   /// as Vietnamese. VI never shows the EN bullets.
   static let displayMin = 2
 
-  nonisolated(unsafe) static let viDiacritics = try! NSRegularExpression(
+  static let viDiacritics = try! NSRegularExpression(
     pattern: "[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]",
     options: [.caseInsensitive])
 

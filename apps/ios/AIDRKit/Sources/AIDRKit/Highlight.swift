@@ -122,10 +122,10 @@ public enum Highlight {
 
   // MARK: Keyword highlights (numbers and entities)
 
-  nonisolated(unsafe) static let urlPattern = try! NSRegularExpression(
+  static let urlPattern = try! NSRegularExpression(
     pattern: #"\b(?:https?://|www\.)[^\s<>"']+"#, options: [.caseInsensitive])
 
-  nonisolated(unsafe) static let numberPattern: NSRegularExpression = {
+  static let numberPattern: NSRegularExpression = {
     let num = #"[0-9]+(?:[.,][0-9]+)*"#
     let approx = #"[~≈]\s?"#
     let curPrefix = #"(?:US\$|\$|€|£|¥)\s?"#

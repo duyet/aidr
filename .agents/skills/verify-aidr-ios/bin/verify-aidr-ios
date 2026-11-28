@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# verify-aidr-ios: build and prove the AI;DR iPhone app on GitHub Actions macOS
+# runners (no Mac needed). Run from anywhere inside the repo.
+#
+#   verify-aidr-ios doctor            read-only readiness check
+#   verify-aidr-ios drive [--no-push] push HEAD, wait for ios.yml, download evidence
+#   verify-aidr-ios evidence <run-id> download one finished run's artifacts
+#   verify-aidr-ios cleanup           cancel ios.yml runs on the branch this lever queued
+#
+# Env: VERIFY_IOS_BRANCH (default feat/ios-app), VERIFY_IOS_EVIDENCE (default
+# <skill>/evidence). Evidence survives cleanup.
+set -euo pipefail
+
+SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(git -C "$SKILL_DIR" rev-parse --show-toplevel)"
+BRANCH="${VERIFY_IOS_BRANCH:-feat/ios-app}"
+EVIDENCE="${VERIFY_IOS_EVIDENCE:-$SKILL_DIR/evidence}"
+WORKFLOW=ios.yml
+REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || echo duyet/aidr)"
+
+say() { printf '%s\n' "$*" >&2; }
+fail() { say "FAIL: $*"; exit 1; }
+
+doctor() {
+  local ok=1
+  if gh auth status >/dev/null 2>&1; then say "ok   gh auth"; else say "FAIL gh auth (run gh auth login)"; ok=0; fi
+  if [[ -f "$ROOT/.github/workflows/$WORKFLOW" ]]; then say "ok   workflow file .github/workflows/$WORKFLOW"; else say "FAIL no .github/workflows/$WORKFLOW"; ok=0; fi
+  if gh workflow view "$WORKFLOW" -R "$REPO" >/dev/null 2>&1; then say "ok   workflow registered on $REPO"; else say "FAIL $WORKFLOW not on the default branch or $BRANCH yet"; ok=0; fi
+  local local_sha remote_sha
+  local_sha="$(git -C "$ROOT" rev-parse HEAD)"
+  remote_sha="$(git -C "$ROOT" ls-remote origin "refs/heads/$BRANCH" | cut -f1)"
+  if [[ -z "$remote_sha" ]]; then say "FAIL branch $BRANCH not pushed"; ok=0
+  elif [[ "$remote_sha" == "$local_sha" ]]; then say "ok   $BRANCH pushed at ${local_sha:0:8}"
+  else say "warn $BRANCH on origin is ${remote_sha:0:8}, HEAD is ${local_sha:0:8} (drive pushes HEAD)"; fi
+  local running
+  running="$(gh run list -R "$REPO" --workflow "$WORKFLOW" --branch "$BRANCH" --status in_progress --json databaseId --jq 'length' 2>/dev/null || echo 0)"
+  say "info $running ios.yml run(s) in progress on $BRANCH"
+  [[ $ok == 1 ]] && say "doctor: ok" || fail "doctor"
+}
+
+# Waits until a run for $1 (commit sha) exists and prints its id.
+find_run() {
+  local sha="$1" id=""
+  for _ in $(seq 1 40); do
+    id="$(gh run list -R "$REPO" --workflow "$WORKFLOW" --branch "$BRANCH" --commit "$sha" --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+    [[ -n "$id" ]] && { echo "$id"; return 0; }
+    sleep 6
+  done
+  return 1
+}
+
+evidence() {
+  local run="$1" dir="$EVIDENCE/$1"
+  mkdir -p "$dir"
+  rm -rf "$dir/ios-screenshots" "$dir/AIDR-unsigned-ipa" "$dir/test-summary"
+  gh run download "$run" -R "$REPO" -D "$dir"
+  gh run view "$run" -R "$REPO" --json url,headSha,conclusion,createdAt,updatedAt > "$dir/run.json"
+  local ipa="$dir/AIDR-unsigned-ipa/AIDR-unsigned.ipa"
+  [[ -f "$ipa" ]] || fail "no IPA in run $run"
+  unzip -l "$ipa" > "$dir/ipa-listing.txt"
+  grep -qE " Payload/AIDR.app/AIDR$" "$dir/ipa-listing.txt" || fail "IPA has no Payload/AIDR.app/AIDR binary"
+  grep -qE " Payload/AIDR.app/Info.plist$" "$dir/ipa-listing.txt" || fail "IPA has no Info.plist"
+  say "ok   IPA holds Payload/AIDR.app/AIDR and Info.plist"
+  echo "run:         $(jq -r .url "$dir/run.json" 2>/dev/null || gh run view "$run" -R "$REPO" --json url --jq .url)"
+  echo "evidence:    $dir"
+  echo "ipa:         $ipa"
+  echo "summary:     $dir/test-summary/summary.md"
+  for png in "$dir"/ios-screenshots/*.png; do [[ -e "$png" ]] && echo "screenshot:  $png"; done
+}
+
+drive() {
+  local push=1
+  [[ "${1:-}" == "--no-push" ]] && push=0
+  local sha
+  sha="$(git -C "$ROOT" rev-parse HEAD)"
+  if [[ $push == 1 ]]; then
+    git -C "$ROOT" push origin "HEAD:refs/heads/$BRANCH" >&2
+  fi
+  local run
+  if ! run="$(find_run "$sha")"; then
+    # The push touched no apps/ios path, so the path filter skipped the run.
+    say "no run for ${sha:0:8}; dispatching $WORKFLOW on $BRANCH"
+    gh workflow run "$WORKFLOW" -R "$REPO" --ref "$BRANCH" >&2
+    run="$(find_run "$sha")" || fail "no ios.yml run appeared for ${sha:0:8}"
+  fi
+  echo "$run" > "$EVIDENCE/.last-run"
+  say "watching run $run ($(gh run view "$run" -R "$REPO" --json url --jq .url))"
+  local status=0
+  gh run watch "$run" -R "$REPO" --exit-status --interval 30 >/dev/null || status=$?
+  evidence "$run" || true
+  [[ $status == 0 ]] || fail "run $run did not succeed; read: gh run view $run -R $REPO --log-failed"
+}
+
+cleanup() {
+  local run
+  run="$(cat "$EVIDENCE/.last-run" 2>/dev/null || true)"
+  if [[ -n "$run" ]]; then
+    local state
+    state="$(gh run view "$run" -R "$REPO" --json status --jq .status)"
+    if [[ "$state" != "completed" ]]; then gh run cancel "$run" -R "$REPO" >&2 && say "cancelled run $run"; else say "run $run already completed"; fi
+  fi
+  rm -f "$EVIDENCE/.last-run"
+  say "evidence kept under $EVIDENCE"
+}
+
+mkdir -p "$EVIDENCE"
+case "${1:-}" in
+  doctor) doctor ;;
+  drive) shift; drive "$@" ;;
+  evidence) [[ -n "${2:-}" ]] || fail "usage: verify-aidr-ios evidence <run-id>"; evidence "$2" ;;
+  cleanup) cleanup ;;
+  *) sed -n '2,12p' "$0"; exit 2 ;;
+esac

@@ -23,6 +23,6 @@ struct SnapshotStoreTests {
   }
 
   @Test func defaultLocationIsApplicationSupport() {
-    #expect(SnapshotStore().fileURL.path().contains("Application Support/AIDR/feed.json"))
+    #expect(SnapshotStore().fileURL.path(percentEncoded: false).contains("Application Support/AIDR/feed.json"))
   }
 }
