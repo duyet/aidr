@@ -62,7 +62,7 @@ public enum ShareCardAspect: String, CaseIterable, Identifiable, Sendable {
     switch self {
     case .portrait: 200
     case .square: 140
-    case .story: 300
+    case .story: 320
     }
   }
 }

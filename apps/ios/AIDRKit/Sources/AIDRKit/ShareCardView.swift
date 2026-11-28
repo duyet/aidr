@@ -52,7 +52,7 @@ public struct ShareCardView: View {
   }
 
   private static func inter(_ size: CGFloat, _ weight: InterFont) -> Font {
-    .custom(weight.rawValue, fixedSize: size)
+    .system(size: size, weight: weight.weight)
   }
 
   public var body: some View {
@@ -77,7 +77,7 @@ public struct ShareCardView: View {
         .lineSpacing(1)
         .lineLimit(aspect.headlineLines)
         .multilineTextAlignment(.leading)
-      if let image = content.image { hero(image, maxHeight: aspect.imageMaxHeight) }
+      if let image = content.image { hero(image, maxHeight: heroHeight(image, aspect: aspect)) }
       if !content.summary.isEmpty { summaryBlock(lines: aspect.summaryLines + (hasImage ? 0 : 4)) }
       Spacer(minLength: 0)
       footer
@@ -102,6 +102,13 @@ public struct ShareCardView: View {
         .foregroundStyle(Ink.muted)
         .lineLimit(1)
     }
+  }
+
+  /// Tall enough to show the whole image when the canvas has room, never past the aspect's budget.
+  private func heroHeight(_ image: UIImage, aspect: ShareCardAspect) -> CGFloat {
+    let inner = aspect.size.width - 2 * style.padding - 36
+    let ratio = max(image.size.width / max(image.size.height, 1), 1.2)
+    return min(aspect.imageMaxHeight, inner / ratio)
   }
 
   private func hero(_ image: UIImage, maxHeight: CGFloat) -> some View {

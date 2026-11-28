@@ -66,7 +66,7 @@ final class StoryJourneyTests: XCTestCase {
     let dump = "/tmp/aidr-story-card-\(tag).png"
     try? FileManager.default.removeItem(atPath: dump)
 
-    let app = launch(language: language, locale: locale, extra: ["AIDR_SHARE_CARD_DUMP": dump])
+    let app = launch(language: language, locale: locale, dark: dark, extra: ["AIDR_SHARE_CARD_DUMP": dump])
     try openFirstStory(app)
     XCTAssertTrue(app.descendants(matching: .any)["story-headline"].waitForExistence(timeout: 10))
     XCTAssertTrue(app.descendants(matching: .any)["story-meta"].exists)
@@ -106,10 +106,11 @@ final class StoryJourneyTests: XCTestCase {
   // MARK: Helpers
 
   @MainActor
-  private func launch(language: String, locale: String, extra: [String: String] = [:]) -> XCUIApplication {
+  private func launch(language: String, locale: String, dark: Bool = false, extra: [String: String] = [:]) -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments = ["-AppleLanguages", "(\(language))", "-AppleLocale", locale]
     for (key, value) in extra { app.launchEnvironment[key] = value }
+    if dark { app.launchArguments += ["-AppleInterfaceStyle", "Dark"] }
     app.launch()
     return app
   }
