@@ -10,8 +10,9 @@
   it is offline.
 - Vietnamese when the phone is set to Vietnamese, English otherwise.
 - Weeks, Calendar and AI;DR tabs are placeholders.
-- App icon: the site's AI;DR wordmark on the brand yellow (the same mark as
-  the website's home-screen icon), with dark and tinted versions.
+- App icon: the site's AI;DR wordmark on a warm yellow gradient with a soft
+  shadow. The dark version puts the website header's yellow AI;DR pill on
+  warm black; the tinted version is a grayscale cut of the same pill.
 - Launch screen: the AI;DR logo tile on the page color instead of a blank
   screen.
 - CI uploads master builds to TestFlight once the App Store Connect secrets are set.
