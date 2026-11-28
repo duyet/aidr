@@ -1,15 +1,28 @@
 import AIDRKit
+import SwiftUI
 import Testing
-import UIKit
 
+/// The app uses the system font, so what can break is scaling: the reader's
+/// text size must move every size the way Apple scales its text styles.
+@MainActor
 struct FontTests {
-  @Test(arguments: InterFont.allCases)
-  func interResolves(font: InterFont) {
-    #expect(UIFont(name: font.rawValue, size: 14) != nil, "\(font.rawValue) did not load; text would fall back to SF")
+  private func size(_ textSize: ReaderTextSize, _ points: CGFloat = 17) -> CGFloat {
+    var prefs = ReaderPrefs()
+    prefs.textSize = textSize
+    let saved = ReaderStyle.current
+    ReaderStyle.current = prefs
+    defer { ReaderStyle.current = saved }
+    return Font.scaledSize(points, relativeTo: .body)
   }
 
-  @Test(arguments: InterFont.allCases)
-  func newsreaderResolves(font: InterFont) {
-    #expect(UIFont(name: font.serifName, size: 14) != nil, "\(font.serifName) did not load; the serif option would fall back to SF")
+  @Test func defaultSizeIsTheDesignSize() {
+    #expect(abs(size(.large) - 17) < 0.5)
+  }
+
+  @Test func readerTextSizeScalesEveryStep() {
+    let steps: [ReaderTextSize] = [.small, .medium, .large, .xLarge, .xxLarge, .xxxLarge]
+    let sizes = steps.map { size($0) }
+    #expect(sizes == sizes.sorted(), "text size steps must grow: \(sizes)")
+    #expect(size(.xxxLarge) > size(.small) + 4)
   }
 }

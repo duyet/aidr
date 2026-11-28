@@ -1,44 +1,92 @@
 import SwiftUI
 import UIKit
 
-/// Inter ships in the app bundle (UIAppFonts). These are the PostScript names
-/// of the static TTFs from the Inter 4.1 release.
-public enum InterFont: String, CaseIterable, Sendable {
-  case regular = "Inter-Regular"
-  case medium = "Inter-Medium"
-  case semibold = "Inter-SemiBold"
-  case bold = "Inter-Bold"
+/// Text weights. The app uses the iOS system font (SF Pro, or New York for
+/// serif, SF Pro Rounded for rounded); the name is kept so call sites stay put.
+public enum InterFont: CaseIterable, Sendable {
+  case regular, medium, semibold, bold
 
-  /// The same weight in Newsreader (static opsz 16 instances, OFL), used when
-  /// the reader picks the serif font.
-  public var serifName: String {
+  public var weight: Font.Weight {
     switch self {
-    case .regular: "Newsreader-Regular"
-    case .medium: "Newsreader-Medium"
-    case .semibold: "Newsreader-SemiBold"
-    case .bold: "Newsreader-Bold"
+    case .regular: .regular
+    case .medium: .medium
+    case .semibold: .semibold
+    case .bold: .bold
     }
   }
+}
 
-  func name(for family: ReaderFontFamily) -> String {
-    family == .serif ? serifName : rawValue
+extension ReaderFontFamily {
+  public var design: Font.Design {
+    switch self {
+    case .sans: .default
+    case .serif: .serif
+    case .rounded: .rounded
+    }
+  }
+}
+
+extension ReaderTextSize {
+  /// nil follows the iPhone's Dynamic Type setting.
+  var contentSizeCategory: UIContentSizeCategory? {
+    switch self {
+    case .system: nil
+    case .small: .small
+    case .medium: .medium
+    case .large: .large
+    case .xLarge: .extraLarge
+    case .xxLarge: .extraExtraLarge
+    case .xxxLarge: .extraExtraExtraLarge
+    }
+  }
+}
+
+extension Font.TextStyle {
+  var uiTextStyle: UIFont.TextStyle {
+    switch self {
+    case .largeTitle: .largeTitle
+    case .title: .title1
+    case .title2: .title2
+    case .title3: .title3
+    case .headline: .headline
+    case .subheadline: .subheadline
+    case .callout: .callout
+    case .footnote: .footnote
+    case .caption: .caption1
+    case .caption2: .caption2
+    default: .body
+    }
   }
 }
 
 extension Font {
-  /// Body text in the reader's font (Inter, or Newsreader for serif) at
-  /// `size`, scaled with Dynamic Type relative to `style`.
+  /// `size` at the reader's text size (or the system Dynamic Type setting),
+  /// scaled the way Apple scales `style`. At the default size it is `size`.
+  public static func scaledSize(_ size: CGFloat, relativeTo style: Font.TextStyle) -> CGFloat {
+    let metrics = UIFontMetrics(forTextStyle: style.uiTextStyle)
+    guard let category = ReaderStyle.current.textSize.contentSizeCategory else {
+      return metrics.scaledValue(for: size)
+    }
+    return metrics.scaledValue(
+      for: size, compatibleWith: UITraitCollection(preferredContentSizeCategory: category))
+  }
+
+  /// Body text in the system font, in the reader's body design.
   public static func inter(_ size: CGFloat, _ weight: InterFont = .regular, relativeTo style: Font.TextStyle = .body)
     -> Font
   {
-    .custom(weight.name(for: ReaderStyle.current.bodyFont), size: size, relativeTo: style)
+    .system(
+      size: scaledSize(size, relativeTo: style), weight: weight.weight,
+      design: ReaderStyle.current.bodyFont.design)
   }
 
-  /// Headlines in the reader's headline font, which can differ from the body.
+  /// Headlines in the system font, in the reader's headline design.
   public static func headline(
     _ size: CGFloat, _ weight: InterFont = .semibold, relativeTo style: Font.TextStyle = .headline
   ) -> Font {
-    .custom(weight.name(for: ReaderStyle.current.headFont), size: size, relativeTo: style)
+    .system(
+      size: scaledSize(size, relativeTo: style), weight: weight.weight,
+      design: ReaderStyle.current.headFont.design)
   }
 
   /// The eyebrow and number face: the system mono, like the web's font-mono.
