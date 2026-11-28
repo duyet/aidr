@@ -36,14 +36,7 @@ final class TodayJourneyTests: XCTestCase {
 
   @MainActor
   func testTodayDarkMode() {
-    XCUIDevice.shared.appearance = .dark
-    defer { XCUIDevice.shared.appearance = .light }
-    Thread.sleep(forTimeInterval: 2)
-    let app = XCUIApplication()
-    app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-AppleInterfaceStyle", "Dark"]
-    app.launch()
-    // Set again once running: either order has to land in dark mode.
-    XCUIDevice.shared.appearance = .dark
+    let app = launch(language: "en", locale: "en_US", prefs: Self.darkPrefs)
     assertDigest(app)
     capture(app, "today-dark-top-en")
     scroll(app, until: "ranked-header")
@@ -128,10 +121,16 @@ final class TodayJourneyTests: XCTestCase {
 
   // MARK: Helpers
 
+  /// Reader prefs as plist data for the "aidr.prefs" key: {} (all defaults)
+  /// or {"appearance":"dark"}. The simulator's own appearance is shared with
+  /// the other journeys, and prefs a journey changes must not leak into the next.
+  static let defaultPrefs = "<7b7d>"
+  static let darkPrefs = "<7b22617070656172616e6365223a226461726b227d>"
+
   @MainActor
-  private func launch(language: String, locale: String) -> XCUIApplication {
+  private func launch(language: String, locale: String, prefs: String = TodayJourneyTests.defaultPrefs) -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments = ["-AppleLanguages", "(\(language))", "-AppleLocale", locale]
+    app.launchArguments = ["-AppleLanguages", "(\(language))", "-AppleLocale", locale, "-aidr.prefs", prefs]
     app.launch()
     return app
   }
