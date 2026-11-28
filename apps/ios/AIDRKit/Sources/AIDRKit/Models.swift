@@ -4,9 +4,14 @@ import Foundation
 public enum Lang: String, Codable, Sendable {
   case en, vi
 
-  /// VI when the first preferred system language is Vietnamese, else EN.
-  public static func preferred(_ languages: [String] = Locale.preferredLanguages) -> Lang {
-    languages.first?.lowercased().hasPrefix("vi") == true ? .vi : .en
+  /// The language chosen in Settings ("aidr.lang" is "vi" or "en"), else VI when
+  /// the first preferred system language is Vietnamese, else EN.
+  public static func preferred(
+    _ languages: [String] = Locale.preferredLanguages,
+    stored: String? = UserDefaults.standard.string(forKey: SettingsKey.language)
+  ) -> Lang {
+    if let stored, let chosen = Lang(rawValue: stored) { return chosen }
+    return languages.first?.lowercased().hasPrefix("vi") == true ? .vi : .en
   }
 }
 
