@@ -16,8 +16,7 @@ struct TodayModelTests {
   @Test func dayHeadingReadsLikeTheWeb() throws {
     #expect(TodayFormat.dayHeading("2026-11-28", lang: .en) == "Saturday, Nov 28, 2026")
     let vi = try #require(TodayFormat.dayHeading("2026-11-28", lang: .vi))
-    #expect(vi.hasPrefix("Thứ Bảy"))
-    #expect(vi.contains("28") && vi.contains("2026"))
+    #expect(vi == "Thứ Bảy, 28 thg 11, 2026")
     #expect(TodayFormat.dayHeading("nope", lang: .en) == nil)
   }
 
@@ -41,6 +40,15 @@ struct TodayModelTests {
     #expect(TodayFormat.summary(count: 30, updatedAt: updated, now: now, lang: .vi) == "30 tin · cập nhật 9 phút trước")
     #expect(TodayFormat.summary(count: 30, updatedAt: updated, now: now, lang: .en) == "30 stories · updated 9m ago")
     #expect(TodayFormat.summary(count: 30, updatedAt: nil, now: now, lang: .en) == "30 stories")
+  }
+
+  @Test func offlineNoteSaysWhenTheCopyWasSaved() {
+    let saved = Date(timeIntervalSince1970: 1_000_000)
+    let vi = TodayFormat.offlineNote(savedAt: saved, lang: .vi)
+    #expect(vi.hasPrefix("Ngoại tuyến · bản lưu lúc "))
+    #expect(vi.contains(":"))
+    #expect(TodayFormat.offlineNote(savedAt: saved, lang: .en).hasPrefix("Offline · saved "))
+    #expect(TodayFormat.offlineNote(savedAt: nil, lang: .en) == "Offline")
   }
 
   @Test func hostDropsWww() {

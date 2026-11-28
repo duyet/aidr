@@ -12,6 +12,9 @@ final class TodayStore {
   private(set) var isRefreshing = false
   /// Set when the last refresh failed; the screen keeps the cached feed.
   private(set) var refreshFailed = false
+  /// When the cached edition was written to disk, for "Offline · saved 07:12".
+  private(set) var savedAt: Date?
+  private var lastSuccess: Date?
 
   // Screen state lives here, not in the views: a preference change rebuilds
   // the tab tree (RootView `.id(prefs)`) and the reader keeps their place.
@@ -29,7 +32,14 @@ final class TodayStore {
   init(api: APIClient = TodayStore.defaultClient(), snapshots: SnapshotStore = SnapshotStore()) {
     self.api = api
     self.snapshots = snapshots
-    if let cached = snapshots.load() { adopt(cached) }
+    if let cached = snapshots.load() {
+      adopt(cached)
+      savedAt = Self.modified(snapshots.fileURL)
+    }
+  }
+
+  private static func modified(_ url: URL) -> Date? {
+    (try? FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate]) as? Date
   }
 
   private func adopt(_ fresh: Feed) {
@@ -46,6 +56,13 @@ final class TodayStore {
     return APIClient()
   }
 
+  /// App came to the foreground: refresh in the background unless a refresh
+  /// landed in the last minute. The cached edition stays on screen meanwhile.
+  func refreshIfStale() async {
+    if let lastSuccess, Date.now.timeIntervalSince(lastSuccess) < 60 { return }
+    await refresh()
+  }
+
   func refresh() async {
     guard !isRefreshing else { return }
     isRefreshing = true
@@ -54,7 +71,8 @@ final class TodayStore {
       let (fresh, data) = try await api.feed(days: 3)
       adopt(fresh)
       refreshFailed = false
-      try? snapshots.save(data)
+      lastSuccess = .now
+      if (try? snapshots.save(data)) != nil { savedAt = .now }
     } catch {
       refreshFailed = true
     }

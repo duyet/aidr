@@ -37,8 +37,11 @@ final class TodayJourneyTests: XCTestCase {
   @MainActor
   func testTodayDarkMode() {
     XCUIDevice.shared.appearance = .dark
-    defer { XCUIDevice.shared.appearance = .unspecified }
-    let app = launch(language: "en", locale: "en_US")
+    defer { XCUIDevice.shared.appearance = .light }
+    Thread.sleep(forTimeInterval: 2)
+    let app = XCUIApplication()
+    app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-AppleInterfaceStyle", "Dark"]
+    app.launch()
     assertDigest(app)
     capture(app, "today-dark-top-en")
     scroll(app, until: "ranked-header")
@@ -73,7 +76,7 @@ final class TodayJourneyTests: XCTestCase {
     // Show more steps the digest from 8 rows to 12.
     XCTAssertFalse(row(app, 9).exists, "digest starts at 8 rows")
     let more = element(app, "digest-more")
-    scroll(app, until: "digest-more", fraction: 0.85)
+    scroll(app, until: "digest-more", fraction: 0.8)
     XCTAssertTrue(more.exists, "Show more")
     more.tap()
     XCTAssertTrue(row(app, 9).waitForExistence(timeout: 5), "digest grows to 12 rows")
@@ -140,15 +143,19 @@ final class TodayJourneyTests: XCTestCase {
     element(app, "digest-row-\(rank)")
   }
 
-  /// Swipes until `id` sits above `fraction` of the window height, at most 12 times.
+  /// Drags in short steps (about a third of the window) until `id` sits
+  /// between the navigation bar and `fraction` of the window height.
   @MainActor
-  private func scroll(_ app: XCUIApplication, until id: String, up: Bool = false, fraction: Double = 0.5) {
+  private func scroll(_ app: XCUIApplication, until id: String, up: Bool = false, fraction: Double = 0.6) {
     let target = element(app, id)
-    let height = app.windows.firstMatch.frame.height
-    for _ in 0..<12 {
+    let window = app.windows.firstMatch
+    let height = window.frame.height
+    for _ in 0..<30 {
       // Clear of the navigation bar and search field above 150pt.
       if target.exists, target.frame.minY > 150, up || target.frame.minY < height * fraction { return }
-      if up { app.swipeDown() } else { app.swipeUp() }
+      let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.4 : 0.75))
+      let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.75 : 0.4))
+      start.press(forDuration: 0.05, thenDragTo: end)
     }
     XCTFail("never scrolled to \(id)")
   }

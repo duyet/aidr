@@ -98,9 +98,7 @@ struct StoryRow: View {
       case .none: nil
       }
     func face(_ weight: InterFont) -> Font {
-      newspaper
-        ? .custom(weight == .regular ? InterFont.regular.serifName : InterFont.semibold.serifName, size: size, relativeTo: .headline)
-        : .inter(size, weight)
+      newspaper ? .headline(size, weight, relativeTo: .headline) : .inter(size, weight)
     }
     var out = AttributedString()
     for segment in Highlight.keywords(story.title, tags: story.item.tags, learned: learned) {

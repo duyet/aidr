@@ -13,7 +13,8 @@ public enum TodayFormat {
     formatter.locale = locale(lang)
     formatter.timeZone = .gmt
     formatter.formattingContext = .beginningOfSentence
-    formatter.setLocalizedDateFormatFromTemplate("EEEEMMMdy")
+    // The web's toLocaleDateString order: no "ngày" before the day in VI.
+    formatter.dateFormat = lang == .vi ? "EEEE, d MMM, y" : "EEEE, MMM d, y"
     return formatter.string(from: value)
   }
 
@@ -42,6 +43,18 @@ public enum TodayFormat {
     guard let updatedAt else { return stories }
     let ago = ago(updatedAt, now: now, lang: lang)
     return lang == .vi ? "\(stories) · cập nhật \(ago)" : "\(stories) · updated \(ago)"
+  }
+
+  /// "Ngoại tuyến · bản lưu lúc 07:12" / "Offline · saved 7:12 AM".
+  public static func offlineNote(savedAt: Date?, lang: Lang) -> String {
+    let head = lang == .vi ? "Ngoại tuyến" : "Offline"
+    guard let savedAt else { return head }
+    let formatter = DateFormatter()
+    formatter.locale = locale(lang)
+    formatter.timeStyle = .short
+    formatter.dateStyle = .none
+    let time = formatter.string(from: savedAt)
+    return lang == .vi ? "\(head) · bản lưu lúc \(time)" : "\(head) · saved \(time)"
   }
 
   /// The publisher's host without "www.", as the web's meta line shows it.

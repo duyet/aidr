@@ -47,6 +47,7 @@ struct SearchResultsView: View {
   let query: String
   let learned: [String]
   let lang: Lang
+  let refresh: @MainActor () async -> Void
 
   var body: some View {
     if results.isEmpty {
@@ -69,6 +70,7 @@ struct SearchResultsView: View {
         .padding(.bottom, Spacing.xxl)
       }
       .scrollDismissesKeyboard(.interactively)
+      .refreshable { await refresh() }
     }
   }
 }

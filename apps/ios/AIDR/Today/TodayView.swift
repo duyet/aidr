@@ -7,6 +7,7 @@ struct TodayView: View {
 
   @Environment(AppState.self) private var appState
   @Environment(ReaderPrefsStore.self) private var prefsStore
+  @Environment(\.scenePhase) private var scenePhase
   @State private var path: [Route] = []
 
   var body: some View {
@@ -23,6 +24,9 @@ struct TodayView: View {
         .routeDestinations(lang: lang)
     }
     .task { await store.refresh() }
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { Task { await store.refreshIfStale() } }
+    }
     // A notification tap sets pendingStoryID; open that story here.
     .onChange(of: appState.pendingStoryID, initial: true) { _, id in
       guard let id else { return }
@@ -40,6 +44,7 @@ struct TodayView: View {
           .tracking(-0.3)
           .foregroundStyle(Palette.foreground)
       }
+      .fixedSize()
       .accessibilityElement(children: .combine)
     }
     .sharedBackgroundVisibility(.hidden)
@@ -59,12 +64,13 @@ struct TodayView: View {
       if store.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
         TodayPage(
           store: store, feed: feed, lang: lang, refreshFailed: store.refreshFailed,
-          refresh: { await store.refresh() })
+          savedAt: store.savedAt, refresh: { await store.refresh() })
       } else {
         SearchResultsView(
           results: TodayStories.visible(
             store.index.search(store.query), lang: lang, bilingual: prefsStore.prefs.bilingual),
-          query: store.query, learned: feed.learnedKeywords, lang: lang)
+          query: store.query, learned: feed.learnedKeywords, lang: lang,
+          refresh: { await store.refresh() })
       }
     } else if store.refreshFailed {
       ContentUnavailableView {
@@ -87,6 +93,7 @@ private struct TodayPage: View {
   let feed: Feed
   let lang: Lang
   let refreshFailed: Bool
+  let savedAt: Date?
   let refresh: @MainActor () async -> Void
 
   @Environment(ReaderPrefsStore.self) private var prefsStore
@@ -101,13 +108,16 @@ private struct TodayPage: View {
     ScrollViewReader { proxy in
       ScrollView {
         VStack(alignment: .leading, spacing: 0) {
-          if refreshFailed { OfflineNote(lang: lang) }
+          if refreshFailed { OfflineNote(lang: lang, savedAt: savedAt ?? feed.updatedDate) }
           if let date = today.date, let heading = TodayFormat.dayHeading(date, lang: lang) {
-            DayHeader(
-              heading: heading,
-              summary: TodayFormat.summary(
-                count: today.stories.count, updatedAt: feed.updatedDate, now: .now, lang: lang)
-            )
+            // "updated 9m ago" ticks every minute.
+            TimelineView(.everyMinute) { context in
+              DayHeader(
+                heading: heading,
+                summary: TodayFormat.summary(
+                  count: today.stories.count, updatedAt: feed.updatedDate, now: context.date, lang: lang)
+              )
+            }
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.xs)
           }
@@ -141,10 +151,11 @@ private struct TodayPage: View {
 
 private struct OfflineNote: View {
   let lang: Lang
+  let savedAt: Date?
 
   var body: some View {
     Label(
-      lang == .vi ? "Ngoại tuyến · đang xem bản đã lưu" : "Offline · showing the saved edition",
+      TodayFormat.offlineNote(savedAt: savedAt, lang: lang),
       systemImage: "wifi.slash"
     )
     .font(.inter(12.5, .medium, relativeTo: .caption))
