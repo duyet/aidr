@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.1.20](https://github.com/duyet/aidr/compare/web-v0.1.19...web-v0.1.20) (2026-11-28)
+
+
+### ✨ Features
+
+* **extension:** share reader view code with the web and match the new web UI ([#1150](https://github.com/duyet/aidr/issues/1150)) ([1709408](https://github.com/duyet/aidr/commit/1709408a7bbe5eb79e30a092d565a24dda2e8902))
+* **usage:** count which client pulls the API: ios-app, chrome-extension, web ([7a08557](https://github.com/duyet/aidr/commit/7a08557892e5769183b4be9dab615389a957cd34))
+* **web:** support page and an iPhone app section in the privacy policy ([c9327e5](https://github.com/duyet/aidr/commit/c9327e526a91c1e52f1d9f8e5de2ece3362750a7))
+* **youtube:** email the owner a one-click re-auth link before the token dies ([9d86e1e](https://github.com/duyet/aidr/commit/9d86e1ef5a8fec3e5d9dc209179509faa78b04db))
+* **youtube:** keep YouTube credentials in the Worker behind a token broker ([#1152](https://github.com/duyet/aidr/issues/1152)) ([7f7a5e8](https://github.com/duyet/aidr/commit/7f7a5e8206d3cf997d45cac4e37f80fdd1128393))
+
+
+### 🐛 Bug Fixes
+
+* **llm:** TL;DR waits 35s for a first token ([#1147](https://github.com/duyet/aidr/issues/1147)) ([a9f7f09](https://github.com/duyet/aidr/commit/a9f7f09dfd3fcc19572130216d7e7b82b6c1de76))
+* **notify:** send plain-http story images over https and name the host on media failures ([#1146](https://github.com/duyet/aidr/issues/1146)) ([27d9635](https://github.com/duyet/aidr/commit/27d96352bf1fc24633dcdb53efb3c082135763bd))
+* **web:** add space above the story list on day pages ([4f2ab03](https://github.com/duyet/aidr/commit/4f2ab031586de63d61a0174294bc8e08df3dec1f))
+* **web:** simple list rows, bounded lead headline, one-toggle right column ([c0ad3b8](https://github.com/duyet/aidr/commit/c0ad3b87b982540b9854c6841db82336d3bcb877))
+* **youtube:** burn the sign-in link only after a completed sign-in ([c3598e7](https://github.com/duyet/aidr/commit/c3598e7cb02562b967da388a981fc66ea39e3719))
+
+
+### ⚡ Performance
+
+* **cache:** share homepage HTML across colos through R2, not KV ([5688f6b](https://github.com/duyet/aidr/commit/5688f6b9acebf3c19194cc6f1d462d13a2a303e7))
+* **web:** answer robots-banned SEO crawlers with 403 before any render ([#1145](https://github.com/duyet/aidr/issues/1145)) ([5d9847b](https://github.com/duyet/aidr/commit/5d9847bae283311a7f3891bf22a8611eaa4dc21c))
+
+
+### ♻️ Refactoring
+
+* **youtube:** keep credential state in D1, drop the KV namespace ([062d7a7](https://github.com/duyet/aidr/commit/062d7a709bd2cd52f330a0b46faaf33353e41350))
+
 ## [0.1.19](https://github.com/duyet/aidr/compare/web-v0.1.18...web-v0.1.19) (2026-11-25)
 
 
