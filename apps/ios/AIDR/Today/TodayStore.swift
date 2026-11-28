@@ -67,8 +67,12 @@ final class TodayStore {
     guard !isRefreshing else { return }
     isRefreshing = true
     defer { isRefreshing = false }
+    // An unstructured task: a preference rebuild cancels the view's .task,
+    // and that must not turn a good fetch into "offline".
+    let api = self.api
+    let result = await Task { try await api.feed(days: 3) }.result
     do {
-      let (fresh, data) = try await api.feed(days: 3)
+      let (fresh, data) = try result.get()
       adopt(fresh)
       refreshFailed = false
       lastSuccess = .now

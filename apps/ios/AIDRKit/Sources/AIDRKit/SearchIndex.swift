@@ -37,7 +37,7 @@ public struct SearchIndex: Sendable {
   /// Stories whose title, tags, category or summary hold every word of
   /// `query`. A title hit outranks a tag hit, a tag hit outranks a summary
   /// hit; ties keep the feed order (newest day, then rank).
-  public func search(_ query: String, limit: Int = 100) -> [Item] {
+  public func search(_ query: String, limit: Int = 500) -> [Item] {
     let words = Self.fold(query).split(whereSeparator: \.isWhitespace).map(String.init)
     guard !words.isEmpty else { return [] }
     var hits: [(score: Int, index: Int, item: Item)] = []

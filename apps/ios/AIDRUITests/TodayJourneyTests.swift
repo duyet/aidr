@@ -42,6 +42,8 @@ final class TodayJourneyTests: XCTestCase {
     let app = XCUIApplication()
     app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-AppleInterfaceStyle", "Dark"]
     app.launch()
+    // Set again once running: either order has to land in dark mode.
+    XCUIDevice.shared.appearance = .dark
     assertDigest(app)
     capture(app, "today-dark-top-en")
     scroll(app, until: "ranked-header")
@@ -84,6 +86,7 @@ final class TodayJourneyTests: XCTestCase {
     // The ranked list.
     scroll(app, until: "ranked-header")
     XCTAssertTrue(element(app, "ranked-row-1").waitForExistence(timeout: 5), "ranked list")
+    Thread.sleep(forTimeInterval: 3)  // thumbnails
     capture(app, "today-ranked-\(lang)")
 
     // A category chip filters the list.
