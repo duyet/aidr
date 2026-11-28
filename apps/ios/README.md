@@ -18,9 +18,9 @@ the last good edition from disk at launch, then refreshes. The plan lives in
 | Path | What it is |
 |---|---|
 | `project.yml` | XcodeGen spec. No `.xcodeproj` is committed. Each target globs its folder, so new files need no spec change. |
-| `AIDR/` | The app target: `App/RootView.swift` (tab root), `Today/`, `Resources/Fonts` (Inter 4.1 TTFs, OFL). |
+| `AIDR/` | The app target: `App/RootView.swift` (tab root), `Today/`. Text uses the iOS system font (SF Pro, New York, SF Pro Rounded); no fonts ship in the bundle. |
 | `AIDRKit/` | Local Swift package: models, `APIClient`, `SnapshotStore`, `Highlight`, `Topic` colors, `Theme`. |
-| `AIDRKitTests/` | Unit tests, hosted in the app so the Inter font check sees the real bundle. `Fixtures/` holds production JSON. |
+| `AIDRKitTests/` | Unit tests, hosted in the app. `Fixtures/` holds production JSON. |
 | `AIDRUITests/` | The screenshot journey: Today in VI and EN, and an offline relaunch. |
 | `scripts/` | CI helpers and `make-golden.ts`. |
 

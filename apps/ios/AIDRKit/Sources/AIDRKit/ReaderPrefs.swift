@@ -21,8 +21,9 @@ public enum ReaderLanguage: String, Codable, CaseIterable, Sendable {
   }
 }
 
+/// System font designs: SF Pro, New York, SF Pro Rounded.
 public enum ReaderFontFamily: String, Codable, CaseIterable, Sendable {
-  case sans, serif
+  case sans, serif, rounded
 }
 
 /// "system" follows the iPhone's Dynamic Type setting.

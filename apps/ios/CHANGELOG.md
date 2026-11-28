@@ -13,6 +13,9 @@
 - App icon: the site's AI;DR wordmark on a warm yellow gradient with a soft
   shadow. The dark version puts the website header's yellow AI;DR pill on
   warm black; the tinted version is a grayscale cut of the same pill.
+- Text uses the iOS system font (SF Pro) for sharper display and native
+  Dynamic Type. The font setting offers SF Pro, New York (serif) and SF Pro
+  Rounded; the bundled Inter and Newsreader files are gone.
 - Launch screen: the AI;DR logo tile on the page color instead of a blank
   screen.
 - CI uploads master builds to TestFlight once the App Store Connect secrets are set.

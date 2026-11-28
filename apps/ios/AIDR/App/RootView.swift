@@ -7,10 +7,18 @@ import SwiftUI
 /// Reader preferences: Font and Palette read ReaderStyle, so the tab tree is
 /// rebuilt (`.id`) whenever a preference changes. The settings sheet hangs
 /// outside that tree and stays open while the reader tries options.
+private struct RenderKey: Hashable {
+  let prefs: ReaderPrefs
+  let systemTypeSize: DynamicTypeSize
+}
+
 struct RootView: View {
   @State private var today = TodayStore()
   @State private var prefsStore = ReaderPrefsStore.shared
   @State private var app = AppState()
+  /// The system Dynamic Type setting. Font sizes are computed when a view
+  /// is built, so a change rebuilds the tree like a preference change.
+  @Environment(\.dynamicTypeSize) private var systemTypeSize
 
   private var prefs: ReaderPrefs { prefsStore.prefs }
   private var lang: Lang { prefs.language.resolve() }
@@ -34,7 +42,7 @@ struct RootView: View {
     .tabBarMinimizeBehavior(.onScrollDown)
     .tint(Palette.foreground)
     .background(Palette.background)
-    .id(prefs)
+    .id(RenderKey(prefs: prefs, systemTypeSize: systemTypeSize))
     .preferredColorScheme(prefs.appearance.colorScheme)
     .dynamicTypeSize(prefs.textSize.dynamicTypeRange)
     .environment(prefsStore)
