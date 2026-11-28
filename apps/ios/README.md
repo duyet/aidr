@@ -26,7 +26,7 @@ the last good edition from disk at launch, then refreshes. The plan lives in
 
 ## Build on CI (no Mac needed)
 
-`.github/workflows/ios.yml` runs on pushes to `feat/ios-app` and `master` that touch
+`.github/workflows/ios.yml` runs on pushes to `master` and `feat/ios-*` branches that touch
 `apps/ios/**`, and on demand:
 
 ```bash
@@ -43,6 +43,55 @@ then archives without signing. Artifacts:
 
 `.agents/skills/verify-aidr-ios/bin/verify-aidr-ios drive` pushes the branch,
 waits for the run and downloads all three.
+
+## TestFlight
+
+The `testflight` job in `ios.yml` runs after `build` on every master push
+that touches `apps/ios/**`, and on `gh workflow run ios.yml --ref master`. It
+skips itself until the four secrets below exist. It archives a Release build,
+signs it with automatic signing through the App Store Connect API key, uploads
+it, and uses the workflow run number as the build number.
+
+One-time setup:
+
+1. **Join the Apple Developer Program** ($99 a year) at
+   [developer.apple.com/programs/enroll](https://developer.apple.com/programs/enroll),
+   as an individual, with an Apple ID that has two-factor authentication. Apple
+   may ask for ID checks in the Apple Developer app. Approval can take up to 48
+   hours.
+2. **Register the bundle id.** In
+   [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list),
+   add an App ID, explicit, `oneni.aidr.app`. No extra capabilities.
+3. **Create the app record.** In [App Store Connect](https://appstoreconnect.apple.com),
+   Apps, then + and New App: platform iOS, name, primary language, bundle id
+   `oneni.aidr.app`, SKU `aidr-ios`. The bundle id cannot change after this.
+4. **Make an API key.** App Store Connect, Users and Access, Integrations, App
+   Store Connect API, Team Keys, then +. Access **Admin**: cloud signing creates
+   the distribution certificate and profile, which needs Admin. Download the
+   `.p8` file (only once) and note the Key ID and the Issuer ID on that page.
+5. **Find the Team ID** under Membership details at
+   [developer.apple.com/account](https://developer.apple.com/account).
+6. **Add the secrets:**
+
+   ```bash
+   gh secret set ASC_KEY_ID --body <key id>
+   gh secret set ASC_ISSUER_ID --body <issuer id>
+   gh secret set APPLE_TEAM_ID --body <team id>
+   gh secret set ASC_KEY_P8 < AuthKey_<key id>.p8
+   ```
+
+7. **Upload a build:** `gh workflow run ios.yml --ref master`. Apple processes
+   it for 5 to 30 minutes. `ITSAppUsesNonExemptEncryption = NO` answers export
+   compliance.
+8. **Install on the iPhone.** App Store Connect, the app, TestFlight, Internal
+   Testing: create a group and add yourself. Install the TestFlight app on the
+   iPhone, sign in with the same Apple ID and accept the invite. Later builds
+   appear there by themselves. Internal testers (up to 100 team members) need no
+   review; an external group needs Beta App Review first.
+
+The App Store listing, privacy answers and review notes are in
+[`AppStore/`](AppStore/), with the submission checklist in
+[`AppStore/checklist.md`](AppStore/checklist.md).
 
 ## Install the IPA with Sideloadly
 
