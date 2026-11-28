@@ -11,6 +11,11 @@ final class StoryStore {
   private(set) var isComplete = false
   /// Set when no copy exists and the fetch failed.
   private(set) var failed = false
+  /// When `item` was last fetched from the server, from the disk stamp or the last refresh.
+  private(set) var fetchedAt: Date?
+  /// True when the last refresh failed and the screen shows a saved copy.
+  private(set) var isOffline = false
+  private var isRefreshing = false
 
   let id: String
   private let api: APIClient
@@ -36,28 +41,37 @@ final class StoryStore {
     return APIClient()
   }
 
+  /// Paints from disk at once, then refreshes. The screen is never blanked to reload.
   func load() async {
     if item == nil {
       if let cached = cache.load(id: id) {
         item = cached
+        fetchedAt = cache.fetchedAt(id: id)
         isComplete = true
       } else if let partial = snapshots.load()?.itemsById[id] {
         item = partial
       }
     }
+    await refresh()
+  }
+
+  /// On appear, on app foreground and on pull to refresh.
+  func refresh() async {
+    guard !isRefreshing else { return }
+    isRefreshing = true
+    defer { isRefreshing = false }
     do {
       let (fresh, data) = try await api.storyWithData(id: id)
+      let now = Date()
       item = fresh
       isComplete = true
       failed = false
-      try? cache.save(data, id: id)
+      isOffline = false
+      fetchedAt = now
+      try? cache.save(data, id: id, fetchedAt: now)
     } catch {
+      isOffline = item != nil
       failed = item == nil
     }
-  }
-
-  func retry() async {
-    failed = false
-    await load()
   }
 }

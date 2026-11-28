@@ -50,6 +50,9 @@ final class StoryJourneyTests: XCTestCase {
     try openFirstStory(offline)
     XCTAssertTrue(offline.descendants(matching: .any)["story-headline"].waitForExistence(timeout: 10), "cached story did not paint")
     XCTAssertTrue(offline.descendants(matching: .any)["story-aidr"].exists)
+    let freshness = offline.descendants(matching: .any)["story-freshness"]
+    XCTAssertTrue(freshness.waitForExistence(timeout: 30), "no freshness line on a saved story")
+    XCTAssertTrue(freshness.label.hasPrefix("Offline"), "saved copy must say it is offline, got: \(freshness.label)")
     Thread.sleep(forTimeInterval: 2)
     capture(offline, "story-offline-en")
   }

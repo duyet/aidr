@@ -16,6 +16,15 @@ struct StoryCacheTests {
     #expect(loaded.summaryVi?.isEmpty == false)
   }
 
+  @Test func fetchTimeIsKeptNextToTheStory() throws {
+    let cache = StoryCache(directory: dir)
+    #expect(cache.fetchedAt(id: id) == nil)
+    let at = Date(timeIntervalSince1970: 1_795_800_000)
+    try cache.save(Fixtures.data("story"), id: id, fetchedAt: at)
+    #expect(StoryCache(directory: dir).fetchedAt(id: id) == at)
+    #expect(cache.load(id: id) != nil, "the stamp must not break the story file")
+  }
+
   @Test func eachStoryHasItsOwnFile() throws {
     let cache = StoryCache(directory: dir)
     try cache.save(Fixtures.data("story"), id: id)

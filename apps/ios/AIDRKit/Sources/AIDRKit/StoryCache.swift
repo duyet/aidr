@@ -27,12 +27,24 @@ public struct StoryCache: Sendable {
     return try? APIClient.decode(Item.self, from: data)
   }
 
-  /// Saves bytes that already decoded as an `Item`. Atomic, so a crash never
-  /// leaves half a file.
-  public func save(_ data: Data, id: String) throws {
+  /// When the cached copy was fetched. The server's story carries no
+  /// update time, so the app keeps its own next to the bytes.
+  public func fetchedAt(id: String) -> Date? {
+    guard let url = fileURL(id)?.deletingPathExtension().appendingPathExtension("fetched"),
+      let text = try? String(contentsOf: url, encoding: .utf8),
+      let seconds = TimeInterval(text.trimmingCharacters(in: .whitespacesAndNewlines))
+    else { return nil }
+    return Date(timeIntervalSince1970: seconds)
+  }
+
+  /// Saves bytes that already decoded as an `Item`, and when they were
+  /// fetched. Atomic, so a crash never leaves half a file.
+  public func save(_ data: Data, id: String, fetchedAt: Date = Date()) throws {
     guard let url = fileURL(id) else { throw CocoaError(.fileWriteInvalidFileName) }
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     try data.write(to: url, options: .atomic)
+    let stamp = url.deletingPathExtension().appendingPathExtension("fetched")
+    try Data(String(Int(fetchedAt.timeIntervalSince1970)).utf8).write(to: stamp, options: .atomic)
   }
 }
 

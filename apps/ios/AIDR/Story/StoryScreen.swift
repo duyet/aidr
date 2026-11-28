@@ -10,6 +10,7 @@ struct StoryScreen: View {
 
   @State private var store: StoryStore
   @Environment(AppState.self) private var appState
+  @Environment(\.scenePhase) private var scenePhase
 
   init(id: String, lang: Lang) {
     self.id = id
@@ -33,18 +34,23 @@ struct StoryScreen: View {
         }
       }
       .task { await store.load() }
+      .onChange(of: scenePhase) { _, phase in
+        if phase == .active { Task { await store.refresh() } }
+      }
   }
 
   @ViewBuilder private var content: some View {
     if let item = store.item {
-      StoryContent(item: item, isComplete: store.isComplete, lang: lang)
+      StoryContent(
+        item: item, isComplete: store.isComplete, fetchedAt: store.fetchedAt, isOffline: store.isOffline,
+        lang: lang, refresh: { await store.refresh() })
     } else if store.failed {
       ContentUnavailableView {
         Label(lang == .vi ? "Không tải được tin" : "Couldn't load the story", systemImage: "wifi.slash")
       } description: {
         Text(lang == .vi ? "Kiểm tra kết nối rồi thử lại." : "Check your connection and try again.")
       } actions: {
-        Button(lang == .vi ? "Thử lại" : "Try again") { Task { await store.retry() } }
+        Button(lang == .vi ? "Thử lại" : "Try again") { Task { await store.refresh() } }
           .buttonStyle(.glassProminent)
       }
     } else {
@@ -56,7 +62,10 @@ struct StoryScreen: View {
 private struct StoryContent: View {
   let item: Item
   let isComplete: Bool
+  let fetchedAt: Date?
+  let isOffline: Bool
   let lang: Lang
+  let refresh: () async -> Void
 
   @State private var hero: UIImage?
   @State private var heroFailed = false
@@ -82,6 +91,7 @@ private struct StoryContent: View {
       .padding(.top, Spacing.sm)
       .padding(.bottom, Spacing.xxl)
     }
+    .refreshable { await refresh() }
     .accessibilityIdentifier("story-screen")
     .task(id: item.imageUrl) { await loadHero() }
     .fullScreenCover(item: $web) { link in
@@ -134,17 +144,31 @@ private struct StoryContent: View {
       .accessibilityIdentifier("story-headline")
       .padding(.bottom, Spacing.md)
     }
-    if let byline = StoryDetail.byline(item, lang: lang) {
-      Text(byline)
-        .font(.inter(13, relativeTo: .footnote))
-        .foregroundStyle(Palette.mutedForeground)
-        .padding(.bottom, headline?.isOriginal == true ? 2 : Spacing.lg)
+    VStack(alignment: .leading, spacing: 3) {
+      if let byline = StoryDetail.byline(item, lang: lang) {
+        Text(byline)
+          .font(.inter(13, relativeTo: .footnote))
+          .foregroundStyle(Palette.mutedForeground)
+      }
+      if headline?.isOriginal == true {
+        Text("Tiêu đề gốc tiếng Anh, chưa có bản dịch")
+          .font(.inter(12.5, relativeTo: .caption))
+          .foregroundStyle(Palette.quietForeground)
+      }
+      freshness
     }
-    if headline?.isOriginal == true {
-      Text("Tiêu đề gốc tiếng Anh, chưa có bản dịch")
-        .font(.inter(12.5, relativeTo: .caption))
-        .foregroundStyle(Palette.quietForeground)
-        .padding(.bottom, Spacing.lg)
+    .padding(.bottom, Spacing.lg)
+  }
+
+  /// "Cập nhật 5 phút trước", refreshed every minute; "Ngoại tuyến · bản lưu lúc 07:12" on a saved copy.
+  @ViewBuilder private var freshness: some View {
+    if isComplete, let fetchedAt {
+      TimelineView(.everyMinute) { context in
+        Text(StoryFreshness.line(fetchedAt: fetchedAt, now: context.date, lang: lang, offline: isOffline))
+          .font(.inter(12.5, relativeTo: .caption))
+          .foregroundStyle(isOffline ? Palette.accent : Palette.quietForeground)
+          .accessibilityIdentifier("story-freshness")
+      }
     }
   }
 
