@@ -70,8 +70,10 @@ final class ArchiveJourneyTests: XCTestCase {
   private func launch(language: String, locale: String, dark: Bool = false) -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments = ["-AppleLanguages", "(\(language))", "-AppleLocale", locale]
-    // A launch argument, not XCUIDevice.appearance, so no other test inherits dark mode.
-    if dark { app.launchArguments += ["-AppleInterfaceStyle", "Dark"] }
+    // Dark through the reader prefs (JSON data in UserDefaults "aidr.prefs", as the
+    // Brief journey does): the system style launch argument does not reach the app.
+    // Launch-scoped, so no other test inherits dark mode.
+    if dark { app.launchArguments += ["-aidr.prefs", "<7b22617070656172616e6365223a226461726b227d>"] }
     app.launch()
     return app
   }
