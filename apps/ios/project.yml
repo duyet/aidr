@@ -37,6 +37,8 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
+        # Lets SwiftUI and Core Animation run at 120 Hz on ProMotion iPhones.
+        CADisableMinimumFrameDurationOnPhone: true
         NSPhotoLibraryAddUsageDescription: "Save AI;DR story cards to your photo library."
         BGTaskSchedulerPermittedIdentifiers: [oneni.aidr.app.refresh]
         UIBackgroundModes: [fetch]
