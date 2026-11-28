@@ -89,7 +89,11 @@ struct TodayModelTests {
     let feed = try Fixtures.feed()
     let items = feed.itemsById
     let all = TodayDigest.rows(feed, lang: .en, category: nil)
-    let category = try #require(all.compactMap { $0.itemId.flatMap { items[$0]?.category } }.first)
+    var found: String?
+    for row in all where found == nil {
+      if let id = row.itemId, let category = items[id]?.category { found = category }
+    }
+    let category = try #require(found)
     let rows = TodayDigest.rows(feed, lang: .en, category: category)
     #expect(!rows.isEmpty)
     for row in rows {
