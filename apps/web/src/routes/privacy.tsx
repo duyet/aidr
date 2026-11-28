@@ -30,9 +30,10 @@ function PrivacyPage() {
       title="Privacy"
       lede={
         <>
-          Effective 21 October 2026. This policy covers{" "}
-          <a href={SITE_URL}>{SITE_URL}</a> and the aidr Chrome new-tab
-          extension. Contact <a href="mailto:me@duyet.net">me@duyet.net</a>.
+          Effective 28 November 2026. This policy covers{" "}
+          <a href={SITE_URL}>{SITE_URL}</a>, the aidr Chrome new-tab extension
+          and the AI;DR iPhone app. Contact{" "}
+          <a href="mailto:me@duyet.net">me@duyet.net</a>.
         </>
       }
     >
@@ -197,6 +198,45 @@ function PrivacyPage() {
         </p>
       </PageSection>
 
+      <PageSection title="iPhone app">
+        <ul>
+          <li>
+            The app has no account and no sign-in. It loads no analytics,
+            advertising or tracking code, and it does not ask to track you.
+          </li>
+          <li>
+            It asks aidr.today for the public edition. Like any server,
+            aidr.today receives your IP address with each request and does not
+            store it. Each request carries the app's name and version (for
+            example <code>ios/0.1.0+12</code>), and we count API requests by
+            route, status and app version, with no identifier.
+          </li>
+          <li>
+            The last edition, a picture cache, and your language, look, text
+            size and reminder time stay on your iPhone. Deleting the app deletes
+            them.
+          </li>
+          <li>
+            List thumbnails come through aidr.today. Larger pictures, and the
+            picture in the daily reminder, load from the publisher, which
+            receives your IP address like any web server. Read source opens the
+            page in an in-app Safari view, where the publisher's own policy
+            applies.
+          </li>
+          <li>
+            The daily reminder is a local notification scheduled on your iPhone.
+            It uses no push token and no server. Share as image builds the
+            picture on your iPhone and uploads nothing. Suggest a story opens
+            aidr.today/submit, covered by the website sections above.
+          </li>
+          <li>
+            Your choices: turn the reminder off in the app or in iOS Settings,
+            and delete the app to remove its data. We keep nothing about you on
+            our servers from the app.
+          </li>
+        </ul>
+      </PageSection>
+
       <PageSection title="Sharing and retention">
         <p>
           The public JSON request goes to aidr.today, a Cloudflare Worker. We
@@ -214,6 +254,8 @@ function PrivacyPage() {
 
       <p>
         <Link to="/terms">Terms of use</Link>
+        {" · "}
+        <Link to="/support">Support</Link>
       </p>
     </ContentPage>
   );

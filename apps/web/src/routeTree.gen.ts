@@ -24,6 +24,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SubmitRouteImport } from './routes/submit'
 import { Route as SubscribeRouteImport } from './routes/subscribe'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WeeksRouteImport } from './routes/weeks'
 import { Route as CatSlugRouteImport } from './routes/$cat.$slug'
@@ -144,6 +145,11 @@ const SubmitRoute = SubmitRouteImport.update({
 const SubscribeRoute = SubscribeRouteImport.update({
   id: '/subscribe',
   path: '/subscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -395,6 +401,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/weeks': typeof WeeksRoute
   '/$cat/$slug': typeof CatSlugRoute
@@ -458,6 +465,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/weeks': typeof WeeksRoute
   '/$cat/$slug': typeof CatSlugRoute
@@ -522,6 +530,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/submit': typeof SubmitRoute
   '/subscribe': typeof SubscribeRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/weeks': typeof WeeksRoute
   '/$cat/$slug': typeof CatSlugRoute
@@ -587,6 +596,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/submit'
     | '/subscribe'
+    | '/support'
     | '/terms'
     | '/weeks'
     | '/$cat/$slug'
@@ -650,6 +660,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/submit'
     | '/subscribe'
+    | '/support'
     | '/terms'
     | '/weeks'
     | '/$cat/$slug'
@@ -713,6 +724,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/submit'
     | '/subscribe'
+    | '/support'
     | '/terms'
     | '/weeks'
     | '/$cat/$slug'
@@ -777,6 +789,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   SubmitRoute: typeof SubmitRoute
   SubscribeRoute: typeof SubscribeRoute
+  SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   WeeksRoute: typeof WeeksRoute
   CatSlugRoute: typeof CatSlugRoute
@@ -913,6 +926,13 @@ declare module '@tanstack/react-router' {
       path: '/subscribe'
       fullPath: '/subscribe'
       preLoaderRoute: typeof SubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -1319,6 +1339,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   SubmitRoute: SubmitRoute,
   SubscribeRoute: SubscribeRoute,
+  SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   WeeksRoute: WeeksRoute,
   CatSlugRoute: CatSlugRoute,
@@ -1352,3 +1373,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
