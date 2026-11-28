@@ -17,7 +17,7 @@ count = 0
 for test in manifest:
     for a in test.get("attachments", []):
         exported = a["exportedFileName"]
-        if not exported.lower().endswith((".png", ".jpeg", ".jpg")):
+        if not exported.lower().endswith((".png", ".jpeg", ".jpg", ".txt")):
             continue
         human = a.get("suggestedHumanReadableName") or exported
         # "today-vi_0_6F1C...png" -> "today-vi"

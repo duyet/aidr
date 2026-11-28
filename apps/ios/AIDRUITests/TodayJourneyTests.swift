@@ -54,7 +54,16 @@ final class TodayJourneyTests: XCTestCase {
 
   @MainActor
   private func assertDigest(_ app: XCUIApplication) {
-    XCTAssertTrue(row(app, 1).waitForExistence(timeout: 45), "digest row 1 never appeared")
+    if !row(app, 1).waitForExistence(timeout: 45) {
+      let name = self.name.components(separatedBy: " ").last?.trimmingCharacters(in: CharacterSet(charactersIn: "]")) ?? "test"
+      capture(app, "failure-\(name)")
+      let tree = XCTAttachment(string: app.debugDescription)
+      tree.name = "failure-tree-\(name)"
+      tree.lifetime = .keepAlways
+      add(tree)
+      XCTFail("digest row 1 never appeared")
+      return
+    }
     XCTAssertTrue(app.descendants(matching: .any)["day-block"].exists)
     // Let the first thumbnails arrive before the screenshot.
     _ = app.images.firstMatch.waitForExistence(timeout: 5)

@@ -27,6 +27,7 @@ struct DigestSection: View {
         }
       }
     }
+    .accessibilityElement(children: .contain)
     .accessibilityIdentifier("today-digest")
   }
 }
