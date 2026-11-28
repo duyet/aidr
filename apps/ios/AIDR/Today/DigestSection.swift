@@ -6,24 +6,45 @@ import SwiftUI
 struct DigestSection: View {
   let feed: Feed
   let lang: Lang
+  /// The chip the reader picked: only digest rows about it show.
+  let category: String?
+
+  /// Rows on screen; "Show more" steps through TodayDigest.steps.
+  @State private var limit = TodayDigest.steps[0]
 
   var body: some View {
-    let rows = Digest.rows(feed, lang: lang)
+    let all = TodayDigest.rows(feed, lang: lang, category: category)
+    let rows = Array(all.prefix(limit))
     VStack(alignment: .leading, spacing: 0) {
       if let tldr = feed.tldr, let parts = EditionDate.parts(tldr.date, lang: lang) {
         DayBlock(day: parts.day, line: parts.line)
           .padding(.horizontal, Spacing.lg)
           .padding(.bottom, Spacing.sm)
       }
-      if rows.isEmpty {
+      if TodayDigest.rows(feed, lang: lang, category: nil).isEmpty {
         Text(lang == .vi ? "Chưa có AI;DR tiếng Việt cho hôm nay." : "No AI;DR for today yet.")
           .font(.inter(14, relativeTo: .body))
           .foregroundStyle(Palette.mutedForeground)
           .padding(Spacing.lg)
       } else {
         ForEach(rows) { row in
-          DigestRowView(row: row, learned: feed.learnedKeywords)
+          DigestLink(row: row, learned: feed.learnedKeywords)
             .padding(.horizontal, Spacing.lg)
+        }
+        if all.count > limit {
+          Button {
+            withAnimation(.snappy) { limit = TodayDigest.next(after: limit) }
+          } label: {
+            Label(lang == .vi ? "Xem thêm" : "Show more", systemImage: "chevron.down")
+              .labelStyle(TrailingIconLabelStyle())
+              .font(.inter(13.5, .medium, relativeTo: .footnote))
+              .foregroundStyle(Palette.accent)
+              .frame(minHeight: 44)
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .padding(.horizontal, Spacing.lg)
+          .accessibilityIdentifier("digest-more")
         }
       }
     }
@@ -62,6 +83,36 @@ private struct DayBlock: View {
   }
 }
 
+private struct TrailingIconLabelStyle: LabelStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    HStack(spacing: 4) {
+      configuration.title
+      configuration.icon.font(.system(size: 11, weight: .semibold))
+    }
+  }
+}
+
+/// A digest row that opens the first story it cites.
+private struct DigestLink: View {
+  let row: DigestRow
+  let learned: [String]
+
+  var body: some View {
+    Group {
+      if let id = row.itemId {
+        NavigationLink(value: Route.story(id: id)) {
+          DigestRowView(row: row, learned: learned)
+        }
+        .buttonStyle(.plain)
+      } else {
+        DigestRowView(row: row, learned: learned)
+      }
+    }
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("digest-row-\(row.rank)")
+  }
+}
+
 struct DigestRowView: View {
   let row: DigestRow
   let learned: [String]
@@ -74,13 +125,13 @@ struct DigestRowView: View {
         .padding(.top, 2)
       Text(attributed)
         .lineSpacing(2)
+        .lineLimit(3)
         .frame(maxWidth: .infinity, alignment: .leading)
       Thumbnail(url: row.thumbnail)
     }
     .padding(.vertical, 13)
     .overlay(alignment: .bottom) { Rectangle().fill(Palette.border).frame(height: 0.5) }
-    .accessibilityElement(children: .combine)
-    .accessibilityIdentifier("digest-row-\(row.rank)")
+    .contentShape(Rectangle())
   }
 
   private var attributed: AttributedString {
@@ -121,7 +172,7 @@ struct DigestRowView: View {
   }
 }
 
-private struct Thumbnail: View {
+struct Thumbnail: View {
   let url: URL?
 
   var body: some View {

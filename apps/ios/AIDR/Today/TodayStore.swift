@@ -7,6 +7,8 @@ import Observation
 @Observable
 final class TodayStore {
   private(set) var feed: Feed?
+  /// Every story of the loaded days, for local search.
+  private(set) var index = SearchIndex()
   private(set) var isRefreshing = false
   /// Set when the last refresh failed; the screen keeps the cached feed.
   private(set) var refreshFailed = false
@@ -17,7 +19,12 @@ final class TodayStore {
   init(api: APIClient = TodayStore.defaultClient(), snapshots: SnapshotStore = SnapshotStore()) {
     self.api = api
     self.snapshots = snapshots
-    feed = snapshots.load()
+    if let cached = snapshots.load() { adopt(cached) }
+  }
+
+  private func adopt(_ fresh: Feed) {
+    feed = fresh
+    index = SearchIndex(feed: fresh)
   }
 
   /// AIDR_API_BASE points the app at another origin. The offline UI test
@@ -35,7 +42,7 @@ final class TodayStore {
     defer { isRefreshing = false }
     do {
       let (fresh, data) = try await api.feed(days: 3)
-      feed = fresh
+      adopt(fresh)
       refreshFailed = false
       try? snapshots.save(data)
     } catch {
