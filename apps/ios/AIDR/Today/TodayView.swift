@@ -2,32 +2,76 @@ import AIDRKit
 import SwiftUI
 
 struct TodayView: View {
-  let store: TodayStore
+  @Bindable var store: TodayStore
   let lang: Lang
 
+  @Environment(AppState.self) private var appState
+  @Environment(ReaderPrefsStore.self) private var prefsStore
+  @Environment(\.scenePhase) private var scenePhase
+  @State private var path: [Route] = []
+
   var body: some View {
-    NavigationStack {
+    NavigationStack(path: $path) {
       content
         .background(Palette.background)
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { masthead }
+        .searchable(
+          text: $store.query,
+          placement: .navigationBarDrawer(displayMode: .always),
+          prompt: lang == .vi ? "Tìm trong tin đã tải" : "Search stories"
+        )
         .routeDestinations(lang: lang)
     }
     .task { await store.refresh() }
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { Task { await store.refreshIfStale() } }
+    }
+    // A notification tap sets pendingStoryID; open that story here.
+    .onChange(of: appState.pendingStoryID, initial: true) { _, id in
+      guard let id else { return }
+      path.append(.story(id: id))
+      appState.pendingStoryID = nil
+    }
+  }
+
+  @ToolbarContentBuilder private var masthead: some ToolbarContent {
+    ToolbarItem(placement: .topBarLeading) {
+      HStack(spacing: Spacing.sm) {
+        LogoMark()
+        Text("AI;DR")
+          .font(.headline(19, .semibold, relativeTo: .title3))
+          .tracking(-0.3)
+          .foregroundStyle(Palette.foreground)
+      }
+      .fixedSize()
+      .accessibilityElement(children: .combine)
+    }
+    .sharedBackgroundVisibility(.hidden)
+    ToolbarItem(placement: .topBarTrailing) {
+      Button {
+        appState.showSettings = true
+      } label: {
+        Text("Aa").font(.inter(16, .semibold))
+      }
+      .accessibilityLabel(lang == .vi ? "Cài đặt" : "Settings")
+      .accessibilityIdentifier("settings-button")
+    }
   }
 
   @ViewBuilder private var content: some View {
     if let feed = store.feed {
-      ScrollView {
-        VStack(alignment: .leading, spacing: 0) {
-          Masthead(lang: lang, refreshFailed: store.refreshFailed)
-          CategoryChips(categories: feed.categories, lang: lang)
-            .padding(.top, Spacing.sm)
-          DigestSection(feed: feed, lang: lang)
-            .padding(.top, Spacing.xl)
-        }
-        .padding(.bottom, Spacing.xxl)
+      if store.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        TodayPage(
+          store: store, feed: feed, lang: lang, refreshFailed: store.refreshFailed,
+          savedAt: store.savedAt, refresh: { await store.refresh() })
+      } else {
+        SearchResultsView(
+          results: TodayStories.visible(
+            store.index.search(store.query), lang: lang, bilingual: prefsStore.prefs.bilingual),
+          query: store.query, learned: feed.learnedKeywords, lang: lang,
+          refresh: { await store.refresh() })
       }
-      .refreshable { await store.refresh() }
     } else if store.refreshFailed {
       ContentUnavailableView {
         Label(lang == .vi ? "Không tải được" : "Couldn't load", systemImage: "wifi.slash")
@@ -43,28 +87,104 @@ struct TodayView: View {
   }
 }
 
-/// The yellow ";" mark and the AI;DR wordmark.
-private struct Masthead: View {
+/// The edition: day header, chips, AI;DR digest, ranked list.
+private struct TodayPage: View {
+  @Bindable var store: TodayStore
+  let feed: Feed
   let lang: Lang
   let refreshFailed: Bool
+  let savedAt: Date?
+  let refresh: @MainActor () async -> Void
+
+  @Environment(ReaderPrefsStore.self) private var prefsStore
 
   var body: some View {
-    HStack(spacing: Spacing.sm) {
-      LogoMark()
-      Text("AI;DR")
-        .font(.inter(19, .semibold, relativeTo: .title3))
-        .tracking(-0.3)
-        .foregroundStyle(Palette.foreground)
-      Spacer()
-      if refreshFailed {
-        Label(lang == .vi ? "Ngoại tuyến" : "Offline", systemImage: "wifi.slash")
-          .font(.inter(12.5, .medium, relativeTo: .caption))
-          .foregroundStyle(Palette.mutedForeground)
-          .accessibilityIdentifier("offline-note")
+    let today = TodayStories.today(feed, lang: lang, bilingual: prefsStore.prefs.bilingual)
+    let chips = TodayStories.chips(today.stories)
+    let tags = TodayStories.tagChips(feed.trending, stories: today.stories)
+    // A filter that left the feed on refresh no longer applies.
+    let category = chips.contains { TodayStories.sameCategory($0.name, store.category) } ? store.category : nil
+    let tag = tags.contains { $0.name == store.tag } ? store.tag : nil
+    ScrollViewReader { proxy in
+      ScrollView {
+        VStack(alignment: .leading, spacing: 0) {
+          if refreshFailed { OfflineNote(lang: lang, savedAt: savedAt ?? feed.updatedDate) }
+          if let date = today.date, let heading = TodayFormat.dayHeading(date, lang: lang) {
+            // "updated 9m ago" ticks every minute.
+            TimelineView(.everyMinute) { context in
+              DayHeader(
+                heading: heading,
+                summary: TodayFormat.summary(
+                  count: today.stories.count, updatedAt: feed.updatedDate, now: context.date, lang: lang)
+              )
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.xs)
+          }
+          CategoryChips(chips: chips, total: today.stories.count, selected: $store.category, lang: lang)
+            .padding(.top, Spacing.md)
+          if !tags.isEmpty {
+            TagChips(chips: tags, selected: $store.tag, lang: lang)
+          }
+          DigestSection(store: store, feed: feed, lang: lang, category: category, tag: tag)
+            .id("digest")
+            .padding(.top, Spacing.lg)
+          RankedSection(
+            stories: TodayStories.filter(today.stories, category: category, tag: tag),
+            filtered: category != nil || tag != nil, learned: feed.learnedKeywords, lang: lang
+          )
+          .padding(.top, Spacing.xl)
+        }
+        .padding(.bottom, Spacing.xxl)
+      }
+      .refreshable { await refresh() }
+      .task {
+        // The digest switch rebuilds the tab tree; land back on the digest.
+        guard store.scrollToDigest else { return }
+        store.scrollToDigest = false
+        await Task.yield()
+        proxy.scrollTo("digest", anchor: .top)
       }
     }
+  }
+}
+
+private struct OfflineNote: View {
+  let lang: Lang
+  let savedAt: Date?
+
+  var body: some View {
+    Label(
+      TodayFormat.offlineNote(savedAt: savedAt, lang: lang),
+      systemImage: "wifi.slash"
+    )
+    .font(.inter(12.5, .medium, relativeTo: .caption))
+    .foregroundStyle(Palette.mutedForeground)
     .padding(.horizontal, Spacing.lg)
-    .padding(.vertical, Spacing.md)
+    .padding(.bottom, Spacing.sm)
+    .accessibilityIdentifier("offline-note")
+  }
+}
+
+/// "Thứ Bảy, 28 thg 11, 2026" and, under it, "36 tin · cập nhật 9 phút trước".
+private struct DayHeader: View {
+  let heading: String
+  let summary: String
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 3) {
+      Text(heading)
+        .font(.headline(23, .semibold, relativeTo: .title2))
+        .tracking(-0.3)
+        .foregroundStyle(Palette.foreground)
+      Text(summary)
+        .font(.inter(13, relativeTo: .footnote))
+        .foregroundStyle(Palette.mutedForeground)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .accessibilityElement(children: .combine)
+    .accessibilityAddTraits(.isHeader)
+    .accessibilityIdentifier("day-header")
   }
 }
 

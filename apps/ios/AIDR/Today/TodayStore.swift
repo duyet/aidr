@@ -7,9 +7,24 @@ import Observation
 @Observable
 final class TodayStore {
   private(set) var feed: Feed?
+  /// Every story of the loaded days, for local search.
+  private(set) var index = SearchIndex()
   private(set) var isRefreshing = false
   /// Set when the last refresh failed; the screen keeps the cached feed.
   private(set) var refreshFailed = false
+  /// When the cached edition was written to disk, for "Offline · saved 07:12".
+  private(set) var savedAt: Date?
+  private var lastSuccess: Date?
+
+  // Screen state lives here, not in the views: a preference change rebuilds
+  // the tab tree (RootView `.id(prefs)`) and the reader keeps their place.
+  var query = ""
+  var category: String?
+  var tag: String?
+  /// Digest rows on screen; nil follows the reader's digest count preference.
+  var digestLimit: Int?
+  /// Set by the digest switch so the rebuilt page scrolls back to the digest.
+  var scrollToDigest = false
 
   private let api: APIClient
   private let snapshots: SnapshotStore
@@ -17,7 +32,19 @@ final class TodayStore {
   init(api: APIClient = TodayStore.defaultClient(), snapshots: SnapshotStore = SnapshotStore()) {
     self.api = api
     self.snapshots = snapshots
-    feed = snapshots.load()
+    if let cached = snapshots.load() {
+      adopt(cached)
+      savedAt = Self.modified(snapshots.fileURL)
+    }
+  }
+
+  private static func modified(_ url: URL) -> Date? {
+    (try? FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate]) as? Date
+  }
+
+  private func adopt(_ fresh: Feed) {
+    feed = fresh
+    index = SearchIndex(feed: fresh)
   }
 
   /// AIDR_API_BASE points the app at another origin. The offline UI test
@@ -29,15 +56,27 @@ final class TodayStore {
     return APIClient()
   }
 
+  /// App came to the foreground: refresh in the background unless a refresh
+  /// landed in the last minute. The cached edition stays on screen meanwhile.
+  func refreshIfStale() async {
+    if let lastSuccess, Date.now.timeIntervalSince(lastSuccess) < 60 { return }
+    await refresh()
+  }
+
   func refresh() async {
     guard !isRefreshing else { return }
     isRefreshing = true
     defer { isRefreshing = false }
+    // An unstructured task: a preference rebuild cancels the view's .task,
+    // and that must not turn a good fetch into "offline".
+    let api = self.api
+    let result = await Task { try await api.feed(days: 3) }.result
     do {
-      let (fresh, data) = try await api.feed(days: 3)
-      feed = fresh
+      let (fresh, data) = try result.get()
+      adopt(fresh)
       refreshFailed = false
-      try? snapshots.save(data)
+      lastSuccess = .now
+      if (try? snapshots.save(data)) != nil { savedAt = .now }
     } catch {
       refreshFailed = true
     }
