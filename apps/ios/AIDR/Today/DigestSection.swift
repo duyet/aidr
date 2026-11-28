@@ -22,8 +22,11 @@ struct DigestSection: View {
           .padding(Spacing.lg)
       } else {
         ForEach(rows) { row in
-          DigestRowView(row: row, learned: feed.learnedKeywords)
-            .padding(.horizontal, Spacing.lg)
+          NavigationLink(value: Route.story(id: row.itemId ?? "")) {
+            DigestRowView(row: row, learned: feed.learnedKeywords)
+          }
+          .buttonStyle(.plain)
+          .padding(.horizontal, Spacing.lg)
         }
       }
     }
