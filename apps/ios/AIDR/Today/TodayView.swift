@@ -90,7 +90,7 @@ private struct TodayPage: View {
     let today = TodayStories.today(feed, lang: lang)
     let chips = TodayStories.chips(today.stories)
     // A category that left the feed on refresh no longer filters.
-    let active = chips.contains { Topic.canonical($0.name) == Topic.canonical(category) } ? category : nil
+    let active = chips.contains { TodayStories.sameCategory($0.name, category) } ? category : nil
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
         if refreshFailed { OfflineNote(lang: lang) }

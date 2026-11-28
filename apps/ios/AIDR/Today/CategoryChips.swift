@@ -22,7 +22,7 @@ struct CategoryChips: View {
         ) { selected = nil }
         .accessibilityIdentifier("chip-all")
         ForEach(chips) { chip in
-          let isOn = Topic.canonical(selected) == Topic.canonical(chip.name)
+          let isOn = TodayStories.sameCategory(selected, chip.name)
           Chip(
             label: chip.name, count: chip.count, dot: Topic.color(forCategory: chip.name).color,
             isOn: isOn

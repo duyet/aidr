@@ -103,6 +103,12 @@ public enum TodayStories {
       .sorted { $0.count != $1.count ? $0.count > $1.count : $0.name < $1.name }
   }
 
+  /// True when two category names are the same category: case and spaces do not matter.
+  public static func sameCategory(_ a: String?, _ b: String?) -> Bool {
+    guard let a = Topic.canonical(a), let b = Topic.canonical(b) else { return false }
+    return a == b
+  }
+
   public static func filter(_ stories: [TodayStory], category: String?) -> [TodayStory] {
     guard let key = Topic.canonical(category) else { return stories }
     return stories.filter { Topic.canonical($0.item.category) == key }
