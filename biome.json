@@ -20,7 +20,8 @@
       "!**/public",
       "!**/src/components/dither-kit/**",
       "!**/scripts/how-it-works/kit/**",
-      "!**/machine/kit/**"
+      "!**/machine/kit/**",
+      "!apps/ios/AIDRKitTests/Fixtures"
     ]
   },
   "formatter": {
