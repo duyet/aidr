@@ -194,10 +194,7 @@ struct SettingsScreen: View {
     TimelineView(.everyMinute) { context in
       Group {
         if let updated = model.editionUpdated {
-          let formatter = RelativeDateTimeFormatter()
-          let _ = formatter.locale = shown.locale
-          let _ = formatter.unitsStyle = .short
-          Text(t("Cập nhật ", "Updated ") + formatter.localizedString(for: updated, relativeTo: context.date))
+          Text(editionAge(updated, now: context.date))
         } else {
           Text(t("Chưa có", "None yet"))
         }
@@ -205,6 +202,13 @@ struct SettingsScreen: View {
       .font(.inter(14, relativeTo: .callout))
       .foregroundStyle(Palette.mutedForeground)
     }
+  }
+
+  private func editionAge(_ updated: Date, now: Date) -> String {
+    let formatter = RelativeDateTimeFormatter()
+    formatter.locale = shown.locale
+    formatter.unitsStyle = .short
+    return t("Cập nhật ", "Updated ") + formatter.localizedString(for: updated, relativeTo: now)
   }
 
   private func linkRow(_ title: String, _ url: String) -> some View {
